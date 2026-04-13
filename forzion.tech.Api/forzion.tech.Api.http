@@ -1,3 +1,26 @@
-@forzion.tech.Api_HostAddress = http://localhost:5230
+@api = http://localhost:5230
+@supabase = https://fdpdbtiuuitndbeujcbj.supabase.co
+@anon_key = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcGRidGl1dWl0bmRiZXVqY2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwOTM3OTgsImV4cCI6MjA5MTY2OTc5OH0.eUHTEvJS4trzYFWw-P7hLft3Q14nwR2T6O3RlzNcWfk
 
-###
+### 1. Login no Supabase (obter JWT)
+POST {{supabase}}/auth/v1/token?grant_type=password
+Content-Type: application/json
+apikey: {{anon_key}}
+
+{
+  "email": "arthurwebster01@gmail.com",
+  "password": "S3nh4P@dr@01"
+}
+
+### 2. Registrar perfil (cole o access_token do passo 1 em @token)
+@token = COLE_O_ACCESS_TOKEN_AQUI
+
+POST {{api}}/usuarios/registrar
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nome": "Usuário Teste",
+  "email": "arthurwebster01@gmail.com",
+  "tenantNome": "Minha Academia"
+}
