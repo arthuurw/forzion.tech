@@ -1,7 +1,6 @@
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-
 namespace forzion.tech.Api.Middleware;
 
 public sealed partial class GlobalExceptionHandler : IExceptionHandler
@@ -46,9 +45,11 @@ public sealed partial class GlobalExceptionHandler : IExceptionHandler
     private static (int StatusCode, string Title, string Detail) MapException(Exception exception) =>
         exception switch
         {
-            UsuarioJaRegistradoException ex => (StatusCodes.Status409Conflict,            "Conflito",       ex.Message),
-            DomainException ex              => (StatusCodes.Status422UnprocessableEntity, "Erro de domínio", ex.Message),
-            _                               => (StatusCodes.Status500InternalServerError, "Erro interno",   "Ocorreu um erro inesperado. Tente novamente mais tarde.")
+            UsuarioJaRegistradoException ex  => (StatusCodes.Status409Conflict,            "Conflito",        ex.Message),
+            UsuarioNaoEncontradoException ex  => (StatusCodes.Status404NotFound,            "Não encontrado",  ex.Message),
+            UsuarioInativoException ex        => (StatusCodes.Status403Forbidden,           "Inativo",         ex.Message),
+            DomainException ex               => (StatusCodes.Status422UnprocessableEntity, "Erro de domínio", ex.Message),
+            _                                => (StatusCodes.Status500InternalServerError, "Erro interno",    "Ocorreu um erro inesperado. Tente novamente mais tarde.")
         };
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Erro inesperado: {Message}")]

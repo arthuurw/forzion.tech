@@ -6,7 +6,13 @@ namespace forzion.tech.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IUnitOfWork
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly string _schema;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, string schema = "public")
+        : base(options)
+    {
+        _schema = schema;
+    }
 
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
@@ -17,6 +23,7 @@ public class AppDbContext : DbContext, IUnitOfWork
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDefaultSchema(_schema);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

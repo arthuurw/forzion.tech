@@ -25,7 +25,7 @@ public static class AuthenticationExtensions
                 options.MapInboundClaims = false;
                 options.TokenValidationParameters.ValidateIssuerSigningKey = true;
 
-                if (environment.IsDevelopment())
+                if (!environment.IsProduction())
                     options.Events = BuildDiagnosticEvents();
             });
 
@@ -34,9 +34,10 @@ public static class AuthenticationExtensions
         return services;
     }
 
-    // CA1848: Logs de diagnóstico são ativados apenas em Development e não são hot paths.
+    // CA1848: Logs de diagnóstico são ativados apenas em ambientes não-produtivos e não são hot paths.
     // LoggerMessage delegates adicionariam boilerplate sem ganho real neste contexto.
 #pragma warning disable CA1848
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private static JwtBearerEvents BuildDiagnosticEvents() => new()
     {
         OnMessageReceived = ctx =>

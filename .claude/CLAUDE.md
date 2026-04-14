@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ASP.NET Core 8.0 Web API backend for forzion.tech. Currently in early scaffolding stage — no business logic implemented yet. The database is PostgreSQL hosted on Supabase.
+ASP.NET Core 8.0 Web API backend for forzion.tech. Módulo de usuários implementado com testes. The database is PostgreSQL hosted on Supabase.
 
 ## Commands
 
@@ -15,11 +15,14 @@ dotnet run --project forzion.tech.Api
 # Build
 dotnet build
 
-# Run tests (no tests yet)
-dotnet test
+# Run tests (139 testes, 97.27% cobertura excluindo Infrastructure)
+dotnet test forzion.tech.Tests
+
+# Run tests com cobertura
+dotnet test forzion.tech.Tests --collect:"XPlat Code Coverage" --settings forzion.tech.Tests/coverage.runsettings
 ```
 
-Swagger UI is available at `/swagger` in development mode.
+Swagger UI disponível em `/swagger` em ambientes não-produtivos (Homolog).
 
 ## Architecture
 
@@ -33,8 +36,13 @@ The solution file is `forzion.tech.slnx`.
 
 ## Notes
 
-- Database connection details are in `anotacoes.txt` (excluded from git — do not commit credentials)
 - The project is on the `backend` branch; `main` is the base branch for PRs
+
+## Memória do Projeto (leitura obrigatória)
+
+@docs/banco-de-dados.md
+@docs/secrets-e-configuracao.md
+@docs/implementacao-atual.md
 
 ## Skills e Regras do Projeto
 

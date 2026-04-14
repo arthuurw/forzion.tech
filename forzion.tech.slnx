@@ -3,4 +3,5 @@
   <Project Path="forzion.tech.Application/forzion.tech.Application.csproj" />
   <Project Path="forzion.tech.Domain/forzion.tech.Domain.csproj" />
   <Project Path="forzion.tech.Infrastructure/forzion.tech.Infrastructure.csproj" />
+  <Project Path="forzion.tech.Tests/forzion.tech.Tests.csproj" />
 </Solution>

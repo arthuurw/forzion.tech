@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Usuarios.RegistrarUsuario;
@@ -19,7 +20,7 @@ public class RegistrarUsuarioHandler(
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<RegistrarUsuarioHandler> _logger = logger;
 
-    public async Task<RegistrarUsuarioResponse> HandleAsync(
+    public virtual async Task<RegistrarUsuarioResponse> HandleAsync(
         RegistrarUsuarioCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -33,11 +34,11 @@ public class RegistrarUsuarioHandler(
             ?? throw new PlanoNaoEncontradoException();
 
         var slug = await GerarSlugUnicoAsync(command.TenantNome, cancellationToken).ConfigureAwait(false);
-
         var tenant = Tenant.Criar(command.TenantNome, slug, planoFree.Id);
         await _tenantRepository.AdicionarAsync(tenant, cancellationToken).ConfigureAwait(false);
 
-        var usuario = Usuario.Criar(command.SupabaseId, command.Nome, command.Email, tenant.Id);
+        var email = Email.Criar(command.Email);
+        var usuario = Usuario.Criar(command.SupabaseId, command.Nome, email, tenant.Id);
         await _usuarioRepository.AdicionarAsync(usuario, cancellationToken).ConfigureAwait(false);
 
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -47,16 +48,16 @@ public class RegistrarUsuarioHandler(
         return new RegistrarUsuarioResponse(
             usuario.Id,
             usuario.Nome,
-            usuario.Email,
+            usuario.Email.Value,
             usuario.Role,
             tenant.Id,
             tenant.Nome
         );
     }
 
-    private async Task<string> GerarSlugUnicoAsync(string nome, CancellationToken cancellationToken)
+    private async Task<Slug> GerarSlugUnicoAsync(string nome, CancellationToken cancellationToken)
     {
-        var baseSlug = GerarSlug(nome);
+        var baseSlug = Slug.FromNome(nome);
         var slug = baseSlug;
         var tentativa = 0;
 
@@ -65,27 +66,10 @@ public class RegistrarUsuarioHandler(
             if (tentativa >= 5)
                 throw new DomainException("Não foi possível gerar um slug único para o tenant.");
 
-            slug = $"{baseSlug}-{Guid.NewGuid().ToString()[..8]}";
+            slug = Slug.Reconstituir($"{baseSlug.Value}-{Guid.NewGuid().ToString()[..8]}");
             tentativa++;
         }
 
         return slug;
     }
-
-    private static string GerarSlug(string nome) =>
-        nome.ToLowerInvariant()
-            .Replace(" ",  "-", StringComparison.Ordinal)
-            .Replace("ã", "a", StringComparison.Ordinal)
-            .Replace("â", "a", StringComparison.Ordinal)
-            .Replace("á", "a", StringComparison.Ordinal)
-            .Replace("à", "a", StringComparison.Ordinal)
-            .Replace("ê", "e", StringComparison.Ordinal)
-            .Replace("é", "e", StringComparison.Ordinal)
-            .Replace("í", "i", StringComparison.Ordinal)
-            .Replace("õ", "o", StringComparison.Ordinal)
-            .Replace("ô", "o", StringComparison.Ordinal)
-            .Replace("ó", "o", StringComparison.Ordinal)
-            .Replace("ú", "u", StringComparison.Ordinal)
-            .Replace("ü", "u", StringComparison.Ordinal)
-            .Replace("ç", "c", StringComparison.Ordinal);
 }
