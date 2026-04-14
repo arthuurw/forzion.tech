@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
@@ -14,7 +15,7 @@ public class TenantRepository(AppDbContext context) : ITenantRepository
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<bool> SlugExisteAsync(string slug, CancellationToken cancellationToken = default) =>
+    public async Task<bool> SlugExisteAsync(Slug slug, CancellationToken cancellationToken = default) =>
         await _context.Tenants.AnyAsync(t => t.Slug == slug, cancellationToken).ConfigureAwait(false);
 
     public async Task AdicionarAsync(Tenant tenant, CancellationToken cancellationToken = default) =>

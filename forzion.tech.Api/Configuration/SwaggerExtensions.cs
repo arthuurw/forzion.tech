@@ -35,11 +35,11 @@ public static class SwaggerExtensions
         return services;
     }
 
-    public static WebApplication UseSwaggerInDevelopment(this WebApplication app)
+    public static WebApplication UseSwaggerInNonProduction(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        if (app.Environment.IsDevelopment())
+        if (!app.Environment.IsProduction())
         {
             app.UseSwagger();
             app.UseSwaggerUI();

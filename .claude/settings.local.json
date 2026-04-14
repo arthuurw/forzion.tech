@@ -6,7 +6,15 @@
       "Bash(dotnet add:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet ef:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(dotnet user-secrets:*)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Homolog dotnet ef database update --project forzion.tech.Infrastructure --startup-project forzion.tech.Api)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Homolog dotnet ef migrations:*)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Homolog dotnet ef dbcontext script --project forzion.tech.Infrastructure --startup-project forzion.tech.Api)",
+      "Bash(PGPASSWORD=\"REDACTED\" psql:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet test:*)",
+      "Bash(python3 -c ':*)"
     ]
   }
 }

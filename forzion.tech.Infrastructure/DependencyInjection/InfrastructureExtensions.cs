@@ -15,14 +15,22 @@ public static class InfrastructureExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var connectionString = configuration.GetConnectionString("AppConnection");
+        var schema = configuration["Database:Schema"] ?? "public";
+
         services.AddScoped<TenantInterceptor>();
 
-        services.AddDbContext<AppDbContext>((sp, options) =>
+        services.AddScoped<AppDbContext>(sp =>
         {
             var interceptor = sp.GetRequiredService<TenantInterceptor>();
-            options.UseNpgsql(configuration.GetConnectionString("AppConnection"))
-                   .UseSnakeCaseNamingConvention()
-                   .AddInterceptors(interceptor);
+
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", schema))
+                .UseSnakeCaseNamingConvention()
+                .AddInterceptors(interceptor)
+                .Options;
+
+            return new AppDbContext(options, schema);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());

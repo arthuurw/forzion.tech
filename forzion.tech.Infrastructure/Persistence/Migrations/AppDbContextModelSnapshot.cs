@@ -17,6 +17,7 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("homolog")
                 .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -50,7 +51,7 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_planos");
 
-                    b.ToTable("planos", (string)null);
+                    b.ToTable("planos", "homolog");
 
                     b.HasData(
                         new
@@ -84,8 +85,8 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("nome");
 
                     b.Property<Guid>("PlanoId")
@@ -98,6 +99,10 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("slug");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
                     b.HasKey("Id")
                         .HasName("pk_tenants");
 
@@ -108,7 +113,7 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_tenants_slug");
 
-                    b.ToTable("tenants", (string)null);
+                    b.ToTable("tenants", "homolog");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Usuario", b =>
@@ -118,20 +123,30 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Bio")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("bio");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
                         .HasColumnName("email");
+
+                    b.Property<string>("FotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("foto_url");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("nome");
 
                     b.Property<string>("Role")
@@ -139,9 +154,18 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("role");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id")
                         .HasName("pk_usuarios");
@@ -153,7 +177,7 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_usuarios_tenant_id");
 
-                    b.ToTable("usuarios", (string)null);
+                    b.ToTable("usuarios", "homolog");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Tenant", b =>
