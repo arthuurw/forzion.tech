@@ -1,5 +1,5 @@
 # banco-de-dados.md
-atualizado: 2026-04-14
+atualizado: 2026-04-15
 
 ## stack
 SGBD: PostgreSQL (Supabase) | ORM: EF Core 8.0 | Driver: Npgsql 8.0.11
@@ -96,9 +96,14 @@ Todos os deletes: Restrict (sem cascade)
 ## multi-tenancy
 Estratégia: tenant_id por linha.
 Camada 1 (app): ITenantContext expõe TenantId do claim tenant_id do JWT. Toda query de negócio deve filtrar por TenantId.
-Camada 2 (banco, preparado mas não ativo): TenantInterceptor executa a cada conexão:
+Camada 2 (banco, ATIVO): TenantInterceptor executa a cada conexão:
   SELECT set_config('app.current_tenant_id', @id, false)
-RLS policies ainda NÃO foram criadas.
+RLS policies CRIADAS em homolog e public (2026-04-15):
+  tenant_isolation ON usuarios: USING (tenant_id::text = current_setting('app.current_tenant_id', true))
+  tenant_isolation ON tenants:  USING (id::text = current_setting('app.current_tenant_id', true))
+
+ATENÇÃO: novas tabelas com tenant_id devem ter RLS + policy equivalente no momento da criação.
+Auth Hook do Supabase injeta tenant_id no JWT após registro — necessário para TenantInterceptor funcionar.
 
 ## value objects e conversões EF Core
 Reconstituir bypassa validação (dado do banco é confiável). Criar/FromNome aplicam validações (dados externos).
@@ -112,12 +117,15 @@ Reconstituir bypassa validação (dado do banco é confiável). Criar/FromNome a
 - 20260414211515_AddUsuarioStatus (2026-04-14): adiciona usuarios.status (text NOT NULL, default 'Ativo')
 - 20260414212447_FixUsuarioStatusDefault (2026-04-14): corrige linhas com status='' para 'Ativo' (geradas pela migration anterior com defaultValue errado)
 
-## armadilha de schema nas migrations — CRÍTICO
+## armadilha de schema hardcoded nas migrations — CRÍTICO
 Migrations são sempre geradas com ASPNETCORE_ENVIRONMENT=Homolog, que carrega os User Secrets com Database:Schema=homolog. O snapshot do EF Core fica com schema "homolog" hardcoded. Isso é esperado e correto — todas as migrations devem ser geradas com esse ambiente para manter consistência no snapshot.
 
 NUNCA gerar uma migration com um ambiente diferente do anterior. Se o snapshot anterior usou "homolog" e a nova migration for gerada com "public", o EF Core detecta mudança de schema e gera RenameTable indevidos.
 
 Se uma migration gerada contiver EnsureSchema ou RenameTable — remover imediatamente antes de aplicar. Esses comandos só devem existir em migrations que intencionalmente criam novos schemas.
+
+NOVA ARMADILHA (confirmada em AddAlunos): migrations geradas com Homolog podem incluir schema: "homolog" hardcoded nos métodos CreateTable/CreateIndex/DropTable. Isso faz a migration criar a tabela no schema homolog mesmo quando aplicada em produção (public), causando erro "relation already exists".
+REGRA: após gerar migration, revisar o arquivo .cs e remover todos os atributos schema: "homolog" e principalSchema: "homolog". O HasDefaultSchema em runtime garante o schema correto.
 
 ## checklist obrigatório a cada nova migration
 Toda migration DEVE ser aplicada nos dois schemas. Nunca deixar um schema desatualizado.
@@ -149,8 +157,17 @@ ASPNETCORE_ENVIRONMENT=Production \
 - Infrastructure/Persistence/Configurations/PlanoConfiguration.cs — Fluent API planos; seed
 - Infrastructure/DependencyInjection/InfrastructureExtensions.cs — DI; injeta schema
 
+## RLS — como aplicar em novas tabelas
+Executar via psql como forzion_api (homolog) ou postgres (public):
+```bash
+PGPASSWORD='<senha>' psql -h <host> -U <user> -d postgres -c "
+ALTER TABLE <schema>.<tabela> ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON <schema>.<tabela>
+  USING (tenant_id::text = current_setting('app.current_tenant_id', true));
+"
+```
+
 ## o que ainda não existe
-- RLS policies (interceptor preparado, policies não criadas)
 - tabelas: alunos, treinos, exercicios, treino_exercicios, assinaturas
 - índices em tenant_id para entidades futuras
 - paginação

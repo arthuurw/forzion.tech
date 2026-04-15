@@ -32,9 +32,6 @@ public class AtualizarUsuarioHandler(
 
         usuario.Atualizar(command.Nome, command.FotoUrl, command.Bio);
 
-        if (command.Status.HasValue)
-            usuario.AlterarStatus(command.Status.Value);
-
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Perfil do usuário {UsuarioId} atualizado.", usuario.Id);

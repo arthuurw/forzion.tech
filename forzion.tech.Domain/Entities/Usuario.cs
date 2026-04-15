@@ -61,8 +61,14 @@ public class Usuario
 
         if (fotoUrl is not null)
         {
-            if (fotoUrl.Length > 500)
-                throw new DomainException("A URL da foto deve ter no máximo 500 caracteres.");
+            if (fotoUrl.Length > 0)
+            {
+                if (fotoUrl.Length > 500)
+                    throw new DomainException("A URL da foto deve ter no máximo 500 caracteres.");
+                if (!Uri.TryCreate(fotoUrl, UriKind.Absolute, out var uri) ||
+                    (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+                    throw new DomainException("A URL da foto deve ser uma URL válida (http ou https).");
+            }
             FotoUrl = string.IsNullOrWhiteSpace(fotoUrl) ? null : fotoUrl;
         }
 

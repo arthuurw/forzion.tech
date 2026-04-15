@@ -48,6 +48,9 @@ public sealed partial class GlobalExceptionHandler : IExceptionHandler
             UsuarioJaRegistradoException ex  => (StatusCodes.Status409Conflict,            "Conflito",        ex.Message),
             UsuarioNaoEncontradoException ex  => (StatusCodes.Status404NotFound,            "Não encontrado",  ex.Message),
             UsuarioInativoException ex        => (StatusCodes.Status403Forbidden,           "Inativo",         ex.Message),
+            AlunoNaoEncontradoException ex   => (StatusCodes.Status404NotFound,            "Não encontrado",  ex.Message),
+            AlunoInativoException ex         => (StatusCodes.Status403Forbidden,           "Inativo",         ex.Message),
+            AcessoNegadoException ex         => (StatusCodes.Status403Forbidden,           "Acesso negado",   ex.Message),
             DomainException ex               => (StatusCodes.Status422UnprocessableEntity, "Erro de domínio", ex.Message),
             _                                => (StatusCodes.Status500InternalServerError, "Erro interno",    "Ocorreu um erro inesperado. Tente novamente mais tarde.")
         };

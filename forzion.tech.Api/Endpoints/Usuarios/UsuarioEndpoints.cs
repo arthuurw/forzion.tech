@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using forzion.tech.Application.UseCases.Usuarios.AlterarStatusUsuario;
 using forzion.tech.Application.UseCases.Usuarios.AtualizarUsuario;
 using forzion.tech.Application.UseCases.Usuarios.ObterUsuarioAtual;
 using forzion.tech.Application.UseCases.Usuarios.RegistrarUsuario;
@@ -47,7 +48,7 @@ public static class UsuarioEndpoints
             if (erros.Count > 0)
                 return Results.ValidationProblem(erros);
 
-            var command = new AtualizarUsuarioCommand(usuarioId.Value, request.Nome, request.FotoUrl, request.Bio, request.Status);
+            var command = new AtualizarUsuarioCommand(usuarioId.Value, request.Nome, request.FotoUrl, request.Bio);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -59,6 +60,29 @@ public static class UsuarioEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)
+        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPatch("/{id}/status", async (
+            Guid id,
+            [FromBody] AlterarStatusRequest request,
+            AlterarStatusUsuarioHandler handler,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            var adminId = ObterSupabaseId(httpContext);
+            if (adminId is null)
+                return Results.Unauthorized();
+
+            var command = new AlterarStatusUsuarioCommand(adminId.Value, id, request.Status);
+            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(response);
+        })
+        .RequireAuthorization()
+        .WithSummary("Altera o status de um usuário (somente Admin)")
+        .Produces<ObterUsuarioAtualResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/registrar", async (
@@ -107,8 +131,14 @@ public static class UsuarioEndpoints
                 erros["nome"] = ["O nome deve ter no máximo 100 caracteres."];
         }
 
-        if (request.FotoUrl is not null && request.FotoUrl.Length > 500)
-            erros["fotoUrl"] = ["A URL da foto deve ter no máximo 500 caracteres."];
+        if (request.FotoUrl is not null && request.FotoUrl.Length > 0)
+        {
+            if (request.FotoUrl.Length > 500)
+                erros["fotoUrl"] = ["A URL da foto deve ter no máximo 500 caracteres."];
+            else if (!Uri.TryCreate(request.FotoUrl, UriKind.Absolute, out var uri) ||
+                     (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+                erros["fotoUrl"] = ["A URL da foto deve ser uma URL válida (http ou https)."];
+        }
 
         if (request.Bio is not null && request.Bio.Length > 500)
             erros["bio"] = ["A bio deve ter no máximo 500 caracteres."];
@@ -142,4 +172,5 @@ public static class UsuarioEndpoints
 }
 
 public record RegistrarUsuarioRequest(string Nome, string Email, string TenantNome);
-public record AtualizarUsuarioRequest(string? Nome, string? FotoUrl, string? Bio, UsuarioStatus? Status);
+public record AtualizarUsuarioRequest(string? Nome, string? FotoUrl, string? Bio);
+public record AlterarStatusRequest(UsuarioStatus Status);

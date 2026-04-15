@@ -1,9 +1,9 @@
 # implementacao-atual.md
-atualizado: 2026-04-14 | branch: backend
+atualizado: 2026-04-15 | branch: backend
 
 ## visão geral
 ASP.NET Core 8.0 Minimal API, Clean Architecture. Módulo de usuários implementado com testes.
-Endpoints: POST /usuarios/registrar, GET /usuarios/me, PATCH /usuarios/me
+Endpoints: POST /usuarios/registrar, GET /usuarios/me, PATCH /usuarios/me, PATCH /usuarios/{id}/status
 Banco: PostgreSQL (Supabase) | Auth: Supabase JWT | Portas: HTTP 5230, HTTPS 7220
 
 ## projetos e dependências
@@ -42,11 +42,11 @@ Usuario:
 - Role Role enum — Admin|Trainer, salvo como string
 - Status UsuarioStatus enum — Ativo|Inativo, salvo como string
 - TenantId Guid FK | Tenant Tenant (navegação — sempre preenchido via Include)
-- FotoUrl string? (max 500) | Bio string? (max 500)
+- FotoUrl string? (max 500, scheme obrigatório http/https) | Bio string? (max 500)
 - CreatedAt DateTime UTC | UpdatedAt DateTime? UTC
 - fábrica: Usuario.Criar(supabaseId, nome, email, tenantId, role=Admin) — seta Status=Ativo
 - invariantes: supabaseId não vazio, nome obrigatório max 100, tenantId não vazio
-- Atualizar(nome?, fotoUrl?, bio?): atualiza não-nulos, seta UpdatedAt; string vazia limpa fotoUrl/bio
+- Atualizar(nome?, fotoUrl?, bio?): atualiza não-nulos, seta UpdatedAt; string vazia limpa fotoUrl/bio; fotoUrl valida scheme http/https (DomainException se inválido)
 - AlterarStatus(UsuarioStatus): seta Status e UpdatedAt
 
 Tenant:
@@ -64,7 +64,7 @@ Role: Admin=0, Trainer=1 | UsuarioStatus: Ativo=0, Inativo=1 — ambos salvos co
 
 ### Exceções (todas herdam DomainException)
 DomainException → 422 | UsuarioJaRegistradoException → 409 | UsuarioNaoEncontradoException → 404
-UsuarioInativoException → 403 | PlanoNaoEncontradoException → 422
+UsuarioInativoException → 403 | AcessoNegadoException → 403 | PlanoNaoEncontradoException → 422
 
 ### Constantes
 PlanoIds.FreeId = "00000000-0000-0000-0000-000000000001"
@@ -89,9 +89,16 @@ ObterUsuarioAtual:
 - Acessa usuario.Tenant.Nome (garantido pelo Include no repositório)
 
 AtualizarUsuario:
-- Command: AtualizarUsuarioCommand(UsuarioId, Nome?, FotoUrl?, Bio?, Status?)
+- Command: AtualizarUsuarioCommand(UsuarioId, Nome?, FotoUrl?, Bio?)
 - Response: ObterUsuarioAtualResponse (reutilizado)
-- Fluxo: ObterPorIdAsync → null → exc | Inativo → exc | Atualizar() | AlterarStatus() se fornecido | Commit | retorna response
+- Fluxo: ObterPorIdAsync → null → exc | Inativo → exc | Atualizar() | Commit | retorna response
+- Status NÃO é alterável por este handler — usar AlterarStatusUsuario
+
+AlterarStatusUsuario:
+- Command: AlterarStatusUsuarioCommand(AdminId, UsuarioId, NovoStatus)
+- Response: ObterUsuarioAtualResponse (reutilizado)
+- Fluxo: ObterPorIdAsync(AdminId) → null → exc | Inativo → exc | Role≠Admin → AcessoNegadoException | ObterPorIdAsync(UsuarioId) → null → exc | AlterarStatus() | Commit | retorna response
+- Requer que o requisitante seja Admin ativo (verificado via DB, não via JWT claim)
 
 RegistrarUsuario:
 - Command: RegistrarUsuarioCommand(SupabaseId, Nome, Email, TenantNome)
@@ -135,7 +142,7 @@ IUsuarioRepository→UsuarioRepository | ITenantRepository→TenantRepository | 
 4. ConfigureHttpJsonOptions com JsonStringEnumConverter
 5. IHttpContextAccessor + ITenantContext→HttpTenantContext (Scoped)
 6. AddInfrastructure (ignorado se ASPNETCORE_ENVIRONMENT=Test)
-7. RegistrarUsuarioHandler + ObterUsuarioAtualHandler + AtualizarUsuarioHandler (Scoped)
+7. RegistrarUsuarioHandler + ObterUsuarioAtualHandler + AtualizarUsuarioHandler + AlterarStatusUsuarioHandler (Scoped)
 8. public partial class Program {} — expõe entry point para WebApplicationFactory
 
 pipeline: UseSwaggerInNonProduction → UseExceptionHandler → UseHttpsRedirection → UseAuthentication → UseAuthorization → MapUsuarioEndpoints
@@ -145,10 +152,15 @@ RequireAuthorization. sub → Guid UsuarioId.
 200: ObterUsuarioAtualResponse | 401 | 403: inativo | 404: não encontrado | 500
 
 ### PATCH /usuarios/me
-RequireAuthorization. Body (todos opcionais): {nome?, fotoUrl?, bio?, status?}
+RequireAuthorization. Body (todos opcionais): {nome?, fotoUrl?, bio?}
 null = não atualizar | string vazia fotoUrl/bio = limpar
-Validação: nome max 100 (não vazio se fornecido), fotoUrl max 500, bio max 500
+Validação: nome max 100 (não vazio se fornecido), fotoUrl max 500 e scheme http/https, bio max 500
 200: ObterUsuarioAtualResponse | 400: ValidationProblem | 401 | 403 | 404 | 422 | 500
+
+### PATCH /usuarios/{id}/status
+RequireAuthorization. Body: {status: "Ativo"|"Inativo"}
+sub → AdminId (Guid). Verifica via DB que o requisitante é Admin ativo antes de alterar.
+200: ObterUsuarioAtualResponse | 401 | 403: inativo ou não-admin | 404 | 500
 
 ### POST /usuarios/registrar
 RequireAuthorization. sub → Guid SupabaseId.
@@ -157,7 +169,7 @@ Validação: nome(obrigatório max 100), email(EmailAddress max 256), tenantNome
 
 ### GlobalExceptionHandler
 UsuarioJaRegistradoException→409 | UsuarioNaoEncontradoException→404 | UsuarioInativoException→403
-DomainException→422 | outros→500 | ≥500: log Error | <500: log Warning | [LoggerMessage] source-generated
+AcessoNegadoException→403 | DomainException→422 | outros→500 | ≥500: log Error | <500: log Warning | [LoggerMessage] source-generated
 
 ### AuthenticationExtensions
 JwtBearer, MapInboundClaims=false, ValidateIssuerSigningKey=true
@@ -170,22 +182,22 @@ Lê claim tenant_id do JWT → Guid? TenantId. Usado pelo TenantInterceptor.
 
 ### Estrutura
 net8.0 | xUnit 2.9.3 | Moq 4.20.70 | FluentAssertions 6.12.0 | Mvc.Testing 8.0.11 | coverlet.collector
-139 testes | 0 falhas | 97.27% cobertura linha (excluindo Infrastructure)
-por camada: Domain 100% | Application 100% | Api 93.67% (gaps: JWT lambda, guards defensivos)
+157 testes | 0 falhas
 
 ### Arquivos de teste
 Tests/Domain/ValueObjects/EmailTests.cs — Email.Criar/Reconstituir/ToString (10 testes)
 Tests/Domain/ValueObjects/SlugTests.cs — Slug.FromNome/Reconstituir (9 testes)
-Tests/Domain/Entities/UsuarioTests.cs — Criar/Atualizar/AlterarStatus (20 testes)
+Tests/Domain/Entities/UsuarioTests.cs — Criar/Atualizar/AlterarStatus (29 testes — +9 FotoUrl scheme)
 Tests/Domain/Entities/TenantTests.cs — Criar invariantes (8 testes)
 Tests/Domain/Entities/PlanoTests.cs — Criar/CriarComId/PlanoIds (6 testes)
 Tests/Domain/Exceptions/DomainExceptionTests.cs — todos construtores de todas as exceções (15 testes)
 Tests/Application/ObterUsuarioAtualHandlerTests.cs — 4 testes
 Tests/Application/RegistrarUsuarioHandlerTests.cs — 7 testes
-Tests/Application/AtualizarUsuarioHandlerTests.cs — 6 testes
+Tests/Application/AtualizarUsuarioHandlerTests.cs — 5 testes (removido teste de Status)
+Tests/Application/AlterarStatusUsuarioHandlerTests.cs — 6 testes (novo)
 Tests/Api/GlobalExceptionHandlerTests.cs — mapeamentos + logging (9 testes)
 Tests/Api/Context/HttpTenantContextTests.cs — claims válido/inválido/nulo (5 testes)
-Tests/Api/Endpoints/UsuarioEndpointsTests.cs — integração via WebApplicationFactory (16 testes)
+Tests/Api/Endpoints/UsuarioEndpointsTests.cs — integração via WebApplicationFactory (24 testes — +8 novos)
 
 ### Padrões de teste
 - Handlers mockados via Mock<ConcreteHandler>(deps_mockados) — exige HandleAsync virtual
@@ -209,5 +221,4 @@ Tests/Api/Endpoints/UsuarioEndpointsTests.cs — integração via WebApplication
 - módulo Alunos, Treinos, Exercícios, Assinaturas (Stripe), Convites (SendGrid)
 - gestão de membros do tenant
 - cascade de inativação: AlterarStatus em Usuario deve inativar Alunos vinculados (módulo Alunos)
-- RLS policies (TenantInterceptor preparado)
 - Docker / CI/CD

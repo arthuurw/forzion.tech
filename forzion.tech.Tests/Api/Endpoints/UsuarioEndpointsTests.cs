@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Usuarios.AlterarStatusUsuario;
 using forzion.tech.Application.UseCases.Usuarios.AtualizarUsuario;
 using forzion.tech.Application.UseCases.Usuarios.ObterUsuarioAtual;
 using forzion.tech.Application.UseCases.Usuarios.RegistrarUsuario;
@@ -198,12 +199,73 @@ public class UsuarioEndpointsTests : IClassFixture<UsuarioEndpointsTests.Forzion
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("data:text/html,<script>alert(1)</script>")]
+    [InlineData("ftp://files.example.com/img.jpg")]
+    public async Task Patch_Me_FotoUrlSchemeInvalido_Retorna400(string fotoUrl)
+    {
+        var response = await CriarClienteAutenticado().PatchAsJsonAsync("/usuarios/me",
+            new { fotoUrl });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task Patch_Me_BioMuitoLonga_Retorna400()
     {
         var response = await CriarClienteAutenticado().PatchAsJsonAsync("/usuarios/me",
             new { bio = new string('a', 501) });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // --- PATCH /usuarios/{id}/status ---
+
+    [Fact]
+    public async Task Patch_Status_SemAutenticacao_Retorna401()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.PatchAsJsonAsync($"/usuarios/{Guid.NewGuid()}/status",
+            new { status = "Inativo" });
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Patch_Status_AdminValido_Retorna200()
+    {
+        _factory.AlterarStatusHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AlterarStatusUsuarioCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RespostaUsuario);
+
+        var response = await CriarClienteAutenticado().PatchAsJsonAsync(
+            $"/usuarios/{Guid.NewGuid()}/status", new { status = "Inativo" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Patch_Status_TrainerSemPermissao_Retorna403()
+    {
+        _factory.AlterarStatusHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AlterarStatusUsuarioCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AcessoNegadoException());
+
+        var response = await CriarClienteAutenticado().PatchAsJsonAsync(
+            $"/usuarios/{Guid.NewGuid()}/status", new { status = "Inativo" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Patch_Status_UsuarioNaoEncontrado_Retorna404()
+    {
+        _factory.AlterarStatusHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AlterarStatusUsuarioCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UsuarioNaoEncontradoException());
+
+        var response = await CriarClienteAutenticado().PatchAsJsonAsync(
+            $"/usuarios/{Guid.NewGuid()}/status", new { status = "Inativo" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -235,19 +297,28 @@ public class UsuarioEndpointsTests : IClassFixture<UsuarioEndpointsTests.Forzion
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<AtualizarUsuarioHandler>>());
 
+        public Mock<AlterarStatusUsuarioHandler> AlterarStatusHandlerMock { get; } = new(
+            Mock.Of<IUsuarioRepository>(),
+            Mock.Of<IAlunoRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<ILogger<AlterarStatusUsuarioHandler>>());
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
+            builder.UseSetting("AllowedHosts", "*");
 
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<ObterUsuarioAtualHandler>();
                 services.RemoveAll<RegistrarUsuarioHandler>();
                 services.RemoveAll<AtualizarUsuarioHandler>();
+                services.RemoveAll<AlterarStatusUsuarioHandler>();
 
                 services.AddScoped(_ => ObterHandlerMock.Object);
                 services.AddScoped(_ => RegistrarHandlerMock.Object);
                 services.AddScoped(_ => AtualizarHandlerMock.Object);
+                services.AddScoped(_ => AlterarStatusHandlerMock.Object);
 
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });

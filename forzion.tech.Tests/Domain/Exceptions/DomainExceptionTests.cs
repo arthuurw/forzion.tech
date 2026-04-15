@@ -112,4 +112,52 @@ public class DomainExceptionTests
     {
         new UsuarioJaRegistradoException().Should().BeAssignableTo<DomainException>();
     }
+
+    [Fact]
+    public void AlunoNaoEncontradoException_Default_MensagemCorreta()
+    {
+        var ex = new AlunoNaoEncontradoException();
+        ex.Message.Should().Be("Aluno não encontrado.");
+        ex.Should().BeAssignableTo<DomainException>();
+    }
+
+    [Fact]
+    public void AlunoInativoException_Default_MensagemCorreta()
+    {
+        var ex = new AlunoInativoException();
+        ex.Message.Should().Be("Aluno inativo.");
+        ex.Should().BeAssignableTo<DomainException>();
+    }
+
+    [Fact]
+    public void TreinoNaoEncontradoException_Default_MensagemCorreta()
+    {
+        var ex = new TreinoNaoEncontradoException();
+        ex.Message.Should().Be("Treino não encontrado.");
+        ex.Should().BeAssignableTo<DomainException>();
+    }
+
+    [Fact]
+    public void TreinoExecutadoException_Default_MensagemCorreta()
+    {
+        var ex = new TreinoExecutadoException();
+        ex.Message.Should().Be("Treino já executado não pode ser alterado.");
+        ex.Should().BeAssignableTo<DomainException>();
+    }
+
+    [Fact]
+    public void TreinoAlunoNaoEncontradoException_NaoExiste_TreinoNaoEncontradoUsado()
+    {
+        // TreinoNaoEncontradoException cobre ausência de treino e de vínculo
+        var ex = new TreinoNaoEncontradoException();
+        ex.Should().BeAssignableTo<DomainException>();
+    }
+
+    [Fact]
+    public void ExercicioNaoEncontradoException_Default_MensagemCorreta()
+    {
+        var ex = new ExercicioNaoEncontradoException();
+        ex.Message.Should().Be("Exercício não encontrado.");
+        ex.Should().BeAssignableTo<DomainException>();
+    }
 }
