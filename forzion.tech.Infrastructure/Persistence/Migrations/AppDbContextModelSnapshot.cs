@@ -23,6 +23,62 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.Aluno", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TreinadorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("treinador_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_alunos");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_alunos_tenant_id");
+
+                    b.HasIndex("TreinadorId")
+                        .HasDatabaseName("ix_alunos_treinador_id");
+
+                    b.ToTable("alunos", "homolog");
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.Plano", b =>
                 {
                     b.Property<Guid>("Id")
@@ -178,6 +234,23 @@ namespace forzion.tech.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_usuarios_tenant_id");
 
                     b.ToTable("usuarios", "homolog");
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.Aluno", b =>
+                {
+                    b.HasOne("forzion.tech.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_alunos_tenants_tenant_id");
+
+                    b.HasOne("forzion.tech.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("TreinadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_alunos_usuarios_treinador_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Tenant", b =>

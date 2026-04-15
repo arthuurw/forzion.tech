@@ -5,86 +5,106 @@ ASP.NET Core 8.0 Web API para a plataforma forzion.tech, uma solução de gestã
 ## Stack
 
 - **Framework**: ASP.NET Core 8.0 / C# com nullable reference types
-- **Banco de Dados**: PostgreSQL via Supabase
-- **ORM**: Entity Framework Core
-- **Autenticação**: Supabase Auth (validação de JWT via middleware)
-- **Documentação**: Swagger/OpenAPI em `/swagger` (apenas em desenvolvimento)
+- **Banco**: PostgreSQL via Supabase
+- **ORM**: Entity Framework Core 8.0
+- **Auth**: Supabase Auth (JWT via middleware)
+- **Docs**: Swagger/OpenAPI em `/swagger` (Homolog apenas)
 - **Arquitetura**: Clean Architecture (Api, Application, Domain, Infrastructure)
 
 ## Comandos
 
 ```bash
-# Executar a API (HTTP: 5230 | HTTPS: 7220)
+# Executar (HTTP: 5230 | HTTPS: 7220)
 dotnet run --project forzion.tech.Api
 
 # Build
 dotnet build
 
 # Testes
-dotnet test
+dotnet test forzion.tech.Tests
 
-# Aplicar migrations
-dotnet ef database update --project forzion.tech.Infrastructure --startup-project forzion.tech.Api
+# Testes com cobertura
+dotnet test forzion.tech.Tests --collect:"XPlat Code Coverage" --settings forzion.tech.Tests/coverage.runsettings
+
+# Migrations — gerar
+ASPNETCORE_ENVIRONMENT=Homolog dotnet ef migrations add <Nome> --project forzion.tech.Infrastructure --startup-project forzion.tech.Api
+
+# Migrations — aplicar homolog
+ASPNETCORE_ENVIRONMENT=Homolog dotnet ef database update --project forzion.tech.Infrastructure --startup-project forzion.tech.Api
 ```
 
-## Estrutura do Projeto
+## Estrutura
 
 ```
 forzion.tech/
-├── forzion.tech.Api/              # Endpoints, middlewares e configuração
-├── forzion.tech.Application/      # Casos de uso, interfaces e DTOs
-├── forzion.tech.Domain/           # Entidades, enums e regras de negócio
-├── forzion.tech.Infrastructure/   # EF Core, repositórios e persistência
-└── forzion.tech.slnx              # Solution file
+├── forzion.tech.Api/              # Endpoints, middlewares, configuração
+├── forzion.tech.Application/      # Casos de uso, interfaces, DTOs
+├── forzion.tech.Domain/           # Entidades, VOs, enums, exceções
+├── forzion.tech.Infrastructure/   # EF Core, repositórios, migrações
+├── forzion.tech.Tests/            # Testes (157, cobertura ~97%)
+└── forzion.tech.slnx
 ```
 
-## Funcionalidades Implementadas
+## Endpoints
 
-### Registro de Usuário — `POST /usuarios/registrar`
+| Método | Rota | Descrição | Auth |
+|--------|------|-----------|------|
+| `POST` | `/usuarios/registrar` | Registra perfil pós-auth Supabase. Cria tenant com plano Free. | JWT |
+| `GET` | `/usuarios/me` | Retorna dados do usuário autenticado. | JWT |
+| `PATCH` | `/usuarios/me` | Atualiza nome, fotoUrl (http/https), bio. | JWT |
+| `PATCH` | `/usuarios/{id}/status` | Altera status de usuário. Somente Admin. | JWT + Admin |
 
-Registra o perfil do usuário no sistema após autenticação no Supabase. Cria automaticamente um tenant vinculado ao usuário com o plano Free.
-
-**Requer**: Bearer token JWT (Supabase)
-
-**Body**:
+### PATCH /usuarios/me — body (todos opcionais)
 ```json
-{
-  "nome": "Arthur",
-  "email": "arthur@exemplo.com",
-  "tenantNome": "Minha Academia"
-}
+{ "nome": "Arthur", "fotoUrl": "https://...", "bio": "..." }
 ```
 
-**Respostas**:
-- `201 Created` — Usuário e tenant criados com sucesso
-- `400 Bad Request` — Dados inválidos
-- `401 Unauthorized` — Token ausente ou inválido
-- `409 Conflict` — Usuário já registrado
-- `422 Unprocessable Entity` — Erro de domínio (ex: slug não pôde ser gerado)
+### PATCH /usuarios/{id}/status — body
+```json
+{ "status": "Inativo" }
+```
+
+### POST /usuarios/registrar — body
+```json
+{ "nome": "Arthur", "email": "arthur@exemplo.com", "tenantNome": "Minha Academia" }
+```
 
 ## Arquitetura
-
-O projeto segue **Clean Architecture** com fluxo de dependências:
 
 ```
 Api → Application → Domain
 Infrastructure → Application / Domain
 ```
 
-- **Domain** não depende de nenhuma camada
-- **Application** define interfaces; não acessa infraestrutura diretamente
-- **Infrastructure** implementa repositórios e o contexto EF Core
-- **Api** é fina: delega toda lógica para a camada Application
+- **Domain**: entidades, VOs, enums, exceções — sem dependências externas
+- **Application**: casos de uso, interfaces de repositório — sem acesso direto ao banco
+- **Infrastructure**: EF Core, repositórios, interceptors
+- **Api**: endpoints finos, validação de entrada, GlobalExceptionHandler
+
+## Segurança
+
+- JWT validado via Supabase Auth (`ValidateIssuerSigningKey=true`)
+- RLS ativo no banco (homolog e produção) — isolamento por `tenant_id`
+- `AllowedHosts` restrito ao domínio em produção
+- `fotoUrl` valida scheme http/https antes de persistir
+- Alteração de status restrita a usuários com Role=Admin (verificado via DB)
+- Swagger desabilitado em produção
+
+## Multi-tenancy
+
+Isolamento em duas camadas:
+1. **App**: queries filtradas por `tenant_id` do JWT claim
+2. **Banco**: RLS policies em `usuarios` e `tenants` via `app.current_tenant_id`
 
 ## Branches
 
-| Branch    | Descrição                          |
-|-----------|------------------------------------|
-| `main`    | Branch base / produção             |
-| `backend` | Desenvolvimento do backend         |
+| Branch | Descrição |
+|--------|-----------|
+| `main` | Base / produção |
+| `backend` | Desenvolvimento |
 
 ## Observações
 
-- Credenciais de banco estão em `anotacoes.txt` (excluído do git — não commitar)
-- Multi-tenancy implementado via `tenantId` em todas as entidades
-- Logs estruturados com `ILogger` em operações críticas
+- Credenciais em User Secrets (nunca commitadas) — ver `.claude/docs/secrets-e-configuracao.md`
+- Toda migration deve ser aplicada em homolog **e** produção — ver `.claude/docs/banco-de-dados.md`
+- Novas tabelas com `tenant_id` devem ter RLS policy no momento da criação

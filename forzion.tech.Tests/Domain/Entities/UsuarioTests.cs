@@ -155,6 +155,28 @@ public class UsuarioTests
         act.Should().Throw<DomainException>().WithMessage("A URL da foto deve ter no máximo 500 caracteres.");
     }
 
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("data:text/html,<script>alert(1)</script>")]
+    [InlineData("ftp://files.example.com/img.jpg")]
+    [InlineData("not-a-url")]
+    public void Atualizar_ComFotoUrlSchemeInvalido_LancaDomainException(string fotoUrl)
+    {
+        var usuario = Usuario.Criar(IdValido, "João", EmailValido, TenantIdValido);
+        var act = () => usuario.Atualizar(null, fotoUrl, null);
+        act.Should().Throw<DomainException>().WithMessage("A URL da foto deve ser uma URL válida (http ou https).");
+    }
+
+    [Theory]
+    [InlineData("https://cdn.example.com/foto.jpg")]
+    [InlineData("http://cdn.example.com/foto.jpg")]
+    public void Atualizar_ComFotoUrlValida_Aceita(string fotoUrl)
+    {
+        var usuario = Usuario.Criar(IdValido, "João", EmailValido, TenantIdValido);
+        usuario.Atualizar(null, fotoUrl, null);
+        usuario.FotoUrl.Should().Be(fotoUrl);
+    }
+
     [Fact]
     public void Atualizar_ComBio_AtualizaBio()
     {

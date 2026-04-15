@@ -1,5 +1,5 @@
 # secrets-e-configuracao.md
-atualizado: 2026-04-14
+atualizado: 2026-04-15
 
 ## princípio
 Nenhuma credencial em código ou arquivos commitados. Dois ambientes: Homolog e Production. Development foi removido.
@@ -63,15 +63,19 @@ Database__Schema="homolog"   # homologação
 4. variáveis de ambiente (maior prioridade)
 
 ## arquivos commitados vs não commitados
-- appsettings.json: commitado, sem credenciais (estrutura com valores vazios)
-- appsettings.Homolog.json: NÃO commitado
+- appsettings.json: commitado — AllowedHosts restrito a forzion.tech;*.forzion.tech
+- appsettings.Homolog.json: NÃO commitado — deve conter AllowedHosts: "*" para dev local
 - forzion.tech.Api.csproj: commitado (contém apenas UserSecretsId, não é segredo)
 - anotacoes.txt: NÃO commitado, fonte da verdade local
 
 .gitignore protege: appsettings.*.json (exceto appsettings.json)
 appsettings.Development.json foi removido — projeto usa apenas Homolog e Production.
 
+## AllowedHosts
+appsettings.json (produção): "forzion.tech;*.forzion.tech" — rejeita Host headers de outros domínios
+appsettings.Homolog.json (dev local, não commitado): "*" — permite qualquer host em desenvolvimento
+
 ## observações
-- DefaultConnection (postgres admin) não é usado pelo runtime da API — apenas para migrations manuais
+- DefaultConnection (postgres admin) não é usado pelo runtime da API — apenas para migrations manuais e RLS via psql
 - Supabase:JwtSecret não é consumido por nenhum código atual — reservado para uso futuro
 - Auth:Authority e Supabase:Url têm o mesmo valor — separados por clareza (JWT middleware vs SDK Supabase)

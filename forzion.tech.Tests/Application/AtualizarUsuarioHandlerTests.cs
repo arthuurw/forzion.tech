@@ -43,24 +43,12 @@ public class AtualizarUsuarioHandlerTests
         var usuario = CriarUsuarioAtivo();
         _usuarioRepo.Setup(r => r.ObterPorIdAsync(usuario.Id, default)).ReturnsAsync(usuario);
 
-        var command = new AtualizarUsuarioCommand(usuario.Id, "Maria", null, "Bio nova", null);
+        var command = new AtualizarUsuarioCommand(usuario.Id, "Maria", null, "Bio nova");
         var result = await _handler.HandleAsync(command);
 
         result.Nome.Should().Be("Maria");
         result.Bio.Should().Be("Bio nova");
         _unitOfWork.Verify(u => u.CommitAsync(default), Times.Once);
-    }
-
-    [Fact]
-    public async Task HandleAsync_ComStatus_AlteraStatus()
-    {
-        var usuario = CriarUsuarioAtivo();
-        _usuarioRepo.Setup(r => r.ObterPorIdAsync(usuario.Id, default)).ReturnsAsync(usuario);
-
-        var command = new AtualizarUsuarioCommand(usuario.Id, null, null, null, UsuarioStatus.Inativo);
-        var result = await _handler.HandleAsync(command);
-
-        result.Status.Should().Be(UsuarioStatus.Inativo);
     }
 
     [Fact]
@@ -70,7 +58,7 @@ public class AtualizarUsuarioHandlerTests
         var nomeOriginal = usuario.Nome;
         _usuarioRepo.Setup(r => r.ObterPorIdAsync(usuario.Id, default)).ReturnsAsync(usuario);
 
-        var command = new AtualizarUsuarioCommand(usuario.Id, null, null, null, null);
+        var command = new AtualizarUsuarioCommand(usuario.Id, null, null, null);
         var result = await _handler.HandleAsync(command);
 
         result.Nome.Should().Be(nomeOriginal);
@@ -86,7 +74,7 @@ public class AtualizarUsuarioHandlerTests
             .ReturnsAsync((Usuario?)null);
 
         var act = async () => await _handler.HandleAsync(
-            new AtualizarUsuarioCommand(Guid.NewGuid(), "Maria", null, null, null));
+            new AtualizarUsuarioCommand(Guid.NewGuid(), "Maria", null, null));
 
         await act.Should().ThrowAsync<UsuarioNaoEncontradoException>();
         _unitOfWork.Verify(u => u.CommitAsync(default), Times.Never);
@@ -100,7 +88,7 @@ public class AtualizarUsuarioHandlerTests
         _usuarioRepo.Setup(r => r.ObterPorIdAsync(usuario.Id, default)).ReturnsAsync(usuario);
 
         var act = async () => await _handler.HandleAsync(
-            new AtualizarUsuarioCommand(usuario.Id, "Maria", null, null, null));
+            new AtualizarUsuarioCommand(usuario.Id, "Maria", null, null));
 
         await act.Should().ThrowAsync<UsuarioInativoException>();
         _unitOfWork.Verify(u => u.CommitAsync(default), Times.Never);

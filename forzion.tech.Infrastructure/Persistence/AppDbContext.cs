@@ -17,6 +17,7 @@ public class AppDbContext : DbContext, IUnitOfWork
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Plano> Planos => Set<Plano>();
+    public DbSet<Aluno> Alunos => Set<Aluno>();
 
     public Task CommitAsync(CancellationToken cancellationToken = default) =>
         SaveChangesAsync(cancellationToken);
