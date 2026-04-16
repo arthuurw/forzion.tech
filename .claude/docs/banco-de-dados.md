@@ -1,5 +1,5 @@
 # banco-de-dados.md
-atualizado: 2026-04-15
+atualizado: 2026-04-16
 
 ## stack
 SGBD: PostgreSQL (Supabase) | ORM: EF Core 8.0 | Driver: Npgsql 8.0.11
@@ -89,8 +89,22 @@ mapeamentos: email usa HasConversion(e=>e.Value, v=>Email.Reconstituir(v)) | rol
 
 decisão: id do Usuario = UUID do Supabase Auth (sub claim do JWT). Sem camada de indireção.
 
+### alunos
+- id: uuid PK
+- nome: varchar(100) NOT NULL
+- email: varchar(256) NULL
+- telefone: varchar(20) NULL
+- status: text NOT NULL — valores: Ativo | Inativo
+- tenant_id: uuid NOT NULL FK→tenants(id) OnDelete:Restrict
+- treinador_id: uuid NOT NULL FK→usuarios(id) OnDelete:Restrict
+- created_at: timestamptz NOT NULL
+- updated_at: timestamptz NULL
+
+índices: pk_alunos(id), ix_alunos_tenant_id(tenant_id), ix_alunos_treinador_id(treinador_id)
+RLS: tenant_isolation ON alunos: USING (tenant_id::text = current_setting('app.current_tenant_id', true)) — CRIADA em homolog e public (2026-04-15)
+
 ## relacionamentos
-planos ──< tenants ──< usuarios
+planos ──< tenants ──< usuarios ──< alunos
 Todos os deletes: Restrict (sem cascade)
 
 ## multi-tenancy
@@ -101,6 +115,7 @@ Camada 2 (banco, ATIVO): TenantInterceptor executa a cada conexão:
 RLS policies CRIADAS em homolog e public (2026-04-15):
   tenant_isolation ON usuarios: USING (tenant_id::text = current_setting('app.current_tenant_id', true))
   tenant_isolation ON tenants:  USING (id::text = current_setting('app.current_tenant_id', true))
+  tenant_isolation ON alunos:   USING (tenant_id::text = current_setting('app.current_tenant_id', true))
 
 ATENÇÃO: novas tabelas com tenant_id devem ter RLS + policy equivalente no momento da criação.
 Auth Hook do Supabase injeta tenant_id no JWT após registro — necessário para TenantInterceptor funcionar.
@@ -116,6 +131,7 @@ Reconstituir bypassa validação (dado do banco é confiável). Criar/FromNome a
 - 20260414201833_EnriquecimentoDoDominio (2026-04-14): narrowing usuarios.nome(200→100), usuarios.email(300→256), tenants.nome(200→100); adiciona usuarios.foto_url, usuarios.bio, usuarios.updated_at, tenants.updated_at
 - 20260414211515_AddUsuarioStatus (2026-04-14): adiciona usuarios.status (text NOT NULL, default 'Ativo')
 - 20260414212447_FixUsuarioStatusDefault (2026-04-14): corrige linhas com status='' para 'Ativo' (geradas pela migration anterior com defaultValue errado)
+- 20260415213739_AddAlunos (2026-04-15): cria tabela alunos + índices (tenant_id, treinador_id)
 
 ## armadilha de schema hardcoded nas migrations — CRÍTICO
 Migrations são sempre geradas com ASPNETCORE_ENVIRONMENT=Homolog, que carrega os User Secrets com Database:Schema=homolog. O snapshot do EF Core fica com schema "homolog" hardcoded. Isso é esperado e correto — todas as migrations devem ser geradas com esse ambiente para manter consistência no snapshot.
@@ -155,19 +171,28 @@ ASPNETCORE_ENVIRONMENT=Production \
 - Infrastructure/Persistence/Configurations/UsuarioConfiguration.cs — Fluent API usuarios; conversão Email VO
 - Infrastructure/Persistence/Configurations/TenantConfiguration.cs — Fluent API tenants; conversão Slug VO
 - Infrastructure/Persistence/Configurations/PlanoConfiguration.cs — Fluent API planos; seed
+- Infrastructure/Persistence/Configurations/AlunoConfiguration.cs — Fluent API alunos; FKs; índices
+- Infrastructure/Persistence/Repositories/AlunoRepository.cs — ListarAsync paginado; InativarPorTreinadorAsync bulk
 - Infrastructure/DependencyInjection/InfrastructureExtensions.cs — DI; injeta schema
 
 ## RLS — como aplicar em novas tabelas
-Executar via psql como forzion_api (homolog) ou postgres (public):
-```bash
-PGPASSWORD='<senha>' psql -h <host> -U <user> -d postgres -c "
-ALTER TABLE <schema>.<tabela> ENABLE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON <schema>.<tabela>
-  USING (tenant_id::text = current_setting('app.current_tenant_id', true));
-"
+NUNCA usar psql local (não instalado) nem SET ROLE no SQL Editor do Supabase (permission denied).
+SEMPRE embutir o RLS em uma migration dedicada via migrationBuilder.Sql() — sem schema no nome da tabela (HasDefaultSchema aplica o correto em runtime). A migration roda como o owner certo em cada ambiente.
+
+```csharp
+// migration dedicada, ex: AddRls<Entidade>
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+    migrationBuilder.Sql(@"
+        ALTER TABLE <tabela> ENABLE ROW LEVEL SECURITY;
+        CREATE POLICY tenant_isolation ON <tabela>
+            USING (tenant_id::text = current_setting('app.current_tenant_id', true));
+    ");
+}
 ```
 
+Aplicar com o checklist padrão (homolog + produção).
+
 ## o que ainda não existe
-- tabelas: alunos, treinos, exercicios, treino_exercicios, assinaturas
-- índices em tenant_id para entidades futuras
-- paginação
+- tabelas: assinaturas
+- RLS aplicado: exercicios ✓, treinos ✓, execucoes_treino ✓ (homolog + public, 2026-04-16)

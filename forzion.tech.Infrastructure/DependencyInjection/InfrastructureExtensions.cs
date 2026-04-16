@@ -39,6 +39,10 @@ public static class InfrastructureExtensions
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IPlanoRepository, PlanoRepository>();
         services.AddScoped<IAlunoRepository, AlunoRepository>();
+        services.AddScoped<ITreinoRepository, TreinoRepository>();
+        services.AddScoped<IExercicioRepository, ExercicioRepository>();
+        services.AddScoped<ITreinoAlunoRepository, TreinoAlunoRepository>();
+        services.AddScoped<IExecucaoTreinoRepository, ExecucaoTreinoRepository>();
 
         return services;
     }
