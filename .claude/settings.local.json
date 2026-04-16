@@ -14,7 +14,8 @@
       "Bash(PGPASSWORD=\"Fz#9mKpL2vXqR7nT\" psql:*)",
       "Bash(dotnet sln:*)",
       "Bash(dotnet test:*)",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Production ConnectionStrings__AppConnection=\"Host=db.fdpdbtiuuitndbeujcbj.supabase.co;Database=postgres;Username=postgres;Password=PV7eNGOhimwUXCGd;SSL Mode=Require;Trust Server Certificate=true;Search Path=public\" Database__Schema=\"public\" dotnet ef database update --project forzion.tech.Infrastructure --startup-project forzion.tech.Api)"
     ]
   }
 }

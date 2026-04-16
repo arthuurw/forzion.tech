@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ASP.NET Core 8.0 Web API backend for forzion.tech. Módulo de usuários implementado com testes. The database is PostgreSQL hosted on Supabase.
+ASP.NET Core 8.0 Web API backend for forzion.tech. Módulos de Usuários e Alunos implementados com testes. Domínio de Treinos implementado. The database is PostgreSQL hosted on Supabase.
 
 ## Commands
 
@@ -15,7 +15,7 @@ dotnet run --project forzion.tech.Api
 # Build
 dotnet build
 
-# Run tests (157 testes)
+# Run tests (267 testes)
 dotnet test forzion.tech.Tests
 
 # Run tests com cobertura

@@ -18,6 +18,10 @@ public class AppDbContext : DbContext, IUnitOfWork
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Plano> Planos => Set<Plano>();
     public DbSet<Aluno> Alunos => Set<Aluno>();
+    public DbSet<Treino> Treinos => Set<Treino>();
+    public DbSet<Exercicio> Exercicios => Set<Exercicio>();
+    public DbSet<TreinoAluno> TreinoAlunos => Set<TreinoAluno>();
+    public DbSet<ExecucaoTreino> ExecucoesTreino => Set<ExecucaoTreino>();
 
     public Task CommitAsync(CancellationToken cancellationToken = default) =>
         SaveChangesAsync(cancellationToken);
