@@ -16,7 +16,6 @@ public record TreinoResponse(
     Guid TreinoId,
     string Nome,
     ObjetivoTreino Objetivo,
-    Guid TenantId,
     Guid TreinadorId,
     IReadOnlyList<TreinoExercicioResponse> Exercicios,
     DateTime CreatedAt,
@@ -28,7 +27,6 @@ public static class TreinoResponseExtensions
         treino.Id,
         treino.Nome,
         treino.Objetivo,
-        treino.TenantId,
         treino.TreinadorId,
         treino.Exercicios.Select(te => new TreinoExercicioResponse(
             te.Id, te.ExercicioId, te.Series, te.Repeticoes, te.Carga, te.Descanso, te.Ordem

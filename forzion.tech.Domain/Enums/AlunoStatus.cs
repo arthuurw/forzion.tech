@@ -2,6 +2,7 @@ namespace forzion.tech.Domain.Enums;
 
 public enum AlunoStatus
 {
-    Ativo = 0,
-    Inativo = 1
+    AguardandoAprovacao = 0,
+    Ativo = 1,
+    Inativo = 2
 }

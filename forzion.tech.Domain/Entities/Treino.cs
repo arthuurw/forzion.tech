@@ -8,10 +8,9 @@ public class Treino
     private readonly List<TreinoExercicio> _exercicios = [];
 
     public Guid Id { get; private set; }
+    public Guid TreinadorId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
     public ObjetivoTreino Objetivo { get; private set; }
-    public Guid TenantId { get; private set; }
-    public Guid TreinadorId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -19,24 +18,21 @@ public class Treino
 
     private Treino() { }
 
-    public static Treino Criar(string nome, ObjetivoTreino objetivo, Guid tenantId, Guid treinadorId)
+    public static Treino Criar(string nome, ObjetivoTreino objetivo, Guid treinadorId)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
         if (nome.Trim().Length > 100)
             throw new DomainException("O nome deve ter no máximo 100 caracteres.");
-        if (tenantId == Guid.Empty)
-            throw new DomainException("O tenant é inválido.");
         if (treinadorId == Guid.Empty)
             throw new DomainException("O treinador é inválido.");
 
         return new Treino
         {
             Id = Guid.NewGuid(),
+            TreinadorId = treinadorId,
             Nome = nome.Trim(),
             Objetivo = objetivo,
-            TenantId = tenantId,
-            TreinadorId = treinadorId,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -81,10 +77,9 @@ public class Treino
         var copia = new Treino
         {
             Id = Guid.NewGuid(),
+            TreinadorId = TreinadorId,
             Nome = $"{Nome} (cópia)",
             Objetivo = Objetivo,
-            TenantId = TenantId,
-            TreinadorId = TreinadorId,
             CreatedAt = DateTime.UtcNow
         };
 

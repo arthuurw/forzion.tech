@@ -1,3 +1,4 @@
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
@@ -8,10 +9,12 @@ namespace forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 public class CriarExercicioHandler(
     IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork,
+    IValidator<CriarExercicioCommand> validator,
     ILogger<CriarExercicioHandler> logger)
 {
     private readonly IExercicioRepository _exercicioRepository = exercicioRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IValidator<CriarExercicioCommand> _validator = validator;
     private readonly ILogger<CriarExercicioHandler> _logger = logger;
 
     public virtual async Task<ExercicioResponse> HandleAsync(
@@ -19,6 +22,8 @@ public class CriarExercicioHandler(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+
+        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscular, command.TenantId, command.Descricao);
 

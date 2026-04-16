@@ -6,32 +6,33 @@ namespace forzion.tech.Domain.Entities;
 public class Exercicio
 {
     public Guid Id { get; private set; }
+    public Guid? TreinadorId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
     public GrupoMuscular GrupoMuscular { get; private set; }
     public string? Descricao { get; private set; }
-    public Guid TenantId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
+    public bool IsGlobal => TreinadorId is null;
+
     private Exercicio() { }
 
-    public static Exercicio Criar(string nome, GrupoMuscular grupoMuscular, Guid tenantId, string? descricao = null)
+    /// <param name="treinadorId">Null indica exercício da biblioteca global (gerenciado por admins).</param>
+    public static Exercicio Criar(string nome, GrupoMuscular grupoMuscular, Guid? treinadorId = null, string? descricao = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
         if (nome.Trim().Length > 100)
             throw new DomainException("O nome deve ter no máximo 100 caracteres.");
-        if (tenantId == Guid.Empty)
-            throw new DomainException("O tenant é inválido.");
         if (descricao is not null && descricao.Length > 500)
             throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
 
         return new Exercicio
         {
             Id = Guid.NewGuid(),
+            TreinadorId = treinadorId,
             Nome = nome.Trim(),
             GrupoMuscular = grupoMuscular,
-            TenantId = tenantId,
             Descricao = descricao,
             CreatedAt = DateTime.UtcNow
         };

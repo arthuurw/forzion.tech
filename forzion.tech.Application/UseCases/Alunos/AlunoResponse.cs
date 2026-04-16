@@ -8,8 +8,7 @@ public record AlunoResponse(
     string? Email,
     string? Telefone,
     AlunoStatus Status,
-    Guid TenantId,
-    Guid TreinadorId,
+    Guid ContaId,
     DateTime CreatedAt,
     DateTime? UpdatedAt
 );

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace forzion.tech.Infrastructure.Persistence.Configurations;
 
+// TODO: refatorar — remover TenantId/TreinadorId ao concluir Fase 2 do domínio
 public class AlunoConfiguration : IEntityTypeConfiguration<Aluno>
 {
     public void Configure(EntityTypeBuilder<Aluno> builder)
@@ -27,18 +28,5 @@ public class AlunoConfiguration : IEntityTypeConfiguration<Aluno>
 
         builder.Property(a => a.CreatedAt).IsRequired();
         builder.Property(a => a.UpdatedAt);
-
-        builder.HasIndex(a => a.TenantId);
-        builder.HasIndex(a => a.TreinadorId);
-
-        builder.HasOne<Tenant>()
-               .WithMany()
-               .HasForeignKey(a => a.TenantId)
-               .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<Usuario>()
-               .WithMany()
-               .HasForeignKey(a => a.TreinadorId)
-               .OnDelete(DeleteBehavior.Restrict);
     }
 }

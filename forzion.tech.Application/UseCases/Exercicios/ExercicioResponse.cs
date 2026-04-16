@@ -8,7 +8,8 @@ public record ExercicioResponse(
     string Nome,
     GrupoMuscular GrupoMuscular,
     string? Descricao,
-    Guid TenantId,
+    Guid? TreinadorId,
+    bool IsGlobal,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
 
@@ -19,7 +20,8 @@ public static class ExercicioResponseExtensions
         exercicio.Nome,
         exercicio.GrupoMuscular,
         exercicio.Descricao,
-        exercicio.TenantId,
+        exercicio.TreinadorId,
+        exercicio.IsGlobal,
         exercicio.CreatedAt,
         exercicio.UpdatedAt);
 }

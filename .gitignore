@@ -57,3 +57,4 @@ nunit-*.xml
 # Secrets / local config
 appsettings.*.json
 !appsettings.json
+/GEMINI.md

@@ -35,37 +35,6 @@ public class GlobalExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_UsuarioJaRegistradoException_Retorna409()
-    {
-        var context = CriarHttpContext();
-        var result = await _handler.TryHandleAsync(context, new UsuarioJaRegistradoException(), default);
-
-        result.Should().BeTrue();
-        context.Response.StatusCode.Should().Be(409);
-        (await ObterStatusCode(context)).Should().Be(409);
-    }
-
-    [Fact]
-    public async Task TryHandleAsync_UsuarioNaoEncontradoException_Retorna404()
-    {
-        var context = CriarHttpContext();
-        var result = await _handler.TryHandleAsync(context, new UsuarioNaoEncontradoException(), default);
-
-        result.Should().BeTrue();
-        context.Response.StatusCode.Should().Be(404);
-    }
-
-    [Fact]
-    public async Task TryHandleAsync_UsuarioInativoException_Retorna403()
-    {
-        var context = CriarHttpContext();
-        var result = await _handler.TryHandleAsync(context, new UsuarioInativoException(), default);
-
-        result.Should().BeTrue();
-        context.Response.StatusCode.Should().Be(403);
-    }
-
-    [Fact]
     public async Task TryHandleAsync_DomainException_Retorna422()
     {
         var context = CriarHttpContext();
@@ -105,7 +74,7 @@ public class GlobalExceptionHandlerTests
     public async Task TryHandleAsync_Retorna4xx_LogaWarning()
     {
         var context = CriarHttpContext();
-        await _handler.TryHandleAsync(context, new UsuarioNaoEncontradoException(), default);
+        await _handler.TryHandleAsync(context, new AlunoNaoEncontradoException(), default);
 
         _logger.Verify(
             l => l.Log(

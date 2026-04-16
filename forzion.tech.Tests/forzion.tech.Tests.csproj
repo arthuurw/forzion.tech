@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\forzion.tech.Domain\forzion.tech.Domain.csproj" />
     <ProjectReference Include="..\forzion.tech.Application\forzion.tech.Application.csproj" />
+    <ProjectReference Include="..\forzion.tech.Infrastructure\forzion.tech.Infrastructure.csproj" />
     <ProjectReference Include="..\forzion.tech.Api\forzion.tech.Api.csproj" />
   </ItemGroup>
 

@@ -1,3 +1,4 @@
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
@@ -10,12 +11,14 @@ public class AdicionarExercicioHandler(
     IExercicioRepository exercicioRepository,
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
+    IValidator<AdicionarExercicioCommand> validator,
     ILogger<AdicionarExercicioHandler> logger)
 {
     private readonly ITreinoRepository _treinoRepository = treinoRepository;
     private readonly IExercicioRepository _exercicioRepository = exercicioRepository;
     private readonly IExecucaoTreinoRepository _execucaoTreinoRepository = execucaoTreinoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IValidator<AdicionarExercicioCommand> _validator = validator;
     private readonly ILogger<AdicionarExercicioHandler> _logger = logger;
 
     public virtual async Task<TreinoResponse> HandleAsync(
@@ -23,6 +26,8 @@ public class AdicionarExercicioHandler(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+
+        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var treino = await _treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)

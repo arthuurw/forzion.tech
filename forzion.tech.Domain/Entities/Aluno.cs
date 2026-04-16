@@ -6,35 +6,31 @@ namespace forzion.tech.Domain.Entities;
 public class Aluno
 {
     public Guid Id { get; private set; }
+    public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
     public string? Email { get; private set; }
     public string? Telefone { get; private set; }
     public AlunoStatus Status { get; private set; }
-    public Guid TenantId { get; private set; }
-    public Guid TreinadorId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
     private Aluno() { }
 
-    public static Aluno Criar(string nome, Guid tenantId, Guid treinadorId, string? email = null, string? telefone = null)
+    public static Aluno Criar(Guid contaId, string nome, string? email = null, string? telefone = null)
     {
+        if (contaId == Guid.Empty)
+            throw new DomainException("O identificador da conta é inválido.");
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
         if (nome.Trim().Length > 100)
             throw new DomainException("O nome deve ter no máximo 100 caracteres.");
-        if (tenantId == Guid.Empty)
-            throw new DomainException("O tenant é inválido.");
-        if (treinadorId == Guid.Empty)
-            throw new DomainException("O treinador é inválido.");
 
         var aluno = new Aluno
         {
             Id = Guid.NewGuid(),
+            ContaId = contaId,
             Nome = nome.Trim(),
-            TenantId = tenantId,
-            TreinadorId = treinadorId,
-            Status = AlunoStatus.Ativo,
+            Status = AlunoStatus.AguardandoAprovacao,
             CreatedAt = DateTime.UtcNow
         };
 

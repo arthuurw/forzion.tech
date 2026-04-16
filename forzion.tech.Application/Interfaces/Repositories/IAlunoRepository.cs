@@ -8,4 +8,5 @@ public interface IAlunoRepository
     Task<(IReadOnlyList<Aluno> Items, int Total)> ListarAsync(Guid tenantId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
     Task AdicionarAsync(Aluno aluno, CancellationToken cancellationToken = default);
     Task InativarPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
+    Task<int> ContarAtivosAsync(Guid tenantId, CancellationToken cancellationToken = default);
 }
