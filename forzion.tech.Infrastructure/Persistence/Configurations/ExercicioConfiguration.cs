@@ -1,10 +1,10 @@
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace forzion.tech.Infrastructure.Persistence.Configurations;
 
+// TODO: refatorar — trocar TenantId por TreinadorId (nullable para exercícios globais) ao concluir Fase 2
 public class ExercicioConfiguration : IEntityTypeConfiguration<Exercicio>
 {
     public void Configure(EntityTypeBuilder<Exercicio> builder)
@@ -25,12 +25,5 @@ public class ExercicioConfiguration : IEntityTypeConfiguration<Exercicio>
 
         builder.Property(e => e.CreatedAt).IsRequired();
         builder.Property(e => e.UpdatedAt);
-
-        builder.HasIndex(e => e.TenantId);
-
-        builder.HasOne<Tenant>()
-               .WithMany()
-               .HasForeignKey(e => e.TenantId)
-               .OnDelete(DeleteBehavior.Restrict);
     }
 }

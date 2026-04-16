@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace forzion.tech.Infrastructure.Persistence.Configurations;
 
+// TODO: refatorar — remover TenantId ao concluir Fase 2 do domínio; adicionar FK para Treinador
 public class TreinoConfiguration : IEntityTypeConfiguration<Treino>
 {
     public void Configure(EntityTypeBuilder<Treino> builder)
@@ -21,19 +22,6 @@ public class TreinoConfiguration : IEntityTypeConfiguration<Treino>
 
         builder.Property(t => t.CreatedAt).IsRequired();
         builder.Property(t => t.UpdatedAt);
-
-        builder.HasIndex(t => t.TenantId);
-        builder.HasIndex(t => t.TreinadorId);
-
-        builder.HasOne<Tenant>()
-               .WithMany()
-               .HasForeignKey(t => t.TenantId)
-               .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<Usuario>()
-               .WithMany()
-               .HasForeignKey(t => t.TreinadorId)
-               .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(t => t.Exercicios)
                .WithOne()

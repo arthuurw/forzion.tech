@@ -19,20 +19,17 @@ public static class AlunoEndpoints
         group.MapPost("/", async (
             [FromBody] CadastrarAlunoRequest request,
             CadastrarAlunoHandler handler,
-            ITenantContext tenantContext,
+            IUserContext userContext,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
             var treinadorId = ObterSupabaseId(httpContext);
-            if (treinadorId is null || tenantContext.TenantId is null)
+            if (treinadorId is null)
                 return Results.Unauthorized();
 
-            var erros = ValidarCadastrarRequest(request);
-            if (erros.Count > 0)
-                return Results.ValidationProblem(erros);
-
             var command = new CadastrarAlunoCommand(
-                tenantContext.TenantId.Value, treinadorId.Value, request.Nome, request.Email, request.Telefone);
+                userContext.PerfilId, treinadorId.Value, request.Nome, request.Email, request.Telefone);
+            
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Created($"/alunos/{response.AlunoId}", response);
         })
@@ -47,11 +44,11 @@ public static class AlunoEndpoints
 
         group.MapGet("/", async (
             ListarAlunosHandler handler,
-            ITenantContext tenantContext,
+            IUserContext userContext,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            if (tenantContext.TenantId is null)
+            if (userContext.PerfilId == Guid.Empty)
                 return Results.Unauthorized();
 
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
@@ -59,7 +56,7 @@ public static class AlunoEndpoints
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
 
-            var query = new ListarAlunosQuery(tenantContext.TenantId.Value, p, tp);
+            var query = new ListarAlunosQuery(userContext.PerfilId, p, tp);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -72,13 +69,13 @@ public static class AlunoEndpoints
         group.MapGet("/{id}", async (
             Guid id,
             ObterAlunoHandler handler,
-            ITenantContext tenantContext,
+            IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            if (tenantContext.TenantId is null)
+            if (userContext.PerfilId == Guid.Empty)
                 return Results.Unauthorized();
 
-            var query = new ObterAlunoQuery(tenantContext.TenantId.Value, id);
+            var query = new ObterAlunoQuery(userContext.PerfilId, id);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -94,18 +91,13 @@ public static class AlunoEndpoints
             Guid id,
             [FromBody] AtualizarAlunoRequest request,
             AtualizarAlunoHandler handler,
-            ITenantContext tenantContext,
+            IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            if (tenantContext.TenantId is null)
+            if (userContext.PerfilId == Guid.Empty)
                 return Results.Unauthorized();
 
-            var erros = ValidarAtualizarRequest(request);
-            if (erros.Count > 0)
-                return Results.ValidationProblem(erros);
-
-            var command = new AtualizarAlunoCommand(
-                tenantContext.TenantId.Value, id, request.Nome, request.Email, request.Telefone);
+            var command = new AtualizarAlunoCommand(userContext.PerfilId, id, request.Nome, request.Email, request.Telefone);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -123,16 +115,15 @@ public static class AlunoEndpoints
             Guid id,
             [FromBody] AlterarStatusAlunoRequest request,
             AlterarStatusAlunoHandler handler,
-            ITenantContext tenantContext,
+            IUserContext userContext,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
             var adminId = ObterSupabaseId(httpContext);
-            if (adminId is null || tenantContext.TenantId is null)
+            if (adminId is null)
                 return Results.Unauthorized();
 
-            var command = new AlterarStatusAlunoCommand(
-                tenantContext.TenantId.Value, adminId.Value, id, request.Status);
+            var command = new AlterarStatusAlunoCommand(userContext.PerfilId, adminId.Value, id, request.Status);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -149,55 +140,6 @@ public static class AlunoEndpoints
     {
         var sub = context.User.FindFirst("sub")?.Value;
         return Guid.TryParse(sub, out var id) ? id : null;
-    }
-
-    private static Dictionary<string, string[]> ValidarCadastrarRequest(CadastrarAlunoRequest request)
-    {
-        var erros = new Dictionary<string, string[]>();
-
-        if (string.IsNullOrWhiteSpace(request.Nome))
-            erros["nome"] = ["O nome é obrigatório."];
-        else if (request.Nome.Length > 100)
-            erros["nome"] = ["O nome deve ter no máximo 100 caracteres."];
-
-        if (request.Email is not null)
-        {
-            if (request.Email.Length > 256)
-                erros["email"] = ["O e-mail deve ter no máximo 256 caracteres."];
-            else if (!request.Email.Contains('@'))
-                erros["email"] = ["O e-mail informado é inválido."];
-        }
-
-        if (request.Telefone is not null && request.Telefone.Length > 20)
-            erros["telefone"] = ["O telefone deve ter no máximo 20 caracteres."];
-
-        return erros;
-    }
-
-    private static Dictionary<string, string[]> ValidarAtualizarRequest(AtualizarAlunoRequest request)
-    {
-        var erros = new Dictionary<string, string[]>();
-
-        if (request.Nome is not null)
-        {
-            if (string.IsNullOrWhiteSpace(request.Nome))
-                erros["nome"] = ["O nome não pode ser vazio."];
-            else if (request.Nome.Length > 100)
-                erros["nome"] = ["O nome deve ter no máximo 100 caracteres."];
-        }
-
-        if (request.Email is not null && request.Email.Length > 0)
-        {
-            if (request.Email.Length > 256)
-                erros["email"] = ["O e-mail deve ter no máximo 256 caracteres."];
-            else if (!request.Email.Contains('@'))
-                erros["email"] = ["O e-mail informado é inválido."];
-        }
-
-        if (request.Telefone is not null && request.Telefone.Length > 20)
-            erros["telefone"] = ["O telefone deve ter no máximo 20 caracteres."];
-
-        return erros;
     }
 }
 

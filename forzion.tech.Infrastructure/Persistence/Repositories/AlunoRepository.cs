@@ -5,11 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
-public class AlunoRepository : IAlunoRepository
+public class AlunoRepository(AppDbContext context) : IAlunoRepository
 {
-    private readonly AppDbContext _context;
-
-    public AlunoRepository(AppDbContext context) => _context = context;
+    private readonly AppDbContext _context = context;
 
     public async Task<Aluno?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.Alunos
@@ -43,5 +41,10 @@ public class AlunoRepository : IAlunoRepository
                 .SetProperty(a => a.Status, AlunoStatus.Inativo)
                 .SetProperty(a => a.UpdatedAt, DateTime.UtcNow),
                 cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<int> ContarAtivosAsync(Guid tenantId, CancellationToken cancellationToken = default) =>
+        await _context.Alunos
+            .CountAsync(a => a.TenantId == tenantId && a.Status == AlunoStatus.Ativo, cancellationToken)
             .ConfigureAwait(false);
 }

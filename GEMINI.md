@@ -17,7 +17,7 @@ dotnet run --project forzion.tech.Api
 # Build
 dotnet build
 
-# Rodar testes (139 testes, 97.27% cobertura excluindo Infrastructure)
+# Rodar testes (277 testes, ~97% cobertura excluindo Infrastructure)
 dotnet test forzion.tech.Tests
 
 # Rodar testes com cobertura

@@ -9,7 +9,6 @@ public class ExecucaoTreino
     public Guid Id { get; private set; }
     public Guid TreinoId { get; private set; }
     public Guid AlunoId { get; private set; }
-    public Guid TenantId { get; private set; }
     public DateTime DataExecucao { get; private set; }
     public string? Observacao { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -18,15 +17,12 @@ public class ExecucaoTreino
 
     private ExecucaoTreino() { }
 
-    public static ExecucaoTreino Criar(
-        Guid treinoId, Guid alunoId, Guid tenantId, DateTime dataExecucao, string? observacao = null)
+    public static ExecucaoTreino Criar(Guid treinoId, Guid alunoId, DateTime dataExecucao, string? observacao = null)
     {
         if (treinoId == Guid.Empty)
             throw new DomainException("O treino é inválido.");
         if (alunoId == Guid.Empty)
             throw new DomainException("O aluno é inválido.");
-        if (tenantId == Guid.Empty)
-            throw new DomainException("O tenant é inválido.");
         if (dataExecucao == default)
             throw new DomainException("A data de execução é inválida.");
         if (observacao is not null && observacao.Length > 500)
@@ -37,7 +33,6 @@ public class ExecucaoTreino
             Id = Guid.NewGuid(),
             TreinoId = treinoId,
             AlunoId = alunoId,
-            TenantId = tenantId,
             DataExecucao = dataExecucao,
             Observacao = observacao,
             CreatedAt = DateTime.UtcNow

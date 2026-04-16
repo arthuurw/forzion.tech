@@ -1,8 +1,8 @@
-using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Infrastructure.Persistence;
-using forzion.tech.Infrastructure.Persistence.Interceptors;
 using forzion.tech.Infrastructure.Persistence.Repositories;
+using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,31 +18,28 @@ public static class InfrastructureExtensions
         var connectionString = configuration.GetConnectionString("AppConnection");
         var schema = configuration["Database:Schema"] ?? "public";
 
-        services.AddScoped<TenantInterceptor>();
-
         services.AddScoped<AppDbContext>(sp =>
         {
-            var interceptor = sp.GetRequiredService<TenantInterceptor>();
-
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", schema))
                 .UseSnakeCaseNamingConvention()
-                .AddInterceptors(interceptor)
                 .Options;
 
             return new AppDbContext(options, schema);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IJwtService, JwtService>();
+        services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 
-        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
-        services.AddScoped<ITenantRepository, TenantRepository>();
-        services.AddScoped<IPlanoRepository, PlanoRepository>();
+        // Repositórios
+        services.AddScoped<IContaRepository, ContaRepository>();
         services.AddScoped<IAlunoRepository, AlunoRepository>();
         services.AddScoped<ITreinoRepository, TreinoRepository>();
         services.AddScoped<IExercicioRepository, ExercicioRepository>();
         services.AddScoped<ITreinoAlunoRepository, TreinoAlunoRepository>();
         services.AddScoped<IExecucaoTreinoRepository, ExecucaoTreinoRepository>();
+        services.AddScoped<ISystemUserRepository, SystemUserRepository>();
 
         return services;
     }

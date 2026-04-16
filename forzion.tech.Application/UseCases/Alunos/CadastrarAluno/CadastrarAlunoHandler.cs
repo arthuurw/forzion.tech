@@ -1,3 +1,4 @@
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
@@ -6,15 +7,16 @@ using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
 
+// TODO: refatorar — remover TenantId/TreinadorId ao concluir Fase 2 do domínio
 public class CadastrarAlunoHandler(
     IAlunoRepository alunoRepository,
-    IUsuarioRepository usuarioRepository,
     IUnitOfWork unitOfWork,
+    IValidator<CadastrarAlunoCommand> validator,
     ILogger<CadastrarAlunoHandler> logger)
 {
     private readonly IAlunoRepository _alunoRepository = alunoRepository;
-    private readonly IUsuarioRepository _usuarioRepository = usuarioRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IValidator<CadastrarAlunoCommand> _validator = validator;
     private readonly ILogger<CadastrarAlunoHandler> _logger = logger;
 
     public virtual async Task<AlunoResponse> HandleAsync(
@@ -23,20 +25,14 @@ public class CadastrarAlunoHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var treinador = await _usuarioRepository
-            .ObterPorIdAsync(command.TreinadorId, cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new UsuarioNaoEncontradoException();
-
-        if (treinador.TenantId != command.TenantId)
-            throw new AcessoNegadoException();
+        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var aluno = Aluno.Criar(command.Nome, command.TenantId, command.TreinadorId, command.Email, command.Telefone);
 
         await _alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Aluno {AlunoId} cadastrado pelo treinador {TreinadorId}.", aluno.Id, command.TreinadorId);
+        _logger.LogInformation("Aluno {AlunoId} cadastrado.", aluno.Id);
 
         return ToResponse(aluno);
     }

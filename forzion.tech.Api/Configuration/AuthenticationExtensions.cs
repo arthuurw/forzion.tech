@@ -1,4 +1,6 @@
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 namespace forzion.tech.Api.Configuration;
 
@@ -11,19 +13,35 @@ public static class AuthenticationExtensions
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var authority = configuration["Auth:Authority"]
-            ?? throw new InvalidOperationException("Configuração 'Auth:Authority' não encontrada.");
+        var secret = configuration["Auth:JwtSecret"] ?? string.Empty;
+        var issuer = configuration["Auth:JwtIssuer"] ?? "forzion.tech";
+        var audience = configuration["Auth:JwtAudience"] ?? "forzion.tech";
 
-        var audience = configuration["Auth:Audience"]
-            ?? throw new InvalidOperationException("Configuração 'Auth:Audience' não encontrada.");
+        // Em ambientes não-produtivos, usa uma chave de fallback para que os testes funcionem
+        // sem precisar configurar segredos reais.
+        if (string.IsNullOrWhiteSpace(secret) && !environment.IsProduction())
+            secret = "forzion-test-secret-key-32-bytes!!";
+
+        if (string.IsNullOrWhiteSpace(secret))
+            throw new InvalidOperationException("Configuração 'Auth:JwtSecret' não encontrada.");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                options.Authority = authority;
-                options.Audience = audience;
                 options.MapInboundClaims = false;
-                options.TokenValidationParameters.ValidateIssuerSigningKey = true;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = key,
+                    ValidateIssuer = true,
+                    ValidIssuer = issuer,
+                    ValidateAudience = true,
+                    ValidAudience = audience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
 
                 if (!environment.IsProduction())
                     options.Events = BuildDiagnosticEvents();
@@ -35,7 +53,6 @@ public static class AuthenticationExtensions
     }
 
     // CA1848: Logs de diagnóstico são ativados apenas em ambientes não-produtivos e não são hot paths.
-    // LoggerMessage delegates adicionariam boilerplate sem ganho real neste contexto.
 #pragma warning disable CA1848
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private static JwtBearerEvents BuildDiagnosticEvents() => new()
