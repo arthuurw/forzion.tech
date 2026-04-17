@@ -27,12 +27,11 @@ public class AlterarStatusAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoExistente_AlteraStatus()
     {
-        var tenantId = Guid.NewGuid();
-        var aluno = Aluno.Criar("João", tenantId, Guid.NewGuid());
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var result = await _handler.HandleAsync(
-            new AlterarStatusAlunoCommand(tenantId, Guid.NewGuid(), aluno.Id, AlunoStatus.Inativo));
+            new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.Inativo));
 
         result.Status.Should().Be(AlunoStatus.Inativo);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -45,7 +44,7 @@ public class AlterarStatusAlunoHandlerTests
             .ReturnsAsync((Aluno?)null);
 
         var act = async () => await _handler.HandleAsync(
-            new AlterarStatusAlunoCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), AlunoStatus.Inativo));
+            new AlterarStatusAlunoCommand(Guid.NewGuid(), AlunoStatus.Inativo));
 
         await act.Should().ThrowAsync<AlunoNaoEncontradoException>();
     }

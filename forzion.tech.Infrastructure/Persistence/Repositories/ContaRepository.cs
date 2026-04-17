@@ -8,8 +8,12 @@ public class ContaRepository(AppDbContext context) : IContaRepository
 {
     private readonly AppDbContext _context = context;
 
-    public async Task<Conta?> ObterPorEmailAsync(string email, CancellationToken cancellationToken = default) =>
-        await _context.Contas
-            .FirstOrDefaultAsync(c => EF.Property<string>(c, "Email") == email, cancellationToken)
-            .ConfigureAwait(false);
+    public async Task<Conta?> ObterPorEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var contas = await _context.Contas.ToListAsync(cancellationToken).ConfigureAwait(false);
+        return contas.FirstOrDefault(c => c.Email.Value == email);
+    }
+
+    public async Task AdicionarAsync(Conta conta, CancellationToken cancellationToken = default) =>
+        await _context.Contas.AddAsync(conta, cancellationToken).ConfigureAwait(false);
 }

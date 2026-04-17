@@ -23,12 +23,10 @@ public class ObterTreinoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoExistente_RetornaTreino()
     {
-        var tenantId = Guid.NewGuid();
-        var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, tenantId, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 
-        var result = await _handler.HandleAsync(new ObterTreinoQuery(tenantId, treino.Id));
+        var result = await _handler.HandleAsync(new ObterTreinoQuery(treino.Id));
 
         result.TreinoId.Should().Be(treino.Id);
         result.Nome.Should().Be("Treino A");
@@ -37,25 +35,12 @@ public class ObterTreinoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoNaoEncontrado_LancaTreinoNaoEncontradoException()
     {
-        var tenantId = Guid.NewGuid();
         var treinoId = Guid.NewGuid();
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treinoId, It.IsAny<CancellationToken>())).ReturnsAsync((Treino?)null);
 
-        var act = async () => await _handler.HandleAsync(new ObterTreinoQuery(tenantId, treinoId));
+        var act = async () => await _handler.HandleAsync(new ObterTreinoQuery(treinoId));
 
         await act.Should().ThrowAsync<TreinoNaoEncontradoException>();
-    }
-
-    [Fact]
-    public async Task HandleAsync_TenantDiferente_LancaAcessoNegadoException()
-    {
-        var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Forca, Guid.NewGuid(), treinadorId);
-        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-
-        var act = async () => await _handler.HandleAsync(new ObterTreinoQuery(Guid.NewGuid(), treino.Id));
-
-        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]

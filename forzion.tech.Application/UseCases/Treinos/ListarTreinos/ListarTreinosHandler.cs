@@ -17,7 +17,7 @@ public class ListarTreinosHandler(
         ArgumentNullException.ThrowIfNull(query);
 
         var (items, total) = await _treinoRepository
-            .ListarPorAlunoAsync(query.TenantId, query.AlunoId, query.Pagina, query.TamanhoPagina, cancellationToken)
+            .ListarPorAlunoAsync(query.AlunoId, query.Pagina, query.TamanhoPagina, cancellationToken)
             .ConfigureAwait(false);
 
         _logger.LogInformation("Listagem de treinos do aluno {AlunoId}: {Total} registros.", query.AlunoId, total);

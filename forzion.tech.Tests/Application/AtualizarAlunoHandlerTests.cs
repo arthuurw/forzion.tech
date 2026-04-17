@@ -25,11 +25,10 @@ public class AtualizarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetorna()
     {
-        var tenantId = Guid.NewGuid();
-        var aluno = Aluno.Criar("João", tenantId, Guid.NewGuid());
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
-        var result = await _handler.HandleAsync(new AtualizarAlunoCommand(tenantId, aluno.Id, "Maria", null, null));
+        var result = await _handler.HandleAsync(new AtualizarAlunoCommand(aluno.Id, "Maria", null, null));
 
         result.Nome.Should().Be("Maria");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -42,34 +41,21 @@ public class AtualizarAlunoHandlerTests
             .ReturnsAsync((Aluno?)null);
 
         var act = async () => await _handler.HandleAsync(
-            new AtualizarAlunoCommand(Guid.NewGuid(), Guid.NewGuid(), "Maria", null, null));
+            new AtualizarAlunoCommand(Guid.NewGuid(), "Maria", null, null));
 
         await act.Should().ThrowAsync<AlunoNaoEncontradoException>();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_AlunoDeOutroTenant_LancaAcessoNegadoException()
-    {
-        var aluno = Aluno.Criar("João", Guid.NewGuid(), Guid.NewGuid());
-        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
-
-        var act = async () => await _handler.HandleAsync(
-            new AtualizarAlunoCommand(Guid.NewGuid(), aluno.Id, "Maria", null, null));
-
-        await act.Should().ThrowAsync<AcessoNegadoException>();
-    }
-
-    [Fact]
     public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
     {
-        var tenantId = Guid.NewGuid();
-        var aluno = Aluno.Criar("João", tenantId, Guid.NewGuid());
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
         aluno.AlterarStatus(AlunoStatus.Inativo);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var act = async () => await _handler.HandleAsync(
-            new AtualizarAlunoCommand(tenantId, aluno.Id, "Maria", null, null));
+            new AtualizarAlunoCommand(aluno.Id, "Maria", null, null));
 
         await act.Should().ThrowAsync<AlunoInativoException>();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);

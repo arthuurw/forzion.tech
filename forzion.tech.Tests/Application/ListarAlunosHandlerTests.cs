@@ -21,16 +21,16 @@ public class ListarAlunosHandlerTests
     [Fact]
     public async Task HandleAsync_RetornaListaPaginada()
     {
-        var tenantId = Guid.NewGuid();
+        var treinadorId = Guid.NewGuid();
         var alunos = new List<Aluno>
         {
-            Aluno.Criar("Ana", tenantId, Guid.NewGuid()),
-            Aluno.Criar("Bruno", tenantId, Guid.NewGuid())
+            Aluno.Criar(Guid.NewGuid(), "Ana"),
+            Aluno.Criar(Guid.NewGuid(), "Bruno")
         };
-        _alunoRepo.Setup(r => r.ListarAsync(tenantId, 1, 20, It.IsAny<CancellationToken>()))
+        _alunoRepo.Setup(r => r.ListarPorTreinadorAsync(treinadorId, 1, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(((IReadOnlyList<Aluno>)alunos, 2));
 
-        var result = await _handler.HandleAsync(new ListarAlunosQuery(tenantId));
+        var result = await _handler.HandleAsync(new ListarAlunosQuery(treinadorId));
 
         result.Items.Should().HaveCount(2);
         result.Total.Should().Be(2);
@@ -41,11 +41,11 @@ public class ListarAlunosHandlerTests
     [Fact]
     public async Task HandleAsync_SemAlunos_RetornaVazio()
     {
-        var tenantId = Guid.NewGuid();
-        _alunoRepo.Setup(r => r.ListarAsync(tenantId, 1, 20, It.IsAny<CancellationToken>()))
+        var treinadorId = Guid.NewGuid();
+        _alunoRepo.Setup(r => r.ListarPorTreinadorAsync(treinadorId, 1, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(((IReadOnlyList<Aluno>)new List<Aluno>(), 0));
 
-        var result = await _handler.HandleAsync(new ListarAlunosQuery(tenantId));
+        var result = await _handler.HandleAsync(new ListarAlunosQuery(treinadorId));
 
         result.Items.Should().BeEmpty();
         result.Total.Should().Be(0);

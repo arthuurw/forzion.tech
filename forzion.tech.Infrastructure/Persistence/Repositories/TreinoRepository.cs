@@ -15,11 +15,11 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<(IReadOnlyList<Treino> Items, int Total)> ListarAsync(
-        Guid tenantId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyList<Treino> Items, int Total)> ListarPorTreinadorAsync(
+        Guid treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
         var baseQuery = _context.Treinos
-            .Where(t => t.TenantId == tenantId);
+            .Where(t => t.TreinadorId == treinadorId);
 
         var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await baseQuery
@@ -34,14 +34,14 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
     }
 
     public async Task<(IReadOnlyList<Treino> Items, int Total)> ListarPorAlunoAsync(
-        Guid tenantId, Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
+        Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
-        var alunoTreinoIds = _context.TreinoAlunos
+        var treinoIds = _context.TreinoAlunos
             .Where(ta => ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo)
             .Select(ta => ta.TreinoId);
 
         var baseQuery = _context.Treinos
-            .Where(t => t.TenantId == tenantId && alunoTreinoIds.Contains(t.Id));
+            .Where(t => treinoIds.Contains(t.Id));
 
         var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await baseQuery

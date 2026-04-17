@@ -14,11 +14,15 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<(IReadOnlyList<Aluno> Items, int Total)> ListarAsync(
-        Guid tenantId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyList<Aluno> Items, int Total)> ListarPorTreinadorAsync(
+        Guid treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
+        var alunoIds = _context.VinculosTreinadorAluno
+            .Where(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo)
+            .Select(v => v.AlunoId);
+
         var query = _context.Alunos
-            .Where(a => a.TenantId == tenantId)
+            .Where(a => alunoIds.Contains(a.Id))
             .OrderBy(a => a.Nome);
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
@@ -34,17 +38,8 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
     public async Task AdicionarAsync(Aluno aluno, CancellationToken cancellationToken = default) =>
         await _context.Alunos.AddAsync(aluno, cancellationToken).ConfigureAwait(false);
 
-    public async Task InativarPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
-        await _context.Alunos
-            .Where(a => a.TreinadorId == treinadorId && a.Status == AlunoStatus.Ativo)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(a => a.Status, AlunoStatus.Inativo)
-                .SetProperty(a => a.UpdatedAt, DateTime.UtcNow),
-                cancellationToken)
-            .ConfigureAwait(false);
-
-    public async Task<int> ContarAtivosAsync(Guid tenantId, CancellationToken cancellationToken = default) =>
-        await _context.Alunos
-            .CountAsync(a => a.TenantId == tenantId && a.Status == AlunoStatus.Ativo, cancellationToken)
+    public async Task<int> ContarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await _context.VinculosTreinadorAluno
+            .CountAsync(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo, cancellationToken)
             .ConfigureAwait(false);
 }

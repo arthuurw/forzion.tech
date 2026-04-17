@@ -1,3 +1,3 @@
 namespace forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 
-public record ListarExerciciosQuery(Guid TenantId, int Pagina, int TamanhoPagina);
+public record ListarExerciciosQuery(Guid? TreinadorId, int Pagina, int TamanhoPagina);

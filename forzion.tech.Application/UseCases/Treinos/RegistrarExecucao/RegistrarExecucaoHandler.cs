@@ -11,12 +11,14 @@ public class RegistrarExecucaoHandler(
     IAlunoRepository alunoRepository,
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
+    IUserContext userContext,
     ILogger<RegistrarExecucaoHandler> logger)
 {
     private readonly ITreinoRepository _treinoRepository = treinoRepository;
     private readonly IAlunoRepository _alunoRepository = alunoRepository;
     private readonly IExecucaoTreinoRepository _execucaoTreinoRepository = execucaoTreinoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserContext _userContext = userContext;
     private readonly ILogger<RegistrarExecucaoHandler> _logger = logger;
 
     public virtual async Task<RegistrarExecucaoResponse> HandleAsync(
@@ -25,25 +27,21 @@ public class RegistrarExecucaoHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var treino = await _treinoRepository
+        if (_userContext.PerfilId != command.AlunoId)
+            throw new AcessoNegadoException();
+
+        _ = await _treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (treino.TenantId != command.TenantId)
-            throw new AcessoNegadoException();
-
-        var aluno = await _alunoRepository
+        _ = await _alunoRepository
             .ObterPorIdAsync(command.AlunoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        if (aluno.TenantId != command.TenantId)
-            throw new AcessoNegadoException();
-
         var execucao = ExecucaoTreino.Criar(
-            command.TreinoId, command.AlunoId, command.TenantId,
-            command.DataExecucao, command.Observacao);
+            command.TreinoId, command.AlunoId, command.DataExecucao, command.Observacao);
 
         foreach (var item in command.Exercicios)
             execucao.AdicionarExercicio(
@@ -63,7 +61,6 @@ public class RegistrarExecucaoHandler(
             execucao.Id,
             execucao.TreinoId,
             execucao.AlunoId,
-            execucao.TenantId,
             execucao.DataExecucao,
             execucao.Observacao,
             execucao.CreatedAt);

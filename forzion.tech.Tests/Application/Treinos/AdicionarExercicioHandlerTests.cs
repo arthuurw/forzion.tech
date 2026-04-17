@@ -32,21 +32,21 @@ public class AdicionarExercicioHandlerTests
             _logger.Object);
     }
 
-    private static Treino CriarTreino(Guid tenantId) =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, tenantId, Guid.NewGuid());
+    private static Treino CriarTreino(Guid treinadorId) =>
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
 
     [Fact]
     public async Task HandleAsync_DadosValidos_AdicionaExercicioERetorna()
     {
-        var tenantId = Guid.NewGuid();
-        var treino = CriarTreino(tenantId);
+        var treinadorId = Guid.NewGuid();
+        var treino = CriarTreino(treinadorId);
         var exercicioId = Guid.NewGuid();
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var command = new AdicionarExercicioCommand(tenantId, treino.Id, exercicioId, 3, 12, 50m, 60);
+        var command = new AdicionarExercicioCommand(treino.Id, exercicioId, 3, 12, 50m, 60);
         var result = await _handler.HandleAsync(command);
 
         result.Exercicios.Should().HaveCount(1);
@@ -56,37 +56,23 @@ public class AdicionarExercicioHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoNaoEncontrado_LancaTreinoNaoEncontradoException()
     {
-        var tenantId = Guid.NewGuid();
         var treinoId = Guid.NewGuid();
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treinoId, It.IsAny<CancellationToken>())).ReturnsAsync((Treino?)null);
 
-        var command = new AdicionarExercicioCommand(tenantId, treinoId, Guid.NewGuid(), 3, 12, null, null);
+        var command = new AdicionarExercicioCommand(treinoId, Guid.NewGuid(), 3, 12, null, null);
         var act = async () => await _handler.HandleAsync(command);
 
         await act.Should().ThrowAsync<TreinoNaoEncontradoException>();
     }
 
     [Fact]
-    public async Task HandleAsync_TenantDiferente_LancaAcessoNegadoException()
+    public async Task HandleAsync_TreinoJaExecutado_LancaTreinoExecutadoException()
     {
         var treino = CriarTreino(Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-
-        var command = new AdicionarExercicioCommand(Guid.NewGuid(), treino.Id, Guid.NewGuid(), 3, 12, null, null);
-        var act = async () => await _handler.HandleAsync(command);
-
-        await act.Should().ThrowAsync<AcessoNegadoException>();
-    }
-
-    [Fact]
-    public async Task HandleAsync_TreinoJaExecutado_LancaTreinoExecutadoException()
-    {
-        var tenantId = Guid.NewGuid();
-        var treino = CriarTreino(tenantId);
-        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var command = new AdicionarExercicioCommand(tenantId, treino.Id, Guid.NewGuid(), 3, 12, null, null);
+        var command = new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), 3, 12, null, null);
         var act = async () => await _handler.HandleAsync(command);
 
         await act.Should().ThrowAsync<TreinoExecutadoException>();
@@ -95,14 +81,14 @@ public class AdicionarExercicioHandlerTests
     [Fact]
     public async Task HandleAsync_ExercicioNaoEncontrado_LancaExercicioNaoEncontradoException()
     {
-        var tenantId = Guid.NewGuid();
-        var treino = CriarTreino(tenantId);
+        var treinadorId = Guid.NewGuid();
+        var treino = CriarTreino(treinadorId);
         var exercicioId = Guid.NewGuid();
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var command = new AdicionarExercicioCommand(tenantId, treino.Id, exercicioId, 3, 12, null, null);
+        var command = new AdicionarExercicioCommand(treino.Id, exercicioId, 3, 12, null, null);
         var act = async () => await _handler.HandleAsync(command);
 
         await act.Should().ThrowAsync<ExercicioNaoEncontradoException>();
@@ -111,7 +97,7 @@ public class AdicionarExercicioHandlerTests
     [Fact]
     public async Task HandleAsync_DadosInvalidos_LancaValidationException()
     {
-        var command = new AdicionarExercicioCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.Empty, 0, 0, null, null);
+        var command = new AdicionarExercicioCommand(Guid.NewGuid(), Guid.Empty, 0, 0, null, null);
         var act = async () => await _handler.HandleAsync(command);
         await act.Should().ThrowAsync<ValidationException>();
     }

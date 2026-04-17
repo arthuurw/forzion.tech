@@ -16,7 +16,7 @@ public class ExecucaoTreinoConfiguration : IEntityTypeConfiguration<ExecucaoTrei
         builder.Property(e => e.CreatedAt).IsRequired();
 
         builder.HasIndex(e => e.TreinoId);
-        builder.HasIndex(e => e.TenantId);
+        builder.HasIndex(e => e.AlunoId);
 
         builder.HasOne<Treino>()
                .WithMany()

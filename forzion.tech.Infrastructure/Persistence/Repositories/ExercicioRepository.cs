@@ -14,10 +14,10 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
             .ConfigureAwait(false);
 
     public async Task<(IReadOnlyList<Exercicio> Items, int Total)> ListarAsync(
-        Guid tenantId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
+        Guid? treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
         var query = _context.Exercicios
-            .Where(e => e.TenantId == tenantId)
+            .Where(e => e.TreinadorId == null || e.TreinadorId == treinadorId)
             .OrderBy(e => e.Nome);
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
@@ -33,8 +33,8 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
     public async Task AdicionarAsync(Exercicio exercicio, CancellationToken cancellationToken = default) =>
         await _context.Exercicios.AddAsync(exercicio, cancellationToken).ConfigureAwait(false);
 
-    public async Task<bool> ExisteAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default) =>
+    public async Task<bool> ExisteAsync(Guid id, Guid? treinadorId, CancellationToken cancellationToken = default) =>
         await _context.Exercicios
-            .AnyAsync(e => e.Id == id && e.TenantId == tenantId, cancellationToken)
+            .AnyAsync(e => e.Id == id && (e.TreinadorId == null || e.TreinadorId == treinadorId), cancellationToken)
             .ConfigureAwait(false);
 }

@@ -1,3 +1,3 @@
 namespace forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
 
-public record DuplicarTreinoCommand(Guid TenantId, Guid TreinadorId, Guid TreinoId);
+public record DuplicarTreinoCommand(Guid TreinadorId, Guid TreinoId);

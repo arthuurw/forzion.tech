@@ -25,7 +25,7 @@ namespace forzion.tech.Tests.Api.Endpoints;
 public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.ExercicioWebFactory>
 {
     private readonly ExercicioWebFactory _factory;
-    private static readonly Guid TenantId = Guid.NewGuid();
+    private static readonly Guid TreinadorId = Guid.NewGuid();
     private static readonly Guid UserId = Guid.NewGuid();
 
     public ExercicioEndpointsTests(ExercicioWebFactory factory)
@@ -44,7 +44,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     [Fact]
     public async Task Post_Criar_DadosValidos_Retorna201()
     {
-        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", GrupoMuscular.Peito, "Desc", TenantId, DateTime.UtcNow, null);
+        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", GrupoMuscular.Peito, "Desc", TreinadorId, false, DateTime.UtcNow, null);
         _factory.CriarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(responseExercicio);
 
@@ -98,7 +98,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
 
                 services.RemoveAll<IUserContext>();
                 var userContextMock = new Mock<IUserContext>();
-                userContextMock.Setup(u => u.PerfilId).Returns(TenantId);
+                userContextMock.Setup(u => u.PerfilId).Returns(TreinadorId);
                 services.AddScoped(_ => userContextMock.Object);
 
                 services.AddAuthentication("Test")

@@ -2,7 +2,6 @@ using FluentAssertions;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.UseCases.Exercicios;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -27,14 +26,14 @@ public class CriarExercicioHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_CadastraERetorna()
     {
-        var tenantId = Guid.NewGuid();
-        var command = new CriarExercicioCommand(tenantId, "Supino Reto", GrupoMuscular.Peito, "Descrição");
-        
+        var treinadorId = Guid.NewGuid();
+        var command = new CriarExercicioCommand(treinadorId, "Supino Reto", GrupoMuscular.Peito, "Descrição");
+
         var result = await _handler.HandleAsync(command);
 
         result.Nome.Should().Be("Supino Reto");
         result.GrupoMuscular.Should().Be(GrupoMuscular.Peito);
-        result.TenantId.Should().Be(tenantId);
+        result.TreinadorId.Should().Be(treinadorId);
         _exercicioRepo.Verify(r => r.AdicionarAsync(It.IsAny<Exercicio>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

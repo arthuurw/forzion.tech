@@ -22,17 +22,17 @@ public class ListarExerciciosHandlerTests
     [Fact]
     public async Task HandleAsync_ComExercicios_RetornaListaPaginada()
     {
-        var tenantId = Guid.NewGuid();
+        var treinadorId = Guid.NewGuid();
         var exercicios = new List<Exercicio>
         {
-            Exercicio.Criar("Supino Reto", GrupoMuscular.Peito, tenantId),
-            Exercicio.Criar("Agachamento", GrupoMuscular.Pernas, tenantId)
+            Exercicio.Criar("Supino Reto", GrupoMuscular.Peito, treinadorId),
+            Exercicio.Criar("Agachamento", GrupoMuscular.Pernas, treinadorId)
         };
 
-        _exercicioRepo.Setup(r => r.ListarAsync(tenantId, 1, 10, It.IsAny<CancellationToken>()))
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(((IReadOnlyList<Exercicio>)exercicios, 2));
 
-        var result = await _handler.HandleAsync(new ListarExerciciosQuery(tenantId, 1, 10));
+        var result = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorId, 1, 10));
 
         result.Items.Should().HaveCount(2);
         result.Total.Should().Be(2);
@@ -43,11 +43,11 @@ public class ListarExerciciosHandlerTests
     [Fact]
     public async Task HandleAsync_SemExercicios_RetornaListaVazia()
     {
-        var tenantId = Guid.NewGuid();
-        _exercicioRepo.Setup(r => r.ListarAsync(tenantId, 1, 10, It.IsAny<CancellationToken>()))
+        var treinadorId = Guid.NewGuid();
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(((IReadOnlyList<Exercicio>)[], 0));
 
-        var result = await _handler.HandleAsync(new ListarExerciciosQuery(tenantId, 1, 10));
+        var result = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorId, 1, 10));
 
         result.Items.Should().BeEmpty();
         result.Total.Should().Be(0);

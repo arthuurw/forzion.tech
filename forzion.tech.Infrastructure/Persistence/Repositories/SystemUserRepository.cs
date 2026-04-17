@@ -13,9 +13,9 @@ public class SystemUserRepository(AppDbContext context) : ISystemUserRepository
             .FirstOrDefaultAsync(su => su.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<SystemUser?> ObterPorSupabaseIdAsync(Guid supabaseId, CancellationToken cancellationToken = default) =>
+    public async Task<SystemUser?> ObterPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
         await _context.SystemUsers
-            .FirstOrDefaultAsync(su => su.SupabaseId == supabaseId, cancellationToken)
+            .FirstOrDefaultAsync(su => su.ContaId == contaId, cancellationToken)
             .ConfigureAwait(false);
 
     public async Task AdicionarAsync(SystemUser systemUser, CancellationToken cancellationToken = default) =>

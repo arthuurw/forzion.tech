@@ -7,8 +7,10 @@ namespace forzion.tech.Tests.Domain.Entities;
 
 public class TreinoTests
 {
+    private static readonly Guid TreinadorId = Guid.NewGuid();
+
     private static Treino CriarTreino() =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), Guid.NewGuid());
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, TreinadorId);
 
     // --- Criar ---
 
@@ -18,6 +20,7 @@ public class TreinoTests
         var t = CriarTreino();
         t.Nome.Should().Be("Treino A");
         t.Objetivo.Should().Be(ObjetivoTreino.Hipertrofia);
+        t.TreinadorId.Should().Be(TreinadorId);
         t.Exercicios.Should().BeEmpty();
         t.UpdatedAt.Should().BeNull();
     }
@@ -27,28 +30,21 @@ public class TreinoTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => Treino.Criar(nome, ObjetivoTreino.Hipertrofia, Guid.NewGuid(), Guid.NewGuid());
+        var act = () => Treino.Criar(nome, ObjetivoTreino.Hipertrofia, TreinadorId);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => Treino.Criar(new string('a', 101), ObjetivoTreino.Hipertrofia, Guid.NewGuid(), Guid.NewGuid());
-        act.Should().Throw<DomainException>();
-    }
-
-    [Fact]
-    public void Criar_TenantIdVazio_LancaDomainException()
-    {
-        var act = () => Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.Empty, Guid.NewGuid());
+        var act = () => Treino.Criar(new string('a', 101), ObjetivoTreino.Hipertrofia, TreinadorId);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), Guid.Empty);
+        var act = () => Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.Empty);
         act.Should().Throw<DomainException>();
     }
 
@@ -156,7 +152,6 @@ public class TreinoTests
         copia.Id.Should().NotBe(t.Id);
         copia.Nome.Should().Be("Treino A (cópia)");
         copia.Objetivo.Should().Be(t.Objetivo);
-        copia.TenantId.Should().Be(t.TenantId);
         copia.TreinadorId.Should().Be(t.TreinadorId);
         copia.Exercicios.Should().HaveCount(1);
         copia.Exercicios[0].Id.Should().NotBe(t.Exercicios[0].Id);

@@ -17,10 +17,10 @@ public class ListarExerciciosHandler(
         ArgumentNullException.ThrowIfNull(query);
 
         var (items, total) = await _exercicioRepository
-            .ListarAsync(query.TenantId, query.Pagina, query.TamanhoPagina, cancellationToken)
+            .ListarAsync(query.TreinadorId, query.Pagina, query.TamanhoPagina, cancellationToken)
             .ConfigureAwait(false);
 
-        _logger.LogInformation("Listagem de exercícios do tenant {TenantId}: {Total} registros.", query.TenantId, total);
+        _logger.LogInformation("Listagem de exercícios: {Total} registros.", total);
 
         return new ListarExerciciosResponse(
             items.Select(ExercicioResponseExtensions.ToResponse).ToList(),

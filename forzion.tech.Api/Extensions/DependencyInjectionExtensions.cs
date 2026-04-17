@@ -18,7 +18,24 @@ using forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
+using forzion.tech.Application.Services;
+using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
+using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
+using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
+using forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
+using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
+using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
+using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
+using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
+using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
+using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
+using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
+using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
+using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
 using forzion.tech.Infrastructure.DependencyInjection;
 
 namespace forzion.tech.Api.Extensions;
@@ -51,8 +68,23 @@ public static class DependencyInjectionExtensions
     {
         services.AddValidatorsFromAssembly(typeof(CadastrarAlunoHandler).Assembly);
 
-        // Auth
+        // Serviços de limite
+        services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
+        services.AddScoped<ILimiteFichasService, LimiteFichasService>();
+
+        // Auth / Registro
         services.AddScoped<LoginHandler>();
+        services.AddScoped<RegistrarTreinadorHandler>();
+        services.AddScoped<RegistrarAlunoHandler>();
+
+        // Admin — Treinadores
+        services.AddScoped<AprovarTreinadorHandler>();
+        services.AddScoped<InativarTreinadorHandler>();
+        services.AddScoped<AtribuirPlanoHandler>();
+
+        // Vínculos
+        services.AddScoped<AprovarVinculoHandler>();
+        services.AddScoped<DesvincularAlunoHandler>();
 
         // Alunos
         services.AddScoped<CadastrarAlunoHandler>();
@@ -64,15 +96,30 @@ public static class DependencyInjectionExtensions
         // Exercícios
         services.AddScoped<CriarExercicioHandler>();
         services.AddScoped<ListarExerciciosHandler>();
+        services.AddScoped<CopiarExercicioGlobalHandler>();
 
         // Treinos
         services.AddScoped<CriarTreinoHandler>();
         services.AddScoped<ObterTreinoHandler>();
         services.AddScoped<ListarTreinosHandler>();
+        services.AddScoped<ListarTreinosDoTreinadorHandler>();
         services.AddScoped<AdicionarExercicioHandler>();
         services.AddScoped<RemoverExercicioHandler>();
         services.AddScoped<DuplicarTreinoHandler>();
         services.AddScoped<RegistrarExecucaoHandler>();
+        services.AddScoped<VincularFichaAoAlunoHandler>();
+
+        // Planos (admin)
+        services.AddScoped<CriarPlanoTreinadorHandler>();
+        services.AddScoped<ListarPlanosTreinadorHandler>();
+
+        // Pacotes (treinador)
+        services.AddScoped<CriarPacoteAlunoHandler>();
+        services.AddScoped<ListarPacotesAlunoHandler>();
+
+        // Aluno (área do aluno)
+        services.AddScoped<ListarFichasAlunoHandler>();
+        services.AddScoped<ListarExecucoesAlunoHandler>();
 
         return services;
     }

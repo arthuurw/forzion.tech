@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
+using forzion.tech.Infrastructure.Seed;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -40,6 +41,13 @@ public static class InfrastructureExtensions
         services.AddScoped<ITreinoAlunoRepository, TreinoAlunoRepository>();
         services.AddScoped<IExecucaoTreinoRepository, ExecucaoTreinoRepository>();
         services.AddScoped<ISystemUserRepository, SystemUserRepository>();
+        services.AddScoped<ITreinadorRepository, TreinadorRepository>();
+        services.AddScoped<IPlanoTreinadorRepository, PlanoTreinadorRepository>();
+        services.AddScoped<IPacoteAlunoRepository, PacoteAlunoRepository>();
+        services.AddScoped<IVinculoTreinadorAlunoRepository, VinculoTreinadorAlunoRepository>();
+        services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
+
+        services.AddScoped<DataSeeder>();
 
         return services;
     }

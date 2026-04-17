@@ -9,7 +9,6 @@ using Moq;
 
 namespace forzion.tech.Tests.Application;
 
-// TODO: atualizar ao refatorar Aluno na Fase 2 do domínio
 public class CadastrarAlunoHandlerTests
 {
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
@@ -30,10 +29,7 @@ public class CadastrarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_CadastraERetorna()
     {
-        var tenantId = Guid.NewGuid();
-        var treinadorId = Guid.NewGuid();
-
-        var command = new CadastrarAlunoCommand(tenantId, treinadorId, "Aluno", "a@e.com", "123");
+        var command = new CadastrarAlunoCommand(Guid.NewGuid(), "Aluno", "a@e.com", "123");
         var result = await _handler.HandleAsync(command);
 
         result.Nome.Should().Be("Aluno");
@@ -44,7 +40,7 @@ public class CadastrarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_DadosInvalidos_LancaValidationException()
     {
-        var command = new CadastrarAlunoCommand(Guid.NewGuid(), Guid.NewGuid(), "", "invalido", new string('1', 21));
+        var command = new CadastrarAlunoCommand(Guid.NewGuid(), "", "invalido", new string('1', 21));
         var act = async () => await _handler.HandleAsync(command);
         await act.Should().ThrowAsync<ValidationException>();
     }

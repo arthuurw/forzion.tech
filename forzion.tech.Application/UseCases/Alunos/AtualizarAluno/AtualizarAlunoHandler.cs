@@ -27,9 +27,7 @@ public class AtualizarAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        if (aluno.TenantId != command.TenantId)
-            throw new AcessoNegadoException();
-
+        // TODO (Fase 5): validar autorização via IUserContext
         if (aluno.Status == AlunoStatus.Inativo)
             throw new AlunoInativoException();
 
