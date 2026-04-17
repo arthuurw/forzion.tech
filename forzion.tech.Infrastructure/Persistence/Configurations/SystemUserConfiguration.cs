@@ -1,5 +1,4 @@
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,19 +11,14 @@ public class SystemUserConfiguration : IEntityTypeConfiguration<SystemUser>
         builder.ToTable("system_users");
         builder.HasKey(su => su.Id);
 
-        builder.Property(su => su.SupabaseId)
+        builder.Property(su => su.ContaId)
             .IsRequired()
-            .HasColumnName("supabase_id");
+            .HasColumnName("conta_id");
 
-        builder.HasIndex(su => su.SupabaseId)
-            .IsUnique()
-            .HasDatabaseName("ix_system_users_supabase_id");
-
-        builder.Property(su => su.Email)
-            .HasConversion(e => e.Value, v => Email.Reconstituir(v))
-            .HasMaxLength(256)
-            .IsRequired()
-            .HasColumnName("email");
+        builder.HasOne<Conta>()
+            .WithMany()
+            .HasForeignKey(su => su.ContaId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(su => su.Nome)
             .HasMaxLength(100)

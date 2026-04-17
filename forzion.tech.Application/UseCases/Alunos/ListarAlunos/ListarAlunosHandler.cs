@@ -18,10 +18,10 @@ public class ListarAlunosHandler(
         ArgumentNullException.ThrowIfNull(query);
 
         var (items, total) = await _alunoRepository
-            .ListarAsync(query.TenantId, query.Pagina, query.TamanhoPagina, cancellationToken)
+            .ListarPorTreinadorAsync(query.TreinadorId, query.Pagina, query.TamanhoPagina, cancellationToken)
             .ConfigureAwait(false);
 
-        _logger.LogInformation("Listagem de alunos do tenant {TenantId}: {Total} registros.", query.TenantId, total);
+        _logger.LogInformation("Listagem de alunos do treinador {TreinadorId}: {Total} registros.", query.TreinadorId, total);
 
         return new ListarAlunosResponse(
             items.Select(CadastrarAlunoHandler.ToResponse).ToList(),

@@ -22,15 +22,10 @@ public static class TreinoEndpoints
             CriarTreinoRequest request,
             CriarTreinoHandler handler,
             IUserContext userContext,
-            HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var treinadorId = ObterSupabaseId(httpContext);
-            if (treinadorId is null)
-                return Results.Unauthorized();
-
             var command = new CriarTreinoCommand(
-                userContext.PerfilId, treinadorId.Value, request.AlunoId, request.Nome, request.Objetivo);
+                userContext.PerfilId, request.AlunoId, request.Nome, request.Objetivo);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Created($"/treinos/{response.TreinoId}", response);
         })
@@ -53,7 +48,7 @@ public static class TreinoEndpoints
             if (userContext.PerfilId == Guid.Empty)
                 return Results.Unauthorized();
 
-            var query = new ObterTreinoQuery(userContext.PerfilId, id);
+            var query = new ObterTreinoQuery(id);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -79,7 +74,7 @@ public static class TreinoEndpoints
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
 
-            var query = new ListarTreinosQuery(userContext.PerfilId, alunoId, p, tp);
+            var query = new ListarTreinosQuery(alunoId, p, tp);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -89,6 +84,27 @@ public static class TreinoEndpoints
         .Produces<ListarTreinosResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
+using forzion.tech.Application.UseCases.Treinos.AdicionarExercicio;
+...
+        group.MapPost("/{id}/vincular-aluno", async (
+            Guid id,
+            VincularFichaRequest request,
+            VincularFichaAoAlunoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var command = new VincularFichaAoAlunoCommand(id, request.AlunoId);
+            await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            return Results.NoContent();
+        })
+        .RequireAuthorization()
+        .WithSummary("Vincula uma ficha de treino a um aluno")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPost("/{id}/exercicios", async (
             Guid id,
@@ -101,7 +117,7 @@ public static class TreinoEndpoints
                 return Results.Unauthorized();
 
             var command = new AdicionarExercicioCommand(
-                userContext.PerfilId, id, request.ExercicioId, request.Series, request.Repeticoes, request.Carga, request.Descanso);
+                id, request.ExercicioId, request.Series, request.Repeticoes, request.Carga, request.Descanso);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -123,7 +139,7 @@ public static class TreinoEndpoints
             if (userContext.PerfilId == Guid.Empty)
                 return Results.Unauthorized();
 
-            var command = new RemoverExercicioCommand(userContext.PerfilId, id, treinoExercicioId);
+            var command = new RemoverExercicioCommand(id, treinoExercicioId);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -139,14 +155,9 @@ public static class TreinoEndpoints
             Guid id,
             DuplicarTreinoHandler handler,
             IUserContext userContext,
-            HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var treinadorId = ObterSupabaseId(httpContext);
-            if (treinadorId is null)
-                return Results.Unauthorized();
-
-            var command = new DuplicarTreinoCommand(userContext.PerfilId, treinadorId.Value, id);
+            var command = new DuplicarTreinoCommand(userContext.PerfilId, id);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -168,11 +179,10 @@ public static class TreinoEndpoints
                 return Results.Unauthorized();
 
             var command = new RegistrarExecucaoCommand(
-                userContext.PerfilId, 
-                id, 
-                request.AlunoId, 
-                request.DataExecucao, 
-                request.Observacao, 
+                id,
+                request.AlunoId,
+                request.DataExecucao,
+                request.Observacao,
                 request.Exercicios.Select(e => new RegistrarExecucaoItemCommand(e.TreinoExercicioId, e.SeriesExecutadas, e.RepeticoesExecutadas, e.CargaExecutada, e.Observacao)).ToList());
             
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
@@ -187,11 +197,6 @@ public static class TreinoEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
     }
 
-    private static Guid? ObterSupabaseId(HttpContext context)
-    {
-        var sub = context.User.FindFirst("sub")?.Value;
-        return Guid.TryParse(sub, out var id) ? id : null;
-    }
 }
 
 public record CriarTreinoRequest(Guid AlunoId, string Nome, ObjetivoTreino Objetivo);

@@ -31,11 +31,11 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
 {
     private readonly AlunoWebFactory _factory;
     private static readonly Guid UsuarioId = Guid.NewGuid();
-    private static readonly Guid TenantId = Guid.NewGuid();
+    private static readonly Guid PerfilId = Guid.NewGuid();
     private static readonly Guid AlunoId = Guid.NewGuid();
 
     private static readonly AlunoResponse RespostaAluno = new(
-        AlunoId, "João", null, null, AlunoStatus.Ativo, TenantId, UsuarioId,
+        AlunoId, "João", null, null, AlunoStatus.Ativo, UsuarioId,
         DateTime.UtcNow, null);
 
     public AlunoEndpointsTests(AlunoWebFactory factory)
@@ -329,7 +329,7 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
                 services.AddScoped(_ => AlterarStatusHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
-                userContextMock.Setup(u => u.PerfilId).Returns(TenantId);
+                userContextMock.Setup(u => u.PerfilId).Returns(PerfilId);
                 services.AddScoped(_ => userContextMock.Object);
 
                 services.AddAuthentication("Test")

@@ -22,11 +22,10 @@ public class ObterAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoEncontrado_RetornaResponse()
     {
-        var tenantId = Guid.NewGuid();
-        var aluno = Aluno.Criar("João", tenantId, Guid.NewGuid());
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
-        var result = await _handler.HandleAsync(new ObterAlunoQuery(tenantId, aluno.Id));
+        var result = await _handler.HandleAsync(new ObterAlunoQuery(aluno.Id));
 
         result.AlunoId.Should().Be(aluno.Id);
         result.Nome.Should().Be("João");
@@ -38,20 +37,9 @@ public class ObterAlunoHandlerTests
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Aluno?)null);
 
-        var act = async () => await _handler.HandleAsync(new ObterAlunoQuery(Guid.NewGuid(), Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new ObterAlunoQuery(Guid.NewGuid()));
 
         await act.Should().ThrowAsync<AlunoNaoEncontradoException>();
-    }
-
-    [Fact]
-    public async Task HandleAsync_AlunoDeOutroTenant_LancaAcessoNegadoException()
-    {
-        var aluno = Aluno.Criar("João", Guid.NewGuid(), Guid.NewGuid());
-        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
-
-        var act = async () => await _handler.HandleAsync(new ObterAlunoQuery(Guid.NewGuid(), aluno.Id));
-
-        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]

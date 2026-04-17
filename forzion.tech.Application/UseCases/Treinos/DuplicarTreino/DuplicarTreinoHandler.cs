@@ -25,9 +25,7 @@ public class DuplicarTreinoHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (original.TenantId != command.TenantId)
-            throw new AcessoNegadoException();
-
+        // TODO (Fase 5): validar autorização via IUserContext
         var copia = original.Duplicar();
 
         await _treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);

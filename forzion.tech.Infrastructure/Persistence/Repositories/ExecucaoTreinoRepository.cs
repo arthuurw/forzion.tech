@@ -15,4 +15,18 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
         await _context.ExecucoesTreino
             .AnyAsync(e => e.TreinoId == treinoId, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<ExecucaoTreino>> ListarPorAlunoAsync(Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default) =>
+        await _context.ExecucoesTreino
+            .Where(e => e.AlunoId == alunoId)
+            .OrderByDescending(e => e.DataExecucao)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<int> ContarPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await _context.ExecucoesTreino
+            .CountAsync(e => e.AlunoId == alunoId, cancellationToken)
+            .ConfigureAwait(false);
 }

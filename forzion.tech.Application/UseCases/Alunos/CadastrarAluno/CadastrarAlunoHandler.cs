@@ -2,12 +2,10 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
 
-// TODO: refatorar — remover TenantId/TreinadorId ao concluir Fase 2 do domínio
 public class CadastrarAlunoHandler(
     IAlunoRepository alunoRepository,
     IUnitOfWork unitOfWork,
@@ -27,7 +25,7 @@ public class CadastrarAlunoHandler(
 
         await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var aluno = Aluno.Criar(command.Nome, command.TenantId, command.TreinadorId, command.Email, command.Telefone);
+        var aluno = Aluno.Criar(command.ContaId, command.Nome, command.Email, command.Telefone);
 
         await _alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -43,8 +41,7 @@ public class CadastrarAlunoHandler(
         aluno.Email,
         aluno.Telefone,
         aluno.Status,
-        aluno.TenantId,
-        aluno.TreinadorId,
+        aluno.ContaId,
         aluno.CreatedAt,
         aluno.UpdatedAt
     );

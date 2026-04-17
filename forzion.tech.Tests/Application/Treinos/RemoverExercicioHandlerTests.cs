@@ -27,15 +27,14 @@ public class RemoverExercicioHandlerTests
     [Fact]
     public async Task HandleAsync_ExercicioExistente_RemoveERetorna()
     {
-        var tenantId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, tenantId, Guid.NewGuid());
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
         treino.AdicionarExercicio(Guid.NewGuid(), 3, 12, null, null);
         var treinoExercicioId = treino.Exercicios[0].Id;
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var result = await _handler.HandleAsync(new RemoverExercicioCommand(tenantId, treino.Id, treinoExercicioId));
+        var result = await _handler.HandleAsync(new RemoverExercicioCommand(treino.Id, treinoExercicioId));
 
         result.Exercicios.Should().BeEmpty();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -44,35 +43,22 @@ public class RemoverExercicioHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoNaoEncontrado_LancaTreinoNaoEncontradoException()
     {
-        var tenantId = Guid.NewGuid();
         var treinoId = Guid.NewGuid();
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treinoId, It.IsAny<CancellationToken>())).ReturnsAsync((Treino?)null);
 
-        var act = async () => await _handler.HandleAsync(new RemoverExercicioCommand(tenantId, treinoId, Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new RemoverExercicioCommand(treinoId, Guid.NewGuid()));
 
         await act.Should().ThrowAsync<TreinoNaoEncontradoException>();
     }
 
     [Fact]
-    public async Task HandleAsync_TenantDiferente_LancaAcessoNegadoException()
-    {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), Guid.NewGuid());
-        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-
-        var act = async () => await _handler.HandleAsync(new RemoverExercicioCommand(Guid.NewGuid(), treino.Id, Guid.NewGuid()));
-
-        await act.Should().ThrowAsync<AcessoNegadoException>();
-    }
-
-    [Fact]
     public async Task HandleAsync_TreinoJaExecutado_LancaTreinoExecutadoException()
     {
-        var tenantId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, tenantId, Guid.NewGuid());
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var act = async () => await _handler.HandleAsync(new RemoverExercicioCommand(tenantId, treino.Id, Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new RemoverExercicioCommand(treino.Id, Guid.NewGuid()));
 
         await act.Should().ThrowAsync<TreinoExecutadoException>();
     }

@@ -20,15 +20,10 @@ public static class AlunoEndpoints
             [FromBody] CadastrarAlunoRequest request,
             CadastrarAlunoHandler handler,
             IUserContext userContext,
-            HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var treinadorId = ObterSupabaseId(httpContext);
-            if (treinadorId is null)
-                return Results.Unauthorized();
-
             var command = new CadastrarAlunoCommand(
-                userContext.PerfilId, treinadorId.Value, request.Nome, request.Email, request.Telefone);
+                userContext.PerfilId, request.Nome, request.Email, request.Telefone);
             
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Created($"/alunos/{response.AlunoId}", response);
@@ -75,7 +70,7 @@ public static class AlunoEndpoints
             if (userContext.PerfilId == Guid.Empty)
                 return Results.Unauthorized();
 
-            var query = new ObterAlunoQuery(userContext.PerfilId, id);
+            var query = new ObterAlunoQuery(id);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -97,7 +92,7 @@ public static class AlunoEndpoints
             if (userContext.PerfilId == Guid.Empty)
                 return Results.Unauthorized();
 
-            var command = new AtualizarAlunoCommand(userContext.PerfilId, id, request.Nome, request.Email, request.Telefone);
+            var command = new AtualizarAlunoCommand(id, request.Nome, request.Email, request.Telefone);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -116,14 +111,9 @@ public static class AlunoEndpoints
             [FromBody] AlterarStatusAlunoRequest request,
             AlterarStatusAlunoHandler handler,
             IUserContext userContext,
-            HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var adminId = ObterSupabaseId(httpContext);
-            if (adminId is null)
-                return Results.Unauthorized();
-
-            var command = new AlterarStatusAlunoCommand(userContext.PerfilId, adminId.Value, id, request.Status);
+            var command = new AlterarStatusAlunoCommand(id, request.Status);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -136,11 +126,6 @@ public static class AlunoEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
     }
 
-    private static Guid? ObterSupabaseId(HttpContext context)
-    {
-        var sub = context.User.FindFirst("sub")?.Value;
-        return Guid.TryParse(sub, out var id) ? id : null;
-    }
 }
 
 public record CadastrarAlunoRequest(string Nome, string? Email, string? Telefone);

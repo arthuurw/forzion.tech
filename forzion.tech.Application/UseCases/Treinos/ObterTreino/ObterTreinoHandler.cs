@@ -22,9 +22,7 @@ public class ObterTreinoHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (treino.TenantId != query.TenantId)
-            throw new AcessoNegadoException();
-
+        // TODO (Fase 5): validar autorização via IUserContext
         _logger.LogInformation("Treino {TreinoId} consultado.", treino.Id);
 
         return TreinoResponseExtensions.ToResponse(treino);

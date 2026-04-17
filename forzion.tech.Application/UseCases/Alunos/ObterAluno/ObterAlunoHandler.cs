@@ -22,9 +22,7 @@ public class ObterAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        if (aluno.TenantId != query.TenantId)
-            throw new AcessoNegadoException();
-
+        // TODO (Fase 5): validar autorização via IUserContext
         _logger.LogInformation("Aluno {AlunoId} consultado.", aluno.Id);
 
         return CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno);

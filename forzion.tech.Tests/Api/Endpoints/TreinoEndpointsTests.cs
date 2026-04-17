@@ -27,7 +27,7 @@ namespace forzion.tech.Tests.Api.Endpoints;
 public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWebFactory>
 {
     private readonly TreinoWebFactory _factory;
-    private static readonly Guid TenantId = Guid.NewGuid();
+    private static readonly Guid TreinadorId = Guid.NewGuid();
     private static readonly Guid UserId = Guid.NewGuid();
 
     public TreinoEndpointsTests(TreinoWebFactory factory)
@@ -46,7 +46,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     [Fact]
     public async Task Post_Criar_Retorna201()
     {
-        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TenantId, Guid.NewGuid(), new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
+        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
         _factory.CriarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CriarTreinoCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(responseTreino);
 
@@ -59,7 +59,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     [Fact]
     public async Task Get_Obter_Retorna200()
     {
-        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TenantId, Guid.NewGuid(), new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
+        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
         _factory.ObterHandlerMock.Setup(h => h.HandleAsync(It.IsAny<ObterTreinoQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(responseTreino);
 
@@ -71,7 +71,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     [Fact]
     public async Task Post_AdicionarExercicio_Retorna200()
     {
-        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TenantId, Guid.NewGuid(), new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
+        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
         _factory.AdicionarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<AdicionarExercicioCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(responseTreino);
 
@@ -132,7 +132,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
 
                 services.RemoveAll<IUserContext>();
                 var userContextMock = new Mock<IUserContext>();
-                userContextMock.Setup(u => u.PerfilId).Returns(TenantId);
+                userContextMock.Setup(u => u.PerfilId).Returns(TreinadorId);
                 services.AddScoped(_ => userContextMock.Object);
 
                 services.AddAuthentication("Test")

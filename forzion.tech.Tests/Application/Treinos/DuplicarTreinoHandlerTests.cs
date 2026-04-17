@@ -25,14 +25,13 @@ public class DuplicarTreinoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoExistente_DuplicaERetornaCopia()
     {
-        var tenantId = Guid.NewGuid();
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, tenantId, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
         treino.AdicionarExercicio(Guid.NewGuid(), 3, 12, 50m, 60);
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 
-        var result = await _handler.HandleAsync(new DuplicarTreinoCommand(tenantId, treinadorId, treino.Id));
+        var result = await _handler.HandleAsync(new DuplicarTreinoCommand(treinadorId, treino.Id));
 
         result.TreinoId.Should().NotBe(treino.Id);
         result.Nome.Should().Be("Treino A (cópia)");
@@ -44,24 +43,12 @@ public class DuplicarTreinoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoNaoEncontrado_LancaTreinoNaoEncontradoException()
     {
-        var tenantId = Guid.NewGuid();
         var treinoId = Guid.NewGuid();
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treinoId, It.IsAny<CancellationToken>())).ReturnsAsync((Treino?)null);
 
-        var act = async () => await _handler.HandleAsync(new DuplicarTreinoCommand(tenantId, Guid.NewGuid(), treinoId));
+        var act = async () => await _handler.HandleAsync(new DuplicarTreinoCommand(Guid.NewGuid(), treinoId));
 
         await act.Should().ThrowAsync<TreinoNaoEncontradoException>();
-    }
-
-    [Fact]
-    public async Task HandleAsync_TenantDiferente_LancaAcessoNegadoException()
-    {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), Guid.NewGuid());
-        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-
-        var act = async () => await _handler.HandleAsync(new DuplicarTreinoCommand(Guid.NewGuid(), Guid.NewGuid(), treino.Id));
-
-        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]

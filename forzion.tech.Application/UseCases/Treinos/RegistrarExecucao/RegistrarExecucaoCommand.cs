@@ -8,7 +8,6 @@ public record RegistrarExecucaoItemCommand(
     string? Observacao);
 
 public record RegistrarExecucaoCommand(
-    Guid TenantId,
     Guid TreinoId,
     Guid AlunoId,
     DateTime DataExecucao,

@@ -25,12 +25,12 @@ public class CriarExercicioHandler(
 
         await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscular, command.TenantId, command.Descricao);
+        var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscular, command.TreinadorId, command.Descricao);
 
         await _exercicioRepository.AdicionarAsync(exercicio, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Exercício {ExercicioId} criado no tenant {TenantId}.", exercicio.Id, command.TenantId);
+        _logger.LogInformation("Exercício {ExercicioId} criado.", exercicio.Id);
 
         return ExercicioResponseExtensions.ToResponse(exercicio);
     }

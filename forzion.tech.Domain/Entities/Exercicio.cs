@@ -24,6 +24,8 @@ public class Exercicio
             throw new DomainException("O nome é obrigatório.");
         if (nome.Trim().Length > 100)
             throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+        if (treinadorId.HasValue && treinadorId.Value == Guid.Empty)
+            throw new DomainException("O identificador do treinador é inválido.");
         if (descricao is not null && descricao.Length > 500)
             throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
 

@@ -34,8 +34,7 @@ public class AdicionarExercicioHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (treino.TenantId != command.TenantId)
-            throw new AcessoNegadoException();
+        // TODO (Fase 5): validar que o treino pertence ao treinador via IUserContext
 
         var executado = await _execucaoTreinoRepository
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
@@ -45,7 +44,7 @@ public class AdicionarExercicioHandler(
             throw new TreinoExecutadoException();
 
         var exercicioExiste = await _exercicioRepository
-            .ExisteAsync(command.ExercicioId, command.TenantId, cancellationToken)
+            .ExisteAsync(command.ExercicioId, treino.TreinadorId, cancellationToken)
             .ConfigureAwait(false);
 
         if (!exercicioExiste)

@@ -19,7 +19,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<Treino> Treinos => Set<Treino>();
     public DbSet<Exercicio> Exercicios => Set<Exercicio>();
     public DbSet<TreinoAluno> TreinoAlunos => Set<TreinoAluno>();
+    public DbSet<TreinoExercicio> TreinoExercicios => Set<TreinoExercicio>();
     public DbSet<ExecucaoTreino> ExecucoesTreino => Set<ExecucaoTreino>();
+    public DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
 
     public Task CommitAsync(CancellationToken cancellationToken = default) =>
         SaveChangesAsync(cancellationToken);

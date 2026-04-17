@@ -27,9 +27,7 @@ public class RemoverExercicioHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (treino.TenantId != command.TenantId)
-            throw new AcessoNegadoException();
-
+        // TODO (Fase 5): validar autorização via IUserContext
         var executado = await _execucaoTreinoRepository
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
