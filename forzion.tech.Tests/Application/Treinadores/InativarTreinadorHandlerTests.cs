@@ -56,4 +56,25 @@ public class InativarTreinadorHandlerTests
         var act = async () => await _handler.HandleAsync(new InativarTreinadorCommand(Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<TreinadorNaoEncontradoException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorJaInativo_LancaDomainException()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        treinador.Aprovar(Guid.NewGuid());
+        treinador.Inativar();
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+
+        var act = async () => await _handler.HandleAsync(new InativarTreinadorCommand(treinador.Id, Guid.NewGuid()));
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*já está inativo*");
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommandNulo_LancaArgumentNullException()
+    {
+        var act = async () => await _handler.HandleAsync(null!);
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
 }

@@ -56,6 +56,41 @@ public class ListarTreinosHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_PassaAlunoIdCorretoAoRepositorio_IsolamentoGarantido()
+    {
+        var alunoId = Guid.NewGuid();
+        var outroAlunoId = Guid.NewGuid();
+
+        _treinoRepo.Setup(r => r.ListarPorAlunoAsync(alunoId, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Treino>)[], 0));
+
+        await _handler.HandleAsync(new ListarTreinosQuery(alunoId, 1, 10));
+
+        _treinoRepo.Verify(r => r.ListarPorAlunoAsync(alunoId, 1, 10, It.IsAny<CancellationToken>()), Times.Once);
+        _treinoRepo.Verify(r => r.ListarPorAlunoAsync(outroAlunoId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlunoIdDiferente_NaoRetornaTreinosDeOutroAluno()
+    {
+        var alunoA = Guid.NewGuid();
+        var alunoB = Guid.NewGuid();
+        var treinadorId = Guid.NewGuid();
+
+        _treinoRepo.Setup(r => r.ListarPorAlunoAsync(alunoA, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Treino>)[Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId)], 1));
+
+        _treinoRepo.Setup(r => r.ListarPorAlunoAsync(alunoB, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Treino>)[], 0));
+
+        var resultA = await _handler.HandleAsync(new ListarTreinosQuery(alunoA, 1, 10));
+        var resultB = await _handler.HandleAsync(new ListarTreinosQuery(alunoB, 1, 10));
+
+        resultA.Items.Should().HaveCount(1);
+        resultB.Items.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task HandleAsync_QueryNula_LancaArgumentNullException()
     {
         var act = async () => await _handler.HandleAsync(null!);

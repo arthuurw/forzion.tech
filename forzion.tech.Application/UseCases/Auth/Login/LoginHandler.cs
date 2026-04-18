@@ -10,12 +10,18 @@ public class LoginHandler(
     IContaRepository contaRepository,
     IJwtService jwtService,
     IPasswordHasher passwordHasher,
+    IAlunoRepository alunoRepository,
+    ITreinadorRepository treinadorRepository,
+    ISystemUserRepository systemUserRepository,
     IValidator<LoginCommand> validator,
     ILogger<LoginHandler> logger)
 {
     private readonly IContaRepository _contaRepository = contaRepository;
     private readonly IJwtService _jwtService = jwtService;
     private readonly IPasswordHasher _passwordHasher = passwordHasher;
+    private readonly IAlunoRepository _alunoRepository = alunoRepository;
+    private readonly ITreinadorRepository _treinadorRepository = treinadorRepository;
+    private readonly ISystemUserRepository _systemUserRepository = systemUserRepository;
     private readonly IValidator<LoginCommand> _validator = validator;
     private readonly ILogger<LoginHandler> _logger = logger;
 
@@ -35,8 +41,22 @@ public class LoginHandler(
         if (conta is null || !_passwordHasher.Verify(command.Senha, conta.PasswordHash))
             throw new CredenciaisInvalidasException();
 
-        // TODO (Fase 2): buscar perfilId real via Treinador/Aluno/SystemUser por conta.ContaId
-        var perfilId = conta!.Id;
+        var perfilId = conta.TipoConta switch
+        {
+            Domain.Enums.TipoConta.Aluno => 
+                (await _alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id 
+                ?? throw new InvalidOperationException("Aluno não encontrado para a conta autenticada."),
+
+            Domain.Enums.TipoConta.Treinador => 
+                (await _treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id 
+                ?? throw new InvalidOperationException("Treinador não encontrado para a conta autenticada."),
+
+            Domain.Enums.TipoConta.SystemAdmin => 
+                (await _systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id 
+                ?? throw new InvalidOperationException("SystemUser não encontrado para a conta autenticada."),
+
+            _ => throw new InvalidOperationException("Tipo de conta inválido.")
+        };
 
         var token = _jwtService.GerarToken(conta, perfilId);
 

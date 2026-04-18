@@ -10,10 +10,10 @@ using Moq;
 
 namespace forzion.tech.Tests.Application;
 
-// TODO: atualizar ao refatorar Aluno na Fase 2 do domínio (adicionar validação de autorização)
 public class AlterarStatusAlunoHandlerTests
 {
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<AlterarStatusAlunoHandler>> _logger = new();
     private readonly AlterarStatusAlunoHandler _handler;
@@ -21,20 +21,34 @@ public class AlterarStatusAlunoHandlerTests
     public AlterarStatusAlunoHandlerTests()
     {
         _handler = new AlterarStatusAlunoHandler(
-            _alunoRepo.Object, _unitOfWork.Object, _logger.Object);
+            _alunoRepo.Object, _userContext.Object, _unitOfWork.Object, _logger.Object);
     }
 
     [Fact]
-    public async Task HandleAsync_AlunoExistente_AlteraStatus()
+    public async Task HandleAsync_AlunoExistente_E_UsuarioSystemAdmin_AlteraStatus()
     {
         var aluno = Aluno.Criar(Guid.NewGuid(), "João");
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
 
         var result = await _handler.HandleAsync(
             new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.Inativo));
 
         result.Status.Should().Be(AlunoStatus.Inativo);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlunoExistente_Mas_UsuarioNaoSystemAdmin_LancaUnauthorizedAccessException()
+    {
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _userContext.Setup(u => u.IsSystemAdmin).Returns(false);
+
+        var act = async () => await _handler.HandleAsync(
+            new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.Inativo));
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 
     [Fact]

@@ -14,12 +14,18 @@ public class DuplicarTreinoHandlerTests
 {
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<DuplicarTreinoHandler>> _logger = new();
     private readonly DuplicarTreinoHandler _handler;
 
     public DuplicarTreinoHandlerTests()
     {
-        _handler = new DuplicarTreinoHandler(_treinoRepo.Object, _unitOfWork.Object, _logger.Object);
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
+        _handler = new DuplicarTreinoHandler(
+            _treinoRepo.Object, 
+            _unitOfWork.Object, 
+            _userContext.Object,
+            _logger.Object);
     }
 
     [Fact]
@@ -29,6 +35,7 @@ public class DuplicarTreinoHandlerTests
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
         treino.AdicionarExercicio(Guid.NewGuid(), 3, 12, 50m, 60);
 
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 
         var result = await _handler.HandleAsync(new DuplicarTreinoCommand(treinadorId, treino.Id));
@@ -38,6 +45,23 @@ public class DuplicarTreinoHandlerTests
         result.Exercicios.Should().HaveCount(1);
         _treinoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treino>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AcessoNegado_LancaAcessoNegadoException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var outroTreinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.PerfilId).Returns(outroTreinadorId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+
+        var command = new DuplicarTreinoCommand(outroTreinadorId, treino.Id);
+        var act = async () => await _handler.HandleAsync(command);
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]

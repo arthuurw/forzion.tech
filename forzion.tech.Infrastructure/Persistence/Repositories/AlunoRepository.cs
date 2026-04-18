@@ -14,6 +14,11 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<Aluno?> ObterPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
+        await _context.Alunos
+            .FirstOrDefaultAsync(a => a.ContaId == contaId, cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<(IReadOnlyList<Aluno> Items, int Total)> ListarPorTreinadorAsync(
         Guid treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {

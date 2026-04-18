@@ -13,13 +13,21 @@ namespace forzion.tech.Tests.Application;
 public class AtualizarAlunoHandlerTests
 {
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<AtualizarAlunoHandler>> _logger = new();
     private readonly AtualizarAlunoHandler _handler;
 
     public AtualizarAlunoHandlerTests()
     {
-        _handler = new AtualizarAlunoHandler(_alunoRepo.Object, _unitOfWork.Object, _logger.Object);
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
+        _handler = new AtualizarAlunoHandler(
+            _alunoRepo.Object, 
+            _vinculoRepo.Object,
+            _unitOfWork.Object, 
+            _userContext.Object,
+            _logger.Object);
     }
 
     [Fact]
@@ -32,6 +40,27 @@ public class AtualizarAlunoHandlerTests
 
         result.Nome.Should().Be("Maria");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AcessoNegado_LancaAcessoNegadoException()
+    {
+        var alunoId = Guid.NewGuid();
+        var treinadorId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João");
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.IsTreinador).Returns(true);
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VinculoTreinadorAluno?)null);
+
+        var act = async () => await _handler.HandleAsync(
+            new AtualizarAlunoCommand(alunoId, "Maria", null, null));
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]

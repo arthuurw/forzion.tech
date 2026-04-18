@@ -292,6 +292,8 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
 
         public Mock<ObterAlunoHandler> ObterHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(),
+            Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ObterAlunoHandler>>());
 
         public Mock<ListarAlunosHandler> ListarHandlerMock { get; } = new(
@@ -300,11 +302,14 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
 
         public Mock<AtualizarAlunoHandler> AtualizarHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUserContext>(),
             Mock.Of<ILogger<AtualizarAlunoHandler>>());
 
         public Mock<AlterarStatusAlunoHandler> AlterarStatusHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IUserContext>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<AlterarStatusAlunoHandler>>());
 

@@ -15,22 +15,25 @@ public class RemoverExercicioHandlerTests
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<RemoverExercicioHandler>> _logger = new();
     private readonly RemoverExercicioHandler _handler;
 
     public RemoverExercicioHandlerTests()
     {
         _handler = new RemoverExercicioHandler(
-            _treinoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _logger.Object);
+            _treinoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_ExercicioExistente_RemoveERetorna()
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
         treino.AdicionarExercicio(Guid.NewGuid(), 3, 12, null, null);
         var treinoExercicioId = treino.Exercicios[0].Id;
 
+        _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
@@ -38,6 +41,21 @@ public class RemoverExercicioHandlerTests
 
         result.Exercicios.Should().BeEmpty();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinoDeOutroTreinador_LancaAcessoNegadoException()
+    {
+        var treinadorLogadoId = Guid.NewGuid();
+        var outroTreinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, outroTreinadorId);
+        
+        _userContext.Setup(u => u.PerfilId).Returns(treinadorLogadoId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+
+        var act = async () => await _handler.HandleAsync(new RemoverExercicioCommand(treino.Id, Guid.NewGuid()));
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]
@@ -54,7 +72,9 @@ public class RemoverExercicioHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoJaExecutado_LancaTreinoExecutadoException()
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 

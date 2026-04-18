@@ -8,10 +8,12 @@ namespace forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
 public class DuplicarTreinoHandler(
     ITreinoRepository treinoRepository,
     IUnitOfWork unitOfWork,
+    IUserContext userContext,
     ILogger<DuplicarTreinoHandler> logger)
 {
     private readonly ITreinoRepository _treinoRepository = treinoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserContext _userContext = userContext;
     private readonly ILogger<DuplicarTreinoHandler> _logger = logger;
 
     public virtual async Task<TreinoResponse> HandleAsync(
@@ -25,7 +27,10 @@ public class DuplicarTreinoHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        // TODO (Fase 5): validar autorização via IUserContext
+        // Validar autorização
+        if (!_userContext.IsSystemAdmin && original.TreinadorId != _userContext.PerfilId)
+            throw new AcessoNegadoException();
+
         var copia = original.Duplicar();
 
         await _treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);

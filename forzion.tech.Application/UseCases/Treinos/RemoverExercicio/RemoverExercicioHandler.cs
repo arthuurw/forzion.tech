@@ -9,11 +9,13 @@ public class RemoverExercicioHandler(
     ITreinoRepository treinoRepository,
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
+    IUserContext userContext,
     ILogger<RemoverExercicioHandler> logger)
 {
     private readonly ITreinoRepository _treinoRepository = treinoRepository;
     private readonly IExecucaoTreinoRepository _execucaoTreinoRepository = execucaoTreinoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserContext _userContext = userContext;
     private readonly ILogger<RemoverExercicioHandler> _logger = logger;
 
     public virtual async Task<TreinoResponse> HandleAsync(
@@ -27,7 +29,10 @@ public class RemoverExercicioHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        // TODO (Fase 5): validar autorização via IUserContext
+        // Validar autorização
+        if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
+            throw new AcessoNegadoException();
+
         var executado = await _execucaoTreinoRepository
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);

@@ -1,5 +1,4 @@
 using FluentAssertions;
-using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
@@ -11,7 +10,6 @@ using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -146,12 +144,14 @@ public class FluxoCompletoTests
         // -------------------------------------------------------
         // 6. Registrar execução (aluno)
         // -------------------------------------------------------
+        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _userContext.Setup(u => u.PerfilId).Returns(aluno.Id);
 
         var registrarExecucaoHandler = new RegistrarExecucaoHandler(
-            _treinoRepo.Object, _alunoRepo.Object, _execucaoRepo.Object,
+            _treinoRepo.Object, _alunoRepo.Object, _treinoAlunoRepo.Object, _execucaoRepo.Object,
             _unitOfWork.Object, _userContext.Object,
             Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 

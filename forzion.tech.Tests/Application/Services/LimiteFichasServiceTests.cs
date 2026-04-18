@@ -76,8 +76,7 @@ public class LimiteFichasServiceTests
     private static VinculoTreinadorAluno CriarVinculoComPacote(Guid pacoteId)
     {
         var vinculo = VinculoTreinadorAluno.Criar(Guid.NewGuid(), Guid.NewGuid());
-        typeof(VinculoTreinadorAluno).GetProperty("PacoteAlunoId")!
-            .SetValue(vinculo, pacoteId);
+        vinculo.Aprovar(Guid.NewGuid(), pacoteId);
         return vinculo;
     }
 }

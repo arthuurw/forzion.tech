@@ -9,11 +9,15 @@ namespace forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
 
 public class AtualizarAlunoHandler(
     IAlunoRepository alunoRepository,
+    IVinculoTreinadorAlunoRepository vinculoRepository,
     IUnitOfWork unitOfWork,
+    IUserContext userContext,
     ILogger<AtualizarAlunoHandler> logger)
 {
     private readonly IAlunoRepository _alunoRepository = alunoRepository;
+    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserContext _userContext = userContext;
     private readonly ILogger<AtualizarAlunoHandler> _logger = logger;
 
     public virtual async Task<AlunoResponse> HandleAsync(
@@ -27,7 +31,24 @@ public class AtualizarAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        // TODO (Fase 5): validar autorização via IUserContext
+        // Validar autorização
+        if (!_userContext.IsSystemAdmin && _userContext.PerfilId != aluno.Id)
+        {
+            if (_userContext.IsTreinador)
+            {
+                var vinculo = await _vinculoRepository
+                    .ObterAtivoAsync(_userContext.PerfilId, aluno.Id, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (vinculo is null)
+                    throw new AcessoNegadoException();
+            }
+            else
+            {
+                throw new AcessoNegadoException();
+            }
+        }
+
         if (aluno.Status == AlunoStatus.Inativo)
             throw new AlunoInativoException();
 

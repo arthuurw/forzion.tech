@@ -1,3 +1,4 @@
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -6,9 +7,13 @@ namespace forzion.tech.Application.UseCases.Treinos.ObterTreino;
 
 public class ObterTreinoHandler(
     ITreinoRepository treinoRepository,
+    ITreinoAlunoRepository treinoAlunoRepository,
+    IUserContext userContext,
     ILogger<ObterTreinoHandler> logger)
 {
     private readonly ITreinoRepository _treinoRepository = treinoRepository;
+    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
+    private readonly IUserContext _userContext = userContext;
     private readonly ILogger<ObterTreinoHandler> _logger = logger;
 
     public virtual async Task<TreinoResponse> HandleAsync(
@@ -22,7 +27,24 @@ public class ObterTreinoHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        // TODO (Fase 5): validar autorização via IUserContext
+        // Validar autorização
+        if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
+        {
+            if (_userContext.IsAluno)
+            {
+                var vinculo = await _treinoAlunoRepository
+                    .ObterAsync(treino.Id, _userContext.PerfilId, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (vinculo is null)
+                    throw new AcessoNegadoException();
+            }
+            else
+            {
+                throw new AcessoNegadoException();
+            }
+        }
+
         _logger.LogInformation("Treino {TreinoId} consultado.", treino.Id);
 
         return TreinoResponseExtensions.ToResponse(treino);

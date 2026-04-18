@@ -17,6 +17,9 @@ public class LoginHandlerTests
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IJwtService> _jwtService = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
+    private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<ISystemUserRepository> _systemUserRepo = new();
     private readonly Mock<ILogger<LoginHandler>> _logger = new();
     private readonly LoginCommandValidator _validator = new();
     private readonly LoginHandler _handler;
@@ -27,6 +30,9 @@ public class LoginHandlerTests
             _contaRepo.Object,
             _jwtService.Object,
             _passwordHasher.Object,
+            _alunoRepo.Object,
+            _treinadorRepo.Object,
+            _systemUserRepo.Object,
             _validator,
             _logger.Object);
     }
@@ -35,10 +41,13 @@ public class LoginHandlerTests
     public async Task HandleAsync_CredenciaisValidas_RetornaToken()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador);
+        var treinador = Treinador.Criar(conta.Id, "João Trainer");
         _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
         _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
-        _jwtService.Setup(j => j.GerarToken(conta, conta.Id)).Returns("token.jwt");
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(treinador);
+        _jwtService.Setup(j => j.GerarToken(conta, treinador.Id)).Returns("token.jwt");
 
         var result = await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
@@ -75,8 +84,8 @@ public class LoginHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conta?)null);
 
-        await Assert.ThrowsAsync<CredenciaisInvalidasException>(() =>
-            _handler.HandleAsync(new LoginCommand("TRAINER@TEST.COM", "senha")));
+        var act = async () => await _handler.HandleAsync(new LoginCommand("TRAINER@TEST.COM", "senha"));
+        await act.Should().ThrowAsync<CredenciaisInvalidasException>();
 
         _contaRepo.Verify(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -100,6 +109,62 @@ public class LoginHandlerTests
     {
         var act = async () => await _handler.HandleAsync(new LoginCommand("a@b.com", ""));
         await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_LoginAluno_PerfilIdEhIdDoAluno()
+    {
+        var conta = Conta.Criar(Email.Criar("aluno@test.com"), "hash", TipoConta.Aluno);
+        var aluno = Aluno.Criar(conta.Id, "João Aluno");
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("aluno@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(aluno);
+        _jwtService.Setup(j => j.GerarToken(conta, aluno.Id)).Returns("token.aluno");
+
+        var result = await _handler.HandleAsync(new LoginCommand("aluno@test.com", "senha123"));
+
+        result.Token.Should().Be("token.aluno");
+        result.TipoConta.Should().Be(TipoConta.Aluno);
+        _jwtService.Verify(j => j.GerarToken(conta, aluno.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_LoginSystemAdmin_PerfilIdEhIdDoSystemUser()
+    {
+        var conta = Conta.Criar(Email.Criar("admin@test.com"), "hash", TipoConta.SystemAdmin);
+        var systemUser = SystemUser.Criar(conta.Id, "Admin");
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("admin@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+        _systemUserRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(systemUser);
+        _jwtService.Setup(j => j.GerarToken(conta, systemUser.Id)).Returns("token.admin");
+
+        var result = await _handler.HandleAsync(new LoginCommand("admin@test.com", "senha123"));
+
+        result.Token.Should().Be("token.admin");
+        result.TipoConta.Should().Be(TipoConta.SystemAdmin);
+        _jwtService.Verify(j => j.GerarToken(conta, systemUser.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaInvalidOperationException()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador);
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Treinador?)null);
+
+        var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
