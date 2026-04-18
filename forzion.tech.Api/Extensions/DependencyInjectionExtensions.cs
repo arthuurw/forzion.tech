@@ -1,0 +1,143 @@
+using System.Text.Json.Serialization;
+using FluentValidation;
+using forzion.tech.Api.Configuration;
+using forzion.tech.Api.Context;
+using forzion.tech.Api.Middleware;
+using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
+using forzion.tech.Application.UseCases.Auth.Login;
+using forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
+using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
+using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
+using forzion.tech.Application.UseCases.Alunos.ObterAluno;
+using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
+using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
+using forzion.tech.Application.UseCases.Treinos.AdicionarExercicio;
+using forzion.tech.Application.UseCases.Treinos.CriarTreino;
+using forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
+using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
+using forzion.tech.Application.UseCases.Treinos.ObterTreino;
+using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
+using forzion.tech.Application.Services;
+using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
+using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
+using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
+using forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
+using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
+using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
+using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
+using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
+using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
+using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
+using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
+using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
+using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
+using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
+using forzion.tech.Infrastructure.DependencyInjection;
+
+namespace forzion.tech.Api.Extensions;
+
+public static class DependencyInjectionExtensions
+{
+    public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
+    {
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails();
+
+        services.AddSwagger();
+        services.AddJwtAuthentication(configuration, environment);
+        services.AddCorsPolicies(configuration);
+        services.AddHealthChecks();
+
+        services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+        services.AddHttpContextAccessor();
+        services.AddScoped<IUserContext, HttpUserContext>();
+
+        if (!environment.IsEnvironment("Test"))
+            services.AddInfrastructure(configuration);
+
+        return services;
+    }
+
+    public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)
+    {
+        services.AddValidatorsFromAssembly(typeof(CadastrarAlunoHandler).Assembly);
+
+        // Serviços de limite
+        services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
+        services.AddScoped<ILimiteFichasService, LimiteFichasService>();
+
+        // Auth / Registro
+        services.AddScoped<LoginHandler>();
+        services.AddScoped<RegistrarTreinadorHandler>();
+        services.AddScoped<RegistrarAlunoHandler>();
+
+        // Admin — Treinadores
+        services.AddScoped<AprovarTreinadorHandler>();
+        services.AddScoped<InativarTreinadorHandler>();
+        services.AddScoped<AtribuirPlanoHandler>();
+
+        // Vínculos
+        services.AddScoped<AprovarVinculoHandler>();
+        services.AddScoped<DesvincularAlunoHandler>();
+
+        // Alunos
+        services.AddScoped<CadastrarAlunoHandler>();
+        services.AddScoped<ObterAlunoHandler>();
+        services.AddScoped<ListarAlunosHandler>();
+        services.AddScoped<AtualizarAlunoHandler>();
+        services.AddScoped<AlterarStatusAlunoHandler>();
+
+        // Exercícios
+        services.AddScoped<CriarExercicioHandler>();
+        services.AddScoped<ListarExerciciosHandler>();
+        services.AddScoped<CopiarExercicioGlobalHandler>();
+
+        // Treinos
+        services.AddScoped<CriarTreinoHandler>();
+        services.AddScoped<ObterTreinoHandler>();
+        services.AddScoped<ListarTreinosHandler>();
+        services.AddScoped<ListarTreinosDoTreinadorHandler>();
+        services.AddScoped<AdicionarExercicioHandler>();
+        services.AddScoped<RemoverExercicioHandler>();
+        services.AddScoped<DuplicarTreinoHandler>();
+        services.AddScoped<RegistrarExecucaoHandler>();
+        services.AddScoped<VincularFichaAoAlunoHandler>();
+
+        // Planos (admin)
+        services.AddScoped<CriarPlanoTreinadorHandler>();
+        services.AddScoped<ListarPlanosTreinadorHandler>();
+
+        // Pacotes (treinador)
+        services.AddScoped<CriarPacoteAlunoHandler>();
+        services.AddScoped<ListarPacotesAlunoHandler>();
+
+        // Aluno (área do aluno)
+        services.AddScoped<ListarFichasAlunoHandler>();
+        services.AddScoped<ListarExecucoesAlunoHandler>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddCorsPolicies(this IServiceCollection services, IConfiguration configuration)
+    {
+        var allowedOrigins = configuration["Cors:AllowedOrigins"]?.Split(';') ?? Array.Empty<string>();
+
+        services.AddCors(options =>
+        {
+            options.AddPolicy("AllowFrontend", builder =>
+                builder
+                    .WithOrigins(allowedOrigins)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
+        });
+
+        return services;
+    }
+}

@@ -1,0 +1,26 @@
+root = true
+
+[*.cs]
+charset = utf-8
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Migrations são geradas automaticamente — suprimir análise
+[**/Migrations/**.cs]
+generated_code = true
+
+# EF Core: Configure(EntityTypeBuilder) e OnModelCreating(ModelBuilder) são overrides de framework.
+# O framework garante que o parâmetro nunca é nulo — CA1062 é falso positivo aqui.
+[**/Persistence/Configurations/**.cs]
+dotnet_diagnostic.CA1062.severity = none
+
+[**/Persistence/AppDbContext.cs]
+dotnet_diagnostic.CA1062.severity = none
+
+# CA1848: LoggerMessage delegates — otimização válida apenas em hot paths.
+# Endpoints de registro não são hot paths; suprimir para evitar boilerplate desnecessário.
+[**/UseCases/**.cs]
+dotnet_diagnostic.CA1848.severity = none
