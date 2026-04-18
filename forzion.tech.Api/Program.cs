@@ -1,19 +1,34 @@
+using forzion.tech.Api.Extensions;
+using forzion.tech.Infrastructure.Seed;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// User Secrets carregados explicitamente em Homolog e Development (local).
+if (builder.Environment.IsEnvironment("Homolog") || builder.Environment.IsDevelopment())
+    builder.Configuration.AddUserSecrets<Program>(optional: true);
+
+// Registro de Serviços
+builder.Services
+    .AddApiServices(builder.Configuration, builder.Environment)
+    .AddApplicationHandlers();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Seed (Homolog e Development apenas)
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Homolog"))
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    using var scope = app.Services.CreateScope();
+    var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+    await seeder.SeedAsync().ConfigureAwait(false);
 }
 
-app.UseHttpsRedirection();
+// Configuração do Pipeline e Rotas
+app.UseApiConfiguration();
+app.MapApiEndpoints();
 
-await app.RunAsync();
+await app.RunAsync().ConfigureAwait(false);
+
+public partial class Program
+{
+    protected Program() { }
+}

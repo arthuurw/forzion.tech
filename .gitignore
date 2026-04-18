@@ -53,4 +53,12 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 /.vs
-/anotacoes.txt
+
+# Secrets / local config
+appsettings.*.json
+!appsettings.json
+/GEMINI.md
+/.claude
+
+# Scripts SQL gerados pontualmente (não versionar)
+migration_public_schema.sql
