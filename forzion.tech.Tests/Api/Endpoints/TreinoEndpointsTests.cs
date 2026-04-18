@@ -81,6 +81,29 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task Get_Obter_TreinoDeOutroTreinador_Retorna403()
+    {
+        _factory.ObterHandlerMock.Setup(h => h.HandleAsync(It.IsAny<ObterTreinoQuery>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new forzion.tech.Domain.Exceptions.AcessoNegadoException());
+
+        var response = await CriarClienteAutenticado().GetAsync($"/treinos/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Post_AdicionarExercicio_TreinoDeOutroTreinador_Retorna403()
+    {
+        _factory.AdicionarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<AdicionarExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new forzion.tech.Domain.Exceptions.AcessoNegadoException());
+
+        var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{Guid.NewGuid()}/exercicios",
+            new { exercicioId = Guid.NewGuid(), series = 3, repeticoes = 10 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     public class TreinoWebFactory : WebApplicationFactory<Program>
     {
         private static readonly IValidator<CriarTreinoCommand> CriarValidator = 
@@ -93,7 +116,9 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<ITreinoRepository>(),
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUserContext>(),
             CriarValidator,
             Mock.Of<ILogger<CriarTreinoHandler>>())
         {
@@ -102,6 +127,8 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
 
         public Mock<ObterTreinoHandler> ObterHandlerMock { get; } = new(
             Mock.Of<ITreinoRepository>(),
+            Mock.Of<ITreinoAlunoRepository>(),
+            Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ObterTreinoHandler>>());
 
         public Mock<AdicionarExercicioHandler> AdicionarHandlerMock { get; } = new(
@@ -109,6 +136,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUserContext>(),
             AdicionarValidator,
             Mock.Of<ILogger<AdicionarExercicioHandler>>())
         {

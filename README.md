@@ -1,20 +1,20 @@
 # forzion.tech — Backend API
 
-ASP.NET Core 8.0 Web API para a plataforma forzion.tech, uma solução de gestão de treinos para personal trainers.
+ASP.NET Core 8.0 Web API para a plataforma forzion.tech, uma solução de gestão de treinos para personal trainers (Treinadores) e seus alunos.
 
-**Status**: ✅ **Pronto para Produção** | **273/273 testes passando** | **95/100 arquitetura** | **Integração Frontend Configurada**
+**Status**: ✅ **Refatoração de Domínio Concluída** | **274/274 testes passando** | **Arquitetura Clean 100%** | **Isolamento por Treinador**
 
 ## Stack
 
 - **Framework**: ASP.NET Core 8.0 / C# 12 com nullable reference types
-- **Banco**: PostgreSQL via Supabase com Row Level Security (RLS)
+- **Banco**: PostgreSQL (Supabase/Local)
 - **ORM**: Entity Framework Core 8.0
-- **Auth**: Supabase Auth (JWT Bearer) + Multi-tenant Isolation
+- **Auth**: JWT Customizado (HMAC-SHA256) com senhas em BCrypt. Sem dependência de provedores externos no core.
 - **CORS**: Habilitado e configurável por ambiente ✅
 - **Health Check**: `GET /health` para monitoramento ✅
 - **Docs**: Swagger/OpenAPI em `/swagger` (Non-Production apenas)
 - **Arquitetura**: Clean Architecture (Api, Application, Domain, Infrastructure)
-- **Testing**: 273 testes (xUnit + Moq + FluentAssertions + WebApplicationFactory)
+- **Testing**: 274 testes (xUnit + Moq + FluentAssertions + WebApplicationFactory)
 
 ## Comandos
 
@@ -31,70 +31,61 @@ dotnet test forzion.tech.Tests
 # Testes com cobertura
 dotnet test forzion.tech.Tests --collect:"XPlat Code Coverage" --settings forzion.tech.Tests/coverage.runsettings
 
-# Migrations — gerar
+# Migrations — gerar (frequênciafresh após refatoração)
 ASPNETCORE_ENVIRONMENT=Homolog dotnet ef migrations add <Nome> --project forzion.tech.Infrastructure --startup-project forzion.tech.Api
 
 # Migrations — aplicar homolog
 ASPNETCORE_ENVIRONMENT=Homolog dotnet ef database update --project forzion.tech.Infrastructure --startup-project forzion.tech.Api
 ```
 
-## Estrutura
+## Estrutura do Projeto
 
 ```
 forzion.tech/
-├── forzion.tech.Api/              # Endpoints, middlewares, configuração (Modular via Extensions)
-├── forzion.tech.Application/      # Casos de uso, interfaces, DTOs
-├── forzion.tech.Domain/           # Entidades, VOs, enums, exceções
-├── forzion.tech.Infrastructure/   # EF Core, repositórios, migrações
-├── forzion.tech.Tests/            # Testes (277, cobertura ~97%)
+├── forzion.tech.Api/              # Endpoints (Minimal APIs), middlewares, IUserContext (HttpUserContext)
+├── forzion.tech.Application/      # Use Cases (Handlers), Interfaces, Services (Limites, JWT, Password)
+├── forzion.tech.Domain/           # Entidades (Conta, Treinador, Aluno, Vinculo, etc.), VOs, Enums, Exceções
+├── forzion.tech.Infrastructure/   # EF Core (DbContext, Configs), Repositórios, Migrações, Seeders
+├── forzion.tech.Tests/            # Testes (Unitários de Domain/Application + Integração de API)
 └── forzion.tech.slnx
 ```
 
 ## Endpoints Principais
 
-| Método | Rota | Descrição | Auth |
-|--------|------|-----------|------|
-| `POST` | `/usuarios/registrar` | Registra perfil pós-auth Supabase. Cria tenant com plano Free. | JWT |
-| `GET` | `/usuarios/me` | Retorna dados do usuário autenticado. | JWT |
-| `PATCH` | `/usuarios/me` | Atualiza nome, fotoUrl (http/https), bio. | JWT |
-| `POST` | `/alunos` | Cadastra um novo aluno no tenant. | JWT |
-| `GET` | `/alunos` | Lista alunos do tenant (paginado). | JWT |
-| `POST` | `/exercicios` | Cadastra um novo exercício na biblioteca do tenant. | JWT |
-| `GET` | `/exercicios` | Lista exercícios da biblioteca (paginado). | JWT |
-| `POST` | `/treinos` | Cria um novo treino para um aluno. | JWT |
-| `GET` | `/treinos/{id}` | Retorna os detalhes de um treino com seus exercícios. | JWT |
-| `GET` | `/alunos/{id}/treinos` | Lista todos os treinos vinculados a um aluno. | JWT |
-| `POST` | `/treinos/{id}/exercicios` | Adiciona um exercício a uma planilha de treino. | JWT |
-| `POST` | `/treinos/{id}/duplicar` | Gera uma cópia exata de um treino existente. | JWT |
-| `POST` | `/treinos/{id}/execucoes` | Registra que um aluno realizou o treino (check-in). | JWT |
+| Categoria | Método | Rota | Descrição |
+|-----------|--------|------|-----------|
+| **Auth** | `POST` | `/auth/login` | Autentica usuário e retorna JWT com claims de Perfil. |
+| **Auth** | `POST` | `/auth/register/treinador` | Cadastro inicial de treinador (aguarda aprovação admin). |
+| **Auth** | `POST` | `/auth/register/aluno` | Cadastro de aluno com vínculo pendente a um treinador. |
+| **Admin** | `POST` | `/admin/treinadores/{id}/aprovar` | Aprova um treinador no sistema. |
+| **Treinador**| `POST` | `/treinador/vinculos/{id}/aprovar` | Aprova vínculo de aluno e define Pacote de Fichas. |
+| **Treinador**| `GET` | `/treinador/alunos` | Lista alunos vinculados ao treinador. |
+| **Treinador**| `POST` | `/treinador/pacotes` | Cria pacotes de fichas (ex: "3 Fichas/mês"). |
+| **Treinador**| `POST` | `/treinador/exercicios/copiar` | Copia exercício da biblioteca global para a privada. |
+| **Treinos** | `POST` | `/treinos` | Cria uma nova ficha de treino. |
+| **Treinos** | `POST` | `/treinos/{id}/vincular-aluno`| Vincula uma ficha existente a um aluno (valida limites). |
+| **Aluno** | `GET` | `/aluno/fichas` | Lista as fichas ativas vinculadas ao aluno logado. |
+| **Aluno** | `POST` | `/aluno/execucoes` | Registra a execução (treino realizado) pelo aluno. |
 
-## Arquitetura
+## Arquitetura e Isolamento
 
-O projeto segue os princípios da **Clean Architecture**, garantindo desacoplamento e testabilidade:
-- **Domain**: Regras de negócio puras, entidades e Value Objects.
-- **Application**: Orquestração de casos de uso e interfaces de infraestrutura.
-- **Infrastructure**: Implementação de acesso a dados (EF Core) e integrações externas.
-- **Api**: Interface HTTP via Minimal APIs, com configuração modular e tratamento global de exceções.
+O projeto foi totalmente refatorado para remover o conceito de "Academia/Tenant" em favor de um isolamento centrado no **Treinador**:
+- **Isolamento de Dados**: Toda entidade de negócio possui um `TreinadorId`. O acesso é validado via `IUserContext` em tempo de execução nos Handlers.
+- **Hierarquia de Contas**:
+    - **SystemAdmin**: Gerencia planos globais e aprova treinadores.
+    - **Treinador**: Gerencia sua biblioteca de exercícios, pacotes de alunos e fichas de treino.
+    - **Aluno**: Visualiza suas fichas e registra execuções.
+- **Vínculos**: Um aluno só pode treinar com um treinador ativo por vez. A inativação de um treinador inativa em cascata todos os seus vínculos e fichas.
 
-## Segurança e Multi-tenancy
+## Qualidade e Segurança
 
-- **Isolamento**: Garantido via `tenant_id` em todas as tabelas de negócio, filtrado automaticamente via Interceptor do EF Core.
-- **RLS**: Row Level Security ativo no PostgreSQL como segunda camada de proteção.
-- **JWT**: Validação rigorosa de tokens do Supabase Auth.
-- **Autorização**: Controle granular baseado em Roles (Admin/Trainer) e status de ativação.
+- **Segurança**: Senhas criptografadas com **BCrypt**. JWT assinado com chave simétrica rotacionável.
+- **Validação de Limites**:
+    - `LimiteTreinadorService`: Bloqueia novos alunos se o treinador atingir o teto do seu plano.
+    - `LimiteFichasService`: Bloqueia novos vínculos de fichas se o aluno atingir o limite do seu pacote contratado.
+- **Testes**: ✅ 274/274 testes automatizados cobrindo fluxos críticos de negócio e segurança.
+- **Logs**: Auditoria via `LogAprovacao` para todas as ações administrativas e de vínculo.
 
-## Qualidade
+## Desenvolvimento e Seed
 
-- **Testes**: ✅ 273/273 testes automatizados passando (100% sucesso)
-- **Cobertura**: ~95% em Domain e Application layers
-- **Logs**: Logging estruturado com 22 pontos críticos em handlers principais
-- **Paginação**: Centralizada em helper reutilizável (DRY principle)
-- **Exception Handling**: Global com mapeamento para HTTP status codes apropriados
-- **Migrations**: 8 migrations em sequência, todas sincronizadas com DbContext
-
-## Branches
-
-| Branch | Descrição |
-|--------|-----------|
-| `main` | Base / produção |
-| `backend` | Desenvolvimento ativo |
+Em ambientes de `Development` e `Homolog`, o sistema executa automaticamente o `DataSeeder` ao iniciar, criando uma conta administrativa padrão (SuperAdmin) baseada nas chaves `Seed:AdminEmail` e `Seed:AdminPassword`.

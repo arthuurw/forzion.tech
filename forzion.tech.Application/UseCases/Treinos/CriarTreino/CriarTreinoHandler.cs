@@ -11,14 +11,18 @@ public class CriarTreinoHandler(
     ITreinoRepository treinoRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
     IAlunoRepository alunoRepository,
+    IVinculoTreinadorAlunoRepository vinculoRepository,
     IUnitOfWork unitOfWork,
+    IUserContext userContext,
     IValidator<CriarTreinoCommand> validator,
     ILogger<CriarTreinoHandler> logger)
 {
     private readonly ITreinoRepository _treinoRepository = treinoRepository;
     private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
     private readonly IAlunoRepository _alunoRepository = alunoRepository;
+    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserContext _userContext = userContext;
     private readonly IValidator<CriarTreinoCommand> _validator = validator;
     private readonly ILogger<CriarTreinoHandler> _logger = logger;
 
@@ -35,12 +39,22 @@ public class CriarTreinoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        // TODO (Fase 5): validar que o aluno pertence ao treinador via IUserContext
+        // Validar autorização
+        if (!_userContext.IsSystemAdmin)
+        {
+            var vinculo = await _vinculoRepository
+                .ObterAtivoAsync(_userContext.PerfilId, command.AlunoId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (vinculo is null)
+                throw new AcessoNegadoException();
+        }
+
         var treino = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId);
-        var vinculo = TreinoAluno.Criar(treino.Id, command.AlunoId);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, command.AlunoId);
 
         await _treinoRepository.AdicionarAsync(treino, cancellationToken).ConfigureAwait(false);
-        await _treinoAlunoRepository.AdicionarAsync(vinculo, cancellationToken).ConfigureAwait(false);
+        await _treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Treino {TreinoId} criado para o aluno {AlunoId}.", treino.Id, command.AlunoId);

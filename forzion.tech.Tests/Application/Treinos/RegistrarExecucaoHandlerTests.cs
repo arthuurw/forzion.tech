@@ -14,6 +14,7 @@ public class RegistrarExecucaoHandlerTests
 {
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
@@ -23,7 +24,8 @@ public class RegistrarExecucaoHandlerTests
     public RegistrarExecucaoHandlerTests()
     {
         _handler = new RegistrarExecucaoHandler(
-            _treinoRepo.Object, _alunoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
+            _treinoRepo.Object, _alunoRepo.Object, _treinoAlunoRepo.Object,
+            _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
     }
 
     private static RegistrarExecucaoCommand ComandoValido(Guid treinoId, Guid alunoId) =>
@@ -35,9 +37,11 @@ public class RegistrarExecucaoHandlerTests
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
         var alunoId = Guid.NewGuid();
         var aluno = Aluno.Criar(alunoId, "João");
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var result = await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
@@ -46,6 +50,38 @@ public class RegistrarExecucaoHandlerTests
         result.AlunoId.Should().Be(alunoId);
         _execucaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<ExecucaoTreino>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinoNaoVinculadoAoAluno_LancaAcessoNegadoException()
+    {
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var alunoId = Guid.NewGuid();
+
+        _userContext.Setup(u => u.PerfilId).Returns(alunoId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((TreinoAluno?)null);
+
+        var act = async () => await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinoVinculadoInativo_LancaAcessoNegadoException()
+    {
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var alunoId = Guid.NewGuid();
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+        treinoAluno.AlterarStatus(TreinoAlunoStatus.Inativo);
+
+        _userContext.Setup(u => u.PerfilId).Returns(alunoId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+
+        var act = async () => await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]
@@ -66,14 +102,35 @@ public class RegistrarExecucaoHandlerTests
     {
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
         var alunoId = Guid.NewGuid();
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
-        
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((Aluno?)null);
 
         var act = async () => await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
 
         await act.Should().ThrowAsync<AlunoNaoEncontradoException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
+    {
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var alunoId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João");
+        aluno.AlterarStatus(AlunoStatus.Inativo);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+
+        _userContext.Setup(u => u.PerfilId).Returns(alunoId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+
+        var act = async () => await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
+
+        await act.Should().ThrowAsync<AlunoInativoException>();
     }
 
     [Fact]

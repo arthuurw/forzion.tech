@@ -6,13 +6,14 @@ using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
 
-// TODO: refatorar — adicionar validação de autorização ao concluir Fase 2 do domínio
 public class AlterarStatusAlunoHandler(
     IAlunoRepository alunoRepository,
+    IUserContext userContext,
     IUnitOfWork unitOfWork,
     ILogger<AlterarStatusAlunoHandler> logger)
 {
     private readonly IAlunoRepository _alunoRepository = alunoRepository;
+    private readonly IUserContext _userContext = userContext;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<AlterarStatusAlunoHandler> _logger = logger;
 
@@ -26,6 +27,10 @@ public class AlterarStatusAlunoHandler(
             .ObterPorIdAsync(command.AlunoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
+
+        // Validação de autorização: apenas SystemAdmin pode alterar status de alunos
+        if (!_userContext.IsSystemAdmin)
+            throw new UnauthorizedAccessException("Apenas administradores do sistema podem alterar o status de alunos.");
 
         aluno.AlterarStatus(command.NovoStatus);
 

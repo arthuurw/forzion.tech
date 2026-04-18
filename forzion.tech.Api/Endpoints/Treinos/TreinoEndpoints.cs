@@ -7,6 +7,7 @@ using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
+using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
@@ -85,9 +86,6 @@ public static class TreinoEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
-using forzion.tech.Application.UseCases.Treinos.AdicionarExercicio;
-...
         group.MapPost("/{id}/vincular-aluno", async (
             Guid id,
             VincularFichaRequest request,

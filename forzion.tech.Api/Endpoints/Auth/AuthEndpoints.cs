@@ -1,6 +1,10 @@
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
+using forzion.tech.Application.UseCases.Pacotes;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Planos;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
 
@@ -61,6 +65,32 @@ public static class AuthEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status409Conflict);
+
+        // --- Endpoints Públicos (para Cadastro) ---
+
+        group.MapGet("/planos", async (
+            ListarPlanosTreinadorHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(cancellationToken);
+            return Results.Ok(result);
+        })
+        .AllowAnonymous()
+        .WithSummary("Lista todos os planos de treinador disponíveis")
+        .Produces<IReadOnlyList<PlanoTreinadorResponse>>();
+
+        group.MapGet("/treinadores/{id:guid}/pacotes", async (
+            Guid id,
+            ListarPacotesAlunoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(id, cancellationToken);
+            return Results.Ok(result);
+        })
+        .AllowAnonymous()
+        .WithSummary("Lista pacotes de um treinador específico (para escolha do aluno no cadastro)")
+        .Produces<IReadOnlyList<PacoteAlunoResponse>>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
         return endpoints;
     }

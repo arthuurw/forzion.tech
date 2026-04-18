@@ -46,12 +46,22 @@ dotnet test forzion.tech.Tests
 # Run tests with coverage report
 dotnet test forzion.tech.Tests --collect:"XPlat Code Coverage" --settings forzion.tech.Tests/coverage.runsettings
 
-# EF Migrations - create new
+# EF Migrations - create new (SEMPRE com Homolog)
 ASPNETCORE_ENVIRONMENT=Homolog dotnet ef migrations add <MigrationName> --project forzion.tech.Infrastructure --startup-project forzion.tech.Api
 
-# EF Migrations - apply to database
+# EF Migrations - apply to homolog
 ASPNETCORE_ENVIRONMENT=Homolog dotnet ef database update --project forzion.tech.Infrastructure --startup-project forzion.tech.Api
+
+# EF Migrations - gerar script para public (produção)
+# dotnet ef database update não funciona para public — migrations têm "homolog" hardcoded.
+# Gerar script, substituir "homolog" por "public" e aplicar via Supabase SQL Editor.
+ASPNETCORE_ENVIRONMENT=Homolog dotnet ef migrations script --idempotent --project forzion.tech.Infrastructure --startup-project forzion.tech.Api --output migration_public_schema.sql
 ```
+
+> ⚠️ **Migrations — armadilhas conhecidas**
+> - `InicioDominio.Up()` contém `DROP TABLE IF EXISTS current_schema().<tabela>` — nunca reaplicar em ambiente com dados
+> - Script `migration_public_schema.sql` na raiz: recria todas as tabelas no schema `public` (idempotente, com DROP CASCADE para tabelas legadas)
+> - Migrations devem ser geradas SEMPRE com `Homolog`. Gerar com outro ambiente causa `RenameTable` indevidos no diff do snapshot
 
 **Swagger/OpenAPI**: Available at `/swagger` (Development and Homolog only)
 **Health Check**: Available at `GET /health` (all environments)

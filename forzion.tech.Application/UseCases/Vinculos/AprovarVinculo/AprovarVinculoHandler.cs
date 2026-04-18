@@ -26,6 +26,10 @@ public class AprovarVinculoHandler(
         if (vinculo.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
 
+        var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
+        if (vinculoAtivo is not null && vinculoAtivo.Id != vinculo.Id)
+            throw new AlunoJaVinculadoException();
+
         await limiteTreinadorService.ValidarAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         vinculo.Aprovar(command.TreinadorId, command.PacoteAlunoId);

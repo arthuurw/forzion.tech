@@ -11,6 +11,7 @@ public class AdicionarExercicioHandler(
     IExercicioRepository exercicioRepository,
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
+    IUserContext userContext,
     IValidator<AdicionarExercicioCommand> validator,
     ILogger<AdicionarExercicioHandler> logger)
 {
@@ -18,6 +19,7 @@ public class AdicionarExercicioHandler(
     private readonly IExercicioRepository _exercicioRepository = exercicioRepository;
     private readonly IExecucaoTreinoRepository _execucaoTreinoRepository = execucaoTreinoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserContext _userContext = userContext;
     private readonly IValidator<AdicionarExercicioCommand> _validator = validator;
     private readonly ILogger<AdicionarExercicioHandler> _logger = logger;
 
@@ -34,7 +36,9 @@ public class AdicionarExercicioHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        // TODO (Fase 5): validar que o treino pertence ao treinador via IUserContext
+        // Validar autorização
+        if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
+            throw new AcessoNegadoException();
 
         var executado = await _execucaoTreinoRepository
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)

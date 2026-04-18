@@ -17,17 +17,20 @@ public class AdicionarExercicioHandlerTests
     private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<AdicionarExercicioHandler>> _logger = new();
     private readonly AdicionarExercicioCommandValidator _validator = new();
     private readonly AdicionarExercicioHandler _handler;
 
     public AdicionarExercicioHandlerTests()
     {
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
         _handler = new AdicionarExercicioHandler(
             _treinoRepo.Object,
             _exercicioRepo.Object,
             _execucaoRepo.Object,
             _unitOfWork.Object,
+            _userContext.Object,
             _validator,
             _logger.Object);
     }
@@ -42,6 +45,7 @@ public class AdicionarExercicioHandlerTests
         var treino = CriarTreino(treinadorId);
         var exercicioId = Guid.NewGuid();
 
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -51,6 +55,23 @@ public class AdicionarExercicioHandlerTests
 
         result.Exercicios.Should().HaveCount(1);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AcessoNegado_LancaAcessoNegadoException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var outroTreinadorId = Guid.NewGuid();
+        var treino = CriarTreino(treinadorId);
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.PerfilId).Returns(outroTreinadorId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+
+        var command = new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), 3, 12, null, null);
+        var act = async () => await _handler.HandleAsync(command);
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]

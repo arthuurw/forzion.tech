@@ -16,18 +16,23 @@ public class CriarTreinoHandlerTests
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<CriarTreinoHandler>> _logger = new();
     private readonly CriarTreinoCommandValidator _validator = new();
     private readonly CriarTreinoHandler _handler;
 
     public CriarTreinoHandlerTests()
     {
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
         _handler = new CriarTreinoHandler(
             _treinoRepo.Object,
             _treinoAlunoRepo.Object,
             _alunoRepo.Object,
+            _vinculoRepo.Object,
             _unitOfWork.Object,
+            _userContext.Object,
             _validator,
             _logger.Object);
     }
@@ -37,7 +42,7 @@ public class CriarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        var aluno = Aluno.Criar(alunoId, "João");
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
@@ -49,6 +54,25 @@ public class CriarTreinoHandlerTests
         _treinoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treino>(), It.IsAny<CancellationToken>()), Times.Once);
         _treinoAlunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<TreinoAluno>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AcessoNegado_LancaAcessoNegadoException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João");
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VinculoTreinadorAluno?)null);
+
+        var command = new CriarTreinoCommand(treinadorId, alunoId, "Treino A", ObjetivoTreino.Hipertrofia);
+        var act = async () => await _handler.HandleAsync(command);
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]

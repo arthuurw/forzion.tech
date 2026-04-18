@@ -74,6 +74,10 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
         {
             CredenciaisInvalidasException ex             => (StatusCodes.Status401Unauthorized,        "Não autorizado",  ex.Message),
             AlunoNaoEncontradoException ex               => (StatusCodes.Status404NotFound,            "Não encontrado",  ex.Message),
+            TreinadorNaoEncontradoException ex           => (StatusCodes.Status404NotFound,            "Não encontrado",  ex.Message),
+            TreinoNaoEncontradoException ex              => (StatusCodes.Status404NotFound,            "Não encontrado",  ex.Message),
+            VinculoNaoEncontradoException ex             => (StatusCodes.Status404NotFound,            "Não encontrado",  ex.Message),
+            ExercicioNaoEncontradoException ex           => (StatusCodes.Status404NotFound,            "Não encontrado",  ex.Message),
             AlunoInativoException ex                     => (StatusCodes.Status403Forbidden,           "Inativo",         ex.Message),
             AcessoNegadoException ex                     => (StatusCodes.Status403Forbidden,           "Acesso negado",   ex.Message),
             DomainException ex                           => (StatusCodes.Status422UnprocessableEntity, "Erro de domínio", ex.Message),

@@ -57,8 +57,6 @@ public static class AuthenticationExtensions
         return services;
     }
 
-    // CA1848: Logs de diagnóstico são ativados apenas em ambientes não-produtivos e não são hot paths.
-#pragma warning disable CA1848
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private static JwtBearerEvents BuildDiagnosticEvents() => new()
     {
@@ -87,5 +85,4 @@ public static class AuthenticationExtensions
             return Task.CompletedTask;
         }
     };
-#pragma warning restore CA1848
 }

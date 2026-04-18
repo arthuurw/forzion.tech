@@ -54,6 +54,59 @@ public class ListarExerciciosHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_PassaTreinadorIdCorretoAoRepositorio_IsolamentoGarantido()
+    {
+        var treinadorId = Guid.NewGuid();
+        var outroTreinadorId = Guid.NewGuid();
+
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Exercicio>)[], 0));
+
+        await _handler.HandleAsync(new ListarExerciciosQuery(treinadorId, 1, 10));
+
+        _exercicioRepo.Verify(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()), Times.Once);
+        _exercicioRepo.Verify(r => r.ListarAsync(outroTreinadorId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorIdDiferente_NaoRetornaExerciciosDeOutroTreinador()
+    {
+        var treinadorA = Guid.NewGuid();
+        var treinadorB = Guid.NewGuid();
+
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorA, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Exercicio>)[Exercicio.Criar("Supino", GrupoMuscular.Peito, treinadorA)], 1));
+
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorB, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Exercicio>)[], 0));
+
+        var resultA = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorA, 1, 10));
+        var resultB = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorB, 1, 10));
+
+        resultA.Items.Should().HaveCount(1);
+        resultB.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task HandleAsync_IncluiExerciciosGlobais_JuntoComDoTreinador()
+    {
+        var treinadorId = Guid.NewGuid();
+        var exercicios = new List<Exercicio>
+        {
+            Exercicio.Criar("Supino Reto", GrupoMuscular.Peito, treinadorId),
+            Exercicio.Criar("Agachamento Livre", GrupoMuscular.Pernas, null)
+        };
+
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Exercicio>)exercicios, 2));
+
+        var result = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorId, 1, 10));
+
+        result.Items.Should().HaveCount(2);
+        result.Total.Should().Be(2);
+    }
+
+    [Fact]
     public async Task HandleAsync_QueryNula_LancaArgumentNullException()
     {
         var act = async () => await _handler.HandleAsync(null!);
