@@ -21,21 +21,28 @@ using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.Services;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
+using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
+using forzion.tech.Application.UseCases.Conta.AlterarSenha;
+using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
+using forzion.tech.Application.UseCases.Conta.ObterPerfil;
 using forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
 using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
 using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
 using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
+using forzion.tech.Application.UseCases.Treinos.ListarFichasDoAluno;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
+using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
+using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Infrastructure.DependencyInjection;
 
 namespace forzion.tech.Api.Extensions;
@@ -76,6 +83,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<LoginHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
+        services.AddScoped<ListarTreinadoresPublicosHandler>();
 
         // Admin — Treinadores
         services.AddScoped<AprovarTreinadorHandler>();
@@ -85,6 +93,7 @@ public static class DependencyInjectionExtensions
         // Vínculos
         services.AddScoped<AprovarVinculoHandler>();
         services.AddScoped<DesvincularAlunoHandler>();
+        services.AddScoped<ListarVinculosHandler>();
 
         // Alunos
         services.AddScoped<CadastrarAlunoHandler>();
@@ -103,6 +112,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ObterTreinoHandler>();
         services.AddScoped<ListarTreinosHandler>();
         services.AddScoped<ListarTreinosDoTreinadorHandler>();
+        services.AddScoped<ListarFichasDoAlunoHandler>();
         services.AddScoped<AdicionarExercicioHandler>();
         services.AddScoped<RemoverExercicioHandler>();
         services.AddScoped<DuplicarTreinoHandler>();
@@ -120,6 +130,12 @@ public static class DependencyInjectionExtensions
         // Aluno (área do aluno)
         services.AddScoped<ListarFichasAlunoHandler>();
         services.AddScoped<ListarExecucoesAlunoHandler>();
+        services.AddScoped<ObterFichaAlunoHandler>();
+
+        // Conta / perfil
+        services.AddScoped<ObterPerfilHandler>();
+        services.AddScoped<AtualizarPerfilHandler>();
+        services.AddScoped<AlterarSenhaHandler>();
 
         return services;
     }

@@ -1,0 +1,47 @@
+"use client";
+import { useEffect } from "react";
+import { Box, Typography, Button } from "@mui/material";
+import ErrorOutlineIcon from "@mui/icons-material/ReportProblem";
+
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
+  return (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 2,
+        px: 2,
+        textAlign: "center",
+      }}
+    >
+      <ErrorOutlineIcon sx={{ fontSize: 64, color: "error.main" }} />
+      <Typography variant="h5" sx={{ fontWeight: 700 }}>
+        Algo deu errado
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Ocorreu um erro inesperado. Tente novamente ou volte para a página inicial.
+      </Typography>
+      <Box sx={{ display: "flex", gap: 2 }}>
+        <Button variant="outlined" onClick={reset}>
+          Tentar novamente
+        </Button>
+        <Button variant="contained" href="/">
+          Início
+        </Button>
+      </Box>
+    </Box>
+  );
+}

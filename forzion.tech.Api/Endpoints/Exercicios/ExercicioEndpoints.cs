@@ -15,9 +15,9 @@ public static class ExercicioEndpoints
         var group = app.MapGroup("/exercicios").WithTags("Exercícios");
 
         group.MapPost("", async (
-            CriarExercicioRequest request,
-            CriarExercicioHandler handler,
-            IUserContext userContext,
+            [FromBody] CriarExercicioRequest request,
+            [FromServices] CriarExercicioHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (userContext.PerfilId == Guid.Empty)
@@ -37,8 +37,8 @@ public static class ExercicioEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         group.MapGet("", async (
-            ListarExerciciosHandler handler,
-            IUserContext userContext,
+            [FromServices] ListarExerciciosHandler handler,
+            [FromServices] IUserContext userContext,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {

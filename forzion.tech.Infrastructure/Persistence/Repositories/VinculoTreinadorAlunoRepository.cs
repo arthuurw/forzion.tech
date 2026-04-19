@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
@@ -32,6 +33,33 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             .Where(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<(IReadOnlyList<VinculoComDetalheAluno> Items, int Total)> ListarComDetalhesAsync(
+        Guid treinadorId, VinculoStatus? status, int pagina, int tamanhoPagina,
+        CancellationToken cancellationToken = default)
+    {
+        var baseQuery =
+            from v in context.VinculosTreinadorAluno
+            join a in context.Alunos on v.AlunoId equals a.Id
+            where v.TreinadorId == treinadorId
+            select new { v, a };
+
+        if (status.HasValue)
+            baseQuery = baseQuery.Where(x => x.v.Status == status.Value);
+
+        var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
+        var raw = await baseQuery
+            .OrderByDescending(x => x.v.CreatedAt)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var items = raw.Select(x => new VinculoComDetalheAluno(x.v, x.a.Nome, x.a.Email))
+            .ToList();
+
+        return (items, total);
+    }
 
     public async Task AdicionarAsync(VinculoTreinadorAluno vinculo, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno.AddAsync(vinculo, cancellationToken).ConfigureAwait(false);

@@ -1,0 +1,44 @@
+import type { NextConfig } from "next";
+import path from "node:path";
+
+const apiUrl =
+  process.env.API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "https://localhost:7220";
+
+const buildCsp = () =>
+  [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // necessário: Next.js hidratação + MUI Emotion
+    "style-src 'self' 'unsafe-inline'",                // necessário: Emotion injeta estilos inline
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    `connect-src 'self' ${apiUrl}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+
+const securityHeaders = [
+  { key: "X-DNS-Prefetch-Control",  value: "on" },
+  { key: "X-Frame-Options",         value: "SAMEORIGIN" },
+  { key: "X-Content-Type-Options",  value: "nosniff" },
+  { key: "Referrer-Policy",         value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy",      value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Content-Security-Policy", value: buildCsp() },
+];
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
+  experimental: {
+    optimizePackageImports: ["@mui/material", "@mui/icons-material"],
+  },
+  async headers() {
+    return [{ source: "/(.*)", headers: securityHeaders }];
+  },
+};
+
+export default nextConfig;

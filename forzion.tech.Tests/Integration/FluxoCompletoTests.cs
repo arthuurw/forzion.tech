@@ -15,13 +15,8 @@ using Moq;
 
 namespace forzion.tech.Tests.Integration;
 
-/// <summary>
-/// Testa o fluxo completo: cadastro → aprovação → vínculo → ficha → execução.
-/// Cada etapa usa os handlers reais com repositórios mockados.
-/// </summary>
 public class FluxoCompletoTests
 {
-    // --- Mocks compartilhados ---
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
@@ -39,18 +34,18 @@ public class FluxoCompletoTests
     public FluxoCompletoTests()
     {
         _passwordHasher.Setup(p => p.Hash(It.IsAny<string>())).Returns("hash_bcrypt");
-        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((global::forzion.tech.Domain.Entities.Conta?)null);
     }
 
     [Fact]
     public async Task FluxoCompleto_CadastroAteExecucao_SucedidoEmCadaEtapa()
     {
-        // -------------------------------------------------------
-        // 1. Registrar treinador
-        // -------------------------------------------------------
         var registrarTreinadorHandler = new RegistrarTreinadorHandler(
-            _contaRepo.Object, _treinadorRepo.Object, _passwordHasher.Object,
-            _unitOfWork.Object, new RegistrarTreinadorCommandValidator(),
+            _contaRepo.Object,
+            _treinadorRepo.Object,
+            _passwordHasher.Object,
+            _unitOfWork.Object,
+            new RegistrarTreinadorCommandValidator(),
             Mock.Of<ILogger<RegistrarTreinadorHandler>>());
 
         var treinadorResult = await registrarTreinadorHandler.HandleAsync(
@@ -59,15 +54,14 @@ public class FluxoCompletoTests
         treinadorResult.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
         _treinadorRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treinador>(), It.IsAny<CancellationToken>()), Times.Once);
 
-        // -------------------------------------------------------
-        // 2. Aprovar treinador (admin)
-        // -------------------------------------------------------
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
         var adminId = Guid.NewGuid();
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var aprovarTreinadorHandler = new AprovarTreinadorHandler(
-            _treinadorRepo.Object, _logRepo.Object, _unitOfWork.Object,
+            _treinadorRepo.Object,
+            _logRepo.Object,
+            _unitOfWork.Object,
             Mock.Of<ILogger<AprovarTreinadorHandler>>());
 
         var treinadorAprovado = await aprovarTreinadorHandler.HandleAsync(
@@ -76,30 +70,31 @@ public class FluxoCompletoTests
         treinadorAprovado.Status.Should().Be(TreinadorStatus.Ativo);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
 
-        // -------------------------------------------------------
-        // 3. Registrar aluno (com vínculo pendente ao treinador)
-        // -------------------------------------------------------
-        _contaRepo.Setup(r => r.ObterPorEmailAsync("aluno@teste.com", It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("aluno@teste.com", It.IsAny<CancellationToken>())).ReturnsAsync((global::forzion.tech.Domain.Entities.Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        var pacoteCadastro = PacoteAluno.Criar(treinador.Id, "Pacote Cadastro", 3, 10);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteCadastro.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacoteCadastro);
 
         var registrarAlunoHandler = new RegistrarAlunoHandler(
-            _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object, _treinadorRepo.Object,
-            _passwordHasher.Object, _unitOfWork.Object,
+            _contaRepo.Object,
+            _alunoRepo.Object,
+            _vinculoRepo.Object,
+            _treinadorRepo.Object,
+            _pacoteRepo.Object,
+            _passwordHasher.Object,
+            _unitOfWork.Object,
             new RegistrarAlunoCommandValidator(),
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         var alunoResult = await registrarAlunoHandler.HandleAsync(
-            new RegistrarAlunoCommand("aluno@teste.com", "senha123", "João", treinador.Id));
+            new RegistrarAlunoCommand("aluno@teste.com", "senha123", "Joao", treinador.Id, pacoteCadastro.Id));
 
         alunoResult.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
         _vinculoRepo.Verify(r => r.AdicionarAsync(It.IsAny<VinculoTreinadorAluno>(), It.IsAny<CancellationToken>()), Times.Once);
 
-        // -------------------------------------------------------
-        // 4. Aprovar vínculo (treinador)
-        // -------------------------------------------------------
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
-        var pacote = PacoteAluno.Criar(treinador.Id, "Pacote Básico", 3, 0);
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
+        var pacote = PacoteAluno.Criar(treinador.Id, "Pacote Basico", 3, 0);
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, pacote.Id);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
 
@@ -111,7 +106,10 @@ public class FluxoCompletoTests
         var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, _planoRepo.Object, _vinculoRepo.Object);
 
         var aprovarVinculoHandler = new AprovarVinculoHandler(
-            _vinculoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
+            _vinculoRepo.Object,
+            limiteService,
+            _logRepo.Object,
+            _unitOfWork.Object,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         var vinculoAprovado = await aprovarVinculoHandler.HandleAsync(
@@ -119,9 +117,6 @@ public class FluxoCompletoTests
 
         vinculoAprovado.Status.Should().Be(VinculoStatus.Ativo);
 
-        // -------------------------------------------------------
-        // 5. Vincular ficha ao aluno (treinador)
-        // -------------------------------------------------------
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id);
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
@@ -134,16 +129,17 @@ public class FluxoCompletoTests
         var limiteFichasService = new LimiteFichasService(_vinculoRepo.Object, _pacoteRepo.Object, _treinoAlunoRepo.Object);
 
         var vincularFichaHandler = new VincularFichaAoAlunoHandler(
-            _treinoRepo.Object, _treinoAlunoRepo.Object, _vinculoRepo.Object,
-            limiteFichasService, _unitOfWork.Object, _userContext.Object,
+            _treinoRepo.Object,
+            _treinoAlunoRepo.Object,
+            _vinculoRepo.Object,
+            limiteFichasService,
+            _unitOfWork.Object,
+            _userContext.Object,
             Mock.Of<ILogger<VincularFichaAoAlunoHandler>>());
 
         await vincularFichaHandler.HandleAsync(new VincularFichaAoAlunoCommand(treino.Id, aluno.Id));
         _treinoAlunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<TreinoAluno>(), It.IsAny<CancellationToken>()), Times.Once);
 
-        // -------------------------------------------------------
-        // 6. Registrar execução (aluno)
-        // -------------------------------------------------------
         var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
@@ -151,12 +147,20 @@ public class FluxoCompletoTests
         _userContext.Setup(u => u.PerfilId).Returns(aluno.Id);
 
         var registrarExecucaoHandler = new RegistrarExecucaoHandler(
-            _treinoRepo.Object, _alunoRepo.Object, _treinoAlunoRepo.Object, _execucaoRepo.Object,
-            _unitOfWork.Object, _userContext.Object,
+            _treinoRepo.Object,
+            _alunoRepo.Object,
+            _treinoAlunoRepo.Object,
+            _execucaoRepo.Object,
+            _unitOfWork.Object,
+            _userContext.Object,
             Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
         var execucao = await registrarExecucaoHandler.HandleAsync(new RegistrarExecucaoCommand(
-            treino.Id, aluno.Id, DateTime.UtcNow, null, []));
+            treino.Id,
+            aluno.Id,
+            DateTime.UtcNow,
+            null,
+            []));
 
         execucao.TreinoId.Should().Be(treino.Id);
         execucao.AlunoId.Should().Be(aluno.Id);

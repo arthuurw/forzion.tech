@@ -11,7 +11,7 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
 
     public async Task<Treino?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.Treinos
-            .Include(t => t.Exercicios)
+            .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
@@ -23,7 +23,7 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
 
         var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await baseQuery
-            .Include(t => t.Exercicios)
+            .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
             .OrderBy(t => t.Nome)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
@@ -45,7 +45,7 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
 
         var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await baseQuery
-            .Include(t => t.Exercicios)
+            .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
             .OrderBy(t => t.Nome)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)

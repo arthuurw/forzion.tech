@@ -18,18 +18,21 @@ public class VinculoTreinadorAluno
 
     private VinculoTreinadorAluno() { }
 
-    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId)
+    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId, Guid? pacoteAlunoId = null)
     {
         if (treinadorId == Guid.Empty)
             throw new DomainException("O identificador do treinador é inválido.");
         if (alunoId == Guid.Empty)
             throw new DomainException("O identificador do aluno é inválido.");
+        if (pacoteAlunoId.HasValue && pacoteAlunoId.Value == Guid.Empty)
+            throw new DomainException("O identificador do pacote é inválido.");
 
         return new VinculoTreinadorAluno
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
             AlunoId = alunoId,
+            PacoteAlunoId = pacoteAlunoId,
             Status = VinculoStatus.AguardandoAprovacao,
             CreatedAt = DateTime.UtcNow
         };
