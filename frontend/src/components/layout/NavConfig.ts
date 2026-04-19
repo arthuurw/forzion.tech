@@ -5,13 +5,13 @@ import ListAltIcon from "@mui/icons-material/ListAlt";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import HistoryIcon from "@mui/icons-material/History";
+import type { ElementType } from "react";
 import type { TipoConta } from "@/types";
 
 export interface NavItem {
   label: string;
   href: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Icon: any;
+  Icon: ElementType;
 }
 
 const adminNav: NavItem[] = [

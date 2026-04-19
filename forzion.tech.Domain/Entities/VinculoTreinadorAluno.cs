@@ -1,10 +1,15 @@
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Domain.Entities;
 
-public class VinculoTreinadorAluno
+public class VinculoTreinadorAluno : IHasDomainEvents
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
     public Guid Id { get; private set; }
     public Guid TreinadorId { get; private set; }
     public Guid AlunoId { get; private set; }
@@ -50,6 +55,7 @@ public class VinculoTreinadorAluno
         AprovadoPorId = aprovadoPorId;
         AprovadoEm = DateTime.UtcNow;
         DataInicio = DateTime.UtcNow;
+        _domainEvents.Add(new VinculoAprovadoEvent(Id, TreinadorId, AlunoId, aprovadoPorId, DateTime.UtcNow));
     }
 
     public void Inativar()

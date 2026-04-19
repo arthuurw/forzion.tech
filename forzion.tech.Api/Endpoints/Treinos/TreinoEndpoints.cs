@@ -1,9 +1,9 @@
+using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.AdicionarExercicio;
 using forzion.tech.Application.UseCases.Treinos.CriarTreino;
 using forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
-using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
@@ -17,7 +17,9 @@ public static class TreinoEndpoints
 {
     public static void MapTreinoEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/treinos").WithTags("Treinos");
+        var group = app.MapGroup("/treinos")
+            .WithTags("Treinos")
+            .AddEndpointFilter<PerfilIdRequiredFilter>();
 
         group.MapPost("", async (
             [FromBody] CriarTreinoRequest request,
@@ -43,12 +45,8 @@ public static class TreinoEndpoints
         group.MapGet("/{id}", async (
             Guid id,
             [FromServices] ObterTreinoHandler handler,
-            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            if (userContext.PerfilId == Guid.Empty)
-                return Results.Unauthorized();
-
             var query = new ObterTreinoQuery(id);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
@@ -58,32 +56,6 @@ public static class TreinoEndpoints
         .Produces<TreinoResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
-        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
-
-        app.MapGet("/alunos/{alunoId}/treinos", async (
-            Guid alunoId,
-            [FromServices] ListarTreinosHandler handler,
-            [FromServices] IUserContext userContext,
-            HttpContext httpContext,
-            CancellationToken cancellationToken) =>
-        {
-            if (userContext.PerfilId == Guid.Empty)
-                return Results.Unauthorized();
-
-            _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
-            _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
-            var p = pagina < 1 ? 1 : pagina;
-            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
-
-            var query = new ListarTreinosQuery(alunoId, p, tp);
-            var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
-        })
-        .RequireAuthorization()
-        .WithTags("Alunos")
-        .WithSummary("Lista treinos de um aluno com paginação")
-        .Produces<ListarTreinosResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/{id}/vincular-aluno", async (
@@ -108,12 +80,8 @@ public static class TreinoEndpoints
             Guid id,
             [FromBody] AdicionarExercicioRequest request,
             [FromServices] AdicionarExercicioHandler handler,
-            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            if (userContext.PerfilId == Guid.Empty)
-                return Results.Unauthorized();
-
             var command = new AdicionarExercicioCommand(
                 id, request.ExercicioId, request.Series, request.Repeticoes, request.Carga, request.Descanso);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
@@ -131,12 +99,8 @@ public static class TreinoEndpoints
             Guid id,
             Guid treinoExercicioId,
             [FromServices] RemoverExercicioHandler handler,
-            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            if (userContext.PerfilId == Guid.Empty)
-                return Results.Unauthorized();
-
             var command = new RemoverExercicioCommand(id, treinoExercicioId);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
@@ -157,11 +121,11 @@ public static class TreinoEndpoints
         {
             var command = new DuplicarTreinoCommand(userContext.PerfilId, id);
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
+            return Results.Created($"/treinos/{response.TreinoId}", response);
         })
         .RequireAuthorization()
         .WithSummary("Duplica um treino (gera uma cópia)")
-        .Produces<TreinoResponse>(StatusCodes.Status200OK)
+        .Produces<TreinoResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
@@ -170,12 +134,8 @@ public static class TreinoEndpoints
             Guid id,
             [FromBody] RegistrarExecucaoRequest request,
             [FromServices] RegistrarExecucaoHandler handler,
-            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            if (userContext.PerfilId == Guid.Empty)
-                return Results.Unauthorized();
-
             var command = new RegistrarExecucaoCommand(
                 id,
                 request.AlunoId,
@@ -184,11 +144,11 @@ public static class TreinoEndpoints
                 request.Exercicios.Select(e => new RegistrarExecucaoItemCommand(e.TreinoExercicioId, e.SeriesExecutadas, e.RepeticoesExecutadas, e.CargaExecutada, e.Observacao)).ToList());
             
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
+            return Results.Created($"/treinos/{id}/execucoes/{response.ExecucaoId}", response);
         })
         .RequireAuthorization()
         .WithSummary("Registra a execução de um treino")
-        .Produces<RegistrarExecucaoResponse>(StatusCodes.Status200OK)
+        .Produces<RegistrarExecucaoResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)

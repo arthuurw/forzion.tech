@@ -55,9 +55,11 @@ public class Exercicio
             GrupoMuscular = grupoMuscular.Value;
 
         if (descricao is not null)
-            Descricao = descricao.Length == 0 ? null : descricao.Length > 500
-                ? throw new DomainException("A descrição deve ter no máximo 500 caracteres.")
-                : descricao;
+        {
+            if (descricao.Length > 500)
+                throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
+            Descricao = descricao.Length == 0 ? null : descricao;
+        }
 
         UpdatedAt = DateTime.UtcNow;
     }

@@ -19,17 +19,27 @@ export async function POST(request: NextRequest) {
 
   const data: LoginResponse = await res.json();
 
-  const cookieOpts = {
-    httpOnly: true,
+  const baseOpts = {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: 60 * 60 * 8, // 8 horas
+    maxAge: 60 * 60 * 8,
   };
 
   const response = NextResponse.json(data);
-  response.cookies.set("token", data.token, cookieOpts);
-  response.cookies.set("tipoConta", data.tipoConta, cookieOpts);
+
+  // httpOnly — apenas para o middleware de rotas do Next.js
+  response.cookies.set("token", data.token, { ...baseOpts, httpOnly: true });
+  response.cookies.set("tipoConta", data.tipoConta, { ...baseOpts, httpOnly: true });
+
+  // Legíveis por JS — para o Axios client-side (Bearer) e AuthContext
+  response.cookies.set("token_access", data.token, { ...baseOpts, httpOnly: false });
+  response.cookies.set("user_data", JSON.stringify({
+    token: data.token,
+    tipoConta: data.tipoConta,
+    contaId: data.contaId,
+    perfilId: data.perfilId,
+  }), { ...baseOpts, httpOnly: false });
 
   return response;
 }

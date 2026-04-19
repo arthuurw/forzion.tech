@@ -7,7 +7,6 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
 using forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
-using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
@@ -73,7 +72,7 @@ public static class DependencyInjectionExtensions
 
     public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)
     {
-        services.AddValidatorsFromAssembly(typeof(CadastrarAlunoHandler).Assembly);
+        services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
 
         // Serviços de limite
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
@@ -96,7 +95,6 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ListarVinculosHandler>();
 
         // Alunos
-        services.AddScoped<CadastrarAlunoHandler>();
         services.AddScoped<ObterAlunoHandler>();
         services.AddScoped<ListarAlunosHandler>();
         services.AddScoped<AtualizarAlunoHandler>();

@@ -17,7 +17,7 @@ public class ContaConfiguration : IEntityTypeConfiguration<Conta>
 
         builder.Property(c => c.Email)
             .HasColumnName("email")
-            .HasConversion(e => e.Value, v => Email.Reconstituir(v))
+            .HasConversion(e => e.Value, v => Email.FromDatabase(v))
             .IsRequired()
             .HasMaxLength(256);
 
