@@ -28,7 +28,7 @@ public class RegistrarTreinadorHandler(
         if (emailExistente is not null)
             throw new EmailJaCadastradoException();
 
-        var conta = Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Treinador);
+        var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Treinador);
         var treinador = Treinador.Criar(conta.Id, command.Nome);
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);

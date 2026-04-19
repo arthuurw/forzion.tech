@@ -20,9 +20,9 @@ public static class TreinoEndpoints
         var group = app.MapGroup("/treinos").WithTags("Treinos");
 
         group.MapPost("", async (
-            CriarTreinoRequest request,
-            CriarTreinoHandler handler,
-            IUserContext userContext,
+            [FromBody] CriarTreinoRequest request,
+            [FromServices] CriarTreinoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var command = new CriarTreinoCommand(
@@ -42,8 +42,8 @@ public static class TreinoEndpoints
 
         group.MapGet("/{id}", async (
             Guid id,
-            ObterTreinoHandler handler,
-            IUserContext userContext,
+            [FromServices] ObterTreinoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (userContext.PerfilId == Guid.Empty)
@@ -62,8 +62,8 @@ public static class TreinoEndpoints
 
         app.MapGet("/alunos/{alunoId}/treinos", async (
             Guid alunoId,
-            ListarTreinosHandler handler,
-            IUserContext userContext,
+            [FromServices] ListarTreinosHandler handler,
+            [FromServices] IUserContext userContext,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
@@ -88,8 +88,8 @@ public static class TreinoEndpoints
 
         group.MapPost("/{id}/vincular-aluno", async (
             Guid id,
-            VincularFichaRequest request,
-            VincularFichaAoAlunoHandler handler,
+            [FromBody] VincularFichaRequest request,
+            [FromServices] VincularFichaAoAlunoHandler handler,
             CancellationToken cancellationToken) =>
         {
             var command = new VincularFichaAoAlunoCommand(id, request.AlunoId);
@@ -106,9 +106,9 @@ public static class TreinoEndpoints
 
         group.MapPost("/{id}/exercicios", async (
             Guid id,
-            AdicionarExercicioRequest request,
-            AdicionarExercicioHandler handler,
-            IUserContext userContext,
+            [FromBody] AdicionarExercicioRequest request,
+            [FromServices] AdicionarExercicioHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (userContext.PerfilId == Guid.Empty)
@@ -130,8 +130,8 @@ public static class TreinoEndpoints
         group.MapDelete("/{id}/exercicios/{treinoExercicioId}", async (
             Guid id,
             Guid treinoExercicioId,
-            RemoverExercicioHandler handler,
-            IUserContext userContext,
+            [FromServices] RemoverExercicioHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (userContext.PerfilId == Guid.Empty)
@@ -151,8 +151,8 @@ public static class TreinoEndpoints
 
         group.MapPost("/{id}/duplicar", async (
             Guid id,
-            DuplicarTreinoHandler handler,
-            IUserContext userContext,
+            [FromServices] DuplicarTreinoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var command = new DuplicarTreinoCommand(userContext.PerfilId, id);
@@ -168,9 +168,9 @@ public static class TreinoEndpoints
 
         group.MapPost("/{id}/execucoes", async (
             Guid id,
-            RegistrarExecucaoRequest request,
-            RegistrarExecucaoHandler handler,
-            IUserContext userContext,
+            [FromBody] RegistrarExecucaoRequest request,
+            [FromServices] RegistrarExecucaoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (userContext.PerfilId == Guid.Empty)

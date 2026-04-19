@@ -6,10 +6,11 @@ namespace forzion.tech.Application.UseCases.Treinos;
 public record TreinoExercicioResponse(
     Guid TreinoExercicioId,
     Guid ExercicioId,
+    string NomeExercicio,
     int Series,
     int Repeticoes,
     decimal? Carga,
-    int? Descanso,
+    int? DescansoSegundos,
     int Ordem);
 
 public record TreinoResponse(
@@ -29,7 +30,14 @@ public static class TreinoResponseExtensions
         treino.Objetivo,
         treino.TreinadorId,
         treino.Exercicios.Select(te => new TreinoExercicioResponse(
-            te.Id, te.ExercicioId, te.Series, te.Repeticoes, te.Carga, te.Descanso, te.Ordem
+            te.Id,
+            te.ExercicioId,
+            te.Exercicio?.Nome ?? string.Empty,
+            te.Series,
+            te.Repeticoes,
+            te.Carga,
+            te.Descanso,
+            te.Ordem
         )).ToList(),
         treino.CreatedAt,
         treino.UpdatedAt);

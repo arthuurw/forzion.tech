@@ -15,6 +15,7 @@ public class RegistrarAlunoHandler(
     IAlunoRepository alunoRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinadorRepository treinadorRepository,
+    IPacoteAlunoRepository pacoteRepository,
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
     IValidator<RegistrarAlunoCommand> validator,
@@ -34,9 +35,15 @@ public class RegistrarAlunoHandler(
         _ = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        var conta = Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Aluno);
+        var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
+            ?? throw new DomainException("Pacote de aluno não encontrado.");
+
+        if (pacote.TreinadorId != command.TreinadorId)
+            throw new DomainException("O pacote informado não pertence ao treinador selecionado.");
+
+        var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Aluno);
         var aluno = Aluno.Criar(conta.Id, command.Nome, null, command.Telefone);
-        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, aluno.Id);
+        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, aluno.Id, command.PacoteId);
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);

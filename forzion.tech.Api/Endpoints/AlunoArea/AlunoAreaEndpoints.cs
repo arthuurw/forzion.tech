@@ -1,7 +1,9 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
+using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
+using Microsoft.AspNetCore.Mvc;
 
 namespace forzion.tech.Api.Endpoints.AlunoArea;
 
@@ -12,19 +14,38 @@ public static class AlunoAreaEndpoints
         var group = endpoints.MapGroup("/aluno").WithTags("Aluno").RequireAuthorization("Aluno");
 
         group.MapGet("/fichas", async (
-            ListarFichasAlunoHandler handler,
-            IUserContext userContext,
+            [FromServices] ListarFichasAlunoHandler handler,
+            [FromServices] IUserContext userContext,
+            HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var result = await handler.HandleAsync(userContext.PerfilId, cancellationToken);
+            _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
+            _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
+            var p = pagina < 1 ? 1 : pagina;
+            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+
+            var result = await handler.HandleAsync(userContext.PerfilId, p, tp, cancellationToken);
             return Results.Ok(result);
         })
         .WithSummary("Lista fichas de treino ativas do aluno")
-        .Produces<IReadOnlyList<FichaAlunoResponse>>();
+        .Produces<ListarFichasAlunoResponse>();
+
+        group.MapGet("/fichas/{treinoAlunoId:guid}", async (
+            Guid treinoAlunoId,
+            [FromServices] ObterFichaAlunoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(treinoAlunoId, userContext.PerfilId, cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithSummary("Obtém o detalhe de uma ficha vinculada ao aluno autenticado")
+        .Produces<FichaAlunoDetalheResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/execucoes", async (
-            ListarExecucoesAlunoHandler handler,
-            IUserContext userContext,
+            [FromServices] ListarExecucoesAlunoHandler handler,
+            [FromServices] IUserContext userContext,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
@@ -40,9 +61,9 @@ public static class AlunoAreaEndpoints
         .Produces<ListarExecucoesAlunoResponse>();
 
         group.MapPost("/execucoes", async (
-            RegistrarExecucaoAlunoRequest request,
-            RegistrarExecucaoHandler handler,
-            IUserContext userContext,
+            [FromBody] RegistrarExecucaoAlunoRequest request,
+            [FromServices] RegistrarExecucaoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var exercicios = request.Exercicios

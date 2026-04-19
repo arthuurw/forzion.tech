@@ -10,6 +10,7 @@ public class RegistrarAlunoCommandValidator : AbstractValidator<RegistrarAlunoCo
         RuleFor(x => x.Senha).NotEmpty().MinimumLength(8).MaximumLength(72);
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(100);
         RuleFor(x => x.TreinadorId).NotEmpty();
+        RuleFor(x => x.PacoteId).NotEmpty();
         RuleFor(x => x.Telefone).MaximumLength(20).When(x => x.Telefone is not null);
     }
 }

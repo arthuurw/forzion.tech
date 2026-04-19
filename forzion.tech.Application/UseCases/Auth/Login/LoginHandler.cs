@@ -62,6 +62,6 @@ public class LoginHandler(
 
         _logger.LogInformation("Login realizado — ContaId: {ContaId} TipoConta: {TipoConta}", conta.Id, conta.TipoConta);
 
-        return new LoginResponse(token, conta.TipoConta, conta.Id);
+        return new LoginResponse(token, conta.TipoConta, conta.Id, perfilId);
     }
 }

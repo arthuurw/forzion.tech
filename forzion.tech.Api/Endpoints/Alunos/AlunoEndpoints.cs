@@ -18,8 +18,8 @@ public static class AlunoEndpoints
 
         group.MapPost("/", async (
             [FromBody] CadastrarAlunoRequest request,
-            CadastrarAlunoHandler handler,
-            IUserContext userContext,
+            [FromServices] CadastrarAlunoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var command = new CadastrarAlunoCommand(
@@ -38,8 +38,8 @@ public static class AlunoEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/", async (
-            ListarAlunosHandler handler,
-            IUserContext userContext,
+            [FromServices] ListarAlunosHandler handler,
+            [FromServices] IUserContext userContext,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
@@ -63,8 +63,8 @@ public static class AlunoEndpoints
 
         group.MapGet("/{id}", async (
             Guid id,
-            ObterAlunoHandler handler,
-            IUserContext userContext,
+            [FromServices] ObterAlunoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (userContext.PerfilId == Guid.Empty)
@@ -85,8 +85,8 @@ public static class AlunoEndpoints
         group.MapPatch("/{id}", async (
             Guid id,
             [FromBody] AtualizarAlunoRequest request,
-            AtualizarAlunoHandler handler,
-            IUserContext userContext,
+            [FromServices] AtualizarAlunoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (userContext.PerfilId == Guid.Empty)
@@ -109,8 +109,8 @@ public static class AlunoEndpoints
         group.MapPatch("/{id}/status", async (
             Guid id,
             [FromBody] AlterarStatusAlunoRequest request,
-            AlterarStatusAlunoHandler handler,
-            IUserContext userContext,
+            [FromServices] AlterarStatusAlunoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var command = new AlterarStatusAlunoCommand(id, request.Status);

@@ -2,7 +2,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 
 namespace forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 
-public record ExecucaoAlunoResponse(Guid ExecucaoId, Guid TreinoId, DateTime DataExecucao, string? Observacao, DateTime CreatedAt);
+public record ExecucaoAlunoResponse(Guid ExecucaoId, Guid TreinoId, Guid AlunoId, DateTime DataExecucao, string? Observacao, DateTime CreatedAt);
 
 public record ListarExecucoesAlunoResponse(IReadOnlyList<ExecucaoAlunoResponse> Items, int Total, int Pagina, int TamanhoPagina);
 
@@ -20,7 +20,7 @@ public class ListarExecucoesAlunoHandler(IExecucaoTreinoRepository execucaoRepos
         var total = await _execucaoRepository.ContarPorAlunoAsync(alunoId, cancellationToken).ConfigureAwait(false);
 
         var items = execucoes
-            .Select(e => new ExecucaoAlunoResponse(e.Id, e.TreinoId, e.DataExecucao, e.Observacao, e.CreatedAt))
+            .Select(e => new ExecucaoAlunoResponse(e.Id, e.TreinoId, e.AlunoId, e.DataExecucao, e.Observacao, e.CreatedAt))
             .ToList();
 
         return new ListarExecucoesAlunoResponse(items, total, pagina, tamanhoPagina);

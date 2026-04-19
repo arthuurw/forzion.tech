@@ -46,4 +46,15 @@ public class SystemUser
         Status = novoStatus;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public void AtualizarNome(string nome)
+    {
+        if (string.IsNullOrWhiteSpace(nome))
+            throw new DomainException("O nome é obrigatório.");
+        if (nome.Trim().Length > 100)
+            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+
+        Nome = nome.Trim();
+        UpdatedAt = DateTime.UtcNow;
+    }
 }
