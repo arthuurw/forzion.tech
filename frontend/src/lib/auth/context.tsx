@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type { LoginResponse, SessionUser, TipoConta } from "@/types";
-import { clearSession, loadSession, saveSession } from "./session";
+import { loadSession } from "./session";
 
 interface AuthContextValue {
   user: SessionUser | null;
@@ -31,24 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = useCallback(
-    (data: LoginResponse) => {
-      const session: SessionUser = {
-        contaId: data.contaId,
-        perfilId: data.perfilId,
-        tipoConta: data.tipoConta,
-        token: data.token,
-      };
-      saveSession(session);
-      setUser(session);
-      router.push(homeRouteFor(data.tipoConta));
-    },
-    [router]
-  );
+  const login = useCallback((data: LoginResponse) => {
+    // Cookies já foram setados pelo route handler (token_access, user_data, token, tipoConta).
+    // Apenas atualiza o estado React para reatividade imediata.
+    setUser({ contaId: data.contaId, perfilId: data.perfilId, tipoConta: data.tipoConta, token: data.token });
+  }, []);
 
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    clearSession();
     setUser(null);
     router.push("/login");
   }, [router]);

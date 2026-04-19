@@ -4,15 +4,17 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import FormTextField from "@/components/forms/FormTextField";
 import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
-import { useAuth } from "@/lib/auth/context";
+import { useAuth, homeRouteFor } from "@/lib/auth/context";
 import { loginSchema, type LoginFormData } from "@/lib/validations/common";
 import type { LoginResponse, ProblemDetails } from "@/types";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +30,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ email: data.email, senha: data.password }),
       });
 
       if (!res.ok) {
@@ -39,6 +41,7 @@ export default function LoginPage() {
 
       const payload: LoginResponse = await res.json();
       login(payload);
+      router.push(homeRouteFor(payload.tipoConta));
     } catch {
       setError("Não foi possível conectar ao servidor.");
     } finally {

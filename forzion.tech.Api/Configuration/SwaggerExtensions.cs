@@ -16,7 +16,7 @@ public static class SwaggerExtensions
                 Scheme = "bearer",
                 BearerFormat = "JWT",
                 In = ParameterLocation.Header,
-                Description = "Cole o JWT do Supabase aqui."
+                Description = "Cole o JWT gerado pelo endpoint POST /auth/login aqui."
             };
 
             options.AddSecurityDefinition("Bearer", scheme);

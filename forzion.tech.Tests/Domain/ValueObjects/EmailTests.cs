@@ -59,9 +59,9 @@ public class EmailTests
     }
 
     [Fact]
-    public void Reconstituir_RetornaEmailSemValidacao()
+    public void FromDatabase_RetornaEmailSemValidacao()
     {
-        var result = Email.Reconstituir("valor-qualquer");
+        var result = Email.FromDatabase("valor-qualquer");
         result.Value.Should().Be("valor-qualquer");
     }
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { AuthProvider } from "@/lib/auth/context";
+import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
 import ThemeRegistry from "@/lib/theme/ThemeRegistry";
 import "@/styles/globals.css";
 
@@ -26,7 +27,9 @@ export default function RootLayout({
       <body>
         <AppRouterCacheProvider>
           <ThemeRegistry>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <SnackbarProvider>{children}</SnackbarProvider>
+            </AuthProvider>
           </ThemeRegistry>
         </AppRouterCacheProvider>
       </body>

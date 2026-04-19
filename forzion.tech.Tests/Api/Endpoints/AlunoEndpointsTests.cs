@@ -9,7 +9,6 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
 using forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
-using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
 using forzion.tech.Domain.Enums;
@@ -49,71 +48,6 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Test", UsuarioId.ToString());
         return client;
-    }
-
-    // --- POST /alunos ---
-
-    [Fact]
-    public async Task Post_Alunos_SemAutenticacao_Retorna401()
-    {
-        var client = _factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/alunos", new { nome = "João" });
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task Post_Alunos_DadosValidos_Retorna201()
-    {
-        _factory.CadastrarHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<CadastrarAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaAluno);
-
-        var response = await CriarClienteAutenticado().PostAsJsonAsync("/alunos",
-            new { nome = "João" });
-
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        response.Headers.Location.Should().NotBeNull();
-    }
-
-    [Fact]
-    public async Task Post_Alunos_NomeVazio_Retorna400()
-    {
-        _factory.CadastrarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CadastrarAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .Returns((CadastrarAlunoCommand c, CancellationToken ct) => throw new FluentValidation.ValidationException(new[] { new FluentValidation.Results.ValidationFailure("Nome", "Nome é obrigatório") }));
-
-        var response = await CriarClienteAutenticado().PostAsJsonAsync("/alunos",
-            new { nome = "" });
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Post_Alunos_NomeMuitoLongo_Retorna400()
-    {
-        _factory.CadastrarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CadastrarAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .Returns((CadastrarAlunoCommand c, CancellationToken ct) => throw new FluentValidation.ValidationException(new[] { new FluentValidation.Results.ValidationFailure("Nome", "Nome muito longo") }));
-
-        var response = await CriarClienteAutenticado().PostAsJsonAsync("/alunos",
-            new { nome = new string('a', 101) });
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Post_Alunos_EmailInvalido_Retorna400()
-    {
-        _factory.CadastrarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CadastrarAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .Returns((CadastrarAlunoCommand c, CancellationToken ct) => throw new FluentValidation.ValidationException(new[] { new FluentValidation.Results.ValidationFailure("Email", "Email inválido") }));
-
-        var response = await CriarClienteAutenticado().PostAsJsonAsync("/alunos",
-            new { nome = "João", email = "invalido" });
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Post_Alunos_TelefoneMuitoLongo_Retorna400()
-    {
-        var response = await CriarClienteAutenticado().PostAsJsonAsync("/alunos",
-            new { nome = "João", telefone = new string('1', 21) });
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     // --- GET /alunos ---
@@ -278,18 +212,6 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
 
     public class AlunoWebFactory : WebApplicationFactory<Program>
     {
-        private static readonly IValidator<CadastrarAlunoCommand> CadastrarValidator = 
-            new CadastrarAlunoCommandValidator();
-
-        public Mock<CadastrarAlunoHandler> CadastrarHandlerMock { get; } = new(
-            Mock.Of<IAlunoRepository>(),
-            Mock.Of<IUnitOfWork>(),
-            CadastrarValidator,
-            Mock.Of<ILogger<CadastrarAlunoHandler>>())
-        {
-            CallBase = true
-        };
-
         public Mock<ObterAlunoHandler> ObterHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
@@ -320,14 +242,12 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<CadastrarAlunoHandler>();
                 services.RemoveAll<ObterAlunoHandler>();
                 services.RemoveAll<ListarAlunosHandler>();
                 services.RemoveAll<AtualizarAlunoHandler>();
                 services.RemoveAll<AlterarStatusAlunoHandler>();
                 services.RemoveAll<IUserContext>();
 
-                services.AddScoped(_ => CadastrarHandlerMock.Object);
                 services.AddScoped(_ => ObterHandlerMock.Object);
                 services.AddScoped(_ => ListarHandlerMock.Object);
                 services.AddScoped(_ => AtualizarHandlerMock.Object);

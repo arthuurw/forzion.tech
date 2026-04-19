@@ -12,8 +12,9 @@ import CheckIcon from "@mui/icons-material/Check";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
+import { isAxiosError } from "axios";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
-import type { TreinoExercicioResponse } from "@/types";
+import type { ProblemDetails, TreinoExercicioResponse } from "@/types";
 
 export default function ExecutarFichaPage() {
   const { fichaId } = useParams<{ fichaId: string }>();
@@ -54,8 +55,15 @@ export default function ExecutarFichaPage() {
       });
       setDone(true);
       setConfirmOpen(false);
-    } catch {
-      setError("Erro ao registrar treino.");
+    } catch (err) {
+      if (isAxiosError(err) && err.response) {
+        const problem = err.response.data as ProblemDetails;
+        if (problem.status === 404) setError("Ficha não encontrada.");
+        else if (problem.status === 422) setError(problem.detail ?? "Dados inválidos para registrar o treino.");
+        else setError("Erro ao registrar treino. Tente novamente.");
+      } else {
+        setError("Erro ao registrar treino.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -198,7 +206,7 @@ export default function ExecutarFichaPage() {
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
-          disabled={currentIndex === 0}
+          disabled={currentIndex === 0 || submitting}
           onClick={() => setCurrentIndex((i) => i - 1)}
         >
           Anterior
@@ -208,6 +216,7 @@ export default function ExecutarFichaPage() {
           <Button
             variant="contained"
             endIcon={<ArrowForwardIcon />}
+            disabled={submitting}
             onClick={() => setCurrentIndex((i) => i + 1)}
           >
             Próximo
@@ -229,14 +238,15 @@ export default function ExecutarFichaPage() {
         {exercicios.map((_, i) => (
           <Box
             key={i}
-            onClick={() => setCurrentIndex(i)}
+            onClick={() => !submitting && setCurrentIndex(i)}
             sx={{
               width: 8,
               height: 8,
               borderRadius: "50%",
               bgcolor: i === currentIndex ? "primary.main" : i < currentIndex ? "success.main" : "grey.300",
-              cursor: "pointer",
+              cursor: submitting ? "default" : "pointer",
               transition: "background-color 0.2s",
+              opacity: submitting ? 0.5 : 1,
             }}
           />
         ))}

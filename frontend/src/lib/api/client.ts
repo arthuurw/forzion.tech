@@ -7,18 +7,15 @@ export const apiClient = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+function getTokenFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(^| )token_access=([^;]+)/);
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 apiClient.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const raw = sessionStorage.getItem("forzion_user");
-    if (raw) {
-      try {
-        const user = JSON.parse(raw);
-        if (user?.token) config.headers.Authorization = `Bearer ${user.token}`;
-      } catch {
-        // sessão corrompida — ignora
-      }
-    }
-  }
+  const token = getTokenFromCookie();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 

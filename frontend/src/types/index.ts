@@ -13,19 +13,14 @@ export type ObjetivoTreino =
   | "Condicionamento";
 
 // Auth
-export interface SessionUser {
-  contaId: string;
-  perfilId: string;
-  tipoConta: TipoConta;
-  token: string;
-}
-
 export interface LoginResponse {
   token: string;
   tipoConta: TipoConta;
   contaId: string;
   perfilId: string;
 }
+
+export type SessionUser = LoginResponse;
 
 // Aluno
 export interface AlunoResponse {
