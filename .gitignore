@@ -59,6 +59,8 @@ appsettings.*.json
 !appsettings.json
 /GEMINI.md
 /.claude
+/PROJECT_CONTEXT.md
+/docs
 
 # Scripts SQL gerados pontualmente (não versionar)
 migration_public_schema.sql

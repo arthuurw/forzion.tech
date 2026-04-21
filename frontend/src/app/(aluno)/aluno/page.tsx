@@ -39,10 +39,10 @@ export default function DashboardAlunoPage() {
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Bem-vindo!
+        Meus treinos
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Aqui está um resumo dos seus treinos.
+        Acompanhe sua evolução e acesse suas fichas de treino.
       </Typography>
 
       <AlertBanner open={!!error} message={error} />
@@ -63,7 +63,7 @@ export default function DashboardAlunoPage() {
                     {totalFichas}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Fichas de treino
+                    Fichas disponíveis
                   </Typography>
                 </Box>
               </CardContent>
@@ -85,7 +85,7 @@ export default function DashboardAlunoPage() {
                     {totalExecucoes}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Treinos realizados
+                    Sessões realizadas
                   </Typography>
                 </Box>
               </CardContent>
@@ -97,12 +97,12 @@ export default function DashboardAlunoPage() {
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
         <Link href="/aluno/fichas" style={{ textDecoration: "none" }}>
           <Button variant="contained" startIcon={<FitnessCenterIcon />}>
-            Ver minhas fichas
+            Acessar fichas
           </Button>
         </Link>
         <Link href="/aluno/historico" style={{ textDecoration: "none" }}>
           <Button variant="outlined" startIcon={<HistoryIcon />}>
-            Ver histórico
+            Histórico de sessões
           </Button>
         </Link>
       </Box>

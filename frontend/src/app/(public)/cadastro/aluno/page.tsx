@@ -128,11 +128,11 @@ export default function CadastroAlunoPage() {
       <Paper elevation={0} variant="outlined" sx={{ p: 4, textAlign: "center" }}>
         <CheckCircleOutlineIcon sx={{ fontSize: 56, color: "primary.main", mb: 2 }} />
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-          Cadastro enviado!
+          Solicitação de vínculo enviada
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Seu vinculo com <strong>{selectedTreinador?.nome}</strong> aguarda aprovacao.
-          Voce ja pode entrar na plataforma.
+          Seu vínculo com <strong>{selectedTreinador?.nome}</strong> está aguardando aprovação.
+          Após a confirmação, você terá acesso às fichas de treino.
         </Typography>
         <Link href="/login" style={{ textDecoration: "none" }}>
           <Button variant="contained" color="primary">Ir para o login</Button>
@@ -147,7 +147,7 @@ export default function CadastroAlunoPage() {
         Criar conta como aluno
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Escolha seu treinador e pacote para comecar.
+        Selecione seu treinador e o plano de atendimento para iniciar.
       </Typography>
 
       <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
@@ -205,7 +205,7 @@ export default function CadastroAlunoPage() {
             <LoadingSpinner />
           ) : pacotes.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              Nenhum pacote disponivel para este treinador.
+              Este treinador não possui planos de atendimento disponíveis no momento.
             </Typography>
           ) : (
             <Stack spacing={1.5}>

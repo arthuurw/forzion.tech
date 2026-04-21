@@ -2,8 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  Box, Typography, Card, Chip, Stack, Button,
-  Table, TableHead, TableRow, TableCell, TableBody, IconButton,
+  Box, Typography, Card, Chip, Stack, Button, IconButton,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -11,7 +10,17 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import StatusChip from "@/components/ui/StatusChip";
+import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
+
+const COLUMNS: Column[] = [
+  { label: "#", mobileRole: "hidden" },
+  { label: "Exercício", mobileRole: "primary" },
+  { label: "Séries" },
+  { label: "Reps" },
+  { label: "Carga (kg)" },
+  { label: "Descanso (s)" },
+];
 
 export default function DetalheFichaAlunoPage() {
   const { fichaId } = useParams<{ fichaId: string }>();
@@ -71,34 +80,21 @@ export default function DetalheFichaAlunoPage() {
         {ficha.exercicios.length === 0 ? (
           <EmptyState message="Nenhum exercício nesta ficha." />
         ) : (
-          <Box sx={{ overflowX: "auto" }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 600 }}>#</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Exercício</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Séries</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Reps</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Carga (kg)</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Descanso (s)</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ficha.exercicios.map((ex, i) => (
-                  <TableRow key={ex.treinoExercicioId} hover>
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary">{i + 1}</Typography>
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 500 }}>{ex.nomeExercicio}</TableCell>
-                    <TableCell>{ex.series}</TableCell>
-                    <TableCell>{ex.repeticoes}</TableCell>
-                    <TableCell>{ex.carga ?? "—"}</TableCell>
-                    <TableCell>{ex.descansoSegundos ?? "—"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Box>
+          <ResponsiveTable
+            columns={COLUMNS}
+            rows={ficha.exercicios}
+            rowKey={(ex) => ex.treinoExercicioId}
+            renderCell={(ex, i, rowIndex) => {
+              if (i === 0) return (
+                <Typography variant="caption" color="text.secondary">{rowIndex + 1}</Typography>
+              );
+              if (i === 1) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{ex.nomeExercicio}</Typography>;
+              if (i === 2) return ex.series;
+              if (i === 3) return ex.repeticoes;
+              if (i === 4) return ex.carga ?? "—";
+              return ex.descansoSegundos ?? "—";
+            }}
+          />
         )}
       </Card>
     </Box>

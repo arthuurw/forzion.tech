@@ -23,23 +23,16 @@ export async function POST(request: NextRequest) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: 60 * 60 * 8,
+    // sem maxAge → session cookie, expira ao fechar o browser
   };
 
   const response = NextResponse.json(data);
 
-  // httpOnly — apenas para o middleware de rotas do Next.js
+  // httpOnly — para o middleware de rotas do Next.js (decodifica JWT para extrair tipoConta)
   response.cookies.set("token", data.token, { ...baseOpts, httpOnly: true });
-  response.cookies.set("tipoConta", data.tipoConta, { ...baseOpts, httpOnly: true });
 
-  // Legíveis por JS — para o Axios client-side (Bearer) e AuthContext
+  // Legível por JS — para o Axios client-side (Bearer) e AuthContext (decodifica claims do payload)
   response.cookies.set("token_access", data.token, { ...baseOpts, httpOnly: false });
-  response.cookies.set("user_data", JSON.stringify({
-    token: data.token,
-    tipoConta: data.tipoConta,
-    contaId: data.contaId,
-    perfilId: data.perfilId,
-  }), { ...baseOpts, httpOnly: false });
 
   return response;
 }

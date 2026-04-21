@@ -13,7 +13,7 @@ const buildCsp = () =>
     "style-src 'self' 'unsafe-inline'",                // necessário: Emotion injeta estilos inline
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    `connect-src 'self' ${apiUrl}`,
+    "connect-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -35,6 +35,14 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["@mui/material", "@mui/icons-material"],
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/backend/:path*",
+        destination: `${apiUrl}/:path*`,
+      },
+    ];
   },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];

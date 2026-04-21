@@ -3,8 +3,10 @@ using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
 using forzion.tech.Application.UseCases.Exercicios;
+using forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
+using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Application.UseCases.Pacotes;
 using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
@@ -18,6 +20,7 @@ using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
+using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
@@ -39,7 +42,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AprovarVinculoCommand(id, userContext.PerfilId, request.PacoteAlunoId), cancellationToken);
+                new AprovarVinculoCommand(id, userContext.PerfilId, request.PacoteAlunoId, request.TrarFichas), cancellationToken);
 
             return Results.Ok(result);
         })
@@ -64,6 +67,23 @@ public static class TreinadorEndpoints
         .WithSummary("Desvincula um aluno do treinador")
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPost("/alunos/{alunoId:guid}/reativar", async (
+            Guid alunoId,
+            [FromBody] ReativarVinculoRequest request,
+            [FromServices] ReativarVinculoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new ReativarVinculoCommand(userContext.PerfilId, alunoId, request.PacoteAlunoId), cancellationToken);
+
+            return Results.Ok(result);
+        })
+        .WithSummary("Reativa um aluno inativo criando um novo vínculo aprovado")
+        .Produces<VinculoResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         // --- Alunos ---
 
@@ -177,16 +197,29 @@ public static class TreinadorEndpoints
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
-            _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
+            var q = httpContext.Request.Query;
+            _ = int.TryParse(q["pagina"], out var pagina);
+            _ = int.TryParse(q["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var apenasGlobal = q["global"].ToString() == "true";
+            _ = Enum.TryParse<forzion.tech.Domain.Enums.GrupoMuscular>(q["grupoMuscular"], out var grupo);
+            var hasGrupo = q.ContainsKey("grupoMuscular");
+            var nome = q["nome"].ToString();
+            var ordenarPor = q["ordenarPor"].ToString();
 
-            var query = new ListarExerciciosQuery(userContext.PerfilId, p, tp);
+            // apenasGlobal=true → só globais; senão → próprios + globais
+            Guid? treinadorId = apenasGlobal ? null : userContext.PerfilId;
+
+            var query = new ListarExerciciosQuery(treinadorId, p, tp,
+                string.IsNullOrEmpty(nome) ? null : nome,
+                hasGrupo ? grupo : null,
+                string.IsNullOrEmpty(ordenarPor) ? "nome" : ordenarPor);
+
             var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         })
-        .WithSummary("Lista exercícios do treinador (próprios + globais)")
+        .WithSummary("Lista exercícios do treinador (próprios + globais). global=true retorna apenas globais.")
         .Produces<ListarExerciciosResponse>();
 
         group.MapPost("/exercicios", async (
@@ -221,6 +254,38 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
+        group.MapPatch("/exercicios/{id:guid}", async (
+            Guid id,
+            [FromBody] AtualizarExercicioTreinadorRequest request,
+            [FromServices] AtualizarExercicioHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new AtualizarExercicioCommand(id, userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao),
+                cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithSummary("Atualiza exercício da biblioteca do treinador")
+        .Produces<ExercicioResponse>()
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/exercicios/{id:guid}", async (
+            Guid id,
+            [FromServices] ExcluirExercicioHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            await handler.HandleAsync(new ExcluirExercicioCommand(id, userContext.PerfilId), cancellationToken);
+            return Results.NoContent();
+        })
+        .WithSummary("Exclui exercício da biblioteca do treinador")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         // --- Pacotes ---
 
         group.MapGet("/pacotes", async (
@@ -254,7 +319,9 @@ public static class TreinadorEndpoints
     }
 }
 
-public record AprovarVinculoRequest(Guid PacoteAlunoId);
+public record AprovarVinculoRequest(Guid PacoteAlunoId, bool TrarFichas = false);
+public record ReativarVinculoRequest(Guid PacoteAlunoId);
 public record DesvincularAlunoRequest(string? Observacao = null);
 public record CriarExercicioTreinadorRequest(string Nome, GrupoMuscular GrupoMuscular, string? Descricao = null);
+public record AtualizarExercicioTreinadorRequest(string? Nome, GrupoMuscular? GrupoMuscular, string? Descricao);
 public record CriarPacoteAlunoRequest(string Nome, int MaxFichas, decimal Preco);

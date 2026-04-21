@@ -107,6 +107,8 @@ public class FluxoCompletoTests
 
         var aprovarVinculoHandler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
+            _treinoAlunoRepo.Object,
+            _treinoRepo.Object,
             limiteService,
             _logRepo.Object,
             _unitOfWork.Object,

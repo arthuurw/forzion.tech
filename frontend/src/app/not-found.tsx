@@ -23,7 +23,7 @@ export default function NotFound() {
         Página não encontrada
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        O endereço que você acessou não existe ou foi removido.
+        A página que você tentou acessar não está disponível ou foi removida.
       </Typography>
       <Button variant="contained" href="/">
         Voltar ao início

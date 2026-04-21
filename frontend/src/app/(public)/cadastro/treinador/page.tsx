@@ -53,10 +53,10 @@ export default function CadastroTreinadorPage() {
       <Paper elevation={0} variant="outlined" sx={{ p: 4, textAlign: "center" }}>
         <CheckCircleOutlineIcon sx={{ fontSize: 56, color: "primary.main", mb: 2 }} />
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-          Cadastro recebido!
+          Solicitação enviada
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Sua conta está em análise. Você será notificado quando for aprovado pelo administrador.
+          Seu cadastro está em análise. Você receberá o acesso assim que for validado pela equipe.
         </Typography>
         <Link href="/login" style={{ textDecoration: "none" }}>
           <Button variant="contained" color="primary">
@@ -70,10 +70,10 @@ export default function CadastroTreinadorPage() {
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Criar conta como treinador
+        Criar conta profissional
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Após o cadastro, sua conta passará por aprovação.
+        Após o envio, seu cadastro passará por validação antes da liberação do acesso.
       </Typography>
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />

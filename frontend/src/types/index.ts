@@ -109,6 +109,14 @@ export interface PlanoTreinadorResponse {
   updatedAt?: string | null;
 }
 
+// Grupo Muscular
+export interface GrupoMuscularResponse {
+  id: string;
+  nome: string;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 // Pacote Aluno
 export interface PacoteAlunoResponse {
   pacoteId: string;
@@ -129,6 +137,21 @@ export interface ExecucaoTreinoResponse {
   dataExecucao: string;
   observacao: string | null;
   createdAt: string;
+}
+
+// Vínculo do aluno (GET /aluno/vinculo)
+export interface VinculoAlunoItemResponse {
+  vinculoId: string;
+  treinadorId: string;
+  nomeTreinador: string;
+  status: VinculoStatus;
+  dataInicio: string | null;
+  createdAt: string;
+}
+
+export interface MeuVinculoResponse {
+  vinculoAtivo: VinculoAlunoItemResponse | null;
+  vinculoPendente: VinculoAlunoItemResponse | null;
 }
 
 // Paginação

@@ -44,17 +44,17 @@ export default function DashboardTreinadorPage() {
 
   const cards = [
     { label: "Alunos ativos", value: totalAlunos, Icon: PeopleIcon, href: "/treinador/alunos" },
-    { label: "Aguardando aprovação", value: pendentes.length, Icon: HourglassEmptyIcon, href: "/treinador/alunos" },
-    { label: "Fichas criadas", value: totalFichas, Icon: ListAltIcon, href: "/treinador/treinos" },
+    { label: "Vínculos pendentes", value: pendentes.length, Icon: HourglassEmptyIcon, href: "/treinador/alunos" },
+    { label: "Fichas de treino", value: totalFichas, Icon: ListAltIcon, href: "/treinador/treinos" },
   ];
 
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-        Olá, {user?.tipoConta === "Treinador" ? "Treinador" : ""}!
+        Painel do treinador
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Aqui está um resumo da sua área.
+        Visão geral da sua operação
       </Typography>
 
       <AlertBanner open={!!error} message={error} />
@@ -83,7 +83,7 @@ export default function DashboardTreinadorPage() {
         <Card variant="outlined">
           <CardContent>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>Vínculos pendentes</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>Vínculos aguardando aprovação</Typography>
               <Link href="/treinador/alunos" style={{ textDecoration: "none" }}>
                 <Button size="small" variant="outlined">Ver alunos</Button>
               </Link>

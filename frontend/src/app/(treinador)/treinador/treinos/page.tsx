@@ -1,8 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import {
-  Box, Typography, Card, Table, TableHead, TableRow, TableCell, TableBody,
-  TablePagination, Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  Box, Typography, Card, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   Stack, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip, Autocomplete,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -11,11 +10,20 @@ import { useRouter } from "next/navigation";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
 import type { TreinoResponse, ObjetivoTreino, AlunoResponse } from "@/types";
 
 const OBJETIVOS: ObjetivoTreino[] = [
   "Hipertrofia", "Emagrecimento", "Resistencia", "Forca", "Flexibilidade", "Condicionamento",
+];
+
+const COLUMNS: Column[] = [
+  { label: "Nome" },
+  { label: "Objetivo" },
+  { label: "Exercícios" },
+  { label: "Criado em" },
+  { label: "Ações", align: "right" },
 ];
 
 export default function TreinosTreinadorPage() {
@@ -93,66 +101,44 @@ export default function TreinosTreinadorPage() {
           <LoadingSpinner />
         ) : fichas.length === 0 ? (
           <EmptyState
-            message="Nenhuma ficha criada ainda."
+            message="Nenhuma ficha cadastrada. Crie a primeira para começar a prescrever treinos."
             actionLabel="Criar primeira ficha"
             onAction={openDialog}
           />
         ) : (
-          <>
-            <Box sx={{ overflowX: "auto" }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Nome</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Objetivo</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Exercícios</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Criado em</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>Ações</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {fichas.map((f) => (
-                    <TableRow
-                      key={f.treinoId}
-                      hover
-                      sx={{ cursor: "pointer" }}
-                      onClick={() => router.push(`/treinador/treinos/${f.treinoId}`)}
-                    >
-                      <TableCell sx={{ fontWeight: 500 }}>{f.nome}</TableCell>
-                      <TableCell>{f.objetivo}</TableCell>
-                      <TableCell>{f.exercicios.length}</TableCell>
-                      <TableCell>
-                        <Typography variant="caption">
-                          {new Date(f.createdAt).toLocaleDateString("pt-BR")}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right" onClick={(e) => e.stopPropagation()}>
-                        <Tooltip title="Abrir ficha">
-                          <IconButton
-                            size="small"
-                            onClick={() => router.push(`/treinador/treinos/${f.treinoId}`)}
-                          >
-                            <OpenInNewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-            <TablePagination
-              component="div"
-              count={total}
-              page={page}
-              rowsPerPage={pageSize}
-              onPageChange={(_, p) => setPage(p)}
-              onRowsPerPageChange={(e) => { setPageSize(+e.target.value); setPage(0); }}
-              rowsPerPageOptions={[5, 10, 25]}
-              labelRowsPerPage="Por página:"
-              labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
-            />
-          </>
+          <ResponsiveTable
+            columns={COLUMNS}
+            rows={fichas}
+            rowKey={(f) => f.treinoId}
+            onRowClick={(f) => router.push(`/treinador/treinos/${f.treinoId}`)}
+            pagination={{
+              count: total,
+              page,
+              rowsPerPage: pageSize,
+              onPageChange: setPage,
+              onRowsPerPageChange: (size) => { setPageSize(size); setPage(0); },
+            }}
+            renderCell={(f, i) => {
+              if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{f.nome}</Typography>;
+              if (i === 1) return f.objetivo;
+              if (i === 2) return f.exercicios.length;
+              if (i === 3) return (
+                <Typography variant="caption">
+                  {new Date(f.createdAt).toLocaleDateString("pt-BR")}
+                </Typography>
+              );
+              return (
+                <Tooltip title="Abrir ficha">
+                  <IconButton
+                    size="small"
+                    onClick={() => router.push(`/treinador/treinos/${f.treinoId}`)}
+                  >
+                    <OpenInNewIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              );
+            }}
+          />
         )}
       </Card>
 
@@ -165,14 +151,14 @@ export default function TreinosTreinadorPage() {
               getOptionLabel={(a) => a.nome}
               value={selectedAluno}
               onChange={(_, v) => setSelectedAluno(v)}
-              noOptionsText="Nenhum aluno ativo disponivel"
+              noOptionsText="Nenhum aluno ativo na carteira"
               renderInput={(params) => (
                 <TextField
                   {...params}
                   label="Aluno"
                   size="small"
                   required
-                  helperText="A ficha sera criada ja vinculada ao aluno selecionado."
+                  helperText="A ficha será automaticamente vinculada ao aluno selecionado."
                 />
               )}
             />
@@ -199,7 +185,7 @@ export default function TreinosTreinadorPage() {
             </FormControl>
             {alunos.length === 0 && (
               <Typography variant="caption" color="text.secondary">
-                Antes de criar fichas, aprove e ative pelo menos um aluno.
+                Para criar fichas vinculadas, é necessário ter ao menos um aluno ativo na sua carteira.
               </Typography>
             )}
           </Stack>

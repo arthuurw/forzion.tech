@@ -1,14 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  Box, Typography, Card, CardContent, Grid, Button,
+  Box, Typography, Card, CardContent, CardActions, Grid, Button,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Stack,
+  TextField, Stack, IconButton, Tooltip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { adminApi } from "@/lib/api/admin";
 import type { PlanoTreinadorResponse } from "@/types";
 
@@ -17,11 +20,21 @@ export default function PlanosAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [open, setOpen] = useState(false);
+
+  const [criarOpen, setCriarOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [maxAlunos, setMaxAlunos] = useState("");
   const [preco, setPreco] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [editPlano, setEditPlano] = useState<PlanoTreinadorResponse | null>(null);
+  const [editNome, setEditNome] = useState("");
+  const [editMaxAlunos, setEditMaxAlunos] = useState("");
+  const [editPreco, setEditPreco] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [confirmExcluir, setConfirmExcluir] = useState<PlanoTreinadorResponse | null>(null);
+  const [loadingExcluir, setLoadingExcluir] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -43,10 +56,8 @@ export default function PlanosAdminPage() {
     try {
       await adminApi.criarPlano(nome.trim(), Number(maxAlunos), Number(preco));
       setSuccess(`Plano "${nome}" criado.`);
-      setOpen(false);
-      setNome("");
-      setMaxAlunos("");
-      setPreco("");
+      setCriarOpen(false);
+      setNome(""); setMaxAlunos(""); setPreco("");
       load();
     } catch {
       setError("Erro ao criar plano.");
@@ -55,11 +66,52 @@ export default function PlanosAdminPage() {
     }
   };
 
+  const openEdit = (p: PlanoTreinadorResponse) => {
+    setEditPlano(p);
+    setEditNome(p.nome);
+    setEditMaxAlunos(String(p.maxAlunos));
+    setEditPreco(String(p.preco));
+  };
+
+  const handleEditar = async () => {
+    if (!editPlano) return;
+    setSavingEdit(true);
+    try {
+      await adminApi.atualizarPlano(editPlano.planoId, {
+        nome: editNome.trim() || undefined,
+        maxAlunos: editMaxAlunos ? Number(editMaxAlunos) : undefined,
+        preco: editPreco !== "" ? Number(editPreco) : undefined,
+      });
+      setSuccess(`Plano "${editNome}" atualizado.`);
+      setEditPlano(null);
+      load();
+    } catch {
+      setError("Erro ao atualizar plano.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleExcluir = async () => {
+    if (!confirmExcluir) return;
+    setLoadingExcluir(true);
+    try {
+      await adminApi.excluirPlano(confirmExcluir.planoId);
+      setSuccess(`Plano "${confirmExcluir.nome}" excluído.`);
+      setConfirmExcluir(null);
+      load();
+    } catch {
+      setError("Erro ao excluir plano.");
+    } finally {
+      setLoadingExcluir(false);
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>Planos</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCriarOpen(true)}>
           Novo plano
         </Button>
       </Box>
@@ -73,7 +125,7 @@ export default function PlanosAdminPage() {
         <EmptyState
           message="Nenhum plano cadastrado."
           actionLabel="Criar primeiro plano"
-          onAction={() => setOpen(true)}
+          onAction={() => setCriarOpen(true)}
         />
       ) : (
         <Grid container spacing={2}>
@@ -82,64 +134,74 @@ export default function PlanosAdminPage() {
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>{p.nome}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Até {p.maxAlunos} alunos
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    R$ {Number(p.preco).toFixed(2)}
-                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Até {p.maxAlunos} alunos</Typography>
+                  <Typography variant="body2" color="text.secondary">R$ {Number(p.preco).toFixed(2)}</Typography>
                 </CardContent>
+                <CardActions sx={{ justifyContent: "flex-end", pt: 0 }}>
+                  <Tooltip title="Editar">
+                    <IconButton size="small" onClick={() => openEdit(p)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Excluir">
+                    <IconButton size="small" color="error" onClick={() => setConfirmExcluir(p)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </CardActions>
               </Card>
             </Grid>
           ))}
         </Grid>
       )}
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
+      {/* Criar */}
+      <Dialog open={criarOpen} onClose={() => setCriarOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Novo plano</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField
-              label="Nome"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              size="small"
-              fullWidth
-              required
-            />
-            <TextField
-              label="Máximo de alunos"
-              type="number"
-              value={maxAlunos}
-              onChange={(e) => setMaxAlunos(e.target.value)}
-              size="small"
-              fullWidth
-              required
-              slotProps={{ htmlInput: { min: 1 } }}
-            />
-            <TextField
-              label="Preço"
-              type="number"
-              value={preco}
-              onChange={(e) => setPreco(e.target.value)}
-              size="small"
-              fullWidth
-              required
-              slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-            />
+            <TextField label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} size="small" fullWidth required />
+            <TextField label="Máximo de alunos" type="number" value={maxAlunos} onChange={(e) => setMaxAlunos(e.target.value)} size="small" fullWidth required slotProps={{ htmlInput: { min: 1 } }} />
+            <TextField label="Preço" type="number" value={preco} onChange={(e) => setPreco(e.target.value)} size="small" fullWidth required slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            disabled={!nome.trim() || !maxAlunos || !preco || saving}
-            onClick={handleCriar}
-          >
+          <Button onClick={() => setCriarOpen(false)}>Cancelar</Button>
+          <Button variant="contained" disabled={!nome.trim() || !maxAlunos || !preco || saving} onClick={handleCriar}>
             Criar
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Editar */}
+      <Dialog open={!!editPlano} onClose={() => setEditPlano(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Editar — {editPlano?.nome}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField label="Nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} size="small" fullWidth />
+            <TextField label="Máximo de alunos" type="number" value={editMaxAlunos} onChange={(e) => setEditMaxAlunos(e.target.value)} size="small" fullWidth slotProps={{ htmlInput: { min: 1 } }} />
+            <TextField label="Preço" type="number" value={editPreco} onChange={(e) => setEditPreco(e.target.value)} size="small" fullWidth slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditPlano(null)}>Cancelar</Button>
+          <Button variant="contained" disabled={savingEdit} onClick={handleEditar}>
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmar exclusão */}
+      <ConfirmDialog
+        open={!!confirmExcluir}
+        title="Excluir plano"
+        description={`Excluir "${confirmExcluir?.nome}"? Treinadores com este plano atribuído não serão afetados.`}
+        confirmLabel="Excluir"
+        destructive
+        loading={loadingExcluir}
+        onConfirm={handleExcluir}
+        onClose={() => setConfirmExcluir(null)}
+      />
     </Box>
   );
 }

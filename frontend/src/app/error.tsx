@@ -29,10 +29,10 @@ export default function GlobalError({
     >
       <ErrorOutlineIcon sx={{ fontSize: 64, color: "error.main" }} />
       <Typography variant="h5" sx={{ fontWeight: 700 }}>
-        Algo deu errado
+        Não foi possível carregar esta página
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Ocorreu um erro inesperado. Tente novamente ou volte para a página inicial.
+        Um erro inesperado ocorreu. Se o problema persistir, tente voltar ao início.
       </Typography>
       <Box sx={{ display: "flex", gap: 2 }}>
         <Button variant="outlined" onClick={reset}>

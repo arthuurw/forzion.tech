@@ -61,6 +61,18 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
         return (items, total);
     }
 
+    public async Task<VinculoTreinadorAluno?> ObterPendentePorParAsync(Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .FirstOrDefaultAsync(v => v.TreinadorId == treinadorId && v.AlunoId == alunoId && v.Status == VinculoStatus.AguardandoAprovacao, cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<VinculoTreinadorAluno?> ObterPendentePorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .Where(v => v.AlunoId == alunoId && v.Status == VinculoStatus.AguardandoAprovacao)
+            .OrderByDescending(v => v.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task AdicionarAsync(VinculoTreinadorAluno vinculo, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno.AddAsync(vinculo, cancellationToken).ConfigureAwait(false);
 }

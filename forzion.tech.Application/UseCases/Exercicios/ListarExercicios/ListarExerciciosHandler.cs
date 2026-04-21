@@ -17,7 +17,8 @@ public class ListarExerciciosHandler(
         ArgumentNullException.ThrowIfNull(query);
 
         var (items, total) = await _exercicioRepository
-            .ListarAsync(query.TreinadorId, query.Pagina, query.TamanhoPagina, cancellationToken)
+            .ListarAsync(query.TreinadorId, query.Pagina, query.TamanhoPagina, cancellationToken,
+                query.Nome, query.GrupoMuscular, query.OrdenarPor)
             .ConfigureAwait(false);
 
         _logger.LogInformation("Listagem de exercícios: {Total} registros.", total);

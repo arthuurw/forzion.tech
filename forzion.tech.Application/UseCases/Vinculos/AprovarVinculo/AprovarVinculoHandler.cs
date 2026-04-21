@@ -9,6 +9,8 @@ namespace forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 
 public class AprovarVinculoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
+    ITreinoAlunoRepository treinoAlunoRepository,
+    ITreinoRepository treinoRepository,
     ILimiteTreinadorService limiteTreinadorService,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
@@ -28,7 +30,33 @@ public class AprovarVinculoHandler(
 
         var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoAtivo is not null && vinculoAtivo.Id != vinculo.Id)
-            throw new AlunoJaVinculadoException();
+        {
+            if (vinculoAtivo.TreinadorId == command.TreinadorId)
+                throw new AlunoJaVinculadoException();
+
+            // Troca de treinador: inativa vínculo anterior e cascateia fichas
+            vinculoAtivo.Inativar();
+            var treinosAtivos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculoAtivo.TreinadorId, vinculoAtivo.AlunoId, cancellationToken).ConfigureAwait(false);
+            foreach (var ta in treinosAtivos)
+                ta.AlterarStatus(TreinoAlunoStatus.Inativo);
+
+            if (command.TrarFichas && treinosAtivos.Count > 0)
+            {
+                foreach (var ta in treinosAtivos)
+                {
+                    var treinoOrigem = await treinoRepository.ObterPorIdAsync(ta.TreinoId, cancellationToken).ConfigureAwait(false);
+                    if (treinoOrigem is null) continue;
+
+                    var copia = treinoOrigem.DuplicarPara(command.TreinadorId);
+                    await treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
+
+                    var novoVinculoFicha = TreinoAluno.Criar(copia.Id, vinculo.AlunoId);
+                    await treinoAlunoRepository.AdicionarAsync(novoVinculoFicha, cancellationToken).ConfigureAwait(false);
+                }
+
+                logger.LogInformation("{Count} ficha(s) copiada(s) para o treinador {TreinadorId} durante troca.", treinosAtivos.Count, command.TreinadorId);
+            }
+        }
 
         await limiteTreinadorService.ValidarAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 

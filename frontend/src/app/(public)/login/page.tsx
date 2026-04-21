@@ -1,5 +1,5 @@
 "use client";
-import { Box, Typography, Button, CircularProgress } from "@mui/material";
+import { Box, Typography, Button, CircularProgress, Divider } from "@mui/material";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -52,20 +52,16 @@ export default function LoginPage() {
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Entrar
+        Acesse sua conta
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Acesse sua conta para continuar.
+        Informe suas credenciais para acessar a plataforma.
       </Typography>
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
       <FormProvider {...methods}>
-        <Box
-          component="form"
-          onSubmit={methods.handleSubmit(onSubmit)}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
+        <Box component="form" onSubmit={methods.handleSubmit(onSubmit)} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <FormTextField name="email" label="E-mail" type="email" required autoComplete="email" />
           <PasswordField name="password" label="Senha" required autoComplete="current-password" />
 
@@ -77,17 +73,24 @@ export default function LoginPage() {
             fullWidth
             disabled={loading}
             startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
+            sx={{ mt: 0.5 }}
           >
             Entrar
           </Button>
         </Box>
       </FormProvider>
 
-      <Box sx={{ mt: 3, textAlign: "center" }}>
+      <Divider sx={{ my: 3 }} />
+
+      <Box sx={{ textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">
           Ainda não tem conta?{" "}
-          <Link href="/cadastro/treinador" style={{ color: "inherit", fontWeight: 600 }}>
+          <Link href="/cadastro/treinador" style={{ color: "#1A1A1A", fontWeight: 600 }}>
             Cadastre-se como treinador
+          </Link>
+          {" "}ou{" "}
+          <Link href="/cadastro/aluno" style={{ color: "#1A1A1A", fontWeight: 600 }}>
+            como aluno
           </Link>
         </Typography>
       </Box>

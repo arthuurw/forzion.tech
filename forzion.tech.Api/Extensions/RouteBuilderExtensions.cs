@@ -31,7 +31,7 @@ public static class RouteBuilderExtensions
         app.UseSwaggerInNonProduction();
         app.UseExceptionHandler();
 
-        if (!app.Environment.IsEnvironment("Test"))
+        if (app.Environment.IsProduction())
             app.UseHttpsRedirection();
 
         app.UseCors("AllowFrontend");

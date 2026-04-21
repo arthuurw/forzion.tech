@@ -16,5 +16,7 @@ public interface IVinculoTreinadorAlunoRepository
     Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<VinculoComDetalheAluno> Items, int Total)> ListarComDetalhesAsync(Guid treinadorId, VinculoStatus? status, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
     Task<int> ContarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
+    Task<VinculoTreinadorAluno?> ObterPendentePorParAsync(Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default);
+    Task<VinculoTreinadorAluno?> ObterPendentePorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(VinculoTreinadorAluno vinculo, CancellationToken cancellationToken = default);
 }

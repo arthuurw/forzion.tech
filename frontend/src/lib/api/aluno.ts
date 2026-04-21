@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { ExecucaoTreinoResponse, ObjetivoTreino, TreinoAlunoStatus, TreinoExercicioResponse, PaginatedResponse } from "@/types";
+import type { ExecucaoTreinoResponse, MeuVinculoResponse, ObjetivoTreino, TreinoAlunoStatus, TreinoExercicioResponse, PaginatedResponse, VinculoResponse } from "@/types";
 
 export interface TreinoAlunoDetalheResponse {
   treinoAlunoId: string;
@@ -29,5 +29,13 @@ export const alunoApi = {
   },
   criarExecucao(data: CriarExecucaoData) {
     return apiClient.post<ExecucaoTreinoResponse>("/aluno/execucoes", data);
+  },
+
+  getMeuVinculo() {
+    return apiClient.get<MeuVinculoResponse>("/aluno/vinculo");
+  },
+
+  solicitarTrocaTreinador(novoTreinadorId: string, pacoteId: string) {
+    return apiClient.post<VinculoResponse>("/aluno/troca-treinador", { novoTreinadorId, pacoteId });
   },
 };

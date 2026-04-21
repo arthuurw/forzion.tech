@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<LogAprovacao> LogsAprovacao => Set<LogAprovacao>();
     public DbSet<Treino> Treinos => Set<Treino>();
     public DbSet<Exercicio> Exercicios => Set<Exercicio>();
+    public DbSet<GrupoMuscular> GruposMusculares => Set<GrupoMuscular>();
     public DbSet<TreinoAluno> TreinoAlunos => Set<TreinoAluno>();
     public DbSet<TreinoExercicio> TreinoExercicios => Set<TreinoExercicio>();
     public DbSet<ExecucaoTreino> ExecucoesTreino => Set<ExecucaoTreino>();
