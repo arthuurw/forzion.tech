@@ -27,12 +27,12 @@ public class CriarExercicioHandlerTests
     public async Task HandleAsync_DadosValidos_CadastraERetorna()
     {
         var treinadorId = Guid.NewGuid();
-        var command = new CriarExercicioCommand(treinadorId, "Supino Reto", GrupoMuscular.Peito, "Descrição");
+        var command = new CriarExercicioCommand(treinadorId, "Supino Reto", forzion.tech.Domain.Enums.GrupoMuscular.Peito, "Descrição");
 
         var result = await _handler.HandleAsync(command);
 
         result.Nome.Should().Be("Supino Reto");
-        result.GrupoMuscular.Should().Be(GrupoMuscular.Peito);
+        result.GrupoMuscular.Should().Be(forzion.tech.Domain.Enums.GrupoMuscular.Peito);
         result.TreinadorId.Should().Be(treinadorId);
         _exercicioRepo.Verify(r => r.AdicionarAsync(It.IsAny<Exercicio>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -41,7 +41,7 @@ public class CriarExercicioHandlerTests
     [Fact]
     public async Task HandleAsync_DadosInvalidos_LancaValidationException()
     {
-        var command = new CriarExercicioCommand(Guid.NewGuid(), "", GrupoMuscular.Peito, new string('a', 501));
+        var command = new CriarExercicioCommand(Guid.NewGuid(), "", forzion.tech.Domain.Enums.GrupoMuscular.Peito, new string('a', 501));
         var act = async () => await _handler.HandleAsync(command);
         await act.Should().ThrowAsync<ValidationException>();
     }

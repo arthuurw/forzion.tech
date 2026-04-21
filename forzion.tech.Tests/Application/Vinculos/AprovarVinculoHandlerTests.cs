@@ -13,6 +13,8 @@ namespace forzion.tech.Tests.Application.Vinculos;
 public class AprovarVinculoHandlerTests
 {
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
+    private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
+    private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -21,7 +23,14 @@ public class AprovarVinculoHandlerTests
 
     public AprovarVinculoHandlerTests()
     {
-        _handler = new AprovarVinculoHandler(_vinculoRepo.Object, _limiteService.Object, _logRepo.Object, _unitOfWork.Object, _logger.Object);
+        _handler = new AprovarVinculoHandler(
+            _vinculoRepo.Object,
+            _treinoAlunoRepo.Object,
+            _treinoRepo.Object,
+            _limiteService.Object,
+            _logRepo.Object,
+            _unitOfWork.Object,
+            _logger.Object);
     }
 
     [Fact]

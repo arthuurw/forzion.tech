@@ -13,7 +13,7 @@ public class PlanoTreinadorRepository(AppDbContext context) : IPlanoTreinadorRep
 
     public async Task<IReadOnlyList<PlanoTreinador>> ListarAsync(CancellationToken cancellationToken = default) =>
         await context.PlanosTreinador
-            .OrderBy(p => p.Nome)
+            .OrderBy(p => p.MaxAlunos).ThenBy(p => p.Preco)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

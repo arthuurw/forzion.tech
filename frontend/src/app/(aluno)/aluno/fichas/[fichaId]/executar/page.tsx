@@ -100,9 +100,9 @@ export default function ExecutarFichaPage() {
           <CheckIcon sx={{ color: "white", fontSize: 44 }} />
         </Box>
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Treino concluído!</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>Sessão registrada</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {ficha.nomeTreino} — {ficha.exercicios.length} exercícios
+            {ficha.nomeTreino} — {ficha.exercicios.length} exercício(s) concluído(s)
           </Typography>
         </Box>
         <Stack direction="row" spacing={2}>
@@ -168,20 +168,20 @@ export default function ExecutarFichaPage() {
               spacing={2}
               sx={{ mb: 2, flexWrap: "wrap" }}
             >
-              <Box sx={{ textAlign: "center", minWidth: 80 }}>
+              <Box sx={{ textAlign: "center", minWidth: { xs: 60, sm: 80 } }}>
                 <Typography variant="h3" sx={{ fontWeight: 800, color: "primary.main", lineHeight: 1 }}>
                   {current.series}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">séries</Typography>
               </Box>
-              <Box sx={{ textAlign: "center", minWidth: 80 }}>
+              <Box sx={{ textAlign: "center", minWidth: { xs: 60, sm: 80 } }}>
                 <Typography variant="h3" sx={{ fontWeight: 800, color: "primary.main", lineHeight: 1 }}>
                   {current.repeticoes}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">repetições</Typography>
               </Box>
               {current.carga != null && (
-                <Box sx={{ textAlign: "center", minWidth: 80 }}>
+                <Box sx={{ textAlign: "center", minWidth: { xs: 60, sm: 80 } }}>
                   <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1 }}>
                     {current.carga}
                   </Typography>
@@ -189,7 +189,7 @@ export default function ExecutarFichaPage() {
                 </Box>
               )}
               {current.descansoSegundos != null && (
-                <Box sx={{ textAlign: "center", minWidth: 80 }}>
+                <Box sx={{ textAlign: "center", minWidth: { xs: 60, sm: 80 } }}>
                   <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1 }}>
                     {current.descansoSegundos}
                   </Typography>
@@ -254,10 +254,10 @@ export default function ExecutarFichaPage() {
 
       {/* Confirm finish dialog */}
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Finalizar treino</DialogTitle>
+        <DialogTitle>Registrar sessão</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>
-            Parabéns! Você completou todos os exercícios de <strong>{ficha.nomeTreino}</strong>.
+            Todos os exercícios de <strong>{ficha.nomeTreino}</strong> foram concluídos. Adicione uma observação antes de registrar.
           </Typography>
           <TextField
             label="Observação (opcional)"
@@ -267,7 +267,7 @@ export default function ExecutarFichaPage() {
             fullWidth
             multiline
             rows={2}
-            placeholder="Como foi o treino hoje?"
+            placeholder="Desempenho, ajustes de carga, sensações..."
           />
         </DialogContent>
         <DialogActions>
@@ -278,7 +278,7 @@ export default function ExecutarFichaPage() {
             disabled={submitting}
             onClick={handleSubmit}
           >
-            Registrar treino
+            Confirmar registro
           </Button>
         </DialogActions>
       </Dialog>

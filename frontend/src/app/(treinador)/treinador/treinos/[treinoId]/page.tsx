@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, Chip, Stack, Button,
-  Table, TableHead, TableRow, TableCell, TableBody,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Autocomplete, TextField, IconButton, Tooltip,
 } from "@mui/material";
@@ -16,8 +15,18 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi, type AdicionarExercicioData } from "@/lib/api/treinador";
 import type { TreinoResponse, TreinoExercicioResponse, ExercicioResponse, AlunoResponse } from "@/types";
+
+const COLUMNS: Column[] = [
+  { label: "Exercício" },
+  { label: "Séries" },
+  { label: "Reps" },
+  { label: "Carga (kg)" },
+  { label: "Descanso (s)" },
+  { label: "Ações", align: "right" },
+];
 
 export default function DetalheFichaPage() {
   const { treinoId } = useParams<{ treinoId: string }>();
@@ -27,7 +36,6 @@ export default function DetalheFichaPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Adicionar exercício
   const [addOpen, setAddOpen] = useState(false);
   const [biblioteca, setBiblioteca] = useState<ExercicioResponse[]>([]);
   const [selectedEx, setSelectedEx] = useState<ExercicioResponse | null>(null);
@@ -37,14 +45,11 @@ export default function DetalheFichaPage() {
   const [descanso, setDescanso] = useState("60");
   const [loadingAdd, setLoadingAdd] = useState(false);
 
-  // Remover exercício
   const [removeEx, setRemoveEx] = useState<TreinoExercicioResponse | null>(null);
   const [loadingRemove, setLoadingRemove] = useState(false);
 
-  // Duplicar
   const [loadingDuplicar, setLoadingDuplicar] = useState(false);
 
-  // Vincular a aluno
   const [vincularOpen, setVincularOpen] = useState(false);
   const [alunos, setAlunos] = useState<AlunoResponse[]>([]);
   const [selectedAluno, setSelectedAluno] = useState<AlunoResponse | null>(null);
@@ -206,42 +211,28 @@ export default function DetalheFichaPage() {
             onAction={openAdd}
           />
         ) : (
-          <Box sx={{ overflowX: "auto" }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 600 }}>Exercício</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Séries</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Reps</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Carga (kg)</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Descanso (s)</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>Ações</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ficha.exercicios.map((ex) => (
-                  <TableRow key={ex.treinoExercicioId} hover>
-                    <TableCell sx={{ fontWeight: 500 }}>{ex.nomeExercicio}</TableCell>
-                    <TableCell>{ex.series}</TableCell>
-                    <TableCell>{ex.repeticoes}</TableCell>
-                    <TableCell>{ex.carga ?? "—"}</TableCell>
-                    <TableCell>{ex.descansoSegundos ?? "—"}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Remover exercício">
-                        <IconButton size="small" color="error" onClick={() => setRemoveEx(ex)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Box>
+          <ResponsiveTable
+            columns={COLUMNS}
+            rows={ficha.exercicios}
+            rowKey={(ex) => ex.treinoExercicioId}
+            renderCell={(ex, i) => {
+              if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{ex.nomeExercicio}</Typography>;
+              if (i === 1) return ex.series;
+              if (i === 2) return ex.repeticoes;
+              if (i === 3) return ex.carga ?? "—";
+              if (i === 4) return ex.descansoSegundos ?? "—";
+              return (
+                <Tooltip title="Remover exercício">
+                  <IconButton size="small" color="error" onClick={() => setRemoveEx(ex)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              );
+            }}
+          />
         )}
       </Card>
 
-      {/* Dialog — Adicionar Exercício */}
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Adicionar exercício</DialogTitle>
         <DialogContent>
@@ -305,7 +296,6 @@ export default function DetalheFichaPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ConfirmDialog — Remover */}
       <ConfirmDialog
         open={!!removeEx}
         title="Remover exercício"
@@ -317,7 +307,6 @@ export default function DetalheFichaPage() {
         onClose={() => setRemoveEx(null)}
       />
 
-      {/* Dialog — Vincular Aluno */}
       <Dialog open={vincularOpen} onClose={() => setVincularOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Vincular ficha a aluno</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>

@@ -25,11 +25,11 @@ public class ListarExerciciosHandlerTests
         var treinadorId = Guid.NewGuid();
         var exercicios = new List<Exercicio>
         {
-            Exercicio.Criar("Supino Reto", GrupoMuscular.Peito, treinadorId),
-            Exercicio.Criar("Agachamento", GrupoMuscular.Pernas, treinadorId)
+            Exercicio.Criar("Supino Reto", forzion.tech.Domain.Enums.GrupoMuscular.Peito, treinadorId),
+            Exercicio.Criar("Agachamento", forzion.tech.Domain.Enums.GrupoMuscular.Pernas, treinadorId)
         };
 
-        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()))
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
             .ReturnsAsync(((IReadOnlyList<Exercicio>)exercicios, 2));
 
         var result = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorId, 1, 10));
@@ -44,7 +44,7 @@ public class ListarExerciciosHandlerTests
     public async Task HandleAsync_SemExercicios_RetornaListaVazia()
     {
         var treinadorId = Guid.NewGuid();
-        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()))
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
             .ReturnsAsync(((IReadOnlyList<Exercicio>)[], 0));
 
         var result = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorId, 1, 10));
@@ -59,13 +59,13 @@ public class ListarExerciciosHandlerTests
         var treinadorId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
 
-        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()))
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
             .ReturnsAsync(((IReadOnlyList<Exercicio>)[], 0));
 
         await _handler.HandleAsync(new ListarExerciciosQuery(treinadorId, 1, 10));
 
-        _exercicioRepo.Verify(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()), Times.Once);
-        _exercicioRepo.Verify(r => r.ListarAsync(outroTreinadorId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _exercicioRepo.Verify(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"), Times.Once);
+        _exercicioRepo.Verify(r => r.ListarAsync(outroTreinadorId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<string>(), It.IsAny<forzion.tech.Domain.Enums.GrupoMuscular?>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -74,10 +74,10 @@ public class ListarExerciciosHandlerTests
         var treinadorA = Guid.NewGuid();
         var treinadorB = Guid.NewGuid();
 
-        _exercicioRepo.Setup(r => r.ListarAsync(treinadorA, 1, 10, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(((IReadOnlyList<Exercicio>)[Exercicio.Criar("Supino", GrupoMuscular.Peito, treinadorA)], 1));
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorA, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
+            .ReturnsAsync(((IReadOnlyList<Exercicio>)[Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, treinadorA)], 1));
 
-        _exercicioRepo.Setup(r => r.ListarAsync(treinadorB, 1, 10, It.IsAny<CancellationToken>()))
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorB, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
             .ReturnsAsync(((IReadOnlyList<Exercicio>)[], 0));
 
         var resultA = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorA, 1, 10));
@@ -93,11 +93,11 @@ public class ListarExerciciosHandlerTests
         var treinadorId = Guid.NewGuid();
         var exercicios = new List<Exercicio>
         {
-            Exercicio.Criar("Supino Reto", GrupoMuscular.Peito, treinadorId),
-            Exercicio.Criar("Agachamento Livre", GrupoMuscular.Pernas, null)
+            Exercicio.Criar("Supino Reto", forzion.tech.Domain.Enums.GrupoMuscular.Peito, treinadorId),
+            Exercicio.Criar("Agachamento Livre", forzion.tech.Domain.Enums.GrupoMuscular.Pernas, null)
         };
 
-        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>()))
+        _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
             .ReturnsAsync(((IReadOnlyList<Exercicio>)exercicios, 2));
 
         var result = await _handler.HandleAsync(new ListarExerciciosQuery(treinadorId, 1, 10));

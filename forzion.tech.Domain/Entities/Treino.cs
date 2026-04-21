@@ -90,6 +90,27 @@ public class Treino
         return copia;
     }
 
+    public Treino DuplicarPara(Guid novoTreinadorId)
+    {
+        if (novoTreinadorId == Guid.Empty)
+            throw new DomainException("O treinador de destino é inválido.");
+
+        var copia = new Treino
+        {
+            Id = Guid.NewGuid(),
+            TreinadorId = novoTreinadorId,
+            Nome = Nome,
+            Objetivo = Objetivo,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var e in _exercicios)
+            copia._exercicios.Add(
+                TreinoExercicio.Criar(copia.Id, e.ExercicioId, e.Series, e.Repeticoes, e.Carga, e.Descanso, e.Ordem));
+
+        return copia;
+    }
+
     private void ReordenarExercicios()
     {
         for (var i = 0; i < _exercicios.Count; i++)

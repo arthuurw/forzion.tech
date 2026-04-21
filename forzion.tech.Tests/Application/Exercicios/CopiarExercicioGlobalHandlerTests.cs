@@ -25,7 +25,7 @@ public class CopiarExercicioGlobalHandlerTests
     [Fact]
     public async Task HandleAsync_ExercicioGlobal_CriaCopiaNaBibliotecaDoTreinador()
     {
-        var global = Exercicio.Criar("Supino", GrupoMuscular.Peito, null, "desc");
+        var global = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, null, "desc");
         var treinadorId = Guid.NewGuid();
 
         _exercicioRepo.Setup(r => r.ObterPorIdAsync(global.Id, It.IsAny<CancellationToken>())).ReturnsAsync(global);
@@ -52,7 +52,7 @@ public class CopiarExercicioGlobalHandlerTests
     [Fact]
     public async Task HandleAsync_ExercicioNaoGlobal_LancaAcessoNegado()
     {
-        var proprio = Exercicio.Criar("Supino", GrupoMuscular.Peito, Guid.NewGuid());
+        var proprio = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, Guid.NewGuid());
         _exercicioRepo.Setup(r => r.ObterPorIdAsync(proprio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(proprio);
 
         var act = async () => await _handler.HandleAsync(new CopiarExercicioGlobalCommand(proprio.Id, Guid.NewGuid()));

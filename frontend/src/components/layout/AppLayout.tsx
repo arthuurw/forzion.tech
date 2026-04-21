@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Box,
   Drawer,
@@ -11,6 +11,9 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Paper,
+  Typography,
+  Snackbar,
+  Alert,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -19,18 +22,33 @@ import AppHeader from "./AppHeader";
 import { NAV_BY_TIPO } from "./NavConfig";
 import { useAuth } from "@/lib/auth/context";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { useInactivity } from "@/hooks/useInactivity";
 
-const DRAWER_WIDTH = 220;
-const DRAWER_COLLAPSED = 64;
+const DRAWER_WIDTH = 232;
+const DRAWER_COLLAPSED = 68;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [inactivityWarn, setInactivityWarn] = useState<string | null>(null);
+
+  const handleWarn = useCallback((minutes: number) => {
+    setInactivityWarn(
+      `Você está inativo há ${minutes} minuto${minutes > 1 ? "s" : ""}. Após 20 minutos de inatividade, você será desconectado automaticamente.`
+    );
+  }, []);
+
+  const handleTimeout = useCallback(() => {
+    setInactivityWarn(null);
+    logout();
+  }, [logout]);
+
+  useInactivity({ onWarn: handleWarn, onTimeout: handleTimeout, enabled: !!user });
 
   if (isLoading) return <LoadingSpinner fullPage />;
 
@@ -38,99 +56,138 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const drawerWidth = collapsed ? DRAWER_COLLAPSED : DRAWER_WIDTH;
 
   const drawerContent = (
-    <List sx={{ pt: 1 }}>
-      {navItems.map(({ label, href, Icon }) => {
-        const active = pathname.startsWith(href);
-        return (
-          <ListItemButton
-            key={href}
-            selected={active}
-            onClick={() => { router.push(href); setMobileOpen(false); }}
-            sx={{
-              mx: 1,
-              borderRadius: 2,
-              mb: 0.5,
-              minHeight: 44,
-              justifyContent: collapsed ? "center" : "flex-start",
-              "& .MuiListItemText-root": { opacity: collapsed ? 0 : 1 },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: collapsed ? 0 : 36, color: active ? "primary.main" : "inherit" }}>
-              <Icon fontSize="small" />
-            </ListItemIcon>
-            {!collapsed && <ListItemText primary={label} />}
-          </ListItemButton>
-        );
-      })}
-    </List>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", py: 1 }}>
+      <List sx={{ flex: 1, px: 1 }}>
+        {navItems.map(({ label, href, Icon }) => {
+          const active = pathname.startsWith(href);
+          return (
+            <ListItemButton
+              key={href}
+              selected={active}
+              onClick={() => { router.push(href); setMobileOpen(false); }}
+              sx={{
+                mb: 0.5,
+                minHeight: 46,
+                borderRadius: 2,
+                justifyContent: collapsed ? "center" : "flex-start",
+                px: collapsed ? 1.5 : 2,
+                bgcolor: active ? "primary.main" : "transparent",
+                color: active ? "secondary.main" : "text.secondary",
+                fontWeight: active ? 600 : 400,
+                "&:hover": {
+                  bgcolor: active ? "primary.dark" : "rgba(0,0,0,0.05)",
+                },
+                "&.Mui-selected": {
+                  bgcolor: "primary.main",
+                  "&:hover": { bgcolor: "primary.dark" },
+                },
+              }}
+            >
+              <ListItemIcon
+                sx={{
+                  minWidth: collapsed ? 0 : 36,
+                  color: active ? "secondary.main" : "text.secondary",
+                  mr: collapsed ? 0 : undefined,
+                }}
+              >
+                <Icon fontSize="small" />
+              </ListItemIcon>
+              {!collapsed && (
+                <ListItemText
+                  primary={label}
+                  slotProps={{ primary: { fontSize: 14, fontWeight: active ? 600 : 500 } }}
+                />
+              )}
+            </ListItemButton>
+          );
+        })}
+      </List>
+
+      {!collapsed && !isMobile && (
+        <Box sx={{ px: 2, pb: 2, borderTop: "1px solid", borderColor: "divider", pt: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+            {user?.tipoConta}
+          </Typography>
+        </Box>
+      )}
+    </Box>
   );
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
       <AppHeader
         onMenuToggle={() => (isMobile ? setMobileOpen((v) => !v) : setCollapsed((v) => !v))}
       />
 
-      {/* Sidebar desktop */}
       {!isMobile && (
         <Drawer
           variant="permanent"
           sx={{
             width: drawerWidth,
             flexShrink: 0,
-            transition: "width 0.2s",
+            transition: "width 0.2s ease",
             "& .MuiDrawer-paper": {
               width: drawerWidth,
-              transition: "width 0.2s",
+              transition: "width 0.2s ease",
               overflowX: "hidden",
               borderRight: "1px solid",
               borderColor: "divider",
+              bgcolor: "background.paper",
             },
           }}
         >
-          <Toolbar />
+          <Toolbar sx={{ minHeight: { xs: 60, sm: 64 } }} />
           {drawerContent}
         </Drawer>
       )}
 
-      {/* Drawer mobile */}
       {isMobile && (
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
-          sx={{ "& .MuiDrawer-paper": { width: DRAWER_WIDTH } }}
+          sx={{
+            "& .MuiDrawer-paper": { width: DRAWER_WIDTH, bgcolor: "background.paper" },
+          }}
         >
-          <Toolbar />
+          <Toolbar sx={{ minHeight: 60 }} />
           {drawerContent}
         </Drawer>
       )}
 
-      {/* Conteúdo principal */}
       <Box
         component="main"
         sx={{
           flex: 1,
-          p: { xs: 2, md: 3 },
-          pb: { xs: 9, md: 3 },
-          mt: "64px",
+          p: { xs: 2.5, md: 3.5 },
+          pb: { xs: 10, md: 3.5 },
+          mt: { xs: "60px", sm: "64px" },
           minWidth: 0,
+          maxWidth: "100%",
         }}
       >
         {children}
       </Box>
 
-      {/* Bottom nav mobile */}
       {isMobile && (
         <Paper
-          elevation={3}
-          sx={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: "appBar" }}
+          elevation={0}
+          sx={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: "appBar",
+            borderTop: "1px solid",
+            borderColor: "divider",
+          }}
         >
           <BottomNavigation
             value={navItems.findIndex(({ href }) => pathname.startsWith(href))}
             onChange={(_, i) => router.push(navItems[i].href)}
             showLabels
+            sx={{ "& .Mui-selected": { color: "secondary.main" } }}
           >
             {navItems.map(({ label, Icon }) => (
               <BottomNavigationAction key={label} label={label} icon={<Icon />} />
@@ -138,6 +195,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </BottomNavigation>
         </Paper>
       )}
+
+      <Snackbar
+        open={!!inactivityWarn}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ mb: isMobile ? 8 : 2 }}
+      >
+        <Alert
+          severity="warning"
+          variant="filled"
+          onClose={() => setInactivityWarn(null)}
+          sx={{ maxWidth: 480 }}
+        >
+          {inactivityWarn}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

@@ -1,0 +1,29 @@
+using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Exceptions;
+
+namespace forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
+
+public class AtualizarGrupoMuscularHandler(
+    IGrupoMuscularRepository repository,
+    IUnitOfWork unitOfWork)
+{
+    private readonly IGrupoMuscularRepository _repository = repository;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
+    public async Task<GrupoMuscularResponse> HandleAsync(AtualizarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    {
+        var grupo = await _repository.ObterPorIdAsync(command.Id, cancellationToken)
+            ?? throw new DomainException("Grupo muscular não encontrado.");
+
+        var existente = await _repository.ObterPorNomeAsync(command.Nome, cancellationToken);
+        if (existente != null && existente.Id != command.Id)
+            throw new DomainException("Já existe outro grupo muscular com este nome.");
+
+        grupo.Atualizar(command.Nome);
+        
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return new GrupoMuscularResponse(grupo.Id, grupo.Nome, grupo.CreatedAt, grupo.UpdatedAt);
+    }
+}

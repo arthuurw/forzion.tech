@@ -53,6 +53,16 @@ public class Treinador : IHasDomainEvents
         _domainEvents.Add(new TreinadorAprovadoEvent(Id, aprovadoPorId, DateTime.UtcNow));
     }
 
+    public void Reprovar(Guid reprovadoPorId)
+    {
+        if (Status != TreinadorStatus.AguardandoAprovacao)
+            throw new DomainException("Apenas treinadores aguardando aprovação podem ser reprovados.");
+
+        Status = TreinadorStatus.Inativo;
+        UpdatedAt = DateTime.UtcNow;
+        _domainEvents.Add(new TreinadorReprovadoEvent(Id, reprovadoPorId, DateTime.UtcNow));
+    }
+
     public void Inativar(Guid? inativadoPorId = null)
     {
         if (Status == TreinadorStatus.Inativo)

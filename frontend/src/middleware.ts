@@ -9,16 +9,30 @@ const AREA_BY_TIPO: Record<TipoConta, string> = {
   Aluno: "/aluno",
 };
 
-export function proxy(request: NextRequest) {
+function extractTipoConta(token: string): TipoConta | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = JSON.parse(atob(payload)) as { tipo_conta?: string; exp?: number };
+    if (json.exp && json.exp * 1000 < Date.now()) return null;
+    return (json.tipo_conta as TipoConta) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("token")?.value;
-  const tipoConta = request.cookies.get("tipoConta")?.value as
-    | TipoConta
-    | undefined;
+  const tipoConta = token ? extractTipoConta(token) : null;
 
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||
     pathname.startsWith("/cadastro/");
+
+  // Cadastro é sempre acessível — autenticado ou não
+  if (pathname.startsWith("/cadastro/")) return NextResponse.next();
 
   // Não autenticado tentando acessar área protegida
   if (!token && !isPublic) {
@@ -27,8 +41,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Autenticado tentando acessar rotas públicas → redireciona para área correta
-  if (token && tipoConta && isPublic && pathname !== "/") {
+  // Autenticado no login → redireciona para área correta
+  if (token && tipoConta && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = AREA_BY_TIPO[tipoConta] ?? "/";
     return NextResponse.redirect(url);

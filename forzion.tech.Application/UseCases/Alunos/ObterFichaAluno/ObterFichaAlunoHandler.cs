@@ -33,7 +33,7 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
             detalhe.Treino.Nome,
             detalhe.Treino.Objetivo,
             detalhe.TreinoAluno.Status.ToString(),
-            detalhe.Treino.Exercicios.Select(te => new TreinoExercicioResponse(
+            [.. detalhe.Treino.Exercicios.Select(te => new TreinoExercicioResponse(
                 te.Id,
                 te.ExercicioId,
                 te.Exercicio?.Nome ?? string.Empty,
@@ -41,6 +41,6 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
                 te.Repeticoes,
                 te.Carga,
                 te.Descanso,
-                te.Ordem)).ToList());
+                te.Ordem))]);
     }
 }
