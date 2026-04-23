@@ -38,6 +38,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IAlunoRepository, AlunoRepository>();
         services.AddScoped<ITreinoRepository, TreinoRepository>();
         services.AddScoped<IExercicioRepository, ExercicioRepository>();
+        services.AddScoped<IGrupoMuscularRepository, GrupoMuscularRepository>();
         services.AddScoped<ITreinoAlunoRepository, TreinoAlunoRepository>();
         services.AddScoped<IExecucaoTreinoRepository, ExecucaoTreinoRepository>();
         services.AddScoped<ISystemUserRepository, SystemUserRepository>();

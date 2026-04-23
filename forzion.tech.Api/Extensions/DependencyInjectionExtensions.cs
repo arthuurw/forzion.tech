@@ -7,10 +7,11 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
 using forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
-using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
+using forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
+using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Application.UseCases.Treinos.AdicionarExercicio;
 using forzion.tech.Application.UseCases.Treinos.CriarTreino;
@@ -21,21 +22,40 @@ using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.Services;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
+using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
+using forzion.tech.Application.UseCases.Conta.AlterarSenha;
+using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
+using forzion.tech.Application.UseCases.Conta.ObterPerfil;
 using forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
 using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Planos.AtualizarPlanoTreinador;
 using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
+using forzion.tech.Application.UseCases.Planos.ExcluirPlanoTreinador;
 using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
+using forzion.tech.Application.UseCases.Treinos.ListarFichasDoAluno;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
+using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
+using forzion.tech.Application.UseCases.Treinadores.ListarTreinadores;
+using forzion.tech.Application.UseCases.Treinadores.ReprovarTreinador;
+using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
+using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
+using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
+using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
+using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
+using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
+using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
+using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
+using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
 using forzion.tech.Infrastructure.DependencyInjection;
 
 namespace forzion.tech.Api.Extensions;
@@ -66,7 +86,7 @@ public static class DependencyInjectionExtensions
 
     public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)
     {
-        services.AddValidatorsFromAssembly(typeof(CadastrarAlunoHandler).Assembly);
+        services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
 
         // Serviços de limite
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
@@ -76,18 +96,25 @@ public static class DependencyInjectionExtensions
         services.AddScoped<LoginHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
+        services.AddScoped<ListarTreinadoresPublicosHandler>();
 
         // Admin — Treinadores
+        services.AddScoped<ListarTreinadoresHandler>();
         services.AddScoped<AprovarTreinadorHandler>();
+        services.AddScoped<ReprovarTreinadorHandler>();
         services.AddScoped<InativarTreinadorHandler>();
+        services.AddScoped<ExcluirTreinadorHandler>();
         services.AddScoped<AtribuirPlanoHandler>();
 
         // Vínculos
         services.AddScoped<AprovarVinculoHandler>();
         services.AddScoped<DesvincularAlunoHandler>();
+        services.AddScoped<ListarVinculosHandler>();
+        services.AddScoped<ReativarVinculoHandler>();
+        services.AddScoped<SolicitarTrocaTreinadorHandler>();
+        services.AddScoped<ObterVinculoAlunoHandler>();
 
         // Alunos
-        services.AddScoped<CadastrarAlunoHandler>();
         services.AddScoped<ObterAlunoHandler>();
         services.AddScoped<ListarAlunosHandler>();
         services.AddScoped<AtualizarAlunoHandler>();
@@ -95,6 +122,8 @@ public static class DependencyInjectionExtensions
 
         // Exercícios
         services.AddScoped<CriarExercicioHandler>();
+        services.AddScoped<AtualizarExercicioHandler>();
+        services.AddScoped<ExcluirExercicioHandler>();
         services.AddScoped<ListarExerciciosHandler>();
         services.AddScoped<CopiarExercicioGlobalHandler>();
 
@@ -103,6 +132,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ObterTreinoHandler>();
         services.AddScoped<ListarTreinosHandler>();
         services.AddScoped<ListarTreinosDoTreinadorHandler>();
+        services.AddScoped<ListarFichasDoAlunoHandler>();
         services.AddScoped<AdicionarExercicioHandler>();
         services.AddScoped<RemoverExercicioHandler>();
         services.AddScoped<DuplicarTreinoHandler>();
@@ -111,7 +141,15 @@ public static class DependencyInjectionExtensions
 
         // Planos (admin)
         services.AddScoped<CriarPlanoTreinadorHandler>();
+        services.AddScoped<AtualizarPlanoTreinadorHandler>();
+        services.AddScoped<ExcluirPlanoTreinadorHandler>();
         services.AddScoped<ListarPlanosTreinadorHandler>();
+
+        // Grupos Musculares (admin)
+        services.AddScoped<CriarGrupoMuscularHandler>();
+        services.AddScoped<AtualizarGrupoMuscularHandler>();
+        services.AddScoped<ExcluirGrupoMuscularHandler>();
+        services.AddScoped<ListarGruposMuscularesHandler>();
 
         // Pacotes (treinador)
         services.AddScoped<CriarPacoteAlunoHandler>();
@@ -120,6 +158,12 @@ public static class DependencyInjectionExtensions
         // Aluno (área do aluno)
         services.AddScoped<ListarFichasAlunoHandler>();
         services.AddScoped<ListarExecucoesAlunoHandler>();
+        services.AddScoped<ObterFichaAlunoHandler>();
+
+        // Conta / perfil
+        services.AddScoped<ObterPerfilHandler>();
+        services.AddScoped<AtualizarPerfilHandler>();
+        services.AddScoped<AlterarSenhaHandler>();
 
         return services;
     }

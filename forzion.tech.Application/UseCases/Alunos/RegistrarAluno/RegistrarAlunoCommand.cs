@@ -5,4 +5,5 @@ public record RegistrarAlunoCommand(
     string Senha,
     string Nome,
     Guid TreinadorId,
+    Guid PacoteId,
     string? Telefone = null);

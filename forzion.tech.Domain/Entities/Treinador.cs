@@ -1,10 +1,15 @@
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Domain.Entities;
 
-public class Treinador
+public class Treinador : IHasDomainEvents
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
     public Guid Id { get; private set; }
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
@@ -45,15 +50,27 @@ public class Treinador
         AprovadoPorId = aprovadoPorId;
         AprovadoEm = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
+        _domainEvents.Add(new TreinadorAprovadoEvent(Id, aprovadoPorId, DateTime.UtcNow));
     }
 
-    public void Inativar()
+    public void Reprovar(Guid reprovadoPorId)
+    {
+        if (Status != TreinadorStatus.AguardandoAprovacao)
+            throw new DomainException("Apenas treinadores aguardando aprovação podem ser reprovados.");
+
+        Status = TreinadorStatus.Inativo;
+        UpdatedAt = DateTime.UtcNow;
+        _domainEvents.Add(new TreinadorReprovadoEvent(Id, reprovadoPorId, DateTime.UtcNow));
+    }
+
+    public void Inativar(Guid? inativadoPorId = null)
     {
         if (Status == TreinadorStatus.Inativo)
             throw new DomainException("O treinador já está inativo.");
 
         Status = TreinadorStatus.Inativo;
         UpdatedAt = DateTime.UtcNow;
+        _domainEvents.Add(new TreinadorInativadoEvent(Id, inativadoPorId ?? Guid.Empty, DateTime.UtcNow));
     }
 
     public void AtribuirPlano(Guid planoTreinadorId)

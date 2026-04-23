@@ -36,12 +36,9 @@ public class AtualizarAlunoHandler(
         {
             if (_userContext.IsTreinador)
             {
-                var vinculo = await _vinculoRepository
+                _ = await _vinculoRepository
                     .ObterAtivoAsync(_userContext.PerfilId, aluno.Id, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (vinculo is null)
-                    throw new AcessoNegadoException();
+                    .ConfigureAwait(false) ?? throw new AcessoNegadoException();
             }
             else
             {

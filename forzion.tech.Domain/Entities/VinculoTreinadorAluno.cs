@@ -1,10 +1,15 @@
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Domain.Entities;
 
-public class VinculoTreinadorAluno
+public class VinculoTreinadorAluno : IHasDomainEvents
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
     public Guid Id { get; private set; }
     public Guid TreinadorId { get; private set; }
     public Guid AlunoId { get; private set; }
@@ -18,18 +23,21 @@ public class VinculoTreinadorAluno
 
     private VinculoTreinadorAluno() { }
 
-    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId)
+    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId, Guid? pacoteAlunoId = null)
     {
         if (treinadorId == Guid.Empty)
             throw new DomainException("O identificador do treinador é inválido.");
         if (alunoId == Guid.Empty)
             throw new DomainException("O identificador do aluno é inválido.");
+        if (pacoteAlunoId.HasValue && pacoteAlunoId.Value == Guid.Empty)
+            throw new DomainException("O identificador do pacote é inválido.");
 
         return new VinculoTreinadorAluno
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
             AlunoId = alunoId,
+            PacoteAlunoId = pacoteAlunoId,
             Status = VinculoStatus.AguardandoAprovacao,
             CreatedAt = DateTime.UtcNow
         };
@@ -47,6 +55,7 @@ public class VinculoTreinadorAluno
         AprovadoPorId = aprovadoPorId;
         AprovadoEm = DateTime.UtcNow;
         DataInicio = DateTime.UtcNow;
+        _domainEvents.Add(new VinculoAprovadoEvent(Id, TreinadorId, AlunoId, aprovadoPorId, DateTime.UtcNow));
     }
 
     public void Inativar()

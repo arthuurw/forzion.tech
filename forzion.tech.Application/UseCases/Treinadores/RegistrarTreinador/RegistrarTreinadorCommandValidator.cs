@@ -6,7 +6,7 @@ public class RegistrarTreinadorCommandValidator : AbstractValidator<RegistrarTre
 {
     public RegistrarTreinadorCommandValidator()
     {
-        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);
+        RuleFor(x => x.Email).NotEmpty().MaximumLength(256);
         RuleFor(x => x.Senha).NotEmpty().MinimumLength(8).MaximumLength(72);
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(100);
     }

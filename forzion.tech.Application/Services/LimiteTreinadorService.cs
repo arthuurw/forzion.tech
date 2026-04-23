@@ -15,11 +15,10 @@ public class LimiteTreinadorService(
             ?? throw new DomainException("Treinador não encontrado.");
 
         if (treinador.PlanoTreinadorId is null)
-            return;
+            throw new DomainException("Treinador sem plano atribuído.");
 
-        var plano = await planoRepository.ObterPorIdAsync(treinador.PlanoTreinadorId.Value, cancellationToken).ConfigureAwait(false);
-        if (plano is null)
-            return;
+        var plano = await planoRepository.ObterPorIdAsync(treinador.PlanoTreinadorId.Value, cancellationToken).ConfigureAwait(false)
+            ?? throw new DomainException("Plano do treinador não encontrado.");
 
         var ativos = await vinculoRepository.ContarAtivosPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
 

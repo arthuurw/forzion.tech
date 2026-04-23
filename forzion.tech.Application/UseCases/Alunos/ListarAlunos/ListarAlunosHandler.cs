@@ -24,7 +24,7 @@ public class ListarAlunosHandler(
         _logger.LogInformation("Listagem de alunos do treinador {TreinadorId}: {Total} registros.", query.TreinadorId, total);
 
         return new ListarAlunosResponse(
-            items.Select(CadastrarAlunoHandler.ToResponse).ToList(),
+            [.. items.Select(CadastrarAlunoHandler.ToResponse)],
             total,
             query.Pagina,
             query.TamanhoPagina

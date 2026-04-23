@@ -32,6 +32,83 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<TreinoAlunoComNome>> ListarAtivosComNomePorParAsync(
+        Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default)
+    {
+        var raw = await (
+            from ta in _context.TreinoAlunos
+            join t in _context.Treinos on ta.TreinoId equals t.Id
+            where ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo && t.TreinadorId == treinadorId
+            select new { ta, t.Nome }
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return raw.Select(x => new TreinoAlunoComNome(x.ta, x.Nome)).ToList();
+    }
+
+    public async Task<IReadOnlyList<TreinoAlunoComNome>> ListarAtivosComNomePorAlunoAsync(
+        Guid alunoId, CancellationToken cancellationToken = default)
+    {
+        var raw = await (
+            from ta in _context.TreinoAlunos
+            join t in _context.Treinos on ta.TreinoId equals t.Id
+            where ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo
+            select new { ta, t.Nome }
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return raw.Select(x => new TreinoAlunoComNome(x.ta, x.Nome)).ToList();
+    }
+
+    public async Task<TreinoAlunoComNome?> ObterComNomeAsync(
+        Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default)
+    {
+        var raw = await (
+            from ta in _context.TreinoAlunos
+            join t in _context.Treinos on ta.TreinoId equals t.Id
+            where ta.Id == treinoAlunoId && ta.AlunoId == alunoId
+            select new { ta, t.Nome }
+        ).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+
+        return raw is null ? null : new TreinoAlunoComNome(raw.ta, raw.Nome);
+    }
+
+    public async Task<(IReadOnlyList<TreinoAlunoDetalhe> Items, int Total)> ListarDetalhesPorAlunoAsync(
+        Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
+    {
+        var baseQuery = _context.TreinoAlunos
+            .Where(ta => ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo);
+
+        var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
+        var items = await baseQuery
+            .OrderByDescending(ta => ta.CreatedAt)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .Join(
+                _context.Treinos.Include(t => t.Exercicios).ThenInclude(te => te.Exercicio),
+                ta => ta.TreinoId,
+                t => t.Id,
+                (ta, t) => new TreinoAlunoDetalhe(ta, t))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return (items, total);
+    }
+
+    public async Task<TreinoAlunoDetalhe?> ObterDetalheAsync(
+        Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default)
+    {
+        var detail = await _context.TreinoAlunos
+            .Where(ta => ta.Id == treinoAlunoId && ta.AlunoId == alunoId)
+            .Join(
+                _context.Treinos.Include(t => t.Exercicios).ThenInclude(te => te.Exercicio),
+                ta => ta.TreinoId,
+                t => t.Id,
+                (ta, t) => new TreinoAlunoDetalhe(ta, t))
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return detail;
+    }
+
     public async Task AdicionarAsync(TreinoAluno treinoAluno, CancellationToken cancellationToken = default) =>
         await _context.TreinoAlunos.AddAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
 }

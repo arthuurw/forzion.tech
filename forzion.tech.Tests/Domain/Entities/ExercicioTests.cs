@@ -14,9 +14,9 @@ public class ExercicioTests
     [Fact]
     public void Criar_DadosValidos_ComTreinador_RetornaExercicio()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscular.Peito, TreinadorId);
+        var e = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, TreinadorId);
         e.Nome.Should().Be("Supino");
-        e.GrupoMuscular.Should().Be(GrupoMuscular.Peito);
+        e.GrupoMuscular.Should().Be(forzion.tech.Domain.Enums.GrupoMuscular.Peito);
         e.TreinadorId.Should().Be(TreinadorId);
         e.IsGlobal.Should().BeFalse();
         e.Descricao.Should().BeNull();
@@ -25,7 +25,7 @@ public class ExercicioTests
     [Fact]
     public void Criar_SemTreinador_RetornaExercicioGlobal()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscular.Peito);
+        var e = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito);
         e.TreinadorId.Should().BeNull();
         e.IsGlobal.Should().BeTrue();
     }
@@ -35,28 +35,28 @@ public class ExercicioTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => Exercicio.Criar(nome, GrupoMuscular.Peito, TreinadorId);
+        var act = () => Exercicio.Criar(nome, forzion.tech.Domain.Enums.GrupoMuscular.Peito, TreinadorId);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => Exercicio.Criar(new string('a', 101), GrupoMuscular.Peito, TreinadorId);
+        var act = () => Exercicio.Criar(new string('a', 101), forzion.tech.Domain.Enums.GrupoMuscular.Peito, TreinadorId);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => Exercicio.Criar("Supino", GrupoMuscular.Peito, Guid.Empty);
+        var act = () => Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, Guid.Empty);
         act.Should().Throw<DomainException>().WithMessage("O identificador do treinador é inválido.");
     }
 
     [Fact]
     public void Criar_DescricaoMuitoLonga_LancaDomainException()
     {
-        var act = () => Exercicio.Criar("Supino", GrupoMuscular.Peito, TreinadorId, new string('a', 501));
+        var act = () => Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, TreinadorId, new string('a', 501));
         act.Should().Throw<DomainException>();
     }
 
@@ -65,10 +65,10 @@ public class ExercicioTests
     [Fact]
     public void Atualizar_DadosValidos_AtualizaCampos()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscular.Peito, TreinadorId);
-        e.Atualizar("Supino Reto", GrupoMuscular.Triceps, "Descrição");
+        var e = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, TreinadorId);
+        e.Atualizar("Supino Reto", forzion.tech.Domain.Enums.GrupoMuscular.Triceps, "Descrição");
         e.Nome.Should().Be("Supino Reto");
-        e.GrupoMuscular.Should().Be(GrupoMuscular.Triceps);
+        e.GrupoMuscular.Should().Be(forzion.tech.Domain.Enums.GrupoMuscular.Triceps);
         e.Descricao.Should().Be("Descrição");
         e.UpdatedAt.Should().NotBeNull();
     }
@@ -76,7 +76,7 @@ public class ExercicioTests
     [Fact]
     public void Atualizar_DescricaoVazia_LimpaDescricao()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscular.Peito, TreinadorId, "Desc");
+        var e = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, TreinadorId, "Desc");
         e.Atualizar(null, null, "");
         e.Descricao.Should().BeNull();
     }
@@ -84,7 +84,7 @@ public class ExercicioTests
     [Fact]
     public void Atualizar_NomeVazio_LancaDomainException()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscular.Peito, TreinadorId);
+        var e = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.GrupoMuscular.Peito, TreinadorId);
         var act = () => e.Atualizar("", null, null);
         act.Should().Throw<DomainException>();
     }

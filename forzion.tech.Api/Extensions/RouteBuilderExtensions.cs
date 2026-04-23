@@ -3,6 +3,7 @@ using forzion.tech.Api.Endpoints.Admin;
 using forzion.tech.Api.Endpoints.AlunoArea;
 using forzion.tech.Api.Endpoints.Auth;
 using forzion.tech.Api.Endpoints.Alunos;
+using forzion.tech.Api.Endpoints.Conta;
 using forzion.tech.Api.Endpoints.Exercicios;
 using forzion.tech.Api.Endpoints.Treinos;
 using forzion.tech.Api.Endpoints.Treinador;
@@ -18,6 +19,7 @@ public static class RouteBuilderExtensions
         endpoints.MapTreinadorEndpoints();
         endpoints.MapAlunoAreaEndpoints();
         endpoints.MapAlunoEndpoints();
+        endpoints.MapContaEndpoints();
         endpoints.MapExercicioEndpoints();
         endpoints.MapTreinoEndpoints();
 
@@ -29,7 +31,7 @@ public static class RouteBuilderExtensions
         app.UseSwaggerInNonProduction();
         app.UseExceptionHandler();
 
-        if (!app.Environment.IsEnvironment("Test"))
+        if (app.Environment.IsProduction())
             app.UseHttpsRedirection();
 
         app.UseCors("AllowFrontend");

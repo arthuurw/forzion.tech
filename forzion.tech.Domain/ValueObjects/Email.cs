@@ -30,11 +30,8 @@ public sealed record Email
         return new Email(normalizado);
     }
 
-    /// <summary>
-    /// Reconstitui um Email a partir de um valor já validado (ex: leitura do banco).
-    /// Não reaplica validações.
-    /// </summary>
-    public static Email Reconstituir(string value) => new(value);
+    // Bypassa validações — apenas para reconstituição a partir de dados já persistidos.
+    public static Email FromDatabase(string value) => new(value);
 
     public override string ToString() => Value;
 }
