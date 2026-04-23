@@ -22,12 +22,9 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
     public async Task<(IReadOnlyList<Aluno> Items, int Total)> ListarPorTreinadorAsync(
         Guid treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
-        var alunoIds = _context.VinculosTreinadorAluno
+        var query = _context.VinculosTreinadorAluno
             .Where(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo)
-            .Select(v => v.AlunoId);
-
-        var query = _context.Alunos
-            .Where(a => alunoIds.Contains(a.Id))
+            .Join(_context.Alunos, v => v.AlunoId, a => a.Id, (_, a) => a)
             .OrderBy(a => a.Nome);
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);

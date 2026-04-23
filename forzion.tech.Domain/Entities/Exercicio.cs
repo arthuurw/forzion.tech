@@ -1,5 +1,5 @@
-using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using GrupoMuscularEnum = forzion.tech.Domain.Enums.GrupoMuscular;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -8,7 +8,7 @@ public class Exercicio
     public Guid Id { get; private set; }
     public Guid? TreinadorId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
-    public GrupoMuscular GrupoMuscular { get; private set; }
+    public GrupoMuscularEnum GrupoMuscular { get; private set; }
     public string? Descricao { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -18,7 +18,7 @@ public class Exercicio
     private Exercicio() { }
 
     /// <param name="treinadorId">Null indica exercício da biblioteca global (gerenciado por admins).</param>
-    public static Exercicio Criar(string nome, GrupoMuscular grupoMuscular, Guid? treinadorId = null, string? descricao = null)
+    public static Exercicio Criar(string nome, GrupoMuscularEnum grupoMuscular, Guid? treinadorId = null, string? descricao = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
@@ -40,7 +40,7 @@ public class Exercicio
         };
     }
 
-    public void Atualizar(string? nome, GrupoMuscular? grupoMuscular, string? descricao)
+    public void Atualizar(string? nome, GrupoMuscularEnum? grupoMuscular, string? descricao)
     {
         if (nome is not null)
         {
@@ -55,9 +55,11 @@ public class Exercicio
             GrupoMuscular = grupoMuscular.Value;
 
         if (descricao is not null)
-            Descricao = descricao.Length == 0 ? null : descricao.Length > 500
-                ? throw new DomainException("A descrição deve ter no máximo 500 caracteres.")
-                : descricao;
+        {
+            if (descricao.Length > 500)
+                throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
+            Descricao = descricao.Length == 0 ? null : descricao;
+        }
 
         UpdatedAt = DateTime.UtcNow;
     }

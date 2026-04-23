@@ -15,9 +15,9 @@ public static class ExercicioEndpoints
         var group = app.MapGroup("/exercicios").WithTags("Exercícios");
 
         group.MapPost("", async (
-            CriarExercicioRequest request,
-            CriarExercicioHandler handler,
-            IUserContext userContext,
+            [FromBody] CriarExercicioRequest request,
+            [FromServices] CriarExercicioHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (userContext.PerfilId == Guid.Empty)
@@ -37,8 +37,8 @@ public static class ExercicioEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         group.MapGet("", async (
-            ListarExerciciosHandler handler,
-            IUserContext userContext,
+            [FromServices] ListarExerciciosHandler handler,
+            [FromServices] IUserContext userContext,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
@@ -51,7 +51,7 @@ public static class ExercicioEndpoints
             return Results.Ok(response);
         })
         .RequireAuthorization()
-        .WithSummary("Lista exercícios do tenant com paginação")
+        .WithSummary("Lista exercícios do treinador com paginação")
         .Produces<ListarExerciciosResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);

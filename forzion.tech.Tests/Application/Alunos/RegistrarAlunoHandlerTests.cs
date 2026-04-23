@@ -18,6 +18,7 @@ public class RegistrarAlunoHandlerTests
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IPacoteAlunoRepository> _pacoteRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<RegistrarAlunoHandler>> _logger = new();
@@ -27,9 +28,15 @@ public class RegistrarAlunoHandlerTests
     {
         _passwordHasher.Setup(p => p.Hash(It.IsAny<string>())).Returns("hash");
         _handler = new RegistrarAlunoHandler(
-            _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object,
-            _treinadorRepo.Object, _passwordHasher.Object, _unitOfWork.Object,
-            new RegistrarAlunoCommandValidator(), _logger.Object);
+            _contaRepo.Object,
+            _alunoRepo.Object,
+            _vinculoRepo.Object,
+            _treinadorRepo.Object,
+            _pacoteRepo.Object,
+            _passwordHasher.Object,
+            _unitOfWork.Object,
+            new RegistrarAlunoCommandValidator(),
+            _logger.Object);
     }
 
     [Fact]
@@ -37,13 +44,15 @@ public class RegistrarAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var pacote = PacoteAluno.Criar(treinadorId, "Basic", 3, 10);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
 
-        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "João", treinadorId));
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "Joao", treinadorId, pacote.Id));
 
-        result.Nome.Should().Be("João");
+        result.Nome.Should().Be("Joao");
         result.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
         _contaRepo.Verify(r => r.AdicionarAsync(It.IsAny<Conta>(), It.IsAny<CancellationToken>()), Times.Once);
         _alunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Aluno>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -54,10 +63,10 @@ public class RegistrarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_EmailJaCadastrado_LancaException()
     {
-        var conta = Conta.Criar(Email.Criar("joao@teste.com"), "hash", TipoConta.Aluno);
+        var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com"), "hash", TipoConta.Aluno);
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "João", Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<EmailJaCadastradoException>();
     }
 
@@ -67,14 +76,14 @@ public class RegistrarAlunoHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "João", Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<TreinadorNaoEncontradoException>();
     }
 
     [Fact]
     public async Task HandleAsync_DadosInvalidos_LancaValidationException()
     {
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("invalido", "123", "", Guid.Empty));
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("invalido", "123", "", Guid.Empty, Guid.Empty));
         await act.Should().ThrowAsync<ValidationException>();
     }
 }

@@ -54,7 +54,7 @@ public class LimiteTreinadorServiceTests
     }
 
     [Fact]
-    public async Task ValidarAsync_SemPlano_NaoLanca()
+    public async Task ValidarAsync_SemPlano_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Ana");
@@ -62,7 +62,24 @@ public class LimiteTreinadorServiceTests
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var act = async () => await _service.ValidarAsync(treinadorId);
-        await act.Should().NotThrowAsync();
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("Treinador sem plano atribuído.");
+    }
+
+    [Fact]
+    public async Task ValidarAsync_PlanoNaoEncontradoNoBanco_LancaDomainException()
+    {
+        var planoId = Guid.NewGuid();
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana");
+        treinador.AtribuirPlano(planoId);
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>())).ReturnsAsync((PlanoTreinador?)null);
+
+        var act = async () => await _service.ValidarAsync(treinadorId);
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("Plano do treinador não encontrado.");
     }
 
     [Fact]

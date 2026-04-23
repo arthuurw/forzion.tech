@@ -25,6 +25,9 @@ public class CriarExercicioHandler(
 
         await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
+        if (await _exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, cancellationToken: cancellationToken).ConfigureAwait(false))
+            throw new Domain.Exceptions.DomainException("Já existe um exercício com este nome nesta biblioteca.");
+
         var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscular, command.TreinadorId, command.Descricao);
 
         await _exercicioRepository.AdicionarAsync(exercicio, cancellationToken).ConfigureAwait(false);
