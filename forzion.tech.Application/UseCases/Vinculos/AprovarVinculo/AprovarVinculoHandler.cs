@@ -11,6 +11,7 @@ public class AprovarVinculoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
     ITreinoRepository treinoRepository,
+    IAlunoRepository alunoRepository,
     ILimiteTreinadorService limiteTreinadorService,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
@@ -61,6 +62,10 @@ public class AprovarVinculoHandler(
         await limiteTreinadorService.ValidarAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         vinculo.Aprovar(command.TreinadorId, command.PacoteAlunoId);
+
+        var aluno = await alunoRepository.ObterPorIdAsync(vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
+        if (aluno is not null && aluno.Status != AlunoStatus.Ativo)
+            aluno.AlterarStatus(AlunoStatus.Ativo);
 
         var log = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AprovacaoVinculo,

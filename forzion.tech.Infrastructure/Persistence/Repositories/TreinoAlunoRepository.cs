@@ -111,4 +111,26 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
 
     public async Task AdicionarAsync(TreinoAluno treinoAluno, CancellationToken cancellationToken = default) =>
         await _context.TreinoAlunos.AddAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
+
+    public async Task RemoverPorTreinoIdAsync(Guid treinoId, CancellationToken cancellationToken = default)
+    {
+        var items = await _context.TreinoAlunos
+            .Where(ta => ta.TreinoId == treinoId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        _context.TreinoAlunos.RemoveRange(items);
+    }
+
+    public async Task<IReadOnlyList<TreinoAlunoVinculado>> ListarAtivosPorTreinoIdAsync(
+        Guid treinoId, CancellationToken cancellationToken = default)
+    {
+        var raw = await (
+            from ta in _context.TreinoAlunos
+            join a in _context.Alunos on ta.AlunoId equals a.Id
+            where ta.TreinoId == treinoId && ta.Status == TreinoAlunoStatus.Ativo
+            select new { ta.Id, ta.AlunoId, a.Nome, ta.Status }
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return raw.Select(x => new TreinoAlunoVinculado(x.Id, x.AlunoId, x.Nome, x.Status)).ToList();
+    }
 }

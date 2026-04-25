@@ -11,8 +11,10 @@ public class AtualizarGrupoMuscularHandler(
     private readonly IGrupoMuscularRepository _repository = repository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public async Task<GrupoMuscularResponse> HandleAsync(AtualizarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task<GrupoMuscularResponse> HandleAsync(AtualizarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(command);
+
         var grupo = await _repository.ObterPorIdAsync(command.Id, cancellationToken)
             ?? throw new DomainException("Grupo muscular não encontrado.");
 

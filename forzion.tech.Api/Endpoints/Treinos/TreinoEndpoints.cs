@@ -1,9 +1,12 @@
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.AdicionarExercicio;
+using forzion.tech.Application.UseCases.Treinos.AtualizarTreino;
 using forzion.tech.Application.UseCases.Treinos.CriarTreino;
 using forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
+using forzion.tech.Application.UseCases.Treinos.ExcluirTreino;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
@@ -57,6 +60,55 @@ public static class TreinoEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPatch("/{id}", async (
+            Guid id,
+            [FromBody] AtualizarTreinoRequest request,
+            [FromServices] AtualizarTreinoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var command = new AtualizarTreinoCommand(id, request.Nome, request.Objetivo);
+            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(response);
+        })
+        .RequireAuthorization()
+        .WithSummary("Atualiza nome/objetivo de um treino")
+        .Produces<TreinoResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapDelete("/{id}", async (
+            Guid id,
+            [FromServices] ExcluirTreinoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var command = new ExcluirTreinoCommand(id);
+            await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            return Results.NoContent();
+        })
+        .RequireAuthorization()
+        .WithSummary("Exclui um treino (apenas se nunca executado)")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet("/{id}/alunos", async (
+            Guid id,
+            [FromServices] ITreinoAlunoRepository treinoAlunoRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await treinoAlunoRepository
+                .ListarAtivosPorTreinoIdAsync(id, cancellationToken)
+                .ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .RequireAuthorization()
+        .WithSummary("Lista alunos com esta ficha vinculada (ativos)")
+        .Produces<IReadOnlyList<TreinoAlunoVinculado>>(StatusCodes.Status200OK);
 
         group.MapPost("/{id}/vincular-aluno", async (
             Guid id,
@@ -158,6 +210,7 @@ public static class TreinoEndpoints
 }
 
 public record CriarTreinoRequest(Guid AlunoId, string Nome, ObjetivoTreino Objetivo);
+public record AtualizarTreinoRequest(string? Nome, ObjetivoTreino? Objetivo);
 public record AdicionarExercicioRequest(Guid ExercicioId, int Series, int Repeticoes, decimal? Carga, int? Descanso);
 public record RegistrarExecucaoItemRequest(Guid TreinoExercicioId, int SeriesExecutadas, int RepeticoesExecutadas, decimal? CargaExecutada, string? Observacao);
 public record RegistrarExecucaoRequest(Guid AlunoId, DateTime DataExecucao, string? Observacao, List<RegistrarExecucaoItemRequest> Exercicios);

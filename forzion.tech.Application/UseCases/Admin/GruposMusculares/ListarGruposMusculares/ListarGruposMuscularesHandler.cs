@@ -6,7 +6,7 @@ public class ListarGruposMuscularesHandler(IGrupoMuscularRepository repository)
 {
     private readonly IGrupoMuscularRepository _repository = repository;
 
-    public async Task<IReadOnlyList<GrupoMuscularResponse>> HandleAsync(CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<GrupoMuscularResponse>> HandleAsync(CancellationToken cancellationToken = default)
     {
         var grupos = await _repository.ListarTodosAsync(cancellationToken);
         

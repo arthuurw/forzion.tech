@@ -241,6 +241,37 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("exercicios", "homolog");
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.GrupoMuscular", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nome");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_grupos_musculares");
+
+                    b.HasIndex("Nome")
+                        .IsUnique()
+                        .HasDatabaseName("ix_grupos_musculares_nome");
+
+                    b.ToTable("grupos_musculares", "homolog");
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.LogAprovacao", b =>
                 {
                     b.Property<Guid>("Id")

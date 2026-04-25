@@ -15,7 +15,39 @@ public class DataSeeder(
     IConfiguration configuration,
     ILogger<DataSeeder> logger)
 {
+    private static readonly string[] GruposMuscularesPadrao =
+    [
+        "Peito", "Costas", "Ombro", "Biceps", "Triceps", "Pernas", "Gluteos", "Core", "FullBody"
+    ];
+
     public async Task SeedAsync(CancellationToken cancellationToken = default)
+    {
+        await SeedGruposMuscularesAsync(cancellationToken).ConfigureAwait(false);
+        await SeedAdminAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SeedGruposMuscularesAsync(CancellationToken cancellationToken)
+    {
+        var existentes = await context.GruposMusculares
+            .Select(g => g.Nome)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var novos = GruposMuscularesPadrao
+            .Where(n => !existentes.Contains(n))
+            .Select(Domain.Entities.GrupoMuscular.Criar)
+            .ToList();
+
+        if (novos.Count == 0)
+            return;
+
+        context.GruposMusculares.AddRange(novos);
+        await context.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Grupos musculares criados: {Grupos}", string.Join(", ", novos.Select(g => g.Nome)));
+    }
+
+    private async Task SeedAdminAsync(CancellationToken cancellationToken)
     {
         var jaExiste = await context.SystemUsers
             .AnyAsync(u => u.Role == SystemRole.SuperAdmin, cancellationToken)

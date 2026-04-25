@@ -15,6 +15,7 @@ public class AprovarVinculoHandlerTests
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
+    private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -23,10 +24,13 @@ public class AprovarVinculoHandlerTests
 
     public AprovarVinculoHandlerTests()
     {
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Aluno?)null);
         _handler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
             _treinoAlunoRepo.Object,
             _treinoRepo.Object,
+            _alunoRepo.Object,
             _limiteService.Object,
             _logRepo.Object,
             _unitOfWork.Object,
@@ -57,7 +61,7 @@ public class AprovarVinculoHandlerTests
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
         var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
-        var vinculoAtivo = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId);
+        var vinculoAtivo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculoPendente.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtivo);

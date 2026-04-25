@@ -14,7 +14,9 @@ using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Application.UseCases.Treinos.AdicionarExercicio;
+using forzion.tech.Application.UseCases.Treinos.AtualizarTreino;
 using forzion.tech.Application.UseCases.Treinos.CriarTreino;
+using forzion.tech.Application.UseCases.Treinos.ExcluirTreino;
 using forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
@@ -129,6 +131,8 @@ public static class DependencyInjectionExtensions
 
         // Treinos
         services.AddScoped<CriarTreinoHandler>();
+        services.AddScoped<AtualizarTreinoHandler>();
+        services.AddScoped<ExcluirTreinoHandler>();
         services.AddScoped<ObterTreinoHandler>();
         services.AddScoped<ListarTreinosHandler>();
         services.AddScoped<ListarTreinosDoTreinadorHandler>();

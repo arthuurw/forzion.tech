@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 324 testes passando | Clean Architecture | JWT próprio | Isolamento por TreinadorId
+**Status**: ✅ 440 testes backend + 51 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId
 
 ---
 
@@ -350,7 +350,7 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 ### Testes
 
 ```
-324 testes | 0 falhas
+440 testes | 0 falhas
 
 Domain/          → entidades, value objects, domain events, exceções
 Application/     → handlers (unit), services de limite
@@ -361,8 +361,8 @@ Integration/     → fluxo completo
 
 Padrões adotados:
 - `HandleAsync` declarado como `virtual` para mock via Moq
+- `ArgumentNullException.ThrowIfNull(command)` em todo handler que recebe command
 - `It.IsAny<CancellationToken>()` em todos os setups de repositório
-- `CallBase = true` em mocks de handlers com validação própria
 
 ---
 
@@ -375,5 +375,6 @@ Ver [`frontend/README.md`](frontend/README.md) para detalhes completos.
 ```bash
 cd frontend
 npm install
-npm run dev    # http://localhost:3000
+npm run dev     # http://localhost:3000
+npm run test    # Vitest (51 testes)
 ```

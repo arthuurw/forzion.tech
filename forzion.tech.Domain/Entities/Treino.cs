@@ -54,12 +54,13 @@ public class Treino
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AdicionarExercicio(Guid exercicioId, int series, int repeticoes, decimal? carga, int? descanso)
+    public TreinoExercicio AdicionarExercicio(Guid exercicioId, int series, int repeticoes, decimal? carga, int? descanso)
     {
         var ordem = _exercicios.Count + 1;
         var item = TreinoExercicio.Criar(Id, exercicioId, series, repeticoes, carga, descanso, ordem);
         _exercicios.Add(item);
         UpdatedAt = DateTime.UtcNow;
+        return item;
     }
 
     public void RemoverExercicio(Guid treinoExercicioId)

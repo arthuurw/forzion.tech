@@ -3,6 +3,14 @@ import type { LoginResponse } from "@/types";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
+function getTokenMaxAge(token: string): number | undefined {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (payload.exp) return payload.exp - Math.floor(Date.now() / 1000);
+  } catch {}
+  return undefined;
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
@@ -19,20 +27,18 @@ export async function POST(request: NextRequest) {
 
   const data: LoginResponse = await res.json();
 
+  const maxAge = getTokenMaxAge(data.token);
   const baseOpts = {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    // sem maxAge → session cookie, expira ao fechar o browser
+    maxAge,
   };
 
   const response = NextResponse.json(data);
-
-  // httpOnly — para o middleware de rotas do Next.js (decodifica JWT para extrair tipoConta)
   response.cookies.set("token", data.token, { ...baseOpts, httpOnly: true });
-
-  // Legível por JS — para o Axios client-side (Bearer) e AuthContext (decodifica claims do payload)
   response.cookies.set("token_access", data.token, { ...baseOpts, httpOnly: false });
+  response.cookies.set("session_guard", "1", { ...baseOpts, httpOnly: true });
 
   return response;
 }

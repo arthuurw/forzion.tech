@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
+using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
 using forzion.tech.Application.UseCases.Exercicios;
 using forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
@@ -188,6 +189,17 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        // --- Grupos Musculares ---
+
+        group.MapGet("/grupos-musculares", async (
+            [FromServices] ListarGruposMuscularesHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithSummary("Lista todos os grupos musculares");
 
         // --- Exercícios ---
 

@@ -1,9 +1,11 @@
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.Interfaces.Repositories;
 
 public record TreinoAlunoComNome(TreinoAluno TreinoAluno, string NomeTreino);
 public record TreinoAlunoDetalhe(TreinoAluno TreinoAluno, Treino Treino);
+public record TreinoAlunoVinculado(Guid TreinoAlunoId, Guid AlunoId, string NomeAluno, TreinoAlunoStatus Status);
 
 public interface ITreinoAlunoRepository
 {
@@ -17,4 +19,6 @@ public interface ITreinoAlunoRepository
     Task<TreinoAlunoComNome?> ObterComNomeAsync(Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<TreinoAlunoDetalhe?> ObterDetalheAsync(Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(TreinoAluno treinoAluno, CancellationToken cancellationToken = default);
+    Task RemoverPorTreinoIdAsync(Guid treinoId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TreinoAlunoVinculado>> ListarAtivosPorTreinoIdAsync(Guid treinoId, CancellationToken cancellationToken = default);
 }

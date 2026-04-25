@@ -57,4 +57,13 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
 
     public async Task AdicionarAsync(Treino treino, CancellationToken cancellationToken = default) =>
         await _context.Treinos.AddAsync(treino, cancellationToken).ConfigureAwait(false);
+
+    public async Task AdicionarTreinoExercicioAsync(TreinoExercicio item, CancellationToken cancellationToken = default) =>
+        await _context.TreinoExercicios.AddAsync(item, cancellationToken).ConfigureAwait(false);
+
+    public Task RemoverAsync(Treino treino, CancellationToken cancellationToken = default)
+    {
+        _context.Treinos.Remove(treino);
+        return Task.CompletedTask;
+    }
 }

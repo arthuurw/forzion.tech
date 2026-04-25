@@ -57,6 +57,7 @@ export interface VinculoResponse {
 export interface VinculoDetalheResponse extends VinculoResponse {
   nomeAluno: string;
   emailAluno: string | null;
+  temVinculoAtivoPrevio: boolean;
 }
 
 // Ficha vinculada ao aluno (visão do treinador)

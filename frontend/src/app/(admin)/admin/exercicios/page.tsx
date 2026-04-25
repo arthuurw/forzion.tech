@@ -179,9 +179,9 @@ export default function ExerciciosAdminPage() {
         />
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel>Grupo muscular</InputLabel>
-          <Select value={filtroGrupo} label="Grupo muscular" onChange={(e) => { setFiltroGrupo(e.target.value as GrupoMuscular | ""); setPage(0); }}>
+          <Select value={filtroGrupo} label="Grupo muscular" onChange={(e) => { setFiltroGrupo(e.target.value as string); setPage(0); }}>
             <MenuItem value="">Todos</MenuItem>
-            {GRUPOS.map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+            {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -254,8 +254,8 @@ export default function ExerciciosAdminPage() {
             <TextField label="Nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} size="small" fullWidth />
             <FormControl size="small" fullWidth>
               <InputLabel>Grupo muscular</InputLabel>
-              <Select value={editGrupo} label="Grupo muscular" onChange={(e) => setEditGrupo(e.target.value as GrupoMuscular)}>
-                {GRUPOS.map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+              <Select value={editGrupo} label="Grupo muscular" onChange={(e) => setEditGrupo(e.target.value as string)}>
+                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={3} />
