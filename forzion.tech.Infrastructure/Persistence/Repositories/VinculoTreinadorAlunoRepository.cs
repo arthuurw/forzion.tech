@@ -42,7 +42,13 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             from v in context.VinculosTreinadorAluno
             join a in context.Alunos on v.AlunoId equals a.Id
             where v.TreinadorId == treinadorId
-            select new { v, a };
+            select new
+            {
+                v,
+                a,
+                TemVinculoAtivoPrevio = context.VinculosTreinadorAluno
+                    .Any(v2 => v2.AlunoId == v.AlunoId && v2.Status == VinculoStatus.Ativo && v2.TreinadorId != treinadorId)
+            };
 
         if (status.HasValue)
             baseQuery = baseQuery.Where(x => x.v.Status == status.Value);
@@ -55,7 +61,7 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var items = raw.Select(x => new VinculoComDetalheAluno(x.v, x.a.Nome, x.a.Email))
+        var items = raw.Select(x => new VinculoComDetalheAluno(x.v, x.a.Nome, x.a.Email, x.TemVinculoAtivoPrevio))
             .ToList();
 
         return (items, total);

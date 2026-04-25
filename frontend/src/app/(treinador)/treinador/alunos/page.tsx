@@ -6,6 +6,7 @@ import {
   Checkbox, FormControlLabel,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ReplayIcon from "@mui/icons-material/Replay";
@@ -199,11 +200,22 @@ export default function AlunosTreinadorPage() {
               return (
                 <>
                   {v.status === "AguardandoAprovacao" && (
-                    <Tooltip title="Aprovar vínculo">
-                      <IconButton size="small" color="success" onClick={() => openAprovar(v)}>
-                        <CheckIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <>
+                      <Tooltip title="Aprovar vínculo">
+                        <IconButton size="small" color="success" onClick={() => openAprovar(v)}>
+                          <CheckIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Reprovar vínculo">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => { setConfirmDesvincular(v); setObservacaoDesvincular(""); }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </>
                   )}
                   {v.status === "Ativo" && (
                     <>
@@ -247,21 +259,23 @@ export default function AlunosTreinadorPage() {
             onChange={(_, v) => setSelectedPacote(v)}
             renderInput={(params) => <TextField {...params} label="Pacote" size="small" />}
           />
-          <FormControlLabel
-            sx={{ mt: 1.5 }}
-            control={
-              <Checkbox
-                size="small"
-                checked={trarFichas}
-                onChange={(e) => setTrarFichas(e.target.checked)}
-              />
-            }
-            label={
-              <Typography variant="body2">
-                Trazer fichas ativas do treinador anterior
-              </Typography>
-            }
-          />
+          {aprovarDialog?.temVinculoAtivoPrevio && (
+            <FormControlLabel
+              sx={{ mt: 1.5 }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={trarFichas}
+                  onChange={(e) => setTrarFichas(e.target.checked)}
+                />
+              }
+              label={
+                <Typography variant="body2">
+                  Trazer fichas ativas do treinador anterior
+                </Typography>
+              }
+            />
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAprovarDialog(null)}>Cancelar</Button>
@@ -300,9 +314,13 @@ export default function AlunosTreinadorPage() {
 
       <ConfirmDialog
         open={!!confirmDesvincular}
-        title="Desvincular aluno"
-        description={`Desvincular "${confirmDesvincular?.nomeAluno}" irá inativar todas as fichas associadas. Deseja continuar?`}
-        confirmLabel="Desvincular"
+        title={confirmDesvincular?.status === "AguardandoAprovacao" ? "Reprovar vínculo" : "Desvincular aluno"}
+        description={
+          confirmDesvincular?.status === "AguardandoAprovacao"
+            ? `Reprovar o vínculo de "${confirmDesvincular?.nomeAluno}"? O aluno não poderá mais acessar seus treinos.`
+            : `Desvincular "${confirmDesvincular?.nomeAluno}" irá inativar todas as fichas associadas. Deseja continuar?`
+        }
+        confirmLabel={confirmDesvincular?.status === "AguardandoAprovacao" ? "Reprovar" : "Desvincular"}
         destructive
         loading={loadingDesvincular}
         onConfirm={handleDesvincular}

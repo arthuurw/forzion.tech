@@ -12,8 +12,10 @@ public class CriarGrupoMuscularHandler(
     private readonly IGrupoMuscularRepository _repository = repository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public async Task<GrupoMuscularResponse> HandleAsync(CriarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task<GrupoMuscularResponse> HandleAsync(CriarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(command);
+
         var existente = await _repository.ObterPorNomeAsync(command.Nome, cancellationToken);
         if (existente != null)
             throw new DomainException("Já existe um grupo muscular com este nome.");

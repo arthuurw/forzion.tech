@@ -44,6 +44,13 @@ public class VincularFichaAoAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new VinculoNaoEncontradoException();
 
+        var jaVinculado = await _treinoAlunoRepository
+            .ObterAsync(command.TreinoId, command.AlunoId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (jaVinculado is not null)
+            throw new DomainException("Este aluno já possui esta ficha vinculada.");
+
         await _limiteFichasService.ValidarAsync(command.AlunoId, cancellationToken).ConfigureAwait(false);
 
         var treinoAluno = TreinoAluno.Criar(command.TreinoId, command.AlunoId);

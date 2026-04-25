@@ -3,7 +3,7 @@ import { Box, Typography, Button, CircularProgress, Divider } from "@mui/materia
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import FormTextField from "@/components/forms/FormTextField";
 import PasswordField from "@/components/forms/PasswordField";
@@ -11,17 +11,25 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import { useAuth, homeRouteFor } from "@/lib/auth/context";
 import { loginSchema, type LoginFormData } from "@/lib/validations/common";
 import type { LoginResponse, ProblemDetails } from "@/types";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, isLoading } = useAuth();
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const methods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace(homeRouteFor(user.tipoConta));
+    }
+  }, [isLoading, user, router]);
+
+  if (isLoading || user) return <LoadingSpinner fullPage />;
 
   const onSubmit = async (data: LoginFormData) => {
     setError("");

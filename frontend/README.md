@@ -40,7 +40,37 @@ npm run build
 
 # Iniciar build de produção
 npm start
+
+# Testes (single run)
+npm run test
+
+# Testes em modo watch
+npm run test:watch
 ```
+
+---
+
+## Testes
+
+| Ferramenta | Uso |
+|---|---|
+| Vitest 4 | Runner + assertions |
+| happy-dom | Simulação de DOM |
+| @testing-library/react | Render de componentes + queries |
+| @testing-library/user-event | Simulação de interações |
+| @testing-library/jest-dom | Matchers extras (`toBeDisabled`, etc.) |
+
+Arquivos em `src/test/`:
+
+| Arquivo | O que testa |
+|---|---|
+| `validations.test.ts` | Schemas Zod (email, senha, nome, telefone, login, cadastro) |
+| `auth.test.ts` | `extractTipoConta` + `homeRouteFor` |
+| `api-auth-me.test.ts` | Handler `GET /api/auth/me` (cookies, JWT, expiração) |
+| `useInactivity.test.ts` | Hook de inatividade com fake timers |
+| `components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` |
+
+Configuração em `vitest.config.mts` + `src/test/setup.ts`.
 
 ---
 
@@ -118,22 +148,25 @@ src/
 
 ## Autenticação e Sessão
 
-O fluxo usa dois cookies complementares:
+O fluxo usa três cookies complementares:
 
 | Cookie | `httpOnly` | Uso |
 |--------|-----------|-----|
-| `token` | ✅ | Lido pelo middleware (`proxy.ts`) para proteger rotas — não acessível via JS |
-| `tipoConta` | ✅ | Lido pelo middleware para redirecionar para a área correta |
-| `token_access` | ❌ | Lido pelo interceptor Axios no browser para injetar o `Authorization: Bearer` |
-| `user_data` | ❌ | JSON com `{ token, tipoConta, contaId, perfilId }` — lido por `loadSession()` |
+| `token` | ✅ | Lido pelo middleware e por `/api/auth/me` para validar sessão — não acessível via JS |
+| `session_guard` | ✅ | Flag de sessão válida; ausência indica sessão inválida mesmo com `token` presente |
+| `token_access` | ❌ | Lido pelo interceptor Axios no browser para injetar `Authorization: Bearer` |
+
+Todos os cookies têm `maxAge` derivado do `exp` do JWT — expiram junto com o token.
 
 ### Login
 
 1. Página `/login` chama `POST /api/auth` (Route Handler)
 2. Route Handler repassa para `POST /auth/login` na API backend
-3. Em caso de sucesso, define os quatro cookies e retorna os dados ao browser
-4. `AuthContext.login()` atualiza o estado React com os dados do usuário
+3. Em caso de sucesso, define os três cookies (`token`, `session_guard`, `token_access`) e retorna dados ao browser
+4. `AuthContext.login()` atualiza o estado React
 5. Browser redireciona para a área correspondente ao `TipoConta`
+
+`AuthContext` valida a sessão no mount via `GET /api/auth/me` (server-side, lê cookies httpOnly).
 
 ### Logout
 
@@ -141,13 +174,14 @@ O fluxo usa dois cookies complementares:
 2. Route Handler apaga todos os cookies
 3. `AuthContext.logout()` limpa o estado e redireciona para `/login`
 
-### Middleware de Rotas (`proxy.ts`)
+### Middleware de Rotas (`middleware.ts`)
 
-Protege todas as rotas exceto assets estáticos e `/api/`:
+Protege todas as rotas exceto assets estáticos e `/api/`. Lê `token` + `session_guard` (ambos httpOnly) e extrai `tipo_conta` do JWT sem verificar assinatura:
 
-- Não autenticado tentando acessar área protegida → redireciona para `/login`
-- Autenticado tentando acessar rota pública → redireciona para a área do seu `TipoConta`
-- Autenticado acessando área errada (ex: Aluno tentando `/admin`) → redireciona para a área correta
+- Não autenticado em área protegida → redireciona para `/login`
+- Autenticado em `/login` → redireciona para área correta (evita ver o form desnecessariamente)
+- Autenticado em área errada (ex: Aluno em `/admin`) → redireciona para área correta
+- `/` e `/cadastro/*` → sempre acessíveis independente de autenticação
 
 ---
 

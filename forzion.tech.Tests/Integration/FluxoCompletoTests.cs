@@ -105,10 +105,13 @@ public class FluxoCompletoTests
 
         var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, _planoRepo.Object, _vinculoRepo.Object);
 
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Aluno?)null);
         var aprovarVinculoHandler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
             _treinoAlunoRepo.Object,
             _treinoRepo.Object,
+            _alunoRepo.Object,
             limiteService,
             _logRepo.Object,
             _unitOfWork.Object,

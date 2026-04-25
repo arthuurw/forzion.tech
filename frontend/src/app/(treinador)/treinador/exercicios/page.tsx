@@ -302,8 +302,8 @@ export default function ExerciciosTreinadorPage() {
             <TextField label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} size="small" fullWidth required autoFocus />
             <FormControl size="small" fullWidth>
               <InputLabel>Grupo muscular</InputLabel>
-              <Select value={grupoMuscular} label="Grupo muscular" onChange={(e) => setGrupoMuscular(e.target.value as GrupoMuscular)}>
-                {GRUPOS.map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+              <Select value={grupoMuscular} label="Grupo muscular" onChange={(e) => setGrupoMuscular(e.target.value)}>
+                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} size="small" fullWidth multiline rows={2} />
@@ -323,8 +323,8 @@ export default function ExerciciosTreinadorPage() {
             <TextField label="Nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} size="small" fullWidth />
             <FormControl size="small" fullWidth>
               <InputLabel>Grupo muscular</InputLabel>
-              <Select value={editGrupo} label="Grupo muscular" onChange={(e) => setEditGrupo(e.target.value as GrupoMuscular)}>
-                {GRUPOS.map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+              <Select value={editGrupo} label="Grupo muscular" onChange={(e) => setEditGrupo(e.target.value)}>
+                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={2} />
@@ -349,6 +349,4 @@ export default function ExerciciosTreinadorPage() {
       />
     </Box>
   );
-}
-);
 }
