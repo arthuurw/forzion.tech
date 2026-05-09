@@ -1,104 +1,301 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Box, Grid, Card, CardContent, Typography, Button, Stack } from "@mui/material";
-import PeopleIcon from "@mui/icons-material/People";
-import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import ListAltIcon from "@mui/icons-material/ListAlt";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
+import {
+  Box, Typography, Paper, Stack, Divider, Button, MenuItem, Select,
+  FormControl, InputLabel,
+} from "@mui/material";
+import CheckIcon from "@mui/icons-material/Check";
+import LinkOffIcon from "@mui/icons-material/LinkOff";
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
+  Tooltip, ResponsiveContainer, Legend,
+} from "recharts";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
-import StatusChip from "@/components/ui/StatusChip";
 import { treinadorApi } from "@/lib/api/treinador";
-import { useAuth } from "@/lib/auth/context";
-import type { VinculoDetalheResponse } from "@/types";
+import type { VinculoDetalheResponse, PacoteAlunoResponse, TreinoResponse } from "@/types";
+
+const ALUNO_STATUS_COLORS: Record<string, string> = {
+  Ativos: "#4caf50",
+  Aguardando: "#F5C400",
+  Inativos: "#757575",
+};
+
+const OBJETIVO_LABELS: Record<string, string> = {
+  Hipertrofia: "Hipertrofia",
+  Emagrecimento: "Emagrecimento",
+  Resistencia: "Resistência",
+  Forca: "Força",
+  Flexibilidade: "Flexibilidade",
+  Condicionamento: "Condicionamento",
+};
+
+interface StatItem {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface ObjetivoItem {
+  name: string;
+  total: number;
+}
 
 export default function DashboardTreinadorPage() {
-  const { user } = useAuth();
+  const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
+  const [objetivoData, setObjetivoData] = useState<ObjetivoItem[]>([]);
   const [pendentes, setPendentes] = useState<VinculoDetalheResponse[]>([]);
-  const [totalAlunos, setTotalAlunos] = useState(0);
+  const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
   const [totalFichas, setTotalFichas] = useState(0);
+  const [pacoteSelections, setPacoteSelections] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [alunosRes, pendRes, fichasRes] = await Promise.all([
-          treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: 1 }),
-          treinadorApi.listVinculos({ status: "AguardandoAprovacao", tamanhoPagina: 5 }),
-          treinadorApi.listFichas({ tamanhoPagina: 1 }),
-        ]);
-        setTotalAlunos(alunosRes.data.total);
-        setPendentes(pendRes.data.items);
-        setTotalFichas(fichasRes.data.total);
-      } catch {
-        setError("Erro ao carregar dados.");
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    try {
+      const [ativoRes, aguardandoRes, inativoRes, fichasRes, pacotesRes] = await Promise.all([
+        treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: 1 }),
+        treinadorApi.listVinculos({ status: "AguardandoAprovacao", tamanhoPagina: 10 }),
+        treinadorApi.listAlunos({ status: "Inativo", tamanhoPagina: 1 }),
+        treinadorApi.listFichas({ tamanhoPagina: 100 }),
+        treinadorApi.listPacotes(),
+      ]);
+
+      setAlunoStats([
+        { name: "Ativos", value: ativoRes.data.total, color: ALUNO_STATUS_COLORS.Ativos },
+        { name: "Aguardando", value: aguardandoRes.data.total, color: ALUNO_STATUS_COLORS.Aguardando },
+        { name: "Inativos", value: inativoRes.data.total, color: ALUNO_STATUS_COLORS.Inativos },
+      ]);
+
+      setPendentes(aguardandoRes.data.items);
+      setTotalFichas(fichasRes.data.total);
+      setPacotes(pacotesRes.data as PacoteAlunoResponse[]);
+
+      const contagem: Record<string, number> = {};
+      for (const f of fichasRes.data.items as TreinoResponse[]) {
+        const label = OBJETIVO_LABELS[f.objetivo] ?? f.objetivo;
+        contagem[label] = (contagem[label] ?? 0) + 1;
       }
-    };
-    load();
+      setObjetivoData(
+        Object.entries(contagem)
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, total]) => ({ name, total }))
+      );
+    } catch {
+      setError("Erro ao carregar dados do painel.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleAprovar = async (vinculoId: string) => {
+    const pacoteId = pacoteSelections[vinculoId];
+    if (!pacoteId) {
+      setError("Selecione um pacote antes de aprovar.");
+      return;
+    }
+    setActionLoading(`${vinculoId}_aprovar`);
+    try {
+      await treinadorApi.aprovarVinculo(vinculoId, pacoteId);
+      await load();
+    } catch {
+      setError("Erro ao aprovar vínculo.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDesvincular = async (vinculoId: string) => {
+    setActionLoading(`${vinculoId}_desvincular`);
+    try {
+      await treinadorApi.desvincularAluno(vinculoId);
+      await load();
+    } catch {
+      setError("Erro ao desvincular aluno.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   if (loading) return <LoadingSpinner />;
 
-  const cards = [
-    { label: "Alunos ativos", value: totalAlunos, Icon: PeopleIcon, href: "/treinador/alunos" },
-    { label: "Vínculos pendentes", value: pendentes.length, Icon: HourglassEmptyIcon, href: "/treinador/alunos" },
-    { label: "Fichas de treino", value: totalFichas, Icon: ListAltIcon, href: "/treinador/treinos" },
-  ];
-
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-        Painel do treinador
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Visão geral da sua operação
-      </Typography>
+      <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
-      <AlertBanner open={!!error} message={error} />
-
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        {cards.map(({ label, value, Icon, href }) => (
-          <Grid key={label} size={{ xs: 12, sm: 4 }}>
-            <Link href={href} style={{ textDecoration: "none" }}>
-              <Card variant="outlined" sx={{ cursor: "pointer", "&:hover": { borderColor: "primary.main" } }}>
-                <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: "primary.main" + "20" }}>
-                    <Icon sx={{ color: "primary.main", fontSize: 26 }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1 }}>{value}</Typography>
-                    <Typography variant="body2" color="text.secondary">{label}</Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Link>
-          </Grid>
+      {/* Stat cards */}
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 2, mb: 4 }}>
+        {alunoStats.map((s) => (
+          <Paper
+            key={s.name}
+            sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}
+          >
+            <Typography
+              variant="h3"
+              sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}
+            >
+              {s.value}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
+              {s.name}
+            </Typography>
+          </Paper>
         ))}
-      </Grid>
+        <Paper sx={{ p: 3, borderLeft: "4px solid #1976d2", borderRadius: 2 }}>
+          <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#1976d2" }}>
+            {totalFichas}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
+            Fichas
+          </Typography>
+        </Paper>
+      </Box>
 
-      {pendentes.length > 0 && (
-        <Card variant="outlined">
-          <CardContent>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>Vínculos aguardando aprovação</Typography>
-              <Link href="/treinador/alunos" style={{ textDecoration: "none" }}>
-                <Button size="small" variant="outlined">Ver alunos</Button>
-              </Link>
+      {/* Charts */}
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 2, mb: 4 }}>
+        <Paper sx={{ p: 3, borderRadius: 2 }}>
+          <Typography
+            variant="overline"
+            color="text.disabled"
+            sx={{ letterSpacing: 2, fontSize: "0.7rem" }}
+          >
+            ALUNOS POR STATUS
+          </Typography>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={alunoStats}
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={85}
+                dataKey="value"
+                paddingAngle={3}
+              >
+                {alunoStats.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v, n) => [v, n]} />
+              <Legend iconType="circle" iconSize={10} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Paper>
+
+        <Paper sx={{ p: 3, borderRadius: 2 }}>
+          <Typography
+            variant="overline"
+            color="text.disabled"
+            sx={{ letterSpacing: 2, fontSize: "0.7rem" }}
+          >
+            FICHAS POR OBJETIVO
+          </Typography>
+          {objetivoData.length === 0 ? (
+            <Box sx={{ display: "flex", alignItems: "center", height: 220 }}>
+              <Typography variant="body2" color="text.secondary">
+                Nenhuma ficha criada ainda.
+              </Typography>
             </Box>
-            <Stack spacing={1}>
-              {pendentes.map((v) => (
-                <Box key={v.vinculoId} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 0.5 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{v.nomeAluno}</Typography>
-                  <StatusChip status={v.status} />
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={objetivoData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="total" name="Fichas" fill="#F5C400" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Paper>
+      </Box>
+
+      {/* Pending vinculos */}
+      <Paper sx={{ p: 3, borderRadius: 2 }}>
+        <Typography
+          variant="overline"
+          color="text.disabled"
+          sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 1 }}
+        >
+          VÍNCULOS AGUARDANDO APROVAÇÃO
+        </Typography>
+
+        {pendentes.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+            Nenhum vínculo pendente.
+          </Typography>
+        ) : (
+          <Stack divider={<Divider />}>
+            {pendentes.map((v) => (
+              <Box
+                key={v.vinculoId}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 2,
+                  py: 2,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {v.nomeAluno}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {v.emailAluno ?? "—"}
+                  </Typography>
                 </Box>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
-      )}
+                <Stack direction="row" spacing={1} sx={{ flexShrink: 0, alignItems: "center" }}>
+                  {pacotes.length > 0 && (
+                    <FormControl size="small" sx={{ minWidth: 140 }}>
+                      <InputLabel>Pacote</InputLabel>
+                      <Select
+                        label="Pacote"
+                        value={pacoteSelections[v.vinculoId] ?? ""}
+                        onChange={(e) =>
+                          setPacoteSelections((prev) => ({
+                            ...prev,
+                            [v.vinculoId]: e.target.value,
+                          }))
+                        }
+                      >
+                        {pacotes.map((p) => (
+                          <MenuItem key={p.pacoteId} value={p.pacoteId}>
+                            {p.nome}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="success"
+                    startIcon={<CheckIcon />}
+                    disabled={!!actionLoading || !pacoteSelections[v.vinculoId]}
+                    onClick={() => handleAprovar(v.vinculoId)}
+                  >
+                    Aprovar
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    startIcon={<LinkOffIcon />}
+                    disabled={!!actionLoading}
+                    onClick={() => handleDesvincular(v.vinculoId)}
+                  >
+                    Rejeitar
+                  </Button>
+                </Stack>
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </Paper>
     </Box>
   );
 }

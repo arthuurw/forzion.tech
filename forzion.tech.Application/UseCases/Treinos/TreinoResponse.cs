@@ -3,14 +3,21 @@ using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.UseCases.Treinos;
 
+public record SerieConfigResponse(
+    Guid SerieConfigId,
+    int Quantidade,
+    int RepeticoesMin,
+    int? RepeticoesMax,
+    string? Descricao,
+    decimal? Carga,
+    int? Descanso,
+    int Ordem);
+
 public record TreinoExercicioResponse(
     Guid TreinoExercicioId,
     Guid ExercicioId,
     string NomeExercicio,
-    int Series,
-    int Repeticoes,
-    decimal? Carga,
-    int? DescansoSegundos,
+    IReadOnlyList<SerieConfigResponse> Series,
     int Ordem);
 
 public record TreinoResponse(
@@ -20,11 +27,12 @@ public record TreinoResponse(
     Guid TreinadorId,
     IReadOnlyList<TreinoExercicioResponse> Exercicios,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string? NomeAluno = null);
 
 public static class TreinoResponseExtensions
 {
-    public static TreinoResponse ToResponse(Treino treino) => new(
+    public static TreinoResponse ToResponse(Treino treino, string? nomeAluno = null) => new(
         treino.Id,
         treino.Nome,
         treino.Objetivo,
@@ -33,12 +41,19 @@ public static class TreinoResponseExtensions
             te.Id,
             te.ExercicioId,
             te.Exercicio?.Nome ?? string.Empty,
-            te.Series,
-            te.Repeticoes,
-            te.Carga,
-            te.Descanso,
+            te.Series.Select(s => new SerieConfigResponse(
+                s.Id,
+                s.Quantidade,
+                s.RepeticoesMin,
+                s.RepeticoesMax,
+                s.Descricao,
+                s.Carga,
+                s.Descanso,
+                s.Ordem
+            )).ToList(),
             te.Ordem
         )).ToList(),
         treino.CreatedAt,
-        treino.UpdatedAt);
+        treino.UpdatedAt,
+        nomeAluno);
 }

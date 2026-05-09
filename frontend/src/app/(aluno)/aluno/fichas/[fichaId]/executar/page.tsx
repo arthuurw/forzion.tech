@@ -163,39 +163,43 @@ export default function ExecutarFichaPage() {
               </Typography>
             </Box>
 
-            <Stack
-              direction="row"
-              spacing={2}
-              sx={{ mb: 2, flexWrap: "wrap" }}
-            >
-              <Box sx={{ textAlign: "center", minWidth: { xs: 60, sm: 80 } }}>
-                <Typography variant="h3" sx={{ fontWeight: 800, color: "primary.main", lineHeight: 1 }}>
-                  {current.series}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">séries</Typography>
-              </Box>
-              <Box sx={{ textAlign: "center", minWidth: { xs: 60, sm: 80 } }}>
-                <Typography variant="h3" sx={{ fontWeight: 800, color: "primary.main", lineHeight: 1 }}>
-                  {current.repeticoes}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">repetições</Typography>
-              </Box>
-              {current.carga != null && (
-                <Box sx={{ textAlign: "center", minWidth: { xs: 60, sm: 80 } }}>
-                  <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1 }}>
-                    {current.carga}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">kg</Typography>
-                </Box>
-              )}
-              {current.descansoSegundos != null && (
-                <Box sx={{ textAlign: "center", minWidth: { xs: 60, sm: 80 } }}>
-                  <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1 }}>
-                    {current.descansoSegundos}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">s descanso</Typography>
-                </Box>
-              )}
+            <Stack spacing={1} sx={{ mb: 2 }}>
+              {current.series.map((s, i) => {
+                const reps = s.repeticoesMax
+                  ? `${s.repeticoesMin}–${s.repeticoesMax} reps`
+                  : `${s.repeticoesMin} reps`;
+                return (
+                  <Box
+                    key={i}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.5,
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: "grey.50",
+                      border: "1px solid",
+                      borderColor: "divider",
+                    }}
+                  >
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: "primary.main", minWidth: 36, lineHeight: 1 }}>
+                      {s.quantidade}×
+                    </Typography>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>{reps}</Typography>
+                      {s.descricao && (
+                        <Typography variant="caption" color="text.secondary">{s.descricao}</Typography>
+                      )}
+                    </Box>
+                    {s.carga != null && (
+                      <Typography variant="body2" color="text.secondary">{s.carga} kg</Typography>
+                    )}
+                    {s.descanso != null && (
+                      <Typography variant="body2" color="text.secondary">{s.descanso}s</Typography>
+                    )}
+                  </Box>
+                );
+              })}
             </Stack>
           </CardContent>
         </Card>

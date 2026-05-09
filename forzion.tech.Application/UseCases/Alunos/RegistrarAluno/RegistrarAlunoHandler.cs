@@ -41,7 +41,22 @@ public class RegistrarAlunoHandler(
             throw new DomainException("O pacote informado não pertence ao treinador selecionado.");
 
         var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Aluno);
-        var aluno = Aluno.Criar(conta.Id, command.Nome, null, command.Telefone);
+        var tempoDisponivel = command.TempoDisponivelMinutos.HasValue
+            ? (TempoDisponivel?)command.TempoDisponivelMinutos.Value
+            : null;
+        var aluno = Aluno.Criar(
+            conta.Id,
+            command.Nome,
+            null,
+            command.Telefone,
+            command.DiasDisponiveis,
+            tempoDisponivel,
+            command.Finalidade,
+            command.FocoTreino,
+            command.NivelCondicionamento,
+            command.LimitacoesFisicas,
+            command.Doencas,
+            command.ObservacoesAdicionais);
         var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, aluno.Id, command.PacoteId);
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
@@ -51,6 +66,6 @@ public class RegistrarAlunoHandler(
 
         logger.LogInformation("Aluno {AlunoId} registrado com vínculo pendente ao treinador {TreinadorId}.", aluno.Id, command.TreinadorId);
 
-        return new AlunoResponse(aluno.Id, aluno.Nome, aluno.Email, aluno.Telefone, aluno.Status, aluno.ContaId, aluno.CreatedAt, aluno.UpdatedAt);
+        return CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno);
     }
 }

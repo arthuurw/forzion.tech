@@ -23,7 +23,7 @@ public class ListarTreinosHandler(
         _logger.LogInformation("Listagem de treinos do aluno {AlunoId}: {Total} registros.", query.AlunoId, total);
 
         return new ListarTreinosResponse(
-            items.Select(TreinoResponseExtensions.ToResponse).ToList(),
+            items.Select(t => TreinoResponseExtensions.ToResponse(t)).ToList(),
             total,
             query.Pagina,
             query.TamanhoPagina);

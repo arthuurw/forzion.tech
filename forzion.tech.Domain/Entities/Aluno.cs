@@ -14,9 +14,30 @@ public class Aluno
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
+    public int? DiasDisponiveis { get; private set; }
+    public TempoDisponivel? TempoDisponivelMinutos { get; private set; }
+    public FinalidadeTreino? Finalidade { get; private set; }
+    public string? FocoTreino { get; private set; }
+    public NivelCondicionamento? NivelCondicionamento { get; private set; }
+    public string? LimitacoesFisicas { get; private set; }
+    public string? Doencas { get; private set; }
+    public string? ObservacoesAdicionais { get; private set; }
+
     private Aluno() { }
 
-    public static Aluno Criar(Guid contaId, string nome, string? email = null, string? telefone = null)
+    public static Aluno Criar(
+        Guid contaId,
+        string nome,
+        string? email = null,
+        string? telefone = null,
+        int? diasDisponiveis = null,
+        TempoDisponivel? tempoDisponivelMinutos = null,
+        FinalidadeTreino? finalidade = null,
+        string? focoTreino = null,
+        NivelCondicionamento? nivelCondicionamento = null,
+        string? limitacoesFisicas = null,
+        string? doencas = null,
+        string? observacoesAdicionais = null)
     {
         if (contaId == Guid.Empty)
             throw new DomainException("O identificador da conta é inválido.");
@@ -31,7 +52,15 @@ public class Aluno
             ContaId = contaId,
             Nome = nome.Trim(),
             Status = AlunoStatus.AguardandoAprovacao,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            DiasDisponiveis = diasDisponiveis,
+            TempoDisponivelMinutos = tempoDisponivelMinutos,
+            Finalidade = finalidade,
+            FocoTreino = focoTreino?.Trim(),
+            NivelCondicionamento = nivelCondicionamento,
+            LimitacoesFisicas = limitacoesFisicas?.Trim(),
+            Doencas = doencas?.Trim(),
+            ObservacoesAdicionais = observacoesAdicionais?.Trim(),
         };
 
         if (email is not null)

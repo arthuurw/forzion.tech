@@ -18,7 +18,9 @@ public class TreinoAlunoConfiguration : IEntityTypeConfiguration<TreinoAluno>
         builder.Property(ta => ta.CreatedAt).IsRequired();
         builder.Property(ta => ta.UpdatedAt);
 
-        builder.HasIndex(ta => ta.TreinoId);
+        builder.HasIndex(ta => ta.TreinoId)
+            .IsUnique()
+            .HasFilter("status = 'Ativo'");
         builder.HasIndex(ta => ta.AlunoId);
 
         builder.HasOne<Treino>()

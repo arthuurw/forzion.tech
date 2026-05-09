@@ -105,7 +105,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {!collapsed && (
                 <ListItemText
                   primary={label}
-                  slotProps={{ primary: { fontSize: 14, fontWeight: active ? 600 : 500 } }}
+                  slotProps={{ primary: { sx: { fontSize: 14, fontWeight: active ? 600 : 500 } } }}
                 />
               )}
             </ListItemButton>

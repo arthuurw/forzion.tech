@@ -54,10 +54,10 @@ public class Treino
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public TreinoExercicio AdicionarExercicio(Guid exercicioId, int series, int repeticoes, decimal? carga, int? descanso)
+    public TreinoExercicio AdicionarExercicio(Guid exercicioId)
     {
         var ordem = _exercicios.Count + 1;
-        var item = TreinoExercicio.Criar(Id, exercicioId, series, repeticoes, carga, descanso, ordem);
+        var item = TreinoExercicio.Criar(Id, exercicioId, ordem);
         _exercicios.Add(item);
         UpdatedAt = DateTime.UtcNow;
         return item;
@@ -85,8 +85,12 @@ public class Treino
         };
 
         foreach (var e in _exercicios)
-            copia._exercicios.Add(
-                TreinoExercicio.Criar(copia.Id, e.ExercicioId, e.Series, e.Repeticoes, e.Carga, e.Descanso, e.Ordem));
+        {
+            var novoEx = TreinoExercicio.Criar(copia.Id, e.ExercicioId, e.Ordem);
+            foreach (var s in e.Series)
+                novoEx.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
+            copia._exercicios.Add(novoEx);
+        }
 
         return copia;
     }
@@ -106,8 +110,12 @@ public class Treino
         };
 
         foreach (var e in _exercicios)
-            copia._exercicios.Add(
-                TreinoExercicio.Criar(copia.Id, e.ExercicioId, e.Series, e.Repeticoes, e.Carga, e.Descanso, e.Ordem));
+        {
+            var novoEx = TreinoExercicio.Criar(copia.Id, e.ExercicioId, e.Ordem);
+            foreach (var s in e.Series)
+                novoEx.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
+            copia._exercicios.Add(novoEx);
+        }
 
         return copia;
     }

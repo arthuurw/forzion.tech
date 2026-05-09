@@ -1,130 +1,250 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Box, Grid, Card, CardContent, Typography, Button, Stack, Divider } from "@mui/material";
-import PeopleIcon from "@mui/icons-material/People";
-import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
+import {
+  Box, Typography, Paper, Stack, Divider, Button, Chip,
+} from "@mui/material";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
+  Tooltip, ResponsiveContainer, Legend,
+} from "recharts";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
-import StatusChip from "@/components/ui/StatusChip";
 import { adminApi } from "@/lib/api/admin";
-import type { TreinadorResponse } from "@/types";
+import type { TreinadorResponse, PlanoTreinadorResponse } from "@/types";
 
-interface MetricCard {
-  label: string;
+const STATUS_COLORS: Record<string, string> = {
+  Ativos: "#4caf50",
+  Pendentes: "#F5C400",
+  Inativos: "#757575",
+};
+
+interface StatItem {
+  name: string;
   value: number;
-  Icon: React.ElementType;
-  accent: string;
-  bg: string;
+  color: string;
+}
+
+interface PlanoItem {
+  name: string;
+  total: number;
 }
 
 export default function DashboardAdminPage() {
+  const [stats, setStats] = useState<StatItem[]>([]);
+  const [planoData, setPlanoData] = useState<PlanoItem[]>([]);
   const [pendentes, setPendentes] = useState<TreinadorResponse[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [allRes, pendRes] = await Promise.all([
-          adminApi.listTreinadores({ tamanhoPagina: 1 }),
-          adminApi.listTreinadores({ status: "AguardandoAprovacao", tamanhoPagina: 5 }),
-        ]);
-        setTotal(allRes.data.total);
-        setPendentes(pendRes.data.items);
-      } catch {
-        setError("Erro ao carregar dados do painel.");
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    try {
+      const [ativoRes, aguardandoRes, inativoRes, todosRes, planosRes] = await Promise.all([
+        adminApi.listTreinadores({ status: "Ativo", tamanhoPagina: 1 }),
+        adminApi.listTreinadores({ status: "AguardandoAprovacao", tamanhoPagina: 10 }),
+        adminApi.listTreinadores({ status: "Inativo", tamanhoPagina: 1 }),
+        adminApi.listTreinadores({ tamanhoPagina: 100 }),
+        adminApi.listPlanos(),
+      ]);
+
+      setStats([
+        { name: "Ativos", value: ativoRes.data.total, color: STATUS_COLORS.Ativos },
+        { name: "Pendentes", value: aguardandoRes.data.total, color: STATUS_COLORS.Pendentes },
+        { name: "Inativos", value: inativoRes.data.total, color: STATUS_COLORS.Inativos },
+      ]);
+
+      setPendentes(aguardandoRes.data.items);
+
+      const planos = planosRes.data as PlanoTreinadorResponse[];
+      const planoMap = new Map(planos.map((p) => [p.planoId, p.nome]));
+      const contagem: Record<string, number> = {};
+      for (const t of todosRes.data.items) {
+        const nome = t.planoTreinadorId
+          ? (planoMap.get(t.planoTreinadorId) ?? "Plano desconhecido")
+          : "Sem plano";
+        contagem[nome] = (contagem[nome] ?? 0) + 1;
       }
-    };
-    load();
+      setPlanoData(Object.entries(contagem).map(([name, total]) => ({ name, total })));
+    } catch {
+      setError("Erro ao carregar dados do painel.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const cards: MetricCard[] = [
-    { label: "Treinadores cadastrados", value: total, Icon: PeopleIcon, accent: "#1A1A1A", bg: "rgba(26,26,26,0.06)" },
-    { label: "Aguardando validação", value: pendentes.length, Icon: HourglassEmptyIcon, accent: "#C9A000", bg: "rgba(245,196,0,0.12)" },
-  ];
+  useEffect(() => { load(); }, [load]);
+
+  const handleAprovar = async (id: string) => {
+    setActionLoading(`${id}_aprovar`);
+    try {
+      await adminApi.aprovarTreinador(id);
+      await load();
+    } catch {
+      setError("Erro ao aprovar treinador.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReprovar = async (id: string) => {
+    setActionLoading(`${id}_reprovar`);
+    try {
+      await adminApi.reprovarTreinador(id);
+      await load();
+    } catch {
+      setError("Erro ao reprovar treinador.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   if (loading) return <LoadingSpinner />;
 
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Painel de controle</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Visão consolidada da plataforma
-        </Typography>
+      <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+
+      {/* Stat cards */}
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mb: 4 }}>
+        {stats.map((s) => (
+          <Paper
+            key={s.name}
+            sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}
+          >
+            <Typography
+              variant="h3"
+              sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}
+            >
+              {s.value}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
+              {s.name}
+            </Typography>
+          </Paper>
+        ))}
       </Box>
 
-      <AlertBanner open={!!error} message={error} />
+      {/* Charts */}
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 2, mb: 4 }}>
+        <Paper sx={{ p: 3, borderRadius: 2 }}>
+          <Typography
+            variant="overline"
+            color="text.disabled"
+            sx={{ letterSpacing: 2, fontSize: "0.7rem" }}
+          >
+            STATUS DOS TREINADORES
+          </Typography>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={stats}
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={85}
+                dataKey="value"
+                paddingAngle={3}
+              >
+                {stats.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v, n) => [v, n]} />
+              <Legend iconType="circle" iconSize={10} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Paper>
 
-      <Grid container spacing={2.5} sx={{ mb: 4 }}>
-        {cards.map(({ label, value, Icon, accent, bg }) => (
-          <Grid key={label} size={{ xs: 12, sm: 6 }}>
-            <Card sx={{ border: "1px solid", borderColor: "divider" }}>
-              <CardContent sx={{ display: "flex", alignItems: "center", gap: 2.5, p: 3, "&:last-child": { pb: 3 } }}>
-                <Box
-                  sx={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 3,
-                    bgcolor: bg,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon sx={{ color: accent, fontSize: 26 }} />
-                </Box>
+        <Paper sx={{ p: 3, borderRadius: 2 }}>
+          <Typography
+            variant="overline"
+            color="text.disabled"
+            sx={{ letterSpacing: 2, fontSize: "0.7rem" }}
+          >
+            TREINADORES POR PLANO
+          </Typography>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={planoData} layout="vertical" margin={{ left: 8, right: 16 }}>
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Bar dataKey="total" name="Treinadores" fill="#F5C400" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Paper>
+      </Box>
+
+      {/* Pending list */}
+      <Paper sx={{ p: 3, borderRadius: 2 }}>
+        <Typography
+          variant="overline"
+          color="text.disabled"
+          sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 1 }}
+        >
+          AGUARDANDO REVISÃO
+        </Typography>
+
+        {pendentes.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+            Nenhum cadastro pendente.
+          </Typography>
+        ) : (
+          <Stack divider={<Divider />}>
+            {pendentes.map((t) => (
+              <Box
+                key={t.treinadorId}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  py: 2,
+                }}
+              >
                 <Box>
-                  <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, mb: 0.5 }}>
-                    {value}
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {t.nome}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                    {label}
-                  </Typography>
+                  <Chip
+                    label="Aguardando aprovação"
+                    size="small"
+                    sx={{
+                      mt: 0.5,
+                      fontSize: "0.65rem",
+                      bgcolor: "#F5C40020",
+                      color: "primary.main",
+                      fontWeight: 600,
+                    }}
+                  />
                 </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {pendentes.length > 0 && (
-        <Card sx={{ border: "1px solid", borderColor: "divider" }}>
-          <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>Aguardando validação</Typography>
-                <Typography variant="caption" color="text.secondary">{pendentes.length} cadastro(s) pendente(s) de aprovação</Typography>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="success"
+                    startIcon={<CheckIcon />}
+                    disabled={!!actionLoading}
+                    onClick={() => handleAprovar(t.treinadorId)}
+                  >
+                    Aprovar
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    startIcon={<CloseIcon />}
+                    disabled={!!actionLoading}
+                    onClick={() => handleReprovar(t.treinadorId)}
+                  >
+                    Reprovar
+                  </Button>
+                </Stack>
               </Box>
-              <Link href="/admin/treinadores" style={{ textDecoration: "none" }}>
-                <Button size="small" variant="outlined" endIcon={<ArrowForwardIcon />}>
-                  Ver todos
-                </Button>
-              </Link>
-            </Box>
-            <Stack divider={<Divider />}>
-              {pendentes.map((t) => (
-                <Box
-                  key={t.treinadorId}
-                  sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
-                >
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.nome}</Typography>
-                    <Typography variant="caption" color="text.secondary">{t.email}</Typography>
-                  </Box>
-                  <StatusChip status={t.status} />
-                </Box>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
-      )}
+            ))}
+          </Stack>
+        )}
+      </Paper>
     </Box>
   );
 }

@@ -17,9 +17,6 @@ const COLUMNS: Column[] = [
   { label: "#", mobileRole: "hidden" },
   { label: "Exercício", mobileRole: "primary" },
   { label: "Séries" },
-  { label: "Reps" },
-  { label: "Carga (kg)" },
-  { label: "Descanso (s)" },
 ];
 
 export default function DetalheFichaAlunoPage() {
@@ -89,10 +86,14 @@ export default function DetalheFichaAlunoPage() {
                 <Typography variant="caption" color="text.secondary">{rowIndex + 1}</Typography>
               );
               if (i === 1) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{ex.nomeExercicio}</Typography>;
-              if (i === 2) return ex.series;
-              if (i === 3) return ex.repeticoes;
-              if (i === 4) return ex.carga ?? "—";
-              return ex.descansoSegundos ?? "—";
+              return (
+                <Typography variant="body2" sx={{ fontSize: 12, color: "text.secondary" }}>
+                  {ex.series.length === 0 ? "—" : ex.series.map((s) => {
+                    const reps = s.repeticoesMax ? `${s.repeticoesMin}–${s.repeticoesMax}` : `${s.repeticoesMin}`;
+                    return `${s.quantidade}×${reps}${s.descricao ? ` (${s.descricao})` : ""}`;
+                  }).join(" / ")}
+                </Typography>
+              );
             }}
           />
         )}

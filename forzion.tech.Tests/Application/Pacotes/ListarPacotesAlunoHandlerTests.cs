@@ -17,7 +17,7 @@ public class ListarPacotesAlunoHandlerTests
     }
 
     private static PacoteAluno CriarPacote(Guid treinadorId) =>
-        PacoteAluno.Criar(treinadorId, "Pacote Teste", 5, 200m);
+        PacoteAluno.Criar(treinadorId, "Pacote Teste", 200m);
 
     [Fact]
     public async Task HandleAsync_SemPacotes_RetornaListaVazia()

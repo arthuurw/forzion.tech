@@ -47,12 +47,10 @@ public static class AuthenticationExtensions
                     options.Events = BuildDiagnosticEvents();
             });
 
-        services.AddAuthorization(options =>
-        {
-            options.AddPolicy("SystemAdmin", p => p.RequireClaim("tipo_conta", "SystemAdmin"));
-            options.AddPolicy("Treinador",   p => p.RequireClaim("tipo_conta", "Treinador"));
-            options.AddPolicy("Aluno",       p => p.RequireClaim("tipo_conta", "Aluno"));
-        });
+        services.AddAuthorizationBuilder()
+            .AddPolicy("SystemAdmin", p => p.RequireClaim("tipo_conta", "SystemAdmin"))
+            .AddPolicy("Treinador", p => p.RequireClaim("tipo_conta", "Treinador"))
+            .AddPolicy("Aluno", p => p.RequireClaim("tipo_conta", "Aluno"));
 
         return services;
     }

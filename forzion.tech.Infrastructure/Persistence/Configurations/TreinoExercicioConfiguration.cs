@@ -11,10 +11,6 @@ public class TreinoExercicioConfiguration : IEntityTypeConfiguration<TreinoExerc
         builder.ToTable("treino_exercicios");
         builder.HasKey(te => te.Id);
 
-        builder.Property(te => te.Series).IsRequired();
-        builder.Property(te => te.Repeticoes).IsRequired();
-        builder.Property(te => te.Carga).HasColumnType("numeric(10,2)");
-        builder.Property(te => te.Descanso);
         builder.Property(te => te.Ordem).IsRequired();
 
         // TreinoId FK configurado via TreinoConfiguration.HasMany
@@ -22,5 +18,14 @@ public class TreinoExercicioConfiguration : IEntityTypeConfiguration<TreinoExerc
                .WithMany()
                .HasForeignKey(te => te.ExercicioId)
                .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(te => te.Series)
+               .WithOne()
+               .HasForeignKey(s => s.TreinoExercicioId)
+               .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(te => te.Series)
+               .HasField("_series")
+               .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

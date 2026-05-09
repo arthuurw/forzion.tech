@@ -135,7 +135,10 @@ public static class TreinoEndpoints
             CancellationToken cancellationToken) =>
         {
             var command = new AdicionarExercicioCommand(
-                id, request.ExercicioId, request.Series, request.Repeticoes, request.Carga, request.Descanso);
+                id,
+                request.ExercicioId,
+                request.Series.Select(s => new SerieConfigCommand(
+                    s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso)).ToList());
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
@@ -211,6 +214,7 @@ public static class TreinoEndpoints
 
 public record CriarTreinoRequest(Guid AlunoId, string Nome, ObjetivoTreino Objetivo);
 public record AtualizarTreinoRequest(string? Nome, ObjetivoTreino? Objetivo);
-public record AdicionarExercicioRequest(Guid ExercicioId, int Series, int Repeticoes, decimal? Carga, int? Descanso);
+public record SerieConfigRequest(int Quantidade, int RepeticoesMin, int? RepeticoesMax, string? Descricao, decimal? Carga, int? Descanso);
+public record AdicionarExercicioRequest(Guid ExercicioId, IReadOnlyList<SerieConfigRequest> Series);
 public record RegistrarExecucaoItemRequest(Guid TreinoExercicioId, int SeriesExecutadas, int RepeticoesExecutadas, decimal? CargaExecutada, string? Observacao);
 public record RegistrarExecucaoRequest(Guid AlunoId, DateTime DataExecucao, string? Observacao, List<RegistrarExecucaoItemRequest> Exercicios);

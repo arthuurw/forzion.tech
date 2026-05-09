@@ -9,6 +9,7 @@ using forzion.tech.Application.UseCases.Auth.Login;
 using forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
+using forzion.tech.Application.UseCases.Alunos.ObterProgressaoAluno;
 using forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
@@ -59,6 +60,7 @@ using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscula
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
 using forzion.tech.Infrastructure.DependencyInjection;
+using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -92,7 +94,7 @@ public static class DependencyInjectionExtensions
 
         // Serviços de limite
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
-        services.AddScoped<ILimiteFichasService, LimiteFichasService>();
+
 
         // Auth / Registro
         services.AddScoped<LoginHandler>();
@@ -118,6 +120,7 @@ public static class DependencyInjectionExtensions
 
         // Alunos
         services.AddScoped<ObterAlunoHandler>();
+        services.AddScoped<ObterProgressaoAlunoHandler>();
         services.AddScoped<ListarAlunosHandler>();
         services.AddScoped<AtualizarAlunoHandler>();
         services.AddScoped<AlterarStatusAlunoHandler>();
@@ -157,6 +160,7 @@ public static class DependencyInjectionExtensions
 
         // Pacotes (treinador)
         services.AddScoped<CriarPacoteAlunoHandler>();
+        services.AddScoped<AtualizarPacoteAlunoHandler>();
         services.AddScoped<ListarPacotesAlunoHandler>();
 
         // Aluno (área do aluno)

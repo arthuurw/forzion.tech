@@ -11,14 +11,17 @@ public class ListarTreinosDoTreinadorHandler(ITreinoRepository treinoRepository)
         Guid treinadorId,
         int pagina,
         int tamanhoPagina,
+        string? nome = null,
+        string? objetivo = null,
+        string? ordenarPor = null,
         CancellationToken cancellationToken = default)
     {
         var (items, total) = await _treinoRepository
-            .ListarPorTreinadorAsync(treinadorId, pagina, tamanhoPagina, cancellationToken)
+            .ListarPorTreinadorAsync(treinadorId, pagina, tamanhoPagina, nome, objetivo, ordenarPor, cancellationToken)
             .ConfigureAwait(false);
 
         return new ListarTreinosResponse(
-            items.Select(TreinoResponseExtensions.ToResponse).ToList(),
+            items.Select(item => TreinoResponseExtensions.ToResponse(item.Treino, item.NomeAluno)).ToList(),
             total, pagina, tamanhoPagina);
     }
 }

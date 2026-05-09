@@ -43,6 +43,14 @@ public class CadastrarAlunoHandler(
         aluno.Status,
         aluno.ContaId,
         aluno.CreatedAt,
-        aluno.UpdatedAt
+        aluno.UpdatedAt,
+        aluno.DiasDisponiveis,
+        aluno.TempoDisponivelMinutos,
+        aluno.Finalidade,
+        aluno.FocoTreino,
+        aluno.NivelCondicionamento,
+        aluno.LimitacoesFisicas,
+        aluno.Doencas,
+        aluno.ObservacoesAdicionais
     );
 }

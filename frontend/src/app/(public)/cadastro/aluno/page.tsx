@@ -14,19 +14,59 @@ import {
   CardActionArea,
   CardContent,
   Radio,
+  Divider,
 } from "@mui/material";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircle";
 import Link from "next/link";
 import FormTextField from "@/components/forms/FormTextField";
+import FormSelect from "@/components/forms/FormSelect";
 import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { cadastroAlunoSchema, type CadastroAlunoFormData } from "@/lib/validations/common";
 import type { ProblemDetails, TreinadorResponse, PacoteAlunoResponse } from "@/types";
 
-const STEPS = ["Escolher treinador", "Escolher pacote", "Seus dados"];
+const STEPS = ["Escolher treinador", "Escolher pacote", "Seus dados", "Informações adicionais"];
+
+const DIAS_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((d) => ({
+  value: String(d),
+  label: `${d} dia${d > 1 ? "s" : ""} por semana`,
+}));
+
+const TEMPO_OPTIONS = [
+  { value: "30", label: "30 minutos" },
+  { value: "45", label: "45 minutos" },
+  { value: "60", label: "1 hora" },
+  { value: "90", label: "1h30" },
+  { value: "120", label: "2 horas ou mais" },
+];
+
+const FINALIDADE_OPTIONS = [
+  { value: "Hipertrofia", label: "Hipertrofia" },
+  { value: "Emagrecimento", label: "Emagrecimento" },
+  { value: "CondicionamentoFisico", label: "Condicionamento Físico" },
+  { value: "Saude", label: "Saúde Geral" },
+  { value: "PerformanceEsportiva", label: "Performance Esportiva" },
+  { value: "Reabilitacao", label: "Reabilitação" },
+  { value: "Outro", label: "Outro" },
+];
+
+const NIVEL_OPTIONS = [
+  { value: "Sedentario", label: "Sedentário (sem atividade regular)" },
+  { value: "Iniciante", label: "Iniciante (menos de 1 ano de treino)" },
+  { value: "Intermediario", label: "Intermediário (1–3 anos de treino)" },
+  { value: "Avancado", label: "Avançado (mais de 3 anos de treino)" },
+];
+
+const STEP2_FIELDS: (keyof CadastroAlunoFormData)[] = [
+  "nome",
+  "email",
+  "telefone",
+  "password",
+  "confirmPassword",
+];
 
 export default function CadastroAlunoPage() {
   const [activeStep, setActiveStep] = useState(0);
@@ -41,7 +81,21 @@ export default function CadastroAlunoPage() {
 
   const methods = useForm<CadastroAlunoFormData>({
     resolver: zodResolver(cadastroAlunoSchema),
-    defaultValues: { nome: "", email: "", telefone: "", password: "", confirmPassword: "" },
+    defaultValues: {
+      nome: "",
+      email: "",
+      telefone: "",
+      password: "",
+      confirmPassword: "",
+      diasDisponiveis: "",
+      tempoDisponivelMinutos: "",
+      finalidade: "",
+      nivelCondicionamento: "",
+      focoTreino: "",
+      limitacoesFisicas: "",
+      doencas: "",
+      observacoesAdicionais: "",
+    },
   });
 
   const fetchTreinadores = async () => {
@@ -91,6 +145,11 @@ export default function CadastroAlunoPage() {
     setActiveStep(2);
   };
 
+  const handleNextFromStep2 = async () => {
+    const valid = await methods.trigger(STEP2_FIELDS);
+    if (valid) setActiveStep(3);
+  };
+
   const onSubmit = async (data: CadastroAlunoFormData) => {
     if (!selectedTreinador || !selectedPacote) return;
     setError("");
@@ -106,6 +165,16 @@ export default function CadastroAlunoPage() {
           senha: data.password,
           treinadorId: selectedTreinador.treinadorId,
           pacoteId: selectedPacote.pacoteId,
+          diasDisponiveis: data.diasDisponiveis ? parseInt(data.diasDisponiveis) : null,
+          tempoDisponivelMinutos: data.tempoDisponivelMinutos
+            ? parseInt(data.tempoDisponivelMinutos)
+            : null,
+          finalidade: data.finalidade || null,
+          focoTreino: data.focoTreino || null,
+          nivelCondicionamento: data.nivelCondicionamento || null,
+          limitacoesFisicas: data.limitacoesFisicas || null,
+          doencas: data.doencas || null,
+          observacoesAdicionais: data.observacoesAdicionais || null,
         }),
       });
 
@@ -221,7 +290,7 @@ export default function CadastroAlunoPage() {
                       <Box>
                         <Typography variant="body1" sx={{ fontWeight: 600 }}>{pacote.nome}</Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                          Ate {pacote.maxFichas} fichas
+                          {pacote.descricao ?? ""}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                           R$ {Number(pacote.preco).toFixed(2)}
@@ -238,15 +307,111 @@ export default function CadastroAlunoPage() {
 
       {activeStep === 2 && (
         <FormProvider {...methods}>
-          <Stack component="form" onSubmit={methods.handleSubmit(onSubmit)} spacing={2}>
+          <Stack spacing={2}>
             <Typography variant="body2" color="text.secondary">
               Treinador: <strong>{selectedTreinador?.nome}</strong> | Pacote: <strong>{selectedPacote?.nome}</strong>
             </Typography>
             <FormTextField name="nome" label="Nome completo" required autoComplete="name" />
             <FormTextField name="email" label="E-mail" type="email" required autoComplete="email" />
-            <FormTextField name="telefone" label="Telefone (opcional)" autoComplete="tel" />
+            <FormTextField name="telefone" label="Celular" required autoComplete="tel" helperText="Somente dígitos, ex: 11987654321" />
             <PasswordField name="password" label="Senha" required autoComplete="new-password" />
             <PasswordField name="confirmPassword" label="Confirmar senha" required autoComplete="new-password" />
+
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              fullWidth
+              onClick={handleNextFromStep2}
+            >
+              Próximo
+            </Button>
+            <Button variant="text" size="small" onClick={() => goToStep(1)}>
+              Voltar
+            </Button>
+          </Stack>
+        </FormProvider>
+      )}
+
+      {activeStep === 3 && (
+        <FormProvider {...methods}>
+          <Stack component="form" onSubmit={methods.handleSubmit(onSubmit)} spacing={2}>
+            <Typography variant="body2" color="text.secondary">
+              Treinador: <strong>{selectedTreinador?.nome}</strong> | Pacote: <strong>{selectedPacote?.nome}</strong>
+            </Typography>
+
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              Disponibilidade
+            </Typography>
+            <FormSelect
+              name="diasDisponiveis"
+              label="Dias disponíveis por semana"
+              options={DIAS_OPTIONS}
+              required
+            />
+            <FormSelect
+              name="tempoDisponivelMinutos"
+              label="Tempo disponível por dia"
+              options={TEMPO_OPTIONS}
+              required
+            />
+
+            <Divider />
+
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              Objetivos
+            </Typography>
+            <FormSelect
+              name="finalidade"
+              label="Finalidade do treino"
+              options={FINALIDADE_OPTIONS}
+              required
+            />
+            <FormTextField
+              name="focoTreino"
+              label="Foco de treino (opcional)"
+              placeholder="Ex.: membros inferiores, postura, core..."
+              size="small"
+            />
+            <FormSelect
+              name="nivelCondicionamento"
+              label="Nível de condicionamento atual"
+              options={NIVEL_OPTIONS}
+              required
+            />
+
+            <Divider />
+
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              Saúde
+            </Typography>
+            <FormTextField
+              name="limitacoesFisicas"
+              label="Limitações físicas (opcional)"
+              placeholder="Ex.: dor no joelho, hérnia de disco, ombro operado..."
+              multiline
+              rows={2}
+              size="small"
+            />
+            <FormTextField
+              name="doencas"
+              label="Doenças ou condições de saúde (opcional)"
+              placeholder="Ex.: hipertensão, diabetes, hipotireoidismo..."
+              multiline
+              rows={2}
+              size="small"
+            />
+
+            <Divider />
+
+            <FormTextField
+              name="observacoesAdicionais"
+              label="Observações adicionais (opcional)"
+              placeholder="Qualquer informação relevante para o seu treinador..."
+              multiline
+              rows={3}
+              size="small"
+            />
 
             <Button
               type="submit"
@@ -259,7 +424,7 @@ export default function CadastroAlunoPage() {
             >
               Criar conta
             </Button>
-            <Button variant="text" size="small" onClick={() => goToStep(1)}>
+            <Button variant="text" size="small" onClick={() => setActiveStep(2)}>
               Voltar
             </Button>
           </Stack>

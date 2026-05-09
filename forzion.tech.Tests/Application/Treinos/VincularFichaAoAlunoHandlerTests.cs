@@ -15,7 +15,6 @@ public class VincularFichaAoAlunoHandlerTests
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
-    private readonly Mock<ILimiteFichasService> _limiteFichasService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly VincularFichaAoAlunoHandler _handler;
@@ -26,7 +25,6 @@ public class VincularFichaAoAlunoHandlerTests
             _treinoRepo.Object,
             _treinoAlunoRepo.Object,
             _vinculoRepo.Object,
-            _limiteFichasService.Object,
             _unitOfWork.Object,
             _userContext.Object,
             Mock.Of<ILogger<VincularFichaAoAlunoHandler>>());
@@ -43,12 +41,35 @@ public class VincularFichaAoAlunoHandlerTests
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId));
-        _limiteFichasService.Setup(s => s.ValidarAsync(alunoId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _treinoAlunoRepo.Setup(r => r.ListarAtivosPorTreinoIdAsync(treino.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TreinoAlunoVinculado>());
 
         await _handler.HandleAsync(new VincularFichaAoAlunoCommand(treino.Id, alunoId));
 
         _treinoAlunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<TreinoAluno>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_FichaJaVinculadaAOutroAluno_LancaDomainException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, treinadorId);
+        var vinculoExistente = new TreinoAlunoVinculado(Guid.NewGuid(), Guid.NewGuid(), "Aluno Existente", TreinoAlunoStatus.Ativo);
+
+        _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId));
+        _treinoAlunoRepo.Setup(r => r.ListarAtivosPorTreinoIdAsync(treino.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { vinculoExistente });
+
+        var act = async () => await _handler.HandleAsync(new VincularFichaAoAlunoCommand(treino.Id, alunoId));
+
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*Aluno Existente*");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -96,26 +117,6 @@ public class VincularFichaAoAlunoHandlerTests
         var act = async () => await _handler.HandleAsync(new VincularFichaAoAlunoCommand(treino.Id, alunoId));
 
         await act.Should().ThrowAsync<VinculoNaoEncontradoException>();
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task HandleAsync_LimiteFichasAtingido_LancaLimiteFichasAtingidoException()
-    {
-        var treinadorId = Guid.NewGuid();
-        var alunoId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, treinadorId);
-
-        _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
-        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId));
-        _limiteFichasService.Setup(s => s.ValidarAsync(alunoId, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new LimiteFichasAtingidoException());
-
-        var act = async () => await _handler.HandleAsync(new VincularFichaAoAlunoCommand(treino.Id, alunoId));
-
-        await act.Should().ThrowAsync<LimiteFichasAtingidoException>();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

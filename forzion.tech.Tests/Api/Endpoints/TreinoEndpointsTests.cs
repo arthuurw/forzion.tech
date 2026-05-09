@@ -76,7 +76,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             .ReturnsAsync(responseTreino);
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{Guid.NewGuid()}/exercicios",
-            new { exercicioId = Guid.NewGuid(), series = 3, repeticoes = 10 });
+            new { exercicioId = Guid.NewGuid(), series = new[] { new { quantidade = 3, repeticoesMin = 10, repeticoesMax = (int?)12, descricao = (string?)null, carga = (decimal?)null, descanso = (int?)60 } } });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -99,7 +99,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             .ThrowsAsync(new forzion.tech.Domain.Exceptions.AcessoNegadoException());
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{Guid.NewGuid()}/exercicios",
-            new { exercicioId = Guid.NewGuid(), series = 3, repeticoes = 10 });
+            new { exercicioId = Guid.NewGuid(), series = new[] { new { quantidade = 3, repeticoesMin = 10, repeticoesMax = (int?)12, descricao = (string?)null, carga = (decimal?)null, descanso = (int?)60 } } });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
