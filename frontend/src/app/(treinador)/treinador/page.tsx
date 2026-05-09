@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import {
-  Box, Typography, Paper, Stack, Divider, Button, MenuItem, Select,
-  FormControl, InputLabel,
+  Box, Typography, Paper, Stack, Divider, Button,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
@@ -14,21 +13,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { treinadorApi } from "@/lib/api/treinador";
 import type { VinculoDetalheResponse, PacoteAlunoResponse, TreinoResponse } from "@/types";
-
-const ALUNO_STATUS_COLORS: Record<string, string> = {
-  Ativos: "#4caf50",
-  Aguardando: "#F5C400",
-  Inativos: "#757575",
-};
-
-const OBJETIVO_LABELS: Record<string, string> = {
-  Hipertrofia: "Hipertrofia",
-  Emagrecimento: "Emagrecimento",
-  Resistencia: "Resistência",
-  Forca: "Força",
-  Flexibilidade: "Flexibilidade",
-  Condicionamento: "Condicionamento",
-};
+import { OBJETIVO_LABEL, ALUNO_STATUS_COLORS } from "@/lib/constants/labels";
 
 interface StatItem {
   name: string;
@@ -47,7 +32,6 @@ export default function DashboardTreinadorPage() {
   const [pendentes, setPendentes] = useState<VinculoDetalheResponse[]>([]);
   const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
   const [totalFichas, setTotalFichas] = useState(0);
-  const [pacoteSelections, setPacoteSelections] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -74,7 +58,7 @@ export default function DashboardTreinadorPage() {
 
       const contagem: Record<string, number> = {};
       for (const f of fichasRes.data.items as TreinoResponse[]) {
-        const label = OBJETIVO_LABELS[f.objetivo] ?? f.objetivo;
+        const label = OBJETIVO_LABEL[f.objetivo] ?? f.objetivo;
         contagem[label] = (contagem[label] ?? 0) + 1;
       }
       setObjetivoData(
@@ -91,15 +75,14 @@ export default function DashboardTreinadorPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleAprovar = async (vinculoId: string) => {
-    const pacoteId = pacoteSelections[vinculoId];
-    if (!pacoteId) {
-      setError("Selecione um pacote antes de aprovar.");
+  const handleAprovar = async (vinculo: VinculoDetalheResponse) => {
+    if (!vinculo.pacoteAlunoId) {
+      setError("Vínculo sem pacote associado. Contate o suporte.");
       return;
     }
-    setActionLoading(`${vinculoId}_aprovar`);
+    setActionLoading(`${vinculo.vinculoId}_aprovar`);
     try {
-      await treinadorApi.aprovarVinculo(vinculoId, pacoteId);
+      await treinadorApi.aprovarVinculo(vinculo.vinculoId, vinculo.pacoteAlunoId);
       await load();
     } catch {
       setError("Erro ao aprovar vínculo.");
@@ -249,34 +232,18 @@ export default function DashboardTreinadorPage() {
                   </Typography>
                 </Box>
                 <Stack direction="row" spacing={1} sx={{ flexShrink: 0, alignItems: "center" }}>
-                  {pacotes.length > 0 && (
-                    <FormControl size="small" sx={{ minWidth: 140 }}>
-                      <InputLabel>Pacote</InputLabel>
-                      <Select
-                        label="Pacote"
-                        value={pacoteSelections[v.vinculoId] ?? ""}
-                        onChange={(e) =>
-                          setPacoteSelections((prev) => ({
-                            ...prev,
-                            [v.vinculoId]: e.target.value,
-                          }))
-                        }
-                      >
-                        {pacotes.map((p) => (
-                          <MenuItem key={p.pacoteId} value={p.pacoteId}>
-                            {p.nome}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                  {v.pacoteAlunoId && pacotes.length > 0 && (
+                    <Typography variant="caption" color="text.secondary">
+                      Pacote: <strong>{pacotes.find((p) => p.pacoteId === v.pacoteAlunoId)?.nome ?? "—"}</strong>
+                    </Typography>
                   )}
                   <Button
                     size="small"
                     variant="contained"
                     color="success"
                     startIcon={<CheckIcon />}
-                    disabled={!!actionLoading || !pacoteSelections[v.vinculoId]}
-                    onClick={() => handleAprovar(v.vinculoId)}
+                    disabled={!!actionLoading || !v.pacoteAlunoId}
+                    onClick={() => handleAprovar(v)}
                   >
                     Aprovar
                   </Button>

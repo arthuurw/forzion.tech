@@ -19,38 +19,14 @@ import type {
   FinalidadeTreino, NivelCondicionamento, TempoDisponivel,
 } from "@/types";
 import ProgressaoAluno from "@/components/treinador/ProgressaoAluno";
+import InfoLine from "@/components/ui/InfoLine";
+import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
 
-const FINALIDADE_LABEL: Record<FinalidadeTreino, string> = {
-  Hipertrofia: "Hipertrofia",
-  Emagrecimento: "Emagrecimento",
-  CondicionamentoFisico: "Condicionamento Físico",
-  Saude: "Saúde Geral",
-  PerformanceEsportiva: "Performance Esportiva",
-  Reabilitacao: "Reabilitação",
-  Outro: "Outro",
-};
-
-const NIVEL_LABEL: Record<NivelCondicionamento, string> = {
-  Sedentario: "Sedentário",
-  Iniciante: "Iniciante",
-  Intermediario: "Intermediário",
-  Avancado: "Avançado",
-};
-
-const TEMPO_LABEL: Record<TempoDisponivel, string> = {
-  TrintaMinutos: "30 min",
-  QuarentaCincoMinutos: "45 min",
-  UmaHora: "1 hora",
-  UmaHoraETrinta: "1h30",
-  DuasHoras: "2 horas ou mais",
-};
-
-function InfoLinha({ label, value }: { label: string; value: string | number }) {
-  return (
-    <Typography variant="body2">
-      <strong>{label}:</strong> {value}
-    </Typography>
-  );
+function formatPhone(phone: string): string {
+  const d = phone.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return phone;
 }
 
 export default function DetalheAlunoPage() {
@@ -145,24 +121,24 @@ export default function DetalheAlunoPage() {
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
 
       {aluno && (
-        <Card variant="outlined" sx={{ mb: 2 }}>
-          <CardContent>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-              Dados do aluno
-            </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
-              {aluno.email && <InfoLinha label="E-mail" value={aluno.email} />}
-              {aluno.telefone && <InfoLinha label="Celular" value={aluno.telefone} />}
-              <InfoLinha label="Cadastro" value={new Date(aluno.createdAt).toLocaleDateString("pt-BR")} />
-              {pacoteNome && (
-                <Typography variant="body2">
-                  <strong>Pacote:</strong>{" "}
-                  <Chip label={pacoteNome} size="small" color="primary" sx={{ ml: 0.5, fontWeight: 600 }} />
-                </Typography>
-              )}
-            </Stack>
-          </CardContent>
-        </Card>
+        <>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Dados do aluno</Typography>
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
+                {aluno.email && <InfoLine label="E-mail" value={aluno.email} />}
+                {aluno.telefone && <InfoLine label="Celular" value={formatPhone(aluno.telefone)} />}
+                <InfoLine label="Cadastro" value={new Date(aluno.createdAt).toLocaleDateString("pt-BR")} />
+                {pacoteNome && (
+                  <Typography variant="body2">
+                    <strong>Pacote:</strong>{" "}
+                    <Chip label={pacoteNome} size="small" color="primary" sx={{ ml: 0.5, fontWeight: 600 }} />
+                  </Typography>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {temPerfilTreino && aluno && (
@@ -173,10 +149,10 @@ export default function DetalheAlunoPage() {
             </Typography>
             <Stack spacing={0.75}>
               {aluno.finalidade && (
-                <InfoLinha label="Finalidade" value={FINALIDADE_LABEL[aluno.finalidade]} />
+                <InfoLine label="Finalidade" value={FINALIDADE_LABEL[aluno.finalidade]} />
               )}
               {aluno.nivelCondicionamento && (
-                <InfoLinha label="Nível" value={NIVEL_LABEL[aluno.nivelCondicionamento]} />
+                <InfoLine label="Nível" value={NIVEL_LABEL[aluno.nivelCondicionamento]} />
               )}
               {(aluno.diasDisponiveis || aluno.tempoDisponivelMinutos) && (
                 <Typography variant="body2">
@@ -186,63 +162,73 @@ export default function DetalheAlunoPage() {
                   {aluno.tempoDisponivelMinutos ? TEMPO_LABEL[aluno.tempoDisponivelMinutos] + "/dia" : ""}
                 </Typography>
               )}
-              {aluno.focoTreino && <InfoLinha label="Foco" value={aluno.focoTreino} />}
+              {aluno.focoTreino && <InfoLine label="Foco" value={aluno.focoTreino} />}
               {aluno.limitacoesFisicas && (
-                <InfoLinha label="Limitações físicas" value={aluno.limitacoesFisicas} />
+                <InfoLine label="Limitações físicas" value={aluno.limitacoesFisicas} />
               )}
-              {aluno.doencas && <InfoLinha label="Doenças / condições" value={aluno.doencas} />}
+              {aluno.doencas && <InfoLine label="Doenças / condições" value={aluno.doencas} />}
               {aluno.observacoesAdicionais && (
-                <InfoLinha label="Observações" value={aluno.observacoesAdicionais} />
+                <InfoLine label="Observações" value={aluno.observacoesAdicionais} />
               )}
             </Stack>
           </CardContent>
         </Card>
       )}
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          Fichas vinculadas ({fichas.length})
-        </Typography>
-        <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={openVincular}>
-          Vincular ficha
-        </Button>
-      </Box>
+      {aluno?.status === "AguardandoAprovacao" ? (
+        <Card variant="outlined" sx={{ p: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Vínculo aguardando aprovação. Fichas e histórico disponíveis após aprovação.
+          </Typography>
+        </Card>
+      ) : (
+        <>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Fichas vinculadas ({fichas.length})
+            </Typography>
+            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={openVincular}>
+              Vincular ficha
+            </Button>
+          </Box>
 
-      <Card variant="outlined">
-        {fichas.length === 0 ? (
-          <EmptyState
-            message="Nenhuma ficha vinculada a este aluno."
-            actionLabel="Vincular ficha"
-            onAction={openVincular}
-          />
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Ficha</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {fichas.map((f) => (
-                <TableRow key={f.treinoAlunoId} hover>
-                  <TableCell sx={{ fontWeight: 500 }}>{f.nomeTreino}</TableCell>
-                  <TableCell><StatusChip status={f.status} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
+          <Card variant="outlined">
+            {fichas.length === 0 ? (
+              <EmptyState
+                message="Nenhuma ficha vinculada a este aluno."
+                actionLabel="Vincular ficha"
+                onAction={openVincular}
+              />
+            ) : (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Ficha</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {fichas.map((f) => (
+                    <TableRow key={f.treinoAlunoId} hover>
+                      <TableCell sx={{ fontWeight: 500 }}>{f.nomeTreino}</TableCell>
+                      <TableCell><StatusChip status={f.status} /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Card>
 
-      <ProgressaoAluno alunoId={alunoId} />
+          <ProgressaoAluno alunoId={alunoId} />
+        </>
+      )}
 
       <Dialog open={vincularOpen} onClose={() => setVincularOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Vincular ficha a {aluno?.nome}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Autocomplete
             options={todasFichas}
-            getOptionLabel={(f) => `${f.nome} — ${f.objetivo}`}
+            getOptionLabel={(f) => `${f.nome} — ${OBJETIVO_LABEL[f.objetivo] ?? f.objetivo}`}
             value={selectedFicha}
             onChange={(_, v) => setSelectedFicha(v)}
             renderInput={(params) => <TextField {...params} label="Ficha" size="small" />}

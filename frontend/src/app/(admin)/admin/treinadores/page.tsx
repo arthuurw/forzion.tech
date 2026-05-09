@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
-  Box, Typography, Card, Select, MenuItem, FormControl,
+  Box, Typography, Select, MenuItem, FormControl,
   InputLabel, IconButton, Tooltip, Dialog, DialogTitle,
   DialogContent, DialogActions, Button, Autocomplete, TextField,
 } from "@mui/material";
@@ -13,11 +13,11 @@ import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import StatusChip from "@/components/ui/StatusChip";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AlertBanner from "@/components/ui/AlertBanner";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import EmptyState from "@/components/ui/EmptyState";
-import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
+import DataList from "@/components/ui/DataList";
+import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import type { TreinadorResponse, TreinadorStatus, PlanoTreinadorResponse } from "@/types";
+import { usePaginatedList } from "@/hooks/usePaginatedList";
 
 const COLUMNS: Column[] = [
   { label: "Nome" },
@@ -28,14 +28,7 @@ const COLUMNS: Column[] = [
 ];
 
 export default function TreinadoresAdminPage() {
-  const [treinadores, setTreinadores] = useState<TreinadorResponse[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<TreinadorStatus | "">("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const [confirmAprovar, setConfirmAprovar] = useState<TreinadorResponse | null>(null);
   const [loadingAprovar, setLoadingAprovar] = useState(false);
@@ -57,25 +50,13 @@ export default function TreinadoresAdminPage() {
   const [selectedPlano, setSelectedPlano] = useState<PlanoTreinadorResponse | null>(null);
   const [loadingPlano, setLoadingPlano] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await adminApi.listTreinadores({
-        status: statusFilter || undefined,
-        pagina: page + 1,
-        tamanhoPagina: pageSize,
-      });
-      setTreinadores(res.data.items);
-      setTotal(res.data.total);
-    } catch {
-      setError("Erro ao carregar treinadores.");
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, page, pageSize]);
-
-  useEffect(() => { load(); }, [load]);
+  const fetcher = useCallback(
+    (p: number, ps: number) =>
+      adminApi.listTreinadores({ status: statusFilter || undefined, pagina: p + 1, tamanhoPagina: ps }).then((r) => r.data),
+    [statusFilter]
+  );
+  const { items: treinadores, total, page, pageSize, loading, error, success, setPage, setPageSize, setError, setSuccess, reload } =
+    usePaginatedList<TreinadorResponse>({ fetcher, errorMessage: "Erro ao carregar treinadores." });
 
   const handleAprovar = async () => {
     if (!confirmAprovar) return;
@@ -85,7 +66,7 @@ export default function TreinadoresAdminPage() {
       setSuccess(`${confirmAprovar.nome} aprovado com sucesso.`);
       setConfirmAprovar(null);
       setObservacaoAprovar("");
-      load();
+      reload();
     } catch {
       setError("Erro ao aprovar treinador.");
     } finally {
@@ -101,7 +82,7 @@ export default function TreinadoresAdminPage() {
       setSuccess(`${confirmReprovar.nome} reprovado.`);
       setConfirmReprovar(null);
       setObservacaoReprovar("");
-      load();
+      reload();
     } catch {
       setError("Erro ao reprovar treinador.");
     } finally {
@@ -117,7 +98,7 @@ export default function TreinadoresAdminPage() {
       setSuccess(`${confirmInativar.nome} inativado. Vinculos e fichas afetados.`);
       setConfirmInativar(null);
       setObservacaoInativar("");
-      load();
+      reload();
     } catch {
       setError("Erro ao inativar treinador.");
     } finally {
@@ -132,7 +113,7 @@ export default function TreinadoresAdminPage() {
       await adminApi.excluirTreinador(confirmExcluir.treinadorId);
       setSuccess(`${confirmExcluir.nome} excluído permanentemente.`);
       setConfirmExcluir(null);
-      load();
+      reload();
     } catch {
       setError("Erro ao excluir treinador.");
     } finally {
@@ -160,7 +141,7 @@ export default function TreinadoresAdminPage() {
       await adminApi.atribuirPlano(planoDialog.treinadorId, selectedPlano.planoId);
       setSuccess(`Plano "${selectedPlano.nome}" atribuido a ${planoDialog.nome}.`);
       setPlanoDialog(null);
-      load();
+      reload();
     } catch {
       setError("Erro ao atribuir plano.");
     } finally {
@@ -193,77 +174,63 @@ export default function TreinadoresAdminPage() {
         </FormControl>
       </Box>
 
-      <Card variant="outlined">
-        {loading ? (
-          <LoadingSpinner />
-        ) : treinadores.length === 0 ? (
-          <EmptyState message="Nenhum treinador encontrado para os filtros aplicados." />
-        ) : (
-          <ResponsiveTable
-            columns={COLUMNS}
-            rows={treinadores}
-            rowKey={(t) => t.treinadorId}
-            pagination={{
-              count: total,
-              page,
-              rowsPerPage: pageSize,
-              onPageChange: setPage,
-              onRowsPerPageChange: (size) => { setPageSize(size); setPage(0); },
-            }}
-            renderCell={(t, i) => {
-              if (i === 0) return t.nome;
-              if (i === 1) return <StatusChip status={t.status} />;
-              if (i === 2) return t.planoTreinadorId ? (
-                <Typography variant="caption" color="text.secondary">Atribuído</Typography>
-              ) : (
-                <Typography variant="caption" color="text.disabled">-</Typography>
-              );
-              if (i === 3) return (
-                <Typography variant="caption">
-                  {new Date(t.createdAt).toLocaleDateString("pt-BR")}
-                </Typography>
-              );
-              return (
+      <DataList
+        loading={loading}
+        items={treinadores}
+        emptyMessage="Nenhum treinador encontrado para os filtros aplicados."
+        columns={COLUMNS}
+        rowKey={(t) => t.treinadorId}
+        pagination={{ count: total, page, rowsPerPage: pageSize, onPageChange: setPage, onRowsPerPageChange: setPageSize }}
+        renderCell={(t, i) => {
+          if (i === 0) return t.nome;
+          if (i === 1) return <StatusChip status={t.status} />;
+          if (i === 2) return t.planoTreinadorId ? (
+            <Typography variant="caption" color="text.secondary">Atribuído</Typography>
+          ) : (
+            <Typography variant="caption" color="text.disabled">-</Typography>
+          );
+          if (i === 3) return (
+            <Typography variant="caption">{new Date(t.createdAt).toLocaleDateString("pt-BR")}</Typography>
+          );
+          return (
+            <>
+              {t.status === "AguardandoAprovacao" && (
                 <>
-                  {t.status === "AguardandoAprovacao" && (
-                    <>
-                      <Tooltip title="Aprovar">
-                        <IconButton size="small" color="success" onClick={() => setConfirmAprovar(t)}>
-                          <CheckIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Reprovar">
-                        <IconButton size="small" color="error" onClick={() => setConfirmReprovar(t)}>
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                  {t.status === "Ativo" && (
-                    <Tooltip title="Inativar">
-                      <IconButton size="small" color="error" onClick={() => setConfirmInativar(t)}>
-                        <BlockIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  {t.status === "Inativo" && (
-                    <Tooltip title="Excluir permanentemente">
-                      <IconButton size="small" color="error" onClick={() => setConfirmExcluir(t)}>
-                        <DeleteForeverIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  <Tooltip title="Atribuir plano">
-                    <IconButton size="small" onClick={() => openPlanoDialog(t)}>
-                      <CardMembershipIcon fontSize="small" />
+                  <Tooltip title="Aprovar">
+                    <IconButton size="small" color="success" onClick={() => setConfirmAprovar(t)}>
+                      <CheckIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Reprovar">
+                    <IconButton size="small" color="error" onClick={() => setConfirmReprovar(t)}>
+                      <CloseIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 </>
-              );
-            }}
-          />
-        )}
-      </Card>
+              )}
+              {t.status === "Ativo" && (
+                <Tooltip title="Inativar">
+                  <IconButton size="small" color="error" onClick={() => setConfirmInativar(t)}>
+                    <BlockIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {t.status === "Inativo" && (
+                <Tooltip title="Excluir permanentemente">
+                  <IconButton size="small" color="error" onClick={() => setConfirmExcluir(t)}>
+                    <DeleteForeverIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <Tooltip title="Atribuir plano">
+                <IconButton size="small" onClick={() => openPlanoDialog(t)}>
+                  <CardMembershipIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </>
+          );
+        }}
+      />
 
       <ConfirmDialog
         open={!!confirmAprovar}

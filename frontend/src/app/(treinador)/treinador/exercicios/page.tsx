@@ -15,6 +15,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
 import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
+import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
 
 const COLS_MEUS: Column[] = [
   { label: "Nome" },
@@ -30,20 +31,45 @@ const COLS_GLOBAIS: Column[] = [
   { label: "Ações", align: "right" },
 ];
 
+type TabState = {
+  page: number;
+  filtroNome: string;
+  filtroGrupo: string;
+  ordenarPor: "nome" | "grupoMuscular";
+};
+
+const INITIAL_TAB_STATE: TabState = {
+  page: 0,
+  filtroNome: "",
+  filtroGrupo: "",
+  ordenarPor: "nome",
+};
+
 export default function ExerciciosTreinadorPage() {
   const [tab, setTab] = useState(0);
+  const [tabState, setTabState] = useState<[TabState, TabState]>([
+    { ...INITIAL_TAB_STATE },
+    { ...INITIAL_TAB_STATE },
+  ]);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { page, filtroNome, filtroGrupo, ordenarPor } = tabState[tab];
+
+  const patchTab = useCallback((patch: Partial<TabState>, targetTab?: number) => {
+    setTabState((s) => {
+      const idx = targetTab ?? tab;
+      const next = [...s] as [TabState, TabState];
+      next[idx] = { ...next[idx], ...patch };
+      return next;
+    });
+  }, [tab]);
+
   const [exercicios, setExercicios] = useState<ExercicioResponse[]>([]);
   const [grupos, setGrupos] = useState<GrupoMuscularResponse[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  const [filtroNome, setFiltroNome] = useState("");
-  const [filtroGrupo, setFiltroGrupo] = useState("");
-  const [ordenarPor, setOrdenarPor] = useState<"nome" | "grupoMuscular">("nome");
 
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState("");
@@ -61,6 +87,8 @@ export default function ExerciciosTreinadorPage() {
   const [loadingExcluir, setLoadingExcluir] = useState(false);
 
   const [copiando, setCopiando] = useState<string | null>(null);
+  const [confirmCopiarDuplicado, setConfirmCopiarDuplicado] = useState<ExercicioResponse | null>(null);
+  const [meusNomes, setMeusNomes] = useState<Set<string>>(new Set());
 
   const isGlobal = tab === 1;
 
@@ -98,17 +126,21 @@ export default function ExerciciosTreinadorPage() {
     }
   }, []);
 
-  useEffect(() => { 
-    load(); 
+  const loadMeusNomes = useCallback(async () => {
+    try {
+      const res = await treinadorApi.listExercicios({ global: false, pagina: 1, tamanhoPagina: 500 });
+      setMeusNomes(new Set(res.data.items.map((e: ExercicioResponse) => e.nome.toLowerCase())));
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    load();
     loadGrupos();
-  }, [load, loadGrupos]);
+    loadMeusNomes();
+  }, [load, loadGrupos, loadMeusNomes]);
 
   const handleTabChange = (_: unknown, v: number) => {
     setTab(v);
-    setPage(0);
-    setFiltroNome("");
-    setFiltroGrupo("");
-    setOrdenarPor("nome");
   };
 
   const resetForm = () => { setNome(""); setDescricao(""); setGrupoMuscular("Peito"); };
@@ -126,6 +158,7 @@ export default function ExerciciosTreinadorPage() {
       setOpen(false);
       resetForm();
       load();
+      loadMeusNomes();
     } catch {
       setError("Erro ao criar exercício.");
     } finally {
@@ -174,16 +207,26 @@ export default function ExerciciosTreinadorPage() {
     }
   };
 
-  const handleCopiar = async (ex: ExercicioResponse) => {
+  const executarCopia = async (ex: ExercicioResponse) => {
     setCopiando(ex.exercicioId);
     try {
       await treinadorApi.copiarExercicioGlobal(ex.exercicioId);
       setSuccess(`"${ex.nome}" copiado para sua biblioteca.`);
+      setConfirmCopiarDuplicado(null);
+      setMeusNomes((prev) => new Set([...prev, ex.nome.toLowerCase()]));
     } catch {
       setError("Erro ao copiar exercício.");
     } finally {
       setCopiando(null);
     }
+  };
+
+  const handleCopiar = async (ex: ExercicioResponse) => {
+    if (meusNomes.has(ex.nome.toLowerCase())) {
+      setConfirmCopiarDuplicado(ex);
+      return;
+    }
+    await executarCopia(ex);
   };
 
   return (
@@ -209,7 +252,7 @@ export default function ExerciciosTreinadorPage() {
         <TextField
           label="Buscar por nome"
           value={filtroNome}
-          onChange={(e) => { setFiltroNome(e.target.value); setPage(0); }}
+          onChange={(e) => patchTab({ filtroNome: e.target.value, page: 0 })}
           size="small"
           sx={{ minWidth: 200 }}
         />
@@ -218,7 +261,7 @@ export default function ExerciciosTreinadorPage() {
           <Select
             value={filtroGrupo}
             label="Grupo muscular"
-            onChange={(e) => { setFiltroGrupo(e.target.value); setPage(0); }}
+            onChange={(e) => patchTab({ filtroGrupo: e.target.value, page: 0 })}
           >
             <MenuItem value="">Todos</MenuItem>
             {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
@@ -229,7 +272,7 @@ export default function ExerciciosTreinadorPage() {
           <Select
             value={ordenarPor}
             label="Ordenar por"
-            onChange={(e) => { setOrdenarPor(e.target.value as "nome" | "grupoMuscular"); setPage(0); }}
+            onChange={(e) => patchTab({ ordenarPor: e.target.value as "nome" | "grupoMuscular", page: 0 })}
           >
             <MenuItem value="nome">Nome</MenuItem>
             <MenuItem value="grupoMuscular">Grupo muscular</MenuItem>
@@ -255,12 +298,12 @@ export default function ExerciciosTreinadorPage() {
               count: total,
               page,
               rowsPerPage: pageSize,
-              onPageChange: setPage,
-              onRowsPerPageChange: (size) => { setPageSize(size); setPage(0); },
+              onPageChange: (p) => patchTab({ page: p }),
+              onRowsPerPageChange: (size) => { setPageSize(size); patchTab({ page: 0 }); },
             }}
             renderCell={(ex, i) => {
               if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{ex.nome}</Typography>;
-              if (i === 1) return ex.grupoMuscular ?? "—";
+              if (i === 1) return ex.grupoMuscular ? (GRUPO_MUSCULAR_LABEL[ex.grupoMuscular] ?? ex.grupoMuscular) : "—";
               if (i === 2) return (
                 <Typography
                   variant="caption"
@@ -335,6 +378,17 @@ export default function ExerciciosTreinadorPage() {
           <Button variant="contained" disabled={savingEdit} onClick={handleEditar}>Salvar</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Copiar duplicado */}
+      <ConfirmDialog
+        open={!!confirmCopiarDuplicado}
+        title="Exercício já existe na sua biblioteca"
+        description={`Você já possui um exercício chamado "${confirmCopiarDuplicado?.nome}". Deseja copiar mesmo assim?`}
+        confirmLabel="Copiar mesmo assim"
+        loading={copiando === confirmCopiarDuplicado?.exercicioId}
+        onConfirm={() => confirmCopiarDuplicado && executarCopia(confirmCopiarDuplicado)}
+        onClose={() => setConfirmCopiarDuplicado(null)}
+      />
 
       {/* Excluir */}
       <ConfirmDialog
