@@ -19,25 +19,14 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi, type AdicionarExercicioData, type SerieConfigData } from "@/lib/api/treinador";
 import type { TreinoResponse, TreinoExercicioResponse, ExercicioResponse, AlunoResponse, ObjetivoTreino } from "@/types";
+import { OBJETIVO_LABEL, GRUPO_MUSCULAR_LABEL, OBJETIVOS } from "@/lib/constants/labels";
+import { formatarSeries } from "@/lib/utils/formatting";
 
 const COLUMNS: Column[] = [
   { label: "Exercício" },
   { label: "Séries" },
   { label: "Ações", align: "right" },
 ];
-
-const OBJETIVOS: ObjetivoTreino[] = ["Hipertrofia", "Emagrecimento", "Resistencia", "Forca", "Flexibilidade", "Condicionamento"];
-
-function formatarSeries(series: TreinoExercicioResponse["series"]): string {
-  if (!series || series.length === 0) return "—";
-  return series
-    .map((s) => {
-      const reps = s.repeticoesMax ? `${s.repeticoesMin}–${s.repeticoesMax}` : `${s.repeticoesMin}`;
-      const label = s.descricao ? ` (${s.descricao})` : "";
-      return `${s.quantidade}×${reps}${label}`;
-    })
-    .join(" / ");
-}
 
 interface SerieRow {
   quantidade: string;
@@ -253,7 +242,7 @@ export default function DetalheFichaPage() {
         </IconButton>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>{ficha.nome}</Typography>
-          <Chip label={ficha.objetivo} size="small" sx={{ mt: 0.5 }} />
+          <Chip label={OBJETIVO_LABEL[ficha.objetivo] ?? ficha.objetivo} size="small" sx={{ mt: 0.5 }} />
         </Box>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} disabled={loadingDuplicar} onClick={handleDuplicar}>
@@ -317,7 +306,7 @@ export default function DetalheFichaPage() {
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <Autocomplete
               options={biblioteca}
-              getOptionLabel={(ex) => `${ex.nome}${ex.grupoMuscular ? ` — ${ex.grupoMuscular}` : ""}`}
+              getOptionLabel={(ex) => `${ex.nome}${ex.grupoMuscular ? ` — ${GRUPO_MUSCULAR_LABEL[ex.grupoMuscular] ?? ex.grupoMuscular}` : ""}`}
               value={selectedEx}
               onChange={(_, v) => setSelectedEx(v)}
               renderInput={(params) => <TextField {...params} label="Exercício" size="small" required />}
@@ -357,7 +346,6 @@ export default function DetalheFichaPage() {
                         size="small"
                         sx={{ width: 90 }}
                         slotProps={{ htmlInput: { min: 1 } }}
-                        helperText="Opcional"
                       />
                       <TextField
                         label="Descrição"
@@ -449,7 +437,7 @@ export default function DetalheFichaPage() {
               size="small"
               fullWidth
             >
-              {OBJETIVOS.map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+              {OBJETIVOS.map((o) => <MenuItem key={o} value={o}>{OBJETIVO_LABEL[o]}</MenuItem>)}
             </TextField>
           </Stack>
         </DialogContent>

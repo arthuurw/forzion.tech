@@ -13,6 +13,8 @@ import StatusChip from "@/components/ui/StatusChip";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
 
+import { OBJETIVO_LABEL } from "@/lib/constants/labels";
+
 const COLUMNS: Column[] = [
   { label: "#", mobileRole: "hidden" },
   { label: "Exercício", mobileRole: "primary" },
@@ -52,7 +54,7 @@ export default function DetalheFichaAlunoPage() {
         <Box sx={{ flex: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>{ficha.nomeTreino}</Typography>
           <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-            <Chip label={ficha.objetivo} size="small" />
+            <Chip label={OBJETIVO_LABEL[ficha.objetivo] ?? ficha.objetivo} size="small" />
             <StatusChip status={ficha.status} />
           </Stack>
         </Box>

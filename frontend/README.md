@@ -62,13 +62,15 @@ npm run test:watch
 
 Arquivos em `src/test/`:
 
-| Arquivo | O que testa |
-|---|---|
-| `validations.test.ts` | Schemas Zod (email, senha, nome, telefone, login, cadastro) |
-| `auth.test.ts` | `extractTipoConta` + `homeRouteFor` |
-| `api-auth-me.test.ts` | Handler `GET /api/auth/me` (cookies, JWT, expiração) |
-| `useInactivity.test.ts` | Hook de inatividade com fake timers |
-| `components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` |
+| Arquivo | O que testa | Testes |
+|---|---|---|
+| `validations.test.ts` | Schemas Zod — email, senha, nome, telefone, login, cadastro aluno (incl. campos de perfil obrigatórios) | 24 |
+| `auth.test.ts` | `extractTipoConta` + `homeRouteFor` | 8 |
+| `api-auth-me.test.ts` | Handler `GET /api/auth/me` (cookies, JWT, expiração) | 5 |
+| `useInactivity.test.ts` | Hook de inatividade com fake timers | 6 |
+| `components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` | 11 |
+
+**Total: 54 testes**
 
 Configuração em `vitest.config.mts` + `src/test/setup.ts`.
 
@@ -133,12 +135,23 @@ src/
 ├── components/
 │   ├── forms/                # FormTextField, FormSelect, PasswordField
 │   ├── layout/               # AppLayout, AppHeader, PublicLayout, NavConfig
-│   └── ui/                   # AlertBanner, ConfirmDialog, EmptyState,
-│                             # LoadingSpinner, Logo, SnackbarProvider, StatusChip
+│   ├── treinador/            # ProgressaoAluno
+│   └── ui/                   # AlertBanner, ConfirmDialog, DataList, EmptyState,
+│                             # InfoLine, LoadingSpinner, Logo, ResponsiveTable,
+│                             # SnackbarProvider, StatusChip
+├── hooks/
+│   ├── useCRUDDialog.ts      # Estado de dialogs criar/editar/excluir
+│   ├── useInactivity.ts      # Auto-logout por inatividade
+│   └── usePaginatedList.ts   # Lista paginada genérica com loading/error/reload
 ├── lib/
 │   ├── api/                  # Clientes Axios por área (admin, aluno, treinador, conta)
 │   ├── auth/                 # AuthContext, session helpers
+│   ├── constants/
+│   │   ├── labels.ts         # Maps enum → label PT-BR (OBJETIVO_LABEL, GRUPO_MUSCULAR_LABEL, …)
+│   │   └── enrollmentOptions.ts  # Opções de select do cadastro aluno
 │   ├── theme/                # Tema MUI (paleta + tipografia + componentes)
+│   ├── utils/
+│   │   └── formatting.ts     # formatarSeries, formatarData, getWeekLabel, periodoParaDatas
 │   └── validations/          # Schemas Zod reutilizáveis
 ├── proxy.ts                  # Middleware de proteção de rotas
 └── types/                    # Types/interfaces compartilhados

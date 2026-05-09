@@ -37,11 +37,11 @@ public static class TreinoResponseExtensions
         treino.Nome,
         treino.Objetivo,
         treino.TreinadorId,
-        treino.Exercicios.Select(te => new TreinoExercicioResponse(
+        treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
             te.Id,
             te.ExercicioId,
             te.Exercicio?.Nome ?? string.Empty,
-            te.Series.Select(s => new SerieConfigResponse(
+            te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
                 s.Id,
                 s.Quantidade,
                 s.RepeticoesMin,

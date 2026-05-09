@@ -1,7 +1,7 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
-  Box, Typography, Card, Select, MenuItem, FormControl, InputLabel, IconButton,
+  Box, Typography, Select, MenuItem, FormControl, InputLabel, IconButton,
   Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button, Autocomplete, TextField,
   Checkbox, FormControlLabel,
 } from "@mui/material";
@@ -14,11 +14,11 @@ import { useRouter } from "next/navigation";
 import StatusChip from "@/components/ui/StatusChip";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AlertBanner from "@/components/ui/AlertBanner";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import EmptyState from "@/components/ui/EmptyState";
-import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
+import DataList from "@/components/ui/DataList";
+import type { Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
 import type { VinculoDetalheResponse, VinculoStatus, PacoteAlunoResponse } from "@/types";
+import { usePaginatedList } from "@/hooks/usePaginatedList";
 
 const COLUMNS: Column[] = [
   { label: "Aluno" },
@@ -29,14 +29,7 @@ const COLUMNS: Column[] = [
 
 export default function AlunosTreinadorPage() {
   const router = useRouter();
-  const [vinculos, setVinculos] = useState<VinculoDetalheResponse[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<VinculoStatus | "">("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const [confirmDesvincular, setConfirmDesvincular] = useState<VinculoDetalheResponse | null>(null);
   const [loadingDesvincular, setLoadingDesvincular] = useState(false);
@@ -52,25 +45,13 @@ export default function AlunosTreinadorPage() {
   const [selectedPacoteReativar, setSelectedPacoteReativar] = useState<PacoteAlunoResponse | null>(null);
   const [loadingReativar, setLoadingReativar] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await treinadorApi.listVinculos({
-        status: statusFilter || undefined,
-        pagina: page + 1,
-        tamanhoPagina: pageSize,
-      });
-      setVinculos(res.data.items);
-      setTotal(res.data.total);
-    } catch {
-      setError("Erro ao carregar alunos.");
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, page, pageSize]);
-
-  useEffect(() => { load(); }, [load]);
+  const fetcher = useCallback(
+    (p: number, ps: number) =>
+      treinadorApi.listVinculos({ status: statusFilter || undefined, pagina: p + 1, tamanhoPagina: ps }).then((r) => r.data),
+    [statusFilter]
+  );
+  const { items: vinculos, total, page, pageSize, loading, error, success, setPage, setPageSize, setError, setSuccess, reload } =
+    usePaginatedList<VinculoDetalheResponse>({ fetcher, errorMessage: "Erro ao carregar alunos." });
 
   const loadPacotes = async () => {
     if (pacotes.length === 0) {
@@ -103,7 +84,7 @@ export default function AlunosTreinadorPage() {
       await treinadorApi.reativarAluno(reativarDialog.alunoId, selectedPacoteReativar.pacoteId);
       setSuccess(`${reativarDialog.nomeAluno} reativado com o pacote "${selectedPacoteReativar.nome}".`);
       setReativarDialog(null);
-      load();
+      reload();
     } catch {
       setError("Erro ao reativar aluno.");
     } finally {
@@ -118,7 +99,7 @@ export default function AlunosTreinadorPage() {
       await treinadorApi.aprovarVinculo(aprovarDialog.vinculoId, selectedPacote.pacoteId, trarFichas);
       setSuccess(`${aprovarDialog.nomeAluno} aprovado com o pacote "${selectedPacote.nome}".`);
       setAprovarDialog(null);
-      load();
+      reload();
     } catch {
       setError("Erro ao aprovar vínculo.");
     } finally {
@@ -134,7 +115,7 @@ export default function AlunosTreinadorPage() {
       setSuccess(`${confirmDesvincular.nomeAluno} desvinculado.`);
       setConfirmDesvincular(null);
       setObservacaoDesvincular("");
-      load();
+      reload();
     } catch {
       setError("Erro ao desvincular aluno.");
     } finally {
@@ -165,90 +146,68 @@ export default function AlunosTreinadorPage() {
         </FormControl>
       </Box>
 
-      <Card variant="outlined">
-        {loading ? <LoadingSpinner /> : vinculos.length === 0 ? (
-          <EmptyState message="Nenhum aluno encontrado." />
-        ) : (
-          <ResponsiveTable
-            columns={COLUMNS}
-            rows={vinculos}
-            rowKey={(v) => v.vinculoId}
-            onRowClick={(v) => router.push(`/treinador/alunos/${v.alunoId}`)}
-            pagination={{
-              count: total,
-              page,
-              rowsPerPage: pageSize,
-              onPageChange: setPage,
-              onRowsPerPageChange: (size) => { setPageSize(size); setPage(0); },
-            }}
-            renderCell={(v, i) => {
-              if (i === 0) return (
+      <DataList
+        loading={loading}
+        items={vinculos}
+        emptyMessage="Nenhum aluno encontrado."
+        columns={COLUMNS}
+        rowKey={(v) => v.vinculoId}
+        onRowClick={(v) => router.push(`/treinador/alunos/${v.alunoId}`)}
+        pagination={{ count: total, page, rowsPerPage: pageSize, onPageChange: setPage, onRowsPerPageChange: setPageSize }}
+        renderCell={(v, i) => {
+          if (i === 0) return (
+            <>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>{v.nomeAluno}</Typography>
+              {v.emailAluno && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>{v.emailAluno}</Typography>
+              )}
+            </>
+          );
+          if (i === 1) return <StatusChip status={v.status} />;
+          if (i === 2) return (
+            <Typography variant="caption">{new Date(v.createdAt).toLocaleDateString("pt-BR")}</Typography>
+          );
+          return (
+            <>
+              {v.status === "AguardandoAprovacao" && (
                 <>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{v.nomeAluno}</Typography>
-                  {v.emailAluno && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                      {v.emailAluno}
-                    </Typography>
-                  )}
+                  <Tooltip title="Aprovar vínculo">
+                    <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); openAprovar(v); }}>
+                      <CheckIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Reprovar vínculo">
+                    <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); setConfirmDesvincular(v); setObservacaoDesvincular(""); }}>
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </>
-              );
-              if (i === 1) return <StatusChip status={v.status} />;
-              if (i === 2) return (
-                <Typography variant="caption">
-                  {new Date(v.createdAt).toLocaleDateString("pt-BR")}
-                </Typography>
-              );
-              return (
+              )}
+              {v.status === "Ativo" && (
                 <>
-                  {v.status === "AguardandoAprovacao" && (
-                    <>
-                      <Tooltip title="Aprovar vínculo">
-                        <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); openAprovar(v); }}>
-                          <CheckIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Reprovar vínculo">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDesvincular(v); setObservacaoDesvincular(""); }}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                  {v.status === "Ativo" && (
-                    <>
-                      <Tooltip title="Ver detalhes">
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); router.push(`/treinador/alunos/${v.alunoId}`); }}>
-                          <OpenInNewIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Desvincular">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDesvincular(v); setObservacaoDesvincular(""); }}
-                        >
-                          <LinkOffIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                  {v.status === "Inativo" && (
-                    <Tooltip title="Reativar aluno">
-                      <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); openReativar(v); }}>
-                        <ReplayIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+                  <Tooltip title="Ver detalhes">
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); router.push(`/treinador/alunos/${v.alunoId}`); }}>
+                      <OpenInNewIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Desvincular">
+                    <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); setConfirmDesvincular(v); setObservacaoDesvincular(""); }}>
+                      <LinkOffIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </>
-              );
-            }}
-          />
-        )}
-      </Card>
+              )}
+              {v.status === "Inativo" && (
+                <Tooltip title="Reativar aluno">
+                  <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); openReativar(v); }}>
+                    <ReplayIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </>
+          );
+        }}
+      />
 
       <Dialog open={!!aprovarDialog} onClose={() => setAprovarDialog(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Aprovar — {aprovarDialog?.nomeAluno}</DialogTitle>

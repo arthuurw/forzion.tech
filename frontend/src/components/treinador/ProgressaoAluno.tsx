@@ -11,6 +11,9 @@ import {
 import { treinadorApi } from "@/lib/api/treinador";
 import type { ExercicioProgressao } from "@/types";
 
+import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
+import { formatarData, periodoParaDatas } from "@/lib/utils/formatting";
+
 type Periodo = "7d" | "30d" | "60d" | "90d" | "6m" | "1a" | "tudo";
 
 const PERIODOS: { value: Periodo; label: string }[] = [
@@ -22,27 +25,6 @@ const PERIODOS: { value: Periodo; label: string }[] = [
   { value: "1a",   label: "1 ano" },
   { value: "tudo", label: "Tudo" },
 ];
-
-function periodoParaDatas(periodo: Periodo): { de: string; ate: string } {
-  const ate = new Date();
-  const de = new Date();
-  if (periodo === "7d")   de.setDate(de.getDate() - 7);
-  else if (periodo === "30d")  de.setDate(de.getDate() - 30);
-  else if (periodo === "60d")  de.setDate(de.getDate() - 60);
-  else if (periodo === "90d")  de.setDate(de.getDate() - 90);
-  else if (periodo === "6m")   de.setMonth(de.getMonth() - 6);
-  else if (periodo === "1a")   de.setFullYear(de.getFullYear() - 1);
-  else de.setFullYear(de.getFullYear() - 10);
-  return {
-    de: de.toISOString().split("T")[0],
-    ate: ate.toISOString().split("T")[0],
-  };
-}
-
-function formatarData(iso: string) {
-  const [, m, day] = iso.split("T")[0].split("-");
-  return `${day}/${m}`;
-}
 
 interface Props {
   alunoId: string;
@@ -91,7 +73,7 @@ export default function ProgressaoAluno({ alunoId }: Props) {
       map.set(key, (map.get(key) ?? 0) + vol);
     }
     return Array.from(map.entries())
-      .map(([grupo, volume]) => ({ grupo, volume }))
+      .map(([grupo, volume]) => ({ grupo: GRUPO_MUSCULAR_LABEL[grupo] ?? grupo, volume }))
       .sort((a, b) => b.volume - a.volume);
   }, [exercicios]);
 
@@ -172,7 +154,7 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                 variant="subtitle1"
                 sx={{ fontWeight: 700, mb: 1.5, color: "primary.main", textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: 1 }}
               >
-                {grupo}
+                {GRUPO_MUSCULAR_LABEL[grupo] ?? grupo}
               </Typography>
               <Grid container spacing={2}>
                 {exs.map((ex) => {

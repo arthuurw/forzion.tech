@@ -91,13 +91,27 @@ describe("cadastroAlunoSchema", () => {
     telefone: "11999998888",
     password: "12345678",
     confirmPassword: "12345678",
+    diasDisponiveis: "3",
+    tempoDisponivelMinutos: "60",
+    finalidade: "Hipertrofia",
+    nivelCondicionamento: "Iniciante",
   };
 
-  it("aceita dados válidos com telefone", () => {
+  it("aceita dados válidos completos", () => {
     expect(cadastroAlunoSchema.safeParse(base).success).toBe(true);
   });
-  it("aceita sem telefone", () => {
-    expect(cadastroAlunoSchema.safeParse({ ...base, telefone: "" }).success).toBe(true);
+  it("aceita com campos opcionais vazios", () => {
+    const data = { ...base, focoTreino: "", limitacoesFisicas: "", doencas: "", observacoesAdicionais: "" };
+    expect(cadastroAlunoSchema.safeParse(data).success).toBe(true);
+  });
+  it("rejeita sem telefone", () => {
+    expect(cadastroAlunoSchema.safeParse({ ...base, telefone: "" }).success).toBe(false);
+  });
+  it("rejeita sem diasDisponiveis", () => {
+    expect(cadastroAlunoSchema.safeParse({ ...base, diasDisponiveis: "" }).success).toBe(false);
+  });
+  it("rejeita sem finalidade", () => {
+    expect(cadastroAlunoSchema.safeParse({ ...base, finalidade: "" }).success).toBe(false);
   });
   it("rejeita quando senhas não coincidem", () => {
     expect(cadastroAlunoSchema.safeParse({ ...base, confirmPassword: "outra" }).success).toBe(false);

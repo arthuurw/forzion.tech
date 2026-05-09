@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 440 testes backend + 51 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId
+**Status**: ✅ 440 testes backend + 54 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId
 
 ---
 
@@ -376,5 +376,5 @@ Ver [`frontend/README.md`](frontend/README.md) para detalhes completos.
 cd frontend
 npm install
 npm run dev     # http://localhost:3000
-npm run test    # Vitest (51 testes)
+npm run test    # Vitest (54 testes)
 ```

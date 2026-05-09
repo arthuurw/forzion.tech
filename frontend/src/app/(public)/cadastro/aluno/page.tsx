@@ -27,38 +27,9 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { cadastroAlunoSchema, type CadastroAlunoFormData } from "@/lib/validations/common";
 import type { ProblemDetails, TreinadorResponse, PacoteAlunoResponse } from "@/types";
+import { DIAS_OPTIONS, TEMPO_OPTIONS, FINALIDADE_OPTIONS, NIVEL_OPTIONS } from "@/lib/constants/enrollmentOptions";
 
 const STEPS = ["Escolher treinador", "Escolher pacote", "Seus dados", "Informações adicionais"];
-
-const DIAS_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((d) => ({
-  value: String(d),
-  label: `${d} dia${d > 1 ? "s" : ""} por semana`,
-}));
-
-const TEMPO_OPTIONS = [
-  { value: "30", label: "30 minutos" },
-  { value: "45", label: "45 minutos" },
-  { value: "60", label: "1 hora" },
-  { value: "90", label: "1h30" },
-  { value: "120", label: "2 horas ou mais" },
-];
-
-const FINALIDADE_OPTIONS = [
-  { value: "Hipertrofia", label: "Hipertrofia" },
-  { value: "Emagrecimento", label: "Emagrecimento" },
-  { value: "CondicionamentoFisico", label: "Condicionamento Físico" },
-  { value: "Saude", label: "Saúde Geral" },
-  { value: "PerformanceEsportiva", label: "Performance Esportiva" },
-  { value: "Reabilitacao", label: "Reabilitação" },
-  { value: "Outro", label: "Outro" },
-];
-
-const NIVEL_OPTIONS = [
-  { value: "Sedentario", label: "Sedentário (sem atividade regular)" },
-  { value: "Iniciante", label: "Iniciante (menos de 1 ano de treino)" },
-  { value: "Intermediario", label: "Intermediário (1–3 anos de treino)" },
-  { value: "Avancado", label: "Avançado (mais de 3 anos de treino)" },
-];
 
 const STEP2_FIELDS: (keyof CadastroAlunoFormData)[] = [
   "nome",
@@ -106,7 +77,7 @@ export default function CadastroAlunoPage() {
       if (!res.ok) throw new Error();
       setTreinadores(await res.json());
     } catch {
-      setError("Nao foi possivel carregar os treinadores.");
+      setError("Não foi possível carregar os treinadores.");
     } finally {
       setLoadingList(false);
     }
@@ -120,7 +91,7 @@ export default function CadastroAlunoPage() {
       if (!res.ok) throw new Error();
       setPacotes(await res.json());
     } catch {
-      setError("Nao foi possivel carregar os pacotes.");
+      setError("Não foi possível carregar os pacotes.");
     } finally {
       setLoadingList(false);
     }
@@ -186,7 +157,7 @@ export default function CadastroAlunoPage() {
 
       setSuccess(true);
     } catch {
-      setError("Nao foi possivel conectar ao servidor.");
+      setError("Não foi possível conectar ao servidor.");
     } finally {
       setLoading(false);
     }
@@ -219,7 +190,7 @@ export default function CadastroAlunoPage() {
         Selecione seu treinador e o plano de atendimento para iniciar.
       </Typography>
 
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
         {STEPS.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
@@ -433,7 +404,7 @@ export default function CadastroAlunoPage() {
 
       <Box sx={{ mt: 3, textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">
-          Ja tem conta?{" "}
+          Já tem conta?{" "}
           <Link href="/login" style={{ color: "inherit", fontWeight: 600 }}>
             Entrar
           </Link>
