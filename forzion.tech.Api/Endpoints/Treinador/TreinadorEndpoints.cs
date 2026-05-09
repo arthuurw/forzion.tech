@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
+using forzion.tech.Application.UseCases.Alunos.ObterProgressaoAluno;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
 using forzion.tech.Application.UseCases.Exercicios;
 using forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
@@ -10,9 +11,9 @@ using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Application.UseCases.Pacotes;
+using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
-using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.ListarFichasDoAluno;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
@@ -131,6 +132,34 @@ public static class TreinadorEndpoints
         .WithSummary("Lista fichas ativas de um aluno para o treinador autenticado")
         .Produces<IReadOnlyList<TreinoAlunoResponse>>();
 
+        group.MapGet("/alunos/{alunoId:guid}/progressao", async (
+            Guid alunoId,
+            [FromServices] ObterProgressaoAlunoHandler handler,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            var hoje = DateTime.UtcNow.Date;
+
+            var de = DateTime.TryParse(httpContext.Request.Query["de"], out var deParsed)
+                ? deParsed.Date
+                : hoje.AddDays(-90);
+
+            var ate = DateTime.TryParse(httpContext.Request.Query["ate"], out var ateParsed)
+                ? ateParsed.Date
+                : hoje;
+
+            if (de > ate)
+                return Results.BadRequest("O parâmetro 'de' deve ser anterior a 'ate'.");
+
+            var query = new ObterProgressaoAlunoQuery(alunoId, de, ate);
+            var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .WithSummary("Retorna a progressão de carga por exercício de um aluno no período")
+        .Produces<ProgressaoAlunoResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status403Forbidden);
+
         group.MapGet("/vinculos", async (
             [FromServices] ListarVinculosHandler handler,
             [FromServices] IUserContext userContext,
@@ -168,8 +197,11 @@ public static class TreinadorEndpoints
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var nome = httpContext.Request.Query["nome"].FirstOrDefault();
+            var objetivo = httpContext.Request.Query["objetivo"].FirstOrDefault();
+            var ordenarPor = httpContext.Request.Query["ordenarPor"].FirstOrDefault();
 
-            var result = await handler.HandleAsync(userContext.PerfilId, p, tp, cancellationToken).ConfigureAwait(false);
+            var result = await handler.HandleAsync(userContext.PerfilId, p, tp, nome, objetivo, ordenarPor, cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         })
         .WithSummary("Lista treinos do treinador")
@@ -318,7 +350,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarPacoteAlunoCommand(userContext.PerfilId, request.Nome, request.MaxFichas, request.Preco),
+                new CriarPacoteAlunoCommand(userContext.PerfilId, request.Nome, request.Preco, request.Descricao),
                 cancellationToken);
 
             return Results.Created($"/treinador/pacotes/{result.PacoteId}", result);
@@ -326,6 +358,24 @@ public static class TreinadorEndpoints
         .WithSummary("Cria um novo pacote de fichas para alunos")
         .Produces<PacoteAlunoResponse>(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPatch("/pacotes/{pacoteId:guid}", async (
+            Guid pacoteId,
+            [FromBody] AtualizarPacoteAlunoRequest request,
+            [FromServices] AtualizarPacoteAlunoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new AtualizarPacoteAlunoCommand(userContext.PerfilId, pacoteId, request.Nome, request.Preco, request.Descricao),
+                cancellationToken);
+
+            return Results.Ok(result);
+        })
+        .WithSummary("Atualiza um pacote de fichas do treinador")
+        .Produces<PacoteAlunoResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return endpoints;
     }
@@ -336,4 +386,5 @@ public record ReativarVinculoRequest(Guid PacoteAlunoId);
 public record DesvincularAlunoRequest(string? Observacao = null);
 public record CriarExercicioTreinadorRequest(string Nome, GrupoMuscular GrupoMuscular, string? Descricao = null);
 public record AtualizarExercicioTreinadorRequest(string? Nome, GrupoMuscular? GrupoMuscular, string? Descricao);
-public record CriarPacoteAlunoRequest(string Nome, int MaxFichas, decimal Preco);
+public record CriarPacoteAlunoRequest(string Nome, decimal Preco, string? Descricao = null);
+public record AtualizarPacoteAlunoRequest(string? Nome, decimal? Preco, string? Descricao);

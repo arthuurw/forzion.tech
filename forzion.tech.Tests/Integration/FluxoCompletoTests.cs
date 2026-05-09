@@ -72,7 +72,7 @@ public class FluxoCompletoTests
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync("aluno@teste.com", It.IsAny<CancellationToken>())).ReturnsAsync((global::forzion.tech.Domain.Entities.Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        var pacoteCadastro = PacoteAluno.Criar(treinador.Id, "Pacote Cadastro", 3, 10);
+        var pacoteCadastro = PacoteAluno.Criar(treinador.Id, "Pacote Cadastro", 10);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteCadastro.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacoteCadastro);
 
         var registrarAlunoHandler = new RegistrarAlunoHandler(
@@ -93,7 +93,7 @@ public class FluxoCompletoTests
         _vinculoRepo.Verify(r => r.AdicionarAsync(It.IsAny<VinculoTreinadorAluno>(), It.IsAny<CancellationToken>()), Times.Once);
 
         var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
-        var pacote = PacoteAluno.Criar(treinador.Id, "Pacote Basico", 3, 0);
+        var pacote = PacoteAluno.Criar(treinador.Id, "Pacote Basico", 0);
         var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, pacote.Id);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -126,18 +126,14 @@ public class FluxoCompletoTests
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinador.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
-        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
-        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
-        _treinoAlunoRepo.Setup(r => r.ContarAtivosPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _treinoAlunoRepo.Setup(r => r.ListarAtivosPorTreinoIdAsync(treino.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TreinoAlunoVinculado>());
         _userContext.Setup(u => u.PerfilId).Returns(treinador.Id);
-
-        var limiteFichasService = new LimiteFichasService(_vinculoRepo.Object, _pacoteRepo.Object, _treinoAlunoRepo.Object);
 
         var vincularFichaHandler = new VincularFichaAoAlunoHandler(
             _treinoRepo.Object,
             _treinoAlunoRepo.Object,
             _vinculoRepo.Object,
-            limiteFichasService,
             _unitOfWork.Object,
             _userContext.Object,
             Mock.Of<ILogger<VincularFichaAoAlunoHandler>>());

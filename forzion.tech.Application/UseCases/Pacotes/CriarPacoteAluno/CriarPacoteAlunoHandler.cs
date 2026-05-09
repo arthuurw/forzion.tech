@@ -20,7 +20,7 @@ public class CriarPacoteAlunoHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var pacote = PacoteAluno.Criar(command.TreinadorId, command.Nome, command.MaxFichas, command.Preco);
+        var pacote = PacoteAluno.Criar(command.TreinadorId, command.Nome, command.Preco, command.Descricao);
 
         await _pacoteRepository.AdicionarAsync(pacote, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

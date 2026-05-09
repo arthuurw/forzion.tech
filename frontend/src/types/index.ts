@@ -22,6 +22,25 @@ export interface LoginResponse {
 
 export type SessionUser = LoginResponse;
 
+// Enums de perfil do aluno
+export type FinalidadeTreino =
+  | "Hipertrofia"
+  | "Emagrecimento"
+  | "CondicionamentoFisico"
+  | "Saude"
+  | "PerformanceEsportiva"
+  | "Reabilitacao"
+  | "Outro";
+
+export type NivelCondicionamento = "Sedentario" | "Iniciante" | "Intermediario" | "Avancado";
+
+export type TempoDisponivel =
+  | "TrintaMinutos"
+  | "QuarentaCincoMinutos"
+  | "UmaHora"
+  | "UmaHoraETrinta"
+  | "DuasHoras";
+
 // Aluno
 export interface AlunoResponse {
   alunoId: string;
@@ -32,6 +51,14 @@ export interface AlunoResponse {
   contaId: string;
   createdAt: string;
   updatedAt: string | null;
+  diasDisponiveis: number | null;
+  tempoDisponivelMinutos: TempoDisponivel | null;
+  finalidade: FinalidadeTreino | null;
+  focoTreino: string | null;
+  nivelCondicionamento: NivelCondicionamento | null;
+  limitacoesFisicas: string | null;
+  doencas: string | null;
+  observacoesAdicionais: string | null;
 }
 
 // Treinador
@@ -69,14 +96,23 @@ export interface TreinoAlunoResponse {
 }
 
 // Treino
+export interface SerieConfigResponse {
+  serieConfigId: string;
+  quantidade: number;
+  repeticoesMin: number;
+  repeticoesMax: number | null;
+  descricao: string | null;
+  carga: number | null;
+  descanso: number | null;
+  ordem: number;
+}
+
 export interface TreinoExercicioResponse {
   treinoExercicioId: string;
   exercicioId: string;
   nomeExercicio: string;
-  series: number;
-  repeticoes: number;
-  carga: number | null;
-  descansoSegundos: number | null;
+  series: SerieConfigResponse[];
+  ordem: number;
 }
 
 export interface TreinoResponse {
@@ -87,6 +123,7 @@ export interface TreinoResponse {
   exercicios: TreinoExercicioResponse[];
   createdAt: string;
   updatedAt: string | null;
+  nomeAluno?: string | null;
 }
 
 // Exercício
@@ -122,12 +159,20 @@ export interface GrupoMuscularResponse {
 export interface PacoteAlunoResponse {
   pacoteId: string;
   nome: string;
-  maxFichas: number;
+  descricao: string | null;
   preco: number;
   treinadorId: string;
   isAtivo?: boolean;
   createdAt?: string;
   updatedAt?: string | null;
+}
+
+// Aluno vinculado a uma ficha
+export interface TreinoAlunoVinculado {
+  treinoAlunoId: string;
+  alunoId: string;
+  nomeAluno: string;
+  status: string;
 }
 
 // Execução
@@ -161,6 +206,24 @@ export interface PaginatedResponse<T> {
   total: number;
   pagina: number;
   tamanhoPagina: number;
+}
+
+// Progressão do aluno
+export interface PontoProgressao {
+  data: string;
+  cargaMaxima: number | null;
+  seriesExecutadas: number;
+  repeticoesExecutadas: number;
+}
+
+export interface ExercicioProgressao {
+  nomeExercicio: string;
+  grupoMuscular: string;
+  historico: PontoProgressao[];
+}
+
+export interface ProgressaoAlunoResponse {
+  exercicios: ExercicioProgressao[];
 }
 
 // Erro RFC 7807

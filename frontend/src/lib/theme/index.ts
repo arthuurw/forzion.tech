@@ -79,13 +79,11 @@ const theme = createTheme(
             paddingTop: 10,
             paddingBottom: 10,
             transition: "all 0.15s ease",
-          },
-          containedPrimary: {
-            "&:hover": { backgroundColor: "#E6B800" },
-          },
-          outlinedSecondary: {
-            borderColor: alpha("#1A1A1A", 0.3),
-            "&:hover": { borderColor: "#1A1A1A", backgroundColor: alpha("#1A1A1A", 0.04) },
+            "&.MuiButton-containedPrimary:hover": { backgroundColor: "#E6B800" },
+            "&.MuiButton-outlinedSecondary": {
+              borderColor: alpha("#1A1A1A", 0.3),
+              "&:hover": { borderColor: "#1A1A1A", backgroundColor: alpha("#1A1A1A", 0.04) },
+            },
           },
           sizeLarge: {
             paddingTop: 13,

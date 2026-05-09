@@ -114,7 +114,7 @@ export default function ExerciciosAdminPage() {
   const openEdit = (ex: ExercicioResponse) => {
     setEditEx(ex);
     setEditNome(ex.nome);
-    setEditGrupo((ex.grupoMuscular as GrupoMuscular) ?? "Peito");
+    setEditGrupo((ex.grupoMuscular as GrupoMuscularEnum) ?? "Peito");
     setEditDescricao(ex.descricao ?? "");
   };
 
@@ -124,7 +124,7 @@ export default function ExerciciosAdminPage() {
     try {
       await adminApi.atualizarExercicioGlobal(editEx.exercicioId, {
         nome: editNome.trim() || undefined,
-        grupoMuscular: editGrupo || undefined,
+        grupoMuscular: (editGrupo as GrupoMuscularEnum) || undefined,
         descricao: editDescricao.trim() || null,
       });
       setSuccess(`"${editNome}" atualizado.`);

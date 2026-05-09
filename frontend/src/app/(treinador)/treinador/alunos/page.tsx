@@ -173,6 +173,7 @@ export default function AlunosTreinadorPage() {
             columns={COLUMNS}
             rows={vinculos}
             rowKey={(v) => v.vinculoId}
+            onRowClick={(v) => router.push(`/treinador/alunos/${v.alunoId}`)}
             pagination={{
               count: total,
               page,
@@ -202,7 +203,7 @@ export default function AlunosTreinadorPage() {
                   {v.status === "AguardandoAprovacao" && (
                     <>
                       <Tooltip title="Aprovar vínculo">
-                        <IconButton size="small" color="success" onClick={() => openAprovar(v)}>
+                        <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); openAprovar(v); }}>
                           <CheckIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -210,7 +211,7 @@ export default function AlunosTreinadorPage() {
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => { setConfirmDesvincular(v); setObservacaoDesvincular(""); }}
+                          onClick={(e) => { e.stopPropagation(); setConfirmDesvincular(v); setObservacaoDesvincular(""); }}
                         >
                           <CloseIcon fontSize="small" />
                         </IconButton>
@@ -220,7 +221,7 @@ export default function AlunosTreinadorPage() {
                   {v.status === "Ativo" && (
                     <>
                       <Tooltip title="Ver detalhes">
-                        <IconButton size="small" onClick={() => router.push(`/treinador/alunos/${v.alunoId}`)}>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); router.push(`/treinador/alunos/${v.alunoId}`); }}>
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -228,7 +229,7 @@ export default function AlunosTreinadorPage() {
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => { setConfirmDesvincular(v); setObservacaoDesvincular(""); }}
+                          onClick={(e) => { e.stopPropagation(); setConfirmDesvincular(v); setObservacaoDesvincular(""); }}
                         >
                           <LinkOffIcon fontSize="small" />
                         </IconButton>
@@ -237,7 +238,7 @@ export default function AlunosTreinadorPage() {
                   )}
                   {v.status === "Inativo" && (
                     <Tooltip title="Reativar aluno">
-                      <IconButton size="small" color="primary" onClick={() => openReativar(v)}>
+                      <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); openReativar(v); }}>
                         <ReplayIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -254,7 +255,7 @@ export default function AlunosTreinadorPage() {
         <DialogContent sx={{ pt: 2 }}>
           <Autocomplete
             options={pacotes}
-            getOptionLabel={(p) => `${p.nome} (até ${p.maxFichas} fichas)`}
+            getOptionLabel={(p) => p.descricao ? `${p.nome} — ${p.descricao}` : p.nome}
             value={selectedPacote}
             onChange={(_, v) => setSelectedPacote(v)}
             renderInput={(params) => <TextField {...params} label="Pacote" size="small" />}
@@ -294,7 +295,7 @@ export default function AlunosTreinadorPage() {
         <DialogContent sx={{ pt: 2 }}>
           <Autocomplete
             options={pacotes}
-            getOptionLabel={(p) => `${p.nome} (até ${p.maxFichas} fichas)`}
+            getOptionLabel={(p) => p.descricao ? `${p.nome} — ${p.descricao}` : p.nome}
             value={selectedPacoteReativar}
             onChange={(_, v) => setSelectedPacoteReativar(v)}
             renderInput={(params) => <TextField {...params} label="Pacote" size="small" />}

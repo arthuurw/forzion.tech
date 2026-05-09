@@ -32,6 +32,15 @@ public class AlunoConfiguration : IEntityTypeConfiguration<Aluno>
             .HasConversion<string>()
             .IsRequired();
 
+        builder.Property(a => a.DiasDisponiveis);
+        builder.Property(a => a.TempoDisponivelMinutos).HasConversion<int>();
+        builder.Property(a => a.Finalidade).HasConversion<string>().HasMaxLength(50);
+        builder.Property(a => a.FocoTreino).HasMaxLength(200);
+        builder.Property(a => a.NivelCondicionamento).HasConversion<string>().HasMaxLength(50);
+        builder.Property(a => a.LimitacoesFisicas).HasMaxLength(500);
+        builder.Property(a => a.Doencas).HasMaxLength(500);
+        builder.Property(a => a.ObservacoesAdicionais).HasMaxLength(1000);
+
         builder.Property(a => a.CreatedAt).IsRequired();
         builder.Property(a => a.UpdatedAt);
     }

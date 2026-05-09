@@ -30,7 +30,7 @@ public class RemoverExercicioHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
-        treino.AdicionarExercicio(Guid.NewGuid(), 3, 12, null, null);
+        treino.AdicionarExercicio(Guid.NewGuid());
         var treinoExercicioId = treino.Exercicios[0].Id;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);

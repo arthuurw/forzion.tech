@@ -54,7 +54,9 @@ public class AdicionarExercicioHandler(
         if (!exercicioExiste)
             throw new ExercicioNaoEncontradoException();
 
-        var novoExercicio = treino.AdicionarExercicio(command.ExercicioId, command.Series, command.Repeticoes, command.Carga, command.Descanso);
+        var novoExercicio = treino.AdicionarExercicio(command.ExercicioId);
+        foreach (var s in command.Series)
+            novoExercicio.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
 
         await _treinoRepository.AdicionarTreinoExercicioAsync(novoExercicio, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

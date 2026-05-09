@@ -22,6 +22,9 @@ public class AdicionarExercicioHandlerTests
     private readonly AdicionarExercicioCommandValidator _validator = new();
     private readonly AdicionarExercicioHandler _handler;
 
+    private static readonly IReadOnlyList<SerieConfigCommand> SerieValida =
+        [new SerieConfigCommand(3, 10, 12, null, 50m, 60)];
+
     public AdicionarExercicioHandlerTests()
     {
         _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
@@ -50,7 +53,7 @@ public class AdicionarExercicioHandlerTests
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var command = new AdicionarExercicioCommand(treino.Id, exercicioId, 3, 12, 50m, 60);
+        var command = new AdicionarExercicioCommand(treino.Id, exercicioId, SerieValida);
         var result = await _handler.HandleAsync(command);
 
         result.Exercicios.Should().HaveCount(1);
@@ -68,7 +71,7 @@ public class AdicionarExercicioHandlerTests
         _userContext.Setup(c => c.PerfilId).Returns(outroTreinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 
-        var command = new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), 3, 12, null, null);
+        var command = new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), SerieValida);
         var act = async () => await _handler.HandleAsync(command);
 
         await act.Should().ThrowAsync<AcessoNegadoException>();
@@ -80,7 +83,7 @@ public class AdicionarExercicioHandlerTests
         var treinoId = Guid.NewGuid();
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treinoId, It.IsAny<CancellationToken>())).ReturnsAsync((Treino?)null);
 
-        var command = new AdicionarExercicioCommand(treinoId, Guid.NewGuid(), 3, 12, null, null);
+        var command = new AdicionarExercicioCommand(treinoId, Guid.NewGuid(), SerieValida);
         var act = async () => await _handler.HandleAsync(command);
 
         await act.Should().ThrowAsync<TreinoNaoEncontradoException>();
@@ -93,7 +96,7 @@ public class AdicionarExercicioHandlerTests
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var command = new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), 3, 12, null, null);
+        var command = new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), SerieValida);
         var act = async () => await _handler.HandleAsync(command);
 
         await act.Should().ThrowAsync<TreinoExecutadoException>();
@@ -109,16 +112,24 @@ public class AdicionarExercicioHandlerTests
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var command = new AdicionarExercicioCommand(treino.Id, exercicioId, 3, 12, null, null);
+        var command = new AdicionarExercicioCommand(treino.Id, exercicioId, SerieValida);
         var act = async () => await _handler.HandleAsync(command);
 
         await act.Should().ThrowAsync<ExercicioNaoEncontradoException>();
     }
 
     [Fact]
-    public async Task HandleAsync_DadosInvalidos_LancaValidationException()
+    public async Task HandleAsync_SeriesVazias_LancaValidationException()
     {
-        var command = new AdicionarExercicioCommand(Guid.NewGuid(), Guid.Empty, 0, 0, null, null);
+        var command = new AdicionarExercicioCommand(Guid.NewGuid(), Guid.NewGuid(), []);
+        var act = async () => await _handler.HandleAsync(command);
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ExercicioIdVazio_LancaValidationException()
+    {
+        var command = new AdicionarExercicioCommand(Guid.NewGuid(), Guid.Empty, SerieValida);
         var act = async () => await _handler.HandleAsync(command);
         await act.Should().ThrowAsync<ValidationException>();
     }
