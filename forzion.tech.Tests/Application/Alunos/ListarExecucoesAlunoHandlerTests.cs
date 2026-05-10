@@ -1,7 +1,6 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
-using forzion.tech.Domain.Entities;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Alunos;
@@ -16,15 +15,15 @@ public class ListarExecucoesAlunoHandlerTests
         _handler = new ListarExecucoesAlunoHandler(_execucaoRepo.Object);
     }
 
-    private static ExecucaoTreino CriarExecucao(Guid alunoId) =>
-        ExecucaoTreino.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow);
+    private static ExecucaoComNome CriarExecucaoComNome(Guid alunoId) =>
+        new(Guid.NewGuid(), Guid.NewGuid(), alunoId, DateTime.UtcNow, null, DateTime.UtcNow, "Treino A", 3, 9);
 
     [Fact]
     public async Task HandleAsync_SemExecucoes_RetornaListaVazia()
     {
         var alunoId = Guid.NewGuid();
-        _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(alunoId, 1, 10, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ExecucaoTreino>());
+        _execucaoRepo.Setup(r => r.ListarComNomePorAlunoAsync(alunoId, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ExecucaoComNome>());
         _execucaoRepo.Setup(r => r.ContarPorAlunoAsync(alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
 
@@ -38,8 +37,8 @@ public class ListarExecucoesAlunoHandlerTests
     public async Task HandleAsync_ComExecucoes_RetornaItemsMapeados()
     {
         var alunoId = Guid.NewGuid();
-        var execucoes = new List<ExecucaoTreino> { CriarExecucao(alunoId), CriarExecucao(alunoId) };
-        _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(alunoId, 1, 10, It.IsAny<CancellationToken>()))
+        var execucoes = new List<ExecucaoComNome> { CriarExecucaoComNome(alunoId), CriarExecucaoComNome(alunoId) };
+        _execucaoRepo.Setup(r => r.ListarComNomePorAlunoAsync(alunoId, 1, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(execucoes);
         _execucaoRepo.Setup(r => r.ContarPorAlunoAsync(alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(2);
@@ -55,8 +54,8 @@ public class ListarExecucoesAlunoHandlerTests
     public async Task HandleAsync_PaginacaoCorreta_RefleteNaResposta()
     {
         var alunoId = Guid.NewGuid();
-        _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(alunoId, 3, 5, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ExecucaoTreino>());
+        _execucaoRepo.Setup(r => r.ListarComNomePorAlunoAsync(alunoId, 3, 5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ExecucaoComNome>());
         _execucaoRepo.Setup(r => r.ContarPorAlunoAsync(alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
 

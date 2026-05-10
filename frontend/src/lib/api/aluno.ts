@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { ExecucaoTreinoResponse, MeuVinculoResponse, ObjetivoTreino, TreinoAlunoStatus, TreinoExercicioResponse, PaginatedResponse, VinculoResponse } from "@/types";
+import type { ExecucaoTreinoResponse, MeuVinculoResponse, ObjetivoTreino, ProgressaoAlunoResponse, TreinoAlunoStatus, TreinoExercicioResponse, PaginatedResponse, VinculoResponse } from "@/types";
 
 export interface TreinoAlunoDetalheResponse {
   treinoAlunoId: string;
@@ -10,11 +10,19 @@ export interface TreinoAlunoDetalheResponse {
   exercicios: TreinoExercicioResponse[];
 }
 
+export interface ExecucaoExercicioData {
+  treinoExercicioId: string;
+  seriesExecutadas: number;
+  repeticoesExecutadas: number;
+  cargaExecutada?: number | null;
+  observacao?: string | null;
+}
+
 export interface CriarExecucaoData {
   treinoId: string;
   dataExecucao: string;
   observacao?: string | null;
-  exercicios: never[];
+  exercicios: ExecucaoExercicioData[];
 }
 
 export const alunoApi = {
@@ -29,6 +37,10 @@ export const alunoApi = {
   },
   criarExecucao(data: CriarExecucaoData) {
     return apiClient.post<ExecucaoTreinoResponse>("/aluno/execucoes", data);
+  },
+
+  getMinhaProgressao(de?: string, ate?: string) {
+    return apiClient.get<ProgressaoAlunoResponse>("/aluno/progressao", { params: { de, ate } });
   },
 
   getMeuVinculo() {

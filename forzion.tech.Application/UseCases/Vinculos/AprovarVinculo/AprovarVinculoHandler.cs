@@ -15,6 +15,7 @@ public class AprovarVinculoHandler(
     ILimiteTreinadorService limiteTreinadorService,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
+    IWhatsAppNotifier whatsAppNotifier,
     ILogger<AprovarVinculoHandler> logger)
 {
     public virtual async Task<VinculoResponse> HandleAsync(
@@ -77,6 +78,14 @@ public class AprovarVinculoHandler(
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Vínculo {VinculoId} aprovado pelo treinador {TreinadorId}.", vinculo.Id, command.TreinadorId);
+
+        if (aluno is not null && !string.IsNullOrWhiteSpace(aluno.Telefone))
+        {
+            await whatsAppNotifier.SendAsync(
+                aluno.Telefone,
+                "Olá! Seu cadastro foi aprovado pelo seu treinador. Acesse o app para ver suas fichas de treino.",
+                cancellationToken).ConfigureAwait(false);
+        }
 
         return new VinculoResponse(vinculo.Id, vinculo.TreinadorId, vinculo.AlunoId, vinculo.PacoteAlunoId, vinculo.Status, vinculo.CreatedAt);
     }

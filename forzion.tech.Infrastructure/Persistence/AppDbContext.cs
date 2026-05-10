@@ -1,10 +1,11 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options, string schema = "public") : DbContext(options), IUnitOfWork
+public class AppDbContext(DbContextOptions<AppDbContext> options, string schema = "public", IDomainEventDispatcher? eventDispatcher = null) : DbContext(options), IUnitOfWork
 {
     private readonly string _schema = schema;
 
@@ -23,9 +24,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<TreinoExercicio> TreinoExercicios => Set<TreinoExercicio>();
     public DbSet<ExecucaoTreino> ExecucoesTreino => Set<ExecucaoTreino>();
     public DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
+    public DbSet<TokenRevogado> TokensRevogados => Set<TokenRevogado>();
 
-    public Task CommitAsync(CancellationToken cancellationToken = default) =>
-        SaveChangesAsync(cancellationToken);
+    public async Task CommitAsync(CancellationToken cancellationToken = default)
+    {
+        var entitiesWithEvents = eventDispatcher is null
+            ? []
+            : ChangeTracker.Entries<IHasDomainEvents>()
+                .Select(e => e.Entity)
+                .Where(e => e.DomainEvents.Count > 0)
+                .ToList();
+
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        foreach (var entity in entitiesWithEvents)
+        {
+            await eventDispatcher!.DispatchAsync(entity.DomainEvents, cancellationToken).ConfigureAwait(false);
+            entity.ClearDomainEvents();
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

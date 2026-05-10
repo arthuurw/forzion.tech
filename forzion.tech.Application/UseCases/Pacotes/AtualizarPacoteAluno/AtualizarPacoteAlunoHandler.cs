@@ -1,3 +1,4 @@
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
@@ -6,16 +7,20 @@ namespace forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
 
 public class AtualizarPacoteAlunoHandler(
     IPacoteAlunoRepository pacoteRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IValidator<AtualizarPacoteAlunoCommand> validator)
 {
     private readonly IPacoteAlunoRepository _pacoteRepository = pacoteRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IValidator<AtualizarPacoteAlunoCommand> _validator = validator;
 
     public virtual async Task<PacoteAlunoResponse> HandleAsync(
         AtualizarPacoteAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+
+        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var pacote = await _pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
             ?? throw new PacoteNaoEncontradoException();

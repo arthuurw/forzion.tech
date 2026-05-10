@@ -1,6 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -18,9 +19,10 @@ public class RegistrarAlunoHandler(
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
     IValidator<RegistrarAlunoCommand> validator,
+    IWhatsAppNotifier whatsAppNotifier,
     ILogger<RegistrarAlunoHandler> logger)
 {
-    public virtual async Task<AlunoResponse> HandleAsync(
+    public virtual async Task<Result<AlunoResponse>> HandleAsync(
         RegistrarAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -31,14 +33,14 @@ public class RegistrarAlunoHandler(
         if (emailExistente is not null)
             throw new EmailJaCadastradoException();
 
-        _ = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
+        var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
         var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Pacote de aluno não encontrado.");
+            ?? throw new PacoteNaoEncontradoException();
 
         if (pacote.TreinadorId != command.TreinadorId)
-            throw new DomainException("O pacote informado não pertence ao treinador selecionado.");
+            return Result.Failure<AlunoResponse>(Error.Business("O pacote informado não pertence ao treinador selecionado."));
 
         var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Aluno);
         var tempoDisponivel = command.TempoDisponivelMinutos.HasValue
@@ -66,6 +68,14 @@ public class RegistrarAlunoHandler(
 
         logger.LogInformation("Aluno {AlunoId} registrado com vínculo pendente ao treinador {TreinadorId}.", aluno.Id, command.TreinadorId);
 
-        return CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno);
+        if (!string.IsNullOrWhiteSpace(treinador.Telefone))
+        {
+            await whatsAppNotifier.SendAsync(
+                treinador.Telefone,
+                $"Novo aluno aguardando aprovação: {command.Nome}. Acesse o app para aprovar o vínculo.",
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return Result.Success(CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno));
     }
 }

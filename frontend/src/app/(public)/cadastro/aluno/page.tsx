@@ -150,8 +150,12 @@ export default function CadastroAlunoPage() {
       });
 
       if (!res.ok) {
-        const problem: ProblemDetails = await res.json();
-        setError(problem.detail ?? problem.title ?? "Erro ao criar conta.");
+        if (res.status >= 500) {
+          setError("Erro interno. Tente novamente.");
+        } else {
+          const problem: ProblemDetails = await res.json();
+          setError(problem.detail ?? problem.title ?? "Erro ao criar conta.");
+        }
         return;
       }
 

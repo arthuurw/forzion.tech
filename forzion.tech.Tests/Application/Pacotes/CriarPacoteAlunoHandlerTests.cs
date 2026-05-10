@@ -1,4 +1,6 @@
 using FluentAssertions;
+using FluentValidation;
+using FluentValidation.Results;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
@@ -12,12 +14,15 @@ public class CriarPacoteAlunoHandlerTests
 {
     private readonly Mock<IPacoteAlunoRepository> _pacoteRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IValidator<CriarPacoteAlunoCommand>> _validator = new();
     private readonly Mock<ILogger<CriarPacoteAlunoHandler>> _logger = new();
     private readonly CriarPacoteAlunoHandler _handler;
 
     public CriarPacoteAlunoHandlerTests()
     {
-        _handler = new CriarPacoteAlunoHandler(_pacoteRepo.Object, _unitOfWork.Object, _logger.Object);
+        _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
+        _handler = new CriarPacoteAlunoHandler(_pacoteRepo.Object, _unitOfWork.Object, _validator.Object, _logger.Object);
     }
 
     [Fact]

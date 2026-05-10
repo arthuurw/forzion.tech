@@ -11,6 +11,9 @@ public class Treino
     public Guid TreinadorId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
     public ObjetivoTreino Objetivo { get; private set; }
+    public DificuldadeTreino Dificuldade { get; private set; }
+    public DateOnly? DataInicio { get; private set; }
+    public DateOnly? DataFim { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -18,7 +21,13 @@ public class Treino
 
     private Treino() { }
 
-    public static Treino Criar(string nome, ObjetivoTreino objetivo, Guid treinadorId)
+    public static Treino Criar(
+        string nome,
+        ObjetivoTreino objetivo,
+        Guid treinadorId,
+        DificuldadeTreino dificuldade = DificuldadeTreino.Iniciante,
+        DateOnly? dataInicio = null,
+        DateOnly? dataFim = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
@@ -26,6 +35,8 @@ public class Treino
             throw new DomainException("O nome deve ter no máximo 100 caracteres.");
         if (treinadorId == Guid.Empty)
             throw new DomainException("O treinador é inválido.");
+        if (dataInicio.HasValue && dataFim.HasValue && dataFim < dataInicio)
+            throw new DomainException("A data de fim deve ser posterior à data de início.");
 
         return new Treino
         {
@@ -33,11 +44,21 @@ public class Treino
             TreinadorId = treinadorId,
             Nome = nome.Trim(),
             Objetivo = objetivo,
+            Dificuldade = dificuldade,
+            DataInicio = dataInicio,
+            DataFim = dataFim,
             CreatedAt = DateTime.UtcNow
         };
     }
 
-    public void Atualizar(string? nome, ObjetivoTreino? objetivo)
+    public void Atualizar(
+        string? nome,
+        ObjetivoTreino? objetivo,
+        DificuldadeTreino? dificuldade = null,
+        DateOnly? dataInicio = null,
+        DateOnly? dataFim = null,
+        bool limparDataInicio = false,
+        bool limparDataFim = false)
     {
         if (nome is not null)
         {
@@ -51,7 +72,24 @@ public class Treino
         if (objetivo is not null)
             Objetivo = objetivo.Value;
 
+        if (dificuldade is not null)
+            Dificuldade = dificuldade.Value;
+
+        DataInicio = limparDataInicio ? null : (dataInicio ?? DataInicio);
+        DataFim = limparDataFim ? null : (dataFim ?? DataFim);
+
+        var inicio = DataInicio;
+        var fim = DataFim;
+        if (inicio.HasValue && fim.HasValue && fim < inicio)
+            throw new DomainException("A data de fim deve ser posterior à data de início.");
+
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ValidarMutabilidade(bool foiExecutado)
+    {
+        if (foiExecutado)
+            throw new TreinoExecutadoException();
     }
 
     public TreinoExercicio AdicionarExercicio(Guid exercicioId)
@@ -81,6 +119,7 @@ public class Treino
             TreinadorId = TreinadorId,
             Nome = $"{Nome} (cópia)",
             Objetivo = Objetivo,
+            Dificuldade = Dificuldade,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -106,6 +145,7 @@ public class Treino
             TreinadorId = novoTreinadorId,
             Nome = Nome,
             Objetivo = Objetivo,
+            Dificuldade = Dificuldade,
             CreatedAt = DateTime.UtcNow
         };
 

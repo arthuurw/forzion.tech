@@ -39,9 +39,9 @@ export default function DashboardTreinadorPage() {
   const load = useCallback(async () => {
     try {
       const [ativoRes, aguardandoRes, inativoRes, fichasRes, pacotesRes] = await Promise.all([
-        treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: 1 }),
+        treinadorApi.listVinculos({ status: "Ativo", tamanhoPagina: 1 }),
         treinadorApi.listVinculos({ status: "AguardandoAprovacao", tamanhoPagina: 10 }),
-        treinadorApi.listAlunos({ status: "Inativo", tamanhoPagina: 1 }),
+        treinadorApi.listVinculos({ status: "Inativo", tamanhoPagina: 1 }),
         treinadorApi.listFichas({ tamanhoPagina: 100 }),
         treinadorApi.listPacotes(),
       ]);
@@ -110,7 +110,7 @@ export default function DashboardTreinadorPage() {
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
       {/* Stat cards */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 2, mb: 4 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 2, mb: 4 }}>
         {alunoStats.map((s) => (
           <Paper
             key={s.name}
@@ -138,7 +138,7 @@ export default function DashboardTreinadorPage() {
       </Box>
 
       {/* Charts */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 2, mb: 4 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2, mb: 4 }}>
         <Paper sx={{ p: 3, borderRadius: 2 }}>
           <Typography
             variant="overline"

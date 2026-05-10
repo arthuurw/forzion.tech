@@ -107,7 +107,7 @@ export default function DashboardAdminPage() {
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
       {/* Stat cards */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mb: 4 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" }, gap: 2, mb: 4 }}>
         {stats.map((s) => (
           <Paper
             key={s.name}
@@ -127,7 +127,7 @@ export default function DashboardAdminPage() {
       </Box>
 
       {/* Charts */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 2, mb: 4 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2, mb: 4 }}>
         <Paper sx={{ p: 3, borderRadius: 2 }}>
           <Typography
             variant="overline"

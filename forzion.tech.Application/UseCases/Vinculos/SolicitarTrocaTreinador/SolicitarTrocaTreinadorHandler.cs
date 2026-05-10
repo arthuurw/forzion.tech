@@ -22,8 +22,7 @@ public class SolicitarTrocaTreinadorHandler(
         var novoTreinador = await treinadorRepository.ObterPorIdAsync(command.NovoTreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        if (novoTreinador.Status != TreinadorStatus.Ativo)
-            throw new DomainException("O treinador selecionado não está disponível.");
+        novoTreinador.ValidarDisponibilidade();
 
         var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoAtivo is null)

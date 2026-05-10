@@ -9,6 +9,14 @@ export const passwordSchema = z
   .string()
   .min(8, "Mínimo 8 caracteres");
 
+export const registerPasswordSchema = z
+  .string()
+  .min(8, "Mínimo 8 caracteres")
+  .max(72, "Máximo 72 caracteres")
+  .regex(/(?=.*[a-z])/, "Deve conter ao menos uma letra minúscula.")
+  .regex(/(?=.*[A-Z])/, "Deve conter ao menos uma letra maiúscula.")
+  .regex(/(?=.*\d)/, "Deve conter ao menos um número.");
+
 export const nomeSchema = z
   .string()
   .min(2, "Nome deve ter ao menos 2 caracteres")
@@ -30,7 +38,8 @@ export const cadastroTreinadorSchema = z
   .object({
     nome: nomeSchema,
     email: emailSchema,
-    password: passwordSchema,
+    telefone: telefoneSchema,
+    password: registerPasswordSchema,
     confirmPassword: z.string().min(1, "Confirmação obrigatória"),
   })
   .refine((d) => d.password === d.confirmPassword, {
@@ -46,7 +55,7 @@ export const cadastroAlunoSchema = z
     telefone: z
       .string()
       .regex(/^\d{10,11}$/, "Telefone inválido (somente dígitos, 10 ou 11)"),
-    password: passwordSchema,
+    password: registerPasswordSchema,
     confirmPassword: z.string().min(1, "Confirmação obrigatória"),
     diasDisponiveis: z.string().min(1, "Selecione os dias disponíveis"),
     tempoDisponivelMinutos: z.string().min(1, "Selecione o tempo disponível"),

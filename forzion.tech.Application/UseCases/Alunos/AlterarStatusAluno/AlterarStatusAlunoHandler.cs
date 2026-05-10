@@ -30,7 +30,7 @@ public class AlterarStatusAlunoHandler(
 
         // Validação de autorização: apenas SystemAdmin pode alterar status de alunos
         if (!_userContext.IsSystemAdmin)
-            throw new UnauthorizedAccessException("Apenas administradores do sistema podem alterar o status de alunos.");
+            throw new AcessoNegadoException();
 
         aluno.AlterarStatus(command.NovoStatus);
 

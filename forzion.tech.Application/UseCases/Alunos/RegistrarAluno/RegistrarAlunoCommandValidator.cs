@@ -7,8 +7,14 @@ public class RegistrarAlunoCommandValidator : AbstractValidator<RegistrarAlunoCo
 {
     public RegistrarAlunoCommandValidator()
     {
-        RuleFor(x => x.Email).NotEmpty().MaximumLength(256);
-        RuleFor(x => x.Senha).NotEmpty().MinimumLength(8).MaximumLength(72);
+        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);
+        RuleFor(x => x.Senha)
+            .NotEmpty()
+            .MinimumLength(8)
+            .MaximumLength(72)
+            .Matches(@"(?=.*[a-z])").WithMessage("Senha deve conter ao menos uma letra minúscula.")
+            .Matches(@"(?=.*[A-Z])").WithMessage("Senha deve conter ao menos uma letra maiúscula.")
+            .Matches(@"(?=.*\d)").WithMessage("Senha deve conter ao menos um número.");
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(100);
         RuleFor(x => x.TreinadorId).NotEmpty();
         RuleFor(x => x.PacoteId).NotEmpty();

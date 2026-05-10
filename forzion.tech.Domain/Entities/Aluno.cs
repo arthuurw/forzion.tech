@@ -107,7 +107,7 @@ public class Aluno
         }
         if (email.Length > 256)
             throw new DomainException("O e-mail deve ter no máximo 256 caracteres.");
-        if (!email.Contains('@'))
+        if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
             throw new DomainException("O e-mail informado é inválido.");
         Email = email.Trim().ToLowerInvariant();
     }

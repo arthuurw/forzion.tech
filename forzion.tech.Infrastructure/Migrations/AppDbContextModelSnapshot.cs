@@ -536,6 +536,26 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("system_users", "homolog");
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.TokenRevogado", b =>
+                {
+                    b.Property<Guid>("Jti")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("jti");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.HasKey("Jti")
+                        .HasName("pk_tokens_revogados");
+
+                    b.HasIndex("ExpiraEm")
+                        .HasDatabaseName("ix_tokens_revogados_expira_em");
+
+                    b.ToTable("tokens_revogados", "homolog");
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.Treinador", b =>
                 {
                     b.Property<Guid>("Id")
@@ -574,6 +594,11 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -588,6 +613,9 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("PlanoTreinadorId")
                         .HasDatabaseName("ix_treinadores_plano_treinador_id");
 
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_treinadores_status");
+
                     b.ToTable("treinadores", "homolog");
                 });
 
@@ -601,6 +629,21 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<DateOnly?>("DataFim")
+                        .HasColumnType("date")
+                        .HasColumnName("data_fim");
+
+                    b.Property<DateOnly?>("DataInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("data_inicio");
+
+                    b.Property<string>("Dificuldade")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Iniciante")
+                        .HasColumnName("dificuldade");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -683,6 +726,11 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("exercicio_id");
 
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("observacao");
+
                     b.Property<int>("Ordem")
                         .HasColumnType("integer")
                         .HasColumnName("ordem");
@@ -758,6 +806,9 @@ namespace forzion.tech.Infrastructure.Migrations
 
                     b.HasIndex("TreinadorId", "AlunoId")
                         .HasDatabaseName("ix_vinculos_treinador_aluno_treinador_id_aluno_id");
+
+                    b.HasIndex("TreinadorId", "Status")
+                        .HasDatabaseName("ix_vinculos_treinador_aluno_treinador_id_status");
 
                     b.ToTable("vinculos_treinador_aluno", "homolog");
                 });

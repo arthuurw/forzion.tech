@@ -13,7 +13,5 @@ public class CriarTreinoCommandValidator : AbstractValidator<CriarTreinoCommand>
         RuleFor(x => x.Objetivo)
             .IsInEnum().WithMessage("Objetivo de treino inválido.");
 
-        RuleFor(x => x.AlunoId)
-            .NotEmpty().WithMessage("O ID do aluno é obrigatório.");
     }
 }

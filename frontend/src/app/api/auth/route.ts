@@ -30,14 +30,13 @@ export async function POST(request: NextRequest) {
   const maxAge = getTokenMaxAge(data.token);
   const baseOpts = {
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    sameSite: "strict" as const,
     path: "/",
     maxAge,
   };
 
   const response = NextResponse.json(data);
   response.cookies.set("token", data.token, { ...baseOpts, httpOnly: true });
-  response.cookies.set("token_access", data.token, { ...baseOpts, httpOnly: false });
   response.cookies.set("session_guard", "1", { ...baseOpts, httpOnly: true });
 
   return response;

@@ -14,8 +14,8 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
-import type { TreinoResponse, ObjetivoTreino, AlunoResponse } from "@/types";
-import { OBJETIVOS, OBJETIVOS_FILTRO } from "@/lib/constants/labels";
+import type { TreinoResponse, ObjetivoTreino, DificuldadeTreino, AlunoResponse } from "@/types";
+import { OBJETIVOS, OBJETIVOS_FILTRO, DIFICULDADES } from "@/lib/constants/labels";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { useCRUDDialog } from "@/hooks/useCRUDDialog";
 
@@ -39,10 +39,16 @@ export default function TreinosTreinadorPage() {
 
   const [nome, setNome] = useState("");
   const [objetivo, setObjetivo] = useState<ObjetivoTreino>("Hipertrofia");
+  const [dificuldade, setDificuldade] = useState<DificuldadeTreino>("Iniciante");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
   const [alunos, setAlunos] = useState<AlunoResponse[]>([]);
   const [selectedAluno, setSelectedAluno] = useState<AlunoResponse | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editObjetivo, setEditObjetivo] = useState<ObjetivoTreino>("Hipertrofia");
+  const [editDificuldade, setEditDificuldade] = useState<DificuldadeTreino>("Iniciante");
+  const [editDataInicio, setEditDataInicio] = useState("");
+  const [editDataFim, setEditDataFim] = useState("");
 
   // filtros
   const [filtroNome, setFiltroNome] = useState("");
@@ -63,7 +69,7 @@ export default function TreinosTreinadorPage() {
   const { items: fichas, total, page, pageSize, loading, error, setPage, setPageSize, setError, reload } =
     usePaginatedList<TreinoResponse>({ fetcher, errorMessage: "Erro ao carregar fichas." });
 
-  const resetForm = () => { setNome(""); setObjetivo("Hipertrofia"); setSelectedAluno(null); };
+  const resetForm = () => { setNome(""); setObjetivo("Hipertrofia"); setDificuldade("Iniciante"); setDataInicio(""); setDataFim(""); setSelectedAluno(null); };
 
   const openDialog = async () => {
     openCreate();
@@ -78,10 +84,17 @@ export default function TreinosTreinadorPage() {
   };
 
   const handleCriar = async () => {
-    if (!nome.trim() || !selectedAluno) return;
+    if (!nome.trim()) return;
     setCreating(true);
     try {
-      const res = await treinadorApi.criarFicha({ alunoId: selectedAluno.alunoId, nome: nome.trim(), objetivo });
+      const res = await treinadorApi.criarFicha({
+        alunoId: selectedAluno?.alunoId ?? null,
+        nome: nome.trim(),
+        objetivo,
+        dificuldade,
+        dataInicio: dataInicio || null,
+        dataFim: dataFim || null,
+      });
       closeCreate();
       resetForm();
       router.push(`/treinador/treinos/${res.data.treinoId}`);
@@ -95,13 +108,24 @@ export default function TreinosTreinadorPage() {
     openEdit(f);
     setEditNome(f.nome);
     setEditObjetivo(f.objetivo);
+    setEditDificuldade(f.dificuldade);
+    setEditDataInicio(f.dataInicio ?? "");
+    setEditDataFim(f.dataFim ?? "");
   };
 
   const handleEditar = async () => {
     if (!editTarget || !editNome.trim()) return;
     setEditing(true);
     try {
-      await treinadorApi.atualizarFicha(editTarget.treinoId, { nome: editNome.trim(), objetivo: editObjetivo });
+      await treinadorApi.atualizarFicha(editTarget.treinoId, {
+        nome: editNome.trim(),
+        objetivo: editObjetivo,
+        dificuldade: editDificuldade,
+        dataInicio: editDataInicio || null,
+        dataFim: editDataFim || null,
+        limparDataInicio: !editDataInicio,
+        limparDataFim: !editDataFim,
+      });
       closeEdit();
       reload();
     } catch {
@@ -230,10 +254,9 @@ export default function TreinosTreinadorPage() {
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Aluno"
+                  label="Aluno (opcional)"
                   size="small"
-                  required
-                  helperText="A ficha será automaticamente vinculada ao aluno selecionado."
+                  helperText="Deixe em branco para criar sem vincular. Vincule depois pela página do aluno."
                 />
               )}
             />
@@ -258,16 +281,43 @@ export default function TreinosTreinadorPage() {
                 ))}
               </Select>
             </FormControl>
-            {alunos.length === 0 && (
-              <Typography variant="caption" color="text.secondary">
-                Para criar fichas vinculadas, é necessário ter ao menos um aluno ativo na sua carteira.
-              </Typography>
-            )}
+            <FormControl size="small" fullWidth>
+              <InputLabel>Dificuldade</InputLabel>
+              <Select
+                value={dificuldade}
+                label="Dificuldade"
+                onChange={(e) => setDificuldade(e.target.value as DificuldadeTreino)}
+              >
+                {DIFICULDADES.map((d) => (
+                  <MenuItem key={d.value} value={d.value}>{d.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Stack direction="row" spacing={1.5}>
+              <TextField
+                label="Início (opcional)"
+                type="date"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="Validade (opcional)"
+                type="date"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Stack>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => { closeCreate(); resetForm(); }}>Cancelar</Button>
-          <Button variant="contained" disabled={!nome.trim() || !selectedAluno || creating} onClick={handleCriar}>
+          <Button variant="contained" disabled={!nome.trim() || creating} onClick={handleCriar}>
             Criar e abrir
           </Button>
         </DialogActions>
@@ -299,6 +349,38 @@ export default function TreinosTreinadorPage() {
                 ))}
               </Select>
             </FormControl>
+            <FormControl size="small" fullWidth>
+              <InputLabel>Dificuldade</InputLabel>
+              <Select
+                value={editDificuldade}
+                label="Dificuldade"
+                onChange={(e) => setEditDificuldade(e.target.value as DificuldadeTreino)}
+              >
+                {DIFICULDADES.map((d) => (
+                  <MenuItem key={d.value} value={d.value}>{d.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Stack direction="row" spacing={1.5}>
+              <TextField
+                label="Início (opcional)"
+                type="date"
+                value={editDataInicio}
+                onChange={(e) => setEditDataInicio(e.target.value)}
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="Validade (opcional)"
+                type="date"
+                value={editDataFim}
+                onChange={(e) => setEditDataFim(e.target.value)}
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            </Stack>
           </Stack>
         </DialogContent>
         <DialogActions>

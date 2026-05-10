@@ -1,4 +1,6 @@
 using FluentAssertions;
+using FluentValidation;
+using FluentValidation.Results;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
@@ -12,12 +14,15 @@ public class CriarPlanoTreinadorHandlerTests
 {
     private readonly Mock<IPlanoTreinadorRepository> _planoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IValidator<CriarPlanoTreinadorCommand>> _validator = new();
     private readonly Mock<ILogger<CriarPlanoTreinadorHandler>> _logger = new();
     private readonly CriarPlanoTreinadorHandler _handler;
 
     public CriarPlanoTreinadorHandlerTests()
     {
-        _handler = new CriarPlanoTreinadorHandler(_planoRepo.Object, _unitOfWork.Object, _logger.Object);
+        _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
+        _handler = new CriarPlanoTreinadorHandler(_planoRepo.Object, _unitOfWork.Object, _validator.Object, _logger.Object);
     }
 
     [Fact]

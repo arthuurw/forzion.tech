@@ -23,6 +23,7 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
         Guid treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
         var query = _context.VinculosTreinadorAluno
+            .AsNoTracking()
             .Where(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo)
             .Join(_context.Alunos, v => v.AlunoId, a => a.Id, (_, a) => a)
             .OrderBy(a => a.Nome);

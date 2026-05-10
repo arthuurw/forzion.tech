@@ -65,10 +65,10 @@ public class VincularFichaAoAlunoHandlerTests
         _treinoAlunoRepo.Setup(r => r.ListarAtivosPorTreinoIdAsync(treino.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { vinculoExistente });
 
-        var act = async () => await _handler.HandleAsync(new VincularFichaAoAlunoCommand(treino.Id, alunoId));
+        var result = await _handler.HandleAsync(new VincularFichaAoAlunoCommand(treino.Id, alunoId));
 
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*Aluno Existente*");
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("Aluno Existente");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

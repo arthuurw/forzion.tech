@@ -7,4 +7,6 @@ public interface IPacoteAlunoRepository
     Task<PacoteAluno?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PacoteAluno>> ListarPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(PacoteAluno pacote, CancellationToken cancellationToken = default);
+    void Remover(PacoteAluno pacote);
+    Task<bool> ExisteVinculoComPacoteAsync(Guid pacoteId, CancellationToken cancellationToken = default);
 }

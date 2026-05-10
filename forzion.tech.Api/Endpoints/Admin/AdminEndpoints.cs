@@ -10,6 +10,7 @@ using forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
+using forzion.tech.Api.Filters;
 using forzion.tech.Application.UseCases.Planos;
 using forzion.tech.Application.UseCases.Planos.AtualizarPlanoTreinador;
 using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
@@ -31,7 +32,8 @@ public static class AdminEndpoints
 {
     public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/admin").WithTags("Admin").RequireAuthorization("SystemAdmin");
+        var group = endpoints.MapGroup("/admin").WithTags("Admin").RequireAuthorization("SystemAdmin")
+            .AddEndpointFilter<PaginacaoFilter>();
 
         group.MapGet("/treinadores", async (
             [FromServices] ListarTreinadoresHandler handler,
@@ -61,7 +63,8 @@ public static class AdminEndpoints
             var result = await handler.HandleAsync(
                 new AprovarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Aprova um treinador")
         .Produces<TreinadorResponse>()
@@ -75,9 +78,10 @@ public static class AdminEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(
+            var result = await handler.HandleAsync(
                 new ReprovarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
 
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Reprova um treinador aguardando aprovação")
@@ -92,9 +96,10 @@ public static class AdminEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(
+            var result = await handler.HandleAsync(
                 new InativarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
 
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Inativa um treinador e faz cascade nos vínculos")
@@ -260,7 +265,8 @@ public static class AdminEndpoints
             var result = await handler.HandleAsync(
                 new CriarExercicioCommand(null, request.Nome, request.GrupoMuscular, request.Descricao),
                 cancellationToken);
-            return Results.Created($"/admin/exercicios/{result.ExercicioId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/admin/exercicios/{result.Value.ExercicioId}", result.Value);
         })
         .WithSummary("Cria exercício na biblioteca global (TreinadorId = null)")
         .Produces<ExercicioResponse>(StatusCodes.Status201Created)
@@ -275,7 +281,8 @@ public static class AdminEndpoints
             var result = await handler.HandleAsync(
                 new AtualizarExercicioCommand(id, null, request.Nome, request.GrupoMuscular, request.Descricao),
                 cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atualiza exercício global")
         .Produces<ExercicioResponse>()
@@ -286,7 +293,8 @@ public static class AdminEndpoints
             [FromServices] ExcluirExercicioHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirExercicioCommand(id, null), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirExercicioCommand(id, null), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Exclui exercício global")

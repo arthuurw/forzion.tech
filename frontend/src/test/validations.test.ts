@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   emailSchema,
   passwordSchema,
+  registerPasswordSchema,
   nomeSchema,
   telefoneSchema,
   loginSchema,
@@ -27,6 +28,27 @@ describe("passwordSchema", () => {
   });
   it("rejeita senha com menos de 8 caracteres", () => {
     expect(passwordSchema.safeParse("1234567").success).toBe(false);
+  });
+});
+
+describe("registerPasswordSchema", () => {
+  it("aceita senha com maiúscula, minúscula e número", () => {
+    expect(registerPasswordSchema.safeParse("Senha123").success).toBe(true);
+  });
+  it("rejeita senha sem maiúscula", () => {
+    expect(registerPasswordSchema.safeParse("senha123").success).toBe(false);
+  });
+  it("rejeita senha sem minúscula", () => {
+    expect(registerPasswordSchema.safeParse("SENHA123").success).toBe(false);
+  });
+  it("rejeita senha sem número", () => {
+    expect(registerPasswordSchema.safeParse("SenhaABC").success).toBe(false);
+  });
+  it("rejeita senha com menos de 8 caracteres", () => {
+    expect(registerPasswordSchema.safeParse("Se1").success).toBe(false);
+  });
+  it("rejeita senha com mais de 72 caracteres", () => {
+    expect(registerPasswordSchema.safeParse("Aa1" + "x".repeat(70)).success).toBe(false);
   });
 });
 
@@ -74,13 +96,16 @@ describe("loginSchema", () => {
 });
 
 describe("cadastroTreinadorSchema", () => {
-  const base = { nome: "Carlos", email: "c@t.com", password: "12345678", confirmPassword: "12345678" };
+  const base = { nome: "Carlos", email: "c@t.com", password: "Senha123", confirmPassword: "Senha123" };
 
   it("aceita dados válidos", () => {
     expect(cadastroTreinadorSchema.safeParse(base).success).toBe(true);
   });
   it("rejeita quando senhas não coincidem", () => {
     expect(cadastroTreinadorSchema.safeParse({ ...base, confirmPassword: "outrasenha" }).success).toBe(false);
+  });
+  it("rejeita senha sem maiúscula", () => {
+    expect(cadastroTreinadorSchema.safeParse({ ...base, password: "senha123", confirmPassword: "senha123" }).success).toBe(false);
   });
 });
 
@@ -89,8 +114,8 @@ describe("cadastroAlunoSchema", () => {
     nome: "João",
     email: "j@a.com",
     telefone: "11999998888",
-    password: "12345678",
-    confirmPassword: "12345678",
+    password: "Senha123",
+    confirmPassword: "Senha123",
     diasDisponiveis: "3",
     tempoDisponivelMinutos: "60",
     finalidade: "Hipertrofia",
@@ -115,5 +140,8 @@ describe("cadastroAlunoSchema", () => {
   });
   it("rejeita quando senhas não coincidem", () => {
     expect(cadastroAlunoSchema.safeParse({ ...base, confirmPassword: "outra" }).success).toBe(false);
+  });
+  it("rejeita senha sem número", () => {
+    expect(cadastroAlunoSchema.safeParse({ ...base, password: "SenhaABC", confirmPassword: "SenhaABC" }).success).toBe(false);
   });
 });

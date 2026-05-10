@@ -159,7 +159,7 @@ export default function TreinadoresAdminPage() {
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
 
       <Box sx={{ mb: 2 }}>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
+        <FormControl size="small" fullWidth sx={{ maxWidth: { sm: 220 } }}>
           <InputLabel>Status</InputLabel>
           <Select
             value={statusFilter}

@@ -21,15 +21,17 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
 
     public async Task<IReadOnlyList<Treinador>> ListarAtivosAsync(CancellationToken cancellationToken = default) =>
         await _context.Treinadores
+            .AsNoTracking()
             .Where(t => t.Status == TreinadorStatus.Ativo)
             .OrderBy(t => t.Nome)
+            .Take(200)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
     public async Task<(IReadOnlyList<Treinador> Items, int Total)> ListarAsync(
         TreinadorStatus? status, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
-        var query = _context.Treinadores.AsQueryable();
+        var query = _context.Treinadores.AsNoTracking().AsQueryable();
         if (status.HasValue)
             query = query.Where(t => t.Status == status.Value);
 
@@ -85,14 +87,14 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
             .Where(v => v.TreinadorId == treinador.Id)
             .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
-        _context.Treinadores.Remove(treinador);
+        await _context.Treinadores
+            .Where(t => t.Id == treinador.Id)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
-        var conta = await _context.Contas
-            .FirstOrDefaultAsync(c => c.Id == treinador.ContaId, cancellationToken).ConfigureAwait(false);
-        if (conta is not null)
-            _context.Contas.Remove(conta);
+        await _context.Contas
+            .Where(c => c.Id == treinador.ContaId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
-        await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 }

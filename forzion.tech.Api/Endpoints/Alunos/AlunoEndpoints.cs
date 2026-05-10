@@ -17,7 +17,8 @@ public static class AlunoEndpoints
     {
         var group = app.MapGroup("/alunos")
             .WithTags("Alunos")
-            .AddEndpointFilter<PerfilIdRequiredFilter>();
+            .AddEndpointFilter<PerfilIdRequiredFilter>()
+            .AddEndpointFilter<PaginacaoFilter>();
 
         group.MapGet("/", async (
             [FromServices] ListarAlunosHandler handler,
@@ -108,7 +109,7 @@ public static class AlunoEndpoints
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
-        .RequireAuthorization()
+        .RequireAuthorization("SystemAdmin")
         .WithSummary("Altera o status de um aluno (somente Admin)")
         .Produces<AlunoResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)

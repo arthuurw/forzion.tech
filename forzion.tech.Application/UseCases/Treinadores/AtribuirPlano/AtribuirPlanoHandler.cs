@@ -23,11 +23,8 @@ public class AtribuirPlanoHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        if (treinador.Status == TreinadorStatus.Inativo)
-            throw new DomainException("Não é possível atribuir plano a um treinador inativo.");
-
         _ = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Plano não encontrado.");
+            ?? throw new PlanoTreinadorNaoEncontradoException();
 
         treinador.AtribuirPlano(command.PlanoId);
 

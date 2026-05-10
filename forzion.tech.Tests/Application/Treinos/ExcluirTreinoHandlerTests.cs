@@ -44,8 +44,9 @@ public class ExcluirTreinoHandlerTests
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
+        var result = await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
 
+        result.IsSuccess.Should().BeTrue();
         _treinoAlunoRepo.Verify(r => r.RemoverPorTreinoIdAsync(treino.Id, It.IsAny<CancellationToken>()), Times.Once);
         _treinoRepo.Verify(r => r.RemoverAsync(treino, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -76,7 +77,7 @@ public class ExcluirTreinoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TreinoJaExecutado_LancaDomainException()
+    public async Task HandleAsync_TreinoJaExecutado_LancaTreinoExecutadoException()
     {
         var treinadorId = Guid.NewGuid();
         var treino = CriarTreino(treinadorId);
@@ -85,8 +86,8 @@ public class ExcluirTreinoHandlerTests
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var act = async () => await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*executada*");
+
+        await act.Should().ThrowAsync<TreinoExecutadoException>();
     }
 
     [Fact]
@@ -108,8 +109,9 @@ public class ExcluirTreinoHandlerTests
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        try { await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id)); } catch { }
+        var act = async () => await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
 
+        await act.Should().ThrowAsync<TreinoExecutadoException>();
         _treinoAlunoRepo.Verify(r => r.RemoverPorTreinoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

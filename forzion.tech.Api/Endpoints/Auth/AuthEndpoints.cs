@@ -1,3 +1,4 @@
+using forzion.tech.Api.Extensions;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
@@ -29,10 +30,12 @@ public static class AuthEndpoints
             return Results.Ok(result);
         })
         .AllowAnonymous()
+        .RequireRateLimiting("auth")
         .WithName("Login")
         .Produces<LoginResponse>()
         .ProducesProblem(StatusCodes.Status400BadRequest)
-        .ProducesProblem(StatusCodes.Status401Unauthorized);
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/register/treinador", async (
             RegistrarTreinadorRequest request,
@@ -40,15 +43,17 @@ public static class AuthEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new RegistrarTreinadorCommand(request.Email, request.Senha, request.Nome), cancellationToken);
+                new RegistrarTreinadorCommand(request.Email, request.Senha, request.Nome, request.Telefone), cancellationToken);
 
             return Results.Created($"/treinador/perfil", result);
         })
         .AllowAnonymous()
+        .RequireRateLimiting("auth")
         .WithSummary("Cadastra um novo treinador (aguarda aprovação)")
         .Produces<TreinadorResponse>(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status400BadRequest)
-        .ProducesProblem(StatusCodes.Status409Conflict);
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/register/aluno", async (
             RegistrarAlunoRequest request,
@@ -59,14 +64,17 @@ public static class AuthEndpoints
                 new RegistrarAlunoCommand(request.Email, request.Senha, request.Nome, request.TreinadorId, request.PacoteId, request.Telefone),
                 cancellationToken);
 
-            return Results.Created($"/aluno/perfil", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/aluno/perfil", result.Value);
         })
         .AllowAnonymous()
+        .RequireRateLimiting("auth")
         .WithSummary("Cadastra um novo aluno e cria vínculo pendente com o treinador")
         .Produces<AlunoResponse>(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound)
-        .ProducesProblem(StatusCodes.Status409Conflict);
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         // --- Endpoints Públicos (para Cadastro) ---
 
@@ -110,5 +118,5 @@ public static class AuthEndpoints
 }
 
 public record LoginRequest(string Email, string Senha);
-public record RegistrarTreinadorRequest(string Email, string Senha, string Nome);
+public record RegistrarTreinadorRequest(string Email, string Senha, string Nome, string? Telefone = null);
 public record RegistrarAlunoRequest(string Email, string Senha, string Nome, Guid TreinadorId, Guid PacoteId, string? Telefone = null);

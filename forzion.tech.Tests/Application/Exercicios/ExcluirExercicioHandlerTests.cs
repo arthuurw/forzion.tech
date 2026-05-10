@@ -82,15 +82,17 @@ public class ExcluirExercicioHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ExercicioEmUso_LancaDomainException()
+    public async Task HandleAsync_ExercicioEmUso_RetornaFalha()
     {
         var treinadorId = Guid.NewGuid();
         var exercicio = CriarExercicioTreinador(treinadorId);
         _exercicioRepo.Setup(r => r.ObterPorIdAsync(exercicio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(exercicio);
         _exercicioRepo.Setup(r => r.EstaEmUsoAsync(exercicio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var act = async () => await _handler.HandleAsync(new ExcluirExercicioCommand(exercicio.Id, treinadorId));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*em uso*");
+        var result = await _handler.HandleAsync(new ExcluirExercicioCommand(exercicio.Id, treinadorId));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("em uso");
     }
 
     [Fact]

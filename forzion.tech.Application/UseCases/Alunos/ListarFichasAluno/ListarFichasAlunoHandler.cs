@@ -38,14 +38,15 @@ public class ListarFichasAlunoHandler(ITreinoAlunoRepository treinoAlunoReposito
             x.Treino.Nome,
             x.Treino.Objetivo,
             x.TreinoAluno.Status,
-            x.Treino.Exercicios.Select(te => new TreinoExercicioResponse(
+            x.Treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
                 te.Id,
                 te.ExercicioId,
                 te.Exercicio?.Nome ?? string.Empty,
-                te.Series.Select(s => new SerieConfigResponse(
+                te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
                     s.Id, s.Quantidade, s.RepeticoesMin, s.RepeticoesMax,
                     s.Descricao, s.Carga, s.Descanso, s.Ordem)).ToList(),
-                te.Ordem)).ToList())).ToList();
+                te.Ordem,
+                te.Observacao)).ToList())).ToList();
 
         return new ListarFichasAlunoResponse(response, total, pagina, tamanhoPagina);
     }

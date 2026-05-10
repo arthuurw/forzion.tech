@@ -37,11 +37,7 @@ public class ObterAlunoHandler(
                     .ConfigureAwait(false);
 
                 if (ativo == null)
-                {
-                    _ = await _vinculoRepository
-                        .ObterPendentePorParAsync(_userContext.PerfilId, aluno.Id, cancellationToken)
-                        .ConfigureAwait(false) ?? throw new AcessoNegadoException();
-                }
+                    throw new AcessoNegadoException();
             }
             else
             {
