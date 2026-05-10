@@ -16,7 +16,7 @@ public class ExcluirGrupoMuscularHandler(
         ArgumentNullException.ThrowIfNull(command);
 
         var grupo = await _repository.ObterPorIdAsync(command.Id, cancellationToken)
-            ?? throw new DomainException("Grupo muscular não encontrado.");
+            ?? throw new GrupoMuscularNaoEncontradoException();
 
         // TODO: Validar se existem exercícios vinculados quando a migração Enum -> Entity ocorrer
 

@@ -21,7 +21,7 @@ export default function CadastroTreinadorPage() {
 
   const methods = useForm<CadastroTreinadorFormData>({
     resolver: zodResolver(cadastroTreinadorSchema),
-    defaultValues: { nome: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { nome: "", email: "", telefone: "", password: "", confirmPassword: "" },
   });
 
   const onSubmit = async (data: CadastroTreinadorFormData) => {
@@ -31,12 +31,21 @@ export default function CadastroTreinadorPage() {
       const res = await fetch("/api/auth/register/treinador", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome: data.nome, email: data.email, senha: data.password }),
+        body: JSON.stringify({
+          nome: data.nome,
+          email: data.email,
+          senha: data.password,
+          telefone: data.telefone || undefined,
+        }),
       });
 
       if (!res.ok) {
-        const problem: ProblemDetails = await res.json();
-        setError(problem.detail ?? problem.title ?? "Erro ao criar conta.");
+        if (res.status >= 500) {
+          setError("Erro interno. Tente novamente.");
+        } else {
+          const problem: ProblemDetails = await res.json();
+          setError(problem.detail ?? problem.title ?? "Erro ao criar conta.");
+        }
         return;
       }
 
@@ -86,6 +95,7 @@ export default function CadastroTreinadorPage() {
         >
           <FormTextField name="nome" label="Nome completo" required autoComplete="name" />
           <FormTextField name="email" label="E-mail" type="email" required autoComplete="email" />
+          <FormTextField name="telefone" label="WhatsApp (opcional)" type="tel" autoComplete="tel" placeholder="11999999999" />
           <PasswordField name="password" label="Senha" required autoComplete="new-password" />
           <PasswordField name="confirmPassword" label="Confirmar senha" required autoComplete="new-password" />
 

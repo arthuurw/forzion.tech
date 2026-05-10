@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +19,7 @@ public class RemoverExercicioHandler(
     private readonly IUserContext _userContext = userContext;
     private readonly ILogger<RemoverExercicioHandler> _logger = logger;
 
-    public virtual async Task<TreinoResponse> HandleAsync(
+    public virtual async Task<Result<TreinoResponse>> HandleAsync(
         RemoverExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -29,7 +30,6 @@ public class RemoverExercicioHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        // Validar autorização
         if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
             throw new AcessoNegadoException();
 
@@ -37,15 +37,21 @@ public class RemoverExercicioHandler(
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        if (executado)
-            throw new TreinoExecutadoException();
+        treino.ValidarMutabilidade(executado);
 
-        treino.RemoverExercicio(command.TreinoExercicioId);
+        try
+        {
+            treino.RemoverExercicio(command.TreinoExercicioId);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Failure<TreinoResponse>(Error.Business(ex.Message));
+        }
 
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Exercício {TreinoExercicioId} removido do treino {TreinoId}.", command.TreinoExercicioId, command.TreinoId);
 
-        return TreinoResponseExtensions.ToResponse(treino);
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino));
     }
 }

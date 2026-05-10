@@ -42,8 +42,14 @@ export default function LoginPage() {
       });
 
       if (!res.ok) {
-        const problem: ProblemDetails = await res.json();
-        setError(problem.detail ?? problem.title ?? "Erro ao fazer login.");
+        if (res.status === 401) {
+          setError("Credenciais inválidas.");
+        } else if (res.status >= 500) {
+          setError("Erro interno. Tente novamente.");
+        } else {
+          const problem: ProblemDetails = await res.json();
+          setError(problem.title ?? "Erro ao fazer login.");
+        }
         return;
       }
 

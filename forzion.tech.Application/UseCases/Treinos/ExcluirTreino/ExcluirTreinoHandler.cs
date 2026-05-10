@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +21,7 @@ public class ExcluirTreinoHandler(
     private readonly IUserContext _userContext = userContext;
     private readonly ILogger<ExcluirTreinoHandler> _logger = logger;
 
-    public virtual async Task HandleAsync(
+    public virtual async Task<Result> HandleAsync(
         ExcluirTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -38,8 +39,7 @@ public class ExcluirTreinoHandler(
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        if (executado)
-            throw new DomainException("Não é possível excluir uma ficha que já foi executada.");
+        treino.ValidarMutabilidade(executado);
 
         await _treinoAlunoRepository
             .RemoverPorTreinoIdAsync(command.TreinoId, cancellationToken)
@@ -49,5 +49,7 @@ public class ExcluirTreinoHandler(
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Treino {TreinoId} excluído pelo treinador {TreinadorId}.", command.TreinoId, _userContext.PerfilId);
+
+        return Result.Success();
     }
 }

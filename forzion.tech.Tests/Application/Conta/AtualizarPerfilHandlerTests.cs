@@ -1,4 +1,6 @@
 using FluentAssertions;
+using FluentValidation;
+using FluentValidation.Results;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
@@ -16,16 +18,20 @@ public class AtualizarPerfilHandlerTests
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<ISystemUserRepository> _systemUserRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IValidator<AtualizarPerfilCommand>> _validator = new();
     private readonly AtualizarPerfilHandler _handler;
 
     public AtualizarPerfilHandlerTests()
     {
+        _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
         _handler = new AtualizarPerfilHandler(
             _userContext.Object,
             _alunoRepo.Object,
             _treinadorRepo.Object,
             _systemUserRepo.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _validator.Object);
     }
 
     [Fact]

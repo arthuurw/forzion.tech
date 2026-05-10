@@ -34,30 +34,38 @@ public class CriarTreinoHandler(
 
         await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        _ = await _alunoRepository
-            .ObterPorIdAsync(command.AlunoId, cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new AlunoNaoEncontradoException();
-
-        // Validar autorização
-        if (!_userContext.IsSystemAdmin)
+        if (command.AlunoId.HasValue)
         {
-            var vinculo = await _vinculoRepository
-                .ObterAtivoAsync(_userContext.PerfilId, command.AlunoId, cancellationToken)
-                .ConfigureAwait(false);
+            _ = await _alunoRepository
+                .ObterPorIdAsync(command.AlunoId.Value, cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new AlunoNaoEncontradoException();
 
-            if (vinculo is null)
-                throw new AcessoNegadoException();
+            if (!_userContext.IsSystemAdmin)
+            {
+                var vinculo = await _vinculoRepository
+                    .ObterAtivoAsync(_userContext.PerfilId, command.AlunoId.Value, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (vinculo is null)
+                    throw new AcessoNegadoException();
+            }
         }
 
-        var treino = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId);
-        var treinoAluno = TreinoAluno.Criar(treino.Id, command.AlunoId);
-
+        var treino = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId, command.Dificuldade, command.DataInicio, command.DataFim);
         await _treinoRepository.AdicionarAsync(treino, cancellationToken).ConfigureAwait(false);
-        await _treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
+
+        if (command.AlunoId.HasValue)
+        {
+            var treinoAluno = TreinoAluno.Criar(treino.Id, command.AlunoId.Value);
+            await _treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
+        }
+
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Treino {TreinoId} criado para o aluno {AlunoId}.", treino.Id, command.AlunoId);
+        _logger.LogInformation("Treino {TreinoId} criado{Aluno}.",
+            treino.Id,
+            command.AlunoId.HasValue ? $" para o aluno {command.AlunoId.Value}" : " sem aluno vinculado");
 
         return TreinoResponseExtensions.ToResponse(treino);
     }

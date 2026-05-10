@@ -56,7 +56,7 @@ public class AdicionarExercicioHandlerTests
         var command = new AdicionarExercicioCommand(treino.Id, exercicioId, SerieValida);
         var result = await _handler.HandleAsync(command);
 
-        result.Exercicios.Should().HaveCount(1);
+        result.Value.Exercicios.Should().HaveCount(1);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

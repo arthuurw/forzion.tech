@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -16,7 +17,7 @@ public class AtualizarTreinoHandler(
     private readonly IUserContext _userContext = userContext;
     private readonly ILogger<AtualizarTreinoHandler> _logger = logger;
 
-    public virtual async Task<TreinoResponse> HandleAsync(
+    public virtual async Task<Result<TreinoResponse>> HandleAsync(
         AtualizarTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -30,12 +31,19 @@ public class AtualizarTreinoHandler(
         if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        treino.Atualizar(command.Nome, command.Objetivo);
+        try
+        {
+            treino.Atualizar(command.Nome, command.Objetivo, command.Dificuldade, command.DataInicio, command.DataFim, command.LimparDataInicio, command.LimparDataFim);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Failure<TreinoResponse>(Error.Business(ex.Message));
+        }
 
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Treino {TreinoId} atualizado.", command.TreinoId);
 
-        return TreinoResponseExtensions.ToResponse(treino);
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino));
     }
 }

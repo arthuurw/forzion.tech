@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -25,6 +26,10 @@ export default function PacotesTreinadorPage() {
   const [descricao, setDescricao] = useState("");
   const [preco, setPreco] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // excluir
+  const [deleteTarget, setDeleteTarget] = useState<PacoteAlunoResponse | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // editar
   const [editTarget, setEditTarget] = useState<PacoteAlunoResponse | null>(null);
@@ -74,6 +79,22 @@ export default function PacotesTreinadorPage() {
     setEditNome(p.nome);
     setEditDescricao(p.descricao ?? "");
     setEditPreco(String(p.preco));
+  };
+
+  const handleExcluir = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await treinadorApi.excluirPacote(deleteTarget.pacoteId);
+      setSuccess(`Pacote "${deleteTarget.nome}" excluído.`);
+      setDeleteTarget(null);
+      load();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(msg ?? "Erro ao excluir pacote.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleEditar = async () => {
@@ -127,15 +148,27 @@ export default function PacotesTreinadorPage() {
                 <CardContent>
                   <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                     <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>{p.nome}</Typography>
-                    <Tooltip title="Editar">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => { e.stopPropagation(); openEdit(p); }}
-                        sx={{ mt: -0.5 }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <Stack direction="row" spacing={0.5}>
+                      <Tooltip title="Editar">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                          sx={{ mt: -0.5 }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Excluir">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
+                          sx={{ mt: -0.5 }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                   </Box>
                   {p.descricao && (
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -197,6 +230,28 @@ export default function PacotesTreinadorPage() {
             onClick={handleCriar}
           >
             Criar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog: excluir */}
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Excluir pacote</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Tem certeza que deseja excluir <strong>{deleteTarget?.nome}</strong>?
+            Esta ação não pode ser desfeita.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleting}
+            onClick={handleExcluir}
+          >
+            Excluir
           </Button>
         </DialogActions>
       </Dialog>

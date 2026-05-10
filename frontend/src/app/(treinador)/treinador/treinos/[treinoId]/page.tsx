@@ -12,6 +12,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LinkIcon from "@mui/icons-material/Link";
+import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -25,6 +26,7 @@ import { formatarSeries } from "@/lib/utils/formatting";
 const COLUMNS: Column[] = [
   { label: "Exercício" },
   { label: "Séries" },
+  { label: "Observação" },
   { label: "Ações", align: "right" },
 ];
 
@@ -70,6 +72,14 @@ export default function DetalheFichaPage() {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
+
+  const [obsTarget, setObsTarget] = useState<TreinoExercicioResponse | null>(null);
+  const [obsText, setObsText] = useState("");
+  const [loadingObs, setLoadingObs] = useState(false);
+
+  const [editExTarget, setEditExTarget] = useState<TreinoExercicioResponse | null>(null);
+  const [editSeriesRows, setEditSeriesRows] = useState<SerieRow[]>([]);
+  const [loadingEditEx, setLoadingEditEx] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -215,6 +225,68 @@ export default function DetalheFichaPage() {
     }
   };
 
+  const openEditEx = (ex: TreinoExercicioResponse) => {
+    setEditExTarget(ex);
+    setEditSeriesRows(ex.series.map((s) => ({
+      quantidade: String(s.quantidade),
+      repeticoesMin: String(s.repeticoesMin),
+      repeticoesMax: s.repeticoesMax != null ? String(s.repeticoesMax) : "",
+      descricao: s.descricao ?? "",
+      carga: s.carga != null ? String(s.carga) : "",
+      descanso: s.descanso != null ? String(s.descanso) : "",
+    })));
+  };
+
+  const updateEditSerieRow = (idx: number, field: keyof SerieRow, value: string) => {
+    setEditSeriesRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  };
+
+  const addEditSerieRow = () => setEditSeriesRows((prev) => [...prev, { ...SERIE_VAZIA, descricao: "" }]);
+  const removeEditSerieRow = (idx: number) => setEditSeriesRows((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleEditarExercicio = async () => {
+    if (!editExTarget) return;
+    setLoadingEditEx(true);
+    try {
+      const series: SerieConfigData[] = editSeriesRows.map((r) => ({
+        quantidade: Number(r.quantidade) || 1,
+        repeticoesMin: Number(r.repeticoesMin) || 1,
+        repeticoesMax: r.repeticoesMax ? Number(r.repeticoesMax) : null,
+        descricao: r.descricao.trim() || null,
+        carga: r.carga ? Number(r.carga) : null,
+        descanso: r.descanso ? Number(r.descanso) : null,
+      }));
+      await treinadorApi.editarExercicioTreino(treinoId, editExTarget.treinoExercicioId, { series });
+      setSuccess("Exercício atualizado.");
+      setEditExTarget(null);
+      load();
+    } catch {
+      setError("Erro ao editar exercício.");
+    } finally {
+      setLoadingEditEx(false);
+    }
+  };
+
+  const openObs = (ex: TreinoExercicioResponse) => {
+    setObsTarget(ex);
+    setObsText(ex.observacao ?? "");
+  };
+
+  const handleSalvarObs = async () => {
+    if (!obsTarget) return;
+    setLoadingObs(true);
+    try {
+      await treinadorApi.atualizarObservacaoExercicio(treinoId, obsTarget.treinoExercicioId, obsText.trim() || null);
+      setSuccess("Observação salva.");
+      setObsTarget(null);
+      load();
+    } catch {
+      setError("Erro ao salvar observação.");
+    } finally {
+      setLoadingObs(false);
+    }
+  };
+
   const handleExcluir = async () => {
     setLoadingDelete(true);
     try {
@@ -287,12 +359,31 @@ export default function DetalheFichaPage() {
                   {formatarSeries(ex.series)}
                 </Typography>
               );
+              if (i === 2) return ex.observacao ? (
+                <Typography variant="body2" sx={{ fontSize: 12, color: "text.secondary", maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {ex.observacao}
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ fontSize: 12, color: "text.disabled" }}>—</Typography>
+              );
               return (
-                <Tooltip title="Remover exercício">
-                  <IconButton size="small" color="error" onClick={() => setRemoveEx(ex)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <Box sx={{ display: "flex", gap: 0.5, justifyContent: "flex-end" }}>
+                  <Tooltip title="Editar séries">
+                    <IconButton size="small" onClick={() => openEditEx(ex)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={ex.observacao ? "Editar observação" : "Adicionar observação"}>
+                    <IconButton size="small" color={ex.observacao ? "primary" : "default"} onClick={() => openObs(ex)}>
+                      <NoteAltIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Remover exercício">
+                    <IconButton size="small" color="error" onClick={() => setRemoveEx(ex)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               );
             }}
           />
@@ -459,6 +550,132 @@ export default function DetalheFichaPage() {
         onConfirm={handleExcluir}
         onClose={() => setDeleteOpen(false)}
       />
+
+      {/* Dialog: editar séries do exercício */}
+      <Dialog open={!!editExTarget} onClose={() => setEditExTarget(null)} maxWidth="md" fullWidth>
+        <DialogTitle>Editar séries — {editExTarget?.nomeExercicio}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <Stack spacing={1.5} divider={<Divider />}>
+              {editSeriesRows.map((row, idx) => (
+                <Box key={idx}>
+                  <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                    <TextField
+                      label="Qtd séries"
+                      type="number"
+                      value={row.quantidade}
+                      onChange={(e) => updateEditSerieRow(idx, "quantidade", e.target.value)}
+                      size="small"
+                      sx={{ width: 90 }}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                    <TextField
+                      label="Reps mín."
+                      type="number"
+                      value={row.repeticoesMin}
+                      onChange={(e) => updateEditSerieRow(idx, "repeticoesMin", e.target.value)}
+                      size="small"
+                      sx={{ width: 90 }}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                    <TextField
+                      label="Reps máx."
+                      type="number"
+                      value={row.repeticoesMax}
+                      onChange={(e) => updateEditSerieRow(idx, "repeticoesMax", e.target.value)}
+                      size="small"
+                      sx={{ width: 90 }}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                    <TextField
+                      label="Descrição"
+                      value={row.descricao}
+                      onChange={(e) => updateEditSerieRow(idx, "descricao", e.target.value)}
+                      size="small"
+                      sx={{ flex: 1, minWidth: 120 }}
+                      placeholder="Ex.: Aquecimento"
+                      slotProps={{ htmlInput: { maxLength: 100 } }}
+                    />
+                    <TextField
+                      label="Carga (kg)"
+                      type="number"
+                      value={row.carga}
+                      onChange={(e) => updateEditSerieRow(idx, "carga", e.target.value)}
+                      size="small"
+                      sx={{ width: 90 }}
+                      slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
+                    />
+                    <TextField
+                      label="Descanso (s)"
+                      type="number"
+                      value={row.descanso}
+                      onChange={(e) => updateEditSerieRow(idx, "descanso", e.target.value)}
+                      size="small"
+                      sx={{ width: 100 }}
+                      slotProps={{ htmlInput: { min: 0 } }}
+                    />
+                    {editSeriesRows.length > 1 && (
+                      <Tooltip title="Remover grupo">
+                        <IconButton size="small" color="error" onClick={() => removeEditSerieRow(idx)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+            <Button startIcon={<AddIcon />} size="small" onClick={addEditSerieRow} sx={{ mt: 1.5 }}>
+              Adicionar grupo de séries
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditExTarget(null)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            disabled={loadingEditEx || editSeriesRows.every((r) => !(Number(r.quantidade) >= 1 && Number(r.repeticoesMin) >= 1))}
+            onClick={handleEditarExercicio}
+          >
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog: observação do exercício */}
+      <Dialog open={!!obsTarget} onClose={() => setObsTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {obsTarget?.observacao ? "Editar observação" : "Adicionar observação"}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Observação"
+            value={obsText}
+            onChange={(e) => setObsText(e.target.value)}
+            size="small"
+            fullWidth
+            multiline
+            minRows={3}
+            maxRows={6}
+            autoFocus
+            placeholder="Ex.: Manter cotovelo alinhado, foco na contração..."
+            slotProps={{ htmlInput: { maxLength: 500 } }}
+            helperText={`${obsText.length}/500`}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setObsTarget(null)}>Cancelar</Button>
+          {obsTarget?.observacao && (
+            <Button color="error" disabled={loadingObs} onClick={() => { setObsText(""); }}>
+              Limpar
+            </Button>
+          )}
+          <Button variant="contained" disabled={loadingObs} onClick={handleSalvarObs}>
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={vincularOpen} onClose={() => setVincularOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Vincular ficha a aluno</DialogTitle>

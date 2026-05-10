@@ -32,6 +32,46 @@ public class TreinoTests
         t.UpdatedAt.Should().BeNull();
     }
 
+    [Fact]
+    public void Criar_ComDificuldadeEDatas_AtribuiCampos()
+    {
+        var inicio = new DateOnly(2025, 1, 1);
+        var fim = new DateOnly(2025, 3, 31);
+
+        var t = Treino.Criar("Treino B", ObjetivoTreino.Forca, TreinadorId,
+            DificuldadeTreino.Avancado, inicio, fim);
+
+        t.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
+        t.DataInicio.Should().Be(inicio);
+        t.DataFim.Should().Be(fim);
+    }
+
+    [Fact]
+    public void Criar_SemDificuldadeExplicita_UsaIniciante()
+    {
+        var t = CriarTreino();
+        t.Dificuldade.Should().Be(DificuldadeTreino.Iniciante);
+    }
+
+    [Fact]
+    public void Criar_DataFimAnteriorAoInicio_LancaDomainException()
+    {
+        var act = () => Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId,
+            dataInicio: new DateOnly(2025, 6, 1),
+            dataFim:    new DateOnly(2025, 5, 1));
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Criar_DataInicioSemFim_Permitido()
+    {
+        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId,
+            dataInicio: new DateOnly(2025, 1, 1));
+        t.DataInicio.Should().NotBeNull();
+        t.DataFim.Should().BeNull();
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
@@ -82,6 +122,51 @@ public class TreinoTests
         t.Atualizar(null, ObjetivoTreino.Resistencia);
         t.Nome.Should().Be("Treino A");
         t.Objetivo.Should().Be(ObjetivoTreino.Resistencia);
+    }
+
+    [Fact]
+    public void Atualizar_Dificuldade_AlteraDificuldade()
+    {
+        var t = CriarTreino();
+        t.Atualizar(null, null, DificuldadeTreino.Avancado);
+        t.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
+    }
+
+    [Fact]
+    public void Atualizar_Datas_AtribuiDatas()
+    {
+        var t = CriarTreino();
+        var inicio = new DateOnly(2025, 1, 1);
+        var fim = new DateOnly(2025, 6, 30);
+
+        t.Atualizar(null, null, dataInicio: inicio, dataFim: fim);
+
+        t.DataInicio.Should().Be(inicio);
+        t.DataFim.Should().Be(fim);
+    }
+
+    [Fact]
+    public void Atualizar_DataFimAnteriorAoInicio_LancaDomainException()
+    {
+        var t = CriarTreino();
+        var act = () => t.Atualizar(null, null,
+            dataInicio: new DateOnly(2025, 6, 1),
+            dataFim:    new DateOnly(2025, 5, 1));
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Atualizar_LimparDatas_ZeraCampos()
+    {
+        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId,
+            dataInicio: new DateOnly(2025, 1, 1),
+            dataFim:    new DateOnly(2025, 12, 31));
+
+        t.Atualizar(null, null, limparDataInicio: true, limparDataFim: true);
+
+        t.DataInicio.Should().BeNull();
+        t.DataFim.Should().BeNull();
     }
 
     // --- AdicionarExercicio / AdicionarSerie ---

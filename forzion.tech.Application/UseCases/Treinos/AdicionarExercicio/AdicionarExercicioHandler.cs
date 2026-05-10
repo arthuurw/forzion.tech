@@ -1,6 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -23,7 +24,7 @@ public class AdicionarExercicioHandler(
     private readonly IValidator<AdicionarExercicioCommand> _validator = validator;
     private readonly ILogger<AdicionarExercicioHandler> _logger = logger;
 
-    public virtual async Task<TreinoResponse> HandleAsync(
+    public virtual async Task<Result<TreinoResponse>> HandleAsync(
         AdicionarExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -36,7 +37,6 @@ public class AdicionarExercicioHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        // Validar autorização
         if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
             throw new AcessoNegadoException();
 
@@ -44,8 +44,7 @@ public class AdicionarExercicioHandler(
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        if (executado)
-            throw new TreinoExecutadoException();
+        treino.ValidarMutabilidade(executado);
 
         var exercicioExiste = await _exercicioRepository
             .ExisteAsync(command.ExercicioId, treino.TreinadorId, cancellationToken)
@@ -63,6 +62,6 @@ public class AdicionarExercicioHandler(
 
         _logger.LogInformation("Exercício {ExercicioId} adicionado ao treino {TreinoId}.", command.ExercicioId, command.TreinoId);
 
-        return TreinoResponseExtensions.ToResponse(treino);
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino));
     }
 }

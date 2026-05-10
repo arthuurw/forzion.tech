@@ -10,6 +10,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Exercicios;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -46,7 +47,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     {
         var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", GrupoMuscular.Peito, "Desc", TreinadorId, false, DateTime.UtcNow, null);
         _factory.CriarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(responseExercicio);
+            .ReturnsAsync(Result.Success(responseExercicio));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
             new { nome = "Supino", grupoMuscular = GrupoMuscular.Peito, descricao = "Desc" });
@@ -88,6 +89,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
         {
             builder.UseEnvironment("Test");
             builder.UseSetting("AllowedHosts", "*");
+            builder.UseSetting("Auth:JwtSecret", "test-only-secret-at-least-32-chars!!");
 
             builder.ConfigureServices(services =>
             {

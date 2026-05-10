@@ -1,10 +1,9 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
-const apiUrl =
-  process.env.API_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "https://localhost:7220";
+if (process.env.NODE_ENV === "production" && !process.env.API_BASE_URL) {
+  throw new Error("API_BASE_URL is required in production.");
+}
 
 const buildCsp = () =>
   [
@@ -20,12 +19,13 @@ const buildCsp = () =>
   ].join("; ");
 
 const securityHeaders = [
-  { key: "X-DNS-Prefetch-Control",  value: "on" },
-  { key: "X-Frame-Options",         value: "SAMEORIGIN" },
-  { key: "X-Content-Type-Options",  value: "nosniff" },
-  { key: "Referrer-Policy",         value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy",      value: "camera=(), microphone=(), geolocation=()" },
-  { key: "Content-Security-Policy", value: buildCsp() },
+  { key: "X-DNS-Prefetch-Control",       value: "on" },
+  { key: "X-Frame-Options",              value: "DENY" },
+  { key: "X-Content-Type-Options",       value: "nosniff" },
+  { key: "Referrer-Policy",              value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy",           value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Strict-Transport-Security",    value: "max-age=31536000; includeSubDomains" },
+  { key: "Content-Security-Policy",      value: buildCsp() },
 ];
 
 const nextConfig: NextConfig = {
@@ -35,14 +35,6 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["@mui/material", "@mui/icons-material"],
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/api/backend/:path*",
-        destination: `${apiUrl}/:path*`,
-      },
-    ];
   },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];

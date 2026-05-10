@@ -21,7 +21,7 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
         string? nome = null, string? objetivo = null, string? ordenarPor = null,
         CancellationToken cancellationToken = default)
     {
-        var q = from t in _context.Treinos
+        var q = from t in _context.Treinos.AsNoTracking()
                 where t.TreinadorId == treinadorId
                 join ta in _context.TreinoAlunos.Where(x => x.Status == TreinoAlunoStatus.Ativo)
                     on t.Id equals ta.TreinoId into taGroup
@@ -56,6 +56,7 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
         var nomeAlunoMap = paginated.ToDictionary(x => x.TreinoId, x => x.NomeAluno);
 
         var treinos = await _context.Treinos
+            .AsNoTracking()
             .Where(t => treinoIds.Contains(t.Id))
             .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
             .Include(t => t.Exercicios).ThenInclude(te => te.Series)
@@ -75,10 +76,12 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
         Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
         var treinoIds = _context.TreinoAlunos
+            .AsNoTracking()
             .Where(ta => ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo)
             .Select(ta => ta.TreinoId);
 
         var baseQuery = _context.Treinos
+            .AsNoTracking()
             .Where(t => treinoIds.Contains(t.Id));
 
         var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);

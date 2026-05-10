@@ -1,4 +1,4 @@
-import type { ObjetivoTreino } from "@/types";
+import type { DificuldadeTreino, ObjetivoTreino } from "@/types";
 
 export const OBJETIVO_LABEL: Record<string, string> = {
   Hipertrofia: "Hipertrofia",
@@ -20,6 +20,18 @@ export const OBJETIVOS_FILTRO: { value: string; label: string }[] = [
   { value: "Forca", label: "Força" },
   { value: "Flexibilidade", label: "Flexibilidade" },
   { value: "Condicionamento", label: "Condicionamento" },
+];
+
+export const DIFICULDADE_LABEL: Record<DificuldadeTreino, string> = {
+  Iniciante: "Iniciante",
+  Intermediario: "Intermediário",
+  Avancado: "Avançado",
+};
+
+export const DIFICULDADES: { value: DificuldadeTreino; label: string; color: string }[] = [
+  { value: "Iniciante",     label: "Iniciante",     color: "#4caf50" },
+  { value: "Intermediario", label: "Intermediário", color: "#ff9800" },
+  { value: "Avancado",      label: "Avançado",      color: "#f44336" },
 ];
 
 export const GRUPO_MUSCULAR_LABEL: Record<string, string> = {

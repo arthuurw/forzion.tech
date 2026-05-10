@@ -83,7 +83,9 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
             .Join(
-                _context.Treinos.Include(t => t.Exercicios).ThenInclude(te => te.Exercicio),
+                _context.Treinos
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Series),
                 ta => ta.TreinoId,
                 t => t.Id,
                 (ta, t) => new TreinoAlunoDetalhe(ta, t))
@@ -99,7 +101,9 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
         var detail = await _context.TreinoAlunos
             .Where(ta => ta.Id == treinoAlunoId && ta.AlunoId == alunoId)
             .Join(
-                _context.Treinos.Include(t => t.Exercicios).ThenInclude(te => te.Exercicio),
+                _context.Treinos
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Series),
                 ta => ta.TreinoId,
                 t => t.Id,
                 (ta, t) => new TreinoAlunoDetalhe(ta, t))

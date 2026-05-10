@@ -58,7 +58,7 @@ public class InativarTreinadorHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorJaInativo_LancaDomainException()
+    public async Task HandleAsync_TreinadorJaInativo_RetornaFalha()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
         treinador.Aprovar(Guid.NewGuid());
@@ -66,9 +66,10 @@ public class InativarTreinadorHandlerTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new InativarTreinadorCommand(treinador.Id, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*já está inativo*");
+        var result = await _handler.HandleAsync(new InativarTreinadorCommand(treinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("já está inativo");
     }
 
     [Fact]

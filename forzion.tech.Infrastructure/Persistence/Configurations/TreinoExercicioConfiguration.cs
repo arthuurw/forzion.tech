@@ -12,6 +12,7 @@ public class TreinoExercicioConfiguration : IEntityTypeConfiguration<TreinoExerc
         builder.HasKey(te => te.Id);
 
         builder.Property(te => te.Ordem).IsRequired();
+        builder.Property(te => te.Observacao).HasMaxLength(500);
 
         // TreinoId FK configurado via TreinoConfiguration.HasMany
         builder.HasOne(te => te.Exercicio)

@@ -37,7 +37,7 @@ public class AtualizarExercicioHandlerTests
         var command = new AtualizarExercicioCommand(exercicio.Id, treinadorId, "Supino Inclinado", null, null);
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Supino Inclinado");
+        result.Value.Nome.Should().Be("Supino Inclinado");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -51,7 +51,7 @@ public class AtualizarExercicioHandlerTests
         var command = new AtualizarExercicioCommand(exercicio.Id, null, "Agachamento Livre", null, null);
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Agachamento Livre");
+        result.Value.Nome.Should().Be("Agachamento Livre");
     }
 
     [Fact]
@@ -84,15 +84,17 @@ public class AtualizarExercicioHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_NomeDuplicado_LancaDomainException()
+    public async Task HandleAsync_NomeDuplicado_RetornaFalha()
     {
         var treinadorId = Guid.NewGuid();
         var exercicio = CriarExercicioTreinador(treinadorId);
         _exercicioRepo.Setup(r => r.ObterPorIdAsync(exercicio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(exercicio);
         _exercicioRepo.Setup(r => r.NomeJaExisteAsync("Rosca Direta", treinadorId, exercicio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var act = async () => await _handler.HandleAsync(new AtualizarExercicioCommand(exercicio.Id, treinadorId, "Rosca Direta", null, null));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*nome*");
+        var result = await _handler.HandleAsync(new AtualizarExercicioCommand(exercicio.Id, treinadorId, "Rosca Direta", null, null));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("nome");
     }
 
     [Fact]

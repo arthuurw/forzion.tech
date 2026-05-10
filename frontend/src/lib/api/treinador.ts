@@ -12,13 +12,17 @@ import type {
   PaginatedResponse,
   AlunoStatus,
   ObjetivoTreino,
+  DificuldadeTreino,
   ProgressaoAlunoResponse,
 } from "@/types";
 
 export interface CriarFichaData {
-  alunoId: string;
+  alunoId?: string | null;
   nome: string;
   objetivo: ObjetivoTreino;
+  dificuldade?: DificuldadeTreino;
+  dataInicio?: string | null;
+  dataFim?: string | null;
 }
 
 export interface SerieConfigData {
@@ -83,7 +87,7 @@ export const treinadorApi = {
   criarFicha(data: CriarFichaData) {
     return apiClient.post<TreinoResponse>("/treinos", data);
   },
-  atualizarFicha(treinoId: string, data: { nome?: string; objetivo?: ObjetivoTreino }) {
+  atualizarFicha(treinoId: string, data: { nome?: string; objetivo?: ObjetivoTreino; dificuldade?: DificuldadeTreino; dataInicio?: string | null; dataFim?: string | null; limparDataInicio?: boolean; limparDataFim?: boolean }) {
     return apiClient.patch<TreinoResponse>(`/treinos/${treinoId}`, data);
   },
   excluirFicha(treinoId: string) {
@@ -105,6 +109,12 @@ export const treinadorApi = {
   },
   removerExercicio(treinoId: string, exercicioId: string) {
     return apiClient.delete(`/treinos/${treinoId}/exercicios/${exercicioId}`);
+  },
+  editarExercicioTreino(treinoId: string, treinoExercicioId: string, data: { series: SerieConfigData[] }) {
+    return apiClient.put<TreinoResponse>(`/treinos/${treinoId}/exercicios/${treinoExercicioId}`, data);
+  },
+  atualizarObservacaoExercicio(treinoId: string, treinoExercicioId: string, observacao: string | null) {
+    return apiClient.patch<TreinoResponse>(`/treinos/${treinoId}/exercicios/${treinoExercicioId}/observacao`, { observacao });
   },
 
   // ── Grupos Musculares ──
@@ -142,5 +152,8 @@ export const treinadorApi = {
   },
   atualizarPacote(pacoteId: string, data: { nome?: string; preco?: number; descricao?: string | null }) {
     return apiClient.patch<PacoteAlunoResponse>(`/treinador/pacotes/${pacoteId}`, data);
+  },
+  excluirPacote(pacoteId: string) {
+    return apiClient.delete(`/treinador/pacotes/${pacoteId}`);
   },
 };

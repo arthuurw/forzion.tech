@@ -1,7 +1,10 @@
+using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
+using forzion.tech.Application.UseCases.Alunos.ObterMinhaProgressao;
+using forzion.tech.Application.UseCases.Alunos.ObterProgressaoAluno;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
@@ -14,7 +17,8 @@ public static class AlunoAreaEndpoints
 {
     public static IEndpointRouteBuilder MapAlunoAreaEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/aluno").WithTags("Aluno").RequireAuthorization("Aluno");
+        var group = endpoints.MapGroup("/aluno").WithTags("Aluno").RequireAuthorization("Aluno")
+            .AddEndpointFilter<PaginacaoFilter>();
 
         group.MapGet("/vinculo", async (
             [FromServices] ObterVinculoAlunoHandler handler,
@@ -89,6 +93,27 @@ public static class AlunoAreaEndpoints
         })
         .WithSummary("Lista execuções de treino do aluno com paginação")
         .Produces<ListarExecucoesAlunoResponse>();
+
+        group.MapGet("/progressao", async (
+            [FromServices] ObterMinhaProgressaoHandler handler,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            var hoje = DateTime.UtcNow.Date;
+            var de = DateTime.TryParse(httpContext.Request.Query["de"], out var deParsed)
+                ? deParsed.Date
+                : hoje.AddDays(-90);
+            var ate = DateTime.TryParse(httpContext.Request.Query["ate"], out var ateParsed)
+                ? ateParsed.Date
+                : hoje;
+            if (de > ate)
+                return Results.BadRequest("O parâmetro 'de' deve ser anterior a 'ate'.");
+            var result = await handler.HandleAsync(de, ate, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .WithSummary("Retorna a progressão de carga por exercício do aluno autenticado no período")
+        .Produces<ProgressaoAlunoResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapPost("/execucoes", async (
             [FromBody] RegistrarExecucaoAlunoRequest request,

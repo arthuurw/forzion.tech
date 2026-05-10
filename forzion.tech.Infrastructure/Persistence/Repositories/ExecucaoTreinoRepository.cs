@@ -80,6 +80,49 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<ExecucaoComNome>> ListarComNomePorAlunoAsync(
+        Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
+    {
+        var items = await (
+            from e in _context.ExecucoesTreino
+            join t in _context.Treinos on e.TreinoId equals t.Id
+            where e.AlunoId == alunoId
+            orderby e.DataExecucao descending
+            select new { e, NomeTreino = t.Nome }
+        )
+        .Skip((pagina - 1) * tamanhoPagina)
+        .Take(tamanhoPagina)
+        .ToListAsync(cancellationToken)
+        .ConfigureAwait(false);
+
+        if (items.Count == 0) return [];
+
+        var ids = items.Select(x => x.e.Id).ToList();
+
+        var stats = await (
+            from ee in _context.ExecucoesExercicio
+            where ids.Contains(ee.ExecucaoTreinoId)
+            group ee by ee.ExecucaoTreinoId into g
+            select new
+            {
+                ExecucaoId = g.Key,
+                TotalExercicios = g.Count(),
+                TotalSeries = g.Sum(x => x.SeriesExecutadas),
+            }
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        var statsMap = stats.ToDictionary(x => x.ExecucaoId);
+
+        return items.Select(x =>
+        {
+            var s = statsMap.TryGetValue(x.e.Id, out var found) ? found : null;
+            return new ExecucaoComNome(
+                x.e.Id, x.e.TreinoId, x.e.AlunoId, x.e.DataExecucao,
+                x.e.Observacao, x.e.CreatedAt, x.NomeTreino,
+                s?.TotalExercicios ?? 0, s?.TotalSeries ?? 0);
+        }).ToList();
+    }
+
     public async Task<int> ContarPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
         await _context.ExecucoesTreino
             .CountAsync(e => e.AlunoId == alunoId, cancellationToken)

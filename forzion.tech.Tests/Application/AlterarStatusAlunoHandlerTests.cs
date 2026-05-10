@@ -39,7 +39,7 @@ public class AlterarStatusAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_AlunoExistente_Mas_UsuarioNaoSystemAdmin_LancaUnauthorizedAccessException()
+    public async Task HandleAsync_AlunoExistente_Mas_UsuarioNaoSystemAdmin_LancaAcessoNegadoException()
     {
         var aluno = Aluno.Criar(Guid.NewGuid(), "João");
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
@@ -48,7 +48,7 @@ public class AlterarStatusAlunoHandlerTests
         var act = async () => await _handler.HandleAsync(
             new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.Inativo));
 
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        await act.Should().ThrowAsync<AcessoNegadoException>();
     }
 
     [Fact]

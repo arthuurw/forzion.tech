@@ -152,7 +152,7 @@ public class LoginHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaInvalidOperationException()
+    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaDomainException()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador);
 
@@ -164,7 +164,7 @@ public class LoginHandlerTests
 
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<DomainException>();
     }
 
     [Fact]

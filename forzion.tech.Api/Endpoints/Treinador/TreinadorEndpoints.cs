@@ -1,3 +1,5 @@
+using forzion.tech.Api.Extensions;
+using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
@@ -13,6 +15,7 @@ using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Application.UseCases.Pacotes;
 using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
+using forzion.tech.Application.UseCases.Pacotes.ExcluirPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
 using forzion.tech.Application.UseCases.Treinos.ListarFichasDoAluno;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
@@ -32,7 +35,8 @@ public static class TreinadorEndpoints
 {
     public static IEndpointRouteBuilder MapTreinadorEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/treinador").WithTags("Treinador").RequireAuthorization("Treinador");
+        var group = endpoints.MapGroup("/treinador").WithTags("Treinador").RequireAuthorization("Treinador").RequireRateLimiting("write")
+            .AddEndpointFilter<PaginacaoFilter>();
 
         // --- Vínculos ---
 
@@ -213,7 +217,8 @@ public static class TreinadorEndpoints
             [FromServices] VincularFichaAoAlunoHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new VincularFichaAoAlunoCommand(treinoId, alunoId), cancellationToken);
+            var result = await handler.HandleAsync(new VincularFichaAoAlunoCommand(treinoId, alunoId), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Vincula uma ficha de treino a um aluno")
@@ -276,7 +281,8 @@ public static class TreinadorEndpoints
                 new CriarExercicioCommand(userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao),
                 cancellationToken);
 
-            return Results.Created($"/treinador/exercicios/{result.ExercicioId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinador/exercicios/{result.Value.ExercicioId}", result.Value);
         })
         .WithSummary("Cria um exercício na biblioteca do treinador")
         .Produces<ExercicioResponse>(StatusCodes.Status201Created)
@@ -308,7 +314,8 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new AtualizarExercicioCommand(id, userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao),
                 cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atualiza exercício da biblioteca do treinador")
         .Produces<ExercicioResponse>()
@@ -321,7 +328,8 @@ public static class TreinadorEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirExercicioCommand(id, userContext.PerfilId), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirExercicioCommand(id, userContext.PerfilId), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Exclui exercício da biblioteca do treinador")
@@ -376,6 +384,22 @@ public static class TreinadorEndpoints
         .Produces<PacoteAlunoResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapDelete("/pacotes/{pacoteId:guid}", async (
+            Guid pacoteId,
+            [FromServices] ExcluirPacoteAlunoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(new ExcluirPacoteAlunoCommand(userContext.PerfilId, pacoteId), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Exclui um pacote do treinador")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         return endpoints;
     }

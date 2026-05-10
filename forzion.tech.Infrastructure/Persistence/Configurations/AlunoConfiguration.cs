@@ -12,6 +12,7 @@ public class AlunoConfiguration : IEntityTypeConfiguration<Aluno>
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.ContaId).IsRequired();
+        builder.HasIndex(a => a.ContaId);
 
         builder.HasOne<Conta>()
             .WithMany()

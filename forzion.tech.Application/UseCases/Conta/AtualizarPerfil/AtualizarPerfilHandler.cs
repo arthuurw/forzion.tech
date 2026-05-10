@@ -1,3 +1,4 @@
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
@@ -11,13 +12,18 @@ public class AtualizarPerfilHandler(
     IAlunoRepository alunoRepository,
     ITreinadorRepository treinadorRepository,
     ISystemUserRepository systemUserRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IValidator<AtualizarPerfilCommand> validator)
 {
+    private readonly IValidator<AtualizarPerfilCommand> _validator = validator;
+
     public virtual async Task HandleAsync(
         AtualizarPerfilCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+
+        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         switch (userContext.TipoConta)
         {

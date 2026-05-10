@@ -18,12 +18,16 @@ public record TreinoExercicioResponse(
     Guid ExercicioId,
     string NomeExercicio,
     IReadOnlyList<SerieConfigResponse> Series,
-    int Ordem);
+    int Ordem,
+    string? Observacao = null);
 
 public record TreinoResponse(
     Guid TreinoId,
     string Nome,
     ObjetivoTreino Objetivo,
+    DificuldadeTreino Dificuldade,
+    DateOnly? DataInicio,
+    DateOnly? DataFim,
     Guid TreinadorId,
     IReadOnlyList<TreinoExercicioResponse> Exercicios,
     DateTime CreatedAt,
@@ -36,6 +40,9 @@ public static class TreinoResponseExtensions
         treino.Id,
         treino.Nome,
         treino.Objetivo,
+        treino.Dificuldade,
+        treino.DataInicio,
+        treino.DataFim,
         treino.TreinadorId,
         treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
             te.Id,
@@ -51,7 +58,8 @@ public static class TreinoResponseExtensions
                 s.Descanso,
                 s.Ordem
             )).ToList(),
-            te.Ordem
+            te.Ordem,
+            te.Observacao
         )).ToList(),
         treino.CreatedAt,
         treino.UpdatedAt,

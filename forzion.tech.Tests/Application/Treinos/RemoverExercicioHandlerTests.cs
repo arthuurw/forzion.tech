@@ -39,7 +39,7 @@ public class RemoverExercicioHandlerTests
 
         var result = await _handler.HandleAsync(new RemoverExercicioCommand(treino.Id, treinoExercicioId));
 
-        result.Exercicios.Should().BeEmpty();
+        result.Value.Exercicios.Should().BeEmpty();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

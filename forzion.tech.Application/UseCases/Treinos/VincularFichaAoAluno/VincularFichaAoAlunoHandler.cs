@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,7 @@ public class VincularFichaAoAlunoHandler(
     private readonly IUserContext _userContext = userContext;
     private readonly ILogger<VincularFichaAoAlunoHandler> _logger = logger;
 
-    public virtual async Task HandleAsync(
+    public virtual async Task<Result> HandleAsync(
         VincularFichaAoAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -49,7 +50,7 @@ public class VincularFichaAoAlunoHandler(
         if (alunosVinculados.Count > 0)
         {
             var nomeExistente = alunosVinculados[0].NomeAluno;
-            throw new DomainException($"Esta ficha já está vinculada ao aluno {nomeExistente}.");
+            return Result.Failure(Error.Business($"Esta ficha já está vinculada ao aluno {nomeExistente}."));
         }
 
         var treinoAluno = TreinoAluno.Criar(command.TreinoId, command.AlunoId);
@@ -59,5 +60,7 @@ public class VincularFichaAoAlunoHandler(
 
         _logger.LogInformation("Ficha {TreinoId} vinculada ao aluno {AlunoId} pelo treinador {TreinadorId}.",
             command.TreinoId, command.AlunoId, treinadorId);
+
+        return Result.Success();
     }
 }

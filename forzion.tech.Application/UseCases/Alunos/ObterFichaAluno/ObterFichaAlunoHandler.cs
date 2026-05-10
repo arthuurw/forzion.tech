@@ -33,13 +33,14 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
             detalhe.Treino.Nome,
             detalhe.Treino.Objetivo,
             detalhe.TreinoAluno.Status.ToString(),
-            [.. detalhe.Treino.Exercicios.Select(te => new TreinoExercicioResponse(
+            [.. detalhe.Treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
                 te.Id,
                 te.ExercicioId,
                 te.Exercicio?.Nome ?? string.Empty,
-                te.Series.Select(s => new SerieConfigResponse(
+                te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
                     s.Id, s.Quantidade, s.RepeticoesMin, s.RepeticoesMax,
                     s.Descricao, s.Carga, s.Descanso, s.Ordem)).ToList(),
-                te.Ordem))]);
+                te.Ordem,
+                te.Observacao))]);
     }
 }

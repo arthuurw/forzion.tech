@@ -49,7 +49,7 @@ public class FluxoCompletoTests
             Mock.Of<ILogger<RegistrarTreinadorHandler>>());
 
         var treinadorResult = await registrarTreinadorHandler.HandleAsync(
-            new RegistrarTreinadorCommand("treinador@teste.com", "senha123", "Carlos"));
+            new RegistrarTreinadorCommand("treinador@teste.com", "Senha123", "Carlos"));
 
         treinadorResult.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
         _treinadorRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treinador>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -67,7 +67,7 @@ public class FluxoCompletoTests
         var treinadorAprovado = await aprovarTreinadorHandler.HandleAsync(
             new AprovarTreinadorCommand(treinador.Id, adminId));
 
-        treinadorAprovado.Status.Should().Be(TreinadorStatus.Ativo);
+        treinadorAprovado.Value.Status.Should().Be(TreinadorStatus.Ativo);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync("aluno@teste.com", It.IsAny<CancellationToken>())).ReturnsAsync((global::forzion.tech.Domain.Entities.Conta?)null);
@@ -84,12 +84,13 @@ public class FluxoCompletoTests
             _passwordHasher.Object,
             _unitOfWork.Object,
             new RegistrarAlunoCommandValidator(),
+            Mock.Of<IWhatsAppNotifier>(),
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         var alunoResult = await registrarAlunoHandler.HandleAsync(
-            new RegistrarAlunoCommand("aluno@teste.com", "senha123", "Joao", treinador.Id, pacoteCadastro.Id));
+            new RegistrarAlunoCommand("aluno@teste.com", "Senha123", "Joao", treinador.Id, pacoteCadastro.Id));
 
-        alunoResult.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
+        alunoResult.Value.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
         _vinculoRepo.Verify(r => r.AdicionarAsync(It.IsAny<VinculoTreinadorAluno>(), It.IsAny<CancellationToken>()), Times.Once);
 
         var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
@@ -115,6 +116,7 @@ public class FluxoCompletoTests
             limiteService,
             _logRepo.Object,
             _unitOfWork.Object,
+            Mock.Of<IWhatsAppNotifier>(),
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         var vinculoAprovado = await aprovarVinculoHandler.HandleAsync(

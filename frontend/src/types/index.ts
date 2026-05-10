@@ -12,6 +12,8 @@ export type ObjetivoTreino =
   | "Flexibilidade"
   | "Condicionamento";
 
+export type DificuldadeTreino = "Iniciante" | "Intermediario" | "Avancado";
+
 // Auth
 export interface LoginResponse {
   token: string;
@@ -113,12 +115,16 @@ export interface TreinoExercicioResponse {
   nomeExercicio: string;
   series: SerieConfigResponse[];
   ordem: number;
+  observacao?: string | null;
 }
 
 export interface TreinoResponse {
   treinoId: string;
   nome: string;
   objetivo: ObjetivoTreino;
+  dificuldade: DificuldadeTreino;
+  dataInicio: string | null;
+  dataFim: string | null;
   treinadorId: string;
   exercicios: TreinoExercicioResponse[];
   createdAt: string;
@@ -183,6 +189,9 @@ export interface ExecucaoTreinoResponse {
   dataExecucao: string;
   observacao: string | null;
   createdAt: string;
+  nomeTreino: string;
+  totalExercicios: number;
+  totalSeries: number;
 }
 
 // Vínculo do aluno (GET /aluno/vinculo)

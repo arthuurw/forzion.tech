@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Infrastructure.Notifications;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using forzion.tech.Infrastructure.Seed;
@@ -19,6 +20,8 @@ public static class InfrastructureExtensions
         var connectionString = configuration.GetConnectionString("AppConnection");
         var schema = configuration["Database:Schema"] ?? "public";
 
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
         services.AddScoped<AppDbContext>(sp =>
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -26,7 +29,8 @@ public static class InfrastructureExtensions
                 .UseSnakeCaseNamingConvention()
                 .Options;
 
-            return new AppDbContext(options, schema);
+            var dispatcher = sp.GetRequiredService<IDomainEventDispatcher>();
+            return new AppDbContext(options, schema, dispatcher);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
@@ -47,8 +51,29 @@ public static class InfrastructureExtensions
         services.AddScoped<IPacoteAlunoRepository, PacoteAlunoRepository>();
         services.AddScoped<IVinculoTreinadorAlunoRepository, VinculoTreinadorAlunoRepository>();
         services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
+        services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
 
         services.AddScoped<DataSeeder>();
+
+        // WhatsApp notifier — Evolution API when configured, no-op otherwise
+        var whatsAppBase = configuration["WhatsApp:BaseUrl"];
+        var whatsAppInstance = configuration["WhatsApp:Instance"];
+        var whatsAppApiKey = configuration["WhatsApp:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(whatsAppBase) && !string.IsNullOrWhiteSpace(whatsAppInstance))
+        {
+            services.AddHttpClient<EvolutionApiWhatsAppNotifier>(client =>
+            {
+                client.BaseAddress = new Uri($"{whatsAppBase.TrimEnd('/')}/message/");
+                if (!string.IsNullOrWhiteSpace(whatsAppApiKey))
+                    client.DefaultRequestHeaders.Add("apikey", whatsAppApiKey);
+                client.DefaultRequestHeaders.Add("instanceName", whatsAppInstance);
+            });
+            services.AddScoped<IWhatsAppNotifier, EvolutionApiWhatsAppNotifier>();
+        }
+        else
+        {
+            services.AddScoped<IWhatsAppNotifier, NullWhatsAppNotifier>();
+        }
 
         return services;
     }
