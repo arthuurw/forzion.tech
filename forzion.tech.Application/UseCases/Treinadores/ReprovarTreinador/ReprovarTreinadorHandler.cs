@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -13,7 +14,7 @@ public class ReprovarTreinadorHandler(
     IUnitOfWork unitOfWork,
     ILogger<ReprovarTreinadorHandler> logger)
 {
-    public virtual async Task HandleAsync(
+    public virtual async Task<Result> HandleAsync(
         ReprovarTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -22,7 +23,14 @@ public class ReprovarTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        treinador.Reprovar(command.AdminId);
+        try
+        {
+            treinador.Reprovar(command.AdminId);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Failure(Error.Business(ex.Message));
+        }
 
         var log = LogAprovacao.Registrar(
             TipoAcaoAprovacao.ReprovacaoTreinador,
@@ -35,5 +43,7 @@ public class ReprovarTreinadorHandler(
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Treinador {TreinadorId} reprovado por {AdminId}.", treinador.Id, command.AdminId);
+
+        return Result.Success();
     }
 }

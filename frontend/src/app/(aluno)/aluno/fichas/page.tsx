@@ -1,17 +1,18 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import {
-  Box, Typography, Card, Chip, IconButton, Tooltip,
+  Box, Typography, Chip, IconButton, Tooltip,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useRouter } from "next/navigation";
 import StatusChip from "@/components/ui/StatusChip";
 import AlertBanner from "@/components/ui/AlertBanner";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import EmptyState from "@/components/ui/EmptyState";
-import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
+import DataList from "@/components/ui/DataList";
+import type { Column } from "@/components/ui/ResponsiveTable";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
+import { usePaginatedList } from "@/hooks/usePaginatedList";
+import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 
 const COLUMNS: Column[] = [
   { label: "Ficha" },
@@ -23,28 +24,12 @@ const COLUMNS: Column[] = [
 
 export default function FichasAlunoPage() {
   const router = useRouter();
-  const [fichas, setFichas] = useState<TreinoAlunoDetalheResponse[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await alunoApi.listFichas({ pagina: page + 1, tamanhoPagina: pageSize });
-      setFichas(res.data.items);
-      setTotal(res.data.total);
-    } catch {
-      setError("Erro ao carregar fichas.");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize]);
-
-  useEffect(() => { load(); }, [load]);
+  const fetcher = useCallback(
+    (p: number, ps: number) => alunoApi.listFichas({ pagina: p + 1, tamanhoPagina: ps }).then((r) => r.data),
+    []
+  );
+  const { items: fichas, total, page, pageSize, loading, error, setPage, setPageSize, setError } =
+    usePaginatedList<TreinoAlunoDetalheResponse>({ fetcher, errorMessage: "Erro ao carregar fichas." });
 
   return (
     <Box>
@@ -52,56 +37,37 @@ export default function FichasAlunoPage() {
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
-      <Card variant="outlined">
-        {loading ? (
-          <LoadingSpinner />
-        ) : fichas.length === 0 ? (
-          <EmptyState message="Nenhum protocolo de treino disponível. Seu treinador ainda não vinculou fichas à sua conta." />
-        ) : (
-          <ResponsiveTable
-            columns={COLUMNS}
-            rows={fichas}
-            rowKey={(f) => f.treinoAlunoId}
-            onRowClick={(f) => router.push(`/aluno/fichas/${f.treinoAlunoId}`)}
-            pagination={{
-              count: total,
-              page,
-              rowsPerPage: pageSize,
-              onPageChange: setPage,
-              onRowsPerPageChange: (size) => { setPageSize(size); setPage(0); },
-            }}
-            renderCell={(f, i) => {
-              if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{f.nomeTreino}</Typography>;
-              if (i === 1) return <Chip label={f.objetivo} size="small" variant="outlined" />;
-              if (i === 2) return f.exercicios.length;
-              if (i === 3) return <StatusChip status={f.status} />;
-              return (
-                <>
-                  <Tooltip title="Ver ficha">
-                    <IconButton
-                      size="small"
-                      onClick={() => router.push(`/aluno/fichas/${f.treinoAlunoId}`)}
-                    >
-                      <OpenInNewIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  {f.status === "Ativo" && (
-                    <Tooltip title="Iniciar treino">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => router.push(`/aluno/fichas/${f.treinoAlunoId}/executar`)}
-                      >
-                        <PlayArrowIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                </>
-              );
-            }}
-          />
-        )}
-      </Card>
+      <DataList
+        loading={loading}
+        items={fichas}
+        emptyMessage="Nenhum protocolo de treino disponível. Seu treinador ainda não vinculou fichas à sua conta."
+        columns={COLUMNS}
+        rowKey={(f) => f.treinoAlunoId}
+        onRowClick={(f) => router.push(`/aluno/fichas/${f.treinoAlunoId}`)}
+        pagination={{ count: total, page, rowsPerPage: pageSize, onPageChange: setPage, onRowsPerPageChange: setPageSize }}
+        renderCell={(f, i) => {
+          if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{f.nomeTreino}</Typography>;
+          if (i === 1) return <Chip label={OBJETIVO_LABEL[f.objetivo] ?? f.objetivo} size="small" variant="outlined" />;
+          if (i === 2) return f.exercicios.length;
+          if (i === 3) return <StatusChip status={f.status} />;
+          return (
+            <>
+              <Tooltip title="Ver ficha">
+                <IconButton size="small" onClick={() => router.push(`/aluno/fichas/${f.treinoAlunoId}`)}>
+                  <OpenInNewIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              {f.status === "Ativo" && (
+                <Tooltip title="Iniciar treino">
+                  <IconButton size="small" color="primary" onClick={() => router.push(`/aluno/fichas/${f.treinoAlunoId}/executar`)}>
+                    <PlayArrowIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </>
+          );
+        }}
+      />
     </Box>
   );
 }

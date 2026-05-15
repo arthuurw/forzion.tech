@@ -15,21 +15,37 @@ public class AprovarVinculoHandlerTests
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
+    private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
+    private readonly Mock<IWhatsAppNotifier> _whatsAppNotifier = new();
     private readonly Mock<ILogger<AprovarVinculoHandler>> _logger = new();
     private readonly AprovarVinculoHandler _handler;
 
     public AprovarVinculoHandlerTests()
     {
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Aluno?)null);
+        _whatsAppNotifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var mockTx = new Mock<ITransaction>();
+        mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
+        _transactionProvider
+            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
         _handler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
             _treinoAlunoRepo.Object,
             _treinoRepo.Object,
+            _alunoRepo.Object,
             _limiteService.Object,
             _logRepo.Object,
             _unitOfWork.Object,
+            _transactionProvider.Object,
+            _whatsAppNotifier.Object,
             _logger.Object);
     }
 
@@ -57,7 +73,7 @@ public class AprovarVinculoHandlerTests
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
         var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
-        var vinculoAtivo = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId);
+        var vinculoAtivo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculoPendente.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtivo);

@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type { LoginResponse, SessionUser, TipoConta } from "@/types";
-import { loadSession } from "./session";
 
 interface AuthContextValue {
   user: SessionUser | null;
@@ -27,14 +26,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    setUser(loadSession());
-    setIsLoading(false);
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: SessionUser | null) => {
+        setUser(data);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setIsLoading(false);
+      });
   }, []);
 
   const login = useCallback((data: LoginResponse) => {
-    // Cookies já foram setados pelo route handler (token_access, user_data, token, tipoConta).
-    // Apenas atualiza o estado React para reatividade imediata.
-    setUser({ contaId: data.contaId, perfilId: data.perfilId, tipoConta: data.tipoConta, token: data.token });
+    // O token não é armazenado no estado client-side — permanece apenas no httpOnly cookie.
+    setUser({ contaId: data.contaId, perfilId: data.perfilId, tipoConta: data.tipoConta });
   }, []);
 
   const logout = useCallback(async () => {

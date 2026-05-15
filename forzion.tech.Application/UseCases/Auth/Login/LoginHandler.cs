@@ -43,19 +43,19 @@ public class LoginHandler(
 
         var perfilId = conta.TipoConta switch
         {
-            Domain.Enums.TipoConta.Aluno => 
-                (await _alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id 
-                ?? throw new InvalidOperationException("Aluno não encontrado para a conta autenticada."),
+            Domain.Enums.TipoConta.Aluno =>
+                (await _alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
+                ?? throw new DomainException("Perfil de aluno não encontrado para esta conta."),
 
-            Domain.Enums.TipoConta.Treinador => 
-                (await _treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id 
-                ?? throw new InvalidOperationException("Treinador não encontrado para a conta autenticada."),
+            Domain.Enums.TipoConta.Treinador =>
+                (await _treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
+                ?? throw new DomainException("Perfil de treinador não encontrado para esta conta."),
 
-            Domain.Enums.TipoConta.SystemAdmin => 
-                (await _systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id 
-                ?? throw new InvalidOperationException("SystemUser não encontrado para a conta autenticada."),
+            Domain.Enums.TipoConta.SystemAdmin =>
+                (await _systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
+                ?? throw new DomainException("Perfil de administrador não encontrado para esta conta."),
 
-            _ => throw new InvalidOperationException("Tipo de conta inválido.")
+            _ => throw new DomainException("Tipo de conta inválido.")
         };
 
         var token = _jwtService.GerarToken(conta, perfilId);

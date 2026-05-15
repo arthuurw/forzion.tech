@@ -12,6 +12,13 @@ public class TreinoTests
     private static Treino CriarTreino() =>
         Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, TreinadorId);
 
+    private static TreinoExercicio AdicionarComSerie(Treino t, Guid? exercicioId = null)
+    {
+        var ex = t.AdicionarExercicio(exercicioId ?? Guid.NewGuid());
+        ex.AdicionarSerie(3, 10, 12, null, null, null);
+        return ex;
+    }
+
     // --- Criar ---
 
     [Fact]
@@ -23,6 +30,46 @@ public class TreinoTests
         t.TreinadorId.Should().Be(TreinadorId);
         t.Exercicios.Should().BeEmpty();
         t.UpdatedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Criar_ComDificuldadeEDatas_AtribuiCampos()
+    {
+        var inicio = new DateOnly(2025, 1, 1);
+        var fim = new DateOnly(2025, 3, 31);
+
+        var t = Treino.Criar("Treino B", ObjetivoTreino.Forca, TreinadorId,
+            DificuldadeTreino.Avancado, inicio, fim);
+
+        t.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
+        t.DataInicio.Should().Be(inicio);
+        t.DataFim.Should().Be(fim);
+    }
+
+    [Fact]
+    public void Criar_SemDificuldadeExplicita_UsaIniciante()
+    {
+        var t = CriarTreino();
+        t.Dificuldade.Should().Be(DificuldadeTreino.Iniciante);
+    }
+
+    [Fact]
+    public void Criar_DataFimAnteriorAoInicio_LancaDomainException()
+    {
+        var act = () => Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId,
+            dataInicio: new DateOnly(2025, 6, 1),
+            dataFim:    new DateOnly(2025, 5, 1));
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Criar_DataInicioSemFim_Permitido()
+    {
+        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId,
+            dataInicio: new DateOnly(2025, 1, 1));
+        t.DataInicio.Should().NotBeNull();
+        t.DataFim.Should().BeNull();
     }
 
     [Theory]
@@ -77,40 +124,88 @@ public class TreinoTests
         t.Objetivo.Should().Be(ObjetivoTreino.Resistencia);
     }
 
-    // --- AdicionarExercicio ---
+    [Fact]
+    public void Atualizar_Dificuldade_AlteraDificuldade()
+    {
+        var t = CriarTreino();
+        t.Atualizar(null, null, DificuldadeTreino.Avancado);
+        t.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
+    }
+
+    [Fact]
+    public void Atualizar_Datas_AtribuiDatas()
+    {
+        var t = CriarTreino();
+        var inicio = new DateOnly(2025, 1, 1);
+        var fim = new DateOnly(2025, 6, 30);
+
+        t.Atualizar(null, null, dataInicio: inicio, dataFim: fim);
+
+        t.DataInicio.Should().Be(inicio);
+        t.DataFim.Should().Be(fim);
+    }
+
+    [Fact]
+    public void Atualizar_DataFimAnteriorAoInicio_LancaDomainException()
+    {
+        var t = CriarTreino();
+        var act = () => t.Atualizar(null, null,
+            dataInicio: new DateOnly(2025, 6, 1),
+            dataFim:    new DateOnly(2025, 5, 1));
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Atualizar_LimparDatas_ZeraCampos()
+    {
+        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId,
+            dataInicio: new DateOnly(2025, 1, 1),
+            dataFim:    new DateOnly(2025, 12, 31));
+
+        t.Atualizar(null, null, limparDataInicio: true, limparDataFim: true);
+
+        t.DataInicio.Should().BeNull();
+        t.DataFim.Should().BeNull();
+    }
+
+    // --- AdicionarExercicio / AdicionarSerie ---
 
     [Fact]
     public void AdicionarExercicio_DadosValidos_AdicionaOrdenado()
     {
         var t = CriarTreino();
-        t.AdicionarExercicio(Guid.NewGuid(), 3, 12, 10m, 60);
-        t.AdicionarExercicio(Guid.NewGuid(), 4, 8, null, null);
+        AdicionarComSerie(t);
+        AdicionarComSerie(t);
         t.Exercicios.Should().HaveCount(2);
         t.Exercicios[0].Ordem.Should().Be(1);
         t.Exercicios[1].Ordem.Should().Be(2);
     }
 
     [Fact]
-    public void AdicionarExercicio_SeriesZero_LancaDomainException()
+    public void AdicionarSerie_QuantidadeZero_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.AdicionarExercicio(Guid.NewGuid(), 0, 12, null, null);
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var act = () => ex.AdicionarSerie(0, 12, null, null, null, null);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
-    public void AdicionarExercicio_RepeticoesZero_LancaDomainException()
+    public void AdicionarSerie_RepeticoesMinZero_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.AdicionarExercicio(Guid.NewGuid(), 3, 0, null, null);
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var act = () => ex.AdicionarSerie(3, 0, null, null, null, null);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
-    public void AdicionarExercicio_CargaNegativa_LancaDomainException()
+    public void AdicionarSerie_CargaNegativa_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.AdicionarExercicio(Guid.NewGuid(), 3, 12, -1m, null);
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var act = () => ex.AdicionarSerie(3, 10, null, null, -1m, null);
         act.Should().Throw<DomainException>();
     }
 
@@ -120,9 +215,9 @@ public class TreinoTests
     public void RemoverExercicio_ExercicioExistente_RemoveEReordena()
     {
         var t = CriarTreino();
-        t.AdicionarExercicio(Guid.NewGuid(), 3, 12, null, null);
-        t.AdicionarExercicio(Guid.NewGuid(), 4, 8, null, null);
-        t.AdicionarExercicio(Guid.NewGuid(), 2, 15, null, null);
+        AdicionarComSerie(t);
+        AdicionarComSerie(t);
+        AdicionarComSerie(t);
 
         t.RemoverExercicio(t.Exercicios[0].Id);
 
@@ -145,7 +240,8 @@ public class TreinoTests
     public void Duplicar_CriaCopiaComExercicios()
     {
         var t = CriarTreino();
-        t.AdicionarExercicio(Guid.NewGuid(), 3, 12, 10m, 60);
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        ex.AdicionarSerie(3, 10, 12, "Trabalho", 10m, 60);
 
         var copia = t.Duplicar();
 
@@ -156,6 +252,7 @@ public class TreinoTests
         copia.Exercicios.Should().HaveCount(1);
         copia.Exercicios[0].Id.Should().NotBe(t.Exercicios[0].Id);
         copia.Exercicios[0].ExercicioId.Should().Be(t.Exercicios[0].ExercicioId);
+        copia.Exercicios[0].Series.Should().HaveCount(1);
     }
 
     [Fact]

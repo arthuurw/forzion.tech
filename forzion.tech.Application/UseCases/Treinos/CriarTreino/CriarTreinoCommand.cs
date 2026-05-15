@@ -4,6 +4,9 @@ namespace forzion.tech.Application.UseCases.Treinos.CriarTreino;
 
 public record CriarTreinoCommand(
     Guid TreinadorId,
-    Guid AlunoId,
+    Guid? AlunoId,
     string Nome,
-    ObjetivoTreino Objetivo);
+    ObjetivoTreino Objetivo,
+    DificuldadeTreino Dificuldade = DificuldadeTreino.Iniciante,
+    DateOnly? DataInicio = null,
+    DateOnly? DataFim = null);

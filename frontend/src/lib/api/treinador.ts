@@ -5,26 +5,38 @@ import type {
   VinculoStatus,
   TreinoResponse,
   TreinoAlunoResponse,
+  TreinoAlunoVinculado,
   ExercicioResponse,
   PacoteAlunoResponse,
   GrupoMuscularResponse,
   PaginatedResponse,
   AlunoStatus,
   ObjetivoTreino,
+  DificuldadeTreino,
+  ProgressaoAlunoResponse,
 } from "@/types";
 
 export interface CriarFichaData {
-  alunoId: string;
+  alunoId?: string | null;
   nome: string;
   objetivo: ObjetivoTreino;
+  dificuldade?: DificuldadeTreino;
+  dataInicio?: string | null;
+  dataFim?: string | null;
+}
+
+export interface SerieConfigData {
+  quantidade: number;
+  repeticoesMin: number;
+  repeticoesMax?: number | null;
+  descricao?: string | null;
+  carga?: number | null;
+  descanso?: number | null;
 }
 
 export interface AdicionarExercicioData {
   exercicioId: string;
-  series: number;
-  repeticoes: number;
-  carga?: number | null;
-  descanso?: number | null;
+  series: SerieConfigData[];
 }
 
 export interface CriarExercicioData {
@@ -35,8 +47,8 @@ export interface CriarExercicioData {
 
 export interface CriarPacoteData {
   nome: string;
-  maxFichas: number;
   preco: number;
+  descricao?: string | null;
 }
 
 export const treinadorApi = {
@@ -49,6 +61,9 @@ export const treinadorApi = {
   },
   getFichasDoAluno(alunoId: string) {
     return apiClient.get<TreinoAlunoResponse[]>(`/treinador/alunos/${alunoId}/fichas`);
+  },
+  getProgressaoAluno(alunoId: string, params?: { de?: string; ate?: string }) {
+    return apiClient.get<ProgressaoAlunoResponse>(`/treinador/alunos/${alunoId}/progressao`, { params });
   },
 
   // ── Vínculos ──
@@ -63,7 +78,7 @@ export const treinadorApi = {
   },
 
   // ── Fichas ──
-  listFichas(params?: { pagina?: number; tamanhoPagina?: number }) {
+  listFichas(params?: { pagina?: number; tamanhoPagina?: number; nome?: string; objetivo?: string; ordenarPor?: string }) {
     return apiClient.get<PaginatedResponse<TreinoResponse>>("/treinador/treinos", { params });
   },
   getFicha(treinoId: string) {
@@ -72,11 +87,20 @@ export const treinadorApi = {
   criarFicha(data: CriarFichaData) {
     return apiClient.post<TreinoResponse>("/treinos", data);
   },
+  atualizarFicha(treinoId: string, data: { nome?: string; objetivo?: ObjetivoTreino; dificuldade?: DificuldadeTreino; dataInicio?: string | null; dataFim?: string | null; limparDataInicio?: boolean; limparDataFim?: boolean }) {
+    return apiClient.patch<TreinoResponse>(`/treinos/${treinoId}`, data);
+  },
+  excluirFicha(treinoId: string) {
+    return apiClient.delete(`/treinos/${treinoId}`);
+  },
   duplicarFicha(treinoId: string) {
     return apiClient.post<TreinoResponse>(`/treinos/${treinoId}/duplicar`);
   },
   vincularFichaAoAluno(alunoId: string, treinoId: string) {
     return apiClient.post(`/treinador/alunos/${alunoId}/fichas/${treinoId}`);
+  },
+  listAlunosVinculados(treinoId: string) {
+    return apiClient.get<TreinoAlunoVinculado[]>(`/treinos/${treinoId}/alunos`);
   },
 
   // ── Exercícios da ficha ──
@@ -86,10 +110,16 @@ export const treinadorApi = {
   removerExercicio(treinoId: string, exercicioId: string) {
     return apiClient.delete(`/treinos/${treinoId}/exercicios/${exercicioId}`);
   },
+  editarExercicioTreino(treinoId: string, treinoExercicioId: string, data: { series: SerieConfigData[] }) {
+    return apiClient.put<TreinoResponse>(`/treinos/${treinoId}/exercicios/${treinoExercicioId}`, data);
+  },
+  atualizarObservacaoExercicio(treinoId: string, treinoExercicioId: string, observacao: string | null) {
+    return apiClient.patch<TreinoResponse>(`/treinos/${treinoId}/exercicios/${treinoExercicioId}/observacao`, { observacao });
+  },
 
   // ── Grupos Musculares ──
   listGruposMusculares() {
-    return apiClient.get<GrupoMuscularResponse[]>("/admin/grupos-musculares");
+    return apiClient.get<GrupoMuscularResponse[]>("/treinador/grupos-musculares");
   },
 
   // ── Biblioteca ──
@@ -119,5 +149,11 @@ export const treinadorApi = {
   },
   criarPacote(data: CriarPacoteData) {
     return apiClient.post<PacoteAlunoResponse>("/treinador/pacotes", data);
+  },
+  atualizarPacote(pacoteId: string, data: { nome?: string; preco?: number; descricao?: string | null }) {
+    return apiClient.patch<PacoteAlunoResponse>(`/treinador/pacotes/${pacoteId}`, data);
+  },
+  excluirPacote(pacoteId: string) {
+    return apiClient.delete(`/treinador/pacotes/${pacoteId}`);
   },
 };

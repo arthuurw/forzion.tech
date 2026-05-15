@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: forzion
+      POSTGRES_USER: forzion
+      POSTGRES_PASSWORD: forzion_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forzion"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: forzion.tech.Api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__AppConnection: "${DB_CONNECTION}"
+      Database__Schema: "${DB_SCHEMA:-public}"
+      Auth__JwtSecret: "${JWT_SECRET}"
+      Auth__JwtIssuer: "${JWT_ISSUER:-forzion.tech}"
+      Auth__JwtAudience: "${JWT_AUDIENCE:-forzion.tech}"
+      Cors__AllowedOrigins: "http://localhost:3000"
+      # WhatsApp__BaseUrl: ""
+      # WhatsApp__Instance: ""
+      # WhatsApp__ApiKey: ""
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      API_BASE_URL: "http://backend:8080"
+      NEXT_PUBLIC_API_BASE_URL: "/api/backend"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

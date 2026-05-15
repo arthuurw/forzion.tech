@@ -31,9 +31,9 @@ public class CriarExercicioHandlerTests
 
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Supino Reto");
-        result.GrupoMuscular.Should().Be(forzion.tech.Domain.Enums.GrupoMuscular.Peito);
-        result.TreinadorId.Should().Be(treinadorId);
+        result.Value.Nome.Should().Be("Supino Reto");
+        result.Value.GrupoMuscular.Should().Be(forzion.tech.Domain.Enums.GrupoMuscular.Peito);
+        result.Value.TreinadorId.Should().Be(treinadorId);
         _exercicioRepo.Verify(r => r.AdicionarAsync(It.IsAny<Exercicio>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

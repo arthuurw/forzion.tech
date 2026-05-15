@@ -35,6 +35,7 @@ public static class RouteBuilderExtensions
             app.UseHttpsRedirection();
 
         app.UseCors("AllowFrontend");
+        app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
 

@@ -21,12 +21,15 @@ public class RegistrarAlunoHandlerTests
     private readonly Mock<IPacoteAlunoRepository> _pacoteRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IWhatsAppNotifier> _whatsAppNotifier = new();
     private readonly Mock<ILogger<RegistrarAlunoHandler>> _logger = new();
     private readonly RegistrarAlunoHandler _handler;
 
     public RegistrarAlunoHandlerTests()
     {
         _passwordHasher.Setup(p => p.Hash(It.IsAny<string>())).Returns("hash");
+        _whatsAppNotifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _handler = new RegistrarAlunoHandler(
             _contaRepo.Object,
             _alunoRepo.Object,
@@ -36,6 +39,7 @@ public class RegistrarAlunoHandlerTests
             _passwordHasher.Object,
             _unitOfWork.Object,
             new RegistrarAlunoCommandValidator(),
+            _whatsAppNotifier.Object,
             _logger.Object);
     }
 
@@ -44,20 +48,52 @@ public class RegistrarAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var pacote = PacoteAluno.Criar(treinadorId, "Basic", 3, 10);
+        treinador.Aprovar(Guid.NewGuid());
+        var pacote = PacoteAluno.Criar(treinadorId, "Basic", 10);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
 
-        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "Joao", treinadorId, pacote.Id));
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id));
 
-        result.Nome.Should().Be("Joao");
-        result.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
+        result.Value.Nome.Should().Be("Joao");
+        result.Value.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
         _contaRepo.Verify(r => r.AdicionarAsync(It.IsAny<Conta>(), It.IsAny<CancellationToken>()), Times.Once);
         _alunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Aluno>(), It.IsAny<CancellationToken>()), Times.Once);
         _vinculoRepo.Verify(r => r.AdicionarAsync(It.IsAny<VinculoTreinadorAluno>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorInativo_LancaDomainException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        treinador.Aprovar(Guid.NewGuid());
+        treinador.Inativar();
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*não disponível*");
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorAguardandoAprovacao_LancaDomainException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        // Status padrão = AguardandoAprovacao
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*não disponível*");
     }
 
     [Fact]
@@ -66,7 +102,7 @@ public class RegistrarAlunoHandlerTests
         var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com"), "hash", TipoConta.Aluno);
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<EmailJaCadastradoException>();
     }
 
@@ -76,7 +112,7 @@ public class RegistrarAlunoHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<TreinadorNaoEncontradoException>();
     }
 

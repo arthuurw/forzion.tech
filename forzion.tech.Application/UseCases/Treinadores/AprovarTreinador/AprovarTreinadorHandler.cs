@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -13,7 +14,7 @@ public class AprovarTreinadorHandler(
     IUnitOfWork unitOfWork,
     ILogger<AprovarTreinadorHandler> logger)
 {
-    public virtual async Task<TreinadorResponse> HandleAsync(
+    public virtual async Task<Result<TreinadorResponse>> HandleAsync(
         AprovarTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -22,7 +23,14 @@ public class AprovarTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        treinador.Aprovar(command.AdminId);
+        try
+        {
+            treinador.Aprovar(command.AdminId);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Failure<TreinadorResponse>(Error.Business(ex.Message));
+        }
 
         var log = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AprovacaoTreinador,
@@ -36,6 +44,6 @@ public class AprovarTreinadorHandler(
 
         logger.LogInformation("Treinador {TreinadorId} aprovado por {AdminId}.", treinador.Id, command.AdminId);
 
-        return new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoTreinadorId, treinador.CreatedAt);
+        return Result.Success(new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoTreinadorId, treinador.CreatedAt));
     }
 }

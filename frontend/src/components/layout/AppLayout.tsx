@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Drawer,
@@ -50,9 +50,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useInactivity({ onWarn: handleWarn, onTimeout: handleTimeout, enabled: !!user });
 
-  if (isLoading) return <LoadingSpinner fullPage />;
+  useEffect(() => {
+    if (!isLoading && !user) {
+      // Limpa cookies httpOnly server-side antes de redirecionar.
+      // Sem isso, o middleware veria cookies válidos e redirecionaria /login → /admin em loop.
+      fetch("/api/auth/logout", { method: "POST" }).finally(() => {
+        router.replace("/login");
+      });
+    }
+  }, [isLoading, user, router]);
 
-  const navItems = user ? NAV_BY_TIPO[user.tipoConta] : [];
+  if (isLoading || !user) return <LoadingSpinner fullPage />;
+
+  const navItems = NAV_BY_TIPO[user.tipoConta];
   const drawerWidth = collapsed ? DRAWER_COLLAPSED : DRAWER_WIDTH;
 
   const drawerContent = (
@@ -95,7 +105,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {!collapsed && (
                 <ListItemText
                   primary={label}
-                  slotProps={{ primary: { fontSize: 14, fontWeight: active ? 600 : 500 } }}
+                  slotProps={{ primary: { sx: { fontSize: 14, fontWeight: active ? 600 : 500 } } }}
                 />
               )}
             </ListItemButton>

@@ -8,7 +8,7 @@ export async function GET(
 ) {
   const { treinadorId } = await params;
   const res = await fetch(`${API_BASE}/auth/treinadores/${treinadorId}/pacotes`, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
   const data = await res.json();
   return NextResponse.json(data, { status: res.status });

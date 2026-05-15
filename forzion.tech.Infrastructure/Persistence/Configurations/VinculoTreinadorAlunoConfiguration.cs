@@ -45,5 +45,6 @@ public class VinculoTreinadorAlunoConfiguration : IEntityTypeConfiguration<Vincu
 
         builder.HasIndex(v => new { v.TreinadorId, v.AlunoId });
         builder.HasIndex(v => v.AlunoId);
+        builder.HasIndex(v => new { v.TreinadorId, v.Status });
     }
 }

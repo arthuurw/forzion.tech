@@ -19,6 +19,7 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
         string? nome = null, forzion.tech.Domain.Enums.GrupoMuscular? grupoMuscular = null, string ordenarPor = "nome")
     {
         var query = _context.Exercicios
+            .AsNoTracking()
             .Where(e => e.TreinadorId == treinadorId)
             .AsQueryable();
 

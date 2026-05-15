@@ -24,7 +24,8 @@ public class PacoteAlunoConfiguration : IEntityTypeConfiguration<PacoteAluno>
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.Property(p => p.MaxFichas).IsRequired();
+        builder.Property(p => p.Descricao)
+            .HasMaxLength(500);
 
         builder.Property(p => p.Preco)
             .HasColumnType("numeric(10,2)")

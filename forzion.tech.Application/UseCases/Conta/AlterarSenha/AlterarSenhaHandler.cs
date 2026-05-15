@@ -12,7 +12,13 @@ public class AlterarSenhaCommandValidator : AbstractValidator<AlterarSenhaComman
     public AlterarSenhaCommandValidator()
     {
         RuleFor(x => x.SenhaAtual).NotEmpty();
-        RuleFor(x => x.NovaSenha).NotEmpty().MinimumLength(8).MaximumLength(72);
+        RuleFor(x => x.NovaSenha)
+            .NotEmpty()
+            .MinimumLength(8).WithMessage("A nova senha deve ter pelo menos 8 caracteres.")
+            .MaximumLength(72)
+            .Matches("[A-Z]").WithMessage("A nova senha deve conter pelo menos uma letra maiúscula.")
+            .Matches("[a-z]").WithMessage("A nova senha deve conter pelo menos uma letra minúscula.")
+            .Matches("[0-9]").WithMessage("A nova senha deve conter pelo menos um dígito.");
     }
 }
 

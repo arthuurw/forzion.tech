@@ -12,6 +12,9 @@ public interface IUserContext
     /// </summary>
     Guid PerfilId { get; }
 
+    Guid Jti { get; }
+    DateTime TokenExpiraEm { get; }
+
     bool IsSystemAdmin => TipoConta == TipoConta.SystemAdmin;
     bool IsTreinador  => TipoConta == TipoConta.Treinador;
     bool IsAluno      => TipoConta == TipoConta.Aluno;

@@ -1,3 +1,4 @@
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
@@ -7,13 +8,19 @@ namespace forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMus
 
 public class CriarGrupoMuscularHandler(
     IGrupoMuscularRepository repository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IValidator<CriarGrupoMuscularCommand> validator)
 {
     private readonly IGrupoMuscularRepository _repository = repository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IValidator<CriarGrupoMuscularCommand> _validator = validator;
 
-    public async Task<GrupoMuscularResponse> HandleAsync(CriarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task<GrupoMuscularResponse> HandleAsync(CriarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(command);
+
+        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+
         var existente = await _repository.ObterPorNomeAsync(command.Nome, cancellationToken);
         if (existente != null)
             throw new DomainException("Já existe um grupo muscular com este nome.");

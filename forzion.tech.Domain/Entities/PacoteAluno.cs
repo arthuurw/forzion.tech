@@ -7,7 +7,7 @@ public class PacoteAluno
     public Guid Id { get; private set; }
     public Guid TreinadorId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
-    public int MaxFichas { get; private set; }
+    public string? Descricao { get; private set; }
     public decimal Preco { get; private set; }
     public bool IsAtivo { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -15,7 +15,7 @@ public class PacoteAluno
 
     private PacoteAluno() { }
 
-    public static PacoteAluno Criar(Guid treinadorId, string nome, int maxFichas, decimal preco)
+    public static PacoteAluno Criar(Guid treinadorId, string nome, decimal preco, string? descricao = null)
     {
         if (treinadorId == Guid.Empty)
             throw new DomainException("O identificador do treinador é inválido.");
@@ -23,24 +23,24 @@ public class PacoteAluno
             throw new DomainException("O nome é obrigatório.");
         if (nome.Trim().Length > 100)
             throw new DomainException("O nome deve ter no máximo 100 caracteres.");
-        if (maxFichas <= 0)
-            throw new DomainException("O limite de fichas deve ser maior que zero.");
         if (preco < 0)
             throw new DomainException("O preço não pode ser negativo.");
+        if (descricao?.Trim().Length > 500)
+            throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
 
         return new PacoteAluno
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
             Nome = nome.Trim(),
-            MaxFichas = maxFichas,
+            Descricao = descricao?.Trim(),
             Preco = preco,
             IsAtivo = true,
             CreatedAt = DateTime.UtcNow
         };
     }
 
-    public void Atualizar(string? nome, int? maxFichas, decimal? preco)
+    public void Atualizar(string? nome, decimal? preco, string? descricao)
     {
         if (nome is not null)
         {
@@ -51,18 +51,18 @@ public class PacoteAluno
             Nome = nome.Trim();
         }
 
-        if (maxFichas is not null)
-        {
-            if (maxFichas <= 0)
-                throw new DomainException("O limite de fichas deve ser maior que zero.");
-            MaxFichas = maxFichas.Value;
-        }
-
         if (preco is not null)
         {
             if (preco < 0)
                 throw new DomainException("O preço não pode ser negativo.");
             Preco = preco.Value;
+        }
+
+        if (descricao is not null)
+        {
+            if (descricao.Trim().Length > 500)
+                throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
+            Descricao = descricao.Trim();
         }
 
         UpdatedAt = DateTime.UtcNow;

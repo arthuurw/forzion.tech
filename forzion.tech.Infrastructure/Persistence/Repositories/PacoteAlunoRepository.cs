@@ -20,4 +20,18 @@ public class PacoteAlunoRepository(AppDbContext context) : IPacoteAlunoRepositor
 
     public async Task AdicionarAsync(PacoteAluno pacote, CancellationToken cancellationToken = default) =>
         await context.PacotesAluno.AddAsync(pacote, cancellationToken).ConfigureAwait(false);
+
+    public void Remover(PacoteAluno pacote) =>
+        context.PacotesAluno.Remove(pacote);
+
+    public async Task<bool> ExisteVinculoComPacoteAsync(Guid pacoteId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .AnyAsync(v => v.PacoteAlunoId == pacoteId, cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PacoteAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await context.PacotesAluno
+            .Where(p => p.TreinadorId == treinadorId && p.IsAtivo)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 }

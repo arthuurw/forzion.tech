@@ -38,16 +38,50 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<int?>("DiasDisponiveis")
+                        .HasColumnType("integer")
+                        .HasColumnName("dias_disponiveis");
+
+                    b.Property<string>("Doencas")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("doencas");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("email");
+
+                    b.Property<string>("Finalidade")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("finalidade");
+
+                    b.Property<string>("FocoTreino")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("foco_treino");
+
+                    b.Property<string>("LimitacoesFisicas")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("limitacoes_fisicas");
+
+                    b.Property<string>("NivelCondicionamento")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nivel_condicionamento");
 
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("nome");
+
+                    b.Property<string>("ObservacoesAdicionais")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observacoes_adicionais");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -58,6 +92,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("telefone");
+
+                    b.Property<int?>("TempoDisponivelMinutos")
+                        .HasColumnType("integer")
+                        .HasColumnName("tempo_disponivel_minutos");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -241,6 +279,37 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("exercicios", "homolog");
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.GrupoMuscular", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nome");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_grupos_musculares");
+
+                    b.HasIndex("Nome")
+                        .IsUnique()
+                        .HasDatabaseName("ix_grupos_musculares_nome");
+
+                    b.ToTable("grupos_musculares", "homolog");
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.LogAprovacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -299,13 +368,14 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descricao");
+
                     b.Property<bool>("IsAtivo")
                         .HasColumnType("boolean")
                         .HasColumnName("is_ativo");
-
-                    b.Property<int>("MaxFichas")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_fichas");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -373,6 +443,55 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("planos_treinador", "homolog");
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.SerieConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("Carga")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("carga");
+
+                    b.Property<int?>("Descanso")
+                        .HasColumnType("integer")
+                        .HasColumnName("descanso");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("descricao");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem");
+
+                    b.Property<int>("Quantidade")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantidade");
+
+                    b.Property<int?>("RepeticoesMax")
+                        .HasColumnType("integer")
+                        .HasColumnName("repeticoes_max");
+
+                    b.Property<int>("RepeticoesMin")
+                        .HasColumnType("integer")
+                        .HasColumnName("repeticoes_min");
+
+                    b.Property<Guid>("TreinoExercicioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("treino_exercicio_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_treino_exercicio_series");
+
+                    b.HasIndex("TreinoExercicioId")
+                        .HasDatabaseName("ix_treino_exercicio_series_treino_exercicio_id");
+
+                    b.ToTable("treino_exercicio_series", "homolog");
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.SystemUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -417,6 +536,26 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("system_users", "homolog");
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.TokenRevogado", b =>
+                {
+                    b.Property<Guid>("Jti")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("jti");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.HasKey("Jti")
+                        .HasName("pk_tokens_revogados");
+
+                    b.HasIndex("ExpiraEm")
+                        .HasDatabaseName("ix_tokens_revogados_expira_em");
+
+                    b.ToTable("tokens_revogados", "homolog");
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.Treinador", b =>
                 {
                     b.Property<Guid>("Id")
@@ -455,6 +594,11 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -469,6 +613,9 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("PlanoTreinadorId")
                         .HasDatabaseName("ix_treinadores_plano_treinador_id");
 
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_treinadores_status");
+
                     b.ToTable("treinadores", "homolog");
                 });
 
@@ -482,6 +629,21 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<DateOnly?>("DataFim")
+                        .HasColumnType("date")
+                        .HasColumnName("data_fim");
+
+                    b.Property<DateOnly?>("DataInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("data_inicio");
+
+                    b.Property<string>("Dificuldade")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Iniciante")
+                        .HasColumnName("dificuldade");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -546,7 +708,9 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_treino_alunos_aluno_id");
 
                     b.HasIndex("TreinoId")
-                        .HasDatabaseName("ix_treino_alunos_treino_id");
+                        .IsUnique()
+                        .HasDatabaseName("ix_treino_alunos_treino_id")
+                        .HasFilter("status = 'Ativo'");
 
                     b.ToTable("treino_alunos", "homolog");
                 });
@@ -558,29 +722,18 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<decimal?>("Carga")
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("carga");
-
-                    b.Property<int?>("Descanso")
-                        .HasColumnType("integer")
-                        .HasColumnName("descanso");
-
                     b.Property<Guid>("ExercicioId")
                         .HasColumnType("uuid")
                         .HasColumnName("exercicio_id");
 
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("observacao");
+
                     b.Property<int>("Ordem")
                         .HasColumnType("integer")
                         .HasColumnName("ordem");
-
-                    b.Property<int>("Repeticoes")
-                        .HasColumnType("integer")
-                        .HasColumnName("repeticoes");
-
-                    b.Property<int>("Series")
-                        .HasColumnType("integer")
-                        .HasColumnName("series");
 
                     b.Property<Guid>("TreinoId")
                         .HasColumnType("uuid")
@@ -654,6 +807,9 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinadorId", "AlunoId")
                         .HasDatabaseName("ix_vinculos_treinador_aluno_treinador_id_aluno_id");
 
+                    b.HasIndex("TreinadorId", "Status")
+                        .HasDatabaseName("ix_vinculos_treinador_aluno_treinador_id_status");
+
                     b.ToTable("vinculos_treinador_aluno", "homolog");
                 });
 
@@ -718,6 +874,16 @@ namespace forzion.tech.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_pacotes_aluno_treinadores_treinador_id");
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.SerieConfig", b =>
+                {
+                    b.HasOne("forzion.tech.Domain.Entities.TreinoExercicio", null)
+                        .WithMany("Series")
+                        .HasForeignKey("TreinoExercicioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_treino_exercicio_series_treino_exercicios_treino_exercicio_");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.SystemUser", b =>
@@ -823,6 +989,11 @@ namespace forzion.tech.Infrastructure.Migrations
             modelBuilder.Entity("forzion.tech.Domain.Entities.Treino", b =>
                 {
                     b.Navigation("Exercicios");
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.TreinoExercicio", b =>
+                {
+                    b.Navigation("Series");
                 });
 #pragma warning restore 612, 618
         }

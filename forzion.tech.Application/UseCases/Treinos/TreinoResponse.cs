@@ -3,42 +3,65 @@ using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.UseCases.Treinos;
 
+public record SerieConfigResponse(
+    Guid SerieConfigId,
+    int Quantidade,
+    int RepeticoesMin,
+    int? RepeticoesMax,
+    string? Descricao,
+    decimal? Carga,
+    int? Descanso,
+    int Ordem);
+
 public record TreinoExercicioResponse(
     Guid TreinoExercicioId,
     Guid ExercicioId,
     string NomeExercicio,
-    int Series,
-    int Repeticoes,
-    decimal? Carga,
-    int? DescansoSegundos,
-    int Ordem);
+    IReadOnlyList<SerieConfigResponse> Series,
+    int Ordem,
+    string? Observacao = null);
 
 public record TreinoResponse(
     Guid TreinoId,
     string Nome,
     ObjetivoTreino Objetivo,
+    DificuldadeTreino Dificuldade,
+    DateOnly? DataInicio,
+    DateOnly? DataFim,
     Guid TreinadorId,
     IReadOnlyList<TreinoExercicioResponse> Exercicios,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string? NomeAluno = null);
 
 public static class TreinoResponseExtensions
 {
-    public static TreinoResponse ToResponse(Treino treino) => new(
+    public static TreinoResponse ToResponse(Treino treino, string? nomeAluno = null) => new(
         treino.Id,
         treino.Nome,
         treino.Objetivo,
+        treino.Dificuldade,
+        treino.DataInicio,
+        treino.DataFim,
         treino.TreinadorId,
-        treino.Exercicios.Select(te => new TreinoExercicioResponse(
+        treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
             te.Id,
             te.ExercicioId,
             te.Exercicio?.Nome ?? string.Empty,
-            te.Series,
-            te.Repeticoes,
-            te.Carga,
-            te.Descanso,
-            te.Ordem
+            te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
+                s.Id,
+                s.Quantidade,
+                s.RepeticoesMin,
+                s.RepeticoesMax,
+                s.Descricao,
+                s.Carga,
+                s.Descanso,
+                s.Ordem
+            )).ToList(),
+            te.Ordem,
+            te.Observacao
         )).ToList(),
         treino.CreatedAt,
-        treino.UpdatedAt);
+        treino.UpdatedAt,
+        nomeAluno);
 }

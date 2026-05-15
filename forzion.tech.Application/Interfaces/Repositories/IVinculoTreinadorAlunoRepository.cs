@@ -6,7 +6,8 @@ namespace forzion.tech.Application.Interfaces.Repositories;
 public record VinculoComDetalheAluno(
     VinculoTreinadorAluno Vinculo,
     string NomeAluno,
-    string? EmailAluno);
+    string? EmailAluno,
+    bool TemVinculoAtivoPrevio);
 
 public interface IVinculoTreinadorAlunoRepository
 {
