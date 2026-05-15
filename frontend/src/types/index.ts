@@ -22,7 +22,13 @@ export interface LoginResponse {
   perfilId: string;
 }
 
-export type SessionUser = LoginResponse;
+// SessionUser nunca inclui o token — o token permanece em httpOnly cookie
+// e não deve ser exposto ao JavaScript client-side.
+export interface SessionUser {
+  contaId: string;
+  tipoConta: TipoConta;
+  perfilId: string;
+}
 
 // Enums de perfil do aluno
 export type FinalidadeTreino =

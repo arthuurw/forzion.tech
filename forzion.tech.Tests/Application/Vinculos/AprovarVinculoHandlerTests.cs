@@ -19,6 +19,7 @@ public class AprovarVinculoHandlerTests
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
     private readonly Mock<IWhatsAppNotifier> _whatsAppNotifier = new();
     private readonly Mock<ILogger<AprovarVinculoHandler>> _logger = new();
     private readonly AprovarVinculoHandler _handler;
@@ -29,6 +30,12 @@ public class AprovarVinculoHandlerTests
             .ReturnsAsync((Aluno?)null);
         _whatsAppNotifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        var mockTx = new Mock<ITransaction>();
+        mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
+        _transactionProvider
+            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
         _handler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
             _treinoAlunoRepo.Object,
@@ -37,6 +44,7 @@ public class AprovarVinculoHandlerTests
             _limiteService.Object,
             _logRepo.Object,
             _unitOfWork.Object,
+            _transactionProvider.Object,
             _whatsAppNotifier.Object,
             _logger.Object);
     }

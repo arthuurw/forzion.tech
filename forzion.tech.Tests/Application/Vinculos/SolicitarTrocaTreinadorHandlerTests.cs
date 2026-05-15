@@ -15,15 +15,18 @@ public class SolicitarTrocaTreinadorHandlerTests
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<SolicitarTrocaTreinadorHandler>> _logger = new();
     private readonly SolicitarTrocaTreinadorHandler _handler;
 
     public SolicitarTrocaTreinadorHandlerTests()
     {
+        _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
         _handler = new SolicitarTrocaTreinadorHandler(
             _vinculoRepo.Object,
             _treinadorRepo.Object,
             _unitOfWork.Object,
+            _userContext.Object,
             _logger.Object);
     }
 

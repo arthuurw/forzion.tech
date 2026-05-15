@@ -22,7 +22,7 @@ public class CriarPlanoTreinadorHandlerTests
     {
         _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
-        _handler = new CriarPlanoTreinadorHandler(_planoRepo.Object, _unitOfWork.Object, _validator.Object, _logger.Object);
+        _handler = new CriarPlanoTreinadorHandler(_planoRepo.Object, _unitOfWork.Object, _validator.Object, Mock.Of<IUserContext>(), _logger.Object);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Domain.Enums;
@@ -13,15 +14,19 @@ public record FichaAlunoDetalheResponse(
     string Status,
     IReadOnlyList<TreinoExercicioResponse> Exercicios);
 
-public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository)
+public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository, IUserContext userContext)
 {
     private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
+    private readonly IUserContext _userContext = userContext;
 
     public virtual async Task<FichaAlunoDetalheResponse> HandleAsync(
         Guid treinoAlunoId,
         Guid alunoId,
         CancellationToken cancellationToken = default)
     {
+        if (!_userContext.IsSystemAdmin && _userContext.PerfilId != alunoId)
+            throw new AcessoNegadoException();
+
         var detalhe = await _treinoAlunoRepository
             .ObterDetalheAsync(treinoAlunoId, alunoId, cancellationToken)
             .ConfigureAwait(false)

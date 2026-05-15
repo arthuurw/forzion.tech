@@ -11,6 +11,7 @@ public class SolicitarTrocaTreinadorHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinadorRepository treinadorRepository,
     IUnitOfWork unitOfWork,
+    IUserContext userContext,
     ILogger<SolicitarTrocaTreinadorHandler> logger)
 {
     public virtual async Task<VinculoResponse> HandleAsync(
@@ -18,6 +19,9 @@ public class SolicitarTrocaTreinadorHandler(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+
+        if (!userContext.IsSystemAdmin && userContext.PerfilId != command.AlunoId)
+            throw new AcessoNegadoException();
 
         var novoTreinador = await treinadorRepository.ObterPorIdAsync(command.NovoTreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();

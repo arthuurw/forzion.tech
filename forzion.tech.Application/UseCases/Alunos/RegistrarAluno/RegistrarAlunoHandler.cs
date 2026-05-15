@@ -36,6 +36,9 @@ public class RegistrarAlunoHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
+        if (treinador.Status != TreinadorStatus.Ativo)
+            throw new DomainException("Treinador não disponível para novos alunos.");
+
         var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
             ?? throw new PacoteNaoEncontradoException();
 

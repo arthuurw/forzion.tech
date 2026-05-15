@@ -3,6 +3,7 @@ import { z } from "zod";
 export const emailSchema = z
   .string()
   .min(1, "E-mail obrigatório")
+  .max(254, "E-mail deve ter no máximo 254 caracteres.")
   .email("E-mail inválido");
 
 export const passwordSchema = z

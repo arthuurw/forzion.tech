@@ -5,10 +5,14 @@ if (process.env.NODE_ENV === "production" && !process.env.API_BASE_URL) {
   throw new Error("API_BASE_URL is required in production.");
 }
 
+const isDev = process.env.NODE_ENV === "development";
+
 const buildCsp = () =>
   [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // necessário: Next.js hidratação + MUI Emotion
+    // 'unsafe-inline' necessário: Next.js hidratação sem nonce
+    // 'unsafe-eval' necessário apenas em dev: MUI Emotion / Next.js hot-reload
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",                // necessário: Emotion injeta estilos inline
     "img-src 'self' data: blob:",
     "font-src 'self'",

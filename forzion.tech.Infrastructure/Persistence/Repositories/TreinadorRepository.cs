@@ -51,50 +51,61 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
 
     public async Task ExcluirComDependenciasAsync(Treinador treinador, CancellationToken cancellationToken = default)
     {
+        // All ExecuteDeleteAsync calls share one explicit transaction, so the entire
+        // cascade is atomic: if any step fails the transaction is rolled back and no
+        // partial deletes are persisted.
         await using var tx = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
-        var treinoIds = await _context.Treinos
-            .Where(t => t.TreinadorId == treinador.Id)
-            .Select(t => t.Id)
-            .ToListAsync(cancellationToken).ConfigureAwait(false);
-
-        if (treinoIds.Count > 0)
+        try
         {
-            // ExecucaoExercicio cascades from ExecucaoTreino (ON DELETE CASCADE in DB)
-            await _context.ExecucoesTreino
-                .Where(e => treinoIds.Contains(e.TreinoId))
-                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-            await _context.TreinoAlunos
-                .Where(ta => treinoIds.Contains(ta.TreinoId))
-                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-            // TreinoExercicio cascades from Treino (ON DELETE CASCADE in DB)
-            await _context.Treinos
+            var treinoIds = await _context.Treinos
                 .Where(t => t.TreinadorId == treinador.Id)
+                .Select(t => t.Id)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            if (treinoIds.Count > 0)
+            {
+                // ExecucaoExercicio cascades from ExecucaoTreino (ON DELETE CASCADE in DB)
+                await _context.ExecucoesTreino
+                    .Where(e => treinoIds.Contains(e.TreinoId))
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+                await _context.TreinoAlunos
+                    .Where(ta => treinoIds.Contains(ta.TreinoId))
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+                // TreinoExercicio cascades from Treino (ON DELETE CASCADE in DB)
+                await _context.Treinos
+                    .Where(t => t.TreinadorId == treinador.Id)
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await _context.Exercicios
+                .Where(e => e.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+            await _context.PacotesAluno
+                .Where(p => p.TreinadorId == treinador.Id)
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+            await _context.VinculosTreinadorAluno
+                .Where(v => v.TreinadorId == treinador.Id)
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+            await _context.Treinadores
+                .Where(t => t.Id == treinador.Id)
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+            await _context.Contas
+                .Where(c => c.Id == treinador.ContaId)
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
-
-        await _context.Exercicios
-            .Where(e => e.TreinadorId == treinador.Id)
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-        await _context.PacotesAluno
-            .Where(p => p.TreinadorId == treinador.Id)
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-        await _context.VinculosTreinadorAluno
-            .Where(v => v.TreinadorId == treinador.Id)
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-        await _context.Treinadores
-            .Where(t => t.Id == treinador.Id)
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-        await _context.Contas
-            .Where(c => c.Id == treinador.ContaId)
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-        await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            throw;
+        }
     }
 }

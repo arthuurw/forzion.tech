@@ -1,3 +1,4 @@
+using System.Data;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
@@ -108,6 +109,15 @@ public class FluxoCompletoTests
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Aluno?)null);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VinculoTreinadorAluno?)null);
+        var mockTx = new Mock<ITransaction>();
+        mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
+        var mockTxProvider = new Mock<IDbContextTransactionProvider>();
+        mockTxProvider
+            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
         var aprovarVinculoHandler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
             _treinoAlunoRepo.Object,
@@ -116,6 +126,7 @@ public class FluxoCompletoTests
             limiteService,
             _logRepo.Object,
             _unitOfWork.Object,
+            mockTxProvider.Object,
             Mock.Of<IWhatsAppNotifier>(),
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
@@ -146,6 +157,7 @@ public class FluxoCompletoTests
         var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinador.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _userContext.Setup(u => u.PerfilId).Returns(aluno.Id);
 
@@ -153,6 +165,7 @@ public class FluxoCompletoTests
             _treinoRepo.Object,
             _alunoRepo.Object,
             _treinoAlunoRepo.Object,
+            _vinculoRepo.Object,
             _execucaoRepo.Object,
             _unitOfWork.Object,
             _userContext.Object,

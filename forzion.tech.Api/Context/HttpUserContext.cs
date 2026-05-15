@@ -34,5 +34,7 @@ public class HttpUserContext(IHttpContextAccessor httpContextAccessor) : IUserCo
         _httpContextAccessor.HttpContext?.User.FindFirst(type)?.Value;
 
     private Guid ParseClaim(string type) =>
-        Guid.TryParse(Claim(type), out var id) ? id : Guid.Empty;
+        Guid.TryParse(Claim(type), out var id)
+            ? id
+            : throw new InvalidOperationException($"Claim '{type}' ausente ou inválido no token.");
 }

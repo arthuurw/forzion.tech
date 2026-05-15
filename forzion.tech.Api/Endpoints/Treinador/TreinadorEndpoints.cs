@@ -203,7 +203,13 @@ public static class TreinadorEndpoints
             var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
             var nome = httpContext.Request.Query["nome"].FirstOrDefault();
             var objetivo = httpContext.Request.Query["objetivo"].FirstOrDefault();
-            var ordenarPor = httpContext.Request.Query["ordenarPor"].FirstOrDefault();
+            var ordenarPorRaw = httpContext.Request.Query["ordenarPor"].FirstOrDefault();
+
+            var ordenacaoTreinosPermitida = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { "nome", "objetivo", "nomeAluno", "createdAt" };
+            var ordenarPor = !string.IsNullOrWhiteSpace(ordenarPorRaw) && ordenacaoTreinosPermitida.Contains(ordenarPorRaw)
+                ? ordenarPorRaw
+                : null;
 
             var result = await handler.HandleAsync(userContext.PerfilId, p, tp, nome, objetivo, ordenarPor, cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
@@ -255,7 +261,11 @@ public static class TreinadorEndpoints
             _ = Enum.TryParse<forzion.tech.Domain.Enums.GrupoMuscular>(q["grupoMuscular"], out var grupo);
             var hasGrupo = q.ContainsKey("grupoMuscular");
             var nome = q["nome"].ToString();
-            var ordenarPor = q["ordenarPor"].ToString();
+            var ordenarPorRaw = q["ordenarPor"].ToString();
+
+            var ordenacaoExerciciosPermitida = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { "nome", "grupoMuscular" };
+            var ordenarPor = ordenacaoExerciciosPermitida.Contains(ordenarPorRaw) ? ordenarPorRaw : "nome";
 
             // apenasGlobal=true → só globais; senão → próprios + globais
             Guid? treinadorId = apenasGlobal ? null : userContext.PerfilId;
@@ -263,7 +273,7 @@ public static class TreinadorEndpoints
             var query = new ListarExerciciosQuery(treinadorId, p, tp,
                 string.IsNullOrEmpty(nome) ? null : nome,
                 hasGrupo ? grupo : null,
-                string.IsNullOrEmpty(ordenarPor) ? "nome" : ordenarPor);
+                ordenarPor);
 
             var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);

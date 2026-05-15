@@ -48,6 +48,7 @@ public class RegistrarAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        treinador.Aprovar(Guid.NewGuid());
         var pacote = PacoteAluno.Criar(treinadorId, "Basic", 10);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
@@ -62,6 +63,37 @@ public class RegistrarAlunoHandlerTests
         _alunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Aluno>(), It.IsAny<CancellationToken>()), Times.Once);
         _vinculoRepo.Verify(r => r.AdicionarAsync(It.IsAny<VinculoTreinadorAluno>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorInativo_LancaDomainException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        treinador.Aprovar(Guid.NewGuid());
+        treinador.Inativar();
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*não disponível*");
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorAguardandoAprovacao_LancaDomainException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        // Status padrão = AguardandoAprovacao
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*não disponível*");
     }
 
     [Fact]

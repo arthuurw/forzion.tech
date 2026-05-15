@@ -350,6 +350,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<ITreinoAlunoRepository>(),
+            Mock.Of<IPacoteAlunoRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<InativarTreinadorHandler>>());
@@ -372,6 +373,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<IPlanoTreinadorRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<CriarPlanoTreinadorCommand>>(),
+            Mock.Of<IUserContext>(),
             Mock.Of<ILogger<CriarPlanoTreinadorHandler>>());
 
         public Mock<ListarGruposMuscularesHandler> ListarGruposHandlerMock { get; } = new(

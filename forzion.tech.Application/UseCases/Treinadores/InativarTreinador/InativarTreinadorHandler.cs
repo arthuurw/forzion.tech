@@ -12,6 +12,7 @@ public class InativarTreinadorHandler(
     ITreinadorRepository treinadorRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
+    IPacoteAlunoRepository pacoteRepository,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
     ILogger<InativarTreinadorHandler> logger)
@@ -43,6 +44,10 @@ public class InativarTreinadorHandler(
             foreach (var ta in treinoAlunos)
                 ta.AlterarStatus(TreinoAlunoStatus.Inativo);
         }
+
+        var pacotes = await pacoteRepository.ListarAtivosPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
+        foreach (var pacote in pacotes)
+            pacote.Inativar();
 
         var log = LogAprovacao.Registrar(
             TipoAcaoAprovacao.InativacaoTreinador,

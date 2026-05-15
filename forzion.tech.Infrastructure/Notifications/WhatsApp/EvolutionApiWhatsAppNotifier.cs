@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using forzion.tech.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
-namespace forzion.tech.Infrastructure.Notifications;
+namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 
 public class EvolutionApiWhatsAppNotifier(
     HttpClient httpClient,

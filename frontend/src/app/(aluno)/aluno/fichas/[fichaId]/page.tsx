@@ -5,6 +5,7 @@ import {
   Box, Typography, Card, CardContent, Chip, Stack, Button, IconButton,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
@@ -15,6 +16,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import StatusChip from "@/components/ui/StatusChip";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
+import { exportarFichaParaExcel } from "@/lib/utils/excel";
 
 export default function DetalheFichaAlunoPage() {
   const { fichaId } = useParams<{ fichaId: string }>();
@@ -61,15 +63,25 @@ export default function DetalheFichaAlunoPage() {
             <StatusChip status={ficha.status} />
           </Stack>
         </Box>
-        {ficha.status === "Ativo" && (
+        <Stack direction="row" spacing={1}>
           <Button
-            variant="contained"
-            startIcon={<PlayArrowIcon />}
-            onClick={() => router.push(`/aluno/fichas/${fichaId}/executar`)}
+            variant="outlined"
+            size="small"
+            startIcon={<FileDownloadIcon />}
+            onClick={() => exportarFichaParaExcel({ nome: ficha.nomeTreino, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
           >
-            Iniciar treino
+            Exportar
           </Button>
-        )}
+          {ficha.status === "Ativo" && (
+            <Button
+              variant="contained"
+              startIcon={<PlayArrowIcon />}
+              onClick={() => router.push(`/aluno/fichas/${fichaId}/executar`)}
+            >
+              Iniciar treino
+            </Button>
+          )}
+        </Stack>
       </Box>
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />

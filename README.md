@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 528 testes backend + 54 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId
+**Status**: ✅ 547 testes backend + 99 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId
 
 ---
 
@@ -236,7 +236,9 @@ forzion.tech.Infrastructure/
 ├── DependencyInjection/
 │   └── InfrastructureExtensions.cs
 ├── Migrations/           # EF Core migrations (11 total)
-├── Notifications/        # IWhatsAppNotifier, NullWhatsAppNotifier (futuro)
+├── Notifications/
+│   ├── Email/            # EmailTemplates + 4 handlers de eventos de domínio (Resend)
+│   └── WhatsApp/         # EvolutionApiWhatsAppNotifier + NullWhatsAppNotifier
 ├── Persistence/
 │   ├── AppDbContext.cs   # DbContext + IUnitOfWork
 │   ├── Configurations/   # Fluent API por entidade (18 arquivos)
@@ -245,6 +247,8 @@ forzion.tech.Infrastructure/
 └── Services/
     ├── JwtService.cs
     ├── BcryptPasswordHasher.cs
+    ├── ResendEmailService.cs   # Envia via REST api.resend.com; ativo se Resend:ApiKey configurado
+    ├── NullEmailService.cs     # No-op; usado sem chave configurada
     └── DomainEventDispatcher.cs
 
 forzion.tech.Tests/
@@ -571,6 +575,14 @@ dotnet user-secrets set "Auth:JwtAudience"            "forzion.tech"         --p
 dotnet user-secrets set "ConnectionStrings:AppConnection" "<conn-string>"    --project forzion.tech.Api
 dotnet user-secrets set "Seed:AdminEmail"             "admin@forzion.tech"   --project forzion.tech.Api
 dotnet user-secrets set "Seed:AdminPassword"          "<senha>"              --project forzion.tech.Api
+
+# Opcional — e-mail transacional via Resend (omitir = NullEmailService)
+dotnet user-secrets set "Resend:ApiKey"               "re_..."               --project forzion.tech.Api
+
+# Opcional — notificações WhatsApp via Evolution API (omitir = NullWhatsAppNotifier)
+dotnet user-secrets set "WhatsApp:BaseUrl"            "https://..."          --project forzion.tech.Api
+dotnet user-secrets set "WhatsApp:Instance"           "<instance>"           --project forzion.tech.Api
+dotnet user-secrets set "WhatsApp:ApiKey"             "<apikey>"             --project forzion.tech.Api
 ```
 
 User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
@@ -605,11 +617,11 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 ### Testes
 
 ```
-528 testes | 0 falhas
+547 testes | 0 falhas
 
 Domain/          → entidades, value objects, domain events, exceções
 Application/     → handlers (unit), services de limite
-Infrastructure/  → JwtService
+Infrastructure/  → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
 Api/Endpoints/   → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação)
 Integration/     → fluxo completo
 ```
@@ -635,7 +647,7 @@ Ver [`frontend/README.md`](frontend/README.md) para detalhes completos.
 cd frontend
 npm install
 npm run dev     # http://localhost:3000
-npm run test    # Vitest (54 testes)
+npm run test    # Vitest (99 testes)
 npm run build   # build de produção
 ```
 

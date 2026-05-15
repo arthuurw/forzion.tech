@@ -11,6 +11,7 @@ public class RegistrarExecucaoHandler(
     ITreinoRepository treinoRepository,
     IAlunoRepository alunoRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
+    IVinculoTreinadorAlunoRepository vinculoRepository,
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
@@ -19,6 +20,7 @@ public class RegistrarExecucaoHandler(
     private readonly ITreinoRepository _treinoRepository = treinoRepository;
     private readonly IAlunoRepository _alunoRepository = alunoRepository;
     private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
+    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
     private readonly IExecucaoTreinoRepository _execucaoTreinoRepository = execucaoTreinoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IUserContext _userContext = userContext;
@@ -33,7 +35,7 @@ public class RegistrarExecucaoHandler(
         if (_userContext.PerfilId != command.AlunoId)
             throw new AcessoNegadoException();
 
-        _ = await _treinoRepository
+        var treino = await _treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
@@ -43,6 +45,10 @@ public class RegistrarExecucaoHandler(
             .ConfigureAwait(false);
 
         if (treinoAluno is null || treinoAluno.Status != TreinoAlunoStatus.Ativo)
+            throw new AcessoNegadoException();
+
+        var vinculo = await _vinculoRepository.ObterAtivoAsync(treino.TreinadorId, command.AlunoId, cancellationToken).ConfigureAwait(false);
+        if (vinculo is null)
             throw new AcessoNegadoException();
 
         var aluno = await _alunoRepository

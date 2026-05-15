@@ -29,8 +29,9 @@ export async function GET(request: NextRequest) {
   if (!payload?.conta_id || !payload?.tipo_conta || !payload?.perfil_id) return NextResponse.json(null);
   if (payload.exp && payload.exp * 1000 < Date.now()) return NextResponse.json(null);
 
+  // O token JWT NÃO é incluído na resposta — permanece apenas no httpOnly cookie.
+  // Expor o token no JSON permitiria que JavaScript client-side o lesse.
   const user: SessionUser = {
-    token,
     contaId: payload.conta_id,
     tipoConta: payload.tipo_conta as TipoConta,
     perfilId: payload.perfil_id,

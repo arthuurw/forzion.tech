@@ -85,19 +85,19 @@ public static class AuthenticationExtensions
         events.OnMessageReceived = ctx =>
         {
             var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
-            logger.LogDebug("[JWT] Token recebido: {Token}", ctx.Token != null ? ctx.Token[..20] + "..." : "NENHUM");
+            logger.LogDebug("[JWT] Token recebido.");
             return Task.CompletedTask;
         };
         events.OnAuthenticationFailed = ctx =>
         {
             var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
-            logger.LogWarning("[JWT] Falha na autenticação: {Type} — {Message}", ctx.Exception.GetType().Name, ctx.Exception.Message);
+            logger.LogWarning("[JWT] Falha na autenticação: {Type}", ctx.Exception.GetType().Name);
             return Task.CompletedTask;
         };
         events.OnChallenge = ctx =>
         {
             var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
-            logger.LogDebug("[JWT] Challenge: Error={Error} | Failure={Failure}", ctx.Error, ctx.AuthenticateFailure?.Message);
+            logger.LogDebug("[JWT] Challenge: Error={Error}", ctx.Error);
             return Task.CompletedTask;
         };
     }

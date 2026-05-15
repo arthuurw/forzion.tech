@@ -27,11 +27,21 @@ public class LogoutHandler(
             return;
         }
 
-        await _tokenRevogadoRepository
-            .AdicionarAsync(TokenRevogado.Criar(jti, expiraEm), cancellationToken)
-            .ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _tokenRevogadoRepository
+                .AdicionarAsync(TokenRevogado.Criar(jti, expiraEm), cancellationToken)
+                .ConfigureAwait(false);
+            await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Token revogado no logout. Jti={Jti}", jti);
+            _logger.LogInformation("Token revogado no logout. Jti={Jti}", jti);
+        }
+        catch (Exception ex) when (
+            ex.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true ||
+            ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            // Token já revogado por logout simultâneo — idempotente
+            _logger.LogDebug("Token Jti={Jti} já estava revogado (logout simultâneo).", jti);
+        }
     }
 }
