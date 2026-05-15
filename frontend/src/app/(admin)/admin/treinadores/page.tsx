@@ -1,5 +1,6 @@
 "use client";
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box, Typography, Select, MenuItem, FormControl,
   InputLabel, IconButton, Tooltip, Dialog, DialogTitle,
@@ -10,6 +11,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import BlockIcon from "@mui/icons-material/Block";
 import CardMembershipIcon from "@mui/icons-material/CardMembership";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+import InfoIcon from "@mui/icons-material/Info";
 import StatusChip from "@/components/ui/StatusChip";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AlertBanner from "@/components/ui/AlertBanner";
@@ -27,7 +29,10 @@ const COLUMNS: Column[] = [
   { label: "Ações", align: "right" },
 ];
 
+
+
 export default function TreinadoresAdminPage() {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<TreinadorStatus | "">("");
 
   const [confirmAprovar, setConfirmAprovar] = useState<TreinadorResponse | null>(null);
@@ -225,6 +230,11 @@ export default function TreinadoresAdminPage() {
               <Tooltip title="Atribuir plano">
                 <IconButton size="small" onClick={() => openPlanoDialog(t)}>
                   <CardMembershipIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Ver detalhe">
+                <IconButton size="small" onClick={() => router.push(`/admin/treinadores/${t.treinadorId}`)}>
+                  <InfoIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
             </>

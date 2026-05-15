@@ -103,7 +103,14 @@ frontend/
 │   │   │   ├── layout.tsx              # AppLayout com nav admin
 │   │   │   └── admin/
 │   │   │       ├── page.tsx            # Dashboard (stat cards, donut, pendentes)
-│   │   │       ├── treinadores/        # Lista + aprovação + inativação + plano
+│   │   │       ├── treinadores/
+│   │   │       │   ├── page.tsx        # Lista + aprovação + inativação + plano; ícone Info → detalhe
+│   │   │       │   └── [treinadorId]/  # Detalhe — tabs: Alunos, Vínculos, Treinos, Pacotes
+│   │   │       ├── alunos/
+│   │   │       │   ├── page.tsx        # Lista todos os alunos (filtros: nome, status)
+│   │   │       │   └── [alunoId]/      # Detalhe — tabs: Dados+Vínculo, Fichas, Execuções, Progressão
+│   │   │       ├── treinos/
+│   │   │       │   └── [treinoId]/     # Detalhe de treino (read-only)
 │   │   │       ├── planos/             # CRUD planos globais
 │   │   │       ├── grupos-musculares/  # CRUD grupos musculares
 │   │   │       └── exercicios/         # Biblioteca global de exercícios
@@ -233,7 +240,11 @@ frontend/
 | `/cadastro/treinador` | público | Cadastro de treinador (seleciona plano) |
 | `/cadastro/aluno` | público | Cadastro de aluno (seleciona treinador + pacote) |
 | `/admin` | SystemAdmin | Dashboard — stat cards, gráfico donut por status, vínculos pendentes inline |
-| `/admin/treinadores` | SystemAdmin | Lista com filtro por status, aprovação, reprovação, inativação, atribuição de plano |
+| `/admin/treinadores` | SystemAdmin | Lista com filtro por status, aprovação, reprovação, inativação, atribuição de plano; ícone Info → detalhe |
+| `/admin/treinadores/[treinadorId]` | SystemAdmin | Detalhe do treinador — tabs: Alunos, Vínculos, Treinos, Pacotes |
+| `/admin/alunos` | SystemAdmin | Lista todos os alunos com filtros por nome e status |
+| `/admin/alunos/[alunoId]` | SystemAdmin | Detalhe do aluno — tabs: Dados + Vínculo, Fichas, Execuções, Progressão |
+| `/admin/treinos/[treinoId]` | SystemAdmin | Detalhe de treino (read-only) |
 | `/admin/planos` | SystemAdmin | CRUD planos globais (nome, maxAlunos, preço, ativo) |
 | `/admin/grupos-musculares` | SystemAdmin | CRUD grupos musculares |
 | `/admin/exercicios` | SystemAdmin | Biblioteca global de exercícios (CRUD + grupo muscular) |
@@ -640,7 +651,7 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 
 | Módulo | Funções principais |
 |--------|-------------------|
-| `lib/api/admin.ts` | `listarTreinadores`, `aprovarTreinador`, `reprovarTreinador`, `inativarTreinador`, `excluirTreinador`, `atribuirPlano`, `listarPlanos`, `criarPlano`, `atualizarPlano`, `excluirPlano`, `listarGrupos`, `criarGrupo`, `atualizarGrupo`, `excluirGrupo`, `listarExerciciosGlobais`, `criarExercicioGlobal`, `atualizarExercicioGlobal`, `excluirExercicioGlobal` |
+| `lib/api/admin.ts` | `listTreinadores`, `aprovarTreinador`, `reprovarTreinador`, `inativarTreinador`, `excluirTreinador`, `atribuirPlano`, `listPlanos`, `criarPlano`, `atualizarPlano`, `excluirPlano`, `listGruposMusculares`, `criarGrupo`, `atualizarGrupo`, `excluirGrupo`, `listExerciciosGlobais`, `criarExercicioGlobal`, `atualizarExercicioGlobal`, `excluirExercicioGlobal` — **visibilidade admin:** `listAlunos`, `getAluno`, `getAlunoVinculo`, `getAlunoFichas`, `getFichaDetalhe`, `getAlunoExecucoes`, `getAlunoProgressao`, `getTreinadorAlunos`, `getTreinadorVinculos`, `getTreinadorTreinos`, `getTreino`, `getTreinadorPacotes` |
 | `lib/api/treinador.ts` | `listarAlunos`, `obterAluno`, `atualizarAluno`, `listarVinculos`, `aprovarVinculo`, `desvincularAluno`, `listarTreinos`, `listarExercicios`, `criarExercicio`, `atualizarExercicio`, `excluirExercicio`, `copiarExercicioGlobal`, `listarPacotes`, `criarPacote`, `atualizarPacote` |
 | `lib/api/aluno.ts` | `listarFichas`, `obterFicha`, `listarExecucoes`, `registrarExecucao`, `obterVinculo`, `solicitarTrocaTreinador` |
 | `lib/api/conta.ts` | `obterPerfil`, `atualizarPerfil`, `alterarSenha`, `logout` |
@@ -718,8 +729,10 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 | `useInactivity.test.ts` | Hook com `vi.useFakeTimers()` — warn, timeout, reset | 6 |
 | `components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` | 11 |
 | `excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls), `exportarFichaParaExcel` (mock XLSX, fallback filename) | 45 |
+| `admin-api.test.ts` | Todos os 12 métodos de visibilidade de `adminApi` + 3 funções preexistentes. Mock de `@/lib/api/client`. Verifica URL, params e retorno. | 43 |
+| `admin-pages.test.tsx` | Smoke tests das 4 novas páginas admin. Mock de `next/navigation`, `adminApi`, `usePaginatedList`, `recharts`. Cobre: spinner, renderização após carga, tabs, erro de API. | 18 |
 
-**Total: 99 testes**
+**Total: 142 testes**
 
 ### Armadilhas conhecidas
 
@@ -731,4 +744,5 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 | Base64 padding em JWT de teste | `btoa(payload).replace(/=/g, "")` → `atob` falha silenciosamente | Usar `btoa` sem strip dos `=` |
 | `onTimeout` chamado múltiplas vezes | `setInterval` continua após `TIMEOUT_MS` | Usar `toHaveBeenCalled()`, não `toHaveBeenCalledOnce()` |
 | Mock de módulo CJS com namespace import | `import * as XLSX from "xlsx"` em contexto ESM | `vi.mock("xlsx", () => ({ utils: {...}, writeFile: fn }))` — o mock é hoistado automaticamente; a factory retorna o namespace completo |
+| MUI Select + `getByLabelText` | MUI Select não associa label ao controle via atributo `for` | Usar `getByRole("combobox")` em vez de `getByLabelText("Status")` |
 | Namespace `Email` colide com VO | Pasta de teste `...Notifications.Email` → `Email` resolve para o namespace, não o tipo | Alias: `using EmailVO = forzion.tech.Domain.ValueObjects.Email;` (backend) |

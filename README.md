@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 547 testes backend + 99 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId
+**Status**: ✅ 593 testes backend + 142 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId
 
 ---
 
@@ -393,6 +393,19 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `POST` | `/admin/exercicios` | `{ nome, descricao?, grupoMuscularId }` | `201 ExercicioResponse` |
 | `PATCH` | `/admin/exercicios/{id}` | `{ nome?, descricao?, grupoMuscularId? }` | `200 ExercicioResponse` |
 | `DELETE` | `/admin/exercicios/{id}` | — | `204` |
+| **Visibilidade (read-only)** | | | |
+| `GET` | `/admin/alunos` | `?nome=&status=&pagina=&tamanhoPagina=` | `PaginatedResponse<AlunoResponse>` |
+| `GET` | `/admin/alunos/{id}` | — | `AlunoResponse` |
+| `GET` | `/admin/alunos/{id}/vinculo` | — | `MeuVinculoResponse` (ativo + pendente) |
+| `GET` | `/admin/alunos/{id}/fichas` | `?pagina=&tamanhoPagina=` | `PaginatedResponse<FichaAlunoResponse>` |
+| `GET` | `/admin/fichas/{treinoAlunoId}` | — | `FichaAlunoResponse` (detalhe com exercícios) |
+| `GET` | `/admin/alunos/{id}/execucoes` | `?pagina=&tamanhoPagina=` | `PaginatedResponse<ExecucaoTreinoResponse>` |
+| `GET` | `/admin/alunos/{id}/progressao` | `?de=&ate=` | `ProgressaoAlunoResponse` |
+| `GET` | `/admin/treinadores/{id}/alunos` | `?status=&pagina=&tamanhoPagina=` | `PaginatedResponse<AlunoResponse>` |
+| `GET` | `/admin/treinadores/{id}/vinculos` | `?status=` | `PaginatedResponse<VinculoDetalheResponse>` |
+| `GET` | `/admin/treinadores/{id}/treinos` | `?nome=&objetivo=&pagina=&tamanhoPagina=` | `PaginatedResponse<TreinoResponse>` |
+| `GET` | `/admin/treinos/{id}` | — | `TreinoResponse` |
+| `GET` | `/admin/treinadores/{id}/pacotes` | — | `PacoteAlunoResponse[]` |
 
 #### Treinador — `/treinador` (política `Treinador`)
 
@@ -617,12 +630,12 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 ### Testes
 
 ```
-547 testes | 0 falhas
+593 testes | 0 falhas
 
 Domain/          → entidades, value objects, domain events, exceções
 Application/     → handlers (unit), services de limite
 Infrastructure/  → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
-Api/Endpoints/   → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação)
+Api/Endpoints/   → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
 Integration/     → fluxo completo
 ```
 
@@ -647,7 +660,7 @@ Ver [`frontend/README.md`](frontend/README.md) para detalhes completos.
 cd frontend
 npm install
 npm run dev     # http://localhost:3000
-npm run test    # Vitest (99 testes)
+npm run test    # Vitest (142 testes)
 npm run build   # build de produção
 ```
 

@@ -113,6 +113,24 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
         return detail;
     }
 
+    public async Task<TreinoAlunoDetalhe?> ObterDetalheAdminAsync(
+        Guid treinoAlunoId, CancellationToken cancellationToken = default)
+    {
+        var detail = await _context.TreinoAlunos
+            .Where(ta => ta.Id == treinoAlunoId)
+            .Join(
+                _context.Treinos
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Series),
+                ta => ta.TreinoId,
+                t => t.Id,
+                (ta, t) => new TreinoAlunoDetalhe(ta, t))
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return detail;
+    }
+
     public async Task AdicionarAsync(TreinoAluno treinoAluno, CancellationToken cancellationToken = default) =>
         await _context.TreinoAlunos.AddAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
 
