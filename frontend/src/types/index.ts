@@ -187,6 +187,16 @@ export interface TreinoAlunoVinculado {
   status: string;
 }
 
+// Ficha do aluno (lista e detalhe — admin e aluno)
+export interface FichaAlunoResponse {
+  treinoAlunoId: string;
+  treinoId: string;
+  nomeTreino: string;
+  objetivo: ObjetivoTreino;
+  status: TreinoAlunoStatus;
+  exercicios: TreinoExercicioResponse[];
+}
+
 // Execução
 export interface ExecucaoTreinoResponse {
   execucaoId: string;

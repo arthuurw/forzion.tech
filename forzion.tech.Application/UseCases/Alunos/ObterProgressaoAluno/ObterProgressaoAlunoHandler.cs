@@ -19,10 +19,13 @@ public class ObterProgressaoAlunoHandler(
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        _ = await _vinculoRepository
-            .ObterAtivoAsync(_userContext.PerfilId, query.AlunoId, cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new AcessoNegadoException();
+        if (!_userContext.IsSystemAdmin)
+        {
+            _ = await _vinculoRepository
+                .ObterAtivoAsync(_userContext.PerfilId, query.AlunoId, cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new AcessoNegadoException();
+        }
 
         var ate = query.Ate.Date.AddDays(1).AddTicks(-1);
 

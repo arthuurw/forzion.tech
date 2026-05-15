@@ -18,6 +18,7 @@ public interface ITreinoAlunoRepository
     Task<(IReadOnlyList<TreinoAlunoDetalhe> Items, int Total)> ListarDetalhesPorAlunoAsync(Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
     Task<TreinoAlunoComNome?> ObterComNomeAsync(Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<TreinoAlunoDetalhe?> ObterDetalheAsync(Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default);
+    Task<TreinoAlunoDetalhe?> ObterDetalheAdminAsync(Guid treinoAlunoId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(TreinoAluno treinoAluno, CancellationToken cancellationToken = default);
     Task RemoverPorTreinoIdAsync(Guid treinoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TreinoAlunoVinculado>> ListarAtivosPorTreinoIdAsync(Guid treinoId, CancellationToken cancellationToken = default);

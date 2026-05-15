@@ -16,6 +16,7 @@ export interface NavItem {
 
 const adminNav: NavItem[] = [
   { label: "Treinadores", href: "/admin/treinadores", Icon: PeopleIcon },
+  { label: "Alunos", href: "/admin/alunos", Icon: AssignmentIcon },
   { label: "Planos", href: "/admin/planos", Icon: CardMembershipIcon },
   { label: "Exercícios", href: "/admin/exercicios", Icon: FitnessCenterIcon },
   { label: "Grupos Musculares", href: "/admin/grupos-musculares", Icon: ListAltIcon },

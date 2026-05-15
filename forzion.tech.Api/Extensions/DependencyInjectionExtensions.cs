@@ -63,6 +63,7 @@ using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
 using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
+using forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
@@ -132,6 +133,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();
+
+        // Admin — Alunos
+        services.AddScoped<ListarAlunosAdminHandler>();
 
         // Admin — Treinadores
         services.AddScoped<ListarTreinadoresHandler>();

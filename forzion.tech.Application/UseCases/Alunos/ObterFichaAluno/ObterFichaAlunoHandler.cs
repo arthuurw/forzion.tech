@@ -27,10 +27,17 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
         if (!_userContext.IsSystemAdmin && _userContext.PerfilId != alunoId)
             throw new AcessoNegadoException();
 
-        var detalhe = await _treinoAlunoRepository
-            .ObterDetalheAsync(treinoAlunoId, alunoId, cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new TreinoNaoEncontradoException();
+        TreinoAlunoDetalhe? detalhe;
+        if (_userContext.IsSystemAdmin)
+            detalhe = await _treinoAlunoRepository
+                .ObterDetalheAdminAsync(treinoAlunoId, cancellationToken)
+                .ConfigureAwait(false);
+        else
+            detalhe = await _treinoAlunoRepository
+                .ObterDetalheAsync(treinoAlunoId, alunoId, cancellationToken)
+                .ConfigureAwait(false);
+
+        if (detalhe is null) throw new TreinoNaoEncontradoException();
 
         return new FichaAlunoDetalheResponse(
             detalhe.TreinoAluno.Id,
