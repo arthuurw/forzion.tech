@@ -34,7 +34,7 @@ public class RegistrarTreinadorHandlerTests
     {
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
 
-        var result = await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "senha123", "Ana"));
+        var result = await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "Senha123", "Ana"));
 
         result.Nome.Should().Be("Ana");
         result.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
@@ -49,7 +49,7 @@ public class RegistrarTreinadorHandlerTests
         var conta = Conta.Criar(Email.Criar("ana@teste.com"), "hash", TipoConta.Treinador);
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "senha123", "Ana"));
+        var act = async () => await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "Senha123", "Ana"));
         await act.Should().ThrowAsync<EmailJaCadastradoException>();
     }
 

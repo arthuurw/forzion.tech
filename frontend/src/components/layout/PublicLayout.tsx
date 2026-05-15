@@ -40,12 +40,15 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         sx={{
           width: { md: "42%", lg: "38%" },
           flexShrink: 0,
+          alignSelf: "flex-start",
+          position: "sticky",
+          top: 0,
+          height: "100vh",
           bgcolor: "secondary.main",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
           p: { md: 5, lg: 6 },
-          position: "relative",
           overflow: "hidden",
           "&::before": {
             content: '""',
@@ -120,10 +123,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <Box
         sx={{
           flex: 1,
+          alignSelf: "flex-start",
+          minHeight: "100vh",
           bgcolor: "background.default",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          flexDirection: "column",
           p: { md: 5, lg: 8 },
         }}
       >
@@ -131,6 +135,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           sx={{
             width: "100%",
             maxWidth: 440,
+            mx: "auto",
+            my: "auto",
             bgcolor: "background.paper",
             borderRadius: 4,
             p: { md: 4, lg: 5 },

@@ -1,3 +1,4 @@
+using System.Data;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
@@ -49,7 +50,7 @@ public class FluxoCompletoTests
             Mock.Of<ILogger<RegistrarTreinadorHandler>>());
 
         var treinadorResult = await registrarTreinadorHandler.HandleAsync(
-            new RegistrarTreinadorCommand("treinador@teste.com", "senha123", "Carlos"));
+            new RegistrarTreinadorCommand("treinador@teste.com", "Senha123", "Carlos"));
 
         treinadorResult.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
         _treinadorRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treinador>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -67,12 +68,12 @@ public class FluxoCompletoTests
         var treinadorAprovado = await aprovarTreinadorHandler.HandleAsync(
             new AprovarTreinadorCommand(treinador.Id, adminId));
 
-        treinadorAprovado.Status.Should().Be(TreinadorStatus.Ativo);
+        treinadorAprovado.Value.Status.Should().Be(TreinadorStatus.Ativo);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync("aluno@teste.com", It.IsAny<CancellationToken>())).ReturnsAsync((global::forzion.tech.Domain.Entities.Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        var pacoteCadastro = PacoteAluno.Criar(treinador.Id, "Pacote Cadastro", 3, 10);
+        var pacoteCadastro = PacoteAluno.Criar(treinador.Id, "Pacote Cadastro", 10);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteCadastro.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacoteCadastro);
 
         var registrarAlunoHandler = new RegistrarAlunoHandler(
@@ -84,16 +85,17 @@ public class FluxoCompletoTests
             _passwordHasher.Object,
             _unitOfWork.Object,
             new RegistrarAlunoCommandValidator(),
+            Mock.Of<IWhatsAppNotifier>(),
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         var alunoResult = await registrarAlunoHandler.HandleAsync(
-            new RegistrarAlunoCommand("aluno@teste.com", "senha123", "Joao", treinador.Id, pacoteCadastro.Id));
+            new RegistrarAlunoCommand("aluno@teste.com", "Senha123", "Joao", treinador.Id, pacoteCadastro.Id));
 
-        alunoResult.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
+        alunoResult.Value.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
         _vinculoRepo.Verify(r => r.AdicionarAsync(It.IsAny<VinculoTreinadorAluno>(), It.IsAny<CancellationToken>()), Times.Once);
 
         var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
-        var pacote = PacoteAluno.Criar(treinador.Id, "Pacote Basico", 3, 0);
+        var pacote = PacoteAluno.Criar(treinador.Id, "Pacote Basico", 0);
         var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, pacote.Id);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -105,13 +107,27 @@ public class FluxoCompletoTests
 
         var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, _planoRepo.Object, _vinculoRepo.Object);
 
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Aluno?)null);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VinculoTreinadorAluno?)null);
+        var mockTx = new Mock<ITransaction>();
+        mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
+        var mockTxProvider = new Mock<IDbContextTransactionProvider>();
+        mockTxProvider
+            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
         var aprovarVinculoHandler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
             _treinoAlunoRepo.Object,
             _treinoRepo.Object,
+            _alunoRepo.Object,
             limiteService,
             _logRepo.Object,
             _unitOfWork.Object,
+            mockTxProvider.Object,
+            Mock.Of<IWhatsAppNotifier>(),
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         var vinculoAprovado = await aprovarVinculoHandler.HandleAsync(
@@ -123,18 +139,14 @@ public class FluxoCompletoTests
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinador.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
-        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
-        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
-        _treinoAlunoRepo.Setup(r => r.ContarAtivosPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _treinoAlunoRepo.Setup(r => r.ListarAtivosPorTreinoIdAsync(treino.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TreinoAlunoVinculado>());
         _userContext.Setup(u => u.PerfilId).Returns(treinador.Id);
-
-        var limiteFichasService = new LimiteFichasService(_vinculoRepo.Object, _pacoteRepo.Object, _treinoAlunoRepo.Object);
 
         var vincularFichaHandler = new VincularFichaAoAlunoHandler(
             _treinoRepo.Object,
             _treinoAlunoRepo.Object,
             _vinculoRepo.Object,
-            limiteFichasService,
             _unitOfWork.Object,
             _userContext.Object,
             Mock.Of<ILogger<VincularFichaAoAlunoHandler>>());
@@ -145,6 +157,7 @@ public class FluxoCompletoTests
         var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinador.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _userContext.Setup(u => u.PerfilId).Returns(aluno.Id);
 
@@ -152,6 +165,7 @@ public class FluxoCompletoTests
             _treinoRepo.Object,
             _alunoRepo.Object,
             _treinoAlunoRepo.Object,
+            _vinculoRepo.Object,
             _execucaoRepo.Object,
             _unitOfWork.Object,
             _userContext.Object,

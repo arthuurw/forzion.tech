@@ -10,17 +10,32 @@ public class AdicionarExercicioCommandValidator : AbstractValidator<AdicionarExe
             .NotEmpty().WithMessage("O ID do exercício é obrigatório.");
 
         RuleFor(x => x.Series)
-            .GreaterThan(0).WithMessage("O número de séries deve ser maior que zero.");
+            .NotEmpty().WithMessage("Adicione ao menos um grupo de séries.");
 
-        RuleFor(x => x.Repeticoes)
-            .GreaterThan(0).WithMessage("O número de repetições deve ser maior que zero.");
+        RuleForEach(x => x.Series).ChildRules(serie =>
+        {
+            serie.RuleFor(s => s.Quantidade)
+                .GreaterThan(0).WithMessage("A quantidade de séries deve ser maior que zero.");
 
-        RuleFor(x => x.Carga)
-            .GreaterThanOrEqualTo(0).WithMessage("A carga não pode ser negativa.")
-            .When(x => x.Carga.HasValue);
+            serie.RuleFor(s => s.RepeticoesMin)
+                .GreaterThan(0).WithMessage("O número mínimo de repetições deve ser maior que zero.");
 
-        RuleFor(x => x.Descanso)
-            .GreaterThanOrEqualTo(0).WithMessage("O descanso não pode ser negativo.")
-            .When(x => x.Descanso.HasValue);
+            serie.RuleFor(s => s.RepeticoesMax)
+                .GreaterThanOrEqualTo(s => s.RepeticoesMin)
+                .WithMessage("O máximo de repetições não pode ser menor que o mínimo.")
+                .When(s => s.RepeticoesMax.HasValue);
+
+            serie.RuleFor(s => s.Descricao)
+                .MaximumLength(100).WithMessage("A descrição deve ter no máximo 100 caracteres.")
+                .When(s => s.Descricao is not null);
+
+            serie.RuleFor(s => s.Carga)
+                .GreaterThanOrEqualTo(0).WithMessage("A carga não pode ser negativa.")
+                .When(s => s.Carga.HasValue);
+
+            serie.RuleFor(s => s.Descanso)
+                .GreaterThanOrEqualTo(0).WithMessage("O descanso não pode ser negativo.")
+                .When(s => s.Descanso.HasValue);
+        });
     }
 }

@@ -1,4 +1,5 @@
 using forzion.tech.Api.Extensions;
+using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Exercicios;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
@@ -12,7 +13,8 @@ public static class ExercicioEndpoints
 {
     public static void MapExercicioEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/exercicios").WithTags("Exercícios");
+        var group = app.MapGroup("/exercicios").WithTags("Exercícios")
+            .AddEndpointFilter<PaginacaoFilter>();
 
         group.MapPost("", async (
             [FromBody] CriarExercicioRequest request,
@@ -25,8 +27,9 @@ public static class ExercicioEndpoints
 
             var command = new CriarExercicioCommand(
                 userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao);
-            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Created($"/exercicios/{response.ExercicioId}", response);
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/exercicios/{result.Value.ExercicioId}", result.Value);
         })
         .RequireAuthorization()
         .WithSummary("Cadastra um novo exercício")

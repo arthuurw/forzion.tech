@@ -6,6 +6,16 @@ import type {
   GrupoMuscularResponse,
   PaginatedResponse,
   TreinadorStatus,
+  AlunoResponse,
+  AlunoStatus,
+  MeuVinculoResponse,
+  FichaAlunoResponse,
+  ExecucaoTreinoResponse,
+  ProgressaoAlunoResponse,
+  VinculoDetalheResponse,
+  VinculoStatus,
+  TreinoResponse,
+  PacoteAlunoResponse,
 } from "@/types";
 
 export type GrupoMuscularEnum =
@@ -97,5 +107,55 @@ export const adminApi = {
 
   excluirExercicioGlobal(exercicioId: string) {
     return apiClient.delete(`/admin/exercicios/${exercicioId}`);
+  },
+
+  // Alunos (visibilidade admin)
+  listAlunos(params?: { nome?: string; status?: AlunoStatus; pagina?: number; tamanhoPagina?: number }) {
+    return apiClient.get<PaginatedResponse<AlunoResponse>>("/admin/alunos", { params });
+  },
+
+  getAluno(alunoId: string) {
+    return apiClient.get<AlunoResponse>(`/admin/alunos/${alunoId}`);
+  },
+
+  getAlunoVinculo(alunoId: string) {
+    return apiClient.get<MeuVinculoResponse>(`/admin/alunos/${alunoId}/vinculo`);
+  },
+
+  getAlunoFichas(alunoId: string, params?: { pagina?: number; tamanhoPagina?: number }) {
+    return apiClient.get<PaginatedResponse<FichaAlunoResponse>>(`/admin/alunos/${alunoId}/fichas`, { params });
+  },
+
+  getFichaDetalhe(treinoAlunoId: string) {
+    return apiClient.get<FichaAlunoResponse>(`/admin/fichas/${treinoAlunoId}`);
+  },
+
+  getAlunoExecucoes(alunoId: string, params?: { pagina?: number; tamanhoPagina?: number }) {
+    return apiClient.get<PaginatedResponse<ExecucaoTreinoResponse>>(`/admin/alunos/${alunoId}/execucoes`, { params });
+  },
+
+  getAlunoProgressao(alunoId: string, params?: { de?: string; ate?: string }) {
+    return apiClient.get<ProgressaoAlunoResponse>(`/admin/alunos/${alunoId}/progressao`, { params });
+  },
+
+  // Sub-recursos de treinadores (visibilidade admin)
+  getTreinadorAlunos(treinadorId: string, params?: { status?: AlunoStatus; pagina?: number; tamanhoPagina?: number }) {
+    return apiClient.get<PaginatedResponse<AlunoResponse>>(`/admin/treinadores/${treinadorId}/alunos`, { params });
+  },
+
+  getTreinadorVinculos(treinadorId: string, params?: { status?: VinculoStatus; pagina?: number; tamanhoPagina?: number }) {
+    return apiClient.get<PaginatedResponse<VinculoDetalheResponse>>(`/admin/treinadores/${treinadorId}/vinculos`, { params });
+  },
+
+  getTreinadorTreinos(treinadorId: string, params?: { pagina?: number; tamanhoPagina?: number; nome?: string; objetivo?: string }) {
+    return apiClient.get<PaginatedResponse<TreinoResponse>>(`/admin/treinadores/${treinadorId}/treinos`, { params });
+  },
+
+  getTreino(treinoId: string) {
+    return apiClient.get<TreinoResponse>(`/admin/treinos/${treinoId}`);
+  },
+
+  getTreinadorPacotes(treinadorId: string) {
+    return apiClient.get<PacoteAlunoResponse[]>(`/admin/treinadores/${treinadorId}/pacotes`);
   },
 };

@@ -1,15 +1,18 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
-const apiUrl =
-  process.env.API_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "https://localhost:7220";
+if (process.env.NODE_ENV === "production" && !process.env.API_BASE_URL) {
+  throw new Error("API_BASE_URL is required in production.");
+}
+
+const isDev = process.env.NODE_ENV === "development";
 
 const buildCsp = () =>
   [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // necessário: Next.js hidratação + MUI Emotion
+    // 'unsafe-inline' necessário: Next.js hidratação sem nonce
+    // 'unsafe-eval' necessário apenas em dev: MUI Emotion / Next.js hot-reload
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",                // necessário: Emotion injeta estilos inline
     "img-src 'self' data: blob:",
     "font-src 'self'",
@@ -20,12 +23,13 @@ const buildCsp = () =>
   ].join("; ");
 
 const securityHeaders = [
-  { key: "X-DNS-Prefetch-Control",  value: "on" },
-  { key: "X-Frame-Options",         value: "SAMEORIGIN" },
-  { key: "X-Content-Type-Options",  value: "nosniff" },
-  { key: "Referrer-Policy",         value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy",      value: "camera=(), microphone=(), geolocation=()" },
-  { key: "Content-Security-Policy", value: buildCsp() },
+  { key: "X-DNS-Prefetch-Control",       value: "on" },
+  { key: "X-Frame-Options",              value: "DENY" },
+  { key: "X-Content-Type-Options",       value: "nosniff" },
+  { key: "Referrer-Policy",              value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy",           value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Strict-Transport-Security",    value: "max-age=31536000; includeSubDomains" },
+  { key: "Content-Security-Policy",      value: buildCsp() },
 ];
 
 const nextConfig: NextConfig = {
@@ -35,14 +39,6 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["@mui/material", "@mui/icons-material"],
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/api/backend/:path*",
-        destination: `${apiUrl}/:path*`,
-      },
-    ];
   },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];

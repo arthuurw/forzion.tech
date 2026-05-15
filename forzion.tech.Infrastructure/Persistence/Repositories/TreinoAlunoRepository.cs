@@ -83,7 +83,9 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
             .Join(
-                _context.Treinos.Include(t => t.Exercicios).ThenInclude(te => te.Exercicio),
+                _context.Treinos
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Series),
                 ta => ta.TreinoId,
                 t => t.Id,
                 (ta, t) => new TreinoAlunoDetalhe(ta, t))
@@ -99,7 +101,27 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
         var detail = await _context.TreinoAlunos
             .Where(ta => ta.Id == treinoAlunoId && ta.AlunoId == alunoId)
             .Join(
-                _context.Treinos.Include(t => t.Exercicios).ThenInclude(te => te.Exercicio),
+                _context.Treinos
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Series),
+                ta => ta.TreinoId,
+                t => t.Id,
+                (ta, t) => new TreinoAlunoDetalhe(ta, t))
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return detail;
+    }
+
+    public async Task<TreinoAlunoDetalhe?> ObterDetalheAdminAsync(
+        Guid treinoAlunoId, CancellationToken cancellationToken = default)
+    {
+        var detail = await _context.TreinoAlunos
+            .Where(ta => ta.Id == treinoAlunoId)
+            .Join(
+                _context.Treinos
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
+                    .Include(t => t.Exercicios).ThenInclude(te => te.Series),
                 ta => ta.TreinoId,
                 t => t.Id,
                 (ta, t) => new TreinoAlunoDetalhe(ta, t))
@@ -111,4 +133,26 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
 
     public async Task AdicionarAsync(TreinoAluno treinoAluno, CancellationToken cancellationToken = default) =>
         await _context.TreinoAlunos.AddAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
+
+    public async Task RemoverPorTreinoIdAsync(Guid treinoId, CancellationToken cancellationToken = default)
+    {
+        var items = await _context.TreinoAlunos
+            .Where(ta => ta.TreinoId == treinoId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        _context.TreinoAlunos.RemoveRange(items);
+    }
+
+    public async Task<IReadOnlyList<TreinoAlunoVinculado>> ListarAtivosPorTreinoIdAsync(
+        Guid treinoId, CancellationToken cancellationToken = default)
+    {
+        var raw = await (
+            from ta in _context.TreinoAlunos
+            join a in _context.Alunos on ta.AlunoId equals a.Id
+            where ta.TreinoId == treinoId && ta.Status == TreinoAlunoStatus.Ativo
+            select new { ta.Id, ta.AlunoId, a.Nome, ta.Status }
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return raw.Select(x => new TreinoAlunoVinculado(x.Id, x.AlunoId, x.Nome, x.Status)).ToList();
+    }
 }

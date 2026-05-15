@@ -9,7 +9,7 @@ const AREA_BY_TIPO: Record<TipoConta, string> = {
   Aluno: "/aluno",
 };
 
-function extractTipoConta(token: string): TipoConta | null {
+export function extractTipoConta(token: string): TipoConta | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
@@ -25,7 +25,8 @@ function extractTipoConta(token: string): TipoConta | null {
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("token")?.value;
-  const tipoConta = token ? extractTipoConta(token) : null;
+  const sessionGuard = request.cookies.get("session_guard")?.value;
+  const tipoConta = token && sessionGuard ? extractTipoConta(token) : null;
 
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||
@@ -34,22 +35,23 @@ export default function middleware(request: NextRequest) {
   // Cadastro é sempre acessível — autenticado ou não
   if (pathname.startsWith("/cadastro/")) return NextResponse.next();
 
-  // Não autenticado tentando acessar área protegida
-  if (!token && !isPublic) {
+  // Não autenticado (ou token expirado) tentando acessar área protegida
+  if (!tipoConta && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // Autenticado no login → redireciona para área correta
-  if (token && tipoConta && pathname === "/login") {
+  // Autenticado em "/login" → redireciona para área correta (evita ver form de login).
+  // "/" é sempre acessível — homepage mostra CTA para o dashboard client-side.
+  if (tipoConta && pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = AREA_BY_TIPO[tipoConta] ?? "/";
+    url.pathname = AREA_BY_TIPO[tipoConta];
     return NextResponse.redirect(url);
   }
 
   // Autenticado acessando área errada (ex: Aluno tentando /admin)
-  if (token && tipoConta) {
+  if (tipoConta) {
     const allowedPrefix = AREA_BY_TIPO[tipoConta];
     const isProtected =
       pathname.startsWith("/admin") ||

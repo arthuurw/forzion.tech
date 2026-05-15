@@ -79,7 +79,7 @@ public class LimiteTreinadorServiceTests
 
         var act = async () => await _service.ValidarAsync(treinadorId);
         await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("Plano do treinador não encontrado.");
+            .WithMessage("Plano não encontrado.");
     }
 
     [Fact]

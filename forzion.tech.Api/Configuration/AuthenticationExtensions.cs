@@ -1,5 +1,7 @@
 using System.Text;
+using forzion.tech.Application.Interfaces.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
 namespace forzion.tech.Api.Configuration;
@@ -17,13 +19,8 @@ public static class AuthenticationExtensions
         var issuer = configuration["Auth:JwtIssuer"] ?? "forzion.tech";
         var audience = configuration["Auth:JwtAudience"] ?? "forzion.tech";
 
-        // Em ambientes não-produtivos, usa uma chave de fallback para que os testes funcionem
-        // sem precisar configurar segredos reais.
-        if (string.IsNullOrWhiteSpace(secret) && !environment.IsProduction())
-            secret = "forzion-test-secret-key-32-bytes!!";
-
         if (string.IsNullOrWhiteSpace(secret))
-            throw new InvalidOperationException("Configuração 'Auth:JwtSecret' não encontrada.");
+            throw new InvalidOperationException("Configuração 'Auth:JwtSecret' não encontrada. Configure via User Secrets ou variável de ambiente.");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
 
@@ -43,46 +40,65 @@ public static class AuthenticationExtensions
                     ClockSkew = TimeSpan.Zero
                 };
 
-                if (!environment.IsProduction())
-                    options.Events = BuildDiagnosticEvents();
+                options.Events = BuildEvents(environment);
             });
 
-        services.AddAuthorization(options =>
-        {
-            options.AddPolicy("SystemAdmin", p => p.RequireClaim("tipo_conta", "SystemAdmin"));
-            options.AddPolicy("Treinador",   p => p.RequireClaim("tipo_conta", "Treinador"));
-            options.AddPolicy("Aluno",       p => p.RequireClaim("tipo_conta", "Aluno"));
-        });
+        services.AddAuthorizationBuilder()
+            .AddPolicy("SystemAdmin", p => p.RequireClaim("tipo_conta", "SystemAdmin"))
+            .AddPolicy("Treinador", p => p.RequireClaim("tipo_conta", "Treinador"))
+            .AddPolicy("Aluno", p => p.RequireClaim("tipo_conta", "Aluno"));
 
         return services;
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-    private static JwtBearerEvents BuildDiagnosticEvents() => new()
+    private static JwtBearerEvents BuildEvents(IWebHostEnvironment environment)
     {
-        OnMessageReceived = ctx =>
+        var events = new JwtBearerEvents
+        {
+            OnTokenValidated = async ctx =>
+            {
+                var jtiClaim = ctx.Principal?.FindFirst("jti")?.Value;
+                if (string.IsNullOrEmpty(jtiClaim) || !Guid.TryParse(jtiClaim, out var jti))
+                {
+                    ctx.Fail("Token sem jti válido.");
+                    return;
+                }
+
+                var repo = ctx.HttpContext.RequestServices.GetService<ITokenRevogadoRepository>();
+                if (repo is not null &&
+                    await repo.EstaRevogadoAsync(jti, ctx.HttpContext.RequestAborted).ConfigureAwait(false))
+                {
+                    ctx.Fail("Token revogado.");
+                }
+            }
+        };
+
+        if (!environment.IsProduction())
+            AddDiagnosticEvents(events);
+
+        return events;
+    }
+
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    private static void AddDiagnosticEvents(JwtBearerEvents events)
+    {
+        events.OnMessageReceived = ctx =>
         {
             var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
-            logger.LogDebug("[JWT] Token recebido: {Token}", ctx.Token != null ? ctx.Token[..20] + "..." : "NENHUM");
+            logger.LogDebug("[JWT] Token recebido.");
             return Task.CompletedTask;
-        },
-        OnAuthenticationFailed = ctx =>
+        };
+        events.OnAuthenticationFailed = ctx =>
         {
             var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
-            logger.LogWarning("[JWT] Falha na autenticação: {Type} — {Message}", ctx.Exception.GetType().Name, ctx.Exception.Message);
+            logger.LogWarning("[JWT] Falha na autenticação: {Type}", ctx.Exception.GetType().Name);
             return Task.CompletedTask;
-        },
-        OnChallenge = ctx =>
+        };
+        events.OnChallenge = ctx =>
         {
             var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
-            logger.LogDebug("[JWT] Challenge: Error={Error} | Failure={Failure}", ctx.Error, ctx.AuthenticateFailure?.Message);
+            logger.LogDebug("[JWT] Challenge: Error={Error}", ctx.Error);
             return Task.CompletedTask;
-        },
-        OnTokenValidated = ctx =>
-        {
-            var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
-            logger.LogDebug("[JWT] Token válido — sub: {Sub}", ctx.Principal?.FindFirst("sub")?.Value);
-            return Task.CompletedTask;
-        }
-    };
+        };
+    }
 }

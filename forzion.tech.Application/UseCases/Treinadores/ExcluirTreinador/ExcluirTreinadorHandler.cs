@@ -1,5 +1,4 @@
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -18,8 +17,7 @@ public class ExcluirTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        if (treinador.Status != TreinadorStatus.Inativo)
-            throw new DomainException("Apenas treinadores inativos podem ser excluídos permanentemente.");
+        treinador.ValidarParaExclusao();
 
         await treinadorRepository.ExcluirComDependenciasAsync(treinador, cancellationToken).ConfigureAwait(false);
 
