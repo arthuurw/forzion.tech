@@ -1,11 +1,13 @@
+using System.Data;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Events;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace forzion.tech.Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options, string schema = "public", IDomainEventDispatcher? eventDispatcher = null) : DbContext(options), IUnitOfWork
+public class AppDbContext(DbContextOptions<AppDbContext> options, string schema = "public", IDomainEventDispatcher? eventDispatcher = null) : DbContext(options), IUnitOfWork, IDbContextTransactionProvider
 {
     private readonly string _schema = schema;
 
@@ -42,6 +44,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
             await eventDispatcher!.DispatchAsync(entity.DomainEvents, cancellationToken).ConfigureAwait(false);
             entity.ClearDomainEvents();
         }
+    }
+
+    public async Task<ITransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
+    {
+        var tx = await Database.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+        return new EfCoreTransactionAdapter(tx);
+    }
+
+    private sealed class EfCoreTransactionAdapter(IDbContextTransaction inner) : ITransaction
+    {
+        public Task CommitAsync(CancellationToken cancellationToken = default) =>
+            inner.CommitAsync(cancellationToken);
+
+        public ValueTask DisposeAsync() => inner.DisposeAsync();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -10,11 +10,13 @@ public class CriarPlanoTreinadorHandler(
     IPlanoTreinadorRepository planoRepository,
     IUnitOfWork unitOfWork,
     IValidator<CriarPlanoTreinadorCommand> validator,
+    IUserContext userContext,
     ILogger<CriarPlanoTreinadorHandler> logger)
 {
     private readonly IPlanoTreinadorRepository _planoRepository = planoRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IValidator<CriarPlanoTreinadorCommand> _validator = validator;
+    private readonly IUserContext _userContext = userContext;
     private readonly ILogger<CriarPlanoTreinadorHandler> _logger = logger;
 
     public virtual async Task<PlanoTreinadorResponse> HandleAsync(
@@ -30,7 +32,7 @@ public class CriarPlanoTreinadorHandler(
         await _planoRepository.AdicionarAsync(plano, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("PlanoTreinador {PlanoId} criado.", plano.Id);
+        _logger.LogInformation("Plano {PlanoId} '{Nome}' criado por admin {AdminId}.", plano.Id, plano.Nome, _userContext.ContaId);
 
         return PlanoTreinadorResponseExtensions.ToResponse(plano);
     }

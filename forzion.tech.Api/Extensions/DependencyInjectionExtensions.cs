@@ -215,7 +215,14 @@ public static class DependencyInjectionExtensions
 
     private static IServiceCollection AddCorsPolicies(this IServiceCollection services, IConfiguration configuration)
     {
-        var allowedOrigins = configuration["Cors:AllowedOrigins"]?.Split(';') ?? Array.Empty<string>();
+        var raw = configuration["Cors:AllowedOrigins"]?.Split(';') ?? Array.Empty<string>();
+
+        var allowedOrigins = raw
+            .Select(o => o.Trim())
+            .Where(o => !string.IsNullOrWhiteSpace(o)
+                        && !o.Contains('*')
+                        && Uri.TryCreate(o, UriKind.Absolute, out _))
+            .ToArray();
 
         services.AddCors(options =>
         {

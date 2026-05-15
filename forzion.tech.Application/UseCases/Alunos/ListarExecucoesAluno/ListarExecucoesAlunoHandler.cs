@@ -1,4 +1,6 @@
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 
@@ -15,9 +17,10 @@ public record ExecucaoAlunoResponse(
 
 public record ListarExecucoesAlunoResponse(IReadOnlyList<ExecucaoAlunoResponse> Items, int Total, int Pagina, int TamanhoPagina);
 
-public class ListarExecucoesAlunoHandler(IExecucaoTreinoRepository execucaoRepository)
+public class ListarExecucoesAlunoHandler(IExecucaoTreinoRepository execucaoRepository, IUserContext userContext)
 {
     private readonly IExecucaoTreinoRepository _execucaoRepository = execucaoRepository;
+    private readonly IUserContext _userContext = userContext;
 
     public virtual async Task<ListarExecucoesAlunoResponse> HandleAsync(
         Guid alunoId,
@@ -25,6 +28,9 @@ public class ListarExecucoesAlunoHandler(IExecucaoTreinoRepository execucaoRepos
         int tamanhoPagina,
         CancellationToken cancellationToken = default)
     {
+        if (!_userContext.IsSystemAdmin && _userContext.PerfilId != alunoId)
+            throw new AcessoNegadoException();
+
         var execucoes = await _execucaoRepository.ListarComNomePorAlunoAsync(alunoId, pagina, tamanhoPagina, cancellationToken).ConfigureAwait(false);
         var total = await _execucaoRepository.ContarPorAlunoAsync(alunoId, cancellationToken).ConfigureAwait(false);
 

@@ -208,7 +208,8 @@ frontend/
 │   │   ├── theme/
 │   │   │   └── index.ts                # Tema MUI (paleta + tipografia + overrides)
 │   │   ├── utils/
-│   │   │   └── formatting.ts           # Funções de formatação
+│   │   │   ├── formatting.ts           # Funções de formatação
+│   │   │   └── excel.ts               # Exportação de fichas para .xlsx (SheetJS)
 │   │   └── validations/
 │   │       └── common.ts               # Schemas Zod reutilizáveis
 │   │
@@ -491,6 +492,22 @@ useInactivity({
 | `getWeekLabel(dateStr)` | `string` | `string` | Início da semana `"DD/MM"` |
 | `periodoParaDatas(periodo)` | `"7d" \| "30d" \| "90d"` | `{ de, ate }` | Datas para filtro de histórico |
 
+### `src/lib/utils/excel.ts`
+
+Exportação de ficha de treino para Excel (`.xlsx`) via **SheetJS** (`xlsx@0.18.5`).
+
+| Exportação | Assinatura | Descrição |
+|------------|-----------|-----------|
+| `exportarFichaParaExcel(params)` | `FichaExportParams → void` | Gera e faz download do arquivo `.xlsx` |
+| `buildFichaRows(params)` | `FichaExportParams → (string\|number\|null)[][]` | Monta matriz de linhas; pura (sem I/O) |
+| `sanitizeFilename(nome)` | `string → string` | Remove chars inválidos/perigosos do nome do arquivo |
+
+**Estrutura do Excel gerado** (9 colunas): `#`, Exercício, Qtd Séries, Reps Mín, Reps Máx, Descrição, Carga (kg), Descanso (s), Observação — uma linha por grupo de séries; exercício e observação repetidos apenas na primeira linha.
+
+**Segurança**: `sanitizeFilename` remove path traversal (`.`, `/`, `\`), null byte, angle brackets e formula triggers (`=`, `(`). Valores de células passam como strings literais (SheetJS armazena como tipo `'s'`, Excel não os interpreta como fórmulas).
+
+Disponível em: `/treinador/treinos/[treinoId]` (botão "Exportar") e `/aluno/fichas/[fichaId]` (botão "Exportar").
+
 ### `src/lib/constants/labels.ts`
 
 | Constante | Tipo | Uso |
@@ -700,8 +717,9 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 | `api-auth-me.test.ts` | Handler `GET /api/auth/me` — cookies, JWT válido, expirado, sem session_guard | 5 |
 | `useInactivity.test.ts` | Hook com `vi.useFakeTimers()` — warn, timeout, reset | 6 |
 | `components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` | 11 |
+| `excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls), `exportarFichaParaExcel` (mock XLSX, fallback filename) | 45 |
 
-**Total: 54 testes**
+**Total: 99 testes**
 
 ### Armadilhas conhecidas
 
@@ -712,3 +730,5 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 | `extractTipoConta` não exportada | Era função local | Exportar explicitamente com `export function` |
 | Base64 padding em JWT de teste | `btoa(payload).replace(/=/g, "")` → `atob` falha silenciosamente | Usar `btoa` sem strip dos `=` |
 | `onTimeout` chamado múltiplas vezes | `setInterval` continua após `TIMEOUT_MS` | Usar `toHaveBeenCalled()`, não `toHaveBeenCalledOnce()` |
+| Mock de módulo CJS com namespace import | `import * as XLSX from "xlsx"` em contexto ESM | `vi.mock("xlsx", () => ({ utils: {...}, writeFile: fn }))` — o mock é hoistado automaticamente; a factory retorna o namespace completo |
+| Namespace `Email` colide com VO | Pasta de teste `...Notifications.Email` → `Email` resolve para o namespace, não o tipo | Alias: `using EmailVO = forzion.tech.Domain.ValueObjects.Email;` (backend) |

@@ -12,6 +12,7 @@ public class LoginCommandValidator : AbstractValidator<LoginCommand>
             .MaximumLength(256).WithMessage("O e-mail deve ter no máximo 256 caracteres.");
 
         RuleFor(x => x.Senha)
-            .NotEmpty().WithMessage("A senha é obrigatória.");
+            .NotEmpty().WithMessage("A senha é obrigatória.")
+            .MinimumLength(8).WithMessage("A senha deve ter pelo menos 8 caracteres.");
     }
 }

@@ -3,15 +3,28 @@ import { cookies } from "next/headers";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
+// Headers do cliente que são permitidos de serem repassados ao backend.
+// Nenhum outro header (Cookie, Authorization, X-Forwarded-For, etc.) é repassado.
+const ALLOWED_REQUEST_HEADERS = ["content-type", "accept"];
+
 async function proxy(request: NextRequest, path: string[]): Promise<NextResponse> {
+  // A9 — Sanitização de path: rejeitar segmentos que permitiriam path traversal.
+  if (path.some((s) => s === ".." || s === ".")) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
   const url = `${API_BASE}/${path.join("/")}${request.nextUrl.search}`;
 
+  // C7 — Apenas headers explicitamente permitidos são repassados; nunca os cookies
+  // ou outros headers sensíveis do cliente. O Bearer é injetado pelo proxy.
   const headers = new Headers();
-  const contentType = request.headers.get("Content-Type");
-  if (contentType) headers.set("Content-Type", contentType);
+  for (const name of ALLOWED_REQUEST_HEADERS) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";

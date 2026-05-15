@@ -11,6 +11,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import LinkIcon from "@mui/icons-material/Link";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import AlertBanner from "@/components/ui/AlertBanner";
@@ -22,6 +23,7 @@ import { treinadorApi, type AdicionarExercicioData, type SerieConfigData } from 
 import type { TreinoResponse, TreinoExercicioResponse, ExercicioResponse, AlunoResponse, ObjetivoTreino } from "@/types";
 import { OBJETIVO_LABEL, GRUPO_MUSCULAR_LABEL, OBJETIVOS } from "@/lib/constants/labels";
 import { formatarSeries } from "@/lib/utils/formatting";
+import { exportarFichaParaExcel } from "@/lib/utils/excel";
 
 const COLUMNS: Column[] = [
   { label: "Exercício" },
@@ -319,6 +321,14 @@ export default function DetalheFichaPage() {
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} disabled={loadingDuplicar} onClick={handleDuplicar}>
             Duplicar
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<FileDownloadIcon />}
+            onClick={() => exportarFichaParaExcel({ nome: ficha.nome, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
+          >
+            Exportar
           </Button>
           <Button variant="outlined" size="small" startIcon={<LinkIcon />} onClick={openVincular}>
             Vincular aluno

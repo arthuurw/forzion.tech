@@ -28,4 +28,10 @@ public class PacoteAlunoRepository(AppDbContext context) : IPacoteAlunoRepositor
         await context.VinculosTreinadorAluno
             .AnyAsync(v => v.PacoteAlunoId == pacoteId, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PacoteAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await context.PacotesAluno
+            .Where(p => p.TreinadorId == treinadorId && p.IsAtivo)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 }

@@ -31,7 +31,12 @@ public class ReativarVinculoHandlerTests
             _logger.Object);
     }
 
-    private static Aluno CriarAluno() => Aluno.Criar(Guid.NewGuid(), "João Silva");
+    private static Aluno CriarAluno()
+    {
+        var a = Aluno.Criar(Guid.NewGuid(), "João Silva");
+        a.AlterarStatus(AlunoStatus.Ativo);
+        return a;
+    }
 
     [Fact]
     public async Task HandleAsync_DadosValidos_CriaVinculoAtivoERetorna()

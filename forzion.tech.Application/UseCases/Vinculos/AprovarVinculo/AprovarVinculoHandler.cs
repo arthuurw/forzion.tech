@@ -1,3 +1,4 @@
+using System.Data;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
@@ -15,6 +16,7 @@ public class AprovarVinculoHandler(
     ILimiteTreinadorService limiteTreinadorService,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
+    IDbContextTransactionProvider transactionProvider,
     IWhatsAppNotifier whatsAppNotifier,
     ILogger<AprovarVinculoHandler> logger)
 {
@@ -30,7 +32,10 @@ public class AprovarVinculoHandler(
         if (vinculo.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
 
+        await using var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken).ConfigureAwait(false);
+
         var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<TreinoAluno> treinosAntigos = [];
         if (vinculoAtivo is not null && vinculoAtivo.Id != vinculo.Id)
         {
             if (vinculoAtivo.TreinadorId == command.TreinadorId)
@@ -38,29 +43,29 @@ public class AprovarVinculoHandler(
 
             // Troca de treinador: inativa vínculo anterior e cascateia fichas
             vinculoAtivo.Inativar();
-            var treinosAtivos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculoAtivo.TreinadorId, vinculoAtivo.AlunoId, cancellationToken).ConfigureAwait(false);
-            foreach (var ta in treinosAtivos)
+            treinosAntigos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculoAtivo.TreinadorId, vinculoAtivo.AlunoId, cancellationToken).ConfigureAwait(false);
+            foreach (var ta in treinosAntigos)
                 ta.AlterarStatus(TreinoAlunoStatus.Inativo);
-
-            if (command.TrarFichas && treinosAtivos.Count > 0)
-            {
-                foreach (var ta in treinosAtivos)
-                {
-                    var treinoOrigem = await treinoRepository.ObterPorIdAsync(ta.TreinoId, cancellationToken).ConfigureAwait(false);
-                    if (treinoOrigem is null) continue;
-
-                    var copia = treinoOrigem.DuplicarPara(command.TreinadorId);
-                    await treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
-
-                    var novoVinculoFicha = TreinoAluno.Criar(copia.Id, vinculo.AlunoId);
-                    await treinoAlunoRepository.AdicionarAsync(novoVinculoFicha, cancellationToken).ConfigureAwait(false);
-                }
-
-                logger.LogInformation("{Count} ficha(s) copiada(s) para o treinador {TreinadorId} durante troca.", treinosAtivos.Count, command.TreinadorId);
-            }
         }
 
         await limiteTreinadorService.ValidarAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
+
+        if (command.TrarFichas && treinosAntigos.Count > 0)
+        {
+            foreach (var ta in treinosAntigos)
+            {
+                var treinoOrigem = await treinoRepository.ObterPorIdAsync(ta.TreinoId, cancellationToken).ConfigureAwait(false);
+                if (treinoOrigem is null) continue;
+
+                var copia = treinoOrigem.DuplicarPara(command.TreinadorId);
+                await treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
+
+                var novoVinculoFicha = TreinoAluno.Criar(copia.Id, vinculo.AlunoId);
+                await treinoAlunoRepository.AdicionarAsync(novoVinculoFicha, cancellationToken).ConfigureAwait(false);
+            }
+
+            logger.LogInformation("{Count} ficha(s) copiada(s) para o treinador {TreinadorId} durante troca.", treinosAntigos.Count, command.TreinadorId);
+        }
 
         vinculo.Aprovar(command.TreinadorId, command.PacoteAlunoId);
 
@@ -76,6 +81,7 @@ public class AprovarVinculoHandler(
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Vínculo {VinculoId} aprovado pelo treinador {TreinadorId}.", vinculo.Id, command.TreinadorId);
 

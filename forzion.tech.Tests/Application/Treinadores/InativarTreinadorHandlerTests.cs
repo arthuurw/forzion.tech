@@ -15,6 +15,7 @@ public class InativarTreinadorHandlerTests
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
+    private readonly Mock<IPacoteAlunoRepository> _pacoteRepo = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<InativarTreinadorHandler>> _logger = new();
@@ -22,9 +23,12 @@ public class InativarTreinadorHandlerTests
 
     public InativarTreinadorHandlerTests()
     {
+        _pacoteRepo
+            .Setup(r => r.ListarAtivosPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<PacoteAluno>)[]);
         _handler = new InativarTreinadorHandler(
             _treinadorRepo.Object, _vinculoRepo.Object, _treinoAlunoRepo.Object,
-            _logRepo.Object, _unitOfWork.Object, _logger.Object);
+            _pacoteRepo.Object, _logRepo.Object, _unitOfWork.Object, _logger.Object);
     }
 
     [Fact]

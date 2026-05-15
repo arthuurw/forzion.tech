@@ -46,7 +46,7 @@ describe("GET /api/auth/me", () => {
     expect(await res.json()).toBeNull();
   });
 
-  it("token válido → retorna SessionUser correto", async () => {
+  it("token válido → retorna SessionUser correto sem expor o token", async () => {
     const token = makeJwt({ conta_id: "abc", tipo_conta: "Treinador", perfil_id: "def", exp: FUTURE });
     const res = await GET(makeRequest({ token, session_guard: "1" }));
     const user = await res.json();
@@ -54,6 +54,7 @@ describe("GET /api/auth/me", () => {
     expect(user.contaId).toBe("abc");
     expect(user.tipoConta).toBe("Treinador");
     expect(user.perfilId).toBe("def");
-    expect(user.token).toBe(token);
+    // O token JWT nunca deve ser exposto no JSON — permanece apenas no httpOnly cookie.
+    expect(user.token).toBeUndefined();
   });
 });
