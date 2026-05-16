@@ -102,7 +102,7 @@ public static class TreinadorEndpoints
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
-            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
 
             var query = new ListarAlunosQuery(userContext.PerfilId, p, tp);
             var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
@@ -144,11 +144,11 @@ public static class TreinadorEndpoints
         {
             var hoje = DateTime.UtcNow.Date;
 
-            var de = DateTime.TryParse(httpContext.Request.Query["de"], out var deParsed)
+            var de = DateTime.TryParse(httpContext.Request.Query["de"], System.Globalization.CultureInfo.InvariantCulture, out var deParsed)
                 ? deParsed.Date
                 : hoje.AddDays(-90);
 
-            var ate = DateTime.TryParse(httpContext.Request.Query["ate"], out var ateParsed)
+            var ate = DateTime.TryParse(httpContext.Request.Query["ate"], System.Globalization.CultureInfo.InvariantCulture, out var ateParsed)
                 ? ateParsed.Date
                 : hoje;
 
@@ -175,7 +175,7 @@ public static class TreinadorEndpoints
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
-            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
 
             var result = await handler.HandleAsync(
                 userContext.PerfilId,
@@ -200,7 +200,7 @@ public static class TreinadorEndpoints
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
-            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
             var nome = httpContext.Request.Query["nome"].FirstOrDefault();
             var objetivo = httpContext.Request.Query["objetivo"].FirstOrDefault();
             var ordenarPorRaw = httpContext.Request.Query["ordenarPor"].FirstOrDefault();
@@ -256,7 +256,7 @@ public static class TreinadorEndpoints
             _ = int.TryParse(q["pagina"], out var pagina);
             _ = int.TryParse(q["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
-            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
             var apenasGlobal = q["global"].ToString() == "true";
             _ = Enum.TryParse<forzion.tech.Domain.Enums.GrupoMuscular>(q["grupoMuscular"], out var grupo);
             var hasGrupo = q.ContainsKey("grupoMuscular");

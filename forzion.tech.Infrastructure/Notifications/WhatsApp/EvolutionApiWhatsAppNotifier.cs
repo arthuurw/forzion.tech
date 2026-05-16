@@ -20,10 +20,10 @@ public class EvolutionApiWhatsAppNotifier(
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                logger.LogWarning("Evolution API returned {Status} for {Phone}: {Body}", response.StatusCode, phone, body);
+                logger.LogWarning("Evolution API returned {Status}: {Body}", response.StatusCode, body);
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             logger.LogError(ex, "Failed to send WhatsApp message to {Phone}.", phone);
         }

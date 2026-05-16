@@ -17,34 +17,31 @@ public class CriarTreinoHandler(
     IValidator<CriarTreinoCommand> validator,
     ILogger<CriarTreinoHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-    private readonly IAlunoRepository _alunoRepository = alunoRepository;
-    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly IValidator<CriarTreinoCommand> _validator = validator;
-    private readonly ILogger<CriarTreinoHandler> _logger = logger;
-
-    public virtual async Task<TreinoResponse> HandleAsync(
+    public virtual Task<TreinoResponse> HandleAsync(
         CriarTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<TreinoResponse> HandleAsyncCore(
+        CriarTreinoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         if (command.AlunoId.HasValue)
         {
-            _ = await _alunoRepository
+            _ = await alunoRepository
                 .ObterPorIdAsync(command.AlunoId.Value, cancellationToken)
                 .ConfigureAwait(false)
                 ?? throw new AlunoNaoEncontradoException();
 
-            if (!_userContext.IsSystemAdmin)
+            if (!userContext.IsSystemAdmin)
             {
-                var vinculo = await _vinculoRepository
-                    .ObterAtivoAsync(_userContext.PerfilId, command.AlunoId.Value, cancellationToken)
+                var vinculo = await vinculoRepository
+                    .ObterAtivoAsync(userContext.PerfilId, command.AlunoId.Value, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (vinculo is null)
@@ -53,17 +50,17 @@ public class CriarTreinoHandler(
         }
 
         var treino = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId, command.Dificuldade, command.DataInicio, command.DataFim);
-        await _treinoRepository.AdicionarAsync(treino, cancellationToken).ConfigureAwait(false);
+        await treinoRepository.AdicionarAsync(treino, cancellationToken).ConfigureAwait(false);
 
         if (command.AlunoId.HasValue)
         {
             var treinoAluno = TreinoAluno.Criar(treino.Id, command.AlunoId.Value);
-            await _treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
+            await treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         }
 
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Treino {TreinoId} criado{Aluno}.",
+        logger.LogInformation("Treino {TreinoId} criado{Aluno}.",
             treino.Id,
             command.AlunoId.HasValue ? $" para o aluno {command.AlunoId.Value}" : " sem aluno vinculado");
 

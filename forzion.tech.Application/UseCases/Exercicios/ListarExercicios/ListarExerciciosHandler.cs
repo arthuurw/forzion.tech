@@ -7,21 +7,24 @@ public class ListarExerciciosHandler(
     IExercicioRepository exercicioRepository,
     ILogger<ListarExerciciosHandler> logger)
 {
-    private readonly IExercicioRepository _exercicioRepository = exercicioRepository;
-    private readonly ILogger<ListarExerciciosHandler> _logger = logger;
-
-    public virtual async Task<ListarExerciciosResponse> HandleAsync(
+    public virtual Task<ListarExerciciosResponse> HandleAsync(
         ListarExerciciosQuery query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
+        return HandleAsyncCore(query, cancellationToken);
+    }
 
-        var (items, total) = await _exercicioRepository
+    private async Task<ListarExerciciosResponse> HandleAsyncCore(
+        ListarExerciciosQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var (items, total) = await exercicioRepository
             .ListarAsync(query.TreinadorId, query.Pagina, query.TamanhoPagina, cancellationToken,
                 query.Nome, query.GrupoMuscular, query.OrdenarPor)
             .ConfigureAwait(false);
 
-        _logger.LogInformation("Listagem de exercícios: {Total} registros.", total);
+        logger.LogInformation("Listagem de exercícios: {Total} registros.", total);
 
         return new ListarExerciciosResponse(
             items.Select(ExercicioResponseExtensions.ToResponse).ToList(),

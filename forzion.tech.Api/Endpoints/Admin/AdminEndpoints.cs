@@ -32,6 +32,7 @@ using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
 using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadores;
+using forzion.tech.Application.UseCases.Treinadores.ObterTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ReprovarTreinador;
 using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
@@ -49,6 +50,7 @@ public static class AdminEndpoints
     public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/admin").WithTags("Admin").RequireAuthorization("SystemAdmin")
+            .RequireRateLimiting("write")
             .AddEndpointFilter<PaginacaoFilter>();
 
         group.MapGet("/treinadores", async (
@@ -61,13 +63,25 @@ public static class AdminEndpoints
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
-            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
 
             var result = await handler.HandleAsync(hasStatus ? status : null, p, tp, cancellationToken);
             return Results.Ok(result);
         })
         .WithSummary("Lista treinadores com filtro opcional por status")
         .Produces<ListarTreinadoresResponse>();
+
+        group.MapGet("/treinadores/{id:guid}", async (
+            Guid id,
+            [FromServices] ObterTreinadorHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(id, cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithSummary("Obtém os dados de um treinador")
+        .Produces<TreinadorResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/treinadores/{id:guid}/aprovar", async (
             Guid id,
@@ -411,10 +425,10 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var hoje = DateTime.UtcNow.Date;
-            var de = DateTime.TryParse(httpContext.Request.Query["de"], out var deParsed)
+            var de = DateTime.TryParse(httpContext.Request.Query["de"], System.Globalization.CultureInfo.InvariantCulture, out var deParsed)
                 ? deParsed.Date
                 : hoje.AddDays(-90);
-            var ate = DateTime.TryParse(httpContext.Request.Query["ate"], out var ateParsed)
+            var ate = DateTime.TryParse(httpContext.Request.Query["ate"], System.Globalization.CultureInfo.InvariantCulture, out var ateParsed)
                 ? ateParsed.Date
                 : hoje;
 

@@ -15,42 +15,41 @@ public class DesvincularAlunoHandler(
     IUserContext userContext,
     ILogger<DesvincularAlunoHandler> logger)
 {
-    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-    private readonly ILogAprovacaoRepository _logRepository = logRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<DesvincularAlunoHandler> _logger = logger;
-
-    public virtual async Task HandleAsync(
+    public virtual Task HandleAsync(
         DesvincularAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var vinculo = await _vinculoRepository.ObterPorIdAsync(command.VinculoId, cancellationToken).ConfigureAwait(false)
+    private async Task HandleAsyncCore(
+        DesvincularAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var vinculo = await vinculoRepository.ObterPorIdAsync(command.VinculoId, cancellationToken).ConfigureAwait(false)
             ?? throw new VinculoNaoEncontradoException();
 
         // Validar autorização
-        if (!_userContext.IsSystemAdmin && vinculo.TreinadorId != _userContext.PerfilId)
+        if (!userContext.IsSystemAdmin && vinculo.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
         vinculo.Inativar();
 
-        var treinoAlunos = await _treinoAlunoRepository.ListarAtivosPorParAsync(vinculo.TreinadorId, vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
+        var treinoAlunos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculo.TreinadorId, vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         foreach (var ta in treinoAlunos)
             ta.AlterarStatus(TreinoAlunoStatus.Inativo);
 
         var log = LogAprovacao.Registrar(
             TipoAcaoAprovacao.InativacaoVinculo,
-            _userContext.PerfilId,
+            userContext.PerfilId,
             vinculo.Id,
             nameof(VinculoTreinadorAluno),
             command.Observacao);
 
-        await _logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Vínculo {VinculoId} inativado por {RealizadoPorId}. {Count} ficha(s) afetada(s).", vinculo.Id, _userContext.PerfilId, treinoAlunos.Count);
+        logger.LogInformation("Vínculo {VinculoId} inativado por {RealizadoPorId}. {Count} ficha(s) afetada(s).", vinculo.Id, userContext.PerfilId, treinoAlunos.Count);
     }
 }

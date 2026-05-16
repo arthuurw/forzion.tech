@@ -2,6 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Results;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -16,37 +17,35 @@ public class AdicionarExercicioHandler(
     IValidator<AdicionarExercicioCommand> validator,
     ILogger<AdicionarExercicioHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly IExercicioRepository _exercicioRepository = exercicioRepository;
-    private readonly IExecucaoTreinoRepository _execucaoTreinoRepository = execucaoTreinoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly IValidator<AdicionarExercicioCommand> _validator = validator;
-    private readonly ILogger<AdicionarExercicioHandler> _logger = logger;
-
-    public virtual async Task<Result<TreinoResponse>> HandleAsync(
+    public virtual Task<Result<TreinoResponse>> HandleAsync(
         AdicionarExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<Result<TreinoResponse>> HandleAsyncCore(
+        AdicionarExercicioCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var treino = await _treinoRepository
+        var treino = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
+        if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        var executado = await _execucaoTreinoRepository
+        var executado = await execucaoTreinoRepository
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        treino.ValidarMutabilidade(executado);
+        Treino.ValidarMutabilidade(executado);
 
-        var exercicioExiste = await _exercicioRepository
+        var exercicioExiste = await exercicioRepository
             .ExisteAsync(command.ExercicioId, treino.TreinadorId, cancellationToken)
             .ConfigureAwait(false);
 
@@ -57,10 +56,10 @@ public class AdicionarExercicioHandler(
         foreach (var s in command.Series)
             novoExercicio.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
 
-        await _treinoRepository.AdicionarTreinoExercicioAsync(novoExercicio, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await treinoRepository.AdicionarTreinoExercicioAsync(novoExercicio, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Exercício {ExercicioId} adicionado ao treino {TreinoId}.", command.ExercicioId, command.TreinoId);
+        logger.LogInformation("Exercício {ExercicioId} adicionado ao treino {TreinoId}.", command.ExercicioId, command.TreinoId);
 
         return Result.Success(TreinoResponseExtensions.ToResponse(treino));
     }

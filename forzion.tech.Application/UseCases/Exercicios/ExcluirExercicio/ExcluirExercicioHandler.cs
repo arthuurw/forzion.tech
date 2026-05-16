@@ -9,12 +9,18 @@ public class ExcluirExercicioHandler(
     IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork)
 {
-    public virtual async Task<Result> HandleAsync(
+    public virtual Task<Result> HandleAsync(
         ExcluirExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<Result> HandleAsyncCore(
+        ExcluirExercicioCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var exercicio = await exercicioRepository.ObterPorIdAsync(command.ExercicioId, cancellationToken).ConfigureAwait(false)
             ?? throw new ExercicioNaoEncontradoException();
 
