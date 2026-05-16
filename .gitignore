@@ -1,7 +1,7 @@
 # Env files (segredos locais e de server)
 .env
 .env.*
-!.env.example
+.env.example
 
 ## A streamlined .gitignore for modern .NET projects
 ## including temporary files, build results, and
@@ -67,6 +67,7 @@ nunit-*.xml
 # Artefatos de sessão AI (gerados por skills, não pertencem ao repo)
 .security-memory.md
 .clean-arch-memory.md
+.agent-security-memory.md
 
 # Scripts SQL gerados pontualmente (não versionar)
 migration_public_schema.sql
