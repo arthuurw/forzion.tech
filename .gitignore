@@ -70,3 +70,18 @@ nunit-*.xml
 
 # Scripts SQL gerados pontualmente (não versionar)
 migration_public_schema.sql
+
+# IDE — Visual Studio
+*.suo
+*.user
+.vs/
+
+# IDE — JetBrains / Rider
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Scripts ad-hoc (não pertencem ao repo)
+*.csx
