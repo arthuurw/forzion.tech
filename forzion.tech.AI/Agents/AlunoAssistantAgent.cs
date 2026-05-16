@@ -28,7 +28,7 @@ public sealed class AlunoAssistantAgent
         description: "Assistente de treino pessoal para alunos Forzion",
         tools: _tools.BuildTools(alunoId),
         loggerFactory: _loggerFactory,
-        serviceProvider: _serviceProvider);
+        services: _serviceProvider);
 
     public static readonly ChatClientAgentRunOptions DefaultRunOptions = new(new ChatOptions
     {

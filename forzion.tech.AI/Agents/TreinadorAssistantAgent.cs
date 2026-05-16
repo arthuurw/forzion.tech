@@ -28,7 +28,7 @@ public sealed class TreinadorAssistantAgent
         description: "Assistente de gestão de treinos para treinadores Forzion",
         tools: _tools.BuildTools(treinadorId),
         loggerFactory: _loggerFactory,
-        serviceProvider: _serviceProvider);
+        services: _serviceProvider);
 
     public static readonly ChatClientAgentRunOptions DefaultRunOptions = new(new ChatOptions
     {
