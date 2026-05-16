@@ -8,6 +8,7 @@ namespace forzion.tech.Application.UseCases.Treinos.AtualizarTreino;
 
 public class AtualizarTreinoHandler(
     ITreinoRepository treinoRepository,
+    IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
     ILogger<AtualizarTreinoHandler> logger)
@@ -32,19 +33,16 @@ public class AtualizarTreinoHandler(
         if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        try
-        {
-            treino.Atualizar(command.Nome, command.Objetivo, command.Dificuldade, command.DataInicio, command.DataFim, command.LimparDataInicio, command.LimparDataFim);
-        }
-        catch (DomainException ex)
-        {
-            return Result.Failure<TreinoResponse>(Error.Business(ex.Message));
-        }
+        treino.Atualizar(command.Nome, command.Objetivo, command.Dificuldade, command.DataInicio, command.DataFim, command.LimparDataInicio, command.LimparDataFim);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Treino {TreinoId} atualizado.", command.TreinoId);
 
-        return Result.Success(TreinoResponseExtensions.ToResponse(treino));
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino, nomesExercicio: nomesExercicio));
     }
 }

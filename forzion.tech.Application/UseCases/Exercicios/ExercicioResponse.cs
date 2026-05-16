@@ -6,7 +6,7 @@ namespace forzion.tech.Application.UseCases.Exercicios;
 public record ExercicioResponse(
     Guid ExercicioId,
     string Nome,
-    forzion.tech.Domain.Enums.GrupoMuscular GrupoMuscular,
+    forzion.tech.Domain.Enums.TipoGrupoMuscular GrupoMuscular,
     string? Descricao,
     Guid? TreinadorId,
     bool IsGlobal,

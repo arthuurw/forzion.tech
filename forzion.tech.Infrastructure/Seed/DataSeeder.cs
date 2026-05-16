@@ -6,7 +6,7 @@ using forzion.tech.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using GrupoMuscularEnum = forzion.tech.Domain.Enums.GrupoMuscular;
+using GrupoMuscularEnum = forzion.tech.Domain.Enums.TipoGrupoMuscular;
 
 namespace forzion.tech.Infrastructure.Seed;
 

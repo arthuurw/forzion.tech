@@ -36,7 +36,10 @@ public record TreinoResponse(
 
 public static class TreinoResponseExtensions
 {
-    public static TreinoResponse ToResponse(Treino treino, string? nomeAluno = null) => new(
+    public static TreinoResponse ToResponse(
+        Treino treino,
+        string? nomeAluno = null,
+        IReadOnlyDictionary<Guid, string>? nomesExercicio = null) => new(
         treino.Id,
         treino.Nome,
         treino.Objetivo,
@@ -47,7 +50,7 @@ public static class TreinoResponseExtensions
         treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
             te.Id,
             te.ExercicioId,
-            te.Exercicio?.Nome ?? string.Empty,
+            nomesExercicio?.GetValueOrDefault(te.ExercicioId) ?? string.Empty,
             te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
                 s.Id,
                 s.Quantidade,

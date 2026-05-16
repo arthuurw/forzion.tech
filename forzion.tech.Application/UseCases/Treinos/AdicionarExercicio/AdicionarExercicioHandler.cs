@@ -61,6 +61,10 @@ public class AdicionarExercicioHandler(
 
         logger.LogInformation("Exercício {ExercicioId} adicionado ao treino {TreinoId}.", command.ExercicioId, command.TreinoId);
 
-        return Result.Success(TreinoResponseExtensions.ToResponse(treino));
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino, nomesExercicio: nomesExercicio));
     }
 }

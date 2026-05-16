@@ -148,7 +148,8 @@ public class RegistrarExecucaoHandlerTests
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
         var alunoId = Guid.NewGuid();
         var aluno = Aluno.Criar(alunoId, "João");
-        aluno.AlterarStatus(AlunoStatus.Inativo);
+        aluno.Ativar();
+        aluno.Inativar();
         var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
         var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
         vinculo.Aprovar(treinadorId, Guid.NewGuid());
