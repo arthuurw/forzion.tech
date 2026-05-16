@@ -14,7 +14,6 @@ export type ObjetivoTreino =
 
 export type DificuldadeTreino = "Iniciante" | "Intermediario" | "Avancado";
 
-// Auth
 export interface LoginResponse {
   token: string;
   tipoConta: TipoConta;
@@ -30,7 +29,6 @@ export interface SessionUser {
   perfilId: string;
 }
 
-// Enums de perfil do aluno
 export type FinalidadeTreino =
   | "Hipertrofia"
   | "Emagrecimento"
@@ -49,7 +47,6 @@ export type TempoDisponivel =
   | "UmaHoraETrinta"
   | "DuasHoras";
 
-// Aluno
 export interface AlunoResponse {
   alunoId: string;
   nome: string;
@@ -69,7 +66,6 @@ export interface AlunoResponse {
   observacoesAdicionais: string | null;
 }
 
-// Treinador
 export interface TreinadorResponse {
   treinadorId: string;
   nome: string;
@@ -79,7 +75,6 @@ export interface TreinadorResponse {
   createdAt: string;
 }
 
-// Vínculo
 export interface VinculoResponse {
   vinculoId: string;
   treinadorId: string;
@@ -103,7 +98,6 @@ export interface TreinoAlunoResponse {
   status: TreinoAlunoStatus;
 }
 
-// Treino
 export interface SerieConfigResponse {
   serieConfigId: string;
   quantidade: number;
@@ -138,7 +132,6 @@ export interface TreinoResponse {
   nomeAluno?: string | null;
 }
 
-// Exercício
 export interface ExercicioResponse {
   exercicioId: string;
   nome: string;
@@ -148,7 +141,6 @@ export interface ExercicioResponse {
   isGlobal: boolean;
 }
 
-// Plano Treinador
 export interface PlanoTreinadorResponse {
   planoId: string;
   nome: string;
@@ -167,7 +159,6 @@ export interface GrupoMuscularResponse {
   updatedAt: string | null;
 }
 
-// Pacote Aluno
 export interface PacoteAlunoResponse {
   pacoteId: string;
   nome: string;
@@ -179,7 +170,6 @@ export interface PacoteAlunoResponse {
   updatedAt?: string | null;
 }
 
-// Aluno vinculado a uma ficha
 export interface TreinoAlunoVinculado {
   treinoAlunoId: string;
   alunoId: string;
@@ -187,7 +177,6 @@ export interface TreinoAlunoVinculado {
   status: string;
 }
 
-// Ficha do aluno (lista e detalhe — admin e aluno)
 export interface FichaAlunoResponse {
   treinoAlunoId: string;
   treinoId: string;
@@ -197,7 +186,6 @@ export interface FichaAlunoResponse {
   exercicios: TreinoExercicioResponse[];
 }
 
-// Execução
 export interface ExecucaoTreinoResponse {
   execucaoId: string;
   treinoId: string;
@@ -210,7 +198,6 @@ export interface ExecucaoTreinoResponse {
   totalSeries: number;
 }
 
-// Vínculo do aluno (GET /aluno/vinculo)
 export interface VinculoAlunoItemResponse {
   vinculoId: string;
   treinadorId: string;
@@ -225,7 +212,6 @@ export interface MeuVinculoResponse {
   vinculoPendente: VinculoAlunoItemResponse | null;
 }
 
-// Paginação
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;
@@ -233,7 +219,6 @@ export interface PaginatedResponse<T> {
   tamanhoPagina: number;
 }
 
-// Progressão do aluno
 export interface PontoProgressao {
   data: string;
   cargaMaxima: number | null;
@@ -249,6 +234,43 @@ export interface ExercicioProgressao {
 
 export interface ProgressaoAlunoResponse {
   exercicios: ExercicioProgressao[];
+}
+
+export type AssinaturaStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
+export type PagamentoStatus = "Pendente" | "Pago" | "Expirado" | "Falhou";
+export type MetodoPagamento = "Pix" | "Cartao";
+
+export interface AssinaturaResponse {
+  assinaturaId: string;
+  vinculoId: string;
+  pacoteAlunoId: string;
+  treinadorId: string;
+  alunoId: string;
+  valor: number;
+  status: AssinaturaStatus;
+  dataInicio: string;
+  dataProximaCobranca: string;
+  dataCancelamento: string | null;
+  createdAt: string;
+}
+
+export interface PagamentoResponse {
+  pagamentoId: string;
+  assinaturaId: string;
+  valor: number;
+  status: PagamentoStatus;
+  metodoPagamento: MetodoPagamento;
+  pixQrCode: string | null;
+  pixQrCodeUrl: string | null;
+  pixExpiracao: string | null;
+  clientSecret: string | null;
+  dataPagamento: string | null;
+  createdAt: string;
+}
+
+export interface OnboardingStatusResponse {
+  onboardingCompleto: boolean;
+  contaConfigurada: boolean;
 }
 
 // Erro RFC 7807

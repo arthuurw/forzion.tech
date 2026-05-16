@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 597 testes backend + 142 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Auditoria de segurança OWASP | DDD tático aplicado
+**Status**: ✅ 696+ testes backend + 174 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Auditoria de segurança OWASP | DDD tático aplicado
 
 ---
 
@@ -209,12 +209,15 @@ forzion.tech.Application/
 └── UseCases/                      # Handler CQRS-like por domínio
     ├── Admin/
     ├── Alunos/
+    ├── Assinaturas/               # CriarAssinatura, CancelarAssinatura
     ├── Auth/
     ├── Conta/
     ├── Exercicios/
     ├── Pacotes/
+    ├── Pagamentos/                # GerarCobrancaMensal, ObterStatusPagamento,
+    │                              # ListarPagamentosAssinatura, ProcessarWebhookStripe
     ├── Planos/
-    ├── Treinadores/
+    ├── Treinadores/               # inclui IniciarOnboarding, VerificarOnboarding
     ├── Treinos/
     └── Vinculos/
 
@@ -223,9 +226,10 @@ forzion.tech.Domain/
 │                         # Treino, TreinoExercicio, TreinoAluno, Exercicio,
 │                         # ExecucaoTreino, ExecucaoExercicio, LogAprovacao,
 │                         # PlanoTreinador, PacoteAluno, GrupoMuscular,
-│                         # SystemUser, TokenRevogado
-├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus, VinculoStatus,
-│                         # ObjetivoTreino, DificuldadeTreino, GrupoMuscularEnum
+│                         # Assinatura, Pagamento, SystemUser, TokenRevogado
+├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus,
+│                         # VinculoStatus, ObjetivoTreino, DificuldadeTreino,
+│                         # TipoGrupoMuscular, AssinaturaStatus, PagamentoStatus, MetodoPagamento
 ├── Events/               # IDomainEvent, IHasDomainEvents,
 │                         # TreinadorAprovadoEvent, TreinadorReprovadoEvent,
 │                         # TreinadorInativadoEvent, VinculoAprovadoEvent,
@@ -236,7 +240,7 @@ forzion.tech.Domain/
 forzion.tech.Infrastructure/
 ├── DependencyInjection/
 │   └── InfrastructureExtensions.cs
-├── Migrations/           # EF Core migrations (11 total)
+├── Migrations/           # EF Core migrations (14 total)
 ├── Notifications/
 │   ├── Email/            # EmailTemplates + 4 handlers de eventos de domínio (Resend)
 │   └── WhatsApp/         # EvolutionApiWhatsAppNotifier + NullWhatsAppNotifier
@@ -250,6 +254,7 @@ forzion.tech.Infrastructure/
     ├── BcryptPasswordHasher.cs
     ├── ResendEmailService.cs   # Envia via REST api.resend.com; ativo se Resend:ApiKey configurado
     ├── NullEmailService.cs     # No-op; usado sem chave configurada
+    ├── StripeService.cs        # Stripe Connect: onboarding, Pix PaymentIntent, Card PaymentIntent, webhook
     └── DomainEventDispatcher.cs
 
 forzion.tech.Tests/
@@ -283,6 +288,8 @@ forzion.tech.Tests/
 | `ExecucaoTreino` | Registro de sessão realizada pelo aluno. Contém lista de `ExecucaoExercicio`. |
 | `LogAprovacao` | Auditoria de aprovações e inativações. `EntidadeId` sem FK — sobrevive a hard deletes. |
 | `TokenRevogado` | JTI de tokens revogados (logout). Sem RLS. Limpo automaticamente ao expirar. |
+| `Assinatura` | Cobrança recorrente mensal de um aluno. Vinculada ao `VinculoTreinadorAluno` e ao `PacoteAluno`. Status: `Pendente → Ativa → Inadimplente → Cancelada`. |
+| `Pagamento` | Tentativa de cobrança individual. Armazena `StripePaymentIntentId`, QR Code Pix ou `ClientSecret` para cartão. Status: `Pendente → Pago / Expirado / Falhou`. |
 
 ---
 
@@ -340,6 +347,9 @@ Fixed Window por IP:
 |----------|--------|--------|-------------|
 | `auth` | 10 req | 1 min | `/auth/login`, `/auth/register/*`, `/auth/planos`, `/auth/treinadores`, `/auth/treinadores/{id}/pacotes` |
 | `write` | 60 req | 1 min | `/alunos/*`, `/treinos/*`, `/treinador/*`, `/aluno/*`, `/conta/*`, `/admin/*` |
+| `read` | 120 req | 1 min | `/aluno/pagamentos/*` |
+| `internal` | 5 req | 1 min | `/internal/processar-renovacoes` |
+| `webhook` | 300 req | 1 min | `/webhooks/stripe` |
 
 Exceder retorna **429 Too Many Requests**.
 
@@ -357,6 +367,12 @@ Exceder retorna **429 Too Many Requests**.
 | Validação de entrada | FluentValidation + `PaginacaoFilter` em todos os grupos |
 | Erro sem vazamento | `GlobalExceptionHandler` nunca expõe stack trace ou mensagem interna (500 genérico) |
 | Schema separado | `homolog` para dev/staging, `public` para produção |
+| Stripe webhook | Verificação de assinatura `Stripe-Signature` com `StripeClient.ConstructEvent` antes de processar |
+| Body size limit | `LimitedStream` limita payload do webhook a 64 KB — previne DoS por payload gigante |
+| Open redirect | URLs de retorno do onboarding validadas contra domínio configurado (`Stripe:UrlBase`) |
+| Idempotência | `stripe_payment_intent_id` UNIQUE em `pagamentos` — previne cobrança duplicada |
+| Pagamento pendente | Partial unique index `status='Pendente'` — só um pagamento pendente por assinatura |
+| Timing attack | Chave `X-Internal-Key` comparada com `CryptographicOperations.FixedTimeEquals` |
 
 ---
 
@@ -432,6 +448,29 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `GET` | `/treinador/pacotes` | — | `[PacoteAlunoResponse]` |
 | `POST` | `/treinador/pacotes` | `{ nome, descricao?, preco }` | `201 PacoteAlunoResponse` |
 | `PATCH` | `/treinador/pacotes/{id}` | `{ nome?, descricao?, preco? }` | `200 PacoteAlunoResponse` |
+| **Stripe** | | | |
+| `POST` | `/treinador/onboarding` | `{ urlRetorno, urlCancelamento }` | `200 { url }` |
+| `GET` | `/treinador/onboarding/status` | — | `OnboardingStatusResponse` |
+| `POST` | `/treinador/pagamentos/cobrar/{assinaturaId}` | `?metodo=Pix\|Cartao` | `200 PagamentoResponse` · rate: `write` |
+
+#### Pagamentos Aluno — `/aluno/pagamentos` (política `Aluno`)
+
+| Método | Rota | Body | Resposta |
+|--------|------|------|----------|
+| `GET` | `/aluno/pagamentos/{pagamentoId}` | — | `PagamentoResponse` (inclui `clientSecret` para cartão) · rate: `read` |
+| `GET` | `/aluno/pagamentos/assinatura/{assinaturaId}` | — | `PagamentoResponse[]` · rate: `read` |
+
+#### Webhooks (público — verificação por assinatura Stripe)
+
+| Método | Rota | Body | Resposta |
+|--------|------|------|----------|
+| `POST` | `/webhooks/stripe` | Evento Stripe | `200` · body limitado a 64 KB · rate: `webhook` |
+
+#### Internal (autenticação por `X-Internal-Key`)
+
+| Método | Rota | Body | Resposta |
+|--------|------|------|----------|
+| `POST` | `/internal/processar-renovacoes` | — | `{ processadas, falhas }` · rate: `internal` |
 
 #### Treinos — `/treinos` (JWT obrigatório)
 
@@ -581,6 +620,13 @@ Exemplo de resposta 422:
   },
   "Database": {
     "Schema": "homolog"    // "public" em produção
+  },
+  "Stripe": {
+    "SecretKey": "",       // sk_live_... ou sk_test_... — via user secrets
+    "WebhookSecret": "",   // whsec_... — via user secrets
+    "PublishableKey": "",  // pk_live_... ou pk_test_...
+    "TaxaPlataformaPercent": "10",  // % retida pela plataforma em cada cobrança
+    "UrlBase": ""          // domínio permitido para URLs de retorno do onboarding
   }
 }
 ```
@@ -603,6 +649,13 @@ dotnet user-secrets set "Resend:ApiKey"               "re_..."               --p
 dotnet user-secrets set "WhatsApp:BaseUrl"            "https://..."          --project forzion.tech.Api
 dotnet user-secrets set "WhatsApp:Instance"           "<instance>"           --project forzion.tech.Api
 dotnet user-secrets set "WhatsApp:ApiKey"             "<apikey>"             --project forzion.tech.Api
+
+# Stripe (necessário para módulo de pagamentos)
+dotnet user-secrets set "Stripe:SecretKey"            "sk_test_..."          --project forzion.tech.Api
+dotnet user-secrets set "Stripe:WebhookSecret"        "whsec_..."            --project forzion.tech.Api
+dotnet user-secrets set "Stripe:PublishableKey"       "pk_test_..."          --project forzion.tech.Api
+dotnet user-secrets set "Stripe:TaxaPlataformaPercent" "10"                  --project forzion.tech.Api
+dotnet user-secrets set "Stripe:UrlBase"              "https://localhost:3000" --project forzion.tech.Api
 ```
 
 User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
@@ -631,13 +684,16 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 | `AdicionarTelefoneNaTabelaTreinadores` | Coluna `telefone` em `treinadores` |
 | `AdicionarTokenRevogado` | Tabela `tokens_revogados (jti PK, expira_em)` + índice em `expira_em` |
 | `AdicionarIndicesPerformance` | Índices: `treinadores(status)`, `vinculos_treinador_aluno(treinador_id, status)` |
+| `AdicionarPagamentos` | Colunas Stripe em `treinadores`; tabelas `assinaturas` e `pagamentos` com índices de performance |
+| `SegurancaPagamentos` | Partial unique index `pagamentos(assinatura_id)` onde `status='Pendente'`; unique em `stripe_payment_intent_id` |
+| `CartaoPagamento` | Colunas `client_secret varchar(500)` e `metodo_pagamento text DEFAULT 'Pix'` em `pagamentos` |
 
 ---
 
 ### Testes
 
 ```
-597 testes | 0 falhas
+696+ testes | 0 falhas
 
 Domain/          → entidades, value objects, domain events, exceções, máquina de estados
 Application/     → handlers (unit), services de limite
@@ -667,7 +723,7 @@ Ver [`frontend/README.md`](frontend/README.md) para detalhes completos.
 cd frontend
 npm install
 npm run dev     # http://localhost:3000
-npm run test    # Vitest (142 testes)
+npm run test    # Vitest (174 testes)
 npm run build   # build de produção
 ```
 
