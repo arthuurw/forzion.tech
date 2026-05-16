@@ -10,19 +10,21 @@ public class AtualizarPacoteAlunoHandler(
     IUnitOfWork unitOfWork,
     IValidator<AtualizarPacoteAlunoCommand> validator)
 {
-    private readonly IPacoteAlunoRepository _pacoteRepository = pacoteRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IValidator<AtualizarPacoteAlunoCommand> _validator = validator;
-
-    public virtual async Task<PacoteAlunoResponse> HandleAsync(
+    public virtual Task<PacoteAlunoResponse> HandleAsync(
         AtualizarPacoteAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<PacoteAlunoResponse> HandleAsyncCore(
+        AtualizarPacoteAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var pacote = await _pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
+        var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
             ?? throw new PacoteNaoEncontradoException();
 
         if (pacote.TreinadorId != command.TreinadorId)
@@ -30,7 +32,7 @@ public class AtualizarPacoteAlunoHandler(
 
         pacote.Atualizar(command.Nome, command.Preco, command.Descricao);
 
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return PacoteAlunoResponseExtensions.ToResponse(pacote);
     }

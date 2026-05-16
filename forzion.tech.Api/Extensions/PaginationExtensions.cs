@@ -8,7 +8,7 @@ public static class PaginationExtensions
         _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
         
         var p = pagina < 1 ? 1 : pagina;
-        var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+        var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
         
         return new PaginationParams(p, tp);
     }

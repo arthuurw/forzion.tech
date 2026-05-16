@@ -7,15 +7,19 @@ namespace forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
 
 public class ListarAlunosAdminHandler(IAlunoRepository alunoRepository)
 {
-    private readonly IAlunoRepository _alunoRepository = alunoRepository;
-
-    public virtual async Task<ListarAlunosResponse> HandleAsync(
+    public virtual Task<ListarAlunosResponse> HandleAsync(
         ListarAlunosAdminQuery query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
+        return HandleAsyncCore(query, cancellationToken);
+    }
 
-        var (items, total) = await _alunoRepository
+    private async Task<ListarAlunosResponse> HandleAsyncCore(
+        ListarAlunosAdminQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var (items, total) = await alunoRepository
             .ListarTodosAsync(query.Pagina, query.TamanhoPagina, query.Nome, query.Status, cancellationToken)
             .ConfigureAwait(false);
 

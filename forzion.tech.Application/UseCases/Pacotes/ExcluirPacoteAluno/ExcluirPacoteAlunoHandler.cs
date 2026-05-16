@@ -9,27 +9,30 @@ public class ExcluirPacoteAlunoHandler(
     IPacoteAlunoRepository pacoteRepository,
     IUnitOfWork unitOfWork)
 {
-    private readonly IPacoteAlunoRepository _pacoteRepository = pacoteRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-
-    public virtual async Task<Result> HandleAsync(
+    public virtual Task<Result> HandleAsync(
         ExcluirPacoteAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var pacote = await _pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
+    private async Task<Result> HandleAsyncCore(
+        ExcluirPacoteAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
             ?? throw new PacoteNaoEncontradoException();
 
         if (pacote.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
 
-        var temVinculos = await _pacoteRepository.ExisteVinculoComPacoteAsync(command.PacoteId, cancellationToken).ConfigureAwait(false);
+        var temVinculos = await pacoteRepository.ExisteVinculoComPacoteAsync(command.PacoteId, cancellationToken).ConfigureAwait(false);
         if (temVinculos)
             return Result.Failure(Error.Business("Não é possível excluir um pacote com alunos vinculados."));
 
-        _pacoteRepository.Remover(pacote);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        pacoteRepository.Remover(pacote);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success();
     }

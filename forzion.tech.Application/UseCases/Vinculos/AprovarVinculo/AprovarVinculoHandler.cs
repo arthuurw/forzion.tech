@@ -20,12 +20,18 @@ public class AprovarVinculoHandler(
     IWhatsAppNotifier whatsAppNotifier,
     ILogger<AprovarVinculoHandler> logger)
 {
-    public virtual async Task<VinculoResponse> HandleAsync(
+    public virtual Task<VinculoResponse> HandleAsync(
         AprovarVinculoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<VinculoResponse> HandleAsyncCore(
+        AprovarVinculoCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var vinculo = await vinculoRepository.ObterPorIdAsync(command.VinculoId, cancellationToken).ConfigureAwait(false)
             ?? throw new VinculoNaoEncontradoException();
 

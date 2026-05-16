@@ -11,32 +11,33 @@ public class DuplicarTreinoHandler(
     IUserContext userContext,
     ILogger<DuplicarTreinoHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<DuplicarTreinoHandler> _logger = logger;
-
-    public virtual async Task<TreinoResponse> HandleAsync(
+    public virtual Task<TreinoResponse> HandleAsync(
         DuplicarTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var original = await _treinoRepository
+    private async Task<TreinoResponse> HandleAsyncCore(
+        DuplicarTreinoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var original = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
         // Validar autorização
-        if (!_userContext.IsSystemAdmin && original.TreinadorId != _userContext.PerfilId)
+        if (!userContext.IsSystemAdmin && original.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
         var copia = original.Duplicar();
 
-        await _treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Treino {TreinoId} duplicado como {CopiaTreinoId}.", command.TreinoId, copia.Id);
+        logger.LogInformation("Treino {TreinoId} duplicado como {CopiaTreinoId}.", command.TreinoId, copia.Id);
 
         return TreinoResponseExtensions.ToResponse(copia);
     }

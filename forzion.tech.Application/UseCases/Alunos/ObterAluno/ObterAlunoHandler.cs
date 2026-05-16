@@ -11,29 +11,30 @@ public class ObterAlunoHandler(
     IUserContext userContext,
     ILogger<ObterAlunoHandler> logger)
 {
-    private readonly IAlunoRepository _alunoRepository = alunoRepository;
-    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<ObterAlunoHandler> _logger = logger;
-
-    public virtual async Task<AlunoResponse> HandleAsync(
+    public virtual Task<AlunoResponse> HandleAsync(
         ObterAlunoQuery query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
+        return HandleAsyncCore(query, cancellationToken);
+    }
 
-        var aluno = await _alunoRepository
+    private async Task<AlunoResponse> HandleAsyncCore(
+        ObterAlunoQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var aluno = await alunoRepository
             .ObterPorIdAsync(query.AlunoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
         // Validar autorização
-        if (!_userContext.IsSystemAdmin && _userContext.PerfilId != aluno.Id)
+        if (!userContext.IsSystemAdmin && userContext.PerfilId != aluno.Id)
         {
-            if (_userContext.IsTreinador)
+            if (userContext.IsTreinador)
             {
-                var ativo = await _vinculoRepository
-                    .ObterAtivoAsync(_userContext.PerfilId, aluno.Id, cancellationToken)
+                var ativo = await vinculoRepository
+                    .ObterAtivoAsync(userContext.PerfilId, aluno.Id, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (ativo == null)
@@ -45,7 +46,7 @@ public class ObterAlunoHandler(
             }
         }
 
-        _logger.LogInformation("Aluno {AlunoId} consultado.", aluno.Id);
+        logger.LogInformation("Aluno {AlunoId} consultado.", aluno.Id);
 
         return CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno);
     }

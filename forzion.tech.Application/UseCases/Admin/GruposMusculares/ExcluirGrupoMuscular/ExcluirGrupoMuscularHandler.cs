@@ -8,19 +8,18 @@ public class ExcluirGrupoMuscularHandler(
     IGrupoMuscularRepository repository,
     IUnitOfWork unitOfWork)
 {
-    private readonly IGrupoMuscularRepository _repository = repository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-
-    public virtual async Task HandleAsync(ExcluirGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    public virtual Task HandleAsync(ExcluirGrupoMuscularCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var grupo = await _repository.ObterPorIdAsync(command.Id, cancellationToken)
+    private async Task HandleAsyncCore(ExcluirGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    {
+        var grupo = await repository.ObterPorIdAsync(command.Id, cancellationToken)
             ?? throw new GrupoMuscularNaoEncontradoException();
 
-        // TODO: Validar se existem exercícios vinculados quando a migração Enum -> Entity ocorrer
-
-        _repository.Excluir(grupo);
-        await _unitOfWork.CommitAsync(cancellationToken);
+        repository.Excluir(grupo);
+        await unitOfWork.CommitAsync(cancellationToken);
     }
 }

@@ -19,20 +19,17 @@ public record ListarExecucoesAlunoResponse(IReadOnlyList<ExecucaoAlunoResponse> 
 
 public class ListarExecucoesAlunoHandler(IExecucaoTreinoRepository execucaoRepository, IUserContext userContext)
 {
-    private readonly IExecucaoTreinoRepository _execucaoRepository = execucaoRepository;
-    private readonly IUserContext _userContext = userContext;
-
     public virtual async Task<ListarExecucoesAlunoResponse> HandleAsync(
         Guid alunoId,
         int pagina,
         int tamanhoPagina,
         CancellationToken cancellationToken = default)
     {
-        if (!_userContext.IsSystemAdmin && _userContext.PerfilId != alunoId)
+        if (!userContext.IsSystemAdmin && userContext.PerfilId != alunoId)
             throw new AcessoNegadoException();
 
-        var execucoes = await _execucaoRepository.ListarComNomePorAlunoAsync(alunoId, pagina, tamanhoPagina, cancellationToken).ConfigureAwait(false);
-        var total = await _execucaoRepository.ContarPorAlunoAsync(alunoId, cancellationToken).ConfigureAwait(false);
+        var execucoes = await execucaoRepository.ListarComNomePorAlunoAsync(alunoId, pagina, tamanhoPagina, cancellationToken).ConfigureAwait(false);
+        var total = await execucaoRepository.ContarPorAlunoAsync(alunoId, cancellationToken).ConfigureAwait(false);
 
         var items = execucoes
             .Select(e => new ExecucaoAlunoResponse(

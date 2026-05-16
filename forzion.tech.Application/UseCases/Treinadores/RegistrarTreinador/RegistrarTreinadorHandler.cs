@@ -17,11 +17,18 @@ public class RegistrarTreinadorHandler(
     IValidator<RegistrarTreinadorCommand> validator,
     ILogger<RegistrarTreinadorHandler> logger)
 {
-    public virtual async Task<TreinadorResponse> HandleAsync(
+    public virtual Task<TreinadorResponse> HandleAsync(
         RegistrarTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
+
+    private async Task<TreinadorResponse> HandleAsyncCore(
+        RegistrarTreinadorCommand command,
+        CancellationToken cancellationToken = default)
+    {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var emailExistente = await contaRepository.ObterPorEmailAsync(command.Email, cancellationToken).ConfigureAwait(false);

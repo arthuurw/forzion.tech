@@ -11,28 +11,29 @@ public class ListarTreinosHandler(
     IUserContext userContext,
     ILogger<ListarTreinosHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<ListarTreinosHandler> _logger = logger;
-
-    public virtual async Task<ListarTreinosResponse> HandleAsync(
+    public virtual Task<ListarTreinosResponse> HandleAsync(
         ListarTreinosQuery query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
+        return HandleAsyncCore(query, cancellationToken);
+    }
 
-        if (!_userContext.IsSystemAdmin)
+    private async Task<ListarTreinosResponse> HandleAsyncCore(
+        ListarTreinosQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        if (!userContext.IsSystemAdmin)
         {
-            if (_userContext.IsAluno)
+            if (userContext.IsAluno)
             {
-                if (_userContext.PerfilId != query.AlunoId)
+                if (userContext.PerfilId != query.AlunoId)
                     throw new AcessoNegadoException();
             }
             else
             {
-                var vinculo = await _vinculoRepository
-                    .ObterAtivoAsync(_userContext.PerfilId, query.AlunoId, cancellationToken)
+                var vinculo = await vinculoRepository
+                    .ObterAtivoAsync(userContext.PerfilId, query.AlunoId, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (vinculo is null)
@@ -40,11 +41,11 @@ public class ListarTreinosHandler(
             }
         }
 
-        var (items, total) = await _treinoRepository
+        var (items, total) = await treinoRepository
             .ListarPorAlunoAsync(query.AlunoId, query.Pagina, query.TamanhoPagina, cancellationToken)
             .ConfigureAwait(false);
 
-        _logger.LogInformation("Listagem de treinos do aluno {AlunoId}: {Total} registros.", query.AlunoId, total);
+        logger.LogInformation("Listagem de treinos do aluno {AlunoId}: {Total} registros.", query.AlunoId, total);
 
         return new ListarTreinosResponse(
             items.Select(t => TreinoResponseExtensions.ToResponse(t)).ToList(),

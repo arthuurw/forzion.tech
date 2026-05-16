@@ -26,6 +26,7 @@ public static class TreinoEndpoints
     {
         var group = app.MapGroup("/treinos")
             .WithTags("Treinos")
+            .RequireRateLimiting("write")
             .AddEndpointFilter<PerfilIdRequiredFilter>()
             .AddEndpointFilter<PaginacaoFilter>();
 

@@ -12,31 +12,32 @@ public class AlterarStatusAlunoHandler(
     IUnitOfWork unitOfWork,
     ILogger<AlterarStatusAlunoHandler> logger)
 {
-    private readonly IAlunoRepository _alunoRepository = alunoRepository;
-    private readonly IUserContext _userContext = userContext;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly ILogger<AlterarStatusAlunoHandler> _logger = logger;
-
-    public virtual async Task<AlunoResponse> HandleAsync(
+    public virtual Task<AlunoResponse> HandleAsync(
         AlterarStatusAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var aluno = await _alunoRepository
+    private async Task<AlunoResponse> HandleAsyncCore(
+        AlterarStatusAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var aluno = await alunoRepository
             .ObterPorIdAsync(command.AlunoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
         // Validação de autorização: apenas SystemAdmin pode alterar status de alunos
-        if (!_userContext.IsSystemAdmin)
+        if (!userContext.IsSystemAdmin)
             throw new AcessoNegadoException();
 
         aluno.AlterarStatus(command.NovoStatus);
 
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Status do aluno {AlunoId} alterado para {Status}.", aluno.Id, command.NovoStatus);
+        logger.LogInformation("Status do aluno {AlunoId} alterado para {Status}.", aluno.Id, command.NovoStatus);
 
         return CadastrarAlunoHandler.ToResponse(aluno);
     }
