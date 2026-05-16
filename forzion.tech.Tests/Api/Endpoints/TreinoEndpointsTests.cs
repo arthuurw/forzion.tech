@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using forzion.tech.Tests.Helpers;
 using FluentAssertions;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
@@ -152,6 +153,8 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
 
             builder.ConfigureServices(services =>
             {
+                services.AddForzionAITestMocks();
+
                 services.RemoveAll<CriarTreinoHandler>();
                 services.RemoveAll<ObterTreinoHandler>();
                 services.RemoveAll<AdicionarExercicioHandler>();

@@ -1,4 +1,4 @@
-using System.Text.Json;
+using forzion.tech.AI.GuardRails;
 using forzion.tech.Application.Interfaces.Repositories;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -10,17 +10,25 @@ public sealed class TreinadorTools
     private readonly IVinculoTreinadorAlunoRepository _vinculo;
     private readonly IExecucaoTreinoRepository _execucao;
     private readonly ITreinoAlunoRepository _treinoAluno;
+    private readonly IDraftSuggestionService _draftService;
+    private readonly IDraftRequestTracker _draftTracker;
     private readonly ILogger<TreinadorTools> _logger;
+
+    private static readonly TimeSpan DraftTtl = TimeSpan.FromMinutes(10);
 
     public TreinadorTools(
         IVinculoTreinadorAlunoRepository vinculo,
         IExecucaoTreinoRepository execucao,
         ITreinoAlunoRepository treinoAluno,
+        IDraftSuggestionService draftService,
+        IDraftRequestTracker draftTracker,
         ILogger<TreinadorTools> logger)
     {
         _vinculo = vinculo;
         _execucao = execucao;
         _treinoAluno = treinoAluno;
+        _draftService = draftService;
+        _draftTracker = draftTracker;
         _logger = logger;
     }
 
@@ -126,25 +134,28 @@ public sealed class TreinadorTools
             _logger.LogInformation("ToolCall sugerir_ficha_treino TreinadorId={TId} AlunoId={AId}", treinadorId, alunoId);
             if (!Guid.TryParse(alunoId, out var alunoGuid)) return "ID de aluno inválido.";
 
-            // CRÍTICO: validar vínculo ativo antes de gerar sugestão
             var vinculo = await _vinculo.ObterAtivoAsync(treinadorId, alunoGuid);
             if (vinculo is null) return "Aluno não encontrado ou sem vínculo ativo com este treinador.";
 
             numeroDeTreinos = Math.Clamp(numeroDeTreinos, 1, 7);
 
-            // Retorna APENAS preview — persistência ocorre no endpoint /apply-suggestion após aprovação
-            var preview = new
-            {
-                __tipo = "sugestao_ficha_preview",
-                __requerAprovacao = true,
-                alunoId = alunoGuid,
-                treinadorId,
-                objetivo,
-                dificuldade,
-                numeroDeTreinos,
-                geradoEm = DateTime.UtcNow
-            };
+            var expiresAt = DateTime.UtcNow.Add(DraftTtl);
+            var draft = new SugestaoDraft(treinadorId, alunoGuid, objetivo, dificuldade, numeroDeTreinos, expiresAt);
+            var draftId = _draftService.StoreDraft(draft);
 
-            return $"PREVIEW (aguardando aprovação do treinador):\n{JsonSerializer.Serialize(preview, new JsonSerializerOptions { WriteIndented = true })}";
+            // Signal to the endpoint via shared scope — no LLM output parsing needed
+            _draftTracker.PendingDraftId = draftId;
+            _draftTracker.PendingDraftExpiresAt = expiresAt;
+
+            return $"""
+                Sugestão de ficha gerada com sucesso! O treinador precisa revisar e confirmar antes de salvar.
+
+                Resumo da sugestão:
+                - Objetivo: {objetivo}
+                - Dificuldade: {dificuldade}
+                - Frequência semanal: {numeroDeTreinos} treino(s)
+
+                Oriente o treinador a confirmar a sugestão no sistema para que a ficha seja criada.
+                """;
         };
 }

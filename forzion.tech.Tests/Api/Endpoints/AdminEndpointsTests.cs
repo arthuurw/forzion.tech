@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using forzion.tech.Tests.Helpers;
 using System.Text.Json;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
@@ -888,6 +889,8 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
             builder.ConfigureServices(services =>
             {
+                services.AddForzionAITestMocks();
+
                 services.RemoveAll<ListarTreinadoresHandler>();
                 services.RemoveAll<AprovarTreinadorHandler>();
                 services.RemoveAll<ReprovarTreinadorHandler>();

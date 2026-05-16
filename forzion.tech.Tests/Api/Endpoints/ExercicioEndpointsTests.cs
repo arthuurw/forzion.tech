@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using forzion.tech.Tests.Helpers;
 using FluentAssertions;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
@@ -93,6 +94,8 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
 
             builder.ConfigureServices(services =>
             {
+                services.AddForzionAITestMocks();
+
                 services.RemoveAll<CriarExercicioHandler>();
                 services.RemoveAll<ListarExerciciosHandler>();
                 services.AddScoped(_ => CriarHandlerMock.Object);

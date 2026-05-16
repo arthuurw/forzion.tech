@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using forzion.tech.Tests.Helpers;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
@@ -243,6 +244,8 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
 
             builder.ConfigureServices(services =>
             {
+                services.AddForzionAITestMocks();
+
                 services.RemoveAll<ObterAlunoHandler>();
                 services.RemoveAll<ListarAlunosHandler>();
                 services.RemoveAll<AtualizarAlunoHandler>();

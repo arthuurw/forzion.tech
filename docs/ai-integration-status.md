@@ -4,6 +4,8 @@
 **Framework:** MAF 1.6.1 + Microsoft.Extensions.AI 10.6.0  
 **Provider:** OpenAI SDK (interim) — DC-001: Claude Haiku 4.5 via Anthropic API em produção  
 **Build:** ✅ 0 erros · 0 warnings  
+**Testes AI:** ✅ 109/109 (guard rails 60+38=98, tools 7, endpoints 4)  
+**Testes total:** ✅ 702/702  
 **Última atualização:** 2026-05-16
 
 ---
@@ -14,7 +16,7 @@
 |--------|--------|--------|
 | Sprint 1 — Infraestrutura | Projeto AI, guard rails, DI, OTel, env vars | ✅ Completo |
 | Sprint 2 — Agente Aluno | AlunoTools, AlunoAssistantAgent, endpoint `/aluno/assistant/chat` | ✅ Completo |
-| Sprint 3 — Agente Treinador | TreinadorTools, TreinadorAssistantAgent, endpoint `/treinador/assistant/chat`, approval flow | ✅ Completo (parcial — ver T19) |
+| Sprint 3 — Agente Treinador | TreinadorTools, TreinadorAssistantAgent, endpoint `/treinador/assistant/chat`, approval flow | ✅ Completo |
 | Sprint 4 — Hardening | Token budget PostgreSQL, testes adversariais, OTel alertas, revisão de segurança | 🔲 Não iniciado |
 
 ---
@@ -33,7 +35,7 @@ POST /treinador/assistant/chat    [Authorize("Treinador")]  rate: 10/h/user
        └─ get_meus_alunos · get_progresso_aluno · get_fichas_aluno · get_execucoes_recentes_aluno
           · sugerir_ficha_treino → retorna preview JSON, nunca persiste
 
-POST /treinador/assistant/apply-suggestion   confirma draft → TODO: conectar handler
+POST /treinador/assistant/apply-suggestion   confirma draft → chama CriarTreinoHandler
 ```
 
 Pipeline em ambos os endpoints:
@@ -60,6 +62,10 @@ Agent.GetResponseAsync (60s timeout) → OutputScanner → SanitizeMarkdown → 
 | `GuardRails/OutputSanitizer.cs` | Remove imagens markdown externas e HTML inline do output do LLM |
 | `GuardRails/ITokenBudget.cs` | Interface: `WouldExceedDailyAsync`, `CommitAsync`, `GetDailyUsageAsync` — enum `AgentType { Aluno, Treinador }` |
 | `GuardRails/InMemoryTokenBudget.cs` | `ConcurrentDictionary` keyed por `userId:agentType:date`. Limite: 50k/dia Aluno · 100k/dia Treinador (config) |
+| `GuardRails/SugestaoDraft.cs` | Record imutável com TTL: `TreinadorId, AlunoId, Objetivo, Dificuldade, NumeroDeTreinos, ExpiresAt` |
+| `GuardRails/IDraftSuggestionService.cs` | Singleton: `StoreDraft → Guid`, `GetDraft(id, treinadorId) → null se expirado/ownership errado`, `RemoveDraft` |
+| `GuardRails/InMemoryDraftSuggestionService.cs` | `ConcurrentDictionary<Guid, SugestaoDraft>` com verificação de ownership e TTL. Purge automático em cada `StoreDraft` |
+| `GuardRails/IDraftRequestTracker.cs` + `DraftRequestTracker` | Scoped — sinaliza tool→endpoint no mesmo request via `PendingDraftId`/`PendingDraftExpiresAt`. Elimina parsing frágil de JSON do LLM |
 
 **Clients / Agents**
 
@@ -80,13 +86,13 @@ Agent.GetResponseAsync (60s timeout) → OutputScanner → SanitizeMarkdown → 
 
 ⚠️ Todas as tools do Treinador que aceitam `alunoId` chamam `IVinculoTreinadorAlunoRepository.ObterAtivoAsync(treinadorId, alunoGuid)` antes de retornar dados. Sem vínculo ativo → retorna "aluno não encontrado". Isolamento cross-tenant por código, não só por autenticação.
 
-`sugerir_ficha_treino` é tier Write: retorna JSON com marcador `"__tipo": "sugestao_ficha_preview"` e nunca persiste diretamente.
+`sugerir_ficha_treino` é tier Write: armazena `SugestaoDraft` via `IDraftSuggestionService` (singleton) e sinaliza `IDraftRequestTracker.PendingDraftId` (scoped) para o endpoint devolver `pendingApproval: true`. Nunca persiste diretamente — requer aprovação via `apply-suggestion`.
 
 **Configuração**
 
 | Arquivo | O que faz |
 |---------|-----------|
-| `Configuration/AiExtensions.cs` | `AddForzionAI()` — registra `IChatClientFactory` (singleton), `ITokenBudget` (singleton), `AlunoTools` + `TreinadorTools` (scoped), `AlunoAssistantAgent` + `TreinadorAssistantAgent` (scoped), `AgentRegistry` (scoped) |
+| `Configuration/AiExtensions.cs` | `AddForzionAI()` — registra `IChatClientFactory` (singleton), `ITokenBudget` (singleton), `IDraftSuggestionService` (singleton), `IDraftRequestTracker` (scoped), `AlunoTools` + `TreinadorTools` (scoped), `AlunoAssistantAgent` + `TreinadorAssistantAgent` (scoped), `AgentRegistry` (scoped) |
 
 ---
 
@@ -127,6 +133,21 @@ Agent.GetResponseAsync (60s timeout) → OutputScanner → SanitizeMarkdown → 
 
 ---
 
+## O que foi concluído nesta sessão
+
+| Task | Item | Status |
+|------|------|--------|
+| T19 | Conectar `apply-suggestion` ao `CriarTreinoHandler` | ✅ Implementado — `IDraftSuggestionService` + `IDraftRequestTracker`, `ParseObjetivo`/`ParseDificuldade`, handler real com propriedade/TTL |
+| T15 | Threat model — Agente Aluno | ✅ `docs/threat-model-agente-aluno.md` — STRIDE T1-T8, mitigações por camada |
+| T21 | Threat model — Agente Treinador | ✅ `docs/threat-model-agente-treinador.md` — STRIDE T1-T9, approval flow 10 passos, análise tier Write |
+| DC-001 | Documentação LGPD Art. 33 | ✅ `docs/lgpd-transferencia-internacional.md` — tabela permitido/proibido, base legal, checklist pré-produção |
+| T16 | Testes unitários — guard rails | ✅ 60 testes: `InputNormalizer`, `PromptInjectionPatterns`, `OutputScanner`, `OutputSanitizer`, `ToolResponseSanitizer`, `InMemoryDraftSuggestionService` |
+| T16 | Testes unitários — tools | ✅ 7 testes: `TreinadorToolsTests` — cross-tenant, args inválidos, draft storage, clamp |
+| T22b | Testes de integração — endpoints | ✅ 4 testes: `TreinadorAssistantEndpointsTests` — 401 sem auth, 404 draft ausente, 200 draft válido, mapeamento objetivo/dificuldade |
+| Bug | Bug `InputNormalizer` — regex com invisible chars | ✅ Corrigido — substituído por `@"\uDB40[\uDC00-\uDC7F]"` literal (regex anterior stripava texto acentuado) |
+
+---
+
 ## O que ainda falta
 
 ### 🔴 Crítico — bloqueia qualquer teste real
@@ -134,26 +155,15 @@ Agent.GetResponseAsync (60s timeout) → OutputScanner → SanitizeMarkdown → 
 | Task | Item | Arquivo afetado | Detalhe |
 |------|------|-----------------|---------|
 | T10 | **Credenciais de API** | User Secrets / Key Vault | `AI__Internal__ApiKey` nunca commitado. Sem isso os endpoints lançam `InvalidOperationException` na inicialização. Configurar via `dotnet user-secrets set` em dev, variável de ambiente em prod |
-| T19 | **Conectar apply-suggestion ao handler** | `TreinadorAssistantEndpoints.cs:168` | O endpoint valida e remove o draft mas não cria a ficha de treino. Há um `TODO` explícito. Precisa chamar o use case de criação de ficha com os dados do JSON preview |
-
-### 🟠 Alto — necessário antes de merge para main
-
-| Task | Item | Detalhe |
-|------|------|---------|
-| T15 | **Threat model — Agente Aluno** | Criar `docs/threat-model-agente-aluno.md`. Mapear: quem chama, dados acessados, tools, superfície de ataque, mitigações por camada |
-| T21 | **Threat model — Agente Treinador** | Criar `docs/threat-model-agente-treinador.md`. Incluir análise da tool write `sugerir_ficha_treino` e do approval flow |
-| DC-001 | **Documentação LGPD Art. 33** | Registro formal da transferência internacional de dados para Anthropic. Verificar Data Processing Agreement Anthropic. Definir quais campos do contexto são permitidos |
 
 ### 🟡 Médio — Sprint 4
 
 | Task | Item | Detalhe |
 |------|------|---------|
-| T16 | **Testes unitários — guard rails** | `InputNormalizer`, `PromptInjectionPatterns`, `OutputScanner`, `ToolResponseSanitizer`. Testar cada regex, encoding tricks, limites |
-| T16 | **Testes unitários — tools** | `AlunoTools` e `TreinadorTools` com mocks dos repositories. Cobrir: tool de usuário diferente retorna erro, vínculo inativo bloqueado, args inválidos |
 | T22 | **ITokenBudget → PostgreSQL** | `InMemoryTokenBudget` não persiste entre restarts e não funciona em múltiplas instâncias. Migrar para tabela `ai_token_usage (user_id, agent_type, date, token_count)` |
 | T23 | **Alertas e dashboards OTel** | Criar dashboards em Grafana/Azure Monitor para `gen_ai.client.token.usage`, latência p95, erros de tool calls, taxa de injection detectada |
-| T24 | **Testes adversariais em CI** | Suite de pelo menos 15 casos: override instructions, role injection, delimiter spoofing, base64 payload, unicode tricks, cross-tenant attempt. Rodar no pipeline de CI |
-| T25 | **Revisão de segurança pré-produção** | Re-execução do `maf-agent-guardian` completo sobre o código final antes de merge para `main` |
+| T24 | **Testes adversariais** | ✅ 38 casos: unicode tag/ZW/BOM, case variants, delimiter spoofing, base64 payload, role injection, DAN, prompt leak, tool exfiltração, PII em output, multi-vector pipeline — `forzion.tech.Tests/AI/GuardRails/AdversarialTests.cs`. Fix colateral: 2 gaps em `PromptInjectionPatterns.cs` (`DoAnythingNow` camelCase + "show me the instructions") |
+| T25 | **Revisão de segurança pré-produção** | Re-execução do `/ultrareview` completo sobre o código final antes de merge para `main` (user-triggered) |
 
 ### 🟢 Opcional / Futuro
 

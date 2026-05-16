@@ -13,6 +13,10 @@ public static class AiExtensions
         // Infra
         services.AddSingleton<IChatClientFactory, ChatClientFactory>();
         services.AddSingleton<ITokenBudget, InMemoryTokenBudget>();
+        services.AddSingleton<IDraftSuggestionService, InMemoryDraftSuggestionService>();
+
+        // Per-request draft tracking (tool → endpoint via shared scope)
+        services.AddScoped<IDraftRequestTracker, DraftRequestTracker>();
 
         // Tools (scoped — cada request tem suas próprias tools com estado limpo)
         services.AddScoped<AlunoTools>();

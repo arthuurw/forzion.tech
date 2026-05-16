@@ -1,6 +1,7 @@
-using System.Text.Json;
 using forzion.tech.AI.Agents;
 using forzion.tech.AI.GuardRails;
+using forzion.tech.Application.UseCases.Treinos.CriarTreino;
+using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -13,12 +14,6 @@ namespace forzion.tech.Api.Endpoints;
 
 public static class TreinadorAssistantEndpoints
 {
-    private static readonly TimeSpan DraftTtl = TimeSpan.FromMinutes(10);
-
-    // Cache in-memory de drafts pendentes — Sprint 4: migrar para distributed cache
-    private static readonly Dictionary<Guid, (Guid TreinadorId, JsonElement Draft, DateTime ExpiresAt)> PendingDrafts = [];
-    private static readonly object DraftLock = new();
-
     public static void MapTreinadorAssistantEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/treinador/assistant")
@@ -36,6 +31,7 @@ public static class TreinadorAssistantEndpoints
         HttpContext ctx,
         AgentRegistry registry,
         ITokenBudget budget,
+        IDraftRequestTracker draftTracker,
         ILogger<ApplySuggestionRequest> logger,
         CancellationToken ct)
     {
@@ -104,77 +100,100 @@ public static class TreinadorAssistantEndpoints
         await budget.CommitAsync(treinadorId, AgentType.Treinador, actualTokens, ct);
         logger.LogInformation("AgentRun TreinadorId={Id} Tokens={Tokens}", treinadorId, actualTokens);
 
-        // Detectar preview de sugestão no output — registrar draft pendente
-        if (outputText.Contains("\"__tipo\": \"sugestao_ficha_preview\""))
+        // Draft stored by the tool via IDraftRequestTracker (shared scope) — no LLM output parsing
+        if (draftTracker.PendingDraftId.HasValue)
         {
-            var draftId = Guid.NewGuid();
-            try
+            return Results.Ok(new
             {
-                var startIdx = outputText.IndexOf('{');
-                var endIdx = outputText.LastIndexOf('}') + 1;
-                if (startIdx >= 0 && endIdx > startIdx)
-                {
-                    var jsonPart = outputText[startIdx..endIdx];
-                    var draft = JsonSerializer.Deserialize<JsonElement>(jsonPart);
-                    lock (DraftLock)
-                    {
-                        CleanExpiredDrafts();
-                        PendingDrafts[draftId] = (treinadorId, draft, DateTime.UtcNow.Add(DraftTtl));
-                    }
-                    return Results.Ok(new
-                    {
-                        reply = safeOutput,
-                        pendingApproval = true,
-                        draftId,
-                        draftExpiresAt = DateTime.UtcNow.Add(DraftTtl)
-                    });
-                }
-            }
-            catch (JsonException) { /* retornar reply normal */ }
+                reply = safeOutput,
+                pendingApproval = true,
+                draftId = draftTracker.PendingDraftId.Value,
+                draftExpiresAt = draftTracker.PendingDraftExpiresAt
+            });
         }
 
         return Results.Ok(new { reply = safeOutput });
     }
 
-    private static IResult ApplySuggestion(
+    private static async Task<IResult> ApplySuggestion(
         [FromBody] ApplySuggestionRequest req,
         HttpContext ctx,
-        ILogger<ApplySuggestionRequest> logger)
+        IDraftSuggestionService draftService,
+        CriarTreinoHandler criarTreinoHandler,
+        ILogger<ApplySuggestionRequest> logger,
+        CancellationToken ct)
     {
         var perfilId = ctx.User.FindFirst("perfil_id")?.Value;
         if (!Guid.TryParse(perfilId, out var treinadorId))
             return Results.Unauthorized();
 
-        lock (DraftLock)
+        var draft = draftService.GetDraft(req.DraftId, treinadorId);
+        if (draft is null)
+            return Results.NotFound(new { error = "draft_nao_encontrado_ou_expirado" });
+
+        var objetivo = ParseObjetivo(draft.Objetivo);
+        var dificuldade = ParseDificuldade(draft.Dificuldade);
+        var nome = BuildNome(draft.Objetivo, draft.Dificuldade);
+
+        try
         {
-            if (!PendingDrafts.TryGetValue(req.DraftId, out var entry))
-                return Results.NotFound(new { error = "draft_nao_encontrado" });
+            var command = new CriarTreinoCommand(
+                TreinadorId: treinadorId,
+                AlunoId: draft.AlunoId,
+                Nome: nome,
+                Objetivo: objetivo,
+                Dificuldade: dificuldade);
 
-            if (entry.TreinadorId != treinadorId)
-            {
-                logger.LogWarning("ApplySuggestion ownership mismatch DraftId={Id} TreinadorId={Tid}", req.DraftId, treinadorId);
-                return Results.Forbid();
-            }
+            var result = await criarTreinoHandler.HandleAsync(command, ct);
+            draftService.RemoveDraft(req.DraftId);
 
-            if (entry.ExpiresAt < DateTime.UtcNow)
-            {
-                PendingDrafts.Remove(req.DraftId);
-                return Results.BadRequest(new { error = "draft_expirado" });
-            }
+            logger.LogInformation("ApplySuggestion TreinadorId={TId} DraftId={DId} TreinoId={TrId}",
+                treinadorId, req.DraftId, result.TreinoId);
 
-            PendingDrafts.Remove(req.DraftId);
+            return Results.Ok(new { treinoId = result.TreinoId, message = "Ficha criada com sucesso." });
         }
-
-        // TODO Sprint 3: chamar handler de criação de treino com dados do draft
-        logger.LogInformation("ApplySuggestion TreinadorId={Id} DraftId={DId}", treinadorId, req.DraftId);
-
-        return Results.Ok(new { message = "Sugestão confirmada. Ficha salva com sucesso." });
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ApplySuggestion failed TreinadorId={TId} DraftId={DId}", treinadorId, req.DraftId);
+            return Results.StatusCode(500);
+        }
     }
 
-    private static void CleanExpiredDrafts()
+    private static string BuildNome(string objetivo, string dificuldade)
     {
-        var expired = PendingDrafts.Where(kv => kv.Value.ExpiresAt < DateTime.UtcNow).Select(kv => kv.Key).ToList();
-        foreach (var key in expired) PendingDrafts.Remove(key);
+        var nome = $"Sugestão IA: {objetivo} ({dificuldade})";
+        return nome.Length > 100 ? nome[..100] : nome;
+    }
+
+    private static ObjetivoTreino ParseObjetivo(string s)
+    {
+        if (Enum.TryParse<ObjetivoTreino>(s, ignoreCase: true, out var parsed))
+            return parsed;
+
+        var lower = s.ToLowerInvariant();
+        if (lower.Contains("hipertrofia") || lower.Contains("massa") || lower.Contains("músculo"))
+            return ObjetivoTreino.Hipertrofia;
+        if (lower.Contains("força") || lower.Contains("forca") || lower.Contains("potência"))
+            return ObjetivoTreino.Forca;
+        if (lower.Contains("resistência") || lower.Contains("resistencia") || lower.Contains("cardio"))
+            return ObjetivoTreino.Resistencia;
+        if (lower.Contains("emagrec") || lower.Contains("perda de peso") || lower.Contains("queima"))
+            return ObjetivoTreino.Emagrecimento;
+        if (lower.Contains("reabilita") || lower.Contains("lesão") || lower.Contains("recuperação"))
+            return ObjetivoTreino.Reabilitacao;
+
+        return ObjetivoTreino.Hipertrofia;
+    }
+
+    private static DificuldadeTreino ParseDificuldade(string s)
+    {
+        var lower = s.ToLowerInvariant()
+            .Replace("á", "a").Replace("ã", "a").Replace("é", "e").Replace("â", "a")
+            .Replace("ç", "c").Replace("ó", "o").Replace("ú", "u").Replace("í", "i");
+
+        if (lower.Contains("avan")) return DificuldadeTreino.Avancado;
+        if (lower.Contains("inter")) return DificuldadeTreino.Intermediario;
+        return DificuldadeTreino.Iniciante;
     }
 }
 

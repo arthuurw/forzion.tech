@@ -1,6 +1,7 @@
 using System.Net;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Tests.Helpers;
 using forzion.tech.Application.UseCases.Pacotes;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
 using forzion.tech.Application.UseCases.Planos;
@@ -32,6 +33,8 @@ public class PublicEndpointsTests(PublicEndpointsTests.PublicWebFactory factory)
 
             builder.ConfigureServices(services =>
             {
+                services.AddForzionAITestMocks();
+
                 services.RemoveAll<ListarPlanosTreinadorHandler>();
                 services.RemoveAll<ListarPacotesAlunoHandler>();
 
