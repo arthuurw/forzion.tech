@@ -22,7 +22,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: Homolog
+      ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__AppConnection: "Host=postgres;Port=5432;Database=forzion;Username=forzion;Password=forzion_local;Search Path=homolog;"
       Database__Schema: homolog
       Auth__JwtSecret: "${JWT_SECRET}"
