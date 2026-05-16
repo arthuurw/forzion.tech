@@ -71,6 +71,14 @@ using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMuscu
 using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.ExcluirPacoteAluno;
+using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
+using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
+using forzion.tech.Application.UseCases.Assinaturas.CriarAssinatura;
+using forzion.tech.Application.UseCases.Assinaturas.CancelarAssinatura;
+using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
+using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
+using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinatura;
+using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -94,6 +102,30 @@ public static class DependencyInjectionExtensions
             opt.AddFixedWindowLimiter("write", c =>
             {
                 c.PermitLimit = 60;
+                c.Window = TimeSpan.FromMinutes(1);
+                c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                c.QueueLimit = 0;
+            });
+            // Leitura/polling — generoso para suportar PagamentoPix 30s
+            opt.AddFixedWindowLimiter("read", c =>
+            {
+                c.PermitLimit = 120;
+                c.Window = TimeSpan.FromMinutes(1);
+                c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                c.QueueLimit = 0;
+            });
+            // Endpoint interno — mínimo para prevenir brute-force da API key
+            opt.AddFixedWindowLimiter("internal", c =>
+            {
+                c.PermitLimit = 5;
+                c.Window = TimeSpan.FromMinutes(1);
+                c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                c.QueueLimit = 0;
+            });
+            // Webhook público — generoso para não perder eventos Stripe, mas limita abuso
+            opt.AddFixedWindowLimiter("webhook", c =>
+            {
+                c.PermitLimit = 300;
                 c.Window = TimeSpan.FromMinutes(1);
                 c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                 c.QueueLimit = 0;
@@ -202,6 +234,16 @@ public static class DependencyInjectionExtensions
         services.AddScoped<AtualizarPacoteAlunoHandler>();
         services.AddScoped<ExcluirPacoteAlunoHandler>();
         services.AddScoped<ListarPacotesAlunoHandler>();
+
+        // Pagamentos / Stripe
+        services.AddScoped<IniciarOnboardingTreinadorHandler>();
+        services.AddScoped<VerificarOnboardingTreinadorHandler>();
+        services.AddScoped<CriarAssinaturaHandler>();
+        services.AddScoped<CancelarAssinaturaHandler>();
+        services.AddScoped<GerarCobrancaMensalHandler>();
+        services.AddScoped<ObterStatusPagamentoHandler>();
+        services.AddScoped<ListarPagamentosAssinaturaHandler>();
+        services.AddScoped<ProcessarWebhookStripeHandler>();
 
         // Aluno (área do aluno)
         services.AddScoped<ListarFichasAlunoHandler>();

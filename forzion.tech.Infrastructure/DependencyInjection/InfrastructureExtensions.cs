@@ -1,6 +1,8 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Events;
+using forzion.tech.Infrastructure.Handlers;
 using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using forzion.tech.Infrastructure.Persistence;
@@ -11,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace forzion.tech.Infrastructure.DependencyInjection;
 
@@ -56,6 +59,25 @@ public static class InfrastructureExtensions
         services.AddScoped<IVinculoTreinadorAlunoRepository, VinculoTreinadorAlunoRepository>();
         services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
         services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
+        services.AddScoped<IAssinaturaRepository, AssinaturaRepository>();
+        services.AddScoped<IPagamentoRepository, PagamentoRepository>();
+
+        // Stripe — valida no startup que SecretKey e WebhookSecret estão configurados
+        services.AddOptions<StripeSettings>()
+            .BindConfiguration("Stripe")
+            .Validate(s => !string.IsNullOrWhiteSpace(s.SecretKey),
+                "Stripe:SecretKey não configurado. Use User Secrets ou variável de ambiente.")
+            .Validate(s => !string.IsNullOrWhiteSpace(s.WebhookSecret),
+                "Stripe:WebhookSecret não configurado. Use User Secrets ou variável de ambiente.")
+            .Validate(s => s.TaxaPlataformaPercent > 0 && s.TaxaPlataformaPercent <= 100,
+                "Stripe:TaxaPlataformaPercent deve estar entre 0 e 100.")
+            .ValidateOnStart();
+        services.AddScoped<IStripeService, StripeService>();
+
+        // PaymentSettings — expõe taxa de plataforma para a camada Application
+        services.AddOptions<PaymentSettings>()
+            .Configure<IOptions<StripeSettings>>((payment, stripe) =>
+                payment.TaxaPlataformaPercent = stripe.Value.TaxaPlataformaPercent);
 
         services.AddScoped<DataSeeder>();
 
@@ -85,6 +107,9 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<TreinadorReprovadoEvent>, TreinadorReprovadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoEmailHandler>();
+
+        // Domain event handlers — pagamento
+        services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaHandler>();
 
         // WhatsApp notifier — Evolution API when configured, no-op otherwise
         var whatsAppBase = configuration["WhatsApp:BaseUrl"];

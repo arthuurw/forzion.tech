@@ -27,6 +27,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<ExecucaoTreino> ExecucoesTreino => Set<ExecucaoTreino>();
     public DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
     public DbSet<TokenRevogado> TokensRevogados => Set<TokenRevogado>();
+    public DbSet<Assinatura> Assinaturas => Set<Assinatura>();
+    public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
