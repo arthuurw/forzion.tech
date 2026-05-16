@@ -1,17 +1,29 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import type { SerieConfigResponse, TreinoExercicioResponse } from "@/types";
 
-vi.mock("xlsx", () => ({
-  utils: {
-    book_new: vi.fn(() => ({ SheetNames: [] as string[], Sheets: {} as Record<string, unknown> })),
-    aoa_to_sheet: vi.fn(() => ({ "!ref": "A1:I10" })),
-    book_append_sheet: vi.fn(),
+const excelMocks = vi.hoisted(() => {
+  const addRow = vi.fn();
+  const getColumn = vi.fn(function() { return { width: 0 }; });
+  const worksheet = { addRow, getColumn };
+
+  const addWorksheet = vi.fn(function() { return worksheet; });
+  const writeBuffer = vi.fn(function() { return Promise.resolve(new Uint8Array([1, 2, 3])); });
+
+  class WorkbookMock {
+    addWorksheet = addWorksheet;
+    xlsx = { writeBuffer };
+  }
+
+  return { addRow, getColumn, worksheet, addWorksheet, writeBuffer, WorkbookMock };
+});
+
+vi.mock("exceljs", () => ({
+  default: {
+    Workbook: excelMocks.WorkbookMock,
   },
-  writeFile: vi.fn(),
 }));
 
-import * as XLSX from "xlsx";
-import { buildFichaRows, exportarFichaParaExcel, sanitizeFilename } from "@/lib/utils/excel";
+import { buildFichaRows, exportarFichaParaExcel, safeCell, sanitizeFilename } from "@/lib/utils/excel";
 import type { FichaExportParams } from "@/lib/utils/excel";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -97,6 +109,50 @@ describe("sanitizeFilename", () => {
     const result = sanitizeFilename("C:\\Windows\\System32");
     expect(result).not.toContain("\\");
     expect(result).not.toContain(":");
+  });
+});
+
+// ─── safeCell ───────────────────────────────────────────────────────────────
+
+describe("safeCell — formula injection prevention for ExcelJS", () => {
+  it("prefixes '=' strings with apostrophe", () => {
+    expect(safeCell('=HYPERLINK("http://evil.com","x")')).toBe("'=HYPERLINK(\"http://evil.com\",\"x\")");
+  });
+
+  it("prefixes '+' strings with apostrophe", () => {
+    expect(safeCell("+1 DROP TABLE")).toBe("'+1 DROP TABLE");
+  });
+
+  it("prefixes '-' strings with apostrophe", () => {
+    expect(safeCell("-cmd|' /C calc'!A0")).toBe("'-cmd|' /C calc'!A0");
+  });
+
+  it("prefixes '@' strings with apostrophe", () => {
+    expect(safeCell("@SUM(1+1)")).toBe("'@SUM(1+1)");
+  });
+
+  it("prefixes '|' strings with apostrophe (DDE)", () => {
+    expect(safeCell("|cmd;calc!A0")).toBe("'|cmd;calc!A0");
+  });
+
+  it("prefixes '%' strings with apostrophe", () => {
+    expect(safeCell("%00malicious")).toBe("'%00malicious");
+  });
+
+  it("passes safe strings through unchanged", () => {
+    expect(safeCell("Agachamento")).toBe("Agachamento");
+    expect(safeCell("Foco na contração")).toBe("Foco na contração");
+    expect(safeCell("")).toBe("");
+  });
+
+  it("passes numbers through unchanged", () => {
+    expect(safeCell(3)).toBe(3);
+    expect(safeCell(0)).toBe(0);
+    expect(safeCell(-5)).toBe(-5);
+  });
+
+  it("passes null through unchanged", () => {
+    expect(safeCell(null)).toBeNull();
   });
 });
 
@@ -249,14 +305,13 @@ describe("buildFichaRows — exercise data", () => {
   });
 });
 
-// ─── buildFichaRows — security: formula injection ───────────────────────────
+// ─── buildFichaRows — formula injection (raw values) ────────────────────────
 
-describe("buildFichaRows — formula injection (SheetJS defense)", () => {
+describe("buildFichaRows — raw values (safeCell applied later by exportarFichaParaExcel)", () => {
   /**
-   * SheetJS writes JS strings as xlsx type 's' (string) cells.
-   * Excel reads type-'s' cells as literal text, never as formulas.
-   * These tests verify that values are passed through unmodified to the
-   * row array (the xlsx type system is the sole, sufficient defense).
+   * buildFichaRows is a pure data function — it returns raw values without
+   * escaping. safeCell is applied in exportarFichaParaExcel before writing to
+   * ExcelJS. These tests verify buildFichaRows is transparent.
    */
 
   it("exercise name starting with '=' reaches row unchanged", () => {
@@ -282,7 +337,6 @@ describe("buildFichaRows — formula injection (SheetJS defense)", () => {
   });
 
   it("pipe-separated DDE payload reaches row unchanged", () => {
-    // DDE injection pattern: |cmd;calc!A0
     const ex = makeExercicio({ nomeExercicio: "|cmd;calc!A0" });
     expect(buildFichaRows({ ...BASE, exercicios: [ex] })[4][1]).toBe("|cmd;calc!A0");
   });
@@ -291,53 +345,81 @@ describe("buildFichaRows — formula injection (SheetJS defense)", () => {
 // ─── exportarFichaParaExcel ──────────────────────────────────────────────────
 
 describe("exportarFichaParaExcel", () => {
-  beforeEach(() => vi.clearAllMocks());
+  let anchorEl: { href: string; download: string; click: ReturnType<typeof vi.fn> };
 
-  it("calls XLSX.writeFile with sanitized filename + .xlsx extension", () => {
-    exportarFichaParaExcel({ ...BASE, nome: "Treino/Especial" });
-    expect(XLSX.writeFile).toHaveBeenCalledWith(
-      expect.anything(),
-      "TreinoEspecial.xlsx",
-    );
+  beforeEach(() => {
+    vi.clearAllMocks();
+    anchorEl = { href: "", download: "", click: vi.fn() };
+    vi.spyOn(document, "createElement").mockImplementation(function() {
+      return anchorEl as unknown as HTMLElement;
+    });
+    Object.defineProperty(URL, "createObjectURL", { value: vi.fn(function() { return "blob:mock"; }), writable: true, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), writable: true, configurable: true });
   });
 
-  it("filename always ends with .xlsx", () => {
-    exportarFichaParaExcel(BASE);
-    const [, filename] = (XLSX.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [unknown, string];
-    expect(filename.endsWith(".xlsx")).toBe(true);
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("uses fallback 'ficha.xlsx' when nome sanitizes to empty", () => {
-    exportarFichaParaExcel({ ...BASE, nome: "!!!" });
-    expect(XLSX.writeFile).toHaveBeenCalledWith(expect.anything(), "ficha.xlsx");
+  it("triggers download with sanitized filename + .xlsx extension", async () => {
+    await exportarFichaParaExcel({ ...BASE, nome: "Treino/Especial" });
+    expect(anchorEl.download).toBe("TreinoEspecial.xlsx");
   });
 
-  it("does not throw for empty exercicios", () => {
-    expect(() =>
-      exportarFichaParaExcel({ ...BASE, exercicios: [] }),
-    ).not.toThrow();
+  it("filename always ends with .xlsx", async () => {
+    await exportarFichaParaExcel(BASE);
+    expect(anchorEl.download.endsWith(".xlsx")).toBe(true);
   });
 
-  it("does not throw for exercises with all optional fields null", () => {
+  it("uses fallback 'ficha.xlsx' when nome sanitizes to empty", async () => {
+    await exportarFichaParaExcel({ ...BASE, nome: "!!!" });
+    expect(anchorEl.download).toBe("ficha.xlsx");
+  });
+
+  it("calls writeBuffer and triggers anchor click", async () => {
+    await exportarFichaParaExcel(BASE);
+    expect(excelMocks.writeBuffer).toHaveBeenCalled();
+    expect(anchorEl.click).toHaveBeenCalled();
+  });
+
+  it("revokes object URL after triggering download", async () => {
+    await exportarFichaParaExcel(BASE);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock");
+  });
+
+  it("creates worksheet named 'Ficha'", async () => {
+    await exportarFichaParaExcel(BASE);
+    expect(excelMocks.addWorksheet).toHaveBeenCalledWith("Ficha");
+  });
+
+  it("adds one row per data row built by buildFichaRows", async () => {
+    await exportarFichaParaExcel(BASE);
+    expect(excelMocks.addRow).toHaveBeenCalledTimes(buildFichaRows(BASE).length);
+  });
+
+  it("applies safeCell — formula-trigger cells are escaped before addRow", async () => {
+    const ex = makeExercicio({ nomeExercicio: "=EVIL()" });
+    await exportarFichaParaExcel({ ...BASE, exercicios: [ex] });
+
+    // 4 header rows (index 0-3) then first data row (index 4)
+    const dataRowArg = excelMocks.addRow.mock.calls[4][0] as (string | number | null)[];
+    expect(dataRowArg[1]).toBe("'=EVIL()");
+  });
+
+  it("resolves without throwing for empty exercicios", async () => {
+    await expect(exportarFichaParaExcel({ ...BASE, exercicios: [] })).resolves.toBeUndefined();
+  });
+
+  it("resolves without throwing when all optional fields are null", async () => {
     const ex = makeExercicio({
       observacao: null,
       series: [makeSerie({ repeticoesMax: null, descricao: null, carga: null, descanso: null })],
     });
-    expect(() =>
-      exportarFichaParaExcel({ ...BASE, exercicios: [ex] }),
-    ).not.toThrow();
+    await expect(exportarFichaParaExcel({ ...BASE, exercicios: [ex] })).resolves.toBeUndefined();
   });
 
-  it("calls XLSX.utils.book_new, aoa_to_sheet, book_append_sheet in sequence", () => {
-    exportarFichaParaExcel(BASE);
-    expect(XLSX.utils.book_new).toHaveBeenCalled();
-    expect(XLSX.utils.aoa_to_sheet).toHaveBeenCalled();
-    expect(XLSX.utils.book_append_sheet).toHaveBeenCalled();
-  });
-
-  it("passes rows built by buildFichaRows to aoa_to_sheet", () => {
-    const expected = buildFichaRows(BASE);
-    exportarFichaParaExcel(BASE);
-    expect(XLSX.utils.aoa_to_sheet).toHaveBeenCalledWith(expected);
+  it("sets nine column widths", async () => {
+    await exportarFichaParaExcel(BASE);
+    expect(excelMocks.getColumn).toHaveBeenCalledTimes(9);
   });
 });

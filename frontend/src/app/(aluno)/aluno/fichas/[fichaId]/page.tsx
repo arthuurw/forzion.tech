@@ -68,7 +68,7 @@ export default function DetalheFichaAlunoPage() {
             variant="outlined"
             size="small"
             startIcon={<FileDownloadIcon />}
-            onClick={() => exportarFichaParaExcel({ nome: ficha.nomeTreino, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
+            onClick={() => void exportarFichaParaExcel({ nome: ficha.nomeTreino, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
           >
             Exportar
           </Button>

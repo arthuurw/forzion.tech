@@ -16,16 +16,21 @@
     "@mui/icons-material": "^9.0.0",
     "@mui/material": "^9.0.0",
     "@mui/material-nextjs": "^9.0.0",
-    "axios": "^1.15.0",
+    "@stripe/react-stripe-js": "^6.3.0",
+    "@stripe/stripe-js": "^9.5.0",
+    "axios": "^1.16.1",
     "dayjs": "^1.11.20",
-    "next": "16.2.4",
+    "next": "^16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.72.1",
     "recharts": "^3.8.1",
-    "xlsx": "^0.18.5",
+    "exceljs": "^4.4.0",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
