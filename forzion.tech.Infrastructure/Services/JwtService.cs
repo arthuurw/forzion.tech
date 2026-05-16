@@ -21,6 +21,9 @@ public class JwtService : IJwtService
 
         _secret = configuration["Auth:JwtSecret"]
             ?? throw new InvalidOperationException("Configuração 'Auth:JwtSecret' não encontrada.");
+
+        if (_secret.Length < 32)
+            throw new InvalidOperationException("Auth:JwtSecret deve ter ao menos 32 caracteres (256 bits).");
         _issuer = configuration["Auth:JwtIssuer"] ?? "forzion.tech";
         _audience = configuration["Auth:JwtAudience"] ?? "forzion.tech";
 
@@ -39,7 +42,8 @@ public class JwtService : IJwtService
         {
             new Claim("conta_id", conta.Id.ToString()),
             new Claim("tipo_conta", conta.TipoConta.ToString()),
-            new Claim("perfil_id", perfilId.ToString())
+            new Claim("perfil_id", perfilId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
         var token = new JwtSecurityToken(

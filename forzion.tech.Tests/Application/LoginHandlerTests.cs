@@ -62,7 +62,7 @@ public class LoginHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conta?)null);
 
-        var act = async () => await _handler.HandleAsync(new LoginCommand("x@test.com", "senha"));
+        var act = async () => await _handler.HandleAsync(new LoginCommand("x@test.com", "Senha123"));
         await act.Should().ThrowAsync<CredenciaisInvalidasException>();
     }
 
@@ -74,7 +74,7 @@ public class LoginHandlerTests
             .ReturnsAsync(conta);
         _passwordHasher.Setup(p => p.Verify(It.IsAny<string>(), "hash")).Returns(false);
 
-        var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "errada"));
+        var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senhaerrada"));
         await act.Should().ThrowAsync<CredenciaisInvalidasException>();
     }
 
@@ -84,7 +84,7 @@ public class LoginHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conta?)null);
 
-        var act = async () => await _handler.HandleAsync(new LoginCommand("TRAINER@TEST.COM", "senha"));
+        var act = async () => await _handler.HandleAsync(new LoginCommand("TRAINER@TEST.COM", "Senha123"));
         await act.Should().ThrowAsync<CredenciaisInvalidasException>();
 
         _contaRepo.Verify(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()), Times.Once);
@@ -152,7 +152,7 @@ public class LoginHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaInvalidOperationException()
+    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaDomainException()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador);
 
@@ -164,7 +164,7 @@ public class LoginHandlerTests
 
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<DomainException>();
     }
 
     [Fact]

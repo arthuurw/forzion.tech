@@ -6,7 +6,7 @@ public record PacoteAlunoResponse(
     Guid PacoteId,
     Guid TreinadorId,
     string Nome,
-    int MaxFichas,
+    string? Descricao,
     decimal Preco,
     bool IsAtivo,
     DateTime CreatedAt,
@@ -15,5 +15,5 @@ public record PacoteAlunoResponse(
 public static class PacoteAlunoResponseExtensions
 {
     public static PacoteAlunoResponse ToResponse(PacoteAluno pacote) => new(
-        pacote.Id, pacote.TreinadorId, pacote.Nome, pacote.MaxFichas, pacote.Preco, pacote.IsAtivo, pacote.CreatedAt, pacote.UpdatedAt);
+        pacote.Id, pacote.TreinadorId, pacote.Nome, pacote.Descricao, pacote.Preco, pacote.IsAtivo, pacote.CreatedAt, pacote.UpdatedAt);
 }

@@ -2,7 +2,6 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
@@ -38,11 +37,21 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
         Guid treinadorId, VinculoStatus? status, int pagina, int tamanhoPagina,
         CancellationToken cancellationToken = default)
     {
+        var alunosComVinculoAtivo = context.VinculosTreinadorAluno
+            .Where(v2 => v2.Status == VinculoStatus.Ativo && v2.TreinadorId != treinadorId)
+            .Select(v2 => v2.AlunoId)
+            .Distinct();
+
         var baseQuery =
             from v in context.VinculosTreinadorAluno
             join a in context.Alunos on v.AlunoId equals a.Id
             where v.TreinadorId == treinadorId
-            select new { v, a };
+            select new
+            {
+                v,
+                a,
+                TemVinculoAtivoPrevio = alunosComVinculoAtivo.Contains(v.AlunoId)
+            };
 
         if (status.HasValue)
             baseQuery = baseQuery.Where(x => x.v.Status == status.Value);
@@ -55,7 +64,7 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var items = raw.Select(x => new VinculoComDetalheAluno(x.v, x.a.Nome, x.a.Email))
+        var items = raw.Select(x => new VinculoComDetalheAluno(x.v, x.a.Nome, x.a.Email, x.TemVinculoAtivoPrevio))
             .ToList();
 
         return (items, total);

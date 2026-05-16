@@ -12,6 +12,7 @@ using forzion.tech.Application.UseCases.Treinos.AdicionarExercicio;
 using forzion.tech.Application.UseCases.Treinos.CriarTreino;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -46,7 +47,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     [Fact]
     public async Task Post_Criar_Retorna201()
     {
-        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
+        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, DificuldadeTreino.Iniciante, null, null, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
         _factory.CriarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CriarTreinoCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(responseTreino);
 
@@ -59,7 +60,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     [Fact]
     public async Task Get_Obter_Retorna200()
     {
-        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
+        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, DificuldadeTreino.Iniciante, null, null, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
         _factory.ObterHandlerMock.Setup(h => h.HandleAsync(It.IsAny<ObterTreinoQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(responseTreino);
 
@@ -71,12 +72,12 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     [Fact]
     public async Task Post_AdicionarExercicio_Retorna200()
     {
-        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
+        var responseTreino = new TreinoResponse(Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, DificuldadeTreino.Iniciante, null, null, TreinadorId, new List<TreinoExercicioResponse>(), DateTime.UtcNow, null);
         _factory.AdicionarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<AdicionarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(responseTreino);
+            .ReturnsAsync(Result.Success(responseTreino));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{Guid.NewGuid()}/exercicios",
-            new { exercicioId = Guid.NewGuid(), series = 3, repeticoes = 10 });
+            new { exercicioId = Guid.NewGuid(), series = new[] { new { quantidade = 3, repeticoesMin = 10, repeticoesMax = (int?)12, descricao = (string?)null, carga = (decimal?)null, descanso = (int?)60 } } });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -99,7 +100,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             .ThrowsAsync(new forzion.tech.Domain.Exceptions.AcessoNegadoException());
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{Guid.NewGuid()}/exercicios",
-            new { exercicioId = Guid.NewGuid(), series = 3, repeticoes = 10 });
+            new { exercicioId = Guid.NewGuid(), series = new[] { new { quantidade = 3, repeticoesMin = 10, repeticoesMax = (int?)12, descricao = (string?)null, carga = (decimal?)null, descanso = (int?)60 } } });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -147,6 +148,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
         {
             builder.UseEnvironment("Test");
             builder.UseSetting("AllowedHosts", "*");
+            builder.UseSetting("Auth:JwtSecret", "test-only-secret-at-least-32-chars!!");
 
             builder.ConfigureServices(services =>
             {

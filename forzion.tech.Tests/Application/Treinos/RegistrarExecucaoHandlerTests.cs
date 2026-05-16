@@ -15,6 +15,7 @@ public class RegistrarExecucaoHandlerTests
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
+    private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
@@ -25,7 +26,7 @@ public class RegistrarExecucaoHandlerTests
     {
         _handler = new RegistrarExecucaoHandler(
             _treinoRepo.Object, _alunoRepo.Object, _treinoAlunoRepo.Object,
-            _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
+            _vinculoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
     }
 
     private static RegistrarExecucaoCommand ComandoValido(Guid treinoId, Guid alunoId) =>
@@ -34,14 +35,18 @@ public class RegistrarExecucaoHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_RegistraERetorna()
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
         var alunoId = Guid.NewGuid();
         var aluno = Aluno.Criar(alunoId, "João");
         var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
+        vinculo.Aprovar(treinadorId, Guid.NewGuid());
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var result = await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
@@ -85,6 +90,24 @@ public class RegistrarExecucaoHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_VinculoInativo_LancaAcessoNegadoException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var alunoId = Guid.NewGuid();
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+
+        _userContext.Setup(u => u.PerfilId).Returns(alunoId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
+
+        var act = async () => await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
+    }
+
+    [Fact]
     public async Task HandleAsync_TreinoNaoEncontrado_LancaTreinoNaoEncontradoException()
     {
         var treinoId = Guid.NewGuid();
@@ -100,13 +123,17 @@ public class RegistrarExecucaoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoNaoEncontrado_LancaAlunoNaoEncontradoException()
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
         var alunoId = Guid.NewGuid();
         var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
+        vinculo.Aprovar(treinadorId, Guid.NewGuid());
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((Aluno?)null);
 
         var act = async () => await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
@@ -117,15 +144,19 @@ public class RegistrarExecucaoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
         var alunoId = Guid.NewGuid();
         var aluno = Aluno.Criar(alunoId, "João");
         aluno.AlterarStatus(AlunoStatus.Inativo);
         var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
+        vinculo.Aprovar(treinadorId, Guid.NewGuid());
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var act = async () => await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));

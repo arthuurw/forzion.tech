@@ -21,8 +21,11 @@ public class ReativarVinculoHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        _ = await alunoRepository.ObterPorIdAsync(command.AlunoId, cancellationToken).ConfigureAwait(false)
+        var aluno = await alunoRepository.ObterPorIdAsync(command.AlunoId, cancellationToken).ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
+
+        if (aluno.Status != AlunoStatus.Ativo)
+            throw new DomainException("Aluno inativo não pode ter vínculo reativado.");
 
         var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoAtivo is not null)

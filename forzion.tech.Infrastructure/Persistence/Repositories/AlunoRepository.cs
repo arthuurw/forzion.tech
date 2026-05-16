@@ -23,9 +23,36 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
         Guid treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default)
     {
         var query = _context.VinculosTreinadorAluno
+            .AsNoTracking()
             .Where(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo)
             .Join(_context.Alunos, v => v.AlunoId, a => a.Id, (_, a) => a)
             .OrderBy(a => a.Nome);
+
+        var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
+        var items = await query
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return (items, total);
+    }
+
+    public async Task<(IReadOnlyList<Aluno> Items, int Total)> ListarTodosAsync(
+        int pagina, int tamanhoPagina,
+        string? nome = null,
+        AlunoStatus? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Alunos.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(nome))
+            query = query.Where(a => a.Nome.Contains(nome));
+
+        if (status.HasValue)
+            query = query.Where(a => a.Status == status.Value);
+
+        query = query.OrderBy(a => a.Nome);
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await query

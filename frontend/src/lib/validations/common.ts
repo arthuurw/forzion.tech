@@ -3,11 +3,20 @@ import { z } from "zod";
 export const emailSchema = z
   .string()
   .min(1, "E-mail obrigatório")
+  .max(254, "E-mail deve ter no máximo 254 caracteres.")
   .email("E-mail inválido");
 
 export const passwordSchema = z
   .string()
   .min(8, "Mínimo 8 caracteres");
+
+export const registerPasswordSchema = z
+  .string()
+  .min(8, "Mínimo 8 caracteres")
+  .max(72, "Máximo 72 caracteres")
+  .regex(/(?=.*[a-z])/, "Deve conter ao menos uma letra minúscula.")
+  .regex(/(?=.*[A-Z])/, "Deve conter ao menos uma letra maiúscula.")
+  .regex(/(?=.*\d)/, "Deve conter ao menos um número.");
 
 export const nomeSchema = z
   .string()
@@ -30,7 +39,8 @@ export const cadastroTreinadorSchema = z
   .object({
     nome: nomeSchema,
     email: emailSchema,
-    password: passwordSchema,
+    telefone: telefoneSchema,
+    password: registerPasswordSchema,
     confirmPassword: z.string().min(1, "Confirmação obrigatória"),
   })
   .refine((d) => d.password === d.confirmPassword, {
@@ -43,9 +53,19 @@ export const cadastroAlunoSchema = z
   .object({
     nome: nomeSchema,
     email: emailSchema,
-    telefone: telefoneSchema,
-    password: passwordSchema,
+    telefone: z
+      .string()
+      .regex(/^\d{10,11}$/, "Telefone inválido (somente dígitos, 10 ou 11)"),
+    password: registerPasswordSchema,
     confirmPassword: z.string().min(1, "Confirmação obrigatória"),
+    diasDisponiveis: z.string().min(1, "Selecione os dias disponíveis"),
+    tempoDisponivelMinutos: z.string().min(1, "Selecione o tempo disponível"),
+    finalidade: z.string().min(1, "Selecione a finalidade do treino"),
+    nivelCondicionamento: z.string().min(1, "Selecione o nível de condicionamento"),
+    focoTreino: z.string().max(200, "Máximo 200 caracteres").optional().or(z.literal("")),
+    limitacoesFisicas: z.string().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
+    doencas: z.string().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
+    observacoesAdicionais: z.string().max(1000, "Máximo 1000 caracteres").optional().or(z.literal("")),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: "As senhas não coincidem",

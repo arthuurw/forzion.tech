@@ -321,7 +321,7 @@ export default function PerfilPage() {
             />
             <Autocomplete
               options={pacotesTroca}
-              getOptionLabel={(p) => `${p.nome} (até ${p.maxFichas} fichas)`}
+              getOptionLabel={(p) => p.descricao ? `${p.nome} — ${p.descricao}` : p.nome}
               value={selectedPacoteTroca}
               onChange={(_, v) => setSelectedPacoteTroca(v)}
               disabled={!selectedTreinador || loadingTrocaPacotes}

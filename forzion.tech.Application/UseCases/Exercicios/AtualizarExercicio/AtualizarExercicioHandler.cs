@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
@@ -8,7 +9,7 @@ public class AtualizarExercicioHandler(
     IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork)
 {
-    public virtual async Task<ExercicioResponse> HandleAsync(
+    public virtual async Task<Result<ExercicioResponse>> HandleAsync(
         AtualizarExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -32,13 +33,13 @@ public class AtualizarExercicioHandler(
             && !string.Equals(command.Nome.Trim(), exercicio.Nome, StringComparison.OrdinalIgnoreCase)
             && await exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, command.ExercicioId, cancellationToken).ConfigureAwait(false))
         {
-            throw new DomainException("Já existe um exercício com este nome nesta biblioteca.");
+            return Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca."));
         }
 
         exercicio.Atualizar(command.Nome, command.GrupoMuscular, command.Descricao);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return ExercicioResponseExtensions.ToResponse(exercicio);
+        return Result.Success(ExercicioResponseExtensions.ToResponse(exercicio));
     }
 }

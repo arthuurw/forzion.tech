@@ -1,6 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -17,7 +18,7 @@ public class CriarExercicioHandler(
     private readonly IValidator<CriarExercicioCommand> _validator = validator;
     private readonly ILogger<CriarExercicioHandler> _logger = logger;
 
-    public virtual async Task<ExercicioResponse> HandleAsync(
+    public virtual async Task<Result<ExercicioResponse>> HandleAsync(
         CriarExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -26,7 +27,7 @@ public class CriarExercicioHandler(
         await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         if (await _exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, cancellationToken: cancellationToken).ConfigureAwait(false))
-            throw new Domain.Exceptions.DomainException("Já existe um exercício com este nome nesta biblioteca.");
+            return Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca."));
 
         var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscular, command.TreinadorId, command.Descricao);
 
@@ -35,6 +36,6 @@ public class CriarExercicioHandler(
 
         _logger.LogInformation("Exercício {ExercicioId} criado.", exercicio.Id);
 
-        return ExercicioResponseExtensions.ToResponse(exercicio);
+        return Result.Success(ExercicioResponseExtensions.ToResponse(exercicio));
     }
 }

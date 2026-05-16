@@ -239,6 +239,7 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
         {
             builder.UseEnvironment("Test");
             builder.UseSetting("AllowedHosts", "*");
+            builder.UseSetting("Auth:JwtSecret", "test-only-secret-at-least-32-chars!!");
 
             builder.ConfigureServices(services =>
             {
@@ -281,7 +282,11 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
             if (!Guid.TryParse(userId, out _))
                 return Task.FromResult(AuthenticateResult.Fail("Token inválido"));
 
-            var claims = new[] { new Claim("sub", userId) };
+            var claims = new[]
+            {
+                new Claim("sub", userId),
+                new Claim("tipo_conta", "SystemAdmin")
+            };
             var identity = new ClaimsIdentity(claims, "Test");
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, "Test");
