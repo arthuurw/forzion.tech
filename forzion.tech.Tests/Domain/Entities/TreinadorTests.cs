@@ -172,4 +172,130 @@ public class TreinadorTests
         var act = () => t.ConfirmarOnboarding();
         act.Should().Throw<DomainException>().WithMessage("O treinador não possui conta Stripe configurada.");
     }
+
+    // --- Reprovar ---
+
+    [Fact]
+    public void Reprovar_AguardandoAprovacao_MudaParaInativo()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        var adminId = Guid.NewGuid();
+
+        t.Reprovar(adminId);
+
+        t.Status.Should().Be(TreinadorStatus.Inativo);
+        t.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Reprovar_JaAtivo_LancaDomainException()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        t.Aprovar(Guid.NewGuid());
+
+        var act = () => t.Reprovar(Guid.NewGuid());
+        act.Should().Throw<DomainException>().WithMessage("Apenas treinadores aguardando aprovação podem ser reprovados.");
+    }
+
+    // --- ValidarDisponibilidade ---
+
+    [Fact]
+    public void ValidarDisponibilidade_Ativo_NaoLancaExcecao()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        t.Aprovar(Guid.NewGuid());
+
+        var act = () => t.ValidarDisponibilidade();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ValidarDisponibilidade_AguardandoAprovacao_LancaDomainException()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+
+        var act = () => t.ValidarDisponibilidade();
+        act.Should().Throw<DomainException>().WithMessage("O treinador selecionado não está disponível.");
+    }
+
+    // --- ValidarParaExclusao ---
+
+    [Fact]
+    public void ValidarParaExclusao_Inativo_NaoLancaExcecao()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        t.Aprovar(Guid.NewGuid());
+        t.Inativar();
+
+        var act = () => t.ValidarParaExclusao();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ValidarParaExclusao_Ativo_LancaDomainException()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        t.Aprovar(Guid.NewGuid());
+
+        var act = () => t.ValidarParaExclusao();
+        act.Should().Throw<DomainException>().WithMessage("Apenas treinadores inativos podem ser excluídos permanentemente.");
+    }
+
+    // --- AtualizarNome ---
+
+    [Fact]
+    public void AtualizarNome_DadosValidos_AtualizaNomeEUpdatedAt()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        t.AtualizarNome("  João  ");
+        t.Nome.Should().Be("João");
+        t.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void AtualizarNome_NomeVazio_LancaDomainException(string nome)
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        var act = () => t.AtualizarNome(nome);
+        act.Should().Throw<DomainException>().WithMessage("O nome não pode ser vazio.");
+    }
+
+    [Fact]
+    public void AtualizarNome_NomeMuitoLongo_LancaDomainException()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        var act = () => t.AtualizarNome(new string('a', 101));
+        act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
+    }
+
+    // --- AtribuirPlano (guard inativo) ---
+
+    [Fact]
+    public void AtribuirPlano_TreinadorInativo_LancaDomainException()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos");
+        t.Aprovar(Guid.NewGuid());
+        t.Inativar();
+
+        var act = () => t.AtribuirPlano(Guid.NewGuid());
+        act.Should().Throw<DomainException>().WithMessage("Não é possível atribuir plano a um treinador inativo.");
+    }
+
+    // --- Criar com telefone ---
+
+    [Fact]
+    public void Criar_ComTelefone_SalvaTelefone()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", "  11999999999  ");
+        t.Telefone.Should().Be("11999999999");
+    }
+
+    [Fact]
+    public void Criar_TelefoneVazio_SalvaNull()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", "   ");
+        t.Telefone.Should().BeNull();
+    }
 }

@@ -70,6 +70,17 @@ public class GlobalExceptionHandlerTests
         context.Response.StatusCode.Should().Be(403);
     }
 
+    [Theory]
+    [InlineData(typeof(EmailJaCadastradoException))]
+    [InlineData(typeof(AlunoJaVinculadoException))]
+    public async Task TryHandleAsync_ConflictExceptions_Retorna409(Type exceptionType)
+    {
+        var exception = (Exception)Activator.CreateInstance(exceptionType)!;
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, exception, default);
+        context.Response.StatusCode.Should().Be(409);
+    }
+
     [Fact]
     public async Task TryHandleAsync_DomainException_Retorna422()
     {

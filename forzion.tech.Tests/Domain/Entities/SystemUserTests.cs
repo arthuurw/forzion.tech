@@ -72,4 +72,33 @@ public class SystemUserTests
         su.Status.Should().Be(UsuarioStatus.Inativo);
         su.UpdatedAt.Should().BeOnOrAfter(antes);
     }
+
+    // --- AtualizarNome ---
+
+    [Fact]
+    public void AtualizarNome_DadosValidos_AtualizaNomeEUpdatedAt()
+    {
+        var su = SystemUser.Criar(ContaId, "Admin");
+        su.AtualizarNome("  SuperAdmin  ");
+        su.Nome.Should().Be("SuperAdmin");
+        su.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void AtualizarNome_NomeVazio_LancaDomainException(string nome)
+    {
+        var su = SystemUser.Criar(ContaId, "Admin");
+        var act = () => su.AtualizarNome(nome);
+        act.Should().Throw<DomainException>().WithMessage("O nome é obrigatório.");
+    }
+
+    [Fact]
+    public void AtualizarNome_NomeMuitoLongo_LancaDomainException()
+    {
+        var su = SystemUser.Criar(ContaId, "Admin");
+        var act = () => su.AtualizarNome(new string('a', 101));
+        act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
+    }
 }

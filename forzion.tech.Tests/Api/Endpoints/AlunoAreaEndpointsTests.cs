@@ -12,11 +12,17 @@ using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterMinhaProgressao;
 using forzion.tech.Application.UseCases.Alunos.ObterProgressaoAluno;
+using forzion.tech.Application.UseCases.Assinaturas;
+using forzion.tech.Application.UseCases.Assinaturas.ObterAssinaturaAluno;
+using forzion.tech.Application.UseCases.Pagamentos;
+using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinatura;
+using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -54,6 +60,17 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
 
     private static readonly RegistrarExecucaoResponse RespostaExecucao = new(
         Guid.NewGuid(), TreinoId, AlunoId, DateTime.UtcNow, null, DateTime.UtcNow);
+
+    private static readonly Guid PagamentoId = Guid.NewGuid();
+    private static readonly Guid AssinaturaId = Guid.NewGuid();
+
+    private static readonly AssinaturaResponse RespostaAssinatura = new(
+        AssinaturaId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), AlunoId,
+        99.90m, AssinaturaStatus.Ativa, DateTime.UtcNow, DateTime.UtcNow.AddMonths(1), null, DateTime.UtcNow);
+
+    private static readonly PagamentoResponse RespostaPagamento = new(
+        PagamentoId, AssinaturaId, 99.90m, PagamentoStatus.Pendente, MetodoPagamento.Pix,
+        "qrcode", "https://example.com/qr", DateTime.UtcNow.AddHours(1), null, null, DateTime.UtcNow);
 
     public AlunoAreaEndpointsTests(AlunoAreaWebFactory factory)
     {
@@ -198,6 +215,163 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    // --- GET /aluno/assinatura ---
+
+    [Fact]
+    public async Task Get_Assinatura_Aluno_Retorna200()
+    {
+        _factory.ObterAssinaturaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RespostaAssinatura);
+
+        var response = await CriarClienteAluno().GetAsync("/aluno/assinatura");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_Assinatura_SemAssinatura_Retorna204()
+    {
+        _factory.ObterAssinaturaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AssinaturaResponse?)null);
+
+        var response = await CriarClienteAluno().GetAsync("/aluno/assinatura");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    // --- GET /aluno/pagamentos/{id} ---
+
+    [Fact]
+    public async Task Get_Pagamento_Aluno_Retorna200()
+    {
+        _factory.ObterStatusPagamentoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ObterStatusPagamentoQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RespostaPagamento);
+
+        var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/{PagamentoId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_Pagamento_AcessoNegado_Retorna403()
+    {
+        _factory.ObterStatusPagamentoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ObterStatusPagamentoQuery>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AcessoNegadoException());
+
+        var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/{PagamentoId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    // --- GET /aluno/pagamentos/assinatura/{id} ---
+
+    [Fact]
+    public async Task Get_ListarPagamentosAssinatura_Aluno_Retorna200()
+    {
+        _factory.ListarPagamentosHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ListarPagamentosAssinaturaQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<PagamentoResponse> { RespostaPagamento });
+
+        var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/assinatura/{AssinaturaId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    // --- POST /aluno/troca-treinador error paths ---
+
+    [Fact]
+    public async Task Post_TrocaTreinador_NaoEncontrado_Retorna404()
+    {
+        _factory.SolicitarTrocaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<SolicitarTrocaTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TreinadorNaoEncontradoException());
+
+        var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/troca-treinador",
+            new { NovoTreinadorId, PacoteId = Guid.NewGuid() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Post_TrocaTreinador_DomainException_Retorna422()
+    {
+        _factory.SolicitarTrocaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<SolicitarTrocaTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DomainException("Aluno já possui vínculo ativo."));
+
+        var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/troca-treinador",
+            new { NovoTreinadorId, PacoteId = Guid.NewGuid() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    // --- GET /aluno/progressao date validation ---
+
+    [Fact]
+    public async Task Get_Progressao_DataInvalida_Retorna400()
+    {
+        var ontem = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+        var hoje = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+        var response = await CriarClienteAluno()
+            .GetAsync($"/aluno/progressao?de={hoje}&ate={ontem}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // --- GET /aluno/pagamentos/assinatura/{id} error path ---
+
+    [Fact]
+    public async Task Get_PagamentosAssinatura_AcessoNegado_Retorna403()
+    {
+        _factory.ListarPagamentosHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ListarPagamentosAssinaturaQuery>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AcessoNegadoException());
+
+        var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/assinatura/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    // --- GET /aluno/fichas/{id} error path ---
+
+    [Fact]
+    public async Task Get_FichaDetalhe_NaoEncontrado_Retorna404()
+    {
+        _factory.ObterFichaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TreinoNaoEncontradoException());
+
+        var response = await CriarClienteAluno().GetAsync($"/aluno/fichas/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // --- POST /aluno/execucoes error path ---
+
+    [Fact]
+    public async Task Post_RegistrarExecucao_DomainException_Retorna422()
+    {
+        _factory.RegistrarExecucaoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DomainException("Treino não disponível."));
+
+        var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/execucoes",
+            new
+            {
+                TreinoId,
+                DataExecucao = DateTime.UtcNow,
+                Observacao = (string?)null,
+                Exercicios = Array.Empty<object>()
+            });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
     // --- WebApplicationFactory ---
 
     public class AlunoAreaWebFactory : WebApplicationFactory<Program>
@@ -240,6 +414,17 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
             Mock.Of<IUserContext>(),
             Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
+        public Mock<ObterAssinaturaAlunoHandler> ObterAssinaturaHandlerMock { get; } = new(
+            Mock.Of<IAssinaturaRepository>());
+
+        public Mock<ObterStatusPagamentoHandler> ObterStatusPagamentoHandlerMock { get; } = new(
+            Mock.Of<IPagamentoRepository>(),
+            Mock.Of<IAssinaturaRepository>());
+
+        public Mock<ListarPagamentosAssinaturaHandler> ListarPagamentosHandlerMock { get; } = new(
+            Mock.Of<IPagamentoRepository>(),
+            Mock.Of<IAssinaturaRepository>());
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -255,6 +440,9 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
                 services.RemoveAll<ListarExecucoesAlunoHandler>();
                 services.RemoveAll<ObterMinhaProgressaoHandler>();
                 services.RemoveAll<RegistrarExecucaoHandler>();
+                services.RemoveAll<ObterAssinaturaAlunoHandler>();
+                services.RemoveAll<ObterStatusPagamentoHandler>();
+                services.RemoveAll<ListarPagamentosAssinaturaHandler>();
                 services.RemoveAll<IUserContext>();
 
                 services.AddScoped(_ => ObterVinculoHandlerMock.Object);
@@ -264,6 +452,9 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
                 services.AddScoped(_ => ListarExecucoesHandlerMock.Object);
                 services.AddScoped(_ => ObterProgressaoHandlerMock.Object);
                 services.AddScoped(_ => RegistrarExecucaoHandlerMock.Object);
+                services.AddScoped(_ => ObterAssinaturaHandlerMock.Object);
+                services.AddScoped(_ => ObterStatusPagamentoHandlerMock.Object);
+                services.AddScoped(_ => ListarPagamentosHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(ContaId);

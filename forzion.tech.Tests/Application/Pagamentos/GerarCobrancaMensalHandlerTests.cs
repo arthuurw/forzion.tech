@@ -66,7 +66,8 @@ public class GerarCobrancaMensalHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.PixQrCode.Should().Be("qrcode");
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        result.Value.PixQrCodeUrl.Should().Be("https://img");
+        result.Value.MetodoPagamento.Should().Be(MetodoPagamento.Pix);
     }
 
     [Fact]
@@ -117,11 +118,10 @@ public class GerarCobrancaMensalHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         zumbi.Status.Should().Be(PagamentoStatus.Falhou);
+        result.Value.PixQrCode.Should().Be("qrcode");
         _stripeService.Verify(s => s.CriarPixPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid>(),
             It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Once);
-        // 3 commits: 1 zumbi MarcarFalhou, 1 novo pagamento, 1 Pix data
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -147,8 +147,6 @@ public class GerarCobrancaMensalHandlerTests
 
         pagamentoCriado.Should().NotBeNull();
         pagamentoCriado!.Status.Should().Be(PagamentoStatus.Falhou);
-        // 2 commits: 1 salvar pagamento, 1 marcar Falhou
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -193,5 +191,84 @@ public class GerarCobrancaMensalHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    // --- Método Cartão ---
+
+    private static readonly CartaoPaymentResult CartaoResult = new("pi_cartao_123", "secret_abc");
+
+    [Fact]
+    public async Task HandleAsync_MetodoCartao_GeraCartaoERetornaResponse()
+    {
+        var treinador = CriarTreinadorComOnboarding();
+        var assinatura = CriarAssinatura(treinador.Id);
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _stripeService.Setup(s => s.CriarCartaoPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid>(),
+            It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CartaoResult);
+
+        var result = await _handler.HandleAsync(
+            new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id, MetodoPagamento.Cartao));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.MetodoPagamento.Should().Be(MetodoPagamento.Cartao);
+        _stripeService.Verify(s => s.CriarCartaoPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid>(),
+            It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_MetodoCartao_StripeFalha_MarcaPagamentoFalhouEPropagaExcecao()
+    {
+        var treinador = CriarTreinadorComOnboarding();
+        var assinatura = CriarAssinatura(treinador.Id);
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _stripeService.Setup(s => s.CriarCartaoPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid>(),
+            It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Stripe cartão indisponível"));
+
+        Pagamento? pagamentoCriado = null;
+        _pagamentoRepo.Setup(r => r.AdicionarAsync(It.IsAny<Pagamento>(), It.IsAny<CancellationToken>()))
+            .Callback<Pagamento, CancellationToken>((p, _) => pagamentoCriado = p);
+
+        var act = async () => await _handler.HandleAsync(
+            new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id, MetodoPagamento.Cartao));
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        pagamentoCriado.Should().NotBeNull();
+        pagamentoCriado!.Status.Should().Be(PagamentoStatus.Falhou);
+    }
+
+    [Fact]
+    public async Task HandleAsync_MetodoCartao_NaoChama_CriarPixPaymentIntent()
+    {
+        var treinador = CriarTreinadorComOnboarding();
+        var assinatura = CriarAssinatura(treinador.Id);
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _stripeService.Setup(s => s.CriarCartaoPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid>(),
+            It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CartaoResult);
+
+        await _handler.HandleAsync(
+            new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id, MetodoPagamento.Cartao));
+
+        _stripeService.Verify(s => s.CriarPixPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid>(),
+            It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

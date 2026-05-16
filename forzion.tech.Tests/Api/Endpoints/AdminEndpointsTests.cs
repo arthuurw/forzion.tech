@@ -34,6 +34,12 @@ using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
 using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadores;
+using forzion.tech.Application.UseCases.Exercicios;
+using forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
+using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
+using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
+using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
+using forzion.tech.Application.UseCases.Treinadores.ObterTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ReprovarTreinador;
 using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
@@ -108,6 +114,12 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
     private static readonly PacoteAlunoResponse RespostaPacote = new(
         Guid.NewGuid(), TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);
+
+    private static readonly ExercicioResponse RespostaExercicio = new(
+        Guid.NewGuid(), "Supino", TipoGrupoMuscular.Peito, null, null, true, DateTime.UtcNow, null);
+
+    private static readonly ListarExerciciosResponse RespostaExercicios =
+        new([RespostaExercicio], 1, 1, 20);
 
     public AdminEndpointsTests(AdminWebFactory factory)
     {
@@ -775,6 +787,300 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    // --- GET /admin/treinadores/{id} ---
+
+    [Fact]
+    public async Task Get_ObterTreinador_Admin_Retorna200()
+    {
+        _factory.ObterTreinadorHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RespostaTreinador);
+
+        var response = await CriarClienteAdmin().GetAsync($"/admin/treinadores/{TreinadorId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_ObterTreinador_NaoEncontrado_Retorna404()
+    {
+        _factory.ObterTreinadorHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TreinadorNaoEncontradoException());
+
+        var response = await CriarClienteAdmin().GetAsync($"/admin/treinadores/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // --- POST /admin/treinadores/{id}/reprovar ---
+
+    [Fact]
+    public async Task Post_ReprovarTreinador_Admin_Retorna204()
+    {
+        _factory.ReprovarTreinadorHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ReprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/reprovar", new { observacao = "Reprovado." });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Post_ReprovarTreinador_NaoEncontrado_Retorna404()
+    {
+        _factory.ReprovarTreinadorHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ReprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TreinadorNaoEncontradoException());
+
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync($"/admin/treinadores/{Guid.NewGuid()}/reprovar", new { observacao = (string?)null });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // --- POST /admin/treinadores/{id}/aprovar — failure branch ---
+
+    [Fact]
+    public async Task Post_AprovarTreinador_Falha_Retorna422()
+    {
+        _factory.AprovarTreinadorHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<TreinadorResponse>(Error.Business("Treinador já aprovado.")));
+
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/aprovar", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    // --- POST /admin/treinadores/{id}/inativar — failure branch ---
+
+    [Fact]
+    public async Task Post_InativarTreinador_Falha_Retorna422()
+    {
+        _factory.InativarTreinadorHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<InativarTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(Error.Business("Treinador já inativo.")));
+
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/inativar", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    // --- PATCH /admin/planos/{id} ---
+
+    [Fact]
+    public async Task Patch_AtualizarPlano_Admin_Retorna200()
+    {
+        _factory.AtualizarPlanoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RespostaPlano);
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/planos/{Guid.NewGuid()}", new { nome = "Pro Plus", maxAlunos = 20, preco = 199m });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Patch_AtualizarPlano_NaoEncontrado_Retorna404()
+    {
+        _factory.AtualizarPlanoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new PlanoTreinadorNaoEncontradoException());
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/planos/{Guid.NewGuid()}", new { nome = "X" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // --- DELETE /admin/planos/{id} ---
+
+    [Fact]
+    public async Task Delete_Plano_Admin_Retorna204()
+    {
+        _factory.ExcluirPlanoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await CriarClienteAdmin()
+            .DeleteAsync($"/admin/planos/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Delete_Plano_NaoEncontrado_Retorna404()
+    {
+        _factory.ExcluirPlanoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new PlanoTreinadorNaoEncontradoException());
+
+        var response = await CriarClienteAdmin()
+            .DeleteAsync($"/admin/planos/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // --- PATCH /admin/grupos-musculares/{id} ---
+
+    [Fact]
+    public async Task Patch_AtualizarGrupoMuscular_Admin_Retorna200()
+    {
+        _factory.AtualizarGrupoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RespostaGrupo);
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/grupos-musculares/{Guid.NewGuid()}", new { nome = "Ombros" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Patch_AtualizarGrupoMuscular_NaoEncontrado_Retorna404()
+    {
+        _factory.AtualizarGrupoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new GrupoMuscularNaoEncontradoException());
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/grupos-musculares/{Guid.NewGuid()}", new { nome = "X" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // --- DELETE /admin/grupos-musculares/{id} ---
+
+    [Fact]
+    public async Task Delete_GrupoMuscular_Admin_Retorna204()
+    {
+        _factory.ExcluirGrupoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await CriarClienteAdmin()
+            .DeleteAsync($"/admin/grupos-musculares/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Delete_GrupoMuscular_NaoEncontrado_Retorna404()
+    {
+        _factory.ExcluirGrupoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new GrupoMuscularNaoEncontradoException());
+
+        var response = await CriarClienteAdmin()
+            .DeleteAsync($"/admin/grupos-musculares/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // --- GET /admin/exercicios ---
+
+    [Fact]
+    public async Task Get_Exercicios_Admin_Retorna200()
+    {
+        _factory.ListarExerciciosHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ListarExerciciosQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RespostaExercicios);
+
+        var response = await CriarClienteAdmin().GetAsync("/admin/exercicios");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    // --- POST /admin/exercicios ---
+
+    [Fact]
+    public async Task Post_CriarExercicioAdmin_Admin_Retorna201()
+    {
+        _factory.CriarExercicioAdminHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(RespostaExercicio));
+
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync("/admin/exercicios", new { nome = "Supino", grupoMuscular = 1 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_CriarExercicioAdmin_NomeDuplicado_Retorna422()
+    {
+        _factory.CriarExercicioAdminHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
+
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync("/admin/exercicios", new { nome = "Supino", grupoMuscular = 1 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    // --- PATCH /admin/exercicios/{id} ---
+
+    [Fact]
+    public async Task Patch_AtualizarExercicioAdmin_Admin_Retorna200()
+    {
+        _factory.AtualizarExercicioHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(RespostaExercicio));
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/exercicios/{Guid.NewGuid()}", new { nome = "Supino Inclinado" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Patch_AtualizarExercicioAdmin_NomeDuplicado_Retorna422()
+    {
+        _factory.AtualizarExercicioHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/exercicios/{Guid.NewGuid()}", new { nome = "Supino" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    // --- DELETE /admin/exercicios/{id} ---
+
+    [Fact]
+    public async Task Delete_ExercicioAdmin_Admin_Retorna204()
+    {
+        _factory.ExcluirExercicioHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        var response = await CriarClienteAdmin()
+            .DeleteAsync($"/admin/exercicios/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Delete_ExercicioAdmin_EmUso_Retorna422()
+    {
+        _factory.ExcluirExercicioHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(Error.Business("Este exercício está em uso em fichas de treino e não pode ser excluído.")));
+
+        var response = await CriarClienteAdmin()
+            .DeleteAsync($"/admin/exercicios/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
     // --- WebApplicationFactory ---
 
     public class AdminWebFactory : WebApplicationFactory<Program>
@@ -884,6 +1190,45 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<ListarPacotesAlunoHandler> ListarPacotesHandlerMock { get; } = new(
             Mock.Of<IPacoteAlunoRepository>());
 
+        public Mock<ObterTreinadorHandler> ObterTreinadorHandlerMock { get; } = new(
+            Mock.Of<ITreinadorRepository>());
+
+        public Mock<AtualizarPlanoTreinadorHandler> AtualizarPlanoHandlerMock { get; } = new(
+            Mock.Of<IPlanoTreinadorRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IValidator<AtualizarPlanoTreinadorCommand>>());
+
+        public Mock<ExcluirPlanoTreinadorHandler> ExcluirPlanoHandlerMock { get; } = new(
+            Mock.Of<IPlanoTreinadorRepository>(),
+            Mock.Of<IUnitOfWork>());
+
+        public Mock<AtualizarGrupoMuscularHandler> AtualizarGrupoHandlerMock { get; } = new(
+            Mock.Of<IGrupoMuscularRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IValidator<AtualizarGrupoMuscularCommand>>());
+
+        public Mock<ExcluirGrupoMuscularHandler> ExcluirGrupoHandlerMock { get; } = new(
+            Mock.Of<IGrupoMuscularRepository>(),
+            Mock.Of<IUnitOfWork>());
+
+        public Mock<ListarExerciciosHandler> ListarExerciciosHandlerMock { get; } = new(
+            Mock.Of<IExercicioRepository>(),
+            Mock.Of<ILogger<ListarExerciciosHandler>>());
+
+        public Mock<CriarExercicioHandler> CriarExercicioAdminHandlerMock { get; } = new(
+            Mock.Of<IExercicioRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IValidator<CriarExercicioCommand>>(),
+            Mock.Of<ILogger<CriarExercicioHandler>>());
+
+        public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(
+            Mock.Of<IExercicioRepository>(),
+            Mock.Of<IUnitOfWork>());
+
+        public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(
+            Mock.Of<IExercicioRepository>(),
+            Mock.Of<IUnitOfWork>());
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -914,6 +1259,15 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.RemoveAll<ListarTreinosDoTreinadorHandler>();
                 services.RemoveAll<ObterTreinoHandler>();
                 services.RemoveAll<ListarPacotesAlunoHandler>();
+                services.RemoveAll<ObterTreinadorHandler>();
+                services.RemoveAll<AtualizarPlanoTreinadorHandler>();
+                services.RemoveAll<ExcluirPlanoTreinadorHandler>();
+                services.RemoveAll<AtualizarGrupoMuscularHandler>();
+                services.RemoveAll<ExcluirGrupoMuscularHandler>();
+                services.RemoveAll<ListarExerciciosHandler>();
+                services.RemoveAll<CriarExercicioHandler>();
+                services.RemoveAll<AtualizarExercicioHandler>();
+                services.RemoveAll<ExcluirExercicioHandler>();
                 services.RemoveAll<IUserContext>();
 
                 services.AddScoped(_ => ListarTreinadoresHandlerMock.Object);
@@ -938,6 +1292,15 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.AddScoped(_ => ListarTreinosDoTreinadorHandlerMock.Object);
                 services.AddScoped(_ => ObterTreinoHandlerMock.Object);
                 services.AddScoped(_ => ListarPacotesHandlerMock.Object);
+                services.AddScoped(_ => ObterTreinadorHandlerMock.Object);
+                services.AddScoped(_ => AtualizarPlanoHandlerMock.Object);
+                services.AddScoped(_ => ExcluirPlanoHandlerMock.Object);
+                services.AddScoped(_ => AtualizarGrupoHandlerMock.Object);
+                services.AddScoped(_ => ExcluirGrupoHandlerMock.Object);
+                services.AddScoped(_ => ListarExerciciosHandlerMock.Object);
+                services.AddScoped(_ => CriarExercicioAdminHandlerMock.Object);
+                services.AddScoped(_ => AtualizarExercicioHandlerMock.Object);
+                services.AddScoped(_ => ExcluirExercicioHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(AdminId);
