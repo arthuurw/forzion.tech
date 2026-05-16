@@ -13,6 +13,7 @@ namespace forzion.tech.Tests.Application.Treinos;
 public class EditarExercicioTreinoHandlerTests
 {
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
+    private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
@@ -25,8 +26,11 @@ public class EditarExercicioTreinoHandlerTests
     public EditarExercicioTreinoHandlerTests()
     {
         _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
+        _exercicioRepo
+            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
         _handler = new EditarExercicioTreinoHandler(
-            _treinoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
+            _treinoRepo.Object, _exercicioRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
     }
 
     private static (Treino treino, TreinoExercicio exercicio) CriarTreinoComExercicio(Guid treinadorId)
@@ -141,15 +145,14 @@ public class EditarExercicioTreinoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_SeriesVazias_RetornaFalha()
+    public async Task HandleAsync_SeriesVazias_LancaDomainException()
     {
         var (treino, ex) = CriarTreinoComExercicio(Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var result = await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, []));
-
-        result.IsFailure.Should().BeTrue();
+        var act = async () => await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, []));
+        await act.Should().ThrowAsync<DomainException>();
     }
 
     [Fact]

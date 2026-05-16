@@ -12,12 +12,16 @@ namespace forzion.tech.Tests.Application.Alunos;
 public class ObterFichaAlunoHandlerTests
 {
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
+    private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly ObterFichaAlunoHandler _handler;
 
     public ObterFichaAlunoHandlerTests()
     {
-        _handler = new ObterFichaAlunoHandler(_treinoAlunoRepo.Object, _userContext.Object);
+        _exercicioRepo
+            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
+        _handler = new ObterFichaAlunoHandler(_treinoAlunoRepo.Object, _exercicioRepo.Object, _userContext.Object);
     }
 
     private static TreinoAlunoDetalhe CriarDetalhe(Guid alunoId)

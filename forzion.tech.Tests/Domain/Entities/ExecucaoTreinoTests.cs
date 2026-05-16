@@ -93,4 +93,29 @@ public class ExecucaoTreinoTests
         e.AdicionarExercicio(Guid.NewGuid(), 4, 8, 20m);
         e.Exercicios.Should().HaveCount(2);
     }
+
+    [Fact]
+    public void AdicionarExercicio_TreinoExercicioIdVazio_LancaDomainException()
+    {
+        var e = CriarExecucao();
+        var act = () => e.AdicionarExercicio(Guid.Empty, 3, 12, null);
+        act.Should().Throw<DomainException>().WithMessage("O exercício do treino é inválido.");
+    }
+
+    [Fact]
+    public void AdicionarExercicio_ObservacaoMuitoLonga_LancaDomainException()
+    {
+        var e = CriarExecucao();
+        var act = () => e.AdicionarExercicio(Guid.NewGuid(), 3, 12, null, new string('a', 501));
+        act.Should().Throw<DomainException>().WithMessage("A observação deve ter no máximo 500 caracteres.");
+    }
+
+    [Fact]
+    public void AdicionarExercicio_ComObservacao_SalvaObservacao()
+    {
+        var e = CriarExecucao();
+        e.AdicionarExercicio(Guid.NewGuid(), 3, 12, null, "Foco na contração");
+
+        e.Exercicios[0].Observacao.Should().Be("Foco na contração");
+    }
 }

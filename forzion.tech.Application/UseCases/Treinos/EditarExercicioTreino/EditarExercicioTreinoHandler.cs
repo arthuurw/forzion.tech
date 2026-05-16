@@ -9,6 +9,7 @@ namespace forzion.tech.Application.UseCases.Treinos.EditarExercicioTreino;
 
 public class EditarExercicioTreinoHandler(
     ITreinoRepository treinoRepository,
+    IExercicioRepository exercicioRepository,
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
@@ -43,22 +44,19 @@ public class EditarExercicioTreinoHandler(
         var exercicio = treino.Exercicios.FirstOrDefault(e => e.Id == command.TreinoExercicioId)
             ?? throw new TreinoNaoEncontradoException();
 
-        try
-        {
-            exercicio.AtualizarSeries(command.Series
-                .Select(s => (s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso))
-                .ToList());
-        }
-        catch (DomainException ex)
-        {
-            return Result.Failure<TreinoResponse>(Error.Business(ex.Message));
-        }
+        exercicio.AtualizarSeries(command.Series
+            .Select(s => (s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso))
+            .ToList());
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Exercício {TreinoExercicioId} editado no treino {TreinoId}.",
             command.TreinoExercicioId, command.TreinoId);
 
-        return Result.Success(TreinoResponseExtensions.ToResponse(treino));
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino, nomesExercicio: nomesExercicio));
     }
 }

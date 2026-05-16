@@ -54,17 +54,15 @@ public class ReprovarTreinadorHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorJaAtivo_RetornaFalha()
+    public async Task HandleAsync_TreinadorJaAtivo_LancaDomainException()
     {
         var adminId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
         treinador.Aprovar(adminId);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var result = await _handler.HandleAsync(new ReprovarTreinadorCommand(treinador.Id, adminId));
-
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Message.Should().Contain("aguardando aprovação");
+        var act = async () => await _handler.HandleAsync(new ReprovarTreinadorCommand(treinador.Id, adminId));
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*aguardando aprovação*");
     }
 
     [Fact]

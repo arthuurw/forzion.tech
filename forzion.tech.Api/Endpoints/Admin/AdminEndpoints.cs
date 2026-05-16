@@ -272,7 +272,7 @@ public static class AdminEndpoints
         {
             var pagination = httpContext.ObterPaginacaoDoQuery();
             var q = httpContext.Request.Query;
-            _ = Enum.TryParse<forzion.tech.Domain.Enums.GrupoMuscular>(q["grupoMuscular"], out var grupo);
+            _ = Enum.TryParse<forzion.tech.Domain.Enums.TipoGrupoMuscular>(q["grupoMuscular"], out var grupo);
             var hasGrupo = q.ContainsKey("grupoMuscular");
             var nome = q["nome"].ToString();
             var ordenarPor = q["ordenarPor"].ToString();
@@ -534,5 +534,5 @@ public record CriarPlanoTreinadorRequest(string Nome, int MaxAlunos, decimal Pre
 public record AtualizarPlanoTreinadorRequest(string? Nome, int? MaxAlunos, decimal? Preco);
 public record CriarGrupoMuscularRequest(string Nome);
 public record AtualizarGrupoMuscularRequest(string Nome);
-public record CriarExercicioGlobalRequest(string Nome, forzion.tech.Domain.Enums.GrupoMuscular GrupoMuscular, string? Descricao);
-public record AtualizarExercicioGlobalRequest(string? Nome, forzion.tech.Domain.Enums.GrupoMuscular? GrupoMuscular, string? Descricao);
+public record CriarExercicioGlobalRequest(string Nome, forzion.tech.Domain.Enums.TipoGrupoMuscular GrupoMuscular, string? Descricao);
+public record AtualizarExercicioGlobalRequest(string? Nome, forzion.tech.Domain.Enums.TipoGrupoMuscular? GrupoMuscular, string? Descricao);

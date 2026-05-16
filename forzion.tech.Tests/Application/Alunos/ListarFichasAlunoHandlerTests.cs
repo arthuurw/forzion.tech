@@ -10,11 +10,15 @@ namespace forzion.tech.Tests.Application.Alunos;
 public class ListarFichasAlunoHandlerTests
 {
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
+    private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly ListarFichasAlunoHandler _handler;
 
     public ListarFichasAlunoHandlerTests()
     {
-        _handler = new ListarFichasAlunoHandler(_treinoAlunoRepo.Object);
+        _exercicioRepo
+            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
+        _handler = new ListarFichasAlunoHandler(_treinoAlunoRepo.Object, _exercicioRepo.Object);
     }
 
     private static TreinoAlunoDetalhe CriarDetalhe(Guid alunoId)

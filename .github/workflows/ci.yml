@@ -29,8 +29,37 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Test
-        run: dotnet test forzion.tech.Tests --no-build -c Release --logger "console;verbosity=minimal"
+      - name: Test (global — 50% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --logger "console;verbosity=minimal"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:CoverletOutput=./coverage/
+          /p:Threshold=50
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
+          "/p:Exclude=[forzion.tech.Tests]*%2C[*]*.Migrations.*%2C[*]Program"
+
+      - name: Coverage — Domain (75% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Domain]*
+          /p:Threshold=75
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
+
+      - name: Coverage — Application (75% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Application]*
+          /p:Threshold=75
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
 
   test-frontend:
     name: Frontend — type check + testes
@@ -54,7 +83,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Test
-        run: npm test
+        run: npm run test:coverage
 
 # ─── BUILD + PUSH (develop → homolog | main → prod) ─────────────────────────
 

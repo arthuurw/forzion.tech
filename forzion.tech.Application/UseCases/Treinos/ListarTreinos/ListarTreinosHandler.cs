@@ -7,6 +7,7 @@ namespace forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 
 public class ListarTreinosHandler(
     ITreinoRepository treinoRepository,
+    IExercicioRepository exercicioRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IUserContext userContext,
     ILogger<ListarTreinosHandler> logger)
@@ -47,8 +48,13 @@ public class ListarTreinosHandler(
 
         logger.LogInformation("Listagem de treinos do aluno {AlunoId}: {Total} registros.", query.AlunoId, total);
 
+        var allExercicioIds = items.SelectMany(t => t.Exercicios.Select(e => e.ExercicioId));
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(allExercicioIds, cancellationToken)
+            .ConfigureAwait(false);
+
         return new ListarTreinosResponse(
-            items.Select(t => TreinoResponseExtensions.ToResponse(t)).ToList(),
+            items.Select(t => TreinoResponseExtensions.ToResponse(t, nomesExercicio: nomesExercicio)).ToList(),
             total,
             query.Pagina,
             query.TamanhoPagina);

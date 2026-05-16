@@ -34,7 +34,7 @@ public class ReativarVinculoHandlerTests
     private static Aluno CriarAluno()
     {
         var a = Aluno.Criar(Guid.NewGuid(), "João Silva");
-        a.AlterarStatus(AlunoStatus.Ativo);
+        a.Ativar();
         return a;
     }
 
