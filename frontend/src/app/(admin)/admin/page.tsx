@@ -29,6 +29,7 @@ export default function DashboardAdminPage() {
   const [treinadorStats, setTreinadorStats] = useState<StatItem[]>([]);
   const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
   const [pendentes, setPendentes] = useState<TreinadorResponse[]>([]);
+  const [alunosPendentes, setAlunosPendentes] = useState<AlunoResponse[]>([]);
   const [recentTreinadores, setRecentTreinadores] = useState<TreinadorResponse[]>([]);
   const [planoStats, setPlanoStats] = useState<PlanoStat[]>([]);
   const [finalidadeData, setFinalidadeData] = useState<DistItem[]>([]);
@@ -52,7 +53,7 @@ export default function DashboardAdminPage() {
         adminApi.listTreinadores({ status: "Inativo", tamanhoPagina: 1 }),
         adminApi.listTreinadores({ tamanhoPagina: 100 }),
         adminApi.listAlunos({ status: "Ativo", tamanhoPagina: 1 }),
-        adminApi.listAlunos({ status: "AguardandoAprovacao", tamanhoPagina: 1 }),
+        adminApi.listAlunos({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
         adminApi.listAlunos({ status: "Inativo", tamanhoPagina: 1 }),
         adminApi.listAlunos({ tamanhoPagina: 100 }),
         adminApi.listPlanos(),
@@ -68,11 +69,12 @@ export default function DashboardAdminPage() {
 
       setAlunoStats([
         { name: "Ativos", value: ativoARes.data.total, color: A_COLORS.Ativos },
-        { name: "Ag. Treinador", value: aguardandoARes.data.total, color: A_COLORS.Pendentes },
+        { name: "Pendentes", value: aguardandoARes.data.total, color: A_COLORS.Pendentes },
         { name: "Inativos", value: inativoARes.data.total, color: A_COLORS.Inativos },
       ]);
 
       setPendentes(aguardandoTRes.data.items);
+      setAlunosPendentes(aguardandoARes.data.items);
 
       // Recent trainers: last 5 by createdAt
       const sorted = [...todosTRes.data.items].sort(
@@ -148,6 +150,30 @@ export default function DashboardAdminPage() {
     }
   };
 
+  const handleAprovarAluno = async (id: string) => {
+    setActionLoading(`${id}_aprovar`);
+    try {
+      await adminApi.alterarStatusAluno(id, "Ativo");
+      await load();
+    } catch {
+      setError("Erro ao aprovar aluno.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleInativarAluno = async (id: string) => {
+    setActionLoading(`${id}_inativar`);
+    try {
+      await adminApi.alterarStatusAluno(id, "Inativo");
+      await load();
+    } catch {
+      setError("Erro ao inativar aluno.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
 
   const planoBarData = planoStats.map(({ name, total }) => ({ name, total }));
@@ -186,7 +212,7 @@ export default function DashboardAdminPage() {
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
         <Tabs value={tab} onChange={(_, v: number) => setTab(v)}>
           <Tab label="Visão Geral" />
-          <Tab label={pendentes.length > 0 ? `Aprovações (${pendentes.length})` : "Aprovações"} />
+          <Tab label={(pendentes.length + alunosPendentes.length) > 0 ? `Aprovações (${pendentes.length + alunosPendentes.length})` : "Aprovações"} />
           <Tab label="Plataforma" />
         </Tabs>
       </Box>
@@ -266,6 +292,7 @@ export default function DashboardAdminPage() {
 
       {/* ── Tab 1: Aprovações ── */}
       {tab === 1 && (
+        <>
         <Paper sx={{ p: 3, borderRadius: 2 }}>
           <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 1 }}>
             TREINADORES AGUARDANDO REVISÃO
@@ -273,7 +300,7 @@ export default function DashboardAdminPage() {
 
           {pendentes.length === 0 ? (
             <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-              Nenhum cadastro pendente.
+              Nenhum treinador pendente.
             </Typography>
           ) : (
             <Stack divider={<Divider />}>
@@ -307,6 +334,49 @@ export default function DashboardAdminPage() {
             </Stack>
           )}
         </Paper>
+
+        <Paper sx={{ p: 3, borderRadius: 2, mt: 2 }}>
+          <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 1 }}>
+            ALUNOS AGUARDANDO APROVAÇÃO
+          </Typography>
+
+          {alunosPendentes.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              Nenhum aluno pendente.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider />}>
+              {alunosPendentes.map((a) => (
+                <Box
+                  key={a.alunoId}
+                  sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 2, gap: 2, flexWrap: "wrap" }}
+                >
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.nome}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Cadastrado em {new Date(a.createdAt).toLocaleDateString("pt-BR")}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small" variant="contained" color="success" startIcon={<CheckIcon />}
+                      disabled={!!actionLoading} onClick={() => handleAprovarAluno(a.alunoId)}
+                    >
+                      Aprovar
+                    </Button>
+                    <Button
+                      size="small" variant="outlined" color="error" startIcon={<CloseIcon />}
+                      disabled={!!actionLoading} onClick={() => handleInativarAluno(a.alunoId)}
+                    >
+                      Reprovar
+                    </Button>
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+        </>
       )}
 
       {/* ── Tab 2: Plataforma ── */}
