@@ -46,26 +46,26 @@ export default function AssinaturaAlunoPage() {
 
   useEffect(() => { carregar(); }, []);
 
-  if (loading) return <Box p={4}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
 
   if (!assinatura) {
     return (
-      <Box p={4}>
+      <Box sx={{ p: 4 }}>
         <Alert severity="info">Você não possui assinatura ativa no momento.</Alert>
       </Box>
     );
   }
 
   return (
-    <Box p={4} maxWidth={500}>
-      <Typography variant="h5" fontWeight="bold" mb={3}>Minha Assinatura</Typography>
+    <Box sx={{ p: 4, maxWidth: 500 }}>
+      <Typography variant="h5" sx={{ fontWeight: "bold", mb: 3 }}>Minha Assinatura</Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={2}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="subtitle1" fontWeight="medium">Status</Typography>
+          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: "medium" }}>Status</Typography>
             <Chip
               label={assinatura.status}
               color={statusColor[assinatura.status] ?? "default"}
@@ -75,16 +75,16 @@ export default function AssinaturaAlunoPage() {
 
           <Divider />
 
-          <Stack direction="row" justifyContent="space-between">
+          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
             <Typography variant="body2" color="text.secondary">Valor mensal</Typography>
-            <Typography variant="body2" fontWeight="medium">
+            <Typography variant="body2" sx={{ fontWeight: "medium" }}>
               {assinatura.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </Typography>
           </Stack>
 
-          <Stack direction="row" justifyContent="space-between">
+          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
             <Typography variant="body2" color="text.secondary">Próxima cobrança</Typography>
-            <Typography variant="body2" fontWeight="medium">
+            <Typography variant="body2" sx={{ fontWeight: "medium" }}>
               {new Date(assinatura.dataProximaCobranca).toLocaleDateString("pt-BR")}
             </Typography>
           </Stack>
@@ -104,7 +104,7 @@ export default function AssinaturaAlunoPage() {
       </Paper>
 
       {mostrarPix && pagamentoPendente && (
-        <Box mt={3}>
+        <Box sx={{ mt: 3 }}>
           {pagamentoPendente.metodoPagamento === "Cartao" ? (
             <PagamentoCartao
               pagamentoId={pagamentoPendente.pagamentoId}
