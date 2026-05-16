@@ -85,10 +85,13 @@ public static class PagamentosEndpoints
             var apiKey = configuration["Internal:ApiKey"];
             var headerKey = httpContext.Request.Headers["X-Internal-Key"].FirstOrDefault() ?? string.Empty;
 
-            // Constant-time comparison para evitar timing attack na chave
-            if (string.IsNullOrEmpty(apiKey) || !CryptographicOperations.FixedTimeEquals(
-                Encoding.UTF8.GetBytes(headerKey.PadRight(apiKey.Length)),
-                Encoding.UTF8.GetBytes(apiKey)))
+            // Constant-time comparison para evitar timing attack na chave.
+            // Verificar comprimento antes de FixedTimeEquals (que lança ArgumentException em spans de tamanhos diferentes).
+            var headerBytes = Encoding.UTF8.GetBytes(headerKey);
+            var keyBytes = Encoding.UTF8.GetBytes(apiKey ?? string.Empty);
+            if (string.IsNullOrEmpty(apiKey)
+                || headerBytes.Length != keyBytes.Length
+                || !CryptographicOperations.FixedTimeEquals(headerBytes, keyBytes))
                 return Results.Unauthorized();
 
             var assinaturas = await assinaturaRepository
