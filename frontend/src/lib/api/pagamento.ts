@@ -17,6 +17,9 @@ export const pagamentoApi = {
   listarPagamentosAssinatura(assinaturaId: string) {
     return apiClient.get<PagamentoResponse[]>(`/aluno/pagamentos/assinatura/${assinaturaId}`);
   },
+  obterMinhaAssinatura() {
+    return apiClient.get<AssinaturaResponse>("/aluno/assinatura");
+  },
   obterAssinatura(assinaturaId: string) {
     return apiClient.get<AssinaturaResponse>(`/aluno/assinaturas/${assinaturaId}`);
   },

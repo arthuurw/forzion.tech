@@ -68,7 +68,7 @@ export default function DashboardAdminPage() {
 
       setAlunoStats([
         { name: "Ativos", value: ativoARes.data.total, color: A_COLORS.Ativos },
-        { name: "Pendentes", value: aguardandoARes.data.total, color: A_COLORS.Pendentes },
+        { name: "Ag. Treinador", value: aguardandoARes.data.total, color: A_COLORS.Pendentes },
         { name: "Inativos", value: inativoARes.data.total, color: A_COLORS.Inativos },
       ]);
 
