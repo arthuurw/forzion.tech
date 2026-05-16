@@ -4,7 +4,6 @@ import {
   Box, Typography, Paper, Stack, Chip, Button,
   CircularProgress, Alert, Divider,
 } from "@mui/material";
-import { alunoApi } from "@/lib/api/aluno";
 import { pagamentoApi } from "@/lib/api/pagamento";
 import type { AssinaturaResponse, PagamentoResponse } from "@/types";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
@@ -27,16 +26,11 @@ export default function AssinaturaAlunoPage() {
   const carregar = async () => {
     setLoading(true);
     try {
-      const vinculoRes = await alunoApi.getMeuVinculo();
-      const vinculo = vinculoRes.data.vinculoAtivo;
-      if (!vinculo) {
-        setLoading(false);
-        return;
-      }
+      const assRes = await pagamentoApi.obterMinhaAssinatura();
+      setAssinatura(assRes.data);
 
-      // Busca assinatura pela assinaturaId — precisamos do endpoint de assinatura por vinculo
-      // Por ora, busca pagamentos pendentes da assinatura via vinculo
-      // TODO: adicionar endpoint GET /aluno/assinatura quando disponível
+      const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaId);
+      setPagamentoPendente(pgRes.data.find(p => p.status === "Pendente") ?? null);
     } catch {
       setError("Erro ao carregar assinatura.");
     } finally {

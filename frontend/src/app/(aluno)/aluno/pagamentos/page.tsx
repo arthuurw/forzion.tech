@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box, Typography, CircularProgress, Alert,
   Table, TableBody, TableCell, TableHead, TableRow,
@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import type { PagamentoResponse, PagamentoStatus } from "@/types";
+import { pagamentoApi } from "@/lib/api/pagamento";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 
@@ -101,11 +102,24 @@ function TabelaPagamentos({ pagamentos, loading, error, onAtualizar }: Props) {
 }
 
 export default function PagamentosAlunoPage() {
-  // Sem assinaturaId por params aqui — página geral de histórico
-  // A integração completa requer buscar assinaturas do aluno primeiro
-  const [pagamentos] = useState<PagamentoResponse[]>([]);
-  const [loading] = useState(false);
-  const [error] = useState("");
+  const [pagamentos, setPagamentos] = useState<PagamentoResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const carregar = async () => {
+    setLoading(true);
+    try {
+      const assRes = await pagamentoApi.obterMinhaAssinatura();
+      const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaId);
+      setPagamentos(pgRes.data);
+    } catch {
+      setError("Erro ao carregar pagamentos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void carregar(); }, []);
 
   return (
     <Box sx={{ p: 4 }}>
@@ -114,7 +128,7 @@ export default function PagamentosAlunoPage() {
         pagamentos={pagamentos}
         loading={loading}
         error={error}
-        onAtualizar={() => {}}
+        onAtualizar={carregar}
       />
     </Box>
   );

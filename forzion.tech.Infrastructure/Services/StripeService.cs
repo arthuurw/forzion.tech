@@ -152,7 +152,7 @@ public class StripeService(
         }
         catch (Exception ex) when (ex is StripeException or InvalidDataException or ArgumentException)
         {
-            logger.LogWarning("Webhook Stripe inválido: {Message}.", ex.Message);
+            logger.LogWarning(ex, "Webhook Stripe inválido: {Message}.", ex.Message);
             return Task.FromResult(false);
         }
     }
