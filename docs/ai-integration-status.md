@@ -1,148 +1,198 @@
 # Integração IA — Status de Implementação
 
-Branch: `feat/integracao-ia`  
-Framework: Microsoft Agent Framework (MAF) 1.6.1 + Microsoft.Extensions.AI 10.6.0  
-Provider LLM: OpenAI SDK (interim) — DC-001 define Claude Haiku 4.5 via Anthropic API para produção  
-Data de referência: 2026-05-16
+**Branch:** `feat/integracao-ia`  
+**Framework:** MAF 1.6.1 + Microsoft.Extensions.AI 10.6.0  
+**Provider:** OpenAI SDK (interim) — DC-001: Claude Haiku 4.5 via Anthropic API em produção  
+**Build:** ✅ 0 erros · 0 warnings  
+**Última atualização:** 2026-05-16
 
 ---
 
-## Arquitetura implementada
+## Progresso por Sprint
 
-Dois agentes estritamente separados, sem compartilhamento de tools:
+| Sprint | Escopo | Status |
+|--------|--------|--------|
+| Sprint 1 — Infraestrutura | Projeto AI, guard rails, DI, OTel, env vars | ✅ Completo |
+| Sprint 2 — Agente Aluno | AlunoTools, AlunoAssistantAgent, endpoint `/aluno/assistant/chat` | ✅ Completo |
+| Sprint 3 — Agente Treinador | TreinadorTools, TreinadorAssistantAgent, endpoint `/treinador/assistant/chat`, approval flow | ✅ Completo (parcial — ver T19) |
+| Sprint 4 — Hardening | Token budget PostgreSQL, testes adversariais, OTel alertas, revisão de segurança | 🔲 Não iniciado |
 
-| Agente | Tipo | Endpoint | Tools |
-|--------|------|----------|-------|
-| AlunoAssistant | Interno, read-only | `POST /aluno/assistant/chat` | 4 tools (treinos, execuções, exercício) |
-| TreinadorAssistant | Interno, read + write | `POST /treinador/assistant/chat` | 4R + 1W (+ `/apply-suggestion`) |
+---
 
-Pipeline de defesa em cada endpoint:
-`Unicode normalize → Token budget check → Injection detect → Agent run (60s timeout) → Output scan → Markdown sanitize → Budget commit`
+## Arquitetura
+
+Dois agentes internos estritamente separados — sem compartilhamento de tools ou pipeline:
+
+```
+POST /aluno/assistant/chat        [Authorize("Aluno")]    rate: 20/h/user
+  └─ AlunoAssistant (read-only)
+       └─ get_meus_treinos · get_historico_execucoes · get_proximo_treino · get_detalhe_exercicio
+
+POST /treinador/assistant/chat    [Authorize("Treinador")]  rate: 10/h/user
+  └─ TreinadorAssistant (read + write draft)
+       └─ get_meus_alunos · get_progresso_aluno · get_fichas_aluno · get_execucoes_recentes_aluno
+          · sugerir_ficha_treino → retorna preview JSON, nunca persiste
+
+POST /treinador/assistant/apply-suggestion   confirma draft → TODO: conectar handler
+```
+
+Pipeline em ambos os endpoints:
+```
+Request → Unicode normalize → Token budget check → Injection detect (log) →
+Agent.GetResponseAsync (60s timeout) → OutputScanner → SanitizeMarkdown → Budget commit → Response
+```
 
 ---
 
 ## O que foi implementado
 
-### Projeto `forzion.tech.AI` (novo classlib)
+### `forzion.tech.AI` — novo classlib (net8.0)
 
-| Arquivo | Descrição |
+**Guard Rails**
+
+| Arquivo | O que faz |
 |---------|-----------|
-| `forzion.tech.AI.csproj` | Projeto net8.0 com MAF 1.6.1, OpenAI 2.*, MEAI.OpenAI 10.*, Config.Abstractions 10.* |
-| `GuardRails/InputNormalizer.cs` | Remove unicode tag chars (U+E0000-U+E007F), zero-width, NFC normalize, estimativa de tokens |
-| `GuardRails/PromptInjectionPatterns.cs` | 8 regex: override clássico, role injection, DAN, system prompt leak, delimiter spoofing, base64 longa |
-| `GuardRails/ToolResponseSanitizer.cs` | Trunca >10k chars, wrappa em `<external_data>`, remove URLs de exfiltração |
-| `GuardRails/ToolArgValidators.cs` | `ValidateGuidArg`, `ValidateIntArg`, `CheckStringArgsForInjection` |
-| `GuardRails/OutputScanner.cs` | Detecta CPF, CNPJ, cartão, API keys (sk-, Bearer), imagens markdown de exfiltração |
-| `GuardRails/OutputSanitizer.cs` | Remove imagens markdown externas, HTML inline |
-| `GuardRails/ITokenBudget.cs` + `InMemoryTokenBudget.cs` | Budget diário por usuário/tipo: Aluno=50k tokens, Treinador=100k. ConcurrentDictionary. Sprint 4: migrar para PostgreSQL |
-| `Clients/IChatClientFactory.cs` + `ChatClientFactory.cs` | Provider-agnostic via MEAI `IChatClient`. Suporta endpoint customizável (para troca de provider por config) |
-| `Agents/ForzionAgent.cs` | Record: `IChatClient + SystemPrompt + Temperature + MaxOutputTokens + Tools` |
-| `Agents/AlunoAssistantAgent.cs` | Tools em closure sobre `alunoId`. Temperature=0.3, MaxOutputTokens=800 |
-| `Agents/TreinadorAssistantAgent.cs` | Tools em closure sobre `treinadorId`. Temperature=0.3, MaxOutputTokens=1200 |
-| `Agents/AgentRegistry.cs` | `GetAlunoAssistant(Guid)` e `GetTreinadorAssistant(Guid)`. Sem método genérico — força classificação explícita |
-| `Tools/AlunoTools.cs` | `get_meus_treinos`, `get_historico_execucoes`, `get_proximo_treino`, `get_detalhe_exercicio` |
-| `Tools/TreinadorTools.cs` | `get_meus_alunos`, `get_progresso_aluno`*, `get_fichas_aluno`*, `get_execucoes_recentes_aluno`*, `sugerir_ficha_treino`* |
-| `Configuration/AiExtensions.cs` | `AddForzionAI()` — registra todos os serviços de IA no DI |
+| `GuardRails/InputNormalizer.cs` | Remove unicode tag chars (U+E0000–U+E007F) e zero-width; NFC normalize; estimativa de tokens (`length / 4`) |
+| `GuardRails/PromptInjectionPatterns.cs` | 8 regex: override clássico, role injection, DAN, system prompt leak, delimiter spoofing, base64 longa (>200 chars) |
+| `GuardRails/ToolResponseSanitizer.cs` | Trunca >10k chars, encapsula em `<external_data>`, remove URLs de exfiltração |
+| `GuardRails/ToolArgValidators.cs` | `ValidateGuidArg`, `ValidateIntArg(min,max)`, `CheckStringArgsForInjection` |
+| `GuardRails/OutputScanner.cs` | Detecta CPF, CNPJ, número de cartão, API keys (`sk-`, `Bearer`), pixel tracking via markdown image |
+| `GuardRails/OutputSanitizer.cs` | Remove imagens markdown externas e HTML inline do output do LLM |
+| `GuardRails/ITokenBudget.cs` | Interface: `WouldExceedDailyAsync`, `CommitAsync`, `GetDailyUsageAsync` — enum `AgentType { Aluno, Treinador }` |
+| `GuardRails/InMemoryTokenBudget.cs` | `ConcurrentDictionary` keyed por `userId:agentType:date`. Limite: 50k/dia Aluno · 100k/dia Treinador (config) |
 
-*Todas as tools do Treinador que recebem `alunoId` validam `IVinculoTreinadorAlunoRepository.ObterAtivoAsync(treinadorId, alunoGuid)` antes de retornar dados — isolamento cross-tenant.
+**Clients / Agents**
 
-### Projeto `forzion.tech.Api` (modificado)
+| Arquivo | O que faz |
+|---------|-----------|
+| `Clients/IChatClientFactory.cs` + `ChatClientFactory.cs` | Provider-agnostic via `IChatClient`. Lê `AI:Internal:ApiKey`, `AI:Internal:Model`, `AI:Internal:Endpoint` (opcional). Trocar provider = trocar config, sem mudar código |
+| `Agents/ForzionAgent.cs` | Record: `IChatClient + SystemPrompt + Temperature + MaxOutputTokens + Tools` — separa system prompt das `ChatOptions` (MEAI 10 não tem `ChatOptions.SystemMessage`) |
+| `Agents/AlunoAssistantAgent.cs` | `Build(Guid alunoId)` → tools em closure sobre `alunoId`. Temperature=0.3, MaxOutputTokens=800 |
+| `Agents/TreinadorAssistantAgent.cs` | `Build(Guid treinadorId)` → tools em closure sobre `treinadorId`. Temperature=0.3, MaxOutputTokens=1200 |
+| `Agents/AgentRegistry.cs` | `GetAlunoAssistant(Guid)` · `GetTreinadorAssistant(Guid)` — sem `GetAgent()` genérico, forçando classificação explícita |
+
+**Tools**
+
+| Arquivo | Tools expostas |
+|---------|---------------|
+| `Tools/AlunoTools.cs` | `get_meus_treinos` (sem params) · `get_historico_execucoes(int ultimas, max=20)` · `get_proximo_treino` · `get_detalhe_exercicio(string exercicioId)` |
+| `Tools/TreinadorTools.cs` | `get_meus_alunos` · `get_progresso_aluno(alunoId, ultimas)` · `get_fichas_aluno(alunoId)` · `get_execucoes_recentes_aluno(alunoId, ultimas)` · `sugerir_ficha_treino(alunoId, objetivo, dificuldade, numeroDeTreinos)` |
+
+⚠️ Todas as tools do Treinador que aceitam `alunoId` chamam `IVinculoTreinadorAlunoRepository.ObterAtivoAsync(treinadorId, alunoGuid)` antes de retornar dados. Sem vínculo ativo → retorna "aluno não encontrado". Isolamento cross-tenant por código, não só por autenticação.
+
+`sugerir_ficha_treino` é tier Write: retorna JSON com marcador `"__tipo": "sugestao_ficha_preview"` e nunca persiste diretamente.
+
+**Configuração**
+
+| Arquivo | O que faz |
+|---------|-----------|
+| `Configuration/AiExtensions.cs` | `AddForzionAI()` — registra `IChatClientFactory` (singleton), `ITokenBudget` (singleton), `AlunoTools` + `TreinadorTools` (scoped), `AlunoAssistantAgent` + `TreinadorAssistantAgent` (scoped), `AgentRegistry` (scoped) |
+
+---
+
+### `forzion.tech.Api` — modificações
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `forzion.tech.Api.csproj` | +Microsoft.Extensions.AI 10.*, +4 pacotes OpenTelemetry |
-| `Configuration/OpenTelemetryExtensions.cs` | `AddForzionOpenTelemetry()` — OTel com sources MAF + MEAI, OTLP exporter condicional |
-| `Endpoints/AlunoAssistantEndpoints.cs` | Endpoint `POST /aluno/assistant/chat` com pipeline completo de guard rails |
-| `Endpoints/TreinadorAssistantEndpoints.cs` | Endpoint `POST /treinador/assistant/chat` + `POST /treinador/assistant/apply-suggestion` (approval flow) |
-| `Extensions/DependencyInjectionExtensions.cs` | +`AddForzionAI()`, +`AddForzionOpenTelemetry()`, +rate limits `agent-aluno` (20/h) e `agent-treinador` (10/h) |
-| `Extensions/RouteBuilderExtensions.cs` | +`MapAlunoAssistantEndpoints()`, +`MapTreinadorAssistantEndpoints()` |
-| `.env.example` | +variáveis AI: model, API key placeholder, token budgets, OTEL endpoint |
-
-### Memória de segurança
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `.agent-security-memory.md` | Registro de agentes, decisões arquiteturais (DC-001, DC-002), achados de segurança (F1–F9), histórico de revisão MAF |
+| `forzion.tech.Api.csproj` | +`Microsoft.Extensions.AI 10.*` · +4 pacotes OpenTelemetry |
+| `Configuration/OpenTelemetryExtensions.cs` | `AddForzionOpenTelemetry()` — sources `Microsoft.Agents.AI` e `Microsoft.Extensions.AI`, OTLP exporter condicional por `OTEL_EXPORTER_OTLP_ENDPOINT` |
+| `Endpoints/AlunoAssistantEndpoints.cs` | `POST /aluno/assistant/chat` com pipeline completo de guard rails |
+| `Endpoints/TreinadorAssistantEndpoints.cs` | `POST /treinador/assistant/chat` (pipeline) + `POST /treinador/assistant/apply-suggestion` (approval: valida ownership + TTL 10 min, remove draft) |
+| `Extensions/DependencyInjectionExtensions.cs` | +`AddForzionAI()` · +`AddForzionOpenTelemetry()` · +rate limits `agent-aluno` (20/h) e `agent-treinador` (10/h) |
+| `Extensions/RouteBuilderExtensions.cs` | +`MapAlunoAssistantEndpoints()` · +`MapTreinadorAssistantEndpoints()` |
+| `.env.example` | +`AI__Internal__Model`, `AI__Internal__ApiKey` (placeholder), `AI__TokenBudget__*`, `OTEL_EXPORTER_OTLP_ENDPOINT` |
 
 ---
 
-## Decisões técnicas registradas
+### Memória e documentação de segurança
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `.agent-security-memory.md` | Agentes registrados · DC-001 (provider + LGPD) · DC-002 (sem agente externo) · achados F1–F9 por severidade · histórico de revisão MAF |
+| `docs/ai-integration-status.md` | Este documento |
+
+---
+
+## Decisões arquiteturais
 
 ### DC-001 — Provider LLM
-- **Decisão:** Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) via Anthropic API  
-- **Implementação atual:** OpenAI SDK como provider interim (MEAI-compatible via `AsIChatClient()`)  
-- **Troca:** alterar `AI__Internal__ApiKey`, `AI__Internal__Model` e `AI__Internal__Endpoint` — sem mudança de código  
-- **LGPD Art. 33:** dados de treino do aluno (peso, altura) vão ao LLM externo. Documentação e opt-out Anthropic obrigatórios antes de produção. Não incluir CPF, nome completo, dados clínicos no contexto
+- **Decisão final:** Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) via Anthropic API  
+- **Estado atual:** OpenAI SDK como provider interim — `ChatClientFactory` usa `OpenAIClient.GetChatClient(model).AsIChatClient()`  
+- **Troca de provider:** alterar apenas `AI__Internal__ApiKey`, `AI__Internal__Model`, `AI__Internal__Endpoint` — zero mudança de código  
+- **Bloqueio LGPD:** dados físicos do aluno (peso, altura, carga) vão ao LLM externo → Art. 33 LGPD exige documentação de transferência internacional + verificação de opt-out Anthropic **antes de qualquer deploy em produção**. Não incluir CPF, nome completo, dados clínicos no contexto
 
 ### DC-002 — Sem agente externo
-- **Decisão:** escopo atual não inclui pesquisa web/LLM externa. Ambos os agentes são internos  
-- **Se mudar:** seguir padrão `architecture-patterns.md` — agente externo em controller separado, zero tools internas
+- **Decisão:** escopo atual é apenas agentes internos (dados da própria aplicação). Nenhum agente faz pesquisa web ou chama LLM de terceiros como tool  
+- **Se o escopo mudar:** agente externo em controller separado, com zero tools internas, seguindo `architecture-patterns.md`
 
 ---
 
-## O que ainda falta implementar
+## O que ainda falta
 
-### Crítico (bloqueia produção)
+### 🔴 Crítico — bloqueia qualquer teste real
 
-| # | Item | Detalhe |
-|---|------|---------|
-| T10 | **Configurar credenciais** | `AI__Internal__ApiKey` via User Secrets (dev) e Azure Key Vault / variável de ambiente (prod). Nunca commitado. Ver `.env.example` |
-| T15 | **Threat model agente-aluno** | Documento `docs/threat-model-agente-aluno.md` usando template `assets/threat-model-template.md` |
-| T21 | **Threat model agente-treinador** | Documento `docs/threat-model-agente-treinador.md` |
-| DC-001 LGPD | **Documentação LGPD** | Registro formal de transferência internacional de dados (Art. 33 LGPD), verificação opt-out Anthropic |
-| T19 (parcial) | **apply-suggestion handler** | `POST /treinador/assistant/apply-suggestion` registra o draft mas o `TODO` de criação real da ficha de treino via handler ainda não foi conectado |
+| Task | Item | Arquivo afetado | Detalhe |
+|------|------|-----------------|---------|
+| T10 | **Credenciais de API** | User Secrets / Key Vault | `AI__Internal__ApiKey` nunca commitado. Sem isso os endpoints lançam `InvalidOperationException` na inicialização. Configurar via `dotnet user-secrets set` em dev, variável de ambiente em prod |
+| T19 | **Conectar apply-suggestion ao handler** | `TreinadorAssistantEndpoints.cs:168` | O endpoint valida e remove o draft mas não cria a ficha de treino. Há um `TODO` explícito. Precisa chamar o use case de criação de ficha com os dados do JSON preview |
 
-### Importante (sprint seguinte)
+### 🟠 Alto — necessário antes de merge para main
 
-| # | Item | Detalhe |
-|---|------|---------|
-| T16 | **Testes unitários — guard rails** | `InputNormalizer`, `PromptInjectionPatterns`, `OutputScanner`, `ToolResponseSanitizer` |
-| T16 | **Testes unitários — tools** | `AlunoTools` e `TreinadorTools` com mocks dos repositories, especialmente validação de vínculo cross-tenant |
-| T22 | **ITokenBudget → PostgreSQL** | `InMemoryTokenBudget` não persiste entre restarts, não funciona em múltiplas instâncias. Migrar para tabela `ai_token_usage` |
-| T23 | **Alertas OTel** | Dashboards e alertas para `gen_ai.client.token.usage`, latência p95, erros de tool calls |
-| T24 | **Testes adversariais em CI** | Suite básica de prompt injection (override instructions, role injection, delimiter spoofing) que roda no pipeline |
+| Task | Item | Detalhe |
+|------|------|---------|
+| T15 | **Threat model — Agente Aluno** | Criar `docs/threat-model-agente-aluno.md`. Mapear: quem chama, dados acessados, tools, superfície de ataque, mitigações por camada |
+| T21 | **Threat model — Agente Treinador** | Criar `docs/threat-model-agente-treinador.md`. Incluir análise da tool write `sugerir_ficha_treino` e do approval flow |
+| DC-001 | **Documentação LGPD Art. 33** | Registro formal da transferência internacional de dados para Anthropic. Verificar Data Processing Agreement Anthropic. Definir quais campos do contexto são permitidos |
 
-### Hardening pós-Sprint 4
+### 🟡 Médio — Sprint 4
 
-| # | Item | Detalhe |
-|---|------|---------|
-| T25 | **Revisão de segurança pré-produção** | Re-execução completa do `maf-agent-guardian` com código final antes de merge para main |
-| — | **Topic boundary check** | Classificador (embedding ou LLM call curto) para validar que pergunta do aluno é sobre treinos. Opcional mas recomendado |
-| — | **PII redaction** | Se provider mudar para hosted externo com processamento de dados — redaction de CPF/email antes de enviar ao LLM |
-| — | **Conversation history** | Endpoints atuais são stateless (apenas 1 turno). Se multi-turn for adicionado: gerenciar histórico com TTL, criptografia em repouso, expurgo |
-| — | **Migrar para Anthropic SDK** | Quando `Microsoft.Extensions.AI.Anthropic` (ou equivalente MEAI-compatible) estiver disponível, trocar provider via config |
+| Task | Item | Detalhe |
+|------|------|---------|
+| T16 | **Testes unitários — guard rails** | `InputNormalizer`, `PromptInjectionPatterns`, `OutputScanner`, `ToolResponseSanitizer`. Testar cada regex, encoding tricks, limites |
+| T16 | **Testes unitários — tools** | `AlunoTools` e `TreinadorTools` com mocks dos repositories. Cobrir: tool de usuário diferente retorna erro, vínculo inativo bloqueado, args inválidos |
+| T22 | **ITokenBudget → PostgreSQL** | `InMemoryTokenBudget` não persiste entre restarts e não funciona em múltiplas instâncias. Migrar para tabela `ai_token_usage (user_id, agent_type, date, token_count)` |
+| T23 | **Alertas e dashboards OTel** | Criar dashboards em Grafana/Azure Monitor para `gen_ai.client.token.usage`, latência p95, erros de tool calls, taxa de injection detectada |
+| T24 | **Testes adversariais em CI** | Suite de pelo menos 15 casos: override instructions, role injection, delimiter spoofing, base64 payload, unicode tricks, cross-tenant attempt. Rodar no pipeline de CI |
+| T25 | **Revisão de segurança pré-produção** | Re-execução do `maf-agent-guardian` completo sobre o código final antes de merge para `main` |
+
+### 🟢 Opcional / Futuro
+
+| Item | Detalhe |
+|------|---------|
+| **Topic boundary check** | Classificador que valida se a pergunta é sobre treinos antes de chamar o agente. Opções: embedding similarity local ou LLM pre-call curto |
+| **Conversation history (multi-turn)** | Endpoints atuais são stateless (1 turno por request). Se multi-turn for adicionado: histórico com TTL, criptografia em repouso, expurgo por sessão |
+| **PII redaction automática** | Se os dados enviados ao LLM expandirem, adicionar `PiiRedactor` antes de `GetResponseAsync`. Regex para CPF, CNPJ, email, cartão já implementada em `input-guardrails.md` |
+| **Trocar para SDK nativo Anthropic** | Quando um adapter MEAI-compatible para Anthropic estiver disponível (e.g., `Microsoft.Extensions.AI.Anthropic`), trocar via config sem mudar código |
 
 ---
 
-## Notas de compatibilidade MEAI 10.x
+## Compatibilidade MEAI 10.x — breaking changes relevantes
 
-MEAI 10.6.0 (GA com .NET 10) introduziu breaking changes vs. 9.x:
+MEAI 10.6.0 renomeou APIs vs. 9.x. O projeto já usa a nomenclatura nova:
 
-| MEAI 9.x | MEAI 10.x |
-|-----------|-----------|
+| MEAI 9.x (antigo) | MEAI 10.x (atual no projeto) |
+|-------------------|------------------------------|
 | `ChatCompletion` | `ChatResponse` |
 | `IChatClient.CompleteAsync()` | `IChatClient.GetResponseAsync()` |
 | `completion.Message.Text` | `response.Text` |
-| `completion.Usage?.TotalTokenCount` (int?) | `response.Usage?.TotalTokenCount` (long?) |
-| `IChatClient.CompleteStreamingAsync()` | `IChatClient.GetStreamingResponseAsync()` |
-
-Código do projeto já usa a API 10.x.
+| `TotalTokenCount` → `int?` | `TotalTokenCount` → `long?` (cast para `int` nos endpoints) |
+| `CompleteStreamingAsync()` | `GetStreamingResponseAsync()` |
 
 ---
 
-## Como configurar para rodar localmente
+## Como configurar localmente
 
 ```bash
-# 1. Configurar User Secrets (nunca commitado)
-dotnet user-secrets set "AI:Internal:ApiKey" "sk-..." --project forzion.tech.Api
-dotnet user-secrets set "AI:Internal:Model" "gpt-4o-mini" --project forzion.tech.Api
-# Para Claude Haiku via Anthropic (quando integração MEAI estiver disponível):
+# 1. Credenciais via User Secrets — NUNCA commitar
+dotnet user-secrets set "AI:Internal:ApiKey" "sk-sua-chave" --project forzion.tech.Api
+dotnet user-secrets set "AI:Internal:Model"  "gpt-4o-mini"  --project forzion.tech.Api
+# Quando usar Anthropic diretamente:
 # dotnet user-secrets set "AI:Internal:Endpoint" "https://api.anthropic.com/v1/"
-# dotnet user-secrets set "AI:Internal:Model" "claude-haiku-4-5-20251001"
+# dotnet user-secrets set "AI:Internal:Model"    "claude-haiku-4-5-20251001"
 
-# 2. Build
+# 2. Build e run
 dotnet build
-
-# 3. Run
 dotnet run --project forzion.tech.Api
 ```
+
+Token budgets e endpoint OTLP são opcionais — têm defaults em código se ausentes das configs.
