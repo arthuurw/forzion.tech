@@ -108,8 +108,8 @@ export default function PagamentosAlunoPage() {
   const [error] = useState("");
 
   return (
-    <Box p={4}>
-      <Typography variant="h5" fontWeight="bold" mb={3}>Histórico de Pagamentos</Typography>
+    <Box sx={{ p: 4 }}>
+      <Typography variant="h5" sx={{ fontWeight: "bold", mb: 3 }}>Histórico de Pagamentos</Typography>
       <TabelaPagamentos
         pagamentos={pagamentos}
         loading={loading}

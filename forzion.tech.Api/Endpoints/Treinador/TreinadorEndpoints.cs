@@ -50,14 +50,13 @@ public static class TreinadorEndpoints
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
-            // A1: Valida que as URLs de retorno pertencem ao domínio configurado (prevenção de open redirect)
+            // Valida que as URLs de retorno pertencem ao domínio configurado (prevenção de open redirect).
+            // Rejeita se Stripe:UrlBase não estiver configurado — nunca pular a validação.
             var urlBase = configuration["Stripe:UrlBase"];
-            if (!string.IsNullOrEmpty(urlBase))
-            {
-                if (!UrlValidator.IsUrlPermitida(request.UrlRetorno, urlBase) ||
-                    !UrlValidator.IsUrlPermitida(request.UrlCancelamento, urlBase))
-                    return Results.BadRequest("URLs de retorno fora do domínio permitido.");
-            }
+            if (string.IsNullOrEmpty(urlBase)
+                || !UrlValidator.IsUrlPermitida(request.UrlRetorno, urlBase)
+                || !UrlValidator.IsUrlPermitida(request.UrlCancelamento, urlBase))
+                return Results.BadRequest("URLs de retorno fora do domínio permitido.");
 
             var result = await handler.HandleAsync(
                 new IniciarOnboardingTreinadorCommand(userContext.PerfilId, request.UrlRetorno, request.UrlCancelamento),

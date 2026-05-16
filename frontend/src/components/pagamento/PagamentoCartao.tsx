@@ -49,7 +49,7 @@ function CartaoForm({ pagamento, onPago }: FormProps) {
 
   if (pagamento.status === "Pago") {
     return (
-      <Stack alignItems="center" spacing={1} py={3}>
+      <Stack spacing={1} sx={{ alignItems: "center", py: 3 }}>
         <CheckCircleIcon color="success" sx={{ fontSize: 56 }} />
         <Typography variant="h6" color="success.main">Pagamento confirmado!</Typography>
       </Stack>
@@ -60,7 +60,7 @@ function CartaoForm({ pagamento, onPago }: FormProps) {
     <Paper variant="outlined" sx={{ p: 3, maxWidth: 420, mx: "auto" }}>
       <Stack spacing={2}>
         <Typography variant="h6">Pagamento com cartão</Typography>
-        <Typography variant="h5" color="primary" fontWeight="bold">
+        <Typography variant="h5" color="primary" sx={{ fontWeight: "bold" }}>
           {pagamento.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
         </Typography>
 

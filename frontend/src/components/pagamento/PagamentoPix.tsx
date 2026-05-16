@@ -42,7 +42,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
 
   if (pagamento.status === "Pago") {
     return (
-      <Stack alignItems="center" spacing={1} py={3}>
+      <Stack spacing={1} sx={{ alignItems: "center", py: 3 }}>
         <CheckCircleIcon color="success" sx={{ fontSize: 56 }} />
         <Typography variant="h6" color="success.main">Pagamento confirmado!</Typography>
       </Stack>
@@ -51,7 +51,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
 
   if (pagamento.status === "Expirado" || pagamento.status === "Falhou") {
     return (
-      <Stack alignItems="center" spacing={1} py={2}>
+      <Stack spacing={1} sx={{ alignItems: "center", py: 2 }}>
         <Chip label={pagamento.status === "Expirado" ? "QR expirado" : "Pagamento falhou"} color="error" />
         <Typography variant="body2" color="text.secondary">
           Solicite uma nova cobrança ao seu treinador.
@@ -64,9 +64,9 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
 
   return (
     <Paper variant="outlined" sx={{ p: 3, maxWidth: 380, mx: "auto" }}>
-      <Stack spacing={2} alignItems="center">
+      <Stack spacing={2} sx={{ alignItems: "center" }}>
         <Typography variant="h6">Pague via Pix</Typography>
-        <Typography variant="h5" color="primary" fontWeight="bold">
+        <Typography variant="h5" color="primary" sx={{ fontWeight: "bold" }}>
           {pagamento.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
         </Typography>
 
@@ -80,8 +80,8 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
         )}
 
         {pagamento.pixQrCode && (
-          <Box width="100%">
-            <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+          <Box sx={{ width: "100%" }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
               Pix copia e cola:
             </Typography>
             <Box

@@ -41,12 +41,12 @@ export default function PagamentosTreinadorPage() {
     }
   };
 
-  if (loading) return <Box p={4}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
 
   return (
-    <Box p={4} maxWidth={600}>
-      <Typography variant="h5" fontWeight="bold" mb={1}>Recebimentos</Typography>
-      <Typography variant="body2" color="text.secondary" mb={3}>
+    <Box sx={{ p: 4, maxWidth: 600 }}>
+      <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>Recebimentos</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Configure sua conta Stripe para receber pagamentos dos alunos via Pix.
       </Typography>
 
@@ -54,8 +54,8 @@ export default function PagamentosTreinadorPage() {
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={2}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Typography variant="subtitle1" fontWeight="medium">Status da conta</Typography>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: "medium" }}>Status da conta</Typography>
             {status?.onboardingCompleto ? (
               <Chip icon={<CheckCircleIcon />} label="Ativo" color="success" size="small" />
             ) : status?.contaConfigurada ? (

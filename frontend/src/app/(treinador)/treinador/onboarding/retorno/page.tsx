@@ -19,19 +19,19 @@ export default function OnboardingRetornoPage() {
 
   if (loading) {
     return (
-      <Box p={4} display="flex" justifyContent="center">
+      <Box sx={{ p: 4, display: "flex", justifyContent: "center" }}>
         <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Box p={4} maxWidth={480} mx="auto" textAlign="center">
-      <Stack spacing={2} alignItems="center">
+    <Box sx={{ p: 4, maxWidth: 480, mx: "auto", textAlign: "center" }}>
+      <Stack spacing={2} sx={{ alignItems: "center" }}>
         {completo ? (
           <>
             <CheckCircleIcon color="success" sx={{ fontSize: 64 }} />
-            <Typography variant="h5" fontWeight="bold">Cadastro concluído!</Typography>
+            <Typography variant="h5" sx={{ fontWeight: "bold" }}>Cadastro concluído!</Typography>
             <Typography variant="body2" color="text.secondary">
               Sua conta Stripe está ativa. Você já pode receber pagamentos dos alunos.
             </Typography>
@@ -39,7 +39,7 @@ export default function OnboardingRetornoPage() {
         ) : (
           <>
             <ErrorIcon color="warning" sx={{ fontSize: 64 }} />
-            <Typography variant="h5" fontWeight="bold">Cadastro incompleto</Typography>
+            <Typography variant="h5" sx={{ fontWeight: "bold" }}>Cadastro incompleto</Typography>
             <Typography variant="body2" color="text.secondary">
               Seu cadastro na Stripe ainda não foi concluído. Volte à página de recebimentos para continuar.
             </Typography>
