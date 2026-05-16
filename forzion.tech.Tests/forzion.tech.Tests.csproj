@@ -26,6 +26,7 @@
     <ProjectReference Include="..\forzion.tech.Application\forzion.tech.Application.csproj" />
     <ProjectReference Include="..\forzion.tech.Infrastructure\forzion.tech.Infrastructure.csproj" />
     <ProjectReference Include="..\forzion.tech.Api\forzion.tech.Api.csproj" />
+    <ProjectReference Include="..\forzion.tech.AI\forzion.tech.AI.csproj" />
   </ItemGroup>
 
 </Project>

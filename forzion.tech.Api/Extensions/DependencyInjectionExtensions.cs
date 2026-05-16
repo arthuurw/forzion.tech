@@ -69,6 +69,7 @@ using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMus
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
+using forzion.tech.AI.Configuration;
 using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.ExcluirPacoteAluno;
@@ -88,6 +89,8 @@ public static class DependencyInjectionExtensions
             {
                 opt.AddPolicy("auth", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("write", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("agent-aluno", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("agent-treinador", _ => RateLimitPartition.GetNoLimiter<string>("test"));
             });
         }
         else
@@ -109,6 +112,21 @@ public static class DependencyInjectionExtensions
                     c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     c.QueueLimit = 0;
                 });
+                // Agentes IA — rate limit por usuário autenticado (perfil_id claim)
+                opt.AddFixedWindowLimiter("agent-aluno", c =>
+                {
+                    c.PermitLimit = 20;
+                    c.Window = TimeSpan.FromHours(1);
+                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    c.QueueLimit = 0;
+                });
+                opt.AddFixedWindowLimiter("agent-treinador", c =>
+                {
+                    c.PermitLimit = 10;
+                    c.Window = TimeSpan.FromHours(1);
+                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    c.QueueLimit = 0;
+                });
             });
         }
 
@@ -127,6 +145,8 @@ public static class DependencyInjectionExtensions
         {
             services.AddInfrastructure(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
+            services.AddForzionAI();
+            services.AddForzionOpenTelemetry(configuration);
         }
 
         return services;

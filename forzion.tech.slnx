@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="forzion.tech.AI/forzion.tech.AI.csproj" />
   <Project Path="forzion.tech.Api/forzion.tech.Api.csproj" />
   <Project Path="forzion.tech.Application/forzion.tech.Application.csproj" />
   <Project Path="forzion.tech.Domain/forzion.tech.Domain.csproj" />

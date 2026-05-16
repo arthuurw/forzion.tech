@@ -1,4 +1,5 @@
 using forzion.tech.Api.Configuration;
+using forzion.tech.Api.Endpoints;
 using forzion.tech.Api.Endpoints.Admin;
 using forzion.tech.Api.Endpoints.AlunoArea;
 using forzion.tech.Api.Endpoints.Auth;
@@ -22,6 +23,8 @@ public static class RouteBuilderExtensions
         endpoints.MapContaEndpoints();
         endpoints.MapExercicioEndpoints();
         endpoints.MapTreinoEndpoints();
+        endpoints.MapAlunoAssistantEndpoints();
+        endpoints.MapTreinadorAssistantEndpoints();
 
         return endpoints;
     }
