@@ -29,9 +29,9 @@ services:
       Auth__JwtIssuer: "${JWT_ISSUER:-forzion.tech}"
       Auth__JwtAudience: "${JWT_AUDIENCE:-forzion.tech}"
       Cors__AllowedOrigins: "http://localhost:3000"
-      # WhatsApp__BaseUrl: ""
-      # WhatsApp__Instance: ""
-      # WhatsApp__ApiKey: ""
+      # WhatsApp__PhoneNumberId: ""
+      # WhatsApp__AccessToken: ""
+      # WhatsApp__ApiVersion: "v21.0"
 
   frontend:
     build:
