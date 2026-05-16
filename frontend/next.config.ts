@@ -12,11 +12,12 @@ const buildCsp = () =>
     "default-src 'self'",
     // 'unsafe-inline' necessário: Next.js hidratação sem nonce
     // 'unsafe-eval' necessário apenas em dev: MUI Emotion / Next.js hot-reload
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://js.stripe.com`,
     "style-src 'self' 'unsafe-inline'",                // necessário: Emotion injeta estilos inline
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://*.stripe.com",
     "font-src 'self'",
-    "connect-src 'self'",
+    "connect-src 'self' https://api.stripe.com",
+    "frame-src https://js.stripe.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

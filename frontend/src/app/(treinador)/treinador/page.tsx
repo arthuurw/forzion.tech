@@ -26,12 +26,20 @@ interface ObjetivoItem {
   total: number;
 }
 
+interface ReceitaPacoteItem {
+  name: string;
+  receita: number;
+  alunos: number;
+}
+
 export default function DashboardTreinadorPage() {
   const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
   const [objetivoData, setObjetivoData] = useState<ObjetivoItem[]>([]);
   const [pendentes, setPendentes] = useState<VinculoDetalheResponse[]>([]);
   const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
   const [totalFichas, setTotalFichas] = useState(0);
+  const [mrr, setMrr] = useState(0);
+  const [receitaPorPacote, setReceitaPorPacote] = useState<ReceitaPacoteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -39,12 +47,15 @@ export default function DashboardTreinadorPage() {
   const load = useCallback(async () => {
     try {
       const [ativoRes, aguardandoRes, inativoRes, fichasRes, pacotesRes] = await Promise.all([
-        treinadorApi.listVinculos({ status: "Ativo", tamanhoPagina: 1 }),
+        treinadorApi.listVinculos({ status: "Ativo", tamanhoPagina: 100 }),
         treinadorApi.listVinculos({ status: "AguardandoAprovacao", tamanhoPagina: 10 }),
         treinadorApi.listVinculos({ status: "Inativo", tamanhoPagina: 1 }),
         treinadorApi.listFichas({ tamanhoPagina: 100 }),
         treinadorApi.listPacotes(),
       ]);
+
+      const pacotesList = pacotesRes.data as PacoteAlunoResponse[];
+      setPacotes(pacotesList);
 
       setAlunoStats([
         { name: "Ativos", value: ativoRes.data.total, color: ALUNO_STATUS_COLORS.Ativos },
@@ -54,7 +65,26 @@ export default function DashboardTreinadorPage() {
 
       setPendentes(aguardandoRes.data.items);
       setTotalFichas(fichasRes.data.total);
-      setPacotes(pacotesRes.data as PacoteAlunoResponse[]);
+
+      // Compute MRR from active vinculos × pacote price
+      const precoMap = new Map(pacotesList.map((p) => [p.pacoteId, p]));
+      let totalMrr = 0;
+      const receitaMap: Record<string, ReceitaPacoteItem> = {};
+      for (const v of ativoRes.data.items as VinculoDetalheResponse[]) {
+        if (!v.pacoteAlunoId) continue;
+        const pacote = precoMap.get(v.pacoteAlunoId);
+        if (!pacote) continue;
+        totalMrr += pacote.preco;
+        if (!receitaMap[v.pacoteAlunoId]) {
+          receitaMap[v.pacoteAlunoId] = { name: pacote.nome, alunos: 0, receita: 0 };
+        }
+        receitaMap[v.pacoteAlunoId].alunos += 1;
+        receitaMap[v.pacoteAlunoId].receita += pacote.preco;
+      }
+      setMrr(totalMrr);
+      setReceitaPorPacote(
+        Object.values(receitaMap).sort((a, b) => b.receita - a.receita)
+      );
 
       const contagem: Record<string, number> = {};
       for (const f of fichasRes.data.items as TreinoResponse[]) {
@@ -110,7 +140,7 @@ export default function DashboardTreinadorPage() {
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
       {/* Stat cards */}
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 2, mb: 4 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" }, gap: 2, mb: 4 }}>
         {alunoStats.map((s) => (
           <Paper
             key={s.name}
@@ -133,6 +163,14 @@ export default function DashboardTreinadorPage() {
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
             Fichas
+          </Typography>
+        </Paper>
+        <Paper sx={{ p: 3, borderLeft: "4px solid #388e3c", borderRadius: 2 }}>
+          <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.2, color: "#388e3c" }}>
+            {mrr.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
+            Receita Est./mês
           </Typography>
         </Paper>
       </Box>
@@ -194,6 +232,36 @@ export default function DashboardTreinadorPage() {
           )}
         </Paper>
       </Box>
+
+      {/* Receita por pacote */}
+      {receitaPorPacote.length > 0 && (
+        <Paper sx={{ p: 3, borderRadius: 2, mb: 4 }}>
+          <Typography
+            variant="overline"
+            color="text.disabled"
+            sx={{ letterSpacing: 2, fontSize: "0.7rem" }}
+          >
+            RECEITA POR PACOTE
+          </Typography>
+          <ResponsiveContainer width="100%" height={Math.max(120, receitaPorPacote.length * 52)}>
+            <BarChart data={receitaPorPacote} layout="vertical" margin={{ left: 8, right: 24 }}>
+              <XAxis
+                type="number"
+                tickFormatter={(v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
+              <Tooltip
+                formatter={(value) => {
+                  const v = typeof value === "number" ? value : Number(value);
+                  return [v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), "Receita"];
+                }}
+              />
+              <Bar dataKey="receita" name="receita" fill="#388e3c" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Paper>
+      )}
 
       {/* Pending vinculos */}
       <Paper sx={{ p: 3, borderRadius: 2 }}>

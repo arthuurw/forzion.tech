@@ -28,6 +28,10 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
 
         builder.Property(t => t.PlanoTreinadorId);
 
+        builder.Property(t => t.StripeConnectAccountId).HasMaxLength(100);
+        builder.HasIndex(t => t.StripeConnectAccountId);
+        builder.Property(t => t.StripeOnboardingCompleto).HasDefaultValue(false);
+
         builder.HasOne<PlanoTreinador>()
             .WithMany()
             .HasForeignKey(t => t.PlanoTreinadorId)

@@ -49,6 +49,11 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
     public async Task AdicionarAsync(Treinador treinador, CancellationToken cancellationToken = default) =>
         await _context.Treinadores.AddAsync(treinador, cancellationToken).ConfigureAwait(false);
 
+    public async Task<Treinador?> ObterPorStripeAccountIdAsync(string stripeAccountId, CancellationToken cancellationToken = default) =>
+        await _context.Treinadores
+            .FirstOrDefaultAsync(t => t.StripeConnectAccountId == stripeAccountId, cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task ExcluirComDependenciasAsync(Treinador treinador, CancellationToken cancellationToken = default)
     {
         // All ExecuteDeleteAsync calls share one explicit transaction, so the entire
