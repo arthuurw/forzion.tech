@@ -42,6 +42,7 @@ vi.mock("@/lib/api/admin", () => ({
   adminApi: {
     listAlunos: vi.fn(),
     getAluno: vi.fn(),
+    getTreinador: vi.fn(),
     getAlunoVinculo: vi.fn(),
     getAlunoFichas: vi.fn(),
     getAlunoExecucoes: vi.fn(),
@@ -214,13 +215,11 @@ describe("DetalheTreinadorAdminPage", () => {
 
   beforeEach(() => {
     mockUseParams.mockReturnValue({ treinadorId: "t-001" });
-    mockAdminApi.listTreinadores.mockResolvedValue({
-      data: { items: [mockTreinador], total: 1, pagina: 1, tamanhoPagina: 100 },
-    } as never);
+    mockAdminApi.getTreinador.mockResolvedValue({ data: mockTreinador } as never);
   });
 
   it("exibe spinner durante carregamento", async () => {
-    mockAdminApi.listTreinadores.mockImplementation(() => new Promise(() => {}));
+    mockAdminApi.getTreinador.mockImplementation(() => new Promise(() => {}));
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     expect(screen.getByRole("progressbar")).toBeDefined();
@@ -245,14 +244,12 @@ describe("DetalheTreinadorAdminPage", () => {
     });
   });
 
-  it("exibe mensagem vazia quando listTreinadores não encontra treinador", async () => {
-    mockAdminApi.listTreinadores.mockResolvedValue({
-      data: { items: [], total: 0, pagina: 1, tamanhoPagina: 100 },
-    } as never);
+  it("exibe alerta de erro quando getTreinador falha", async () => {
+    mockAdminApi.getTreinador.mockRejectedValue(new Error("fail"));
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Treinador")).toBeDefined();
+      expect(screen.getByText("Erro ao carregar dados do treinador.")).toBeDefined();
     });
   });
 });
