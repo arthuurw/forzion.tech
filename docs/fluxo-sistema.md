@@ -19,9 +19,6 @@ O treinador realiza seu **cadastro** informando nome, e-mail e senha. A partir d
 
 A plataforma revisa o cadastro. Se aprovado, o treinador recebe o status **Ativo** e pode acessar todas as funcionalidades. Se reprovado, o acesso é negado e o motivo pode ser registrado.
 
-> **Por que existe aprovação?**
-> Para garantir que apenas profissionais qualificados operam na plataforma, protegendo a experiência dos alunos.
-
 ---
 
 ## 2. O Plano do Treinador
@@ -99,8 +96,6 @@ Se o vínculo de um aluno foi encerrado, o treinador pode **reativar** esse alun
 
 Ao reativar, o treinador escolhe um Pacote (o mesmo ou um diferente do anterior). Um novo Vínculo é criado e aprovado diretamente, sem a etapa de aprovação manual. O histórico anterior do aluno é preservado integralmente.
 
-> O treinador não é obrigado a ter tido um vínculo anterior com o aluno para reativá-lo — qualquer aluno inativo pode ser reconectado dessa forma.
-
 ---
 
 ## 6. O Treinador Cria e Prescreve Fichas
@@ -172,7 +167,7 @@ A cobrança é **disparada pelo treinador** — não é automática por padrão.
 
 O aluno acessa a seção de Assinatura no seu painel. Se houver um pagamento pendente, ele visualiza:
 
-- **Pix**: QR Code + código copia-e-cola + contador de validade. A página faz polling automático de 30 segundos — ao detectar a confirmação do pagamento, atualiza o status sem precisar recarregar.
+- **Pix**: QR Code + código copia-e-cola + contador de validade. O status atualiza automaticamente ao confirmar o pagamento.
 - **Cartão**: formulário de pagamento embutido (Stripe Elements) — o aluno insere os dados do cartão e confirma diretamente na plataforma.
 
 O histórico completo de cobranças está disponível na seção de Pagamentos, com o status de cada uma (Pendente, Pago, Expirado, Falhou).
@@ -187,7 +182,7 @@ O Stripe notifica a plataforma sobre eventos de pagamento via webhook (`POST /we
 
 ---
 
-## 10. O Histórico de Evolução
+## 9. O Histórico de Evolução
 
 Cada Execução registrada forma o **Histórico** do aluno. O histórico é cumulativo — mesmo que uma Ficha seja inativada, o aluno seja desvinculado ou troque de treinador, as execuções passadas permanecem registradas para sempre.
 
@@ -195,7 +190,7 @@ O histórico permite que o aluno acompanhe sua própria evolução ao longo do t
 
 ---
 
-## 11. Troca de Treinador
+## 10. Troca de Treinador
 
 O aluno pode, a qualquer momento, solicitar a troca para outro treinador disponível na plataforma.
 

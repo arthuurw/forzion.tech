@@ -12,6 +12,7 @@ using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Application.Results;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -53,6 +54,48 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
             new { nome = "Supino", grupoMuscular = TipoGrupoMuscular.Peito, descricao = "Desc" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_Criar_SemAutenticacao_Retorna401()
+    {
+        var response = await _factory.CreateClient().PostAsJsonAsync("/exercicios",
+            new { nome = "X", grupoMuscular = TipoGrupoMuscular.Peito });
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Post_Criar_DomainException_Retorna422()
+    {
+        _factory.CriarHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DomainException("Nome duplicado."));
+
+        var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
+            new { nome = "Supino", grupoMuscular = TipoGrupoMuscular.Peito });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task Post_Criar_ValidationException_Retorna400()
+    {
+        _factory.CriarHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new FluentValidation.ValidationException(
+                new[] { new FluentValidation.Results.ValidationFailure("Nome", "Obrigatório") }));
+
+        var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
+            new { nome = "", grupoMuscular = TipoGrupoMuscular.Peito });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Get_Listar_SemAutenticacao_Retorna401()
+    {
+        var response = await _factory.CreateClient().GetAsync("/exercicios");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

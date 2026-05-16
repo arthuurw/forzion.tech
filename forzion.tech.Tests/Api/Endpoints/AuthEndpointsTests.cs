@@ -149,6 +149,28 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
+    // --- POST /auth/register/aluno (falha) ---
+
+    [Fact]
+    public async Task Post_RegistrarAluno_Falha_Retorna422()
+    {
+        _factory.RegistrarAlunoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<RegistrarAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<AlunoResponse>(Error.Business("Treinador indisponível.")));
+
+        var response = await _factory.CreateClient().PostAsJsonAsync("/auth/register/aluno",
+            new
+            {
+                Email = "aluno@test.com",
+                Senha = "Senha@123",
+                Nome = "João",
+                TreinadorId,
+                PacoteId = Guid.NewGuid()
+            });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
     // --- GET /auth/treinadores ---
 
     [Fact]
