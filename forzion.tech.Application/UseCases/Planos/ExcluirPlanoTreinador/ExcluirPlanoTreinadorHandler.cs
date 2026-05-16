@@ -15,7 +15,7 @@ public class ExcluirPlanoTreinadorHandler(
         ArgumentNullException.ThrowIfNull(command);
 
         var plano = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Plano não encontrado.");
+            ?? throw new PlanoTreinadorNaoEncontradoException();
 
         plano.Inativar();
 

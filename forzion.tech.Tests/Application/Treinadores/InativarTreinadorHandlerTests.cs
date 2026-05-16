@@ -15,6 +15,7 @@ public class InativarTreinadorHandlerTests
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
+    private readonly Mock<IPacoteAlunoRepository> _pacoteRepo = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<InativarTreinadorHandler>> _logger = new();
@@ -22,9 +23,12 @@ public class InativarTreinadorHandlerTests
 
     public InativarTreinadorHandlerTests()
     {
+        _pacoteRepo
+            .Setup(r => r.ListarAtivosPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<PacoteAluno>)[]);
         _handler = new InativarTreinadorHandler(
             _treinadorRepo.Object, _vinculoRepo.Object, _treinoAlunoRepo.Object,
-            _logRepo.Object, _unitOfWork.Object, _logger.Object);
+            _pacoteRepo.Object, _logRepo.Object, _unitOfWork.Object, _logger.Object);
     }
 
     [Fact]
@@ -58,7 +62,7 @@ public class InativarTreinadorHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorJaInativo_LancaDomainException()
+    public async Task HandleAsync_TreinadorJaInativo_RetornaFalha()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
         treinador.Aprovar(Guid.NewGuid());
@@ -66,9 +70,10 @@ public class InativarTreinadorHandlerTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new InativarTreinadorCommand(treinador.Id, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*já está inativo*");
+        var result = await _handler.HandleAsync(new InativarTreinadorCommand(treinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("já está inativo");
     }
 
     [Fact]

@@ -11,7 +11,8 @@ public record VinculoDetalheResponse(
     VinculoStatus Status,
     string NomeAluno,
     string? EmailAluno,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool TemVinculoAtivoPrevio);
 
 public record ListarVinculosResponse(
     IReadOnlyList<VinculoDetalheResponse> Items,
@@ -37,7 +38,8 @@ public class ListarVinculosHandler(IVinculoTreinadorAlunoRepository vinculoRepos
             x.Vinculo.Status,
             x.NomeAluno,
             x.EmailAluno,
-            x.Vinculo.CreatedAt)).ToList();
+            x.Vinculo.CreatedAt,
+            x.TemVinculoAtivoPrevio)).ToList();
 
         return new ListarVinculosResponse(response, total, pagina, tamanhoPagina);
     }

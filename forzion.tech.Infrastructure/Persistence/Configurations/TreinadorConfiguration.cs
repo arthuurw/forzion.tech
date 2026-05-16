@@ -24,6 +24,8 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
             .HasMaxLength(100)
             .IsRequired();
 
+        builder.Property(t => t.Telefone).HasMaxLength(20);
+
         builder.Property(t => t.PlanoTreinadorId);
 
         builder.HasOne<PlanoTreinador>()
@@ -35,6 +37,7 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
         builder.Property(t => t.Status)
             .HasConversion<string>()
             .IsRequired();
+        builder.HasIndex(t => t.Status);
 
         builder.Property(t => t.AprovadoPorId);
         builder.Property(t => t.AprovadoEm);

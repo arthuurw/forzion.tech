@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -10,7 +11,6 @@ public class VincularFichaAoAlunoHandler(
     ITreinoRepository treinoRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
-    ILimiteFichasService limiteFichasService,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
     ILogger<VincularFichaAoAlunoHandler> logger)
@@ -18,12 +18,11 @@ public class VincularFichaAoAlunoHandler(
     private readonly ITreinoRepository _treinoRepository = treinoRepository;
     private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
     private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly ILimiteFichasService _limiteFichasService = limiteFichasService;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IUserContext _userContext = userContext;
     private readonly ILogger<VincularFichaAoAlunoHandler> _logger = logger;
 
-    public virtual async Task HandleAsync(
+    public virtual async Task<Result> HandleAsync(
         VincularFichaAoAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -44,14 +43,24 @@ public class VincularFichaAoAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new VinculoNaoEncontradoException();
 
-        await _limiteFichasService.ValidarAsync(command.AlunoId, cancellationToken).ConfigureAwait(false);
+        var alunosVinculados = await _treinoAlunoRepository
+            .ListarAtivosPorTreinoIdAsync(command.TreinoId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (alunosVinculados.Count > 0)
+        {
+            var nomeExistente = alunosVinculados[0].NomeAluno;
+            return Result.Failure(Error.Business($"Esta ficha já está vinculada ao aluno {nomeExistente}."));
+        }
 
         var treinoAluno = TreinoAluno.Criar(command.TreinoId, command.AlunoId);
-        
+
         await _treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Ficha {TreinoId} vinculada ao aluno {AlunoId} pelo treinador {TreinadorId}.", 
+        _logger.LogInformation("Ficha {TreinoId} vinculada ao aluno {AlunoId} pelo treinador {TreinadorId}.",
             command.TreinoId, command.AlunoId, treinadorId);
+
+        return Result.Success();
     }
 }

@@ -94,4 +94,45 @@ public class CriarTreinoHandlerTests
         var act = async () => await _handler.HandleAsync(command);
         await act.Should().ThrowAsync<ValidationException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_SemAlunoId_CriaTreinoSemVincularAluno()
+    {
+        var treinadorId = Guid.NewGuid();
+        var command = new CriarTreinoCommand(treinadorId, null, "Treino Livre", ObjetivoTreino.Forca);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.Nome.Should().Be("Treino Livre");
+        _alunoRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _treinoAlunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<TreinoAluno>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ComDificuldadeEDatas_AtribuiCamposNaResposta()
+    {
+        var treinadorId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João");
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+
+        var inicio = new DateOnly(2025, 1, 1);
+        var fim = new DateOnly(2025, 6, 30);
+        var command = new CriarTreinoCommand(treinadorId, alunoId, "Treino Avançado", ObjetivoTreino.Hipertrofia,
+            DificuldadeTreino.Avancado, inicio, fim);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
+        result.DataInicio.Should().Be(inicio);
+        result.DataFim.Should().Be(fim);
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommandNulo_LancaArgumentNullException()
+    {
+        var act = async () => await _handler.HandleAsync(null!);
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
 }

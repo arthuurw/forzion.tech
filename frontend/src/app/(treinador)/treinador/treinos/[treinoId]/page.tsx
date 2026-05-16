@@ -2,31 +2,46 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  Box, Typography, Card, Chip, Stack, Button,
+  Box, Typography, Card, Chip, Stack, Button, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Autocomplete, TextField, IconButton, Tooltip,
+  Autocomplete, TextField, IconButton, Tooltip, Divider,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import LinkIcon from "@mui/icons-material/Link";
+import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
-import { treinadorApi, type AdicionarExercicioData } from "@/lib/api/treinador";
-import type { TreinoResponse, TreinoExercicioResponse, ExercicioResponse, AlunoResponse } from "@/types";
+import { treinadorApi, type AdicionarExercicioData, type SerieConfigData } from "@/lib/api/treinador";
+import type { TreinoResponse, TreinoExercicioResponse, ExercicioResponse, AlunoResponse, ObjetivoTreino } from "@/types";
+import { OBJETIVO_LABEL, GRUPO_MUSCULAR_LABEL, OBJETIVOS } from "@/lib/constants/labels";
+import { formatarSeries } from "@/lib/utils/formatting";
+import { exportarFichaParaExcel } from "@/lib/utils/excel";
 
 const COLUMNS: Column[] = [
   { label: "Exercício" },
   { label: "Séries" },
-  { label: "Reps" },
-  { label: "Carga (kg)" },
-  { label: "Descanso (s)" },
+  { label: "Observação" },
   { label: "Ações", align: "right" },
 ];
+
+interface SerieRow {
+  quantidade: string;
+  repeticoesMin: string;
+  repeticoesMax: string;
+  descricao: string;
+  carga: string;
+  descanso: string;
+}
+
+const SERIE_VAZIA: SerieRow = { quantidade: "3", repeticoesMin: "10", repeticoesMax: "12", descricao: "", carga: "", descanso: "60" };
 
 export default function DetalheFichaPage() {
   const { treinoId } = useParams<{ treinoId: string }>();
@@ -39,10 +54,7 @@ export default function DetalheFichaPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [biblioteca, setBiblioteca] = useState<ExercicioResponse[]>([]);
   const [selectedEx, setSelectedEx] = useState<ExercicioResponse | null>(null);
-  const [series, setSeries] = useState("3");
-  const [repeticoes, setRepeticoes] = useState("12");
-  const [carga, setCarga] = useState("");
-  const [descanso, setDescanso] = useState("60");
+  const [seriesRows, setSeriesRows] = useState<SerieRow[]>([{ ...SERIE_VAZIA }]);
   const [loadingAdd, setLoadingAdd] = useState(false);
 
   const [removeEx, setRemoveEx] = useState<TreinoExercicioResponse | null>(null);
@@ -54,6 +66,22 @@ export default function DetalheFichaPage() {
   const [alunos, setAlunos] = useState<AlunoResponse[]>([]);
   const [selectedAluno, setSelectedAluno] = useState<AlunoResponse | null>(null);
   const [loadingVincular, setLoadingVincular] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editNome, setEditNome] = useState("");
+  const [editObjetivo, setEditObjetivo] = useState<ObjetivoTreino>("Hipertrofia");
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [loadingDelete, setLoadingDelete] = useState(false);
+
+  const [obsTarget, setObsTarget] = useState<TreinoExercicioResponse | null>(null);
+  const [obsText, setObsText] = useState("");
+  const [loadingObs, setLoadingObs] = useState(false);
+
+  const [editExTarget, setEditExTarget] = useState<TreinoExercicioResponse | null>(null);
+  const [editSeriesRows, setEditSeriesRows] = useState<SerieRow[]>([]);
+  const [loadingEditEx, setLoadingEditEx] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,7 +99,8 @@ export default function DetalheFichaPage() {
 
   const openAdd = async () => {
     setAddOpen(true);
-    setSelectedEx(null); setSeries("3"); setRepeticoes("12"); setCarga(""); setDescanso("60");
+    setSelectedEx(null);
+    setSeriesRows([{ ...SERIE_VAZIA }]);
     if (biblioteca.length === 0) {
       try {
         const res = await treinadorApi.listExercicios({ global: false, tamanhoPagina: 200 });
@@ -82,17 +111,26 @@ export default function DetalheFichaPage() {
     }
   };
 
+  const updateSerieRow = (idx: number, field: keyof SerieRow, value: string) => {
+    setSeriesRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  };
+
+  const addSerieRow = () => setSeriesRows((prev) => [...prev, { ...SERIE_VAZIA, descricao: "" }]);
+  const removeSerieRow = (idx: number) => setSeriesRows((prev) => prev.filter((_, i) => i !== idx));
+
   const handleAdd = async () => {
     if (!selectedEx) return;
     setLoadingAdd(true);
     try {
-      const data: AdicionarExercicioData = {
-        exercicioId: selectedEx.exercicioId,
-        series: Number(series),
-        repeticoes: Number(repeticoes),
-        carga: carga ? Number(carga) : null,
-        descanso: descanso ? Number(descanso) : null,
-      };
+      const series: SerieConfigData[] = seriesRows.map((r) => ({
+        quantidade: Number(r.quantidade) || 1,
+        repeticoesMin: Number(r.repeticoesMin) || 1,
+        repeticoesMax: r.repeticoesMax ? Number(r.repeticoesMax) : null,
+        descricao: r.descricao.trim() || null,
+        carga: r.carga ? Number(r.carga) : null,
+        descanso: r.descanso ? Number(r.descanso) : null,
+      }));
+      const data: AdicionarExercicioData = { exercicioId: selectedEx.exercicioId, series };
       await treinadorApi.adicionarExercicio(treinoId, data);
       setSuccess("Exercício adicionado à ficha.");
       setAddOpen(false);
@@ -131,8 +169,19 @@ export default function DetalheFichaPage() {
   };
 
   const openVincular = async () => {
-    setVincularOpen(true);
+    try {
+      const res = await treinadorApi.listAlunosVinculados(treinoId);
+      if (res.data.length > 0) {
+        const nomes = res.data.map((v) => v.nomeAluno).join(", ");
+        setError(`Já existe o aluno ${nomes} vinculado a esta ficha.`);
+        return;
+      }
+    } catch {
+      setError("Erro ao verificar vínculos da ficha.");
+      return;
+    }
     setSelectedAluno(null);
+    setVincularOpen(true);
     if (alunos.length === 0) {
       try {
         const res = await treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: 200 });
@@ -157,6 +206,105 @@ export default function DetalheFichaPage() {
     }
   };
 
+  const openEdit = () => {
+    if (!ficha) return;
+    setEditNome(ficha.nome);
+    setEditObjetivo(ficha.objetivo);
+    setEditOpen(true);
+  };
+
+  const handleEditar = async () => {
+    setLoadingEdit(true);
+    try {
+      await treinadorApi.atualizarFicha(treinoId, { nome: editNome.trim(), objetivo: editObjetivo });
+      setEditOpen(false);
+      setSuccess("Ficha atualizada.");
+      load();
+    } catch {
+      setError("Erro ao atualizar ficha.");
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
+  const openEditEx = (ex: TreinoExercicioResponse) => {
+    setEditExTarget(ex);
+    setEditSeriesRows(ex.series.map((s) => ({
+      quantidade: String(s.quantidade),
+      repeticoesMin: String(s.repeticoesMin),
+      repeticoesMax: s.repeticoesMax != null ? String(s.repeticoesMax) : "",
+      descricao: s.descricao ?? "",
+      carga: s.carga != null ? String(s.carga) : "",
+      descanso: s.descanso != null ? String(s.descanso) : "",
+    })));
+  };
+
+  const updateEditSerieRow = (idx: number, field: keyof SerieRow, value: string) => {
+    setEditSeriesRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  };
+
+  const addEditSerieRow = () => setEditSeriesRows((prev) => [...prev, { ...SERIE_VAZIA, descricao: "" }]);
+  const removeEditSerieRow = (idx: number) => setEditSeriesRows((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleEditarExercicio = async () => {
+    if (!editExTarget) return;
+    setLoadingEditEx(true);
+    try {
+      const series: SerieConfigData[] = editSeriesRows.map((r) => ({
+        quantidade: Number(r.quantidade) || 1,
+        repeticoesMin: Number(r.repeticoesMin) || 1,
+        repeticoesMax: r.repeticoesMax ? Number(r.repeticoesMax) : null,
+        descricao: r.descricao.trim() || null,
+        carga: r.carga ? Number(r.carga) : null,
+        descanso: r.descanso ? Number(r.descanso) : null,
+      }));
+      await treinadorApi.editarExercicioTreino(treinoId, editExTarget.treinoExercicioId, { series });
+      setSuccess("Exercício atualizado.");
+      setEditExTarget(null);
+      load();
+    } catch {
+      setError("Erro ao editar exercício.");
+    } finally {
+      setLoadingEditEx(false);
+    }
+  };
+
+  const openObs = (ex: TreinoExercicioResponse) => {
+    setObsTarget(ex);
+    setObsText(ex.observacao ?? "");
+  };
+
+  const handleSalvarObs = async () => {
+    if (!obsTarget) return;
+    setLoadingObs(true);
+    try {
+      await treinadorApi.atualizarObservacaoExercicio(treinoId, obsTarget.treinoExercicioId, obsText.trim() || null);
+      setSuccess("Observação salva.");
+      setObsTarget(null);
+      load();
+    } catch {
+      setError("Erro ao salvar observação.");
+    } finally {
+      setLoadingObs(false);
+    }
+  };
+
+  const handleExcluir = async () => {
+    setLoadingDelete(true);
+    try {
+      await treinadorApi.excluirFicha(treinoId);
+      router.push("/treinador/treinos");
+    } catch {
+      setError("Erro ao excluir ficha. Fichas com execuções registradas não podem ser excluídas.");
+      setDeleteOpen(false);
+      setLoadingDelete(false);
+    }
+  };
+
+  const canAdd = !!selectedEx && seriesRows.every(
+    (r) => Number(r.quantidade) >= 1 && Number(r.repeticoesMin) >= 1
+  );
+
   if (loading) return <LoadingSpinner />;
   if (!ficha) return null;
 
@@ -168,25 +316,28 @@ export default function DetalheFichaPage() {
         </IconButton>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>{ficha.nome}</Typography>
-          <Chip label={ficha.objetivo} size="small" sx={{ mt: 0.5 }} />
+          <Chip label={OBJETIVO_LABEL[ficha.objetivo] ?? ficha.objetivo} size="small" sx={{ mt: 0.5 }} />
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<ContentCopyIcon />}
-            disabled={loadingDuplicar}
-            onClick={handleDuplicar}
-          >
+          <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} disabled={loadingDuplicar} onClick={handleDuplicar}>
             Duplicar
           </Button>
           <Button
             variant="outlined"
             size="small"
-            startIcon={<LinkIcon />}
-            onClick={openVincular}
+            startIcon={<FileDownloadIcon />}
+            onClick={() => exportarFichaParaExcel({ nome: ficha.nome, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
           >
+            Exportar
+          </Button>
+          <Button variant="outlined" size="small" startIcon={<LinkIcon />} onClick={openVincular}>
             Vincular aluno
+          </Button>
+          <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={openEdit}>
+            Editar
+          </Button>
+          <Button variant="outlined" size="small" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteOpen(true)}>
+            Excluir
           </Button>
         </Stack>
       </Box>
@@ -205,11 +356,7 @@ export default function DetalheFichaPage() {
 
       <Card variant="outlined">
         {ficha.exercicios.length === 0 ? (
-          <EmptyState
-            message="Nenhum exercício nesta ficha ainda."
-            actionLabel="Adicionar exercício"
-            onAction={openAdd}
-          />
+          <EmptyState message="Nenhum exercício nesta ficha ainda." actionLabel="Adicionar exercício" onAction={openAdd} />
         ) : (
           <ResponsiveTable
             columns={COLUMNS}
@@ -217,80 +364,142 @@ export default function DetalheFichaPage() {
             rowKey={(ex) => ex.treinoExercicioId}
             renderCell={(ex, i) => {
               if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{ex.nomeExercicio}</Typography>;
-              if (i === 1) return ex.series;
-              if (i === 2) return ex.repeticoes;
-              if (i === 3) return ex.carga ?? "—";
-              if (i === 4) return ex.descansoSegundos ?? "—";
+              if (i === 1) return (
+                <Typography variant="body2" sx={{ fontSize: 12, color: "text.secondary" }}>
+                  {formatarSeries(ex.series)}
+                </Typography>
+              );
+              if (i === 2) return ex.observacao ? (
+                <Typography variant="body2" sx={{ fontSize: 12, color: "text.secondary", maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {ex.observacao}
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ fontSize: 12, color: "text.disabled" }}>—</Typography>
+              );
               return (
-                <Tooltip title="Remover exercício">
-                  <IconButton size="small" color="error" onClick={() => setRemoveEx(ex)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <Box sx={{ display: "flex", gap: 0.5, justifyContent: "flex-end" }}>
+                  <Tooltip title="Editar séries">
+                    <IconButton size="small" onClick={() => openEditEx(ex)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={ex.observacao ? "Editar observação" : "Adicionar observação"}>
+                    <IconButton size="small" color={ex.observacao ? "primary" : "default"} onClick={() => openObs(ex)}>
+                      <NoteAltIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Remover exercício">
+                    <IconButton size="small" color="error" onClick={() => setRemoveEx(ex)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               );
             }}
           />
         )}
       </Card>
 
-      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth>
+      {/* Dialog: adicionar exercício */}
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Adicionar exercício</DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
+          <Stack spacing={2.5} sx={{ pt: 1 }}>
             <Autocomplete
               options={biblioteca}
-              getOptionLabel={(ex) => `${ex.nome}${ex.grupoMuscular ? ` — ${ex.grupoMuscular}` : ""}`}
+              getOptionLabel={(ex) => `${ex.nome}${ex.grupoMuscular ? ` — ${GRUPO_MUSCULAR_LABEL[ex.grupoMuscular] ?? ex.grupoMuscular}` : ""}`}
               value={selectedEx}
               onChange={(_, v) => setSelectedEx(v)}
-              renderInput={(params) => (
-                <TextField {...params} label="Exercício" size="small" required />
-              )}
+              renderInput={(params) => <TextField {...params} label="Exercício" size="small" required />}
             />
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Séries"
-                type="number"
-                value={series}
-                onChange={(e) => setSeries(e.target.value)}
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                Grupos de séries
+              </Typography>
+              <Stack spacing={1.5} divider={<Divider />}>
+                {seriesRows.map((row, idx) => (
+                  <Box key={idx}>
+                    <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                      <TextField
+                        label="Qtd séries"
+                        type="number"
+                        value={row.quantidade}
+                        onChange={(e) => updateSerieRow(idx, "quantidade", e.target.value)}
+                        size="small"
+                        sx={{ width: 90 }}
+                        slotProps={{ htmlInput: { min: 1 } }}
+                      />
+                      <TextField
+                        label="Reps mín."
+                        type="number"
+                        value={row.repeticoesMin}
+                        onChange={(e) => updateSerieRow(idx, "repeticoesMin", e.target.value)}
+                        size="small"
+                        sx={{ width: 90 }}
+                        slotProps={{ htmlInput: { min: 1 } }}
+                      />
+                      <TextField
+                        label="Reps máx."
+                        type="number"
+                        value={row.repeticoesMax}
+                        onChange={(e) => updateSerieRow(idx, "repeticoesMax", e.target.value)}
+                        size="small"
+                        sx={{ width: 90 }}
+                        slotProps={{ htmlInput: { min: 1 } }}
+                      />
+                      <TextField
+                        label="Descrição"
+                        value={row.descricao}
+                        onChange={(e) => updateSerieRow(idx, "descricao", e.target.value)}
+                        size="small"
+                        sx={{ flex: 1, minWidth: 120 }}
+                        placeholder="Ex.: Aquecimento"
+                        slotProps={{ htmlInput: { maxLength: 100 } }}
+                      />
+                      <TextField
+                        label="Carga (kg)"
+                        type="number"
+                        value={row.carga}
+                        onChange={(e) => updateSerieRow(idx, "carga", e.target.value)}
+                        size="small"
+                        sx={{ width: 90 }}
+                        slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
+                      />
+                      <TextField
+                        label="Descanso (s)"
+                        type="number"
+                        value={row.descanso}
+                        onChange={(e) => updateSerieRow(idx, "descanso", e.target.value)}
+                        size="small"
+                        sx={{ width: 100 }}
+                        slotProps={{ htmlInput: { min: 0 } }}
+                      />
+                      {seriesRows.length > 1 && (
+                        <Tooltip title="Remover grupo">
+                          <IconButton size="small" color="error" onClick={() => removeSerieRow(idx)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+              <Button
+                startIcon={<AddIcon />}
                 size="small"
-                fullWidth
-                slotProps={{ htmlInput: { min: 1 } }}
-              />
-              <TextField
-                label="Repetições"
-                type="number"
-                value={repeticoes}
-                onChange={(e) => setRepeticoes(e.target.value)}
-                size="small"
-                fullWidth
-                slotProps={{ htmlInput: { min: 1 } }}
-              />
-            </Stack>
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Carga (kg)"
-                type="number"
-                value={carga}
-                onChange={(e) => setCarga(e.target.value)}
-                size="small"
-                fullWidth
-                slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
-              />
-              <TextField
-                label="Descanso (s)"
-                type="number"
-                value={descanso}
-                onChange={(e) => setDescanso(e.target.value)}
-                size="small"
-                fullWidth
-                slotProps={{ htmlInput: { min: 0 } }}
-              />
-            </Stack>
+                onClick={addSerieRow}
+                sx={{ mt: 1.5 }}
+              >
+                Adicionar grupo de séries
+              </Button>
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddOpen(false)}>Cancelar</Button>
-          <Button variant="contained" disabled={!selectedEx || loadingAdd} onClick={handleAdd}>
+          <Button variant="contained" disabled={!canAdd || loadingAdd} onClick={handleAdd}>
             Adicionar
           </Button>
         </DialogActions>
@@ -307,6 +516,177 @@ export default function DetalheFichaPage() {
         onClose={() => setRemoveEx(null)}
       />
 
+      {/* Dialog: editar ficha */}
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Editar ficha</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              label="Nome"
+              value={editNome}
+              onChange={(e) => setEditNome(e.target.value)}
+              size="small"
+              fullWidth
+              required
+              autoFocus
+            />
+            <TextField
+              select
+              label="Objetivo"
+              value={editObjetivo}
+              onChange={(e) => setEditObjetivo(e.target.value as ObjetivoTreino)}
+              size="small"
+              fullWidth
+            >
+              {OBJETIVOS.map((o) => <MenuItem key={o} value={o}>{OBJETIVO_LABEL[o]}</MenuItem>)}
+            </TextField>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)}>Cancelar</Button>
+          <Button variant="contained" disabled={!editNome.trim() || loadingEdit} onClick={handleEditar}>
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Excluir ficha"
+        description={`Excluir "${ficha.nome}"? Fichas com execuções registradas não podem ser excluídas.`}
+        confirmLabel="Excluir"
+        destructive
+        loading={loadingDelete}
+        onConfirm={handleExcluir}
+        onClose={() => setDeleteOpen(false)}
+      />
+
+      {/* Dialog: editar séries do exercício */}
+      <Dialog open={!!editExTarget} onClose={() => setEditExTarget(null)} maxWidth="md" fullWidth>
+        <DialogTitle>Editar séries — {editExTarget?.nomeExercicio}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <Stack spacing={1.5} divider={<Divider />}>
+              {editSeriesRows.map((row, idx) => (
+                <Box key={idx}>
+                  <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                    <TextField
+                      label="Qtd séries"
+                      type="number"
+                      value={row.quantidade}
+                      onChange={(e) => updateEditSerieRow(idx, "quantidade", e.target.value)}
+                      size="small"
+                      sx={{ width: 90 }}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                    <TextField
+                      label="Reps mín."
+                      type="number"
+                      value={row.repeticoesMin}
+                      onChange={(e) => updateEditSerieRow(idx, "repeticoesMin", e.target.value)}
+                      size="small"
+                      sx={{ width: 90 }}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                    <TextField
+                      label="Reps máx."
+                      type="number"
+                      value={row.repeticoesMax}
+                      onChange={(e) => updateEditSerieRow(idx, "repeticoesMax", e.target.value)}
+                      size="small"
+                      sx={{ width: 90 }}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                    <TextField
+                      label="Descrição"
+                      value={row.descricao}
+                      onChange={(e) => updateEditSerieRow(idx, "descricao", e.target.value)}
+                      size="small"
+                      sx={{ flex: 1, minWidth: 120 }}
+                      placeholder="Ex.: Aquecimento"
+                      slotProps={{ htmlInput: { maxLength: 100 } }}
+                    />
+                    <TextField
+                      label="Carga (kg)"
+                      type="number"
+                      value={row.carga}
+                      onChange={(e) => updateEditSerieRow(idx, "carga", e.target.value)}
+                      size="small"
+                      sx={{ width: 90 }}
+                      slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
+                    />
+                    <TextField
+                      label="Descanso (s)"
+                      type="number"
+                      value={row.descanso}
+                      onChange={(e) => updateEditSerieRow(idx, "descanso", e.target.value)}
+                      size="small"
+                      sx={{ width: 100 }}
+                      slotProps={{ htmlInput: { min: 0 } }}
+                    />
+                    {editSeriesRows.length > 1 && (
+                      <Tooltip title="Remover grupo">
+                        <IconButton size="small" color="error" onClick={() => removeEditSerieRow(idx)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+            <Button startIcon={<AddIcon />} size="small" onClick={addEditSerieRow} sx={{ mt: 1.5 }}>
+              Adicionar grupo de séries
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditExTarget(null)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            disabled={loadingEditEx || editSeriesRows.every((r) => !(Number(r.quantidade) >= 1 && Number(r.repeticoesMin) >= 1))}
+            onClick={handleEditarExercicio}
+          >
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog: observação do exercício */}
+      <Dialog open={!!obsTarget} onClose={() => setObsTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {obsTarget?.observacao ? "Editar observação" : "Adicionar observação"}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Observação"
+            value={obsText}
+            onChange={(e) => setObsText(e.target.value)}
+            size="small"
+            fullWidth
+            multiline
+            minRows={3}
+            maxRows={6}
+            autoFocus
+            placeholder="Ex.: Manter cotovelo alinhado, foco na contração..."
+            slotProps={{ htmlInput: { maxLength: 500 } }}
+            helperText={`${obsText.length}/500`}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setObsTarget(null)}>Cancelar</Button>
+          {obsTarget?.observacao && (
+            <Button color="error" disabled={loadingObs} onClick={() => { setObsText(""); }}>
+              Limpar
+            </Button>
+          )}
+          <Button variant="contained" disabled={loadingObs} onClick={handleSalvarObs}>
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={vincularOpen} onClose={() => setVincularOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Vincular ficha a aluno</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
@@ -320,11 +700,7 @@ export default function DetalheFichaPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setVincularOpen(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            disabled={!selectedAluno || loadingVincular}
-            onClick={handleVincular}
-          >
+          <Button variant="contained" disabled={!selectedAluno || loadingVincular} onClick={handleVincular}>
             Vincular
           </Button>
         </DialogActions>

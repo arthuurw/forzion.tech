@@ -33,7 +33,8 @@ public class DuplicarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
-        treino.AdicionarExercicio(Guid.NewGuid(), 3, 12, 50m, 60);
+        var ex = treino.AdicionarExercicio(Guid.NewGuid());
+        ex.AdicionarSerie(3, 12, null, null, 50m, 60);
 
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);

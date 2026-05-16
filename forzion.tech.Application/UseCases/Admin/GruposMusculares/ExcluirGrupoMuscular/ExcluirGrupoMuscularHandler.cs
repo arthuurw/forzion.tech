@@ -11,10 +11,12 @@ public class ExcluirGrupoMuscularHandler(
     private readonly IGrupoMuscularRepository _repository = repository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public async Task HandleAsync(ExcluirGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task HandleAsync(ExcluirGrupoMuscularCommand command, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(command);
+
         var grupo = await _repository.ObterPorIdAsync(command.Id, cancellationToken)
-            ?? throw new DomainException("Grupo muscular não encontrado.");
+            ?? throw new GrupoMuscularNaoEncontradoException();
 
         // TODO: Validar se existem exercícios vinculados quando a migração Enum -> Entity ocorrer
 

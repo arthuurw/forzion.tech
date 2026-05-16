@@ -32,7 +32,7 @@ public class AprovarTreinadorHandlerTests
 
         var result = await _handler.HandleAsync(new AprovarTreinadorCommand(treinador.Id, adminId));
 
-        result.Status.Should().Be(TreinadorStatus.Ativo);
+        result.Value.Status.Should().Be(TreinadorStatus.Ativo);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

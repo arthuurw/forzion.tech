@@ -12,13 +12,13 @@ public class LimiteTreinadorService(
     public async Task ValidarAsync(Guid treinadorId, CancellationToken cancellationToken = default)
     {
         var treinador = await treinadorRepository.ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Treinador não encontrado.");
+            ?? throw new TreinadorNaoEncontradoException();
 
         if (treinador.PlanoTreinadorId is null)
             throw new DomainException("Treinador sem plano atribuído.");
 
         var plano = await planoRepository.ObterPorIdAsync(treinador.PlanoTreinadorId.Value, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Plano do treinador não encontrado.");
+            ?? throw new PlanoTreinadorNaoEncontradoException();
 
         var ativos = await vinculoRepository.ContarAtivosPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
 

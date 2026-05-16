@@ -1,3 +1,4 @@
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Domain.Enums;
@@ -13,19 +14,30 @@ public record FichaAlunoDetalheResponse(
     string Status,
     IReadOnlyList<TreinoExercicioResponse> Exercicios);
 
-public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository)
+public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository, IUserContext userContext)
 {
     private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
+    private readonly IUserContext _userContext = userContext;
 
     public virtual async Task<FichaAlunoDetalheResponse> HandleAsync(
         Guid treinoAlunoId,
         Guid alunoId,
         CancellationToken cancellationToken = default)
     {
-        var detalhe = await _treinoAlunoRepository
-            .ObterDetalheAsync(treinoAlunoId, alunoId, cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new TreinoNaoEncontradoException();
+        if (!_userContext.IsSystemAdmin && _userContext.PerfilId != alunoId)
+            throw new AcessoNegadoException();
+
+        TreinoAlunoDetalhe? detalhe;
+        if (_userContext.IsSystemAdmin)
+            detalhe = await _treinoAlunoRepository
+                .ObterDetalheAdminAsync(treinoAlunoId, cancellationToken)
+                .ConfigureAwait(false);
+        else
+            detalhe = await _treinoAlunoRepository
+                .ObterDetalheAsync(treinoAlunoId, alunoId, cancellationToken)
+                .ConfigureAwait(false);
+
+        if (detalhe is null) throw new TreinoNaoEncontradoException();
 
         return new FichaAlunoDetalheResponse(
             detalhe.TreinoAluno.Id,
@@ -33,14 +45,14 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
             detalhe.Treino.Nome,
             detalhe.Treino.Objetivo,
             detalhe.TreinoAluno.Status.ToString(),
-            [.. detalhe.Treino.Exercicios.Select(te => new TreinoExercicioResponse(
+            [.. detalhe.Treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
                 te.Id,
                 te.ExercicioId,
                 te.Exercicio?.Nome ?? string.Empty,
-                te.Series,
-                te.Repeticoes,
-                te.Carga,
-                te.Descanso,
-                te.Ordem))]);
+                te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
+                    s.Id, s.Quantidade, s.RepeticoesMin, s.RepeticoesMax,
+                    s.Descricao, s.Carga, s.Descanso, s.Ordem)).ToList(),
+                te.Ordem,
+                te.Observacao))]);
     }
 }

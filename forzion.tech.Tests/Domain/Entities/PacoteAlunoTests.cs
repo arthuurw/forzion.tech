@@ -13,20 +13,27 @@ public class PacoteAlunoTests
     [Fact]
     public void Criar_DadosValidos_RetornaPacote()
     {
-        var p = PacoteAluno.Criar(TreinadorId, "Pacote A", 3, 99.90m);
+        var p = PacoteAluno.Criar(TreinadorId, "Pacote A", 99.90m, "Treino + whatsapp");
 
         p.Id.Should().NotBeEmpty();
         p.TreinadorId.Should().Be(TreinadorId);
         p.Nome.Should().Be("Pacote A");
-        p.MaxFichas.Should().Be(3);
+        p.Descricao.Should().Be("Treino + whatsapp");
         p.Preco.Should().Be(99.90m);
         p.IsAtivo.Should().BeTrue();
     }
 
     [Fact]
+    public void Criar_SemDescricao_DescricaoNula()
+    {
+        var p = PacoteAluno.Criar(TreinadorId, "Pacote A", 99.90m);
+        p.Descricao.Should().BeNull();
+    }
+
+    [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => PacoteAluno.Criar(Guid.Empty, "Nome", 3, 0);
+        var act = () => PacoteAluno.Criar(Guid.Empty, "Nome", 0);
         act.Should().Throw<DomainException>().WithMessage("O identificador do treinador é inválido.");
     }
 
@@ -35,22 +42,23 @@ public class PacoteAlunoTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => PacoteAluno.Criar(TreinadorId, nome, 3, 0);
+        var act = () => PacoteAluno.Criar(TreinadorId, nome, 0);
         act.Should().Throw<DomainException>().WithMessage("O nome é obrigatório.");
-    }
-
-    [Fact]
-    public void Criar_MaxFichasZero_LancaDomainException()
-    {
-        var act = () => PacoteAluno.Criar(TreinadorId, "Nome", 0, 0);
-        act.Should().Throw<DomainException>().WithMessage("O limite de fichas deve ser maior que zero.");
     }
 
     [Fact]
     public void Criar_PrecoNegativo_LancaDomainException()
     {
-        var act = () => PacoteAluno.Criar(TreinadorId, "Nome", 1, -1);
+        var act = () => PacoteAluno.Criar(TreinadorId, "Nome", -1);
         act.Should().Throw<DomainException>().WithMessage("O preço não pode ser negativo.");
+    }
+
+    [Fact]
+    public void Criar_DescricaoMuitoLonga_LancaDomainException()
+    {
+        var descricaoLonga = new string('x', 501);
+        var act = () => PacoteAluno.Criar(TreinadorId, "Nome", 0, descricaoLonga);
+        act.Should().Throw<DomainException>().WithMessage("A descrição deve ter no máximo 500 caracteres.");
     }
 
     // --- Atualizar ---
@@ -58,28 +66,46 @@ public class PacoteAlunoTests
     [Fact]
     public void Atualizar_ComNome_AtualizaNome()
     {
-        var p = PacoteAluno.Criar(TreinadorId, "A", 1, 0);
+        var p = PacoteAluno.Criar(TreinadorId, "A", 0);
         p.Atualizar("B", null, null);
         p.Nome.Should().Be("B");
         p.UpdatedAt.Should().NotBeNull();
     }
 
     [Fact]
-    public void Atualizar_ComMaxFichas_AtualizaMaxFichas()
+    public void Atualizar_ComDescricao_AtualizaDescricao()
     {
-        var p = PacoteAluno.Criar(TreinadorId, "A", 1, 0);
-        p.Atualizar(null, 5, null);
-        p.MaxFichas.Should().Be(5);
+        var p = PacoteAluno.Criar(TreinadorId, "A", 0);
+        p.Atualizar(null, null, "Premium com vídeo");
+        p.Descricao.Should().Be("Premium com vídeo");
+        p.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Atualizar_ComPreco_AtualizaPreco()
+    {
+        var p = PacoteAluno.Criar(TreinadorId, "A", 50);
+        p.Atualizar(null, 120m, null);
+        p.Preco.Should().Be(120m);
     }
 
     [Fact]
     public void Atualizar_CamposNulos_NaoAltera()
     {
-        var p = PacoteAluno.Criar(TreinadorId, "A", 3, 50);
+        var p = PacoteAluno.Criar(TreinadorId, "A", 50, "desc");
         p.Atualizar(null, null, null);
         p.Nome.Should().Be("A");
-        p.MaxFichas.Should().Be(3);
+        p.Descricao.Should().Be("desc");
         p.Preco.Should().Be(50);
+    }
+
+    [Fact]
+    public void Atualizar_DescricaoMuitoLonga_LancaDomainException()
+    {
+        var p = PacoteAluno.Criar(TreinadorId, "A", 0);
+        var descricaoLonga = new string('x', 501);
+        var act = () => p.Atualizar(null, null, descricaoLonga);
+        act.Should().Throw<DomainException>().WithMessage("A descrição deve ter no máximo 500 caracteres.");
     }
 
     // --- Inativar ---
@@ -87,7 +113,7 @@ public class PacoteAlunoTests
     [Fact]
     public void Inativar_Ativo_MudaParaInativo()
     {
-        var p = PacoteAluno.Criar(TreinadorId, "A", 1, 0);
+        var p = PacoteAluno.Criar(TreinadorId, "A", 0);
         p.Inativar();
         p.IsAtivo.Should().BeFalse();
         p.UpdatedAt.Should().NotBeNull();

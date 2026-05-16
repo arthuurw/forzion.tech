@@ -1,4 +1,6 @@
 using FluentAssertions;
+using FluentValidation;
+using FluentValidation.Results;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
@@ -13,11 +15,14 @@ public class CriarGrupoMuscularHandlerTests
 {
     private readonly Mock<IGrupoMuscularRepository> _repository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IValidator<CriarGrupoMuscularCommand>> _validator = new();
     private readonly CriarGrupoMuscularHandler _handler;
 
     public CriarGrupoMuscularHandlerTests()
     {
-        _handler = new CriarGrupoMuscularHandler(_repository.Object, _unitOfWork.Object);
+        _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
+        _handler = new CriarGrupoMuscularHandler(_repository.Object, _unitOfWork.Object, _validator.Object);
     }
 
     [Fact]

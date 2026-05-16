@@ -26,6 +26,14 @@ public class TreinoConfiguration : IEntityTypeConfiguration<Treino>
             .HasConversion<string>()
             .IsRequired();
 
+        builder.Property(t => t.Dificuldade)
+            .HasConversion<string>()
+            .IsRequired()
+            .HasDefaultValue(forzion.tech.Domain.Enums.DificuldadeTreino.Iniciante);
+
+        builder.Property(t => t.DataInicio);
+        builder.Property(t => t.DataFim);
+
         builder.Property(t => t.CreatedAt).IsRequired();
         builder.Property(t => t.UpdatedAt);
 

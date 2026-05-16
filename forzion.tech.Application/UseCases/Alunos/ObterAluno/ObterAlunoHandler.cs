@@ -32,9 +32,12 @@ public class ObterAlunoHandler(
         {
             if (_userContext.IsTreinador)
             {
-                _ = await _vinculoRepository
+                var ativo = await _vinculoRepository
                     .ObterAtivoAsync(_userContext.PerfilId, aluno.Id, cancellationToken)
-                    .ConfigureAwait(false) ?? throw new AcessoNegadoException();
+                    .ConfigureAwait(false);
+
+                if (ativo == null)
+                    throw new AcessoNegadoException();
             }
             else
             {

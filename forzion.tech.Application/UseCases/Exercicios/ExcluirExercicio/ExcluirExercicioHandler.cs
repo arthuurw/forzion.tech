@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
@@ -8,7 +9,7 @@ public class ExcluirExercicioHandler(
     IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork)
 {
-    public virtual async Task HandleAsync(
+    public virtual async Task<Result> HandleAsync(
         ExcluirExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -29,9 +30,11 @@ public class ExcluirExercicioHandler(
         }
 
         if (await exercicioRepository.EstaEmUsoAsync(command.ExercicioId, cancellationToken).ConfigureAwait(false))
-            throw new DomainException("Este exercício está em uso em fichas de treino e não pode ser excluído.");
+            return Result.Failure(Error.Business("Este exercício está em uso em fichas de treino e não pode ser excluído."));
 
         await exercicioRepository.RemoverAsync(exercicio, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        return Result.Success();
     }
 }

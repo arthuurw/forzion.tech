@@ -15,6 +15,7 @@ public class Treinador : IHasDomainEvents
     public string Nome { get; private set; } = string.Empty;
     public Guid? PlanoTreinadorId { get; private set; }
     public TreinadorStatus Status { get; private set; }
+    public string? Telefone { get; private set; }
     public Guid? AprovadoPorId { get; private set; }
     public DateTime? AprovadoEm { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -22,7 +23,7 @@ public class Treinador : IHasDomainEvents
 
     private Treinador() { }
 
-    public static Treinador Criar(Guid contaId, string nome)
+    public static Treinador Criar(Guid contaId, string nome, string? telefone = null)
     {
         if (contaId == Guid.Empty)
             throw new DomainException("O identificador da conta é inválido.");
@@ -36,6 +37,7 @@ public class Treinador : IHasDomainEvents
             Id = Guid.NewGuid(),
             ContaId = contaId,
             Nome = nome.Trim(),
+            Telefone = string.IsNullOrWhiteSpace(telefone) ? null : telefone.Trim(),
             Status = TreinadorStatus.AguardandoAprovacao,
             CreatedAt = DateTime.UtcNow
         };
@@ -73,13 +75,27 @@ public class Treinador : IHasDomainEvents
         _domainEvents.Add(new TreinadorInativadoEvent(Id, inativadoPorId ?? Guid.Empty, DateTime.UtcNow));
     }
 
+    public void ValidarDisponibilidade()
+    {
+        if (Status != TreinadorStatus.Ativo)
+            throw new DomainException("O treinador selecionado não está disponível.");
+    }
+
     public void AtribuirPlano(Guid planoTreinadorId)
     {
         if (planoTreinadorId == Guid.Empty)
             throw new DomainException("O identificador do plano é inválido.");
+        if (Status == TreinadorStatus.Inativo)
+            throw new DomainException("Não é possível atribuir plano a um treinador inativo.");
 
         PlanoTreinadorId = planoTreinadorId;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ValidarParaExclusao()
+    {
+        if (Status != TreinadorStatus.Inativo)
+            throw new DomainException("Apenas treinadores inativos podem ser excluídos permanentemente.");
     }
 
     public void AtualizarNome(string nome)

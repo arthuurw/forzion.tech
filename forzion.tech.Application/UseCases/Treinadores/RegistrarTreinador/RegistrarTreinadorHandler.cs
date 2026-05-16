@@ -29,7 +29,7 @@ public class RegistrarTreinadorHandler(
             throw new EmailJaCadastradoException();
 
         var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Treinador);
-        var treinador = Treinador.Criar(conta.Id, command.Nome);
+        var treinador = Treinador.Criar(conta.Id, command.Nome, command.Telefone);
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
         await treinadorRepository.AdicionarAsync(treinador, cancellationToken).ConfigureAwait(false);

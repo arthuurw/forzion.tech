@@ -149,36 +149,40 @@ export default async function LandingPage() {
               <Grid container spacing={3} sx={{ justifyContent: "center" }}>
                 {planos.map((plano, i) => (
                   <Grid key={plano.planoId} size={{ xs: 12, sm: 6, md: 4 }}>
-                    <Card
-                      sx={{
-                        textAlign: "center",
-                        p: 1,
-                        bgcolor: i === 1 ? "primary.main" : "rgba(255,255,255,0.06)",
-                        border: "1px solid",
-                        borderColor: i === 1 ? "primary.main" : "rgba(255,255,255,0.1)",
-                        boxShadow: i === 1 ? "0 8px 32px rgba(245,196,0,0.25)" : "none",
-                        transform: i === 1 ? "scale(1.04)" : "none",
-                      }}
-                    >
-                      <CardContent>
-                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: i === 1 ? "secondary.main" : "white" }}>
-                          {plano.nome}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: i === 1 ? "rgba(26,26,26,0.65)" : "rgba(255,255,255,0.5)", mb: 3 }}>
-                          Até {plano.maxAlunos} alunos
-                        </Typography>
-                        <Link href="/cadastro/treinador" style={{ textDecoration: "none" }}>
-                          <Button
-                            variant={i === 1 ? "contained" : "outlined"}
-                            color={i === 1 ? "secondary" : undefined}
-                            fullWidth
-                            sx={i !== 1 ? { borderColor: "rgba(255,255,255,0.3)", color: "white" } : {}}
-                          >
-                            Escolher
-                          </Button>
-                        </Link>
-                      </CardContent>
-                    </Card>
+                    <Link href="/cadastro/treinador" style={{ textDecoration: "none" }}>
+                      <Card
+                        sx={{
+                          textAlign: "center",
+                          p: 1,
+                          bgcolor: i === 1 ? "primary.main" : "rgba(255,255,255,0.06)",
+                          border: "1px solid",
+                          borderColor: i === 1 ? "primary.main" : "rgba(255,255,255,0.1)",
+                          boxShadow: i === 1 ? "0 8px 32px rgba(245,196,0,0.25)" : "none",
+                          transform: i === 1 ? "scale(1.04)" : "none",
+                          cursor: "pointer",
+                          transition: "transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease",
+                          "&:hover": {
+                            transform: i === 1 ? "scale(1.07)" : "scale(1.03)",
+                            boxShadow: i === 1 ? "0 14px 44px rgba(245,196,0,0.38)" : "0 4px 24px rgba(255,255,255,0.1)",
+                            borderColor: i === 1 ? "primary.main" : "rgba(255,255,255,0.35)",
+                          },
+                        }}
+                      >
+                        <CardContent>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: i === 1 ? "secondary.main" : "white" }}>
+                            {plano.nome}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: i === 1 ? "rgba(26,26,26,0.65)" : "rgba(255,255,255,0.5)", mb: 1 }}>
+                            Até {plano.maxAlunos} alunos
+                          </Typography>
+                          <Typography variant="h5" sx={{ fontWeight: 800, color: i === 1 ? "secondary.main" : "primary.main", mt: 1.5 }}>
+                            {plano.preco > 0
+                              ? <>R$ {plano.preco.toFixed(2).replace(".", ",")}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
+                              : "Gratuito"}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   </Grid>
                 ))}
               </Grid>
