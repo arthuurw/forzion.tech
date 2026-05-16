@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 593 testes backend + 142 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Auditoria de segurança OWASP
+**Status**: ✅ 604 testes backend + 142 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Auditoria de segurança OWASP
 
 ---
 
@@ -31,6 +31,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 - [Deploy](#deploy)
   - [Docker local](#docker-local)
   - [Produção — OCI VM + Supabase](#produção--oci-vm--supabase)
+  - [DNS e E-mail — Cloudflare + Resend](#dns-e-e-mail--cloudflare--resend)
 
 ---
 
@@ -238,7 +239,7 @@ forzion.tech.Infrastructure/
 ├── Migrations/           # EF Core migrations (11 total)
 ├── Notifications/
 │   ├── Email/            # EmailTemplates + 4 handlers de eventos de domínio (Resend)
-│   └── WhatsApp/         # EvolutionApiWhatsAppNotifier + NullWhatsAppNotifier
+│   └── WhatsApp/         # MetaWhatsAppCloudNotifier + NullWhatsAppNotifier
 ├── Persistence/
 │   ├── AppDbContext.cs   # DbContext + IUnitOfWork
 │   ├── Configurations/   # Fluent API por entidade (18 arquivos)
@@ -257,7 +258,12 @@ forzion.tech.Tests/
 │   └── GlobalExceptionHandlerTests.cs
 ├── Application/          # Handlers (unit) por domínio
 ├── Domain/               # Entidades, value objects
-├── Infrastructure/       # JwtService
+├── Infrastructure/
+│   ├── JwtServiceTests.cs
+│   ├── Notifications/
+│   │   ├── Email/        # TreinadorAprovado, Reprovado, Inativado, VinculoAprovado
+│   │   └── WhatsApp/     # MetaWhatsAppCloudNotifierTests, NullWhatsAppNotifierTests
+│   └── Services/         # NullEmailServiceTests
 └── Integration/          # FluxoCompletoTests
 ```
 
@@ -355,6 +361,46 @@ Exceder retorna **429 Too Many Requests**.
 | Validação de entrada | FluentValidation + `PaginacaoFilter` em todos os grupos |
 | Erro sem vazamento | `GlobalExceptionHandler` nunca expõe stack trace ou mensagem interna (500 genérico) |
 | Schema separado | `homolog` para dev/staging, `public` para produção |
+
+---
+
+### Notificações
+
+O sistema envia notificações via dois canais. Ambos seguem o padrão **real/null**: se não configurado, usa implementação no-op sem falhar no startup.
+
+#### E-mail — Resend
+
+| Classe | Ativa quando |
+|--------|-------------|
+| `ResendEmailService` | `Resend:ApiKey` presente |
+| `NullEmailService` | chave ausente |
+
+Notificações disparadas por domain events:
+
+| Evento | Destinatário | Assunto |
+|--------|-------------|---------|
+| `TreinadorAprovadoEvent` | treinador | "Sua conta foi aprovada" |
+| `TreinadorReprovadoEvent` | treinador | "Cadastro não aprovado" |
+| `TreinadorInativadoEvent` | treinador | "Conta inativada" |
+| `VinculoAprovadoEvent` | treinador | "Novo aluno vinculado" |
+
+#### WhatsApp — Meta Cloud API
+
+| Classe | Ativa quando |
+|--------|-------------|
+| `MetaWhatsAppCloudNotifier` | `WhatsApp:PhoneNumberId` **e** `WhatsApp:AccessToken` presentes |
+| `NullWhatsAppNotifier` | qualquer uma ausente |
+
+Notificações disparadas diretamente pelos use cases:
+
+| Evento de negócio | Destinatário | Mensagem |
+|-------------------|-------------|---------|
+| Aluno registrado (`RegistrarAlunoHandler`) | treinador | "Novo aluno aguardando aprovação: {Nome}" |
+| Vínculo aprovado (`AprovarVinculoHandler`) | aluno | "Seu cadastro foi aprovado pelo seu treinador" |
+
+Endpoint chamado: `POST https://graph.facebook.com/{ApiVersion}/{PhoneNumberId}/messages`
+
+Telefones são normalizados antes do envio (remove `+`, `-`, espaços, `(`, `)`).
 
 ---
 
@@ -597,10 +643,12 @@ dotnet user-secrets set "Seed:AdminPassword"          "<senha>"              --p
 # Opcional — e-mail transacional via Resend (omitir = NullEmailService)
 dotnet user-secrets set "Resend:ApiKey"               "re_..."               --project forzion.tech.Api
 
-# Opcional — notificações WhatsApp via Evolution API (omitir = NullWhatsAppNotifier)
-dotnet user-secrets set "WhatsApp:BaseUrl"            "https://..."          --project forzion.tech.Api
-dotnet user-secrets set "WhatsApp:Instance"           "<instance>"           --project forzion.tech.Api
-dotnet user-secrets set "WhatsApp:ApiKey"             "<apikey>"             --project forzion.tech.Api
+# Opcional — notificações WhatsApp via Meta Cloud API (omitir = NullWhatsAppNotifier)
+# Credenciais obtidas em: Meta for Developers → seu app → WhatsApp → API Setup
+dotnet user-secrets set "WhatsApp:PhoneNumberId"      "<phone-number-id>"    --project forzion.tech.Api
+dotnet user-secrets set "WhatsApp:AccessToken"        "<token-permanente>"   --project forzion.tech.Api
+dotnet user-secrets set "WhatsApp:ApiVersion"         "v21.0"                --project forzion.tech.Api
+# WhatsApp:ApiVersion é opcional; padrão "v21.0" aplicado em código se ausente
 ```
 
 User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
@@ -635,11 +683,12 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 ### Testes
 
 ```
-593 testes | 0 falhas
+604 testes | 0 falhas
 
 Domain/          → entidades, value objects, domain events, exceções
 Application/     → handlers (unit), services de limite
 Infrastructure/  → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
+                   WhatsApp notifiers (MetaWhatsAppCloudNotifier, NullWhatsAppNotifier)
 Api/Endpoints/   → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
 Integration/     → fluxo completo
 ```
@@ -771,3 +820,23 @@ Cliente
               └── /api/backend/* → backend:8080  (proxy server-side Next.js)
                     └── PostgreSQL Supabase (schema public)
 ```
+
+---
+
+### DNS e E-mail — Cloudflare + Resend
+
+Ver [`docs/infra-dns-cloudflare.md`](docs/infra-dns-cloudflare.md) para o guia completo.
+
+**Resumo:**
+
+```
+forzion.tech (registrador)
+  └── nameservers → Cloudflare (gratuito)
+        ├── A → IP VM OCI
+        ├── TXT SPF → Resend
+        └── TXT DKIM x2 → Resend
+```
+
+- DNS: **Cloudflare** — gratuito, sem limitação de records
+- E-mail transacional: **Resend** — 3k emails/mês grátis, requer domínio verificado
+- Custo adicional: $0 (exceto o domínio, ~$10–15/ano)

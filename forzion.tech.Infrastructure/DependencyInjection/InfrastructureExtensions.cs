@@ -90,20 +90,20 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoEmailHandler>();
 
-        // WhatsApp notifier — Evolution API when configured, no-op otherwise
-        var whatsAppBase = configuration["WhatsApp:BaseUrl"];
-        var whatsAppInstance = configuration["WhatsApp:Instance"];
-        var whatsAppApiKey = configuration["WhatsApp:ApiKey"];
-        if (!string.IsNullOrWhiteSpace(whatsAppBase) && !string.IsNullOrWhiteSpace(whatsAppInstance))
+        // WhatsApp notifier — Meta Cloud API when configured, no-op otherwise
+        var whatsAppPhoneNumberId = configuration["WhatsApp:PhoneNumberId"];
+        var whatsAppAccessToken = configuration["WhatsApp:AccessToken"];
+        var whatsAppApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v21.0";
+        if (!string.IsNullOrWhiteSpace(whatsAppPhoneNumberId) && !string.IsNullOrWhiteSpace(whatsAppAccessToken))
         {
-            services.AddHttpClient<EvolutionApiWhatsAppNotifier>(client =>
+            services.AddHttpClient<MetaWhatsAppCloudNotifier>(client =>
             {
-                client.BaseAddress = new Uri($"{whatsAppBase.TrimEnd('/')}/message/");
-                if (!string.IsNullOrWhiteSpace(whatsAppApiKey))
-                    client.DefaultRequestHeaders.Add("apikey", whatsAppApiKey);
-                client.DefaultRequestHeaders.Add("instanceName", whatsAppInstance);
+                client.BaseAddress = new Uri($"https://graph.facebook.com/{whatsAppApiVersion}/{whatsAppPhoneNumberId}/");
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", whatsAppAccessToken);
+                client.Timeout = TimeSpan.FromSeconds(15);
             });
-            services.AddScoped<IWhatsAppNotifier, EvolutionApiWhatsAppNotifier>();
+            services.AddScoped<IWhatsAppNotifier, MetaWhatsAppCloudNotifier>();
         }
         else
         {
