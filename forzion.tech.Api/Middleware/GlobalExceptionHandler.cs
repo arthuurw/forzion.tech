@@ -75,7 +75,6 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
         {
             CredenciaisInvalidasException ex    => (StatusCodes.Status401Unauthorized,        "Não autorizado",  ex.Message),
 
-            // 404
             AlunoNaoEncontradoException ex              => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
             TreinadorNaoEncontradoException ex          => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
             TreinoNaoEncontradoException ex             => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
@@ -85,15 +84,12 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             GrupoMuscularNaoEncontradoException ex      => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
             PlanoTreinadorNaoEncontradoException ex     => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
 
-            // 403
             AlunoInativoException ex            => (StatusCodes.Status403Forbidden, "Inativo",       ex.Message),
             AcessoNegadoException ex            => (StatusCodes.Status403Forbidden, "Acesso negado", ex.Message),
 
-            // 409
             EmailJaCadastradoException ex       => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
             AlunoJaVinculadoException ex        => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
 
-            // 422
             DomainException ex                  => (StatusCodes.Status422UnprocessableEntity, "Erro de domínio", ex.Message),
 
             _                                   => (StatusCodes.Status500InternalServerError, "Erro interno", "Ocorreu um erro inesperado. Tente novamente mais tarde.")

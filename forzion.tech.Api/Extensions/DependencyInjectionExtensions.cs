@@ -72,6 +72,15 @@ using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMuscu
 using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
 using forzion.tech.Application.UseCases.Pacotes.ExcluirPacoteAluno;
+using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
+using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
+using forzion.tech.Application.UseCases.Assinaturas.CriarAssinatura;
+using forzion.tech.Application.UseCases.Assinaturas.CancelarAssinatura;
+using forzion.tech.Application.UseCases.Assinaturas.ObterAssinaturaAluno;
+using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
+using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
+using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinatura;
+using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -88,6 +97,9 @@ public static class DependencyInjectionExtensions
             {
                 opt.AddPolicy("auth", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("write", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("read", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("internal", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("webhook", _ => RateLimitPartition.GetNoLimiter<string>("test"));
             });
         }
         else
@@ -105,6 +117,27 @@ public static class DependencyInjectionExtensions
                 opt.AddFixedWindowLimiter("write", c =>
                 {
                     c.PermitLimit = 60;
+                    c.Window = TimeSpan.FromMinutes(1);
+                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    c.QueueLimit = 0;
+                });
+                opt.AddFixedWindowLimiter("read", c =>
+                {
+                    c.PermitLimit = 120;
+                    c.Window = TimeSpan.FromMinutes(1);
+                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    c.QueueLimit = 0;
+                });
+                opt.AddFixedWindowLimiter("internal", c =>
+                {
+                    c.PermitLimit = 5;
+                    c.Window = TimeSpan.FromMinutes(1);
+                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    c.QueueLimit = 0;
+                });
+                opt.AddFixedWindowLimiter("webhook", c =>
+                {
+                    c.PermitLimit = 300;
                     c.Window = TimeSpan.FromMinutes(1);
                     c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     c.QueueLimit = 0;
@@ -136,20 +169,15 @@ public static class DependencyInjectionExtensions
     {
         services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
 
-        // Serviços de limite
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
 
-
-        // Auth / Registro
         services.AddScoped<LoginHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();
 
-        // Admin — Alunos
         services.AddScoped<ListarAlunosAdminHandler>();
 
-        // Admin — Treinadores
         services.AddScoped<ObterTreinadorHandler>();
         services.AddScoped<ListarTreinadoresHandler>();
         services.AddScoped<AprovarTreinadorHandler>();
@@ -158,7 +186,6 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ExcluirTreinadorHandler>();
         services.AddScoped<AtribuirPlanoHandler>();
 
-        // Vínculos
         services.AddScoped<AprovarVinculoHandler>();
         services.AddScoped<DesvincularAlunoHandler>();
         services.AddScoped<ListarVinculosHandler>();
@@ -166,7 +193,6 @@ public static class DependencyInjectionExtensions
         services.AddScoped<SolicitarTrocaTreinadorHandler>();
         services.AddScoped<ObterVinculoAlunoHandler>();
 
-        // Alunos
         services.AddScoped<ObterAlunoHandler>();
         services.AddScoped<ObterProgressaoAlunoHandler>();
         services.AddScoped<ObterMinhaProgressaoHandler>();
@@ -174,14 +200,12 @@ public static class DependencyInjectionExtensions
         services.AddScoped<AtualizarAlunoHandler>();
         services.AddScoped<AlterarStatusAlunoHandler>();
 
-        // Exercícios
         services.AddScoped<CriarExercicioHandler>();
         services.AddScoped<AtualizarExercicioHandler>();
         services.AddScoped<ExcluirExercicioHandler>();
         services.AddScoped<ListarExerciciosHandler>();
         services.AddScoped<CopiarExercicioGlobalHandler>();
 
-        // Treinos
         services.AddScoped<CriarTreinoHandler>();
         services.AddScoped<AtualizarTreinoHandler>();
         services.AddScoped<ExcluirTreinoHandler>();
@@ -198,30 +222,35 @@ public static class DependencyInjectionExtensions
         services.AddScoped<RegistrarExecucaoHandler>();
         services.AddScoped<VincularFichaAoAlunoHandler>();
 
-        // Planos (admin)
         services.AddScoped<CriarPlanoTreinadorHandler>();
         services.AddScoped<AtualizarPlanoTreinadorHandler>();
         services.AddScoped<ExcluirPlanoTreinadorHandler>();
         services.AddScoped<ListarPlanosTreinadorHandler>();
 
-        // Grupos Musculares (admin)
         services.AddScoped<CriarGrupoMuscularHandler>();
         services.AddScoped<AtualizarGrupoMuscularHandler>();
         services.AddScoped<ExcluirGrupoMuscularHandler>();
         services.AddScoped<ListarGruposMuscularesHandler>();
 
-        // Pacotes (treinador)
         services.AddScoped<CriarPacoteAlunoHandler>();
         services.AddScoped<AtualizarPacoteAlunoHandler>();
         services.AddScoped<ExcluirPacoteAlunoHandler>();
         services.AddScoped<ListarPacotesAlunoHandler>();
 
-        // Aluno (área do aluno)
+        services.AddScoped<IniciarOnboardingTreinadorHandler>();
+        services.AddScoped<VerificarOnboardingTreinadorHandler>();
+        services.AddScoped<CriarAssinaturaHandler>();
+        services.AddScoped<CancelarAssinaturaHandler>();
+        services.AddScoped<ObterAssinaturaAlunoHandler>();
+        services.AddScoped<GerarCobrancaMensalHandler>();
+        services.AddScoped<ObterStatusPagamentoHandler>();
+        services.AddScoped<ListarPagamentosAssinaturaHandler>();
+        services.AddScoped<ProcessarWebhookStripeHandler>();
+
         services.AddScoped<ListarFichasAlunoHandler>();
         services.AddScoped<ListarExecucoesAlunoHandler>();
         services.AddScoped<ObterFichaAlunoHandler>();
 
-        // Conta / perfil
         services.AddScoped<ObterPerfilHandler>();
         services.AddScoped<AtualizarPerfilHandler>();
         services.AddScoped<AlterarSenhaHandler>();
