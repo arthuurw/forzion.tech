@@ -13,6 +13,7 @@ namespace forzion.tech.Tests.Application.Treinos;
 public class AtualizarTreinoHandlerTests
 {
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
+    private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<AtualizarTreinoHandler>> _logger = new();
@@ -21,8 +22,12 @@ public class AtualizarTreinoHandlerTests
     public AtualizarTreinoHandlerTests()
     {
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _exercicioRepo
+            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
         _handler = new AtualizarTreinoHandler(
             _treinoRepo.Object,
+            _exercicioRepo.Object,
             _unitOfWork.Object,
             _userContext.Object,
             _logger.Object);

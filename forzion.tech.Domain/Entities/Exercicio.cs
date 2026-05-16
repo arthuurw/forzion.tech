@@ -1,5 +1,5 @@
 using forzion.tech.Domain.Exceptions;
-using GrupoMuscularEnum = forzion.tech.Domain.Enums.GrupoMuscular;
+using GrupoMuscularEnum = forzion.tech.Domain.Enums.TipoGrupoMuscular;
 
 namespace forzion.tech.Domain.Entities;
 

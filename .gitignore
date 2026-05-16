@@ -60,13 +60,17 @@ nunit-*.xml
 /.vs
 
 # Configs locais (não versionar — segredos via user secrets / env vars)
-/GEMINI.md
 /.claude
-/PROJECT_CONTEXT.md
 
 # Artefatos de sessão AI (gerados por skills, não pertencem ao repo)
 .security-memory.md
 .clean-arch-memory.md
+.test-strategy-memory.md
+.architecture-memory.md
+
+# Stryker mutation testing output
+stryker-output/
+.stryker-tmp/
 
 # Scripts SQL gerados pontualmente (não versionar)
 migration_public_schema.sql

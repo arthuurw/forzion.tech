@@ -11,7 +11,6 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
 
     public async Task<Treino?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.Treinos
-            .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
             .Include(t => t.Exercicios).ThenInclude(te => te.Series)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             .ConfigureAwait(false);
@@ -58,7 +57,6 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
         var treinos = await _context.Treinos
             .AsNoTracking()
             .Where(t => treinoIds.Contains(t.Id))
-            .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
             .Include(t => t.Exercicios).ThenInclude(te => te.Series)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -86,7 +84,6 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
 
         var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await baseQuery
-            .Include(t => t.Exercicios).ThenInclude(te => te.Exercicio)
             .Include(t => t.Exercicios).ThenInclude(te => te.Series)
             .OrderBy(t => t.Nome)
             .Skip((pagina - 1) * tamanhoPagina)

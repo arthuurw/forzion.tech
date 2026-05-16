@@ -303,7 +303,7 @@ public static class TreinadorEndpoints
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
             var apenasGlobal = q["global"].ToString() == "true";
-            _ = Enum.TryParse<forzion.tech.Domain.Enums.GrupoMuscular>(q["grupoMuscular"], out var grupo);
+            _ = Enum.TryParse<forzion.tech.Domain.Enums.TipoGrupoMuscular>(q["grupoMuscular"], out var grupo);
             var hasGrupo = q.ContainsKey("grupoMuscular");
             var nome = q["nome"].ToString();
             var ordenarPorRaw = q["ordenarPor"].ToString();
@@ -466,7 +466,7 @@ public record IniciarOnboardingRequest(string UrlRetorno, string UrlCancelamento
 public record AprovarVinculoRequest(Guid PacoteAlunoId, bool TrarFichas = false);
 public record ReativarVinculoRequest(Guid PacoteAlunoId);
 public record DesvincularAlunoRequest(string? Observacao = null);
-public record CriarExercicioTreinadorRequest(string Nome, GrupoMuscular GrupoMuscular, string? Descricao = null);
-public record AtualizarExercicioTreinadorRequest(string? Nome, GrupoMuscular? GrupoMuscular, string? Descricao);
+public record CriarExercicioTreinadorRequest(string Nome, TipoGrupoMuscular GrupoMuscular, string? Descricao = null);
+public record AtualizarExercicioTreinadorRequest(string? Nome, TipoGrupoMuscular? GrupoMuscular, string? Descricao);
 public record CriarPacoteAlunoRequest(string Nome, decimal Preco, string? Descricao = null);
 public record AtualizarPacoteAlunoRequest(string? Nome, decimal? Preco, string? Descricao);

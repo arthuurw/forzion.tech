@@ -22,28 +22,50 @@ services:
     ports:
       - "8080:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__AppConnection: "${DB_CONNECTION}"
-      Database__Schema: "${DB_SCHEMA:-public}"
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__AppConnection: "Host=postgres;Port=5432;Database=forzion;Username=forzion;Password=forzion_local;Search Path=homolog;"
+      Database__Schema: homolog
       Auth__JwtSecret: "${JWT_SECRET}"
       Auth__JwtIssuer: "${JWT_ISSUER:-forzion.tech}"
       Auth__JwtAudience: "${JWT_AUDIENCE:-forzion.tech}"
       Cors__AllowedOrigins: "http://localhost:3000"
-      # WhatsApp__BaseUrl: ""
-      # WhatsApp__Instance: ""
-      # WhatsApp__ApiKey: ""
+      Stripe__SecretKey: "${STRIPE_SECRET_KEY}"
+      Stripe__WebhookSecret: "${STRIPE_WEBHOOK_SECRET}"
+      Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY:-}"
+      Stripe__TaxaPlataformaPercent: "${STRIPE_TAXA_PLATAFORMA:-5}"
+      Stripe__UrlBase: "${STRIPE_URL_BASE:-http://localhost:3000}"
+      Resend__ApiKey: "${RESEND_API_KEY:-}"
+      Seed__AdminEmail: "${SEED_ADMIN_EMAIL:-admin@forzion.tech}"
+      Seed__AdminPassword: "${SEED_ADMIN_PASSWORD}"
+      # WhatsApp (opcional — NullWhatsAppNotifier se vazio)
+      # WhatsApp__BaseUrl: "${WHATSAPP_BASE_URL}"
+      # WhatsApp__Instance: "${WHATSAPP_INSTANCE}"
+      # WhatsApp__ApiKey: "${WHATSAPP_API_KEY}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080 && echo -e \"GET /health HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q 200 <&3'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        API_BASE_URL: "http://backend:8080"
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       API_BASE_URL: "http://backend:8080"
       NEXT_PUBLIC_API_BASE_URL: "/api/backend"
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-}"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:

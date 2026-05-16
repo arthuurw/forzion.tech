@@ -9,6 +9,7 @@ namespace forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
 
 public class RemoverExercicioHandler(
     ITreinoRepository treinoRepository,
+    IExercicioRepository exercicioRepository,
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
@@ -40,19 +41,16 @@ public class RemoverExercicioHandler(
 
         Treino.ValidarMutabilidade(executado);
 
-        try
-        {
-            treino.RemoverExercicio(command.TreinoExercicioId);
-        }
-        catch (DomainException ex)
-        {
-            return Result.Failure<TreinoResponse>(Error.Business(ex.Message));
-        }
+        treino.RemoverExercicio(command.TreinoExercicioId);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Exercício {TreinoExercicioId} removido do treino {TreinoId}.", command.TreinoExercicioId, command.TreinoId);
 
-        return Result.Success(TreinoResponseExtensions.ToResponse(treino));
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino, nomesExercicio: nomesExercicio));
     }
 }

@@ -77,7 +77,7 @@ public class AprovarVinculoHandler(
 
         var aluno = await alunoRepository.ObterPorIdAsync(vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         if (aluno is not null && aluno.Status != AlunoStatus.Ativo)
-            aluno.AlterarStatus(AlunoStatus.Ativo);
+            aluno.Ativar();
 
         var log = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AprovacaoVinculo,

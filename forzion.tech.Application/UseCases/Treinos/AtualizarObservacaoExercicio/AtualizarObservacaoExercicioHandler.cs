@@ -7,6 +7,7 @@ namespace forzion.tech.Application.UseCases.Treinos.AtualizarObservacaoExercicio
 
 public class AtualizarObservacaoExercicioHandler(
     ITreinoRepository treinoRepository,
+    IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
     ILogger<AtualizarObservacaoExercicioHandler> logger)
@@ -40,6 +41,10 @@ public class AtualizarObservacaoExercicioHandler(
         logger.LogInformation("Observação atualizada no exercício {ExercicioId} do treino {TreinoId}.",
             command.TreinoExercicioId, command.TreinoId);
 
-        return TreinoResponseExtensions.ToResponse(treino);
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+            .ConfigureAwait(false);
+
+        return TreinoResponseExtensions.ToResponse(treino, nomesExercicio: nomesExercicio);
     }
 }

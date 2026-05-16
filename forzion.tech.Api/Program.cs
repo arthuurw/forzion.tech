@@ -1,5 +1,7 @@
 using forzion.tech.Api.Extensions;
+using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Seed;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Homolog"))
 {
     using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync().ConfigureAwait(false);
     var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
     await seeder.SeedAsync().ConfigureAwait(false);
 }

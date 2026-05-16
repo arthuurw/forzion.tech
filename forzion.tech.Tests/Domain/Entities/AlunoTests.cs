@@ -29,7 +29,7 @@ public class AlunoTests
     {
         var aluno = Aluno.Criar(ContaId, "João", "joao@email.com", "11999999999");
 
-        aluno.Email.Should().Be("joao@email.com");
+        aluno.Email?.Value.Should().Be("joao@email.com");
         aluno.Telefone.Should().Be("11999999999");
     }
 
@@ -101,7 +101,7 @@ public class AlunoTests
     {
         var aluno = Aluno.Criar(ContaId, "João");
         aluno.Atualizar(null, "novo@email.com", null);
-        aluno.Email.Should().Be("novo@email.com");
+        aluno.Email?.Value.Should().Be("novo@email.com");
     }
 
     [Fact]
@@ -145,22 +145,60 @@ public class AlunoTests
         act.Should().Throw<DomainException>().WithMessage("O nome não pode ser vazio.");
     }
 
-    // --- AlterarStatus ---
+    // --- Ativar / Inativar ---
 
     [Fact]
-    public void AlterarStatus_ParaAtivo_AlteraStatus()
+    public void Ativar_DeAguardandoAprovacao_AlteraStatusParaAtivo()
     {
         var aluno = Aluno.Criar(ContaId, "João");
-        aluno.AlterarStatus(AlunoStatus.Ativo);
+        aluno.Ativar();
         aluno.Status.Should().Be(AlunoStatus.Ativo);
     }
 
     [Fact]
-    public void AlterarStatus_DefinUpdatedAt()
+    public void Ativar_DeInativo_AlteraStatusParaAtivo()
+    {
+        var aluno = Aluno.Criar(ContaId, "João");
+        aluno.Ativar();
+        aluno.Inativar();
+        aluno.Ativar();
+        aluno.Status.Should().Be(AlunoStatus.Ativo);
+    }
+
+    [Fact]
+    public void Ativar_JaAtivo_LancaDomainException()
+    {
+        var aluno = Aluno.Criar(ContaId, "João");
+        aluno.Ativar();
+        var act = () => aluno.Ativar();
+        act.Should().Throw<DomainException>().WithMessage("O aluno já está ativo.");
+    }
+
+    [Fact]
+    public void Inativar_DeAtivo_AlteraStatusParaInativo()
+    {
+        var aluno = Aluno.Criar(ContaId, "João");
+        aluno.Ativar();
+        aluno.Inativar();
+        aluno.Status.Should().Be(AlunoStatus.Inativo);
+    }
+
+    [Fact]
+    public void Inativar_JaInativo_LancaDomainException()
+    {
+        var aluno = Aluno.Criar(ContaId, "João");
+        aluno.Ativar();
+        aluno.Inativar();
+        var act = () => aluno.Inativar();
+        act.Should().Throw<DomainException>().WithMessage("O aluno já está inativo.");
+    }
+
+    [Fact]
+    public void Ativar_DefinUpdatedAt()
     {
         var aluno = Aluno.Criar(ContaId, "João");
         var antes = DateTime.UtcNow;
-        aluno.AlterarStatus(AlunoStatus.Inativo);
+        aluno.Ativar();
         aluno.UpdatedAt.Should().BeOnOrAfter(antes);
     }
 }

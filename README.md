@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 696 testes backend + 174 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Auditoria de segurança OWASP
+**Status**: ✅ 991 testes backend + 174 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Auditoria de segurança OWASP | DDD tático aplicado
 
 ---
 
@@ -60,7 +60,9 @@ forzion.tech/
 ├── scripts/                   # setup-vm.sh, init-ssl.sh
 ├── docker-compose.yml         # Stack completa para desenvolvimento local
 ├── docker-compose.server.yml  # Stack de servidor (sem banco — usa Supabase)
-└── .env.example               # Variáveis necessárias para docker-compose
+├── .dockerignore              # Exclui bin/, obj/, node_modules/ do build Docker
+├── .env.example               # Variáveis necessárias para docker-compose
+└── docs/                      # Documentação adicional (fluxo-sistema.md, etc.)
 ```
 
 ---
@@ -77,9 +79,9 @@ cp .env.example .env
 # 2. Subir tudo (backend + frontend + postgres local)
 docker compose up --build
 
-# Backend: http://localhost:8080
-# Frontend: http://localhost:3000
-# Swagger: http://localhost:8080/swagger
+# Backend:  http://localhost:8080
+# Frontend: http://localhost:3001
+# Swagger:  http://localhost:8080/swagger
 ```
 
 ### Opção B — Manual
@@ -229,10 +231,11 @@ forzion.tech.Domain/
 │                         # Assinatura, Pagamento, SystemUser, TokenRevogado
 ├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus,
 │                         # VinculoStatus, ObjetivoTreino, DificuldadeTreino,
-│                         # AssinaturaStatus, PagamentoStatus, MetodoPagamento
+│                         # TipoGrupoMuscular, AssinaturaStatus, PagamentoStatus, MetodoPagamento
 ├── Events/               # IDomainEvent, IHasDomainEvents,
 │                         # TreinadorAprovadoEvent, TreinadorReprovadoEvent,
-│                         # TreinadorInativadoEvent, VinculoAprovadoEvent
+│                         # TreinadorInativadoEvent, VinculoAprovadoEvent,
+│                         # AlunoInativadoEvent
 ├── Exceptions/           # Exceções de domínio tipadas (DomainException base)
 └── ValueObjects/         # Email
 
@@ -262,7 +265,7 @@ forzion.tech.Tests/
 │   └── GlobalExceptionHandlerTests.cs
 ├── Application/          # Handlers (unit) por domínio
 ├── Domain/               # Entidades, value objects
-├── Infrastructure/       # JwtService
+├── Infrastructure/       # JwtService + email handlers + Repositories/ (Testcontainers.PostgreSql)
 └── Integration/          # FluxoCompletoTests
 ```
 
@@ -275,12 +278,12 @@ forzion.tech.Tests/
 | `Conta` | Auth unificada. E-mail + PasswordHash (BCrypt). `TipoConta`: `SystemAdmin`, `Treinador`, `Aluno`. |
 | `SystemUser` | Perfil de admin vinculado a uma `Conta` do tipo `SystemAdmin`. |
 | `Treinador` | Perfil de treinador. Possui `PlanoTreinadorId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
-| `Aluno` | Perfil de aluno vinculado a uma `Conta`. Possui dados físicos (peso, altura) e perfil de treino. |
+| `Aluno` | Perfil de aluno vinculado a uma `Conta`. Email armazenado como `Email` VO. Máquina de estados: `AguardandoAprovacao → Ativo ⇌ Inativo` via `Ativar()`/`Inativar()`. |
 | `VinculoTreinadorAluno` | Relação entre treinador e aluno. Carrega `PacoteAlunoId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
 | `PlanoTreinador` | Plano global (gerido pelo admin). Define `MaxAlunos` por treinador. |
 | `PacoteAluno` | Pacote criado pelo treinador. Define nome, descrição e preço. Sem limite de fichas. |
 | `Treino` | Ficha de treino com nome, objetivo, dificuldade e lista de `TreinoExercicio`. |
-| `TreinoExercicio` | Item de exercício em uma ficha: séries, repetições, carga, descanso, ordem, observação. |
+| `TreinoExercicio` | Item de exercício em uma ficha: séries, repetições, carga, descanso, ordem, observação. Referencia `Exercicio` por ID (sem nav prop — DDD). |
 | `TreinoAluno` | Vínculo ficha × aluno. Status: `Ativo / Inativo`. |
 | `Exercicio` | Global (`TreinadorId = null`) ou privado do treinador. Possui `GrupoMuscular`. |
 | `GrupoMuscular` | Grupo muscular global (gerido pelo admin). |
@@ -294,7 +297,7 @@ forzion.tech.Tests/
 
 ### Domain Events
 
-`Treinador` e `VinculoTreinadorAluno` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher`:
+`Treinador`, `VinculoTreinadorAluno` e `Aluno` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada):
 
 | Evento | Levantado em |
 |--------|-------------|
@@ -302,8 +305,9 @@ forzion.tech.Tests/
 | `TreinadorReprovadoEvent` | `Treinador.Reprovar()` |
 | `TreinadorInativadoEvent` | `Treinador.Inativar()` |
 | `VinculoAprovadoEvent` | `VinculoTreinadorAluno.Aprovar()` |
+| `AlunoInativadoEvent` | `Aluno.Inativar()` |
 
-Eventos são despachados sem persistência — prontos para consumo futuro por handlers de notificação.
+Eventos são despachados sem persistência — handlers de notificação os consomem in-process.
 
 ---
 
@@ -511,8 +515,8 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | Método | Rota | Body | Resposta |
 |--------|------|------|----------|
 | `GET` | `/conta/perfil` | — | `PerfilResponse` |
-| `PATCH` | `/conta/perfil` | `{ nome?, telefone?, ... }` | `200 PerfilResponse` |
-| `POST` | `/conta/alterar-senha` | `{ senhaAtual, novaSenha }` | `204` |
+| `PATCH` | `/conta/perfil` | `{ nome }` | `204` |
+| `POST` | `/conta/senha` | `{ senhaAtual, novaSenha }` | `204` |
 | `POST` | `/conta/logout` | — | `204` (revoga JTI) |
 
 ---
@@ -691,13 +695,14 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 ### Testes
 
 ```
-696 testes | 0 falhas
+991 testes | 0 falhas
 
-Domain/          → entidades, value objects, domain events, exceções
-Application/     → handlers (unit), services de limite
-Infrastructure/  → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
-Api/Endpoints/   → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
-Integration/     → fluxo completo
+Domain/                  → entidades, value objects, domain events, exceções, máquina de estados
+Application/             → handlers (unit), services de limite
+Infrastructure/          → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
+Infrastructure/Repositories/ → 62 testes de repositório com Testcontainers.PostgreSql (banco real)
+Api/Endpoints/           → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
+Integration/             → fluxo completo
 ```
 
 Padrões adotados:
@@ -708,6 +713,9 @@ Padrões adotados:
 - Auth em testes de endpoint: `TestAuthHandler` substitui JWT
 - Handlers mockados via `RemoveAll + AddSingleton` no `WebApplicationFactory`
 - `TreinadorId` injetado via reflection quando necessário
+- Testcontainers: `InfrastructureTestFixture` + `[Collection(InfrastructureTestCollection.Name)]`. `CreateContext()` requer `.UseSnakeCaseNamingConvention()` — sem ele, índices parciais `HasFilter("status = 'Ativo'")` falham com `42703`
+- `VinculoTreinadorAluno.Aprovar(treinadorId, pacoteAlunoId)` exige `PacoteAlunoId` real no banco — sempre usar `SeedPacoteAsync` nos testes de repositório
+- `BeInAscendingOrder` não aceita method calls — enums armazenados como string ordenam alfabeticamente: usar `.Select(e => e.Prop.ToString()).Should().BeInAscendingOrder()`
 
 ---
 
@@ -738,8 +746,8 @@ cp .env.example .env
 # Subir backend + frontend + PostgreSQL local
 docker compose up --build
 
-# Backend: http://localhost:8080  |  Frontend: http://localhost:3000
-# Swagger: http://localhost:8080/swagger  (modo Development)
+# Backend:  http://localhost:8080  |  Frontend: http://localhost:3001
+# Swagger:  http://localhost:8080/swagger  (modo Development)
 ```
 
 ### Produção — OCI VM + Supabase

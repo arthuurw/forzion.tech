@@ -8,5 +8,24 @@ export default defineConfig({
     environment: "happy-dom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      exclude: [
+        "node_modules/",
+        "src/test/**",
+        "src/types/**",
+        "src/app/api/**",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "src/main.tsx",
+      ],
+      thresholds: {
+        branches: 75,
+        functions: 74,
+        lines: 85,
+        statements: 83,
+      },
+    },
   },
 });
