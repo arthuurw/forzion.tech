@@ -16,6 +16,8 @@
     "@mui/icons-material": "^9.0.0",
     "@mui/material": "^9.0.0",
     "@mui/material-nextjs": "^9.0.0",
+    "@stripe/react-stripe-js": "^6.3.0",
+    "@stripe/stripe-js": "^9.5.0",
     "axios": "^1.15.0",
     "dayjs": "^1.11.20",
     "next": "16.2.4",

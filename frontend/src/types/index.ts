@@ -251,6 +251,44 @@ export interface ProgressaoAlunoResponse {
   exercicios: ExercicioProgressao[];
 }
 
+// Pagamentos / Stripe
+export type AssinaturaStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
+export type PagamentoStatus = "Pendente" | "Pago" | "Expirado" | "Falhou";
+export type MetodoPagamento = "Pix" | "Cartao";
+
+export interface AssinaturaResponse {
+  assinaturaId: string;
+  vinculoId: string;
+  pacoteAlunoId: string;
+  treinadorId: string;
+  alunoId: string;
+  valor: number;
+  status: AssinaturaStatus;
+  dataInicio: string;
+  dataProximaCobranca: string;
+  dataCancelamento: string | null;
+  createdAt: string;
+}
+
+export interface PagamentoResponse {
+  pagamentoId: string;
+  assinaturaId: string;
+  valor: number;
+  status: PagamentoStatus;
+  metodoPagamento: MetodoPagamento;
+  pixQrCode: string | null;
+  pixQrCodeUrl: string | null;
+  pixExpiracao: string | null;
+  clientSecret: string | null;
+  dataPagamento: string | null;
+  createdAt: string;
+}
+
+export interface OnboardingStatusResponse {
+  onboardingCompleto: boolean;
+  contaConfigurada: boolean;
+}
+
 // Erro RFC 7807
 export interface ProblemDetails {
   title: string;
