@@ -17,7 +17,6 @@ public static class PagamentosEndpoints
 {
     public static IEndpointRouteBuilder MapPagamentosEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        // --- Área do Aluno ---
         var alunoGroup = endpoints.MapGroup("/aluno/pagamentos")
             .WithTags("Pagamentos")
             .RequireAuthorization("Aluno")
@@ -52,7 +51,6 @@ public static class PagamentosEndpoints
         .Produces<IReadOnlyList<PagamentoResponse>>()
         .ProducesProblem(StatusCodes.Status403Forbidden);
 
-        // --- Área do Treinador ---
         var treinadorGroup = endpoints.MapGroup("/treinador/pagamentos")
             .WithTags("Pagamentos")
             .RequireAuthorization("Treinador")
@@ -76,7 +74,6 @@ public static class PagamentosEndpoints
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
-        // --- Renovação interna (protegida por API key) ---
         endpoints.MapPost("/internal/processar-renovacoes", async (
             HttpContext httpContext,
             [FromServices] GerarCobrancaMensalHandler gerarHandler,

@@ -168,20 +168,15 @@ public static class DependencyInjectionExtensions
     {
         services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
 
-        // Serviços de limite
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
 
-
-        // Auth / Registro
         services.AddScoped<LoginHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();
 
-        // Admin — Alunos
         services.AddScoped<ListarAlunosAdminHandler>();
 
-        // Admin — Treinadores
         services.AddScoped<ObterTreinadorHandler>();
         services.AddScoped<ListarTreinadoresHandler>();
         services.AddScoped<AprovarTreinadorHandler>();
@@ -190,7 +185,6 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ExcluirTreinadorHandler>();
         services.AddScoped<AtribuirPlanoHandler>();
 
-        // Vínculos
         services.AddScoped<AprovarVinculoHandler>();
         services.AddScoped<DesvincularAlunoHandler>();
         services.AddScoped<ListarVinculosHandler>();
@@ -198,7 +192,6 @@ public static class DependencyInjectionExtensions
         services.AddScoped<SolicitarTrocaTreinadorHandler>();
         services.AddScoped<ObterVinculoAlunoHandler>();
 
-        // Alunos
         services.AddScoped<ObterAlunoHandler>();
         services.AddScoped<ObterProgressaoAlunoHandler>();
         services.AddScoped<ObterMinhaProgressaoHandler>();
@@ -206,14 +199,12 @@ public static class DependencyInjectionExtensions
         services.AddScoped<AtualizarAlunoHandler>();
         services.AddScoped<AlterarStatusAlunoHandler>();
 
-        // Exercícios
         services.AddScoped<CriarExercicioHandler>();
         services.AddScoped<AtualizarExercicioHandler>();
         services.AddScoped<ExcluirExercicioHandler>();
         services.AddScoped<ListarExerciciosHandler>();
         services.AddScoped<CopiarExercicioGlobalHandler>();
 
-        // Treinos
         services.AddScoped<CriarTreinoHandler>();
         services.AddScoped<AtualizarTreinoHandler>();
         services.AddScoped<ExcluirTreinoHandler>();
@@ -230,25 +221,21 @@ public static class DependencyInjectionExtensions
         services.AddScoped<RegistrarExecucaoHandler>();
         services.AddScoped<VincularFichaAoAlunoHandler>();
 
-        // Planos (admin)
         services.AddScoped<CriarPlanoTreinadorHandler>();
         services.AddScoped<AtualizarPlanoTreinadorHandler>();
         services.AddScoped<ExcluirPlanoTreinadorHandler>();
         services.AddScoped<ListarPlanosTreinadorHandler>();
 
-        // Grupos Musculares (admin)
         services.AddScoped<CriarGrupoMuscularHandler>();
         services.AddScoped<AtualizarGrupoMuscularHandler>();
         services.AddScoped<ExcluirGrupoMuscularHandler>();
         services.AddScoped<ListarGruposMuscularesHandler>();
 
-        // Pacotes (treinador)
         services.AddScoped<CriarPacoteAlunoHandler>();
         services.AddScoped<AtualizarPacoteAlunoHandler>();
         services.AddScoped<ExcluirPacoteAlunoHandler>();
         services.AddScoped<ListarPacotesAlunoHandler>();
 
-        // Pagamentos / Stripe
         services.AddScoped<IniciarOnboardingTreinadorHandler>();
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
         services.AddScoped<CriarAssinaturaHandler>();
@@ -258,12 +245,10 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ListarPagamentosAssinaturaHandler>();
         services.AddScoped<ProcessarWebhookStripeHandler>();
 
-        // Aluno (área do aluno)
         services.AddScoped<ListarFichasAlunoHandler>();
         services.AddScoped<ListarExecucoesAlunoHandler>();
         services.AddScoped<ObterFichaAlunoHandler>();
 
-        // Conta / perfil
         services.AddScoped<ObterPerfilHandler>();
         services.AddScoped<AtualizarPerfilHandler>();
         services.AddScoped<AlterarSenhaHandler>();
