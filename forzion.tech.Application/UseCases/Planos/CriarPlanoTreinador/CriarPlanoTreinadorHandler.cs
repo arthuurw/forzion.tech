@@ -13,26 +13,26 @@ public class CriarPlanoTreinadorHandler(
     IUserContext userContext,
     ILogger<CriarPlanoTreinadorHandler> logger)
 {
-    private readonly IPlanoTreinadorRepository _planoRepository = planoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IValidator<CriarPlanoTreinadorCommand> _validator = validator;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<CriarPlanoTreinadorHandler> _logger = logger;
-
-    public virtual async Task<PlanoTreinadorResponse> HandleAsync(
+    public virtual Task<PlanoTreinadorResponse> HandleAsync(
         CriarPlanoTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<PlanoTreinadorResponse> HandleAsyncCore(
+        CriarPlanoTreinadorCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var plano = PlanoTreinador.Criar(command.Nome, command.MaxAlunos, command.Preco);
 
-        await _planoRepository.AdicionarAsync(plano, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await planoRepository.AdicionarAsync(plano, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Plano {PlanoId} '{Nome}' criado por admin {AdminId}.", plano.Id, plano.Nome, _userContext.ContaId);
+        logger.LogInformation("Plano {PlanoId} '{Nome}' criado por admin {AdminId}.", plano.Id, plano.Nome, userContext.ContaId);
 
         return PlanoTreinadorResponseExtensions.ToResponse(plano);
     }

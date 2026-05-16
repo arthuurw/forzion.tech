@@ -12,25 +12,26 @@ public class CadastrarAlunoHandler(
     IValidator<CadastrarAlunoCommand> validator,
     ILogger<CadastrarAlunoHandler> logger)
 {
-    private readonly IAlunoRepository _alunoRepository = alunoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IValidator<CadastrarAlunoCommand> _validator = validator;
-    private readonly ILogger<CadastrarAlunoHandler> _logger = logger;
-
-    public virtual async Task<AlunoResponse> HandleAsync(
+    public virtual Task<AlunoResponse> HandleAsync(
         CadastrarAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<AlunoResponse> HandleAsyncCore(
+        CadastrarAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var aluno = Aluno.Criar(command.ContaId, command.Nome, command.Email, command.Telefone);
 
-        await _alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Aluno {AlunoId} cadastrado.", aluno.Id);
+        logger.LogInformation("Aluno {AlunoId} cadastrado.", aluno.Id);
 
         return ToResponse(aluno);
     }

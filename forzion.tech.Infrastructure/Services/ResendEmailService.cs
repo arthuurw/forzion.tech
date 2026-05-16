@@ -36,7 +36,7 @@ public sealed class ResendEmailService(HttpClient http, string apiKey, string ap
                 logger.LogError("Resend retornou {Status}: {Body}", (int)response.StatusCode, body);
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             logger.LogError(ex, "Falha ao enviar e-mail para {Para} — assunto: {Assunto}", para, assunto);
         }

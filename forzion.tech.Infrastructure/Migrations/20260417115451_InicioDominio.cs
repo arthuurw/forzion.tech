@@ -2,6 +2,9 @@ using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
+#pragma warning disable S1481 // Remove unused local variables
+#pragma warning disable S2325 // Methods that don't access instance data should be static
+#pragma warning disable S3400 // Methods should not return constants
 
 namespace forzion.tech.Infrastructure.Migrations
 {

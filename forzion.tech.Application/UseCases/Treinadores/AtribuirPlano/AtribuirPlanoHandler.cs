@@ -14,12 +14,18 @@ public class AtribuirPlanoHandler(
     IUnitOfWork unitOfWork,
     ILogger<AtribuirPlanoHandler> logger)
 {
-    public virtual async Task<TreinadorResponse> HandleAsync(
+    public virtual Task<TreinadorResponse> HandleAsync(
         AtribuirPlanoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<TreinadorResponse> HandleAsyncCore(
+        AtribuirPlanoCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 

@@ -29,11 +29,18 @@ public class AlterarSenhaHandler(
     IUnitOfWork unitOfWork,
     IValidator<AlterarSenhaCommand> validator)
 {
-    public virtual async Task HandleAsync(
+    public virtual Task HandleAsync(
         AlterarSenhaCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
+
+    private async Task HandleAsyncCore(
+        AlterarSenhaCommand command,
+        CancellationToken cancellationToken = default)
+    {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var conta = await contaRepository.ObterPorIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)

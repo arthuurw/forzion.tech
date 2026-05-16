@@ -12,25 +12,26 @@ public class CriarPacoteAlunoHandler(
     IValidator<CriarPacoteAlunoCommand> validator,
     ILogger<CriarPacoteAlunoHandler> logger)
 {
-    private readonly IPacoteAlunoRepository _pacoteRepository = pacoteRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IValidator<CriarPacoteAlunoCommand> _validator = validator;
-    private readonly ILogger<CriarPacoteAlunoHandler> _logger = logger;
-
-    public virtual async Task<PacoteAlunoResponse> HandleAsync(
+    public virtual Task<PacoteAlunoResponse> HandleAsync(
         CriarPacoteAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<PacoteAlunoResponse> HandleAsyncCore(
+        CriarPacoteAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var pacote = PacoteAluno.Criar(command.TreinadorId, command.Nome, command.Preco, command.Descricao);
 
-        await _pacoteRepository.AdicionarAsync(pacote, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await pacoteRepository.AdicionarAsync(pacote, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("PacoteAluno {PacoteId} criado pelo treinador {TreinadorId}.", pacote.Id, command.TreinadorId);
+        logger.LogInformation("PacoteAluno {PacoteId} criado pelo treinador {TreinadorId}.", pacote.Id, command.TreinadorId);
 
         return PacoteAlunoResponseExtensions.ToResponse(pacote);
     }

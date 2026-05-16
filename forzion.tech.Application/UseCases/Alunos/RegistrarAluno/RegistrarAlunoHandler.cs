@@ -22,11 +22,18 @@ public class RegistrarAlunoHandler(
     IWhatsAppNotifier whatsAppNotifier,
     ILogger<RegistrarAlunoHandler> logger)
 {
-    public virtual async Task<Result<AlunoResponse>> HandleAsync(
+    public virtual Task<Result<AlunoResponse>> HandleAsync(
         RegistrarAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
+
+    private async Task<Result<AlunoResponse>> HandleAsyncCore(
+        RegistrarAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var emailExistente = await contaRepository.ObterPorEmailAsync(command.Email, cancellationToken).ConfigureAwait(false);

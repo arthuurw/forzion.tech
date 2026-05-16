@@ -22,6 +22,9 @@ public static class AuthenticationExtensions
         if (string.IsNullOrWhiteSpace(secret))
             throw new InvalidOperationException("Configuração 'Auth:JwtSecret' não encontrada. Configure via User Secrets ou variável de ambiente.");
 
+        if (Encoding.UTF8.GetByteCount(secret) < 32)
+            throw new InvalidOperationException("'Auth:JwtSecret' deve ter no mínimo 32 bytes. Gere via: openssl rand -base64 64");
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

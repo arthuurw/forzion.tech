@@ -63,7 +63,10 @@ nunit-*.xml
 /GEMINI.md
 /.claude
 /PROJECT_CONTEXT.md
-/docs
+
+# Artefatos de sessão AI (gerados por skills, não pertencem ao repo)
+.security-memory.md
+.clean-arch-memory.md
 
 # Scripts SQL gerados pontualmente (não versionar)
 migration_public_schema.sql

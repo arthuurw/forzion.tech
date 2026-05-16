@@ -86,6 +86,7 @@ public static class AuthEndpoints
             return Results.Ok(result);
         })
         .AllowAnonymous()
+        .RequireRateLimiting("auth")
         .WithSummary("Lista todos os planos de treinador disponíveis")
         .Produces<IReadOnlyList<PlanoTreinadorResponse>>();
 
@@ -98,6 +99,7 @@ public static class AuthEndpoints
             return Results.Ok(result);
         })
         .AllowAnonymous()
+        .RequireRateLimiting("auth")
         .WithSummary("Lista pacotes de um treinador específico (para escolha do aluno no cadastro)")
         .Produces<IReadOnlyList<PacoteAlunoResponse>>()
         .ProducesProblem(StatusCodes.Status404NotFound);
@@ -110,6 +112,7 @@ public static class AuthEndpoints
             return Results.Ok(result);
         })
         .AllowAnonymous()
+        .RequireRateLimiting("auth")
         .WithSummary("Lista treinadores ativos para o fluxo público de cadastro")
         .Produces<IReadOnlyList<TreinadorResponse>>();
 

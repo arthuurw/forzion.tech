@@ -17,6 +17,7 @@ public static class AlunoEndpoints
     {
         var group = app.MapGroup("/alunos")
             .WithTags("Alunos")
+            .RequireRateLimiting("write")
             .AddEndpointFilter<PerfilIdRequiredFilter>()
             .AddEndpointFilter<PaginacaoFilter>();
 
@@ -29,7 +30,7 @@ public static class AlunoEndpoints
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
-            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
 
             var query = new ListarAlunosQuery(userContext.PerfilId, p, tp);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
@@ -67,7 +68,7 @@ public static class AlunoEndpoints
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
-            var tp = tamanhoPagina < 1 ? 20 : tamanhoPagina > 100 ? 100 : tamanhoPagina;
+            var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
 
             var query = new ListarTreinosQuery(alunoId, p, tp);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);

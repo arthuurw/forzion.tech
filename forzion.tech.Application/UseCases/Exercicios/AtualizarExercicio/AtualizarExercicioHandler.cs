@@ -9,12 +9,18 @@ public class AtualizarExercicioHandler(
     IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork)
 {
-    public virtual async Task<Result<ExercicioResponse>> HandleAsync(
+    public virtual Task<Result<ExercicioResponse>> HandleAsync(
         AtualizarExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<Result<ExercicioResponse>> HandleAsyncCore(
+        AtualizarExercicioCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var exercicio = await exercicioRepository.ObterPorIdAsync(command.ExercicioId, cancellationToken).ConfigureAwait(false)
             ?? throw new ExercicioNaoEncontradoException();
 

@@ -19,6 +19,10 @@ namespace forzion.tech.Infrastructure.DependencyInjection;
 
 public static class InfrastructureExtensions
 {
+#pragma warning disable S1075 // Fallback default; overridden via Resend:ApiUrl config key
+    private const string ResendDefaultApiUrl = "https://api.resend.com/emails";
+#pragma warning restore S1075
+
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -85,7 +89,7 @@ public static class InfrastructureExtensions
         var resendApiKey = configuration["Resend:ApiKey"];
         if (!string.IsNullOrWhiteSpace(resendApiKey))
         {
-            var resendApiUrl = configuration["Resend:ApiUrl"] ?? "https://api.resend.com/emails";
+            var resendApiUrl = configuration["Resend:ApiUrl"] ?? ResendDefaultApiUrl;
             services.AddHttpClient("resend", client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(15);

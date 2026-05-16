@@ -1,10 +1,13 @@
+using System.Text.RegularExpressions;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Domain.Entities;
 
-public class Aluno
+public partial class Aluno
 {
+    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+    private static partial Regex EmailRegex();
     public Guid Id { get; private set; }
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
@@ -107,7 +110,7 @@ public class Aluno
         }
         if (email.Length > 256)
             throw new DomainException("O e-mail deve ter no máximo 256 caracteres.");
-        if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        if (!EmailRegex().IsMatch(email))
             throw new DomainException("O e-mail informado é inválido.");
         Email = email.Trim().ToLowerInvariant();
     }

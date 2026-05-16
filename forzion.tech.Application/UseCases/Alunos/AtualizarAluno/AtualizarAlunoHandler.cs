@@ -14,30 +14,30 @@ public class AtualizarAlunoHandler(
     IUserContext userContext,
     ILogger<AtualizarAlunoHandler> logger)
 {
-    private readonly IAlunoRepository _alunoRepository = alunoRepository;
-    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<AtualizarAlunoHandler> _logger = logger;
-
-    public virtual async Task<AlunoResponse> HandleAsync(
+    public virtual Task<AlunoResponse> HandleAsync(
         AtualizarAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var aluno = await _alunoRepository
+    private async Task<AlunoResponse> HandleAsyncCore(
+        AtualizarAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var aluno = await alunoRepository
             .ObterPorIdAsync(command.AlunoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
         // Validar autorização
-        if (!_userContext.IsSystemAdmin && _userContext.PerfilId != aluno.Id)
+        if (!userContext.IsSystemAdmin && userContext.PerfilId != aluno.Id)
         {
-            if (_userContext.IsTreinador)
+            if (userContext.IsTreinador)
             {
-                _ = await _vinculoRepository
-                    .ObterAtivoAsync(_userContext.PerfilId, aluno.Id, cancellationToken)
+                _ = await vinculoRepository
+                    .ObterAtivoAsync(userContext.PerfilId, aluno.Id, cancellationToken)
                     .ConfigureAwait(false) ?? throw new AcessoNegadoException();
             }
             else
@@ -51,9 +51,9 @@ public class AtualizarAlunoHandler(
 
         aluno.Atualizar(command.Nome, command.Email, command.Telefone);
 
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Aluno {AlunoId} atualizado.", aluno.Id);
+        logger.LogInformation("Aluno {AlunoId} atualizado.", aluno.Id);
 
         return CadastrarAlunoHandler.ToResponse(aluno);
     }

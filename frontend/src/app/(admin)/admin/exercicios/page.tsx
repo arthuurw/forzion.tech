@@ -68,7 +68,7 @@ export default function ExerciciosAdminPage() {
         setEditGrupo(res.data[0].nome);
       }
     } catch {
-      console.error("Erro ao carregar grupos musculares.");
+      // grupos musculares indisponíveis — formulário fica sem seleção de grupo
     }
   }, []);
 

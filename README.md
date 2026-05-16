@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 593 testes backend + 142 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId
+**Status**: ✅ 593 testes backend + 142 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Auditoria de segurança OWASP
 
 ---
 
@@ -336,8 +336,8 @@ Fixed Window por IP:
 
 | Política | Limite | Janela | Aplicado em |
 |----------|--------|--------|-------------|
-| `auth` | 10 req | 1 min | `/auth/login`, `/auth/register/*` |
-| `write` | 60 req | 1 min | `/treinador/*`, `/treinos/*`, `/conta/*` |
+| `auth` | 10 req | 1 min | `/auth/login`, `/auth/register/*`, `/auth/planos`, `/auth/treinadores`, `/auth/treinadores/{id}/pacotes` |
+| `write` | 60 req | 1 min | `/alunos/*`, `/treinos/*`, `/treinador/*`, `/aluno/*`, `/conta/*`, `/admin/*` |
 
 Exceder retorna **429 Too Many Requests**.
 
@@ -349,6 +349,8 @@ Exceder retorna **429 Too Many Requests**.
 |-----------|---------|
 | Senhas | BCrypt com salt automático |
 | Tokens | HMAC-SHA256, expiração configurável, revogação por JTI |
+| JWT secret | Mínimo 32 bytes validado no startup — falha explícita com instrução se fraco |
+| Security headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `HSTS` (produção) |
 | Isolamento | `TreinadorId` em todas as queries — sem multi-tenant, sem RLS |
 | Validação de entrada | FluentValidation + `PaginacaoFilter` em todos os grupos |
 | Erro sem vazamento | `GlobalExceptionHandler` nunca expõe stack trace ou mensagem interna (500 genérico) |
@@ -365,9 +367,9 @@ Exceder retorna **429 Too Many Requests**.
 | `POST` | `/auth/login` | `{ email, senha }` | `{ token, tipoConta, contaId, perfilId }` |
 | `POST` | `/auth/register/treinador` | `{ nome, email, senha, telefone?, planoId? }` | `201 { treinadorId }` |
 | `POST` | `/auth/register/aluno` | `{ nome, email, senha, treinadorId, pacoteId?, ... }` | `201 { alunoId, vinculoId }` |
-| `GET` | `/auth/planos` | — | `[PlanoTreinadorResponse]` |
-| `GET` | `/auth/treinadores` | — | `[TreinadorPublicoResponse]` (apenas ativos) |
-| `GET` | `/auth/treinadores/{id}/pacotes` | — | `[PacoteAlunoResponse]` |
+| `GET` | `/auth/planos` | — | `[PlanoTreinadorResponse]` · rate: `auth` |
+| `GET` | `/auth/treinadores` | — | `[TreinadorPublicoResponse]` (apenas ativos) · rate: `auth` |
+| `GET` | `/auth/treinadores/{id}/pacotes` | — | `[PacoteAlunoResponse]` · rate: `auth` |
 
 #### Admin — `/admin` (política `SystemAdmin`)
 
@@ -376,6 +378,7 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | Método | Rota | Body | Resposta |
 |--------|------|------|----------|
 | `GET` | `/admin/treinadores` | `?status=&pagina=&tamanhoPagina=` | `ListarTreinadoresResponse` |
+| `GET` | `/admin/treinadores/{id}` | — | `TreinadorResponse` |
 | `POST` | `/admin/treinadores/{id}/aprovar` | `{ observacao? }` | `200 TreinadorResponse` |
 | `POST` | `/admin/treinadores/{id}/reprovar` | `{ observacao? }` | `204` |
 | `POST` | `/admin/treinadores/{id}/inativar` | `{ observacao? }` | `204` |
@@ -582,7 +585,9 @@ Exemplo de resposta 422:
 
 ```bash
 # Configurar via User Secrets (desenvolvimento local)
-dotnet user-secrets set "Auth:JwtSecret"              "<chave-hmac-32chars>" --project forzion.tech.Api
+dotnet user-secrets set "Auth:JwtSecret"              "<chave-hmac-min-32bytes>" --project forzion.tech.Api
+# Gerar chave com entropia adequada:
+# openssl rand -base64 64
 dotnet user-secrets set "Auth:JwtIssuer"              "forzion.tech"         --project forzion.tech.Api
 dotnet user-secrets set "Auth:JwtAudience"            "forzion.tech"         --project forzion.tech.Api
 dotnet user-secrets set "ConnectionStrings:AppConnection" "<conn-string>"    --project forzion.tech.Api

@@ -9,27 +9,29 @@ public class ObterProgressaoAlunoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IUserContext userContext)
 {
-    private readonly IExecucaoTreinoRepository _execucaoRepository = execucaoRepository;
-    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly IUserContext _userContext = userContext;
-
-    public virtual async Task<ProgressaoAlunoResponse> HandleAsync(
+    public virtual Task<ProgressaoAlunoResponse> HandleAsync(
         ObterProgressaoAlunoQuery query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
+        return HandleAsyncCore(query, cancellationToken);
+    }
 
-        if (!_userContext.IsSystemAdmin)
+    private async Task<ProgressaoAlunoResponse> HandleAsyncCore(
+        ObterProgressaoAlunoQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        if (!userContext.IsSystemAdmin)
         {
-            _ = await _vinculoRepository
-                .ObterAtivoAsync(_userContext.PerfilId, query.AlunoId, cancellationToken)
+            _ = await vinculoRepository
+                .ObterAtivoAsync(userContext.PerfilId, query.AlunoId, cancellationToken)
                 .ConfigureAwait(false)
                 ?? throw new AcessoNegadoException();
         }
 
         var ate = query.Ate.Date.AddDays(1).AddTicks(-1);
 
-        var execucoes = await _execucaoRepository
+        var execucoes = await execucaoRepository
             .ListarPorAlunoComExerciciosAsync(query.AlunoId, query.De.Date, ate, cancellationToken)
             .ConfigureAwait(false);
 
