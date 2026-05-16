@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 593 testes backend + 142 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Auditoria de segurança OWASP
+**Status**: ✅ 597 testes backend + 142 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Auditoria de segurança OWASP | DDD tático aplicado
 
 ---
 
@@ -224,11 +224,12 @@ forzion.tech.Domain/
 │                         # ExecucaoTreino, ExecucaoExercicio, LogAprovacao,
 │                         # PlanoTreinador, PacoteAluno, GrupoMuscular,
 │                         # SystemUser, TokenRevogado
-├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus,
-│                         # VinculoStatus, ObjetivoTreino, DificuldadeTreino
+├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus, VinculoStatus,
+│                         # ObjetivoTreino, DificuldadeTreino, GrupoMuscularEnum
 ├── Events/               # IDomainEvent, IHasDomainEvents,
 │                         # TreinadorAprovadoEvent, TreinadorReprovadoEvent,
-│                         # TreinadorInativadoEvent, VinculoAprovadoEvent
+│                         # TreinadorInativadoEvent, VinculoAprovadoEvent,
+│                         # AlunoInativadoEvent
 ├── Exceptions/           # Exceções de domínio tipadas (DomainException base)
 └── ValueObjects/         # Email
 
@@ -270,12 +271,12 @@ forzion.tech.Tests/
 | `Conta` | Auth unificada. E-mail + PasswordHash (BCrypt). `TipoConta`: `SystemAdmin`, `Treinador`, `Aluno`. |
 | `SystemUser` | Perfil de admin vinculado a uma `Conta` do tipo `SystemAdmin`. |
 | `Treinador` | Perfil de treinador. Possui `PlanoTreinadorId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
-| `Aluno` | Perfil de aluno vinculado a uma `Conta`. Possui dados físicos (peso, altura) e perfil de treino. |
+| `Aluno` | Perfil de aluno vinculado a uma `Conta`. Email armazenado como `Email` VO. Máquina de estados: `AguardandoAprovacao → Ativo ⇌ Inativo` via `Ativar()`/`Inativar()`. |
 | `VinculoTreinadorAluno` | Relação entre treinador e aluno. Carrega `PacoteAlunoId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
 | `PlanoTreinador` | Plano global (gerido pelo admin). Define `MaxAlunos` por treinador. |
 | `PacoteAluno` | Pacote criado pelo treinador. Define nome, descrição e preço. Sem limite de fichas. |
 | `Treino` | Ficha de treino com nome, objetivo, dificuldade e lista de `TreinoExercicio`. |
-| `TreinoExercicio` | Item de exercício em uma ficha: séries, repetições, carga, descanso, ordem, observação. |
+| `TreinoExercicio` | Item de exercício em uma ficha: séries, repetições, carga, descanso, ordem, observação. Referencia `Exercicio` por ID (sem nav prop — DDD). |
 | `TreinoAluno` | Vínculo ficha × aluno. Status: `Ativo / Inativo`. |
 | `Exercicio` | Global (`TreinadorId = null`) ou privado do treinador. Possui `GrupoMuscular`. |
 | `GrupoMuscular` | Grupo muscular global (gerido pelo admin). |
@@ -287,7 +288,7 @@ forzion.tech.Tests/
 
 ### Domain Events
 
-`Treinador` e `VinculoTreinadorAluno` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher`:
+`Treinador`, `VinculoTreinadorAluno` e `Aluno` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada):
 
 | Evento | Levantado em |
 |--------|-------------|
@@ -295,8 +296,9 @@ forzion.tech.Tests/
 | `TreinadorReprovadoEvent` | `Treinador.Reprovar()` |
 | `TreinadorInativadoEvent` | `Treinador.Inativar()` |
 | `VinculoAprovadoEvent` | `VinculoTreinadorAluno.Aprovar()` |
+| `AlunoInativadoEvent` | `Aluno.Inativar()` |
 
-Eventos são despachados sem persistência — prontos para consumo futuro por handlers de notificação.
+Eventos são despachados sem persistência — handlers de notificação os consomem in-process.
 
 ---
 
@@ -472,8 +474,8 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | Método | Rota | Body | Resposta |
 |--------|------|------|----------|
 | `GET` | `/conta/perfil` | — | `PerfilResponse` |
-| `PATCH` | `/conta/perfil` | `{ nome?, telefone?, ... }` | `200 PerfilResponse` |
-| `POST` | `/conta/alterar-senha` | `{ senhaAtual, novaSenha }` | `204` |
+| `PATCH` | `/conta/perfil` | `{ nome }` | `204` |
+| `POST` | `/conta/senha` | `{ senhaAtual, novaSenha }` | `204` |
 | `POST` | `/conta/logout` | — | `204` (revoga JTI) |
 
 ---
@@ -635,9 +637,9 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 ### Testes
 
 ```
-593 testes | 0 falhas
+597 testes | 0 falhas
 
-Domain/          → entidades, value objects, domain events, exceções
+Domain/          → entidades, value objects, domain events, exceções, máquina de estados
 Application/     → handlers (unit), services de limite
 Infrastructure/  → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
 Api/Endpoints/   → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
