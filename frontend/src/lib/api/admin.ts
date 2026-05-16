@@ -122,6 +122,10 @@ export const adminApi = {
     return apiClient.get<AlunoResponse>(`/admin/alunos/${alunoId}`);
   },
 
+  alterarStatusAluno(alunoId: string, status: AlunoStatus) {
+    return apiClient.patch<AlunoResponse>(`/alunos/${alunoId}/status`, { status });
+  },
+
   getAlunoVinculo(alunoId: string) {
     return apiClient.get<MeuVinculoResponse>(`/admin/alunos/${alunoId}/vinculo`);
   },

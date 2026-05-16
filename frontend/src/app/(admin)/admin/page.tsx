@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import {
-  Box, Typography, Paper, Stack, Divider, Button, Chip,
+  Box, Typography, Paper, Stack, Divider, Button, Chip, Tabs, Tab,
+  Table, TableHead, TableRow, TableCell, TableBody,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
@@ -12,61 +13,110 @@ import {
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { adminApi } from "@/lib/api/admin";
-import type { TreinadorResponse, PlanoTreinadorResponse } from "@/types";
+import type {
+  TreinadorResponse, PlanoTreinadorResponse, AlunoResponse, GrupoMuscularResponse,
+} from "@/types";
+import { FINALIDADE_LABEL } from "@/lib/constants/labels";
 
-const STATUS_COLORS: Record<string, string> = {
-  Ativos: "#4caf50",
-  Pendentes: "#F5C400",
-  Inativos: "#757575",
-};
+const T_COLORS = { Ativos: "#4caf50", Pendentes: "#F5C400", Inativos: "#757575" };
+const A_COLORS = { Ativos: "#2196f3", Pendentes: "#ff9800", Inativos: "#9e9e9e" };
 
-interface StatItem {
-  name: string;
-  value: number;
-  color: string;
-}
-
-interface PlanoItem {
-  name: string;
-  total: number;
-}
+interface StatItem { name: string; value: number; color: string }
+interface PlanoStat { planoId: string; name: string; total: number; preco: number; maxAlunos: number }
+interface DistItem { name: string; total: number }
 
 export default function DashboardAdminPage() {
-  const [stats, setStats] = useState<StatItem[]>([]);
-  const [planoData, setPlanoData] = useState<PlanoItem[]>([]);
+  const [treinadorStats, setTreinadorStats] = useState<StatItem[]>([]);
+  const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
   const [pendentes, setPendentes] = useState<TreinadorResponse[]>([]);
+  const [alunosPendentes, setAlunosPendentes] = useState<AlunoResponse[]>([]);
+  const [recentTreinadores, setRecentTreinadores] = useState<TreinadorResponse[]>([]);
+  const [planoStats, setPlanoStats] = useState<PlanoStat[]>([]);
+  const [finalidadeData, setFinalidadeData] = useState<DistItem[]>([]);
+  const [planos, setPlanos] = useState<PlanoTreinadorResponse[]>([]);
+  const [totalExercicios, setTotalExercicios] = useState(0);
+  const [totalGrupos, setTotalGrupos] = useState(0);
+  const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [ativoRes, aguardandoRes, inativoRes, todosRes, planosRes] = await Promise.all([
+      const [
+        ativoTRes, aguardandoTRes, inativoTRes, todosTRes,
+        ativoARes, aguardandoARes, inativoARes, todosARes,
+        planosRes, exerciciosRes, gruposRes,
+      ] = await Promise.all([
         adminApi.listTreinadores({ status: "Ativo", tamanhoPagina: 1 }),
-        adminApi.listTreinadores({ status: "AguardandoAprovacao", tamanhoPagina: 10 }),
+        adminApi.listTreinadores({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
         adminApi.listTreinadores({ status: "Inativo", tamanhoPagina: 1 }),
         adminApi.listTreinadores({ tamanhoPagina: 100 }),
+        adminApi.listAlunos({ status: "Ativo", tamanhoPagina: 1 }),
+        adminApi.listAlunos({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
+        adminApi.listAlunos({ status: "Inativo", tamanhoPagina: 1 }),
+        adminApi.listAlunos({ tamanhoPagina: 100 }),
         adminApi.listPlanos(),
+        adminApi.listExerciciosGlobais({ tamanhoPagina: 1 }),
+        adminApi.listGruposMusculares(),
       ]);
 
-      setStats([
-        { name: "Ativos", value: ativoRes.data.total, color: STATUS_COLORS.Ativos },
-        { name: "Pendentes", value: aguardandoRes.data.total, color: STATUS_COLORS.Pendentes },
-        { name: "Inativos", value: inativoRes.data.total, color: STATUS_COLORS.Inativos },
+      setTreinadorStats([
+        { name: "Ativos", value: ativoTRes.data.total, color: T_COLORS.Ativos },
+        { name: "Pendentes", value: aguardandoTRes.data.total, color: T_COLORS.Pendentes },
+        { name: "Inativos", value: inativoTRes.data.total, color: T_COLORS.Inativos },
       ]);
 
-      setPendentes(aguardandoRes.data.items);
+      setAlunoStats([
+        { name: "Ativos", value: ativoARes.data.total, color: A_COLORS.Ativos },
+        { name: "Pendentes", value: aguardandoARes.data.total, color: A_COLORS.Pendentes },
+        { name: "Inativos", value: inativoARes.data.total, color: A_COLORS.Inativos },
+      ]);
 
-      const planos = planosRes.data as PlanoTreinadorResponse[];
-      const planoMap = new Map(planos.map((p) => [p.planoId, p.nome]));
-      const contagem: Record<string, number> = {};
-      for (const t of todosRes.data.items) {
-        const nome = t.planoTreinadorId
-          ? (planoMap.get(t.planoTreinadorId) ?? "Plano desconhecido")
-          : "Sem plano";
-        contagem[nome] = (contagem[nome] ?? 0) + 1;
+      setPendentes(aguardandoTRes.data.items);
+      setAlunosPendentes(aguardandoARes.data.items);
+
+      // Recent trainers: last 5 by createdAt
+      const sorted = [...todosTRes.data.items].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setRecentTreinadores(sorted.slice(0, 5));
+
+      // Plan distribution
+      const planosData = planosRes.data as PlanoTreinadorResponse[];
+      setPlanos(planosData);
+      const planoMap = new Map(planosData.map((p) => [p.planoId, p]));
+      const contT: Record<string, PlanoStat> = {};
+      for (const t of todosTRes.data.items) {
+        const key = t.planoTreinadorId ?? "__none";
+        const plano = t.planoTreinadorId ? planoMap.get(t.planoTreinadorId) : null;
+        if (!contT[key]) {
+          contT[key] = {
+            planoId: key,
+            name: plano ? plano.nome : "Sem plano",
+            total: 0,
+            preco: plano?.preco ?? 0,
+            maxAlunos: plano?.maxAlunos ?? 0,
+          };
+        }
+        contT[key].total += 1;
       }
-      setPlanoData(Object.entries(contagem).map(([name, total]) => ({ name, total })));
+      setPlanoStats(Object.values(contT).sort((a, b) => b.total - a.total));
+
+      // Student finalidade distribution
+      const contA: Record<string, number> = {};
+      for (const a of todosARes.data.items as AlunoResponse[]) {
+        if (a.finalidade) {
+          const label = FINALIDADE_LABEL[a.finalidade] ?? a.finalidade;
+          contA[label] = (contA[label] ?? 0) + 1;
+        }
+      }
+      setFinalidadeData(
+        Object.entries(contA).sort((a, b) => b[1] - a[1]).map(([name, total]) => ({ name, total }))
+      );
+
+      setTotalExercicios(exerciciosRes.data.total);
+      setTotalGrupos((gruposRes.data as GrupoMuscularResponse[]).length);
     } catch {
       setError("Erro ao carregar dados do painel.");
     } finally {
@@ -100,151 +150,339 @@ export default function DashboardAdminPage() {
     }
   };
 
+  const handleAprovarAluno = async (id: string) => {
+    setActionLoading(`${id}_aprovar`);
+    try {
+      await adminApi.alterarStatusAluno(id, "Ativo");
+      await load();
+    } catch {
+      setError("Erro ao aprovar aluno.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleInativarAluno = async (id: string) => {
+    setActionLoading(`${id}_inativar`);
+    try {
+      await adminApi.alterarStatusAluno(id, "Inativo");
+      await load();
+    } catch {
+      setError("Erro ao inativar aluno.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
+
+  const planoBarData = planoStats.map(({ name, total }) => ({ name, total }));
 
   return (
     <Box>
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
-      {/* Stat cards */}
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" }, gap: 2, mb: 4 }}>
-        {stats.map((s) => (
-          <Paper
-            key={s.name}
-            sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}
-          >
-            <Typography
-              variant="h3"
-              sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}
-            >
-              {s.value}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
-              {s.name}
-            </Typography>
+      {/* Stat cards — Treinadores */}
+      <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
+        TREINADORES
+      </Typography>
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mt: 1, mb: 3 }}>
+        {treinadorStats.map((s) => (
+          <Paper key={s.name} sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}>
+            <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>{s.name}</Typography>
           </Paper>
         ))}
       </Box>
 
-      {/* Charts */}
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2, mb: 4 }}>
-        <Paper sx={{ p: 3, borderRadius: 2 }}>
-          <Typography
-            variant="overline"
-            color="text.disabled"
-            sx={{ letterSpacing: 2, fontSize: "0.7rem" }}
-          >
-            STATUS DOS TREINADORES
-          </Typography>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={stats}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={85}
-                dataKey="value"
-                paddingAngle={3}
-              >
-                {stats.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v, n) => [v, n]} />
-              <Legend iconType="circle" iconSize={10} />
-            </PieChart>
-          </ResponsiveContainer>
-        </Paper>
-
-        <Paper sx={{ p: 3, borderRadius: 2 }}>
-          <Typography
-            variant="overline"
-            color="text.disabled"
-            sx={{ letterSpacing: 2, fontSize: "0.7rem" }}
-          >
-            TREINADORES POR PLANO
-          </Typography>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={planoData} layout="vertical" margin={{ left: 8, right: 16 }}>
-              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Bar dataKey="total" name="Treinadores" fill="#F5C400" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
+      {/* Stat cards — Alunos */}
+      <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
+        ALUNOS
+      </Typography>
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mt: 1, mb: 4 }}>
+        {alunoStats.map((s) => (
+          <Paper key={s.name} sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}>
+            <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>{s.name}</Typography>
+          </Paper>
+        ))}
       </Box>
 
-      {/* Pending list */}
-      <Paper sx={{ p: 3, borderRadius: 2 }}>
-        <Typography
-          variant="overline"
-          color="text.disabled"
-          sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 1 }}
-        >
-          AGUARDANDO REVISÃO
-        </Typography>
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+        <Tabs value={tab} onChange={(_, v: number) => setTab(v)}>
+          <Tab label="Visão Geral" />
+          <Tab label={(pendentes.length + alunosPendentes.length) > 0 ? `Aprovações (${pendentes.length + alunosPendentes.length})` : "Aprovações"} />
+          <Tab label="Plataforma" />
+        </Tabs>
+      </Box>
 
-        {pendentes.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-            Nenhum cadastro pendente.
-          </Typography>
-        ) : (
-          <Stack divider={<Divider />}>
-            {pendentes.map((t) => (
-              <Box
-                key={t.treinadorId}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  py: 2,
-                }}
-              >
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {t.nome}
-                  </Typography>
-                  <Chip
-                    label="Aguardando aprovação"
-                    size="small"
-                    sx={{
-                      mt: 0.5,
-                      fontSize: "0.65rem",
-                      bgcolor: "#F5C40020",
-                      color: "primary.main",
-                      fontWeight: 600,
-                    }}
-                  />
+      {/* ── Tab 0: Visão Geral ── */}
+      {tab === 0 && (
+        <Box>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2, mb: 3 }}>
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
+                STATUS DOS TREINADORES
+              </Typography>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={treinadorStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
+                    {treinadorStats.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Legend iconType="circle" iconSize={10} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Paper>
+
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
+                TREINADORES POR PLANO
+              </Typography>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={planoBarData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar dataKey="total" name="Treinadores" fill="#F5C400" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Box>
+
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2 }}>
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
+                STATUS DOS ALUNOS
+              </Typography>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={alunoStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
+                    {alunoStats.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Legend iconType="circle" iconSize={10} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Paper>
+
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
+                ALUNOS POR FINALIDADE
+              </Typography>
+              {finalidadeData.length === 0 ? (
+                <Box sx={{ display: "flex", alignItems: "center", height: 220 }}>
+                  <Typography variant="body2" color="text.secondary">Nenhum dado disponível.</Typography>
                 </Box>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    color="success"
-                    startIcon={<CheckIcon />}
-                    disabled={!!actionLoading}
-                    onClick={() => handleAprovar(t.treinadorId)}
-                  >
-                    Aprovar
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    startIcon={<CloseIcon />}
-                    disabled={!!actionLoading}
-                    onClick={() => handleReprovar(t.treinadorId)}
-                  >
-                    Reprovar
-                  </Button>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={finalidadeData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Bar dataKey="total" name="Alunos" fill="#2196f3" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Paper>
+          </Box>
+        </Box>
+      )}
+
+      {/* ── Tab 1: Aprovações ── */}
+      {tab === 1 && (
+        <>
+        <Paper sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 1 }}>
+            TREINADORES AGUARDANDO REVISÃO
+          </Typography>
+
+          {pendentes.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              Nenhum treinador pendente.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider />}>
+              {pendentes.map((t) => (
+                <Box
+                  key={t.treinadorId}
+                  sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 2, gap: 2, flexWrap: "wrap" }}
+                >
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.nome}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Cadastrado em {new Date(t.createdAt).toLocaleDateString("pt-BR")}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small" variant="contained" color="success" startIcon={<CheckIcon />}
+                      disabled={!!actionLoading} onClick={() => handleAprovar(t.treinadorId)}
+                    >
+                      Aprovar
+                    </Button>
+                    <Button
+                      size="small" variant="outlined" color="error" startIcon={<CloseIcon />}
+                      disabled={!!actionLoading} onClick={() => handleReprovar(t.treinadorId)}
+                    >
+                      Reprovar
+                    </Button>
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+
+        <Paper sx={{ p: 3, borderRadius: 2, mt: 2 }}>
+          <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 1 }}>
+            ALUNOS AGUARDANDO APROVAÇÃO
+          </Typography>
+
+          {alunosPendentes.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              Nenhum aluno pendente.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider />}>
+              {alunosPendentes.map((a) => (
+                <Box
+                  key={a.alunoId}
+                  sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 2, gap: 2, flexWrap: "wrap" }}
+                >
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.nome}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Cadastrado em {new Date(a.createdAt).toLocaleDateString("pt-BR")}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small" variant="contained" color="success" startIcon={<CheckIcon />}
+                      disabled={!!actionLoading} onClick={() => handleAprovarAluno(a.alunoId)}
+                    >
+                      Aprovar
+                    </Button>
+                    <Button
+                      size="small" variant="outlined" color="error" startIcon={<CloseIcon />}
+                      disabled={!!actionLoading} onClick={() => handleInativarAluno(a.alunoId)}
+                    >
+                      Reprovar
+                    </Button>
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+        </>
+      )}
+
+      {/* ── Tab 2: Plataforma ── */}
+      {tab === 2 && (
+        <Box>
+          {/* Platform counters */}
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mb: 3 }}>
+            <Paper sx={{ p: 3, borderLeft: "4px solid #7c3aed", borderRadius: 2 }}>
+              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#7c3aed" }}>{planos.length}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Planos</Typography>
+            </Paper>
+            <Paper sx={{ p: 3, borderLeft: "4px solid #0891b2", borderRadius: 2 }}>
+              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#0891b2" }}>{totalExercicios}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Exercícios Globais</Typography>
+            </Paper>
+            <Paper sx={{ p: 3, borderLeft: "4px solid #dc2626", borderRadius: 2 }}>
+              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#dc2626" }}>{totalGrupos}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Grupos Musculares</Typography>
+            </Paper>
+          </Box>
+
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.5fr 1fr" }, gap: 2 }}>
+            {/* Plans table */}
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 2 }}>
+                PLANOS DE TREINADORES
+              </Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Nome</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Preço/mês</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Máx. Alunos</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Treinadores</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {planoStats.filter((p) => p.planoId !== "__none").map((p) => (
+                    <TableRow key={p.planoId}>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell>{p.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
+                      <TableCell>{p.maxAlunos}</TableCell>
+                      <TableCell><Chip label={p.total} size="small" /></TableCell>
+                    </TableRow>
+                  ))}
+                  {planoStats.some((p) => p.planoId === "__none") && (
+                    <TableRow>
+                      <TableCell colSpan={3} sx={{ color: "text.secondary", fontStyle: "italic" }}>Sem plano atribuído</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={planoStats.find((p) => p.planoId === "__none")?.total ?? 0}
+                          size="small"
+                          color="warning"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </Paper>
+
+            {/* Recent trainers */}
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 2 }}>
+                TREINADORES RECENTES
+              </Typography>
+              {recentTreinadores.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">Nenhum treinador cadastrado.</Typography>
+              ) : (
+                <Stack divider={<Divider />}>
+                  {recentTreinadores.map((t) => (
+                    <Box key={t.treinadorId} sx={{ py: 1.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.nome}</Typography>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: "center", mt: 0.5 }}>
+                        <Chip
+                          label={
+                            t.status === "Ativo" ? "Ativo"
+                              : t.status === "AguardandoAprovacao" ? "Pendente"
+                              : "Inativo"
+                          }
+                          size="small"
+                          sx={{
+                            fontSize: "0.65rem",
+                            fontWeight: 600,
+                            bgcolor:
+                              t.status === "Ativo" ? "#4caf5020"
+                                : t.status === "AguardandoAprovacao" ? "#F5C40020"
+                                : "#75757520",
+                            color:
+                              t.status === "Ativo" ? T_COLORS.Ativos
+                                : t.status === "AguardandoAprovacao" ? "#b8860b"
+                                : T_COLORS.Inativos,
+                          }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(t.createdAt).toLocaleDateString("pt-BR")}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  ))}
                 </Stack>
-              </Box>
-            ))}
-          </Stack>
-        )}
-      </Paper>
+              )}
+            </Paper>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }

@@ -6,6 +6,7 @@ using forzion.tech.Api.Endpoints.Auth;
 using forzion.tech.Api.Endpoints.Alunos;
 using forzion.tech.Api.Endpoints.Conta;
 using forzion.tech.Api.Endpoints.Exercicios;
+using forzion.tech.Api.Endpoints.Pagamentos;
 using forzion.tech.Api.Endpoints.Treinos;
 using forzion.tech.Api.Endpoints.Treinador;
 
@@ -23,6 +24,8 @@ public static class RouteBuilderExtensions
         endpoints.MapContaEndpoints();
         endpoints.MapExercicioEndpoints();
         endpoints.MapTreinoEndpoints();
+        endpoints.MapPagamentosEndpoints();
+        endpoints.MapWebhookEndpoints();
         endpoints.MapAlunoAssistantEndpoints();
         endpoints.MapTreinadorAssistantEndpoints();
 
