@@ -80,7 +80,8 @@ public class AtualizarAlunoHandlerTests
     public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
     {
         var aluno = Aluno.Criar(Guid.NewGuid(), "João");
-        aluno.AlterarStatus(AlunoStatus.Inativo);
+        aluno.Ativar();
+        aluno.Inativar();
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var act = async () => await _handler.HandleAsync(

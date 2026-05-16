@@ -10,11 +10,15 @@ namespace forzion.tech.Tests.Application.Treinos;
 public class ListarTreinosDoTreinadorHandlerTests
 {
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
+    private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly ListarTreinosDoTreinadorHandler _handler;
 
     public ListarTreinosDoTreinadorHandlerTests()
     {
-        _handler = new ListarTreinosDoTreinadorHandler(_treinoRepo.Object);
+        _exercicioRepo
+            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
+        _handler = new ListarTreinosDoTreinadorHandler(_treinoRepo.Object, _exercicioRepo.Object);
     }
 
     private static Treino CriarTreino(Guid treinadorId) =>

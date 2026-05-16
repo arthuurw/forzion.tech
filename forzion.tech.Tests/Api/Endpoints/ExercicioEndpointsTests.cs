@@ -45,12 +45,12 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     [Fact]
     public async Task Post_Criar_DadosValidos_Retorna201()
     {
-        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", GrupoMuscular.Peito, "Desc", TreinadorId, false, DateTime.UtcNow, null);
+        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", TipoGrupoMuscular.Peito, "Desc", TreinadorId, false, DateTime.UtcNow, null);
         _factory.CriarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(responseExercicio));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
-            new { nome = "Supino", grupoMuscular = GrupoMuscular.Peito, descricao = "Desc" });
+            new { nome = "Supino", grupoMuscular = TipoGrupoMuscular.Peito, descricao = "Desc" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }

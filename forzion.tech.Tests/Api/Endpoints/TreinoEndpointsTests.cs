@@ -128,6 +128,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
 
         public Mock<ObterTreinoHandler> ObterHandlerMock { get; } = new(
             Mock.Of<ITreinoRepository>(),
+            Mock.Of<IExercicioRepository>(),
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ObterTreinoHandler>>());

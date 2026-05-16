@@ -23,9 +23,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<Exercicio> Exercicios => Set<Exercicio>();
     public DbSet<GrupoMuscular> GruposMusculares => Set<GrupoMuscular>();
     public DbSet<TreinoAluno> TreinoAlunos => Set<TreinoAluno>();
-    public DbSet<TreinoExercicio> TreinoExercicios => Set<TreinoExercicio>();
+    internal DbSet<TreinoExercicio> TreinoExercicios => Set<TreinoExercicio>();
     public DbSet<ExecucaoTreino> ExecucoesTreino => Set<ExecucaoTreino>();
-    public DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
+    internal DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
     public DbSet<TokenRevogado> TokensRevogados => Set<TokenRevogado>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)

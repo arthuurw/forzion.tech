@@ -16,7 +16,7 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
 
     public async Task<(IReadOnlyList<Exercicio> Items, int Total)> ListarAsync(
         Guid? treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default,
-        string? nome = null, forzion.tech.Domain.Enums.GrupoMuscular? grupoMuscular = null, string ordenarPor = "nome")
+        string? nome = null, forzion.tech.Domain.Enums.TipoGrupoMuscular? grupoMuscular = null, string ordenarPor = "nome")
     {
         var query = _context.Exercicios
             .AsNoTracking()
@@ -68,4 +68,17 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
         await _context.TreinoExercicios
             .AnyAsync(te => te.ExercicioId == exercicioId, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyDictionary<Guid, string>> ObterNomesPorIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        var idList = ids.Distinct().ToList();
+        if (idList.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        return await _context.Exercicios
+            .AsNoTracking()
+            .Where(e => idList.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, e => e.Nome, cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

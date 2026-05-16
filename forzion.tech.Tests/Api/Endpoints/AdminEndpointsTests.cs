@@ -846,10 +846,12 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<ITreinadorRepository>());
 
         public Mock<ListarFichasAlunoHandler> ListarFichasAlunoHandlerMock { get; } = new(
-            Mock.Of<ITreinoAlunoRepository>());
+            Mock.Of<ITreinoAlunoRepository>(),
+            Mock.Of<IExercicioRepository>());
 
         public Mock<ObterFichaAlunoHandler> ObterFichaAlunoHandlerMock { get; } = new(
             Mock.Of<ITreinoAlunoRepository>(),
+            Mock.Of<IExercicioRepository>(),
             Mock.Of<IUserContext>());
 
         public Mock<ListarExecucoesAlunoHandler> ListarExecucoesHandlerMock { get; } = new(
@@ -869,10 +871,12 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<IVinculoTreinadorAlunoRepository>());
 
         public Mock<ListarTreinosDoTreinadorHandler> ListarTreinosDoTreinadorHandlerMock { get; } = new(
-            Mock.Of<ITreinoRepository>());
+            Mock.Of<ITreinoRepository>(),
+            Mock.Of<IExercicioRepository>());
 
         public Mock<ObterTreinoHandler> ObterTreinoHandlerMock { get; } = new(
             Mock.Of<ITreinoRepository>(),
+            Mock.Of<IExercicioRepository>(),
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ObterTreinoHandler>>());

@@ -6,5 +6,5 @@ public record AtualizarExercicioCommand(
     Guid ExercicioId,
     Guid? TreinadorId,
     string? Nome,
-    GrupoMuscular? GrupoMuscular,
+    TipoGrupoMuscular? GrupoMuscular,
     string? Descricao);

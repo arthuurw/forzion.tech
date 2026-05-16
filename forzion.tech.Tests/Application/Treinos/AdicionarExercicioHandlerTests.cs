@@ -28,6 +28,9 @@ public class AdicionarExercicioHandlerTests
     public AdicionarExercicioHandlerTests()
     {
         _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
+        _exercicioRepo
+            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
         _handler = new AdicionarExercicioHandler(
             _treinoRepo.Object,
             _exercicioRepo.Object,

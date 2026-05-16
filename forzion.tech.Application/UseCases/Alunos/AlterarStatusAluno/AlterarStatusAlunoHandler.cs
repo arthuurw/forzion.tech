@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -33,7 +34,12 @@ public class AlterarStatusAlunoHandler(
         if (!userContext.IsSystemAdmin)
             throw new AcessoNegadoException();
 
-        aluno.AlterarStatus(command.NovoStatus);
+        if (command.NovoStatus == AlunoStatus.Ativo)
+            aluno.Ativar();
+        else if (command.NovoStatus == AlunoStatus.Inativo)
+            aluno.Inativar();
+        else
+            throw new DomainException($"Transição de status '{command.NovoStatus}' não permitida.");
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

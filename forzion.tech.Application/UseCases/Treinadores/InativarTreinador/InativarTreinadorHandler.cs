@@ -32,14 +32,7 @@ public class InativarTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        try
-        {
-            treinador.Inativar(command.AdminId);
-        }
-        catch (DomainException ex)
-        {
-            return Result.Failure(Error.Business(ex.Message));
-        }
+        treinador.Inativar(command.AdminId);
 
         var vinculos = await vinculoRepository.ListarAtivosPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 

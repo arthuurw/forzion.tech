@@ -1,17 +1,20 @@
-using System.Text.RegularExpressions;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.ValueObjects;
 
 namespace forzion.tech.Domain.Entities;
 
-public partial class Aluno
+public class Aluno : IHasDomainEvents
 {
-    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
-    private static partial Regex EmailRegex();
+    private readonly List<IDomainEvent> _domainEvents = [];
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
     public Guid Id { get; private set; }
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
-    public string? Email { get; private set; }
+    public Email? Email { get; private set; }
     public string? Telefone { get; private set; }
     public AlunoStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -95,10 +98,23 @@ public partial class Aluno
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AlterarStatus(AlunoStatus status)
+    public void Ativar()
     {
-        Status = status;
+        if (Status == AlunoStatus.Ativo)
+            throw new DomainException("O aluno já está ativo.");
+
+        Status = AlunoStatus.Ativo;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Inativar()
+    {
+        if (Status == AlunoStatus.Inativo)
+            throw new DomainException("O aluno já está inativo.");
+
+        Status = AlunoStatus.Inativo;
+        UpdatedAt = DateTime.UtcNow;
+        _domainEvents.Add(new AlunoInativadoEvent(Id, DateTime.UtcNow));
     }
 
     private void AlterarEmail(string email)
@@ -108,11 +124,7 @@ public partial class Aluno
             Email = null;
             return;
         }
-        if (email.Length > 256)
-            throw new DomainException("O e-mail deve ter no máximo 256 caracteres.");
-        if (!EmailRegex().IsMatch(email))
-            throw new DomainException("O e-mail informado é inválido.");
-        Email = email.Trim().ToLowerInvariant();
+        Email = ValueObjects.Email.Criar(email);
     }
 
     private void AlterarTelefone(string telefone)
