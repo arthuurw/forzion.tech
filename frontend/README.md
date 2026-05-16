@@ -230,7 +230,7 @@ frontend/
 │   │   │   └── index.ts                # Tema MUI (paleta + tipografia + overrides)
 │   │   ├── utils/
 │   │   │   ├── formatting.ts           # Funções de formatação
-│   │   │   └── excel.ts               # Exportação de fichas para .xlsx (SheetJS)
+│   │   │   └── excel.ts               # Exportação de fichas para .xlsx (ExcelJS)
 │   │   └── validations/
 │   │       └── common.ts               # Schemas Zod reutilizáveis
 │   │

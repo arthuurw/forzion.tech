@@ -130,7 +130,7 @@ public class ExercicioRepositoryTests(InfrastructureTestFixture fixture)
 
         var (items, _) = await Repo(ctx).ListarAsync(tid, 1, 50, ordenarPor: "grupoMuscular");
 
-        items.Should().BeInAscendingOrder(e => e.GrupoMuscular);
+        items.Select(e => e.GrupoMuscular.ToString()).Should().BeInAscendingOrder();
     }
 
     [Fact]

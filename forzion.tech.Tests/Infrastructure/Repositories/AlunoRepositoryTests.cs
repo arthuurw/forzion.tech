@@ -36,6 +36,14 @@ public class AlunoRepositoryTests(InfrastructureTestFixture fixture)
         return treinador.Id;
     }
 
+    private static async Task<Guid> SeedPacoteAsync(AppDbContext ctx, Guid treinadorId)
+    {
+        var pacote = PacoteAluno.Criar(treinadorId, "Pacote Teste", 100m);
+        await ctx.PacotesAluno.AddAsync(pacote);
+        await ctx.SaveChangesAsync();
+        return pacote.Id;
+    }
+
     // --- ListarTodosAsync ---
 
     [Fact]
@@ -108,10 +116,11 @@ public class AlunoRepositoryTests(InfrastructureTestFixture fixture)
     {
         await using var ctx = fixture.CreateContext();
         var tid = await SeedTreinadorAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, tid);
         var aluno = await SeedAlunoAsync(ctx, $"AlunoAtivo-{Guid.NewGuid():N}");
 
         var vinculo = VinculoTreinadorAluno.Criar(tid, aluno.Id);
-        vinculo.Aprovar(tid, Guid.NewGuid());
+        vinculo.Aprovar(tid, pacoteId);
         await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
         await ctx.SaveChangesAsync();
 
@@ -143,10 +152,11 @@ public class AlunoRepositoryTests(InfrastructureTestFixture fixture)
         await using var ctx = fixture.CreateContext();
         var tid1 = await SeedTreinadorAsync(ctx);
         var tid2 = await SeedTreinadorAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, tid1);
         var aluno = await SeedAlunoAsync(ctx, $"AlunoIsolado-{Guid.NewGuid():N}");
 
         var vinculo = VinculoTreinadorAluno.Criar(tid1, aluno.Id);
-        vinculo.Aprovar(tid1, Guid.NewGuid());
+        vinculo.Aprovar(tid1, pacoteId);
         await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
         await ctx.SaveChangesAsync();
 
@@ -160,12 +170,13 @@ public class AlunoRepositoryTests(InfrastructureTestFixture fixture)
     {
         await using var ctx = fixture.CreateContext();
         var tid = await SeedTreinadorAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, tid);
 
         for (var i = 0; i < 5; i++)
         {
             var aluno = await SeedAlunoAsync(ctx, $"PagAluno{i}-{Guid.NewGuid():N}");
             var v = VinculoTreinadorAluno.Criar(tid, aluno.Id);
-            v.Aprovar(tid, Guid.NewGuid());
+            v.Aprovar(tid, pacoteId);
             await ctx.VinculosTreinadorAluno.AddAsync(v);
         }
         await ctx.SaveChangesAsync();

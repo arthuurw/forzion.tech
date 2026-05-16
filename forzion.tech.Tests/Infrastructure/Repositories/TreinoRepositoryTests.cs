@@ -109,7 +109,7 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
 
         var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(tid, 1, 50, ordenarPor: "objetivo");
 
-        items.Should().BeInAscendingOrder(i => i.Treino.Objetivo);
+        items.Select(i => i.Treino.Objetivo.ToString()).Should().BeInAscendingOrder();
     }
 
     [Fact]
