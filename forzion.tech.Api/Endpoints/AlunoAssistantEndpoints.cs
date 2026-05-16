@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using forzion.tech.AI.Agents;
 using forzion.tech.AI.GuardRails;
+using forzion.tech.AI.Observability;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +28,7 @@ public static class AlunoAssistantEndpoints
         HttpContext ctx,
         AgentRegistry registry,
         ITokenBudget budget,
+        ForzionAiMetrics metrics,
         ILogger<ChatRequest> logger,
         CancellationToken ct)
     {
@@ -42,12 +45,18 @@ public static class AlunoAssistantEndpoints
 
         // 2. Token budget
         if (await budget.WouldExceedDailyAsync(alunoId, AgentType.Aluno, estimatedTokens, ct))
+        {
+            metrics.BudgetExceeded.Add(1, new KeyValuePair<string, object?>("agent_type", "aluno"));
             return Results.StatusCode(429);
+        }
 
         // 3. Injection detection — log apenas, não bloquear (usuário autenticado)
         var (injected, pattern) = PromptInjectionPatterns.Check(normalized);
         if (injected)
+        {
             logger.LogWarning("InjectionPattern AlunoId={AlunoId} Pattern={Pattern}", alunoId, pattern);
+            metrics.InjectionDetected.Add(1, new KeyValuePair<string, object?>("agent_type", "aluno"));
+        }
 
         // 4. Build agente
         var agent = registry.GetAlunoAssistant(alunoId);
@@ -71,17 +80,27 @@ public static class AlunoAssistantEndpoints
         };
 
         ChatResponse response;
+        var sw = Stopwatch.StartNew();
         try
         {
             response = await agent.Client.GetResponseAsync(messages, options, linked.Token);
+            sw.Stop();
         }
         catch (OperationCanceledException ex)
         {
+            sw.Stop();
+            metrics.AgentErrors.Add(1,
+                new KeyValuePair<string, object?>("agent_type", "aluno"),
+                new KeyValuePair<string, object?>("error_type", "timeout"));
             logger.LogWarning(ex, "AgentTimeout AlunoId={AlunoId}", alunoId);
             return Results.StatusCode(504);
         }
         catch (Exception ex)
         {
+            sw.Stop();
+            metrics.AgentErrors.Add(1,
+                new KeyValuePair<string, object?>("agent_type", "aluno"),
+                new KeyValuePair<string, object?>("error_type", "unhandled"));
             logger.LogError(ex, "AgentError AlunoId={AlunoId}", alunoId);
             return Results.StatusCode(500);
         }
@@ -97,12 +116,17 @@ public static class AlunoAssistantEndpoints
             return Results.Ok(new { reply = "Não consegui gerar uma resposta adequada. Tente reformular." });
         }
 
-        // 8. Sanitize + commit budget
+        // 8. Sanitize + commit budget + record metrics
         var safeOutput = OutputSanitizer.SanitizeMarkdown(outputText);
         await budget.CommitAsync(alunoId, AgentType.Aluno, actualTokens, ct);
 
+        metrics.TokensUsed.Add(actualTokens, new KeyValuePair<string, object?>("agent_type", "aluno"));
+        metrics.OperationDurationMs.Record(sw.Elapsed.TotalMilliseconds,
+            new KeyValuePair<string, object?>("agent_type", "aluno"));
+
         if (string.IsNullOrWhiteSpace(safeOutput))
         {
+            metrics.EmptyReplies.Add(1, new KeyValuePair<string, object?>("agent_type", "aluno"));
             logger.LogWarning("EmptyReply AlunoId={AlunoId}", alunoId);
             return Results.Ok(new { reply = "Não encontrei informações para responder sua pergunta. Verifique com seu treinador se sua ficha de treino está configurada." });
         }

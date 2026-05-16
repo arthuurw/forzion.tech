@@ -1,3 +1,4 @@
+using forzion.tech.AI.Observability;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
@@ -28,6 +29,7 @@ public static class OpenTelemetryExtensions
             {
                 m.AddMeter("Microsoft.Agents.AI")
                  .AddMeter("Microsoft.Extensions.AI")
+                 .AddMeter(ForzionAiMetrics.MeterName)
                  .AddAspNetCoreInstrumentation()
                  .AddHttpClientInstrumentation();
 

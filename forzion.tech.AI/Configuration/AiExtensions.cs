@@ -1,6 +1,7 @@
 using forzion.tech.AI.Agents;
 using forzion.tech.AI.Clients;
 using forzion.tech.AI.GuardRails;
+using forzion.tech.AI.Observability;
 using forzion.tech.AI.Tools;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +15,7 @@ public static class AiExtensions
         services.AddSingleton<IChatClientFactory, ChatClientFactory>();
         services.AddSingleton<ITokenBudget, InMemoryTokenBudget>();
         services.AddSingleton<IDraftSuggestionService, InMemoryDraftSuggestionService>();
+        services.AddSingleton<ForzionAiMetrics>();
 
         // Per-request draft tracking (tool → endpoint via shared scope)
         services.AddScoped<IDraftRequestTracker, DraftRequestTracker>();

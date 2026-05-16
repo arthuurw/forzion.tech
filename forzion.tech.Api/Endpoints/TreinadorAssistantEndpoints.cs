@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using forzion.tech.AI.Agents;
 using forzion.tech.AI.GuardRails;
+using forzion.tech.AI.Observability;
 using forzion.tech.Application.UseCases.Treinos.CriarTreino;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Builder;
@@ -32,6 +34,7 @@ public static class TreinadorAssistantEndpoints
         AgentRegistry registry,
         ITokenBudget budget,
         IDraftRequestTracker draftTracker,
+        ForzionAiMetrics metrics,
         ILogger<ApplySuggestionRequest> logger,
         CancellationToken ct)
     {
@@ -46,11 +49,17 @@ public static class TreinadorAssistantEndpoints
         var estimatedTokens = InputNormalizer.EstimateTokens(normalized);
 
         if (await budget.WouldExceedDailyAsync(treinadorId, AgentType.Treinador, estimatedTokens, ct))
+        {
+            metrics.BudgetExceeded.Add(1, new KeyValuePair<string, object?>("agent_type", "treinador"));
             return Results.StatusCode(429);
+        }
 
         var (injected, pattern) = PromptInjectionPatterns.Check(normalized);
         if (injected)
+        {
             logger.LogWarning("InjectionPattern TreinadorId={Id} Pattern={Pattern}", treinadorId, pattern);
+            metrics.InjectionDetected.Add(1, new KeyValuePair<string, object?>("agent_type", "treinador"));
+        }
 
         var agent = registry.GetTreinadorAssistant(treinadorId);
 
@@ -71,17 +80,27 @@ public static class TreinadorAssistantEndpoints
         };
 
         ChatResponse response;
+        var sw = Stopwatch.StartNew();
         try
         {
             response = await agent.Client.GetResponseAsync(messages, options, linked.Token);
+            sw.Stop();
         }
         catch (OperationCanceledException ex)
         {
+            sw.Stop();
+            metrics.AgentErrors.Add(1,
+                new KeyValuePair<string, object?>("agent_type", "treinador"),
+                new KeyValuePair<string, object?>("error_type", "timeout"));
             logger.LogWarning(ex, "AgentTimeout TreinadorId={Id}", treinadorId);
             return Results.StatusCode(504);
         }
         catch (Exception ex)
         {
+            sw.Stop();
+            metrics.AgentErrors.Add(1,
+                new KeyValuePair<string, object?>("agent_type", "treinador"),
+                new KeyValuePair<string, object?>("error_type", "unhandled"));
             logger.LogError(ex, "AgentError TreinadorId={Id}", treinadorId);
             return Results.StatusCode(500);
         }
@@ -99,8 +118,13 @@ public static class TreinadorAssistantEndpoints
         var safeOutput = OutputSanitizer.SanitizeMarkdown(outputText);
         await budget.CommitAsync(treinadorId, AgentType.Treinador, actualTokens, ct);
 
+        metrics.TokensUsed.Add(actualTokens, new KeyValuePair<string, object?>("agent_type", "treinador"));
+        metrics.OperationDurationMs.Record(sw.Elapsed.TotalMilliseconds,
+            new KeyValuePair<string, object?>("agent_type", "treinador"));
+
         if (string.IsNullOrWhiteSpace(safeOutput) && !draftTracker.PendingDraftId.HasValue)
         {
+            metrics.EmptyReplies.Add(1, new KeyValuePair<string, object?>("agent_type", "treinador"));
             logger.LogWarning("EmptyReply TreinadorId={Id}", treinadorId);
             return Results.Ok(new { reply = "Não encontrei informações para responder sua solicitação. Verifique se há alunos vinculados ativos ou tente novamente." });
         }
