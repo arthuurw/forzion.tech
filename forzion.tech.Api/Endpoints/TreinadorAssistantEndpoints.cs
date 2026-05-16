@@ -98,6 +98,13 @@ public static class TreinadorAssistantEndpoints
 
         var safeOutput = OutputSanitizer.SanitizeMarkdown(outputText);
         await budget.CommitAsync(treinadorId, AgentType.Treinador, actualTokens, ct);
+
+        if (string.IsNullOrWhiteSpace(safeOutput) && !draftTracker.PendingDraftId.HasValue)
+        {
+            logger.LogWarning("EmptyReply TreinadorId={Id}", treinadorId);
+            return Results.Ok(new { reply = "Não encontrei informações para responder sua solicitação. Verifique se há alunos vinculados ativos ou tente novamente." });
+        }
+
         logger.LogInformation("AgentRun TreinadorId={Id} Tokens={Tokens}", treinadorId, actualTokens);
 
         // Draft stored by the tool via IDraftRequestTracker (shared scope) — no LLM output parsing

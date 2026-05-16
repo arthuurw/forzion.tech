@@ -101,6 +101,12 @@ public static class AlunoAssistantEndpoints
         var safeOutput = OutputSanitizer.SanitizeMarkdown(outputText);
         await budget.CommitAsync(alunoId, AgentType.Aluno, actualTokens, ct);
 
+        if (string.IsNullOrWhiteSpace(safeOutput))
+        {
+            logger.LogWarning("EmptyReply AlunoId={AlunoId}", alunoId);
+            return Results.Ok(new { reply = "Não encontrei informações para responder sua pergunta. Verifique com seu treinador se sua ficha de treino está configurada." });
+        }
+
         logger.LogInformation("AgentRun AlunoId={AlunoId} Tokens={Tokens}", alunoId, actualTokens);
 
         return Results.Ok(new { reply = safeOutput });
