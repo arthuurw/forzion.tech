@@ -15,15 +15,19 @@ public class AtualizarPerfilHandler(
     IUnitOfWork unitOfWork,
     IValidator<AtualizarPerfilCommand> validator)
 {
-    private readonly IValidator<AtualizarPerfilCommand> _validator = validator;
-
-    public virtual async Task HandleAsync(
+    public virtual Task HandleAsync(
         AtualizarPerfilCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task HandleAsyncCore(
+        AtualizarPerfilCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         switch (userContext.TipoConta)
         {

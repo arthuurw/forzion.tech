@@ -11,7 +11,8 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    // eslint-disable-next-line no-console
+    console.error("[App Error]", error?.digest ?? error?.message ?? "Erro desconhecido");
   }, [error]);
 
   return (

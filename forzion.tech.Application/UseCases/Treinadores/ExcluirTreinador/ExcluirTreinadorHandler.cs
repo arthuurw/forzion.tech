@@ -8,12 +8,18 @@ public class ExcluirTreinadorHandler(
     ITreinadorRepository treinadorRepository,
     ILogger<ExcluirTreinadorHandler> logger)
 {
-    public virtual async Task HandleAsync(
+    public virtual Task HandleAsync(
         ExcluirTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task HandleAsyncCore(
+        ExcluirTreinadorCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 

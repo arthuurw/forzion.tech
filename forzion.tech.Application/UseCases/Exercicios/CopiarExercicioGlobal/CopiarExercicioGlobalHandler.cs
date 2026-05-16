@@ -11,17 +11,19 @@ public class CopiarExercicioGlobalHandler(
     IUnitOfWork unitOfWork,
     ILogger<CopiarExercicioGlobalHandler> logger)
 {
-    private readonly IExercicioRepository _exercicioRepository = exercicioRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly ILogger<CopiarExercicioGlobalHandler> _logger = logger;
-
-    public virtual async Task<ExercicioResponse> HandleAsync(
+    public virtual Task<ExercicioResponse> HandleAsync(
         CopiarExercicioGlobalCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var original = await _exercicioRepository.ObterPorIdAsync(command.ExercicioId, cancellationToken).ConfigureAwait(false)
+    private async Task<ExercicioResponse> HandleAsyncCore(
+        CopiarExercicioGlobalCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var original = await exercicioRepository.ObterPorIdAsync(command.ExercicioId, cancellationToken).ConfigureAwait(false)
             ?? throw new ExercicioNaoEncontradoException();
 
         if (!original.IsGlobal)
@@ -29,10 +31,10 @@ public class CopiarExercicioGlobalHandler(
 
         var copia = Exercicio.Criar(original.Nome, original.GrupoMuscular, command.TreinadorId, original.Descricao);
 
-        await _exercicioRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await exercicioRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Exercício global {OriginalId} copiado para treinador {TreinadorId} como {CopiaId}.",
+        logger.LogInformation("Exercício global {OriginalId} copiado para treinador {TreinadorId} como {CopiaId}.",
             command.ExercicioId, command.TreinadorId, copia.Id);
 
         return ExercicioResponseExtensions.ToResponse(copia);

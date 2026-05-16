@@ -17,41 +17,38 @@ public class RegistrarExecucaoHandler(
     IUserContext userContext,
     ILogger<RegistrarExecucaoHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly IAlunoRepository _alunoRepository = alunoRepository;
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly IExecucaoTreinoRepository _execucaoTreinoRepository = execucaoTreinoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<RegistrarExecucaoHandler> _logger = logger;
-
-    public virtual async Task<RegistrarExecucaoResponse> HandleAsync(
+    public virtual Task<RegistrarExecucaoResponse> HandleAsync(
         RegistrarExecucaoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        if (_userContext.PerfilId != command.AlunoId)
+    private async Task<RegistrarExecucaoResponse> HandleAsyncCore(
+        RegistrarExecucaoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (userContext.PerfilId != command.AlunoId)
             throw new AcessoNegadoException();
 
-        var treino = await _treinoRepository
+        var treino = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        var treinoAluno = await _treinoAlunoRepository
+        var treinoAluno = await treinoAlunoRepository
             .ObterAsync(command.TreinoId, command.AlunoId, cancellationToken)
             .ConfigureAwait(false);
 
         if (treinoAluno is null || treinoAluno.Status != TreinoAlunoStatus.Ativo)
             throw new AcessoNegadoException();
 
-        var vinculo = await _vinculoRepository.ObterAtivoAsync(treino.TreinadorId, command.AlunoId, cancellationToken).ConfigureAwait(false);
+        var vinculo = await vinculoRepository.ObterAtivoAsync(treino.TreinadorId, command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculo is null)
             throw new AcessoNegadoException();
 
-        var aluno = await _alunoRepository
+        var aluno = await alunoRepository
             .ObterPorIdAsync(command.AlunoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
@@ -70,10 +67,10 @@ public class RegistrarExecucaoHandler(
                 item.CargaExecutada,
                 item.Observacao);
 
-        await _execucaoTreinoRepository.AdicionarAsync(execucao, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await execucaoTreinoRepository.AdicionarAsync(execucao, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Execução {ExecucaoId} registrada para o treino {TreinoId} pelo aluno {AlunoId}.",
+        logger.LogInformation("Execução {ExecucaoId} registrada para o treino {TreinoId} pelo aluno {AlunoId}.",
             execucao.Id, command.TreinoId, command.AlunoId);
 
         return new RegistrarExecucaoResponse(

@@ -55,6 +55,7 @@ using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadores;
+using forzion.tech.Application.UseCases.Treinadores.ObterTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ReprovarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
@@ -138,6 +139,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ListarAlunosAdminHandler>();
 
         // Admin — Treinadores
+        services.AddScoped<ObterTreinadorHandler>();
         services.AddScoped<ListarTreinadoresHandler>();
         services.AddScoped<AprovarTreinadorHandler>();
         services.AddScoped<ReprovarTreinadorHandler>();

@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Results;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -14,41 +15,40 @@ public class ExcluirTreinoHandler(
     IUserContext userContext,
     ILogger<ExcluirTreinoHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-    private readonly IExecucaoTreinoRepository _execucaoTreinoRepository = execucaoTreinoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<ExcluirTreinoHandler> _logger = logger;
-
-    public virtual async Task<Result> HandleAsync(
+    public virtual Task<Result> HandleAsync(
         ExcluirTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var treino = await _treinoRepository
+    private async Task<Result> HandleAsyncCore(
+        ExcluirTreinoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var treino = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
+        if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        var executado = await _execucaoTreinoRepository
+        var executado = await execucaoTreinoRepository
             .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        treino.ValidarMutabilidade(executado);
+        Treino.ValidarMutabilidade(executado);
 
-        await _treinoAlunoRepository
+        await treinoAlunoRepository
             .RemoverPorTreinoIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        await _treinoRepository.RemoverAsync(treino, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await treinoRepository.RemoverAsync(treino, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Treino {TreinoId} excluído pelo treinador {TreinadorId}.", command.TreinoId, _userContext.PerfilId);
+        logger.LogInformation("Treino {TreinoId} excluído pelo treinador {TreinadorId}.", command.TreinoId, userContext.PerfilId);
 
         return Result.Success();
     }

@@ -9,12 +9,18 @@ public class ListarAlunosTreinoHandler(
     ITreinoAlunoRepository treinoAlunoRepository,
     IUserContext userContext)
 {
-    public virtual async Task<IReadOnlyList<TreinoAlunoVinculado>> HandleAsync(
+    public virtual Task<IReadOnlyList<TreinoAlunoVinculado>> HandleAsync(
         ListarAlunosTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<IReadOnlyList<TreinoAlunoVinculado>> HandleAsyncCore(
+        ListarAlunosTreinoCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var treino = await treinoRepository.ObterPorIdAsync(command.TreinoId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 

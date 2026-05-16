@@ -17,12 +17,18 @@ public class InativarTreinadorHandler(
     IUnitOfWork unitOfWork,
     ILogger<InativarTreinadorHandler> logger)
 {
-    public virtual async Task<Result> HandleAsync(
+    public virtual Task<Result> HandleAsync(
         InativarTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<Result> HandleAsyncCore(
+        InativarTreinadorCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 

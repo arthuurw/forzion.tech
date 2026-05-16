@@ -12,23 +12,24 @@ public class AtualizarTreinoHandler(
     IUserContext userContext,
     ILogger<AtualizarTreinoHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<AtualizarTreinoHandler> _logger = logger;
-
-    public virtual async Task<Result<TreinoResponse>> HandleAsync(
+    public virtual Task<Result<TreinoResponse>> HandleAsync(
         AtualizarTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var treino = await _treinoRepository
+    private async Task<Result<TreinoResponse>> HandleAsyncCore(
+        AtualizarTreinoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var treino = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
+        if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
         try
@@ -40,9 +41,9 @@ public class AtualizarTreinoHandler(
             return Result.Failure<TreinoResponse>(Error.Business(ex.Message));
         }
 
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Treino {TreinoId} atualizado.", command.TreinoId);
+        logger.LogInformation("Treino {TreinoId} atualizado.", command.TreinoId);
 
         return Result.Success(TreinoResponseExtensions.ToResponse(treino));
     }
