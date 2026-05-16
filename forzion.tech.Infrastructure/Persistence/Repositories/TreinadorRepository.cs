@@ -102,7 +102,7 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
 
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch
+        catch (Exception)
         {
             await tx.RollbackAsync(cancellationToken).ConfigureAwait(false);
             throw;

@@ -13,28 +13,29 @@ public class CriarExercicioHandler(
     IValidator<CriarExercicioCommand> validator,
     ILogger<CriarExercicioHandler> logger)
 {
-    private readonly IExercicioRepository _exercicioRepository = exercicioRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IValidator<CriarExercicioCommand> _validator = validator;
-    private readonly ILogger<CriarExercicioHandler> _logger = logger;
-
-    public virtual async Task<Result<ExercicioResponse>> HandleAsync(
+    public virtual Task<Result<ExercicioResponse>> HandleAsync(
         CriarExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<Result<ExercicioResponse>> HandleAsyncCore(
+        CriarExercicioCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        if (await _exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, cancellationToken: cancellationToken).ConfigureAwait(false))
+        if (await exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, cancellationToken: cancellationToken).ConfigureAwait(false))
             return Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca."));
 
         var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscular, command.TreinadorId, command.Descricao);
 
-        await _exercicioRepository.AdicionarAsync(exercicio, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await exercicioRepository.AdicionarAsync(exercicio, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Exercício {ExercicioId} criado.", exercicio.Id);
+        logger.LogInformation("Exercício {ExercicioId} criado.", exercicio.Id);
 
         return Result.Success(ExercicioResponseExtensions.ToResponse(exercicio));
     }

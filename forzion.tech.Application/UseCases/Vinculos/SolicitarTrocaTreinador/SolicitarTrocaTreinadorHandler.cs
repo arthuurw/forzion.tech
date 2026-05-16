@@ -14,12 +14,18 @@ public class SolicitarTrocaTreinadorHandler(
     IUserContext userContext,
     ILogger<SolicitarTrocaTreinadorHandler> logger)
 {
-    public virtual async Task<VinculoResponse> HandleAsync(
+    public virtual Task<VinculoResponse> HandleAsync(
         SolicitarTrocaTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<VinculoResponse> HandleAsyncCore(
+        SolicitarTrocaTreinadorCommand command,
+        CancellationToken cancellationToken = default)
+    {
         if (!userContext.IsSystemAdmin && userContext.PerfilId != command.AlunoId)
             throw new AcessoNegadoException();
 

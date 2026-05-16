@@ -62,11 +62,8 @@ export default function DetalheTreinadorAdminPage() {
 
   useEffect(() => {
     setLoadingHeader(true);
-    adminApi.listTreinadores({ pagina: 1, tamanhoPagina: 100 })
-      .then((res) => {
-        const found = res.data.items.find((t) => t.treinadorId === treinadorId);
-        setTreinador(found ?? null);
-      })
+    adminApi.getTreinador(treinadorId)
+      .then((res) => setTreinador(res.data))
       .catch(() => setError("Erro ao carregar dados do treinador."))
       .finally(() => setLoadingHeader(false));
   }, [treinadorId]);

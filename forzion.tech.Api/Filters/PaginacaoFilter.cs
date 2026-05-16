@@ -2,9 +2,9 @@ namespace forzion.tech.Api.Filters;
 
 public sealed class PaginacaoFilter : IEndpointFilter
 {
-    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var q = ctx.HttpContext.Request.Query;
+        var q = context.HttpContext.Request.Query;
 
         if (q.TryGetValue("pagina", out var pStr) &&
             (!int.TryParse(pStr, out var p) || p < 1))
@@ -18,6 +18,6 @@ public sealed class PaginacaoFilter : IEndpointFilter
                 detail: "O parâmetro 'tamanhoPagina' deve ser um inteiro entre 1 e 100.",
                 statusCode: StatusCodes.Status400BadRequest);
 
-        return await next(ctx);
+        return await next(context);
     }
 }

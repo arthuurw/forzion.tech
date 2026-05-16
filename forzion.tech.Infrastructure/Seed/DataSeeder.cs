@@ -202,6 +202,6 @@ public class DataSeeder(
         context.SystemUsers.Add(systemUser);
         await context.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation("SuperAdmin criado: {Email}", email);
+        logger.LogInformation("SuperAdmin criado com sucesso.");
     }
 }

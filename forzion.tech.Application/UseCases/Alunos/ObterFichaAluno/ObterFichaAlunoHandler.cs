@@ -16,24 +16,21 @@ public record FichaAlunoDetalheResponse(
 
 public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository, IUserContext userContext)
 {
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-    private readonly IUserContext _userContext = userContext;
-
     public virtual async Task<FichaAlunoDetalheResponse> HandleAsync(
         Guid treinoAlunoId,
         Guid alunoId,
         CancellationToken cancellationToken = default)
     {
-        if (!_userContext.IsSystemAdmin && _userContext.PerfilId != alunoId)
+        if (!userContext.IsSystemAdmin && userContext.PerfilId != alunoId)
             throw new AcessoNegadoException();
 
         TreinoAlunoDetalhe? detalhe;
-        if (_userContext.IsSystemAdmin)
-            detalhe = await _treinoAlunoRepository
+        if (userContext.IsSystemAdmin)
+            detalhe = await treinoAlunoRepository
                 .ObterDetalheAdminAsync(treinoAlunoId, cancellationToken)
                 .ConfigureAwait(false);
         else
-            detalhe = await _treinoAlunoRepository
+            detalhe = await treinoAlunoRepository
                 .ObterDetalheAsync(treinoAlunoId, alunoId, cancellationToken)
                 .ConfigureAwait(false);
 

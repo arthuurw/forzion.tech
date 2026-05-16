@@ -40,6 +40,10 @@ export const adminApi = {
     return apiClient.get<PaginatedResponse<TreinadorResponse>>("/admin/treinadores", { params });
   },
 
+  getTreinador(treinadorId: string) {
+    return apiClient.get<TreinadorResponse>(`/admin/treinadores/${treinadorId}`);
+  },
+
   aprovarTreinador(treinadorId: string, observacao?: string | null) {
     return apiClient.post(`/admin/treinadores/${treinadorId}/aprovar`, { observacao: observacao ?? null });
   },

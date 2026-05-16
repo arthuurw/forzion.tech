@@ -4,12 +4,10 @@ namespace forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublico
 
 public class ListarTreinadoresPublicosHandler(ITreinadorRepository treinadorRepository)
 {
-    private readonly ITreinadorRepository _treinadorRepository = treinadorRepository;
-
     public virtual async Task<IReadOnlyList<TreinadorResponse>> HandleAsync(
         CancellationToken cancellationToken = default)
     {
-        var treinadores = await _treinadorRepository
+        var treinadores = await treinadorRepository
             .ListarAtivosAsync(cancellationToken)
             .ConfigureAwait(false);
 

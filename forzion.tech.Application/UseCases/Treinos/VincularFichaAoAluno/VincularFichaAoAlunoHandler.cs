@@ -15,22 +15,21 @@ public class VincularFichaAoAlunoHandler(
     IUserContext userContext,
     ILogger<VincularFichaAoAlunoHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-    private readonly IVinculoTreinadorAlunoRepository _vinculoRepository = vinculoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<VincularFichaAoAlunoHandler> _logger = logger;
-
-    public virtual async Task<Result> HandleAsync(
+    public virtual Task<Result> HandleAsync(
         VincularFichaAoAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var treinadorId = _userContext.PerfilId;
+    private async Task<Result> HandleAsyncCore(
+        VincularFichaAoAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var treinadorId = userContext.PerfilId;
 
-        var treino = await _treinoRepository
+        var treino = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
@@ -38,12 +37,12 @@ public class VincularFichaAoAlunoHandler(
         if (treino.TreinadorId != treinadorId)
             throw new AcessoNegadoException();
 
-        var vinculo = await _vinculoRepository
+        _ = await vinculoRepository
             .ObterAtivoAsync(treinadorId, command.AlunoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new VinculoNaoEncontradoException();
 
-        var alunosVinculados = await _treinoAlunoRepository
+        var alunosVinculados = await treinoAlunoRepository
             .ListarAtivosPorTreinoIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
@@ -55,10 +54,10 @@ public class VincularFichaAoAlunoHandler(
 
         var treinoAluno = TreinoAluno.Criar(command.TreinoId, command.AlunoId);
 
-        await _treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Ficha {TreinoId} vinculada ao aluno {AlunoId} pelo treinador {TreinadorId}.",
+        logger.LogInformation("Ficha {TreinoId} vinculada ao aluno {AlunoId} pelo treinador {TreinadorId}.",
             command.TreinoId, command.AlunoId, treinadorId);
 
         return Result.Success();
