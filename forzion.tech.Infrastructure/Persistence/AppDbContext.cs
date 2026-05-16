@@ -2,6 +2,7 @@ using System.Data;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Events;
+using forzion.tech.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -29,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<TokenRevogado> TokensRevogados => Set<TokenRevogado>();
     public DbSet<Assinatura> Assinaturas => Set<Assinatura>();
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
+    public DbSet<AiTokenUsage> AiTokenUsages => Set<AiTokenUsage>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {

@@ -1,5 +1,6 @@
 using forzion.tech.AI.Clients;
 using forzion.tech.AI.Configuration;
+using forzion.tech.AI.GuardRails;
 using forzion.tech.Application.Interfaces.Repositories;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;

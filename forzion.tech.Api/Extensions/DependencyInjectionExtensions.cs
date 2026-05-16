@@ -176,9 +176,9 @@ public static class DependencyInjectionExtensions
 
         if (!environment.IsEnvironment("Test"))
         {
+            services.AddForzionAI();
             services.AddInfrastructure(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
-            services.AddForzionAI();
             services.AddForzionOpenTelemetry(configuration);
         }
 

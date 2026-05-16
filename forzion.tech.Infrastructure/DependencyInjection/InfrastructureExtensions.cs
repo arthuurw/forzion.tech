@@ -1,3 +1,4 @@
+using forzion.tech.AI.GuardRails;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
@@ -9,9 +10,11 @@ using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using forzion.tech.Infrastructure.Seed;
 using forzion.tech.Infrastructure.Services;
+using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -134,6 +137,9 @@ public static class InfrastructureExtensions
         {
             services.AddScoped<IWhatsAppNotifier, NullWhatsAppNotifier>();
         }
+
+        services.RemoveAll<ITokenBudget>();
+        services.AddScoped<ITokenBudget, PostgresTokenBudget>();
 
         return services;
     }
