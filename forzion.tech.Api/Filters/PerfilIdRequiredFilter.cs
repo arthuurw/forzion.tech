@@ -8,11 +8,11 @@ namespace forzion.tech.Api.Filters;
 /// </summary>
 public sealed class PerfilIdRequiredFilter : IEndpointFilter
 {
-    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var userContext = ctx.HttpContext.RequestServices.GetRequiredService<IUserContext>();
+        var userContext = context.HttpContext.RequestServices.GetRequiredService<IUserContext>();
         if (userContext.PerfilId == Guid.Empty)
             return Results.Unauthorized();
-        return await next(ctx);
+        return await next(context);
     }
 }

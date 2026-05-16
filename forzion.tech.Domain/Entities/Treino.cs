@@ -86,7 +86,7 @@ public class Treino
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void ValidarMutabilidade(bool foiExecutado)
+    public static void ValidarMutabilidade(bool foiExecutado)
     {
         if (foiExecutado)
             throw new TreinoExecutadoException();

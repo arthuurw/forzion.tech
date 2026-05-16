@@ -10,15 +10,19 @@ public class AtualizarPlanoTreinadorHandler(
     IUnitOfWork unitOfWork,
     IValidator<AtualizarPlanoTreinadorCommand> validator)
 {
-    private readonly IValidator<AtualizarPlanoTreinadorCommand> _validator = validator;
-
-    public virtual async Task<PlanoTreinadorResponse> HandleAsync(
+    public virtual Task<PlanoTreinadorResponse> HandleAsync(
         AtualizarPlanoTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<PlanoTreinadorResponse> HandleAsyncCore(
+        AtualizarPlanoTreinadorCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var plano = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoTreinadorNaoEncontradoException();

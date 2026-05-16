@@ -11,32 +11,33 @@ public class AtualizarObservacaoExercicioHandler(
     IUserContext userContext,
     ILogger<AtualizarObservacaoExercicioHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<AtualizarObservacaoExercicioHandler> _logger = logger;
-
-    public virtual async Task<TreinoResponse> HandleAsync(
+    public virtual Task<TreinoResponse> HandleAsync(
         AtualizarObservacaoExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        var treino = await _treinoRepository
+    private async Task<TreinoResponse> HandleAsyncCore(
+        AtualizarObservacaoExercicioCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var treino = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
+        if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
         var exercicio = treino.Exercicios.FirstOrDefault(e => e.Id == command.TreinoExercicioId)
             ?? throw new TreinoNaoEncontradoException();
 
         exercicio.AtualizarObservacao(command.Observacao);
-        await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Observação atualizada no exercício {ExercicioId} do treino {TreinoId}.",
+        logger.LogInformation("Observação atualizada no exercício {ExercicioId} do treino {TreinoId}.",
             command.TreinoExercicioId, command.TreinoId);
 
         return TreinoResponseExtensions.ToResponse(treino);

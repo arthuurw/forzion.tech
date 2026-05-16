@@ -11,29 +11,30 @@ public class ObterTreinoHandler(
     IUserContext userContext,
     ILogger<ObterTreinoHandler> logger)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-    private readonly IUserContext _userContext = userContext;
-    private readonly ILogger<ObterTreinoHandler> _logger = logger;
-
-    public virtual async Task<TreinoResponse> HandleAsync(
+    public virtual Task<TreinoResponse> HandleAsync(
         ObterTreinoQuery query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
+        return HandleAsyncCore(query, cancellationToken);
+    }
 
-        var treino = await _treinoRepository
+    private async Task<TreinoResponse> HandleAsyncCore(
+        ObterTreinoQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var treino = await treinoRepository
             .ObterPorIdAsync(query.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
         // Validar autorização
-        if (!_userContext.IsSystemAdmin && treino.TreinadorId != _userContext.PerfilId)
+        if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
         {
-            if (_userContext.IsAluno)
+            if (userContext.IsAluno)
             {
-                var vinculo = await _treinoAlunoRepository
-                    .ObterAsync(treino.Id, _userContext.PerfilId, cancellationToken)
+                var vinculo = await treinoAlunoRepository
+                    .ObterAsync(treino.Id, userContext.PerfilId, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (vinculo is null)
@@ -45,7 +46,7 @@ public class ObterTreinoHandler(
             }
         }
 
-        _logger.LogInformation("Treino {TreinoId} consultado.", treino.Id);
+        logger.LogInformation("Treino {TreinoId} consultado.", treino.Id);
 
         return TreinoResponseExtensions.ToResponse(treino);
     }

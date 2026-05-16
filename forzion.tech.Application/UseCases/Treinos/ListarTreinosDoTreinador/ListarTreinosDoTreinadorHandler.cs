@@ -5,8 +5,6 @@ namespace forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 
 public class ListarTreinosDoTreinadorHandler(ITreinoRepository treinoRepository)
 {
-    private readonly ITreinoRepository _treinoRepository = treinoRepository;
-
     public virtual async Task<ListarTreinosResponse> HandleAsync(
         Guid treinadorId,
         int pagina,
@@ -16,7 +14,7 @@ public class ListarTreinosDoTreinadorHandler(ITreinoRepository treinoRepository)
         string? ordenarPor = null,
         CancellationToken cancellationToken = default)
     {
-        var (items, total) = await _treinoRepository
+        var (items, total) = await treinoRepository
             .ListarPorTreinadorAsync(treinadorId, pagina, tamanhoPagina, nome, objetivo, ordenarPor, cancellationToken)
             .ConfigureAwait(false);
 

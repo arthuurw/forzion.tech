@@ -10,26 +10,26 @@ public class AtualizarGrupoMuscularHandler(
     IUnitOfWork unitOfWork,
     IValidator<AtualizarGrupoMuscularCommand> validator)
 {
-    private readonly IGrupoMuscularRepository _repository = repository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IValidator<AtualizarGrupoMuscularCommand> _validator = validator;
-
-    public virtual async Task<GrupoMuscularResponse> HandleAsync(AtualizarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    public virtual Task<GrupoMuscularResponse> HandleAsync(AtualizarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<GrupoMuscularResponse> HandleAsyncCore(AtualizarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var grupo = await _repository.ObterPorIdAsync(command.Id, cancellationToken)
+        var grupo = await repository.ObterPorIdAsync(command.Id, cancellationToken)
             ?? throw new GrupoMuscularNaoEncontradoException();
 
-        var existente = await _repository.ObterPorNomeAsync(command.Nome, cancellationToken);
+        var existente = await repository.ObterPorNomeAsync(command.Nome, cancellationToken);
         if (existente != null && existente.Id != command.Id)
             throw new DomainException("Já existe outro grupo muscular com este nome.");
 
         grupo.Atualizar(command.Nome);
-        
-        await _unitOfWork.CommitAsync(cancellationToken);
+
+        await unitOfWork.CommitAsync(cancellationToken);
 
         return new GrupoMuscularResponse(grupo.Id, grupo.Nome, grupo.CreatedAt, grupo.UpdatedAt);
     }

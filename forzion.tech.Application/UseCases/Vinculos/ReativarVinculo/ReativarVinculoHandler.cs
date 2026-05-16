@@ -15,12 +15,18 @@ public class ReativarVinculoHandler(
     IUnitOfWork unitOfWork,
     ILogger<ReativarVinculoHandler> logger)
 {
-    public virtual async Task<VinculoResponse> HandleAsync(
+    public virtual Task<VinculoResponse> HandleAsync(
         ReativarVinculoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<VinculoResponse> HandleAsyncCore(
+        ReativarVinculoCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var aluno = await alunoRepository.ObterPorIdAsync(command.AlunoId, cancellationToken).ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 

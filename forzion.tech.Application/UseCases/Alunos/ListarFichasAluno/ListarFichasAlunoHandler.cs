@@ -20,15 +20,13 @@ public record ListarFichasAlunoResponse(
 
 public class ListarFichasAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository)
 {
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-
     public virtual async Task<ListarFichasAlunoResponse> HandleAsync(
         Guid alunoId,
         int pagina,
         int tamanhoPagina,
         CancellationToken cancellationToken = default)
     {
-        var (items, total) = await _treinoAlunoRepository
+        var (items, total) = await treinoAlunoRepository
             .ListarDetalhesPorAlunoAsync(alunoId, pagina, tamanhoPagina, cancellationToken)
             .ConfigureAwait(false);
 

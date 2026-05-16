@@ -55,6 +55,7 @@ using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadores;
+using forzion.tech.Application.UseCases.Treinadores.ObterTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ReprovarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
@@ -81,24 +82,35 @@ public static class DependencyInjectionExtensions
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
 
-        services.AddRateLimiter(opt =>
+        if (environment.IsEnvironment("Test"))
         {
-            opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            opt.AddFixedWindowLimiter("auth", c =>
+            services.AddRateLimiter(opt =>
             {
-                c.PermitLimit = 10;
-                c.Window = TimeSpan.FromMinutes(1);
-                c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                c.QueueLimit = 0;
+                opt.AddPolicy("auth", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("write", _ => RateLimitPartition.GetNoLimiter<string>("test"));
             });
-            opt.AddFixedWindowLimiter("write", c =>
+        }
+        else
+        {
+            services.AddRateLimiter(opt =>
             {
-                c.PermitLimit = 60;
-                c.Window = TimeSpan.FromMinutes(1);
-                c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                c.QueueLimit = 0;
+                opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                opt.AddFixedWindowLimiter("auth", c =>
+                {
+                    c.PermitLimit = 10;
+                    c.Window = TimeSpan.FromMinutes(1);
+                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    c.QueueLimit = 0;
+                });
+                opt.AddFixedWindowLimiter("write", c =>
+                {
+                    c.PermitLimit = 60;
+                    c.Window = TimeSpan.FromMinutes(1);
+                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    c.QueueLimit = 0;
+                });
             });
-        });
+        }
 
         services.AddSwagger();
         services.AddJwtAuthentication(configuration, environment);
@@ -138,6 +150,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ListarAlunosAdminHandler>();
 
         // Admin — Treinadores
+        services.AddScoped<ObterTreinadorHandler>();
         services.AddScoped<ListarTreinadoresHandler>();
         services.AddScoped<AprovarTreinadorHandler>();
         services.AddScoped<ReprovarTreinadorHandler>();

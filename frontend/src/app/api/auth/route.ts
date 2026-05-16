@@ -8,7 +8,9 @@ function getTokenMaxAge(token: string): number | undefined {
   try {
     const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
     if (payload.exp) return payload.exp - Math.floor(Date.now() / 1000);
-  } catch {}
+  } catch {
+    // JWT malformed — return undefined so cookie receives no maxAge (session cookie)
+  }
   return undefined;
 }
 

@@ -10,14 +10,12 @@ public record TreinoAlunoResponse(
 
 public class ListarFichasDoAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository)
 {
-    private readonly ITreinoAlunoRepository _treinoAlunoRepository = treinoAlunoRepository;
-
     public virtual async Task<IReadOnlyList<TreinoAlunoResponse>> HandleAsync(
         Guid treinadorId,
         Guid alunoId,
         CancellationToken cancellationToken = default)
     {
-        var fichas = await _treinoAlunoRepository
+        var fichas = await treinoAlunoRepository
             .ListarAtivosComNomePorParAsync(treinadorId, alunoId, cancellationToken)
             .ConfigureAwait(false);
 

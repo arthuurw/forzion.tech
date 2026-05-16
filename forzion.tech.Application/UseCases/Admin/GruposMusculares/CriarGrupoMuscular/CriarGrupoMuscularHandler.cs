@@ -11,24 +11,24 @@ public class CriarGrupoMuscularHandler(
     IUnitOfWork unitOfWork,
     IValidator<CriarGrupoMuscularCommand> validator)
 {
-    private readonly IGrupoMuscularRepository _repository = repository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IValidator<CriarGrupoMuscularCommand> _validator = validator;
-
-    public virtual async Task<GrupoMuscularResponse> HandleAsync(CriarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    public virtual Task<GrupoMuscularResponse> HandleAsync(CriarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
-        await _validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+    private async Task<GrupoMuscularResponse> HandleAsyncCore(CriarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
+    {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var existente = await _repository.ObterPorNomeAsync(command.Nome, cancellationToken);
+        var existente = await repository.ObterPorNomeAsync(command.Nome, cancellationToken);
         if (existente != null)
             throw new DomainException("Já existe um grupo muscular com este nome.");
 
         var grupo = GrupoMuscular.Criar(command.Nome);
-        
-        await _repository.AdicionarAsync(grupo, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken);
+
+        await repository.AdicionarAsync(grupo, cancellationToken);
+        await unitOfWork.CommitAsync(cancellationToken);
 
         return new GrupoMuscularResponse(grupo.Id, grupo.Nome, grupo.CreatedAt, grupo.UpdatedAt);
     }
