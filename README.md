@@ -389,7 +389,7 @@ Notificações disparadas por domain events:
 | Classe | Ativa quando |
 |--------|-------------|
 | `MetaWhatsAppCloudNotifier` | `WhatsApp:PhoneNumberId` **e** `WhatsApp:AccessToken` presentes |
-| `NullWhatsAppNotifier` | qualquer uma ausente |
+| `NullWhatsAppNotifier` | qualquer uma ausente — loga warning no startup |
 
 Notificações disparadas diretamente pelos use cases:
 
@@ -400,7 +400,18 @@ Notificações disparadas diretamente pelos use cases:
 
 Endpoint chamado: `POST https://graph.facebook.com/{ApiVersion}/{PhoneNumberId}/messages`
 
-Telefones são normalizados antes do envio (remove `+`, `-`, espaços, `(`, `)`).
+Telefones são normalizados antes do envio (remove `+`, `-`, espaços, `(`, `)`). O número deve incluir DDI (ex: `5511999999999`).
+
+**Pré-requisitos para ativar:**
+
+1. Conta [Meta Business Manager](https://business.facebook.com)
+2. Criar app no [Meta for Developers](https://developers.facebook.com) → produto **WhatsApp**
+3. Adicionar número de telefone → obter `PhoneNumberId`
+4. Gerar token de acesso **permanente** (System User Token) — **não usar o token de teste**, que expira em 24h e quebra em produção
+
+**Limitação free tier (sandbox):**
+
+Antes da revisão do app pela Meta, só é possível enviar para até **5 números de telefone verificados** cadastrados no painel. Para enviar a qualquer número, é necessário submeter o app para revisão na Meta.
 
 ---
 
