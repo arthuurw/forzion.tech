@@ -18,6 +18,8 @@ vi.mock("@/lib/api/pagamento", () => ({
     obterPagamento: vi.fn(),
     verificarOnboarding: vi.fn(),
     iniciarOnboarding: vi.fn(),
+    obterMinhaAssinatura: vi.fn(),
+    listarPagamentosAssinatura: vi.fn(),
   },
 }));
 
@@ -265,9 +267,20 @@ describe("OnboardingRetornoPage", () => {
 import PagamentosAlunoPage from "@/app/(aluno)/aluno/pagamentos/page";
 
 describe("PagamentosAlunoPage", () => {
-  it("estado inicial → exibe 'Nenhum pagamento encontrado.'", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it("estado inicial → exibe 'Nenhum pagamento encontrado.'", async () => {
+    vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
+      data: { assinaturaId: "ass-1" },
+    } as never);
+    vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
+      data: [],
+    } as never);
+
     render(<PagamentosAlunoPage />);
-    expect(screen.getByText("Nenhum pagamento encontrado.")).toBeDefined();
+    await waitFor(() =>
+      expect(screen.getByText("Nenhum pagamento encontrado.")).toBeDefined()
+    );
     expect(screen.getByText("Histórico de Pagamentos")).toBeDefined();
   });
 });
