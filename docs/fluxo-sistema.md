@@ -179,7 +179,7 @@ PLATAFORMA
   └─ Atribui Plano ao Treinador (define limite de alunos)
 
 TREINADOR (após aprovado)
-  └─ Cria Pacotes (define limite de fichas por aluno)
+  └─ Cria Pacotes (define nome, descrição e preço do atendimento)
   └─ Monta Biblioteca de Exercícios
   └─ Cria Fichas de Treino (compõe com exercícios)
 
@@ -191,7 +191,6 @@ TREINADOR
   └─ Aprova o Vínculo
      └─ Aluno fica Ativo na carteira
   └─ Vincula Fichas ao Aluno
-     └─ Respeita o limite do Pacote do Aluno
 
 ALUNO (após ativo e com fichas)
   └─ Visualiza Fichas Ativas
@@ -230,7 +229,7 @@ ALUNO (após ativo e com fichas)
 | **Aluno** | Cliente do treinador, cadastrado na plataforma |
 | **Vínculo** | Relação formal e rastreável entre um Treinador e um Aluno |
 | **Plano** | Limite de alunos simultâneos de um Treinador, definido pela plataforma |
-| **Pacote** | Configuração do Treinador que define nome, descrição e preço do atendimento oferecido ao Aluno |
+| **Pacote** | Configuração criada pelo Treinador que define nome, descrição e preço do atendimento. Sem limite de fichas — o controle é feito pela descrição livre. |
 | **Ficha de Treino** | Protocolo de exercícios prescrito pelo Treinador |
 | **Exercício** | Movimento individual (ex: Supino, Agachamento) com parâmetros |
 | **Execução** | Registro de uma sessão de treino realizada pelo Aluno |
