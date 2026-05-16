@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import type { ObjetivoTreino, TreinoExercicioResponse } from "@/types";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 
@@ -18,13 +17,19 @@ export function sanitizeFilename(nome: string): string {
 }
 
 /**
+ * ExcelJS evaluates strings starting with formula triggers (=, +, -, @, |, %)
+ * as formulas. Prefix with "'" to force text interpretation — this is Excel's
+ * inline string marker and is not displayed to the user.
+ */
+export function safeCell(v: string | number | null): string | number | null {
+  if (typeof v === "string" && /^[=+\-@|%]/.test(v)) return "'" + v;
+  return v;
+}
+
+/**
  * Builds the flat row matrix that becomes the Excel sheet.
- * Exported as a pure function so it can be unit-tested without XLSX I/O.
- *
- * Security: SheetJS stores plain JS strings as type 's' (string) cells in xlsx,
- * so values like "=HYPERLINK(...)" are written as literal text — Excel will not
- * evaluate them as formulas. No additional escaping is performed because doing
- * so (e.g., prefixing with "'") would corrupt displayed values for legitimate data.
+ * Exported as a pure function so it can be unit-tested without I/O.
+ * Returns raw values — caller applies safeCell before writing to ExcelJS.
  */
 export function buildFichaRows(
   { nome, objetivo, exercicios }: FichaExportParams,
@@ -64,22 +69,24 @@ export function buildFichaRows(
   return rows;
 }
 
-export function exportarFichaParaExcel(ficha: FichaExportParams): void {
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(buildFichaRows(ficha));
+export async function exportarFichaParaExcel(ficha: FichaExportParams): Promise<void> {
+  const { default: ExcelJS } = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Ficha");
 
-  ws["!cols"] = [
-    { wch: 4 },
-    { wch: 32 },
-    { wch: 12 },
-    { wch: 10 },
-    { wch: 10 },
-    { wch: 20 },
-    { wch: 12 },
-    { wch: 13 },
-    { wch: 40 },
-  ];
+  const widths = [4, 32, 12, 10, 10, 20, 12, 13, 40];
+  widths.forEach((w, i) => { worksheet.getColumn(i + 1).width = w; });
 
-  XLSX.utils.book_append_sheet(wb, ws, "Ficha");
-  XLSX.writeFile(wb, `${sanitizeFilename(ficha.nome)}.xlsx`);
+  buildFichaRows(ficha).forEach(row => worksheet.addRow(row.map(safeCell)));
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${sanitizeFilename(ficha.nome)}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
