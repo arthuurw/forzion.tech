@@ -31,6 +31,14 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         return (treinador, aluno);
     }
 
+    private static async Task<Guid> SeedPacoteAsync(AppDbContext ctx, Guid treinadorId)
+    {
+        var pacote = PacoteAluno.Criar(treinadorId, "Pacote Teste", 100m);
+        await ctx.PacotesAluno.AddAsync(pacote);
+        await ctx.SaveChangesAsync();
+        return pacote.Id;
+    }
+
     // --- ObterAtivoPorAlunoAsync ---
 
     [Fact]
@@ -38,9 +46,10 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
     {
         await using var ctx = fixture.CreateContext();
         var (treinador, aluno) = await SeedParAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
 
         var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
-        vinculo.Aprovar(treinador.Id, Guid.NewGuid());
+        vinculo.Aprovar(treinador.Id, pacoteId);
         await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
         await ctx.SaveChangesAsync();
 
@@ -83,6 +92,7 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
     {
         await using var ctx = fixture.CreateContext();
         var (treinador, _) = await SeedParAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
 
         for (var i = 0; i < 2; i++)
         {
@@ -94,7 +104,7 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
             await ctx.SaveChangesAsync();
 
             var v = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
-            v.Aprovar(treinador.Id, Guid.NewGuid());
+            v.Aprovar(treinador.Id, pacoteId);
             await ctx.VinculosTreinadorAluno.AddAsync(v);
         }
         await ctx.SaveChangesAsync();
@@ -110,11 +120,13 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         await using var ctx = fixture.CreateContext();
         var (treinador1, aluno1) = await SeedParAsync(ctx);
         var (treinador2, aluno2) = await SeedParAsync(ctx);
+        var pacote1Id = await SeedPacoteAsync(ctx, treinador1.Id);
+        var pacote2Id = await SeedPacoteAsync(ctx, treinador2.Id);
 
         var v1 = VinculoTreinadorAluno.Criar(treinador1.Id, aluno1.Id);
-        v1.Aprovar(treinador1.Id, Guid.NewGuid());
+        v1.Aprovar(treinador1.Id, pacote1Id);
         var v2 = VinculoTreinadorAluno.Criar(treinador2.Id, aluno2.Id);
-        v2.Aprovar(treinador2.Id, Guid.NewGuid());
+        v2.Aprovar(treinador2.Id, pacote2Id);
         await ctx.VinculosTreinadorAluno.AddRangeAsync(v1, v2);
         await ctx.SaveChangesAsync();
 
@@ -178,9 +190,10 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
     {
         await using var ctx = fixture.CreateContext();
         var (treinador, aluno) = await SeedParAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
 
         var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
-        vinculo.Aprovar(treinador.Id, Guid.NewGuid());
+        vinculo.Aprovar(treinador.Id, pacoteId);
         await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
         await ctx.SaveChangesAsync();
 
@@ -196,9 +209,10 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
     {
         await using var ctx = fixture.CreateContext();
         var (treinador, aluno) = await SeedParAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
 
         var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
-        vinculo.Aprovar(treinador.Id, Guid.NewGuid());
+        vinculo.Aprovar(treinador.Id, pacoteId);
         await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
         await ctx.SaveChangesAsync();
 

@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 736 testes backend + 174 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Auditoria de segurança OWASP | DDD tático aplicado
+**Status**: ✅ 991 testes backend + 174 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Auditoria de segurança OWASP | DDD tático aplicado
 
 ---
 
@@ -60,7 +60,9 @@ forzion.tech/
 ├── scripts/                   # setup-vm.sh, init-ssl.sh
 ├── docker-compose.yml         # Stack completa para desenvolvimento local
 ├── docker-compose.server.yml  # Stack de servidor (sem banco — usa Supabase)
-└── .env.example               # Variáveis necessárias para docker-compose
+├── .dockerignore              # Exclui bin/, obj/, node_modules/ do build Docker
+├── .env.example               # Variáveis necessárias para docker-compose
+└── docs/                      # Documentação adicional (fluxo-sistema.md, etc.)
 ```
 
 ---
@@ -77,9 +79,9 @@ cp .env.example .env
 # 2. Subir tudo (backend + frontend + postgres local)
 docker compose up --build
 
-# Backend: http://localhost:8080
-# Frontend: http://localhost:3000
-# Swagger: http://localhost:8080/swagger
+# Backend:  http://localhost:8080
+# Frontend: http://localhost:3001
+# Swagger:  http://localhost:8080/swagger
 ```
 
 ### Opção B — Manual
@@ -263,7 +265,7 @@ forzion.tech.Tests/
 │   └── GlobalExceptionHandlerTests.cs
 ├── Application/          # Handlers (unit) por domínio
 ├── Domain/               # Entidades, value objects
-├── Infrastructure/       # JwtService
+├── Infrastructure/       # JwtService + email handlers + Repositories/ (Testcontainers.PostgreSql)
 └── Integration/          # FluxoCompletoTests
 ```
 
@@ -693,13 +695,14 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 ### Testes
 
 ```
-736 testes | 0 falhas
+991 testes | 0 falhas
 
-Domain/          → entidades, value objects, domain events, exceções, máquina de estados
-Application/     → handlers (unit), services de limite
-Infrastructure/  → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
-Api/Endpoints/   → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
-Integration/     → fluxo completo
+Domain/                  → entidades, value objects, domain events, exceções, máquina de estados
+Application/             → handlers (unit), services de limite
+Infrastructure/          → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
+Infrastructure/Repositories/ → 62 testes de repositório com Testcontainers.PostgreSql (banco real)
+Api/Endpoints/           → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
+Integration/             → fluxo completo
 ```
 
 Padrões adotados:
@@ -710,6 +713,9 @@ Padrões adotados:
 - Auth em testes de endpoint: `TestAuthHandler` substitui JWT
 - Handlers mockados via `RemoveAll + AddSingleton` no `WebApplicationFactory`
 - `TreinadorId` injetado via reflection quando necessário
+- Testcontainers: `InfrastructureTestFixture` + `[Collection(InfrastructureTestCollection.Name)]`. `CreateContext()` requer `.UseSnakeCaseNamingConvention()` — sem ele, índices parciais `HasFilter("status = 'Ativo'")` falham com `42703`
+- `VinculoTreinadorAluno.Aprovar(treinadorId, pacoteAlunoId)` exige `PacoteAlunoId` real no banco — sempre usar `SeedPacoteAsync` nos testes de repositório
+- `BeInAscendingOrder` não aceita method calls — enums armazenados como string ordenam alfabeticamente: usar `.Select(e => e.Prop.ToString()).Should().BeInAscendingOrder()`
 
 ---
 
@@ -740,8 +746,8 @@ cp .env.example .env
 # Subir backend + frontend + PostgreSQL local
 docker compose up --build
 
-# Backend: http://localhost:8080  |  Frontend: http://localhost:3000
-# Swagger: http://localhost:8080/swagger  (modo Development)
+# Backend:  http://localhost:8080  |  Frontend: http://localhost:3001
+# Swagger:  http://localhost:8080/swagger  (modo Development)
 ```
 
 ### Produção — OCI VM + Supabase

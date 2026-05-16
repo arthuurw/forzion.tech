@@ -25,6 +25,7 @@ public sealed class InfrastructureTestFixture : IAsyncLifetime
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(ConnectionString)
+            .UseSnakeCaseNamingConvention()
             .Options;
         return new AppDbContext(options, schema: "public");
     }
