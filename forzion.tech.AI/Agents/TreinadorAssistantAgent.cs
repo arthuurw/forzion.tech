@@ -1,5 +1,8 @@
 using forzion.tech.AI.Clients;
 using forzion.tech.AI.Tools;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.AI.Agents;
 
@@ -7,21 +10,33 @@ public sealed class TreinadorAssistantAgent
 {
     private readonly IChatClientFactory _factory;
     private readonly TreinadorTools _tools;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly IServiceProvider _serviceProvider;
 
-    public TreinadorAssistantAgent(IChatClientFactory factory, TreinadorTools tools)
+    public TreinadorAssistantAgent(IChatClientFactory factory, TreinadorTools tools, ILoggerFactory loggerFactory, IServiceProvider serviceProvider)
     {
         _factory = factory;
         _tools = tools;
+        _loggerFactory = loggerFactory;
+        _serviceProvider = serviceProvider;
     }
 
-    public ForzionAgent Build(Guid treinadorId) => new(
-        Client: _factory.CreateInternalClient(),
-        SystemPrompt: SystemPrompt,
-        Temperature: 0.3f,
-        MaxOutputTokens: 1200,
-        Tools: _tools.BuildTools(treinadorId));
+    public ChatClientAgent Build(Guid treinadorId) => new(
+        _factory.CreateInternalClient(),
+        instructions: Instructions,
+        name: "TreinadorAssistant",
+        description: "Assistente de gestão de treinos para treinadores Forzion",
+        tools: _tools.BuildTools(treinadorId),
+        loggerFactory: _loggerFactory,
+        serviceProvider: _serviceProvider);
 
-    private const string SystemPrompt = """
+    public static readonly ChatClientAgentRunOptions DefaultRunOptions = new(new ChatOptions
+    {
+        Temperature = 0.3f,
+        MaxOutputTokens = 1200
+    });
+
+    private const string Instructions = """
         Você é o assistente de gestão de treinos da Forzion para treinadores.
         Ajuda o treinador autenticado a gerenciar seus alunos vinculados e fichas de treino.
 

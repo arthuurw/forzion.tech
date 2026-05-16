@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Api.Endpoints;
@@ -58,32 +57,19 @@ public static class AlunoAssistantEndpoints
             metrics.InjectionDetected.Add(1, new KeyValuePair<string, object?>("agent_type", "aluno"));
         }
 
-        // 4. Build agente
+        // 4. Build agente MAF + sessão por request (stateless)
         var agent = registry.GetAlunoAssistant(alunoId);
+        var session = await agent.CreateSessionAsync(ct);
 
         // 5. Timeout: 60s
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
 
-        // 6. Montar conversa com system prompt explícito
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.System, agent.SystemPrompt),
-            new(ChatRole.User, normalized)
-        };
-
-        var options = new ChatOptions
-        {
-            Tools = agent.Tools,
-            Temperature = agent.Temperature,
-            MaxOutputTokens = agent.MaxOutputTokens
-        };
-
-        ChatResponse response;
         var sw = Stopwatch.StartNew();
+        Microsoft.Agents.AI.AgentResponse response;
         try
         {
-            response = await agent.Client.GetResponseAsync(messages, options, linked.Token);
+            response = await agent.RunAsync(normalized, session, AlunoAssistantAgent.DefaultRunOptions, linked.Token);
             sw.Stop();
         }
         catch (OperationCanceledException ex)
@@ -108,7 +94,7 @@ public static class AlunoAssistantEndpoints
         var outputText = response.Text ?? "";
         var actualTokens = (int)(response.Usage?.TotalTokenCount ?? estimatedTokens);
 
-        // 7. Output scan
+        // 6. Output scan
         var scan = OutputScanner.Scan(outputText);
         if (scan.HasCritical)
         {
@@ -116,7 +102,7 @@ public static class AlunoAssistantEndpoints
             return Results.Ok(new { reply = "Não consegui gerar uma resposta adequada. Tente reformular." });
         }
 
-        // 8. Sanitize + commit budget + record metrics
+        // 7. Sanitize + commit budget + record metrics
         var safeOutput = OutputSanitizer.SanitizeMarkdown(outputText);
         await budget.CommitAsync(alunoId, AgentType.Aluno, actualTokens, ct);
 

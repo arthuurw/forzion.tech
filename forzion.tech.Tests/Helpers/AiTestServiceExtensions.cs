@@ -22,6 +22,13 @@ public static class AiTestServiceExtensions
         // Replace real ChatClientFactory — no API key needed in tests
         services.RemoveAll<IChatClientFactory>();
         var chatMock = new Mock<IChatClient>();
+        // ChatClientAgent calls IChatClient.GetResponseAsync internally — return empty assistant message
+        chatMock
+            .Setup(c => c.GetResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(),
+                It.IsAny<ChatOptions?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse([new ChatMessage(ChatRole.Assistant, "")]));
         services.AddSingleton<IChatClientFactory>(_ =>
         {
             var factoryMock = new Mock<IChatClientFactory>();

@@ -1,3 +1,5 @@
+using Microsoft.Agents.AI;
+
 namespace forzion.tech.AI.Agents;
 
 public sealed class AgentRegistry
@@ -12,6 +14,6 @@ public sealed class AgentRegistry
     }
 
     // Sem método genérico — força classificação explícita, evita agentes shadow
-    public ForzionAgent GetAlunoAssistant(Guid alunoId) => _alunoAgent.Build(alunoId);
-    public ForzionAgent GetTreinadorAssistant(Guid treinadorId) => _treinadorAgent.Build(treinadorId);
+    public ChatClientAgent GetAlunoAssistant(Guid alunoId) => _alunoAgent.Build(alunoId);
+    public ChatClientAgent GetTreinadorAssistant(Guid treinadorId) => _treinadorAgent.Build(treinadorId);
 }

@@ -1,5 +1,8 @@
 using forzion.tech.AI.Clients;
 using forzion.tech.AI.Tools;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.AI.Agents;
 
@@ -7,21 +10,33 @@ public sealed class AlunoAssistantAgent
 {
     private readonly IChatClientFactory _factory;
     private readonly AlunoTools _tools;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly IServiceProvider _serviceProvider;
 
-    public AlunoAssistantAgent(IChatClientFactory factory, AlunoTools tools)
+    public AlunoAssistantAgent(IChatClientFactory factory, AlunoTools tools, ILoggerFactory loggerFactory, IServiceProvider serviceProvider)
     {
         _factory = factory;
         _tools = tools;
+        _loggerFactory = loggerFactory;
+        _serviceProvider = serviceProvider;
     }
 
-    public ForzionAgent Build(Guid alunoId) => new(
-        Client: _factory.CreateInternalClient(),
-        SystemPrompt: SystemPrompt,
-        Temperature: 0.3f,
-        MaxOutputTokens: 800,
-        Tools: _tools.BuildTools(alunoId));
+    public ChatClientAgent Build(Guid alunoId) => new(
+        _factory.CreateInternalClient(),
+        instructions: Instructions,
+        name: "AlunoAssistant",
+        description: "Assistente de treino pessoal para alunos Forzion",
+        tools: _tools.BuildTools(alunoId),
+        loggerFactory: _loggerFactory,
+        serviceProvider: _serviceProvider);
 
-    private const string SystemPrompt = """
+    public static readonly ChatClientAgentRunOptions DefaultRunOptions = new(new ChatOptions
+    {
+        Temperature = 0.3f,
+        MaxOutputTokens = 800
+    });
+
+    private const string Instructions = """
         Você é o assistente de treino da Forzion. Ajuda o aluno autenticado com informações sobre
         SEUS PRÓPRIOS treinos, histórico de execuções e exercícios.
 
