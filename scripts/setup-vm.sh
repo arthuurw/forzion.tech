@@ -25,15 +25,16 @@ sudo chown -R "$USER:$USER" /opt/forzion
 # --- .env (preencher após execução) ---
 if [ ! -f /opt/forzion/.env ]; then
   cat > /opt/forzion/.env <<'EOF'
-REGISTRY=<região>.ocir.io/<namespace>
-TAG=latest
 APP_ENV=Homolog
 DB_CONNECTION=Host=db.xxx.supabase.co;Database=postgres;Username=forzion_api;Password=SENHA;SSL Mode=Require;Trust Server Certificate=true;Search Path=homolog
 DB_SCHEMA=homolog
 JWT_SECRET=TROQUE_POR_SECRET_FORTE_MINIMO_32_CHARS
-JWT_ISSUER=forzion.tech
-JWT_AUDIENCE=forzion.tech
-CORS_ORIGINS=https://homolog.forzion.tech
+JWT_ISSUER=homologacao.forzion.tech
+JWT_AUDIENCE=homologacao.forzion.tech
+CORS_ORIGINS=https://homologacao.forzion.tech
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_URL_BASE=https://homologacao.forzion.tech
 EOF
   echo ""
   echo "⚠️  Edite /opt/forzion/.env com os valores reais antes de continuar."
@@ -43,5 +44,5 @@ echo ""
 echo "✅  VM configurada. Próximos passos:"
 echo "   1. Edite /opt/forzion/.env"
 echo "   2. Configure DNS: homolog.forzion.tech → $(curl -s ifconfig.me)"
-echo "   3. Execute: bash /opt/forzion/scripts/init-ssl.sh homolog.forzion.tech seu@email.com"
+echo "   3. Execute: bash /opt/forzion/scripts/init-ssl.sh homologacao.forzion.tech seu@email.com"
 echo "   4. Faça logout e login novamente (grupo docker)"
