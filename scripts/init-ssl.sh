@@ -8,7 +8,7 @@ set -euo pipefail
 
 DOMAIN="${1:?Uso: $0 <dominio> <email>}"
 EMAIL="${2:?Uso: $0 <dominio> <email>}"
-DIR=/opt/forzion
+DIR=/opt/forzion/app
 
 cd "$DIR"
 
@@ -44,6 +44,6 @@ sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" "$DIR/nginx/nginx.conf"
 
 echo ""
 echo "✅  Certificado obtido. Iniciando stack completa..."
-docker compose -f docker-compose.homolog.yml --env-file .env up -d
+docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env up -d
 
 echo "✅  Acesse: https://$DOMAIN"
