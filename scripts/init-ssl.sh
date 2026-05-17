@@ -15,7 +15,7 @@ cd "$DIR"
 # Nginx com config HTTP-only para passar no desafio ACME
 cp nginx/nginx-init.conf nginx/nginx-active.conf
 
-docker compose -f docker-compose.server.yml stop nginx 2>/dev/null || true
+docker compose -f docker-compose.homolog.yml stop nginx 2>/dev/null || true
 docker run --rm -d \
   --name nginx-init \
   -p 80:80 \
@@ -44,6 +44,6 @@ sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" "$DIR/nginx/nginx.conf"
 
 echo ""
 echo "✅  Certificado obtido. Iniciando stack completa..."
-docker compose -f docker-compose.server.yml --env-file .env up -d
+docker compose -f docker-compose.homolog.yml --env-file .env up -d
 
 echo "✅  Acesse: https://$DOMAIN"
