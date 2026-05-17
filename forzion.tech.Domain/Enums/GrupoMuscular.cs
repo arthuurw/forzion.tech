@@ -1,6 +1,6 @@
 namespace forzion.tech.Domain.Enums;
 
-public enum GrupoMuscular
+public enum TipoGrupoMuscular
 {
     Peito = 0,
     Costas = 1,

@@ -1,14 +1,10 @@
-name: CI / CD
+name: CI / CD — Homolog
 
 on:
   push:
-    branches: [main, develop, "feat/**", "fix/**"]
+    branches: [homolog]
   pull_request:
-    branches: [main, develop]
-
-env:
-  BACKEND_IMAGE: ${{ secrets.OCI_REGISTRY }}/forzion/backend
-  FRONTEND_IMAGE: ${{ secrets.OCI_REGISTRY }}/forzion/frontend
+    branches: [homolog]
 
 # ─── TESTES ──────────────────────────────────────────────────────────────────
 
@@ -29,8 +25,37 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Test
-        run: dotnet test forzion.tech.Tests --no-build -c Release --logger "console;verbosity=minimal"
+      - name: Test (global — 50% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --logger "console;verbosity=minimal"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:CoverletOutput=./coverage/
+          /p:Threshold=50
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
+          "/p:Exclude=[forzion.tech.Tests]*%2C[*]*.Migrations.*%2C[*]Program"
+
+      - name: Coverage — Domain (75% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Domain]*
+          /p:Threshold=75
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
+
+      - name: Coverage — Application (75% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Application]*
+          /p:Threshold=75
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
 
   test-frontend:
     name: Frontend — type check + testes
@@ -54,84 +79,18 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Test
-        run: npm test
+        run: npm run test:coverage
 
-# ─── BUILD + PUSH (develop → homolog | main → prod) ─────────────────────────
-
-  build-push:
-    name: Build multi-arch + push OCIR
-    needs: [test-backend, test-frontend]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
-    outputs:
-      tag: ${{ steps.meta.outputs.tag }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set image tag
-        id: meta
-        run: echo "tag=$(echo $GITHUB_SHA | head -c7)" >> $GITHUB_OUTPUT
-
-      - name: Set up QEMU (suporte ARM64)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login OCIR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.OCI_REGISTRY_HOST }}
-          username: ${{ secrets.OCI_USERNAME }}
-          password: ${{ secrets.OCI_AUTH_TOKEN }}
-
-      - name: Build + push backend
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: forzion.tech.Api/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.BACKEND_IMAGE }}:latest
-            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build + push frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          file: frontend/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-# ─── DEPLOY HOMOLOG (develop) ─────────────────────────────────────────────────
+# ─── DEPLOY HOMOLOG ──────────────────────────────────────────────────────────
 
   deploy-homolog:
-    name: Deploy → homolog
-    needs: build-push
+    name: Deploy -> homolog
+    needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
     environment: homolog
-    if: github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Copiar arquivos para VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOMOLOG_HOST }}
-          username: ubuntu
-          key: ${{ secrets.HOMOLOG_SSH_KEY }}
-          source: "docker-compose.server.yml,nginx/nginx.conf,nginx/nginx-init.conf,scripts/"
-          target: /opt/forzion/
-
-      - name: Deploy
+      - name: Deploy na VM
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.HOMOLOG_HOST }}
@@ -139,21 +98,11 @@ jobs:
           key: ${{ secrets.HOMOLOG_SSH_KEY }}
           script: |
             set -e
-            cd /opt/forzion
+            cd /opt/forzion/app
+            git pull origin homolog
 
-            # Login OCIR
-            echo "${{ secrets.OCI_AUTH_TOKEN }}" | \
-              docker login ${{ secrets.OCI_REGISTRY_HOST }} \
-              -u "${{ secrets.OCI_USERNAME }}" --password-stdin
-
-            # Atualizar TAG no .env
-            sed -i "s/^TAG=.*/TAG=${{ needs.build-push.outputs.tag }}/" .env
-
-            # Pull e restart
-            docker compose -f docker-compose.server.yml --env-file .env pull
-            docker compose -f docker-compose.server.yml --env-file .env up -d --remove-orphans
-
-            # Limpar imagens antigas
+            docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env build
+            docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env up -d --remove-orphans
             docker image prune -f
 
-            echo "✅ Deploy concluído — tag: ${{ needs.build-push.outputs.tag }}"
+            echo "Deploy homolog OK -- $(date)"

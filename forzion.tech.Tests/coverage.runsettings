@@ -4,8 +4,9 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
-          <Exclude>[forzion.tech.Infrastructure]*</Exclude>
-          <ExcludeByAttribute>ExcludeFromCodeCoverage,GeneratedCodeAttribute</ExcludeByAttribute>
+          <Format>cobertura,opencover</Format>
+          <Exclude>[forzion.tech.Tests]*,[forzion.tech.Api]*Migrations*,[*]Program</Exclude>
+          <ExcludeByAttribute>ExcludeFromCodeCoverage,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
         </Configuration>
       </DataCollector>
     </DataCollectors>

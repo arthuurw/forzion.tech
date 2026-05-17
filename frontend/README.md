@@ -40,6 +40,7 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 | Estado global | Zustand | 5 |
 | Datas | Day.js | 1.x |
 | Runtime | React | 19 |
+| Pagamentos | @stripe/stripe-js + @stripe/react-stripe-js | 9.x / 6.x |
 | Testes | Vitest + happy-dom + Testing Library | 4 |
 
 ---
@@ -87,6 +88,10 @@ API_BASE_URL=https://localhost:7220
 # Exposta ao browser — aponta para o proxy Next.js, NÃO para o backend diretamente
 # O proxy injeta o token Bearer server-side; o browser nunca vê o token
 NEXT_PUBLIC_API_BASE_URL=/api/backend
+
+# Chave pública do Stripe (pk_test_... ou pk_live_...)
+# Usada pelo Stripe.js no browser para tokenizar cartões — nunca é secreta
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
 > **Importante**: `NEXT_PUBLIC_API_BASE_URL` deve apontar para `/api/backend` (proxy local) e não para o backend diretamente. O token JWT nunca é exposto ao browser — o proxy server-side em `src/app/api/backend/[...path]/route.ts` lê o cookie `token` (httpOnly) e injeta `Authorization: Bearer` antes de encaminhar.
@@ -126,7 +131,10 @@ frontend/
 │   │   │       │   ├── page.tsx        # Lista fichas + criar (filtro por objetivo)
 │   │   │       │   └── [treinoId]/     # Editor de ficha (exercícios, séries)
 │   │   │       ├── exercicios/         # Biblioteca pessoal + copiar global
-│   │   │       └── pacotes/            # CRUD pacotes (nome + descrição + preço)
+│   │   │       ├── pacotes/            # CRUD pacotes (nome + descrição + preço)
+│   │   │       ├── pagamentos/         # Stripe Connect onboarding + status da conta
+│   │   │       └── onboarding/
+│   │   │           └── retorno/        # Retorno pós-onboarding Stripe (verifica status)
 │   │   │
 │   │   ├── (aluno)/                    # Route group — Aluno
 │   │   │   ├── layout.tsx
@@ -137,7 +145,9 @@ frontend/
 │   │   │       │   └── [fichaId]/
 │   │   │       │       ├── page.tsx    # Detalhe da ficha com exercícios
 │   │   │       │       └── executar/   # Execução passo a passo
-│   │   │       └── historico/          # Histórico de execuções com gráficos
+│   │   │       ├── historico/          # Histórico de execuções com gráficos
+│   │   │       ├── assinatura/         # Status da assinatura + pagamento pendente
+│   │   │       └── pagamentos/         # Histórico de cobranças (Pix ou cartão)
 │   │   │
 │   │   ├── (public)/                   # Route group — sem auth
 │   │   │   ├── layout.tsx              # PublicLayout
@@ -180,6 +190,9 @@ frontend/
 │   │   │   ├── AppHeader.tsx           # Header com nav + avatar + logout
 │   │   │   ├── PublicLayout.tsx        # Layout para páginas públicas
 │   │   │   └── NavConfig.tsx           # Itens de nav por TipoConta
+│   │   ├── pagamento/
+│   │   │   ├── PagamentoPix.tsx        # QR Code + copia e cola + polling 30s de status
+│   │   │   └── PagamentoCartao.tsx     # Stripe Elements (PaymentElement) + confirmPayment
 │   │   ├── treinador/
 │   │   │   └── ProgressaoAluno.tsx     # Gráfico de progressão do aluno
 │   │   └── ui/
@@ -205,6 +218,7 @@ frontend/
 │   │   │   ├── admin.ts                # Treinadores, planos, grupos, exercícios globais
 │   │   │   ├── treinador.ts            # Alunos, vínculos, fichas, exercícios, pacotes
 │   │   │   ├── aluno.ts                # Fichas, execuções, vínculo
+│   │   │   ├── pagamento.ts            # Onboarding Stripe, cobranças, pagamentos
 │   │   │   └── conta.ts                # Perfil, senha
 │   │   ├── auth/
 │   │   │   ├── AuthContext.tsx          # Contexto de sessão React
@@ -216,7 +230,7 @@ frontend/
 │   │   │   └── index.ts                # Tema MUI (paleta + tipografia + overrides)
 │   │   ├── utils/
 │   │   │   ├── formatting.ts           # Funções de formatação
-│   │   │   └── excel.ts               # Exportação de fichas para .xlsx (SheetJS)
+│   │   │   └── excel.ts               # Exportação de fichas para .xlsx (ExcelJS)
 │   │   └── validations/
 │   │       └── common.ts               # Schemas Zod reutilizáveis
 │   │
@@ -255,11 +269,15 @@ frontend/
 | `/treinador/treinos/[treinoId]` | Treinador | Editor de ficha — exercícios, séries, cargas, ordem |
 | `/treinador/exercicios` | Treinador | Biblioteca pessoal + copiar exercícios globais |
 | `/treinador/pacotes` | Treinador | CRUD pacotes (nome, descrição, preço) |
+| `/treinador/pagamentos` | Treinador | Stripe Connect onboarding — configura conta de recebimentos |
+| `/treinador/onboarding/retorno` | Treinador | Retorno pós-onboarding Stripe — verifica e exibe status |
 | `/aluno` | Aluno | Dashboard |
 | `/aluno/fichas` | Aluno | Lista fichas ativas vinculadas ao aluno |
 | `/aluno/fichas/[fichaId]` | Aluno | Detalhe da ficha com exercícios e instruções |
 | `/aluno/fichas/[fichaId]/executar` | Aluno | Execução passo a passo — registra séries e cargas |
 | `/aluno/historico` | Aluno | Histórico de execuções com gráficos de progressão |
+| `/aluno/assinatura` | Aluno | Status da assinatura + pagamento pendente (Pix ou cartão) |
+| `/aluno/pagamentos` | Aluno | Histórico de cobranças com tabela e dialog de pagamento inline |
 | `/perfil` | todos | Dados da conta + alterar senha |
 
 ---
@@ -482,6 +500,15 @@ useInactivity({
 | `SnackbarProvider` | — | Contexto global de notificação via `useSnackbar()` |
 | `StatusChip` | `status, type` | Chip colorido para `AlunoStatus`, `TreinadorStatus` ou `VinculoStatus` |
 
+### Pagamento
+
+| Componente | Props principais | Descrição |
+|-----------|-----------------|-----------|
+| `PagamentoPix` | `pagamentoId, onPago?` | Exibe QR Code + copia-e-cola; polling de 30 s para detectar confirmação; estados: Pendente / Pago / Expirado / Falhou |
+| `PagamentoCartao` | `pagamentoId, onPago?` | Stripe `<Elements>` com `clientSecret`; `PaymentElement` + `stripe.confirmPayment`; suporta 3DS com redirect |
+
+Ambos usam `pagamentoApi.obterPagamento` para buscar `PagamentoResponse` e renderizam conforme `status` + `metodoPagamento`.
+
 ### Forms
 
 | Componente | Descrição |
@@ -505,17 +532,18 @@ useInactivity({
 
 ### `src/lib/utils/excel.ts`
 
-Exportação de ficha de treino para Excel (`.xlsx`) via **SheetJS** (`xlsx@0.18.5`).
+Exportação de ficha de treino para Excel (`.xlsx`) via **ExcelJS** (`exceljs@^4.4.0`).
 
 | Exportação | Assinatura | Descrição |
 |------------|-----------|-----------|
-| `exportarFichaParaExcel(params)` | `FichaExportParams → void` | Gera e faz download do arquivo `.xlsx` |
-| `buildFichaRows(params)` | `FichaExportParams → (string\|number\|null)[][]` | Monta matriz de linhas; pura (sem I/O) |
+| `exportarFichaParaExcel(params)` | `FichaExportParams → Promise<void>` | Gera e faz download do arquivo `.xlsx` via Blob + `URL.createObjectURL` |
+| `buildFichaRows(params)` | `FichaExportParams → (string\|number\|null)[][]` | Monta matriz de linhas; pura (sem I/O); retorna valores brutos |
 | `sanitizeFilename(nome)` | `string → string` | Remove chars inválidos/perigosos do nome do arquivo |
+| `safeCell(v)` | `string\|number\|null → string\|number\|null` | Prefixia strings que começam com `=`, `+`, `-`, `@`, `\|`, `%` com `'` para prevenir formula injection no ExcelJS |
 
 **Estrutura do Excel gerado** (9 colunas): `#`, Exercício, Qtd Séries, Reps Mín, Reps Máx, Descrição, Carga (kg), Descanso (s), Observação — uma linha por grupo de séries; exercício e observação repetidos apenas na primeira linha.
 
-**Segurança**: `sanitizeFilename` remove path traversal (`.`, `/`, `\`), null byte, angle brackets e formula triggers (`=`, `(`). Valores de células passam como strings literais (SheetJS armazena como tipo `'s'`, Excel não os interpreta como fórmulas).
+**Segurança**: `sanitizeFilename` remove path traversal (`.`, `/`, `\`), null byte, angle brackets e formula triggers no nome do arquivo. `safeCell` previne formula injection nas células — necessário porque ExcelJS avalia strings iniciadas com `=` como fórmulas (ao contrário do SheetJS que usava type `'s'`). O `'` prefixado é o marcador de string forçada do Excel e não é exibido ao usuário.
 
 Disponível em: `/treinador/treinos/[treinoId]` (botão "Exportar") e `/aluno/fichas/[fichaId]` (botão "Exportar").
 
@@ -654,6 +682,7 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 | `lib/api/admin.ts` | `listTreinadores`, `aprovarTreinador`, `reprovarTreinador`, `inativarTreinador`, `excluirTreinador`, `atribuirPlano`, `listPlanos`, `criarPlano`, `atualizarPlano`, `excluirPlano`, `listGruposMusculares`, `criarGrupo`, `atualizarGrupo`, `excluirGrupo`, `listExerciciosGlobais`, `criarExercicioGlobal`, `atualizarExercicioGlobal`, `excluirExercicioGlobal` — **visibilidade admin:** `listAlunos`, `getAluno`, `getAlunoVinculo`, `getAlunoFichas`, `getFichaDetalhe`, `getAlunoExecucoes`, `getAlunoProgressao`, `getTreinadorAlunos`, `getTreinadorVinculos`, `getTreinadorTreinos`, `getTreino`, `getTreinadorPacotes` |
 | `lib/api/treinador.ts` | `listarAlunos`, `obterAluno`, `atualizarAluno`, `listarVinculos`, `aprovarVinculo`, `desvincularAluno`, `listarTreinos`, `listarExercicios`, `criarExercicio`, `atualizarExercicio`, `excluirExercicio`, `copiarExercicioGlobal`, `listarPacotes`, `criarPacote`, `atualizarPacote` |
 | `lib/api/aluno.ts` | `listarFichas`, `obterFicha`, `listarExecucoes`, `registrarExecucao`, `obterVinculo`, `solicitarTrocaTreinador` |
+| `lib/api/pagamento.ts` | `iniciarOnboarding`, `verificarOnboarding`, `gerarCobranca`, `obterPagamento`, `listarPagamentosAssinatura`, `obterAssinatura` |
 | `lib/api/conta.ts` | `obterPerfil`, `atualizarPerfil`, `alterarSenha`, `logout` |
 
 ---
@@ -700,6 +729,7 @@ Localização: `ptBR` (MUI + Day.js).
 | Validação de formulários | Zod + React Hook Form em todos os forms públicos |
 | Senhas de cadastro | Mínimo 8 chars, uppercase, lowercase, dígito |
 | Mensagens de erro | Login/cadastro nunca exibe detalhes internos do backend |
+| Stripe Publishable Key | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` é pública por design — tokeniza cartões no browser sem expor dados ao servidor; a chave secreta fica exclusivamente no backend |
 
 Build configurado como `output: "standalone"` para deploy em container.
 
@@ -723,16 +753,22 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 
 | Arquivo | O que testa | Testes |
 |---------|------------|--------|
-| `validations.test.ts` | Schemas Zod — email, senha, nome, telefone, loginSchema, cadastroTreinadorSchema, cadastroAlunoSchema (incl. campos de perfil obrigatórios) | 24 |
+| `validations.test.ts` | Schemas Zod — email, senha, nome, telefone, loginSchema, cadastroTreinadorSchema, cadastroAlunoSchema (incl. campos de perfil obrigatórios) | 32 |
 | `auth.test.ts` | `extractTipoConta` + `homeRouteFor` | 8 |
+| `auth-context.test.tsx` | `AuthProvider` — fetch /api/auth/me, login, logout, useAuth fora do provider | 6 |
 | `api-auth-me.test.ts` | Handler `GET /api/auth/me` — cookies, JWT válido, expirado, sem session_guard | 5 |
+| `middleware.test.ts` | Proteção de rotas server-side — sem auth, papel errado, autenticado na área correta, rotas públicas | 19 |
 | `useInactivity.test.ts` | Hook com `vi.useFakeTimers()` — warn, timeout, reset | 6 |
 | `components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` | 11 |
-| `excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls), `exportarFichaParaExcel` (mock XLSX, fallback filename) | 45 |
-| `admin-api.test.ts` | Todos os 12 métodos de visibilidade de `adminApi` + 3 funções preexistentes. Mock de `@/lib/api/client`. Verifica URL, params e retorno. | 43 |
-| `admin-pages.test.tsx` | Smoke tests das 4 novas páginas admin. Mock de `next/navigation`, `adminApi`, `usePaginatedList`, `recharts`. Cobre: spinner, renderização após carga, tabs, erro de API. | 18 |
+| `responsive-table.test.tsx` | `ResponsiveTable` — desktop (headers, row click, actions), paginação, mobile (cards, Divider, propagação) | 13 |
+| `formatting.test.ts` | `formatarSeries`, `formatarData`, `getWeekLabel`, `periodoParaDatas` | 24 |
+| `excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `safeCell` (formula-trigger chars, passthrough seguro), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls, valores brutos), `exportarFichaParaExcel` async (mock ExcelJS via `vi.hoisted` + class, DOM spy, sanitized filename, safeCell aplicado, column widths) | 50 |
+| `admin-api.test.ts` | Todos os métodos de visibilidade de `adminApi` + funções preexistentes. Mock de `@/lib/api/client`. Verifica URL, params e retorno. | 48 |
+| `admin-pages.test.tsx` | Páginas admin — alunos (filtros, renderCell, tabs), detalhe aluno (tabs, vínculo, perfil), detalhe treinador (tabs, pacotes), detalhe treino. Mock de `next/navigation`, `adminApi`, `usePaginatedList`, `recharts`. | 33 |
+| `pagamento.test.tsx` | `PagamentoPix` (spinner, estados Pago/Expirado/Falhou/Pendente, clipboard, polling), `PagamentosTreinadorPage` (onboarding completo/incompleto/erro, redirect Stripe), `OnboardingRetornoPage` (completo/incompleto/erro), `PagamentosAlunoPage` (estado inicial). | 19 |
+| `pagamento-cartao.test.tsx` | `PagamentoCartao` — loading, sem clientSecret, status terminal (Falhou/Expirado), formulário (PaymentElement, status Pago), submit com erro Stripe, submit sem stripe/elements | 8 |
 
-**Total: 142 testes**
+**Total: 282 testes**
 
 ### Armadilhas conhecidas
 
@@ -743,6 +779,7 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 | `extractTipoConta` não exportada | Era função local | Exportar explicitamente com `export function` |
 | Base64 padding em JWT de teste | `btoa(payload).replace(/=/g, "")` → `atob` falha silenciosamente | Usar `btoa` sem strip dos `=` |
 | `onTimeout` chamado múltiplas vezes | `setInterval` continua após `TIMEOUT_MS` | Usar `toHaveBeenCalled()`, não `toHaveBeenCalledOnce()` |
-| Mock de módulo CJS com namespace import | `import * as XLSX from "xlsx"` em contexto ESM | `vi.mock("xlsx", () => ({ utils: {...}, writeFile: fn }))` — o mock é hoistado automaticamente; a factory retorna o namespace completo |
+| Mock de módulo com constructor (`new ExcelJS.Workbook()`) | `vi.fn(() => instance)` com arrow function não é construtível | Usar `vi.hoisted` + `class WorkbookMock { addWorksheet = fn; xlsx = { writeBuffer: fn }; }` e referenciar em `vi.mock("exceljs", () => ({ default: { Workbook: excelMocks.WorkbookMock } }))` |
 | MUI Select + `getByLabelText` | MUI Select não associa label ao controle via atributo `for` | Usar `getByRole("combobox")` em vez de `getByLabelText("Status")` |
 | Namespace `Email` colide com VO | Pasta de teste `...Notifications.Email` → `Email` resolve para o namespace, não o tipo | Alias: `using EmailVO = forzion.tech.Domain.ValueObjects.Email;` (backend) |
+| `@stripe/stripe-js` em testes | `loadStripe` dispara fetch para o SDK Stripe, falha em happy-dom | Mockar `@stripe/stripe-js` e `@stripe/react-stripe-js` com `vi.mock` antes dos imports |

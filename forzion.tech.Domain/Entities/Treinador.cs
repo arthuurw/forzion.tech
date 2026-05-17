@@ -14,6 +14,8 @@ public class Treinador : IHasDomainEvents
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
     public Guid? PlanoTreinadorId { get; private set; }
+    public string? StripeConnectAccountId { get; private set; }
+    public bool StripeOnboardingCompleto { get; private set; }
     public TreinadorStatus Status { get; private set; }
     public string? Telefone { get; private set; }
     public Guid? AprovadoPorId { get; private set; }
@@ -106,6 +108,24 @@ public class Treinador : IHasDomainEvents
             throw new DomainException("O nome deve ter no máximo 100 caracteres.");
 
         Nome = nome.Trim();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ConfigurarStripeConnect(string accountId)
+    {
+        if (string.IsNullOrWhiteSpace(accountId))
+            throw new DomainException("O identificador da conta Stripe é inválido.");
+
+        StripeConnectAccountId = accountId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ConfirmarOnboarding()
+    {
+        if (string.IsNullOrWhiteSpace(StripeConnectAccountId))
+            throw new DomainException("O treinador não possui conta Stripe configurada.");
+
+        StripeOnboardingCompleto = true;
         UpdatedAt = DateTime.UtcNow;
     }
 }

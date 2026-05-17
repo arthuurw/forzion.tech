@@ -39,7 +39,7 @@ public class CadastrarAlunoHandler(
     internal static AlunoResponse ToResponse(Aluno aluno) => new(
         aluno.Id,
         aluno.Nome,
-        aluno.Email,
+        aluno.Email?.Value,
         aluno.Telefone,
         aluno.Status,
         aluno.ContaId,

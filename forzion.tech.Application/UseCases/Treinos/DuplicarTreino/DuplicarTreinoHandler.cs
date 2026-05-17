@@ -7,6 +7,7 @@ namespace forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
 
 public class DuplicarTreinoHandler(
     ITreinoRepository treinoRepository,
+    IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
     ILogger<DuplicarTreinoHandler> logger)
@@ -39,6 +40,10 @@ public class DuplicarTreinoHandler(
 
         logger.LogInformation("Treino {TreinoId} duplicado como {CopiaTreinoId}.", command.TreinoId, copia.Id);
 
-        return TreinoResponseExtensions.ToResponse(copia);
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(copia.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+            .ConfigureAwait(false);
+
+        return TreinoResponseExtensions.ToResponse(copia, nomesExercicio: nomesExercicio);
     }
 }

@@ -18,7 +18,7 @@ public record ListarFichasAlunoResponse(
     int Pagina,
     int TamanhoPagina);
 
-public class ListarFichasAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository)
+public class ListarFichasAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository, IExercicioRepository exercicioRepository)
 {
     public virtual async Task<ListarFichasAlunoResponse> HandleAsync(
         Guid alunoId,
@@ -30,6 +30,11 @@ public class ListarFichasAlunoHandler(ITreinoAlunoRepository treinoAlunoReposito
             .ListarDetalhesPorAlunoAsync(alunoId, pagina, tamanhoPagina, cancellationToken)
             .ConfigureAwait(false);
 
+        var allExercicioIds = items.SelectMany(x => x.Treino.Exercicios.Select(e => e.ExercicioId));
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(allExercicioIds, cancellationToken)
+            .ConfigureAwait(false);
+
         var response = items.Select(x => new FichaAlunoResponse(
             x.TreinoAluno.Id,
             x.Treino.Id,
@@ -39,7 +44,7 @@ public class ListarFichasAlunoHandler(ITreinoAlunoRepository treinoAlunoReposito
             x.Treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
                 te.Id,
                 te.ExercicioId,
-                te.Exercicio?.Nome ?? string.Empty,
+                nomesExercicio?.GetValueOrDefault(te.ExercicioId) ?? string.Empty,
                 te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
                     s.Id, s.Quantidade, s.RepeticoesMin, s.RepeticoesMax,
                     s.Descricao, s.Carga, s.Descanso, s.Ordem)).ToList(),

@@ -25,7 +25,7 @@ public sealed class VinculoAprovadoEmailHandler(
             return;
         }
 
-        if (string.IsNullOrEmpty(aluno.Email))
+        if (aluno.Email is null)
         {
             logger.LogDebug("VinculoAprovadoEmailHandler: aluno {Id} sem e-mail cadastrado — ignorado.", domainEvent.AlunoId);
             return;
@@ -38,7 +38,7 @@ public sealed class VinculoAprovadoEmailHandler(
         var nomeTreinador = treinador?.Nome ?? "seu treinador";
 
         await emailService.EnviarAsync(
-            aluno.Email,
+            aluno.Email.Value,
             "Vínculo aprovado — forzion.tech",
             EmailTemplates.VinculoAprovado(aluno.Nome, nomeTreinador),
             cancellationToken).ConfigureAwait(false);

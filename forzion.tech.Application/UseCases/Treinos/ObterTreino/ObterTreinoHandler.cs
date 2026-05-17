@@ -7,6 +7,7 @@ namespace forzion.tech.Application.UseCases.Treinos.ObterTreino;
 
 public class ObterTreinoHandler(
     ITreinoRepository treinoRepository,
+    IExercicioRepository exercicioRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
     IUserContext userContext,
     ILogger<ObterTreinoHandler> logger)
@@ -48,6 +49,10 @@ public class ObterTreinoHandler(
 
         logger.LogInformation("Treino {TreinoId} consultado.", treino.Id);
 
-        return TreinoResponseExtensions.ToResponse(treino);
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+            .ConfigureAwait(false);
+
+        return TreinoResponseExtensions.ToResponse(treino, nomesExercicio: nomesExercicio);
     }
 }

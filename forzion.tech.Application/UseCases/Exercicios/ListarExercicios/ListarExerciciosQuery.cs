@@ -7,5 +7,5 @@ public record ListarExerciciosQuery(
     int Pagina,
     int TamanhoPagina,
     string? Nome = null,
-    GrupoMuscular? GrupoMuscular = null,
+    TipoGrupoMuscular? GrupoMuscular = null,
     string OrdenarPor = "nome");
