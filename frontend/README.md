@@ -753,17 +753,22 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 
 | Arquivo | O que testa | Testes |
 |---------|------------|--------|
-| `validations.test.ts` | Schemas Zod — email, senha, nome, telefone, loginSchema, cadastroTreinadorSchema, cadastroAlunoSchema (incl. campos de perfil obrigatórios) | 24 |
+| `validations.test.ts` | Schemas Zod — email, senha, nome, telefone, loginSchema, cadastroTreinadorSchema, cadastroAlunoSchema (incl. campos de perfil obrigatórios) | 32 |
 | `auth.test.ts` | `extractTipoConta` + `homeRouteFor` | 8 |
+| `auth-context.test.tsx` | `AuthProvider` — fetch /api/auth/me, login, logout, useAuth fora do provider | 6 |
 | `api-auth-me.test.ts` | Handler `GET /api/auth/me` — cookies, JWT válido, expirado, sem session_guard | 5 |
+| `middleware.test.ts` | Proteção de rotas server-side — sem auth, papel errado, autenticado na área correta, rotas públicas | 19 |
 | `useInactivity.test.ts` | Hook com `vi.useFakeTimers()` — warn, timeout, reset | 6 |
 | `components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` | 11 |
-| `excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `safeCell` (formula-trigger chars, passthrough seguro), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls, valores brutos), `exportarFichaParaExcel` async (mock ExcelJS via `vi.hoisted` + class, DOM spy, sanitized filename, safeCell aplicado, column widths) | 58 |
-| `admin-api.test.ts` | Todos os 12 métodos de visibilidade de `adminApi` + 3 funções preexistentes. Mock de `@/lib/api/client`. Verifica URL, params e retorno. | 43 |
-| `admin-pages.test.tsx` | Smoke tests das 4 novas páginas admin. Mock de `next/navigation`, `adminApi`, `usePaginatedList`, `recharts`. Cobre: spinner, renderização após carga, tabs, erro de API. | 18 |
+| `responsive-table.test.tsx` | `ResponsiveTable` — desktop (headers, row click, actions), paginação, mobile (cards, Divider, propagação) | 13 |
+| `formatting.test.ts` | `formatarSeries`, `formatarData`, `getWeekLabel`, `periodoParaDatas` | 24 |
+| `excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `safeCell` (formula-trigger chars, passthrough seguro), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls, valores brutos), `exportarFichaParaExcel` async (mock ExcelJS via `vi.hoisted` + class, DOM spy, sanitized filename, safeCell aplicado, column widths) | 50 |
+| `admin-api.test.ts` | Todos os métodos de visibilidade de `adminApi` + funções preexistentes. Mock de `@/lib/api/client`. Verifica URL, params e retorno. | 48 |
+| `admin-pages.test.tsx` | Páginas admin — alunos (filtros, renderCell, tabs), detalhe aluno (tabs, vínculo, perfil), detalhe treinador (tabs, pacotes), detalhe treino. Mock de `next/navigation`, `adminApi`, `usePaginatedList`, `recharts`. | 33 |
 | `pagamento.test.tsx` | `PagamentoPix` (spinner, estados Pago/Expirado/Falhou/Pendente, clipboard, polling), `PagamentosTreinadorPage` (onboarding completo/incompleto/erro, redirect Stripe), `OnboardingRetornoPage` (completo/incompleto/erro), `PagamentosAlunoPage` (estado inicial). | 19 |
+| `pagamento-cartao.test.tsx` | `PagamentoCartao` — loading, sem clientSecret, status terminal (Falhou/Expirado), formulário (PaymentElement, status Pago), submit com erro Stripe, submit sem stripe/elements | 8 |
 
-**Total: 174 testes**
+**Total: 282 testes**
 
 ### Armadilhas conhecidas
 
