@@ -14,7 +14,7 @@ public record FichaAlunoDetalheResponse(
     string Status,
     IReadOnlyList<TreinoExercicioResponse> Exercicios);
 
-public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository, IUserContext userContext)
+public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository, IExercicioRepository exercicioRepository, IUserContext userContext)
 {
     public virtual async Task<FichaAlunoDetalheResponse> HandleAsync(
         Guid treinoAlunoId,
@@ -36,6 +36,10 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
 
         if (detalhe is null) throw new TreinoNaoEncontradoException();
 
+        var nomesExercicio = await exercicioRepository
+            .ObterNomesPorIdsAsync(detalhe.Treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+            .ConfigureAwait(false);
+
         return new FichaAlunoDetalheResponse(
             detalhe.TreinoAluno.Id,
             detalhe.Treino.Id,
@@ -45,7 +49,7 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
             [.. detalhe.Treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
                 te.Id,
                 te.ExercicioId,
-                te.Exercicio?.Nome ?? string.Empty,
+                nomesExercicio?.GetValueOrDefault(te.ExercicioId) ?? string.Empty,
                 te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
                     s.Id, s.Quantidade, s.RepeticoesMin, s.RepeticoesMax,
                     s.Descricao, s.Carga, s.Descanso, s.Ordem)).ToList(),

@@ -1,6 +1,9 @@
 using forzion.tech.Api.Extensions;
+using forzion.tech.Api.Helpers;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
+using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
@@ -37,6 +40,48 @@ public static class TreinadorEndpoints
     {
         var group = endpoints.MapGroup("/treinador").WithTags("Treinador").RequireAuthorization("Treinador").RequireRateLimiting("write")
             .AddEndpointFilter<PaginacaoFilter>();
+
+        // --- Onboarding Stripe ---
+
+        group.MapPost("/onboarding", async (
+            [FromBody] IniciarOnboardingRequest request,
+            [FromServices] IniciarOnboardingTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            // Valida que as URLs de retorno pertencem ao domínio configurado (prevenção de open redirect).
+            // Rejeita se Stripe:UrlBase não estiver configurado — nunca pular a validação.
+            var urlBase = configuration["Stripe:UrlBase"];
+            if (string.IsNullOrEmpty(urlBase)
+                || !UrlValidator.IsUrlPermitida(request.UrlRetorno, urlBase)
+                || !UrlValidator.IsUrlPermitida(request.UrlCancelamento, urlBase))
+                return Results.BadRequest("URLs de retorno fora do domínio permitido.");
+
+            var result = await handler.HandleAsync(
+                new IniciarOnboardingTreinadorCommand(userContext.PerfilId, request.UrlRetorno, request.UrlCancelamento),
+                cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(new { url = result.Value });
+        })
+        .WithSummary("Inicia o onboarding Stripe Connect do treinador e retorna o link")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet("/onboarding/status", async (
+            [FromServices] VerificarOnboardingTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new VerificarOnboardingTreinadorQuery(userContext.PerfilId), cancellationToken).ConfigureAwait(false);
+
+            return Results.Ok(result);
+        })
+        .WithSummary("Verifica status do onboarding Stripe do treinador")
+        .Produces<OnboardingStatusResponse>();
 
         // --- Vínculos ---
 
@@ -258,7 +303,7 @@ public static class TreinadorEndpoints
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
             var apenasGlobal = q["global"].ToString() == "true";
-            _ = Enum.TryParse<forzion.tech.Domain.Enums.GrupoMuscular>(q["grupoMuscular"], out var grupo);
+            _ = Enum.TryParse<forzion.tech.Domain.Enums.TipoGrupoMuscular>(q["grupoMuscular"], out var grupo);
             var hasGrupo = q.ContainsKey("grupoMuscular");
             var nome = q["nome"].ToString();
             var ordenarPorRaw = q["ordenarPor"].ToString();
@@ -415,10 +460,13 @@ public static class TreinadorEndpoints
     }
 }
 
+public record IniciarOnboardingRequest(string UrlRetorno, string UrlCancelamento);
+
+
 public record AprovarVinculoRequest(Guid PacoteAlunoId, bool TrarFichas = false);
 public record ReativarVinculoRequest(Guid PacoteAlunoId);
 public record DesvincularAlunoRequest(string? Observacao = null);
-public record CriarExercicioTreinadorRequest(string Nome, GrupoMuscular GrupoMuscular, string? Descricao = null);
-public record AtualizarExercicioTreinadorRequest(string? Nome, GrupoMuscular? GrupoMuscular, string? Descricao);
+public record CriarExercicioTreinadorRequest(string Nome, TipoGrupoMuscular GrupoMuscular, string? Descricao = null);
+public record AtualizarExercicioTreinadorRequest(string? Nome, TipoGrupoMuscular? GrupoMuscular, string? Descricao);
 public record CriarPacoteAlunoRequest(string Nome, decimal Preco, string? Descricao = null);
 public record AtualizarPacoteAlunoRequest(string? Nome, decimal? Preco, string? Descricao);

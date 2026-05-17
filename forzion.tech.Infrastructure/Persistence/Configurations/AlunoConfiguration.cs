@@ -1,4 +1,5 @@
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -24,6 +25,9 @@ public class AlunoConfiguration : IEntityTypeConfiguration<Aluno>
             .IsRequired();
 
         builder.Property(a => a.Email)
+            .HasConversion(
+                e => e == null ? null : e.Value,
+                v => v == null ? null : Email.FromDatabase(v))
             .HasMaxLength(256);
 
         builder.Property(a => a.Telefone)

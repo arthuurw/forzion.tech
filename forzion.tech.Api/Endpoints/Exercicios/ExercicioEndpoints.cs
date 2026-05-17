@@ -61,4 +61,4 @@ public static class ExercicioEndpoints
     }
 }
 
-public record CriarExercicioRequest(string Nome, GrupoMuscular GrupoMuscular, string? Descricao);
+public record CriarExercicioRequest(string Nome, TipoGrupoMuscular GrupoMuscular, string? Descricao);

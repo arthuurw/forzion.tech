@@ -12,7 +12,6 @@ public class TreinoExercicio
     public int Ordem { get; private set; }
     public string? Observacao { get; private set; }
 
-    public Exercicio Exercicio { get; private set; } = null!;
     public IReadOnlyList<SerieConfig> Series => _series.AsReadOnly();
 
     private TreinoExercicio() { }

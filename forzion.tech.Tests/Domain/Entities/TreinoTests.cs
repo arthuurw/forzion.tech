@@ -262,4 +262,158 @@ public class TreinoTests
         var copia = t.Duplicar();
         copia.Exercicios.Should().BeEmpty();
     }
+
+    // --- DuplicarPara ---
+
+    [Fact]
+    public void DuplicarPara_TreinadorValido_CriaComNovoTreinadorId()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        ex.AdicionarSerie(3, 10, 12, null, null, null);
+
+        var novoTreinadorId = Guid.NewGuid();
+        var copia = t.DuplicarPara(novoTreinadorId);
+
+        copia.Id.Should().NotBe(t.Id);
+        copia.TreinadorId.Should().Be(novoTreinadorId);
+        copia.Nome.Should().Be(t.Nome);
+        copia.Exercicios.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void DuplicarPara_TreinadorIdVazio_LancaDomainException()
+    {
+        var t = CriarTreino();
+        var act = () => t.DuplicarPara(Guid.Empty);
+        act.Should().Throw<DomainException>().WithMessage("O treinador de destino é inválido.");
+    }
+
+    // --- ValidarMutabilidade ---
+
+    [Fact]
+    public void ValidarMutabilidade_Executado_LancaTreinoExecutadoException()
+    {
+        var act = () => Treino.ValidarMutabilidade(true);
+        act.Should().Throw<TreinoExecutadoException>();
+    }
+
+    [Fact]
+    public void ValidarMutabilidade_NaoExecutado_NaoLancaExcecao()
+    {
+        var act = () => Treino.ValidarMutabilidade(false);
+        act.Should().NotThrow();
+    }
+
+    // --- Atualizar — NomeMuitoLongo ---
+
+    [Fact]
+    public void Atualizar_NomeMuitoLongo_LancaDomainException()
+    {
+        var t = CriarTreino();
+        var act = () => t.Atualizar(new string('a', 101), null);
+        act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
+    }
+
+    // --- TreinoExercicio.AtualizarObservacao ---
+
+    [Fact]
+    public void AtualizarObservacao_DadosValidos_AtualizaCampo()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+
+        ex.AtualizarObservacao("Manter postura");
+
+        ex.Observacao.Should().Be("Manter postura");
+    }
+
+    [Fact]
+    public void AtualizarObservacao_Null_ZeraCampo()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        ex.AtualizarObservacao("Manter postura");
+
+        ex.AtualizarObservacao(null);
+
+        ex.Observacao.Should().BeNull();
+    }
+
+    [Fact]
+    public void AtualizarObservacao_TextoBranco_ZeraCampo()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+
+        ex.AtualizarObservacao("   ");
+
+        ex.Observacao.Should().BeNull();
+    }
+
+    [Fact]
+    public void AtualizarObservacao_TextoMuitoLongo_LancaDomainException()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+
+        var act = () => ex.AtualizarObservacao(new string('a', 501));
+        act.Should().Throw<DomainException>().WithMessage("A observação deve ter no máximo 500 caracteres.");
+    }
+
+    // --- TreinoExercicio.AtualizarSeries ---
+
+    [Fact]
+    public void AtualizarSeries_ListaVazia_LancaDomainException()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+
+        var act = () => ex.AtualizarSeries([]);
+        act.Should().Throw<DomainException>().WithMessage("O exercício deve ter pelo menos um grupo de séries.");
+    }
+
+    [Fact]
+    public void AtualizarSeries_ListaValida_SubstituiSeries()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        ex.AdicionarSerie(3, 10, 12, null, null, null);
+
+        ex.AtualizarSeries([(4, 8, 10, "Pesado", 20m, 90)]);
+
+        ex.Series.Should().HaveCount(1);
+        ex.Series[0].Quantidade.Should().Be(4);
+        ex.Series[0].RepeticoesMin.Should().Be(8);
+    }
+
+    // --- SerieConfig guards (via AdicionarSerie) ---
+
+    [Fact]
+    public void AdicionarSerie_RepeticoesMaxMenorQueMin_LancaDomainException()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var act = () => ex.AdicionarSerie(3, 10, 8, null, null, null);
+        act.Should().Throw<DomainException>().WithMessage("O máximo de repetições não pode ser menor que o mínimo.");
+    }
+
+    [Fact]
+    public void AdicionarSerie_DescansoNegativo_LancaDomainException()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var act = () => ex.AdicionarSerie(3, 10, null, null, null, -1);
+        act.Should().Throw<DomainException>().WithMessage("O descanso não pode ser negativo.");
+    }
+
+    [Fact]
+    public void AdicionarSerie_DescricaoSoBrancos_SetaNull()
+    {
+        var t = CriarTreino();
+        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        ex.AdicionarSerie(3, 10, null, "   ", null, null);
+
+        ex.Series[0].Descricao.Should().BeNull();
+    }
 }

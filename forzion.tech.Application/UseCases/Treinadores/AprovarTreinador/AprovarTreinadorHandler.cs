@@ -29,14 +29,7 @@ public class AprovarTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        try
-        {
-            treinador.Aprovar(command.AdminId);
-        }
-        catch (DomainException ex)
-        {
-            return Result.Failure<TreinadorResponse>(Error.Business(ex.Message));
-        }
+        treinador.Aprovar(command.AdminId);
 
         var log = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AprovacaoTreinador,

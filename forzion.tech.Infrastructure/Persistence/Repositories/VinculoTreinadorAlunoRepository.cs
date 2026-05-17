@@ -64,7 +64,7 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var items = raw.Select(x => new VinculoComDetalheAluno(x.v, x.a.Nome, x.a.Email, x.TemVinculoAtivoPrevio))
+        var items = raw.Select(x => new VinculoComDetalheAluno(x.v, x.a.Nome, x.a.Email?.Value, x.TemVinculoAtivoPrevio))
             .ToList();
 
         return (items, total);

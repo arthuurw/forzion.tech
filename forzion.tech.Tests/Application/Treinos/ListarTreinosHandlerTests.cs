@@ -13,6 +13,7 @@ namespace forzion.tech.Tests.Application.Treinos;
 public class ListarTreinosHandlerTests
 {
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
+    private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<ListarTreinosHandler>> _logger = new();
@@ -23,8 +24,11 @@ public class ListarTreinosHandlerTests
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.IsAluno).Returns(false);
         _userContext.Setup(c => c.IsTreinador).Returns(true);
+        _exercicioRepo
+            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
         _handler = new ListarTreinosHandler(
-            _treinoRepo.Object, _vinculoRepo.Object, _userContext.Object, _logger.Object);
+            _treinoRepo.Object, _exercicioRepo.Object, _vinculoRepo.Object, _userContext.Object, _logger.Object);
     }
 
     [Fact]

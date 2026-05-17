@@ -19,9 +19,6 @@ O treinador realiza seu **cadastro** informando nome, e-mail e senha. A partir d
 
 A plataforma revisa o cadastro. Se aprovado, o treinador recebe o status **Ativo** e pode acessar todas as funcionalidades. Se reprovado, o acesso é negado e o motivo pode ser registrado.
 
-> **Por que existe aprovação?**
-> Para garantir que apenas profissionais qualificados operam na plataforma, protegendo a experiência dos alunos.
-
 ---
 
 ## 2. O Plano do Treinador
@@ -99,8 +96,6 @@ Se o vínculo de um aluno foi encerrado, o treinador pode **reativar** esse alun
 
 Ao reativar, o treinador escolhe um Pacote (o mesmo ou um diferente do anterior). Um novo Vínculo é criado e aprovado diretamente, sem a etapa de aprovação manual. O histórico anterior do aluno é preservado integralmente.
 
-> O treinador não é obrigado a ter tido um vínculo anterior com o aluno para reativá-lo — qualquer aluno inativo pode ser reconectado dessa forma.
-
 ---
 
 ## 6. O Treinador Cria e Prescreve Fichas
@@ -143,7 +138,51 @@ Os valores executados podem ser diferentes dos prescritos. O registro captura o 
 
 ---
 
-## 8. O Histórico de Evolução
+## 8. Pagamentos
+
+### 8.1 O Treinador Configura sua Conta de Recebimentos
+
+Para cobrar seus alunos pela plataforma, o treinador precisa primeiro configurar sua **conta de recebimentos** via Stripe Connect. Esse processo é chamado de **onboarding**.
+
+No painel do treinador, a seção de Pagamentos exibe o status do onboarding:
+
+- **Não iniciado** — o treinador clica em "Conectar conta" e é redirecionado para o formulário do Stripe (dados bancários, CPF/CNPJ, etc.).
+- **Incompleto** — o treinador iniciou o onboarding mas não finalizou. O link de retorno permite continuar de onde parou.
+- **Completo** — a conta está ativa e habilitada para receber pagamentos.
+
+> O treinador não escolhe o percentual de taxa da plataforma — esse valor é definido pela configuração do sistema e retido automaticamente em cada cobrança via Stripe Connect.
+
+### 8.2 O Ciclo de Cobrança Mensal
+
+Cada aluno ativo possui uma **Assinatura** vinculada ao seu Pacote. A assinatura controla o ciclo de cobranças mensais.
+
+A cobrança é **disparada pelo treinador** — não é automática por padrão. O treinador acessa o perfil do aluno, visualiza as assinaturas ativas e escolhe gerar a cobrança do mês selecionando o método de pagamento:
+
+- **Pix** — gera um QR Code e um código copia-e-cola. O aluno tem um prazo para pagar; após vencer, o pagamento expira.
+- **Cartão** — gera um PaymentIntent via Stripe; o aluno finaliza o pagamento na plataforma com os dados do cartão. Suporta autenticação 3DS.
+
+> Uma assinatura só pode ter **um pagamento pendente por vez** — o sistema bloqueia nova cobrança enquanto houver uma em aberto.
+
+### 8.3 O Aluno Paga
+
+O aluno acessa a seção de Assinatura no seu painel. Se houver um pagamento pendente, ele visualiza:
+
+- **Pix**: QR Code + código copia-e-cola + contador de validade. O status atualiza automaticamente ao confirmar o pagamento.
+- **Cartão**: formulário de pagamento embutido (Stripe Elements) — o aluno insere os dados do cartão e confirma diretamente na plataforma.
+
+O histórico completo de cobranças está disponível na seção de Pagamentos, com o status de cada uma (Pendente, Pago, Expirado, Falhou).
+
+### 8.4 Confirmação via Webhook
+
+O Stripe notifica a plataforma sobre eventos de pagamento via webhook (`POST /webhooks/stripe`). A plataforma verifica a assinatura do evento antes de processar e atualiza o status do `Pagamento` correspondente:
+
+- `payment_intent.succeeded` → status muda para **Pago**; Assinatura atualizada para **Ativa**
+- `payment_intent.payment_failed` → status muda para **Falhou**
+- Pix expirado → status muda para **Expirado**
+
+---
+
+## 9. O Histórico de Evolução
 
 Cada Execução registrada forma o **Histórico** do aluno. O histórico é cumulativo — mesmo que uma Ficha seja inativada, o aluno seja desvinculado ou troque de treinador, as execuções passadas permanecem registradas para sempre.
 
@@ -151,7 +190,7 @@ O histórico permite que o aluno acompanhe sua própria evolução ao longo do t
 
 ---
 
-## 9. Troca de Treinador
+## 10. Troca de Treinador
 
 O aluno pode, a qualquer momento, solicitar a troca para outro treinador disponível na plataforma.
 
@@ -179,7 +218,8 @@ PLATAFORMA
   └─ Atribui Plano ao Treinador (define limite de alunos)
 
 TREINADOR (após aprovado)
-  └─ Cria Pacotes (define limite de fichas por aluno)
+  └─ Configura conta de recebimentos (Stripe Connect onboarding)
+  └─ Cria Pacotes (nome + descrição + preço)
   └─ Monta Biblioteca de Exercícios
   └─ Cria Fichas de Treino (compõe com exercícios)
 
@@ -189,14 +229,17 @@ ALUNO
 
 TREINADOR
   └─ Aprova o Vínculo
-     └─ Aluno fica Ativo na carteira
+     └─ Aluno fica Ativo na carteira + Assinatura criada
   └─ Vincula Fichas ao Aluno
-     └─ Respeita o limite do Pacote do Aluno
+  └─ Gera cobrança mensal (Pix ou Cartão)
+     └─ Pagamento criado → Pendente
 
 ALUNO (após ativo e com fichas)
   └─ Visualiza Fichas Ativas
   └─ Executa e Registra cada sessão
      └─ Histórico cresce ao longo do tempo
+  └─ Paga a cobrança pendente (QR Code Pix ou Cartão)
+     └─ Stripe confirma via webhook → Pagamento → Pago
 
 ── Ciclo de vida do Vínculo ──────────────────────────────
 
@@ -230,7 +273,7 @@ ALUNO (após ativo e com fichas)
 | **Aluno** | Cliente do treinador, cadastrado na plataforma |
 | **Vínculo** | Relação formal e rastreável entre um Treinador e um Aluno |
 | **Plano** | Limite de alunos simultâneos de um Treinador, definido pela plataforma |
-| **Pacote** | Configuração do Treinador que define nome, descrição e preço do atendimento oferecido ao Aluno |
+| **Pacote** | Configuração criada pelo Treinador que define nome, descrição e preço do atendimento. Sem limite de fichas — o controle é feito pela descrição livre. |
 | **Ficha de Treino** | Protocolo de exercícios prescrito pelo Treinador |
 | **Exercício** | Movimento individual (ex: Supino, Agachamento) com parâmetros |
 | **Execução** | Registro de uma sessão de treino realizada pelo Aluno |
@@ -242,3 +285,6 @@ ALUNO (após ativo e com fichas)
 | **Reativação** | Ato do treinador de reconectar um aluno inativo, criando um novo vínculo ativo |
 | **Troca de Treinador** | Solicitação do aluno para migrar para outro treinador, com aprovação do novo |
 | **Cascata** | Efeito automático: ao encerrar um vínculo, todas as fichas ativas do par são inativadas |
+| **Assinatura** | Ciclo de cobrança recorrente mensal de um Aluno, vinculada ao seu Pacote |
+| **Pagamento** | Tentativa individual de cobrança. Método: Pix ou Cartão. Status: Pendente, Pago, Expirado, Falhou |
+| **Onboarding** | Processo de cadastro de conta bancária do Treinador no Stripe Connect para habilitar recebimentos |

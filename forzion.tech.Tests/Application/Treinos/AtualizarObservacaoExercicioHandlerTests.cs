@@ -13,6 +13,7 @@ namespace forzion.tech.Tests.Application.Treinos;
 public class AtualizarObservacaoExercicioHandlerTests
 {
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
+    private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<AtualizarObservacaoExercicioHandler>> _logger = new();
@@ -21,8 +22,11 @@ public class AtualizarObservacaoExercicioHandlerTests
     public AtualizarObservacaoExercicioHandlerTests()
     {
         _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
+        _exercicioRepo
+            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, string>());
         _handler = new AtualizarObservacaoExercicioHandler(
-            _treinoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
+            _treinoRepo.Object, _exercicioRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
     }
 
     private static (Treino treino, TreinoExercicio exercicio) CriarTreinoComExercicio(Guid treinadorId)

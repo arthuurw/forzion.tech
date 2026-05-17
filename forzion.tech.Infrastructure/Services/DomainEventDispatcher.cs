@@ -11,12 +11,8 @@ public class DomainEventDispatcher(IServiceProvider serviceProvider) : IDomainEv
         foreach (var domainEvent in events)
         {
             var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(domainEvent.GetType());
-            foreach (var handler in serviceProvider.GetServices(handlerType))
-            {
-                if (handler is null) continue;
-                var handleMethod = handlerType.GetMethod(nameof(IDomainEventHandler<IDomainEvent>.HandleAsync))!;
-                await ((Task)handleMethod.Invoke(handler, [domainEvent, cancellationToken])!).ConfigureAwait(false);
-            }
+            foreach (var handler in serviceProvider.GetServices(handlerType).OfType<IDomainEventHandlerBase>())
+                await handler.HandleAsync(domainEvent, cancellationToken).ConfigureAwait(false);
         }
     }
 }

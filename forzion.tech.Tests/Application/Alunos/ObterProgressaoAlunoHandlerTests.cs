@@ -98,4 +98,24 @@ public class ObterProgressaoAlunoHandlerTests
         result.Exercicios[0].Historico.Should().HaveCount(1);
         result.Exercicios[0].Historico[0].CargaMaxima.Should().Be(100m);
     }
+
+    [Fact]
+    public async Task HandleAsync_SystemAdmin_IgnoraVerificacaoVinculo()
+    {
+        var alunoId = Guid.NewGuid();
+        var de = new DateTime(2025, 1, 1);
+        var ate = new DateTime(2025, 1, 31);
+
+        _userContext.Setup(u => u.TipoConta).Returns(TipoConta.SystemAdmin);
+        _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
+        _execucaoRepo.Setup(r => r.ListarPorAlunoComExerciciosAsync(
+                alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ExecucaoDetalheItem>());
+
+        var result = await _handler.HandleAsync(new ObterProgressaoAlunoQuery(alunoId, de, ate));
+
+        result.Exercicios.Should().BeEmpty();
+        _vinculoRepo.Verify(r => r.ObterAtivoAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

@@ -1,0 +1,22 @@
+{
+  "stryker-config": {
+    "project": "forzion.tech.Domain/forzion.tech.Domain.csproj",
+    "test-projects": [
+      "forzion.tech.Tests/forzion.tech.Tests.csproj"
+    ],
+    "mutation-level": "Standard",
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 0
+    },
+    "reporters": [
+      "progress",
+      "cleartext",
+      "html",
+      "json"
+    ],
+    "report-file-name": "mutation-report",
+    "target-framework": "net8.0"
+  }
+}
