@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 991 testes backend + 174 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Auditoria de segurança OWASP | DDD tático aplicado
+**Status**: ✅ 997 testes backend + 282 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Auditoria de segurança OWASP | DDD tático aplicado
 
 ---
 
@@ -183,7 +183,8 @@ forzion.tech.Api/
 │   ├── Alunos/           # /alunos — Treinador + Admin
 │   ├── Auth/             # /auth — público
 │   ├── Conta/            # /conta — perfil
-│   ├── Exercicios/       # /exercicios
+│   ├── Exercicios/       # /exercicios — JWT obrigatório (GET + POST)
+│   ├── Pagamentos/       # /aluno/pagamentos, /treinador/pagamentos, /internal, /webhooks/stripe
 │   ├── Treinador/        # /treinador — Treinador
 │   └── Treinos/          # /treinos
 ├── Extensions/
@@ -244,7 +245,7 @@ forzion.tech.Infrastructure/
 │   └── InfrastructureExtensions.cs
 ├── Migrations/           # EF Core migrations (14 total)
 ├── Notifications/
-│   ├── Email/            # EmailTemplates + 4 handlers de eventos de domínio (Resend)
+│   ├── Email/            # EmailTemplates + 5 handlers de eventos de domínio (Resend)
 │   └── WhatsApp/         # EvolutionApiWhatsAppNotifier + NullWhatsAppNotifier
 ├── Persistence/
 │   ├── AppDbContext.cs   # DbContext + IUnitOfWork
@@ -297,7 +298,7 @@ forzion.tech.Tests/
 
 ### Domain Events
 
-`Treinador`, `VinculoTreinadorAluno` e `Aluno` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada):
+`Treinador`, `VinculoTreinadorAluno`, `Aluno` e `Assinatura` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada):
 
 | Evento | Levantado em |
 |--------|-------------|
@@ -306,6 +307,7 @@ forzion.tech.Tests/
 | `TreinadorInativadoEvent` | `Treinador.Inativar()` |
 | `VinculoAprovadoEvent` | `VinculoTreinadorAluno.Aprovar()` |
 | `AlunoInativadoEvent` | `Aluno.Inativar()` |
+| `AssinaturaCriadaEvent` | `Assinatura.Criar()` |
 
 Eventos são despachados sem persistência — handlers de notificação os consomem in-process.
 
@@ -519,6 +521,21 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `POST` | `/conta/senha` | `{ senhaAtual, novaSenha }` | `204` |
 | `POST` | `/conta/logout` | — | `204` (revoga JTI) |
 
+#### Exercícios — `/exercicios` (JWT obrigatório)
+
+Endpoint genérico acessível a qualquer JWT válido (sem policy `Treinador`). Subconjunto de `/treinador/exercicios` — sem PATCH, DELETE nem copiar.
+
+| Método | Rota | Body | Resposta |
+|--------|------|------|----------|
+| `GET` | `/exercicios` | `?pagina=&tamanhoPagina=` | `ListarExerciciosResponse` |
+| `POST` | `/exercicios` | `{ nome, grupoMuscular, descricao? }` | `201 ExercicioResponse` |
+
+#### Infra
+
+| Método | Rota | Auth | Resposta |
+|--------|------|------|----------|
+| `GET` | `/health` | nenhuma | `200 Healthy` |
+
 ---
 
 ### Regras de Negócio
@@ -695,11 +712,11 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 ### Testes
 
 ```
-991 testes | 0 falhas
+997 testes | 0 falhas
 
 Domain/                  → entidades, value objects, domain events, exceções, máquina de estados
 Application/             → handlers (unit), services de limite
-Infrastructure/          → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado)
+Infrastructure/          → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado, AssinaturaCriada)
 Infrastructure/Repositories/ → 62 testes de repositório com Testcontainers.PostgreSql (banco real)
 Api/Endpoints/           → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
 Integration/             → fluxo completo

@@ -79,4 +79,32 @@ internal static class EmailTemplates
               Ver fichas
             </a>
             """);
+
+    public static string AssinaturaCriada(string nomeAluno, string nomeTreinador, string nomePacote, decimal valor) =>
+        Layout(
+            "Assinatura criada!",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{nomeAluno}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Sua assinatura com o treinador <strong>{nomeTreinador}</strong> foi criada com sucesso.
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Pacote</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{nomePacote}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor mensal</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valor:N2}</td>
+              </tr>
+            </table>
+            <p style="color:#444;line-height:1.6">
+              As cobranças serão geradas mensalmente pelo seu treinador.
+              Você receberá uma notificação quando houver um pagamento pendente.
+            </p>
+            <a href="https://forzion.tech/aluno/assinatura"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver assinatura
+            </a>
+            """);
 }

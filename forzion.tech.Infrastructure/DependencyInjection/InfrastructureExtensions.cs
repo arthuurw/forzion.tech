@@ -111,6 +111,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<TreinadorReprovadoEvent>, TreinadorReprovadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoEmailHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaCriadaEvent>, AssinaturaCriadaEmailHandler>();
 
         // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaHandler>();
