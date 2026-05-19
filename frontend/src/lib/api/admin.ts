@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import type {
   TreinadorResponse,
   PlanoTreinadorResponse,
+  TierPlano,
   ExercicioResponse,
   GrupoMuscularResponse,
   PaginatedResponse,
@@ -68,11 +69,11 @@ export const adminApi = {
     return apiClient.get<PlanoTreinadorResponse[]>("/admin/planos");
   },
 
-  criarPlano(nome: string, maxAlunos: number, preco: number) {
-    return apiClient.post<PlanoTreinadorResponse>("/admin/planos", { nome, maxAlunos, preco });
+  criarPlano(nome: string, tier: TierPlano, maxAlunos: number, preco: number, descricao?: string) {
+    return apiClient.post<PlanoTreinadorResponse>("/admin/planos", { nome, tier, maxAlunos, preco, descricao });
   },
 
-  atualizarPlano(planoId: string, data: { nome?: string; maxAlunos?: number; preco?: number }) {
+  atualizarPlano(planoId: string, data: { nome?: string; tier?: TierPlano; maxAlunos?: number; preco?: number; descricao?: string | null }) {
     return apiClient.patch<PlanoTreinadorResponse>(`/admin/planos/${planoId}`, data);
   },
 
