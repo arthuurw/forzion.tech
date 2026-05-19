@@ -23,9 +23,17 @@ A plataforma revisa o cadastro. Se aprovado, o treinador recebe o status **Ativo
 
 ## 2. O Plano do Treinador
 
-Após a aprovação, a plataforma atribui ao treinador um **Plano**. O Plano define a **capacidade máxima de alunos simultâneos** que aquele treinador pode ter ativos.
+Após a aprovação, a plataforma atribui ao treinador um **Plano**. O Plano define a **capacidade máxima de alunos simultâneos** e as **funcionalidades disponíveis** para aquele treinador.
 
-Por exemplo: um Plano "Starter" pode permitir até 10 alunos. Um Plano "Pro" pode permitir até 50.
+A plataforma oferece cinco níveis de Plano (**Tier**):
+
+| Tier | Nome | Limite | Preço | Funcionalidades |
+|------|------|--------|-------|-----------------|
+| Free | Free | 10 alunos | Gratuito | Acesso à plataforma |
+| Basic | Basic | 25 alunos | R$ 50/mês | Acesso somente à plataforma |
+| Pro | Pro | 50 alunos | R$ 100/mês | Basic + e-mail |
+| ProPlus | Pro Plus | 100 alunos | R$ 200/mês | Pro + WhatsApp |
+| Elite | Elite | 300 alunos | R$ 500/mês | Pro Plus + IA |
 
 O treinador não escolhe seu próprio Plano — ele é definido e atribuído pela plataforma conforme o contrato estabelecido.
 
@@ -272,7 +280,7 @@ ALUNO (após ativo e com fichas)
 | **Treinador** | Profissional cadastrado e aprovado pela plataforma |
 | **Aluno** | Cliente do treinador, cadastrado na plataforma |
 | **Vínculo** | Relação formal e rastreável entre um Treinador e um Aluno |
-| **Plano** | Limite de alunos simultâneos de um Treinador, definido pela plataforma |
+| **Plano** | Nível de acesso (Tier) de um Treinador, definido pela plataforma. Determina o limite de alunos simultâneos e as funcionalidades disponíveis (e-mail, WhatsApp, IA). Tiers: Free, Basic, Pro, Pro Plus, Elite. |
 | **Pacote** | Configuração criada pelo Treinador que define nome, descrição e preço do atendimento. Sem limite de fichas — o controle é feito pela descrição livre. |
 | **Ficha de Treino** | Protocolo de exercícios prescrito pelo Treinador |
 | **Exercício** | Movimento individual (ex: Supino, Agachamento) com parâmetros |
