@@ -27,7 +27,7 @@ public class AtualizarPlanoTreinadorHandler(
         var plano = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoTreinadorNaoEncontradoException();
 
-        plano.Atualizar(command.Nome, command.Tier, command.MaxAlunos, command.Preco);
+        plano.Atualizar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, command.Descricao);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

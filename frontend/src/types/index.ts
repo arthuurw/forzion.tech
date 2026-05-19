@@ -141,9 +141,13 @@ export interface ExercicioResponse {
   isGlobal: boolean;
 }
 
+export type TierPlano = "Free" | "Basic" | "Pro" | "ProPlus" | "Elite";
+
 export interface PlanoTreinadorResponse {
   planoId: string;
   nome: string;
+  tier: TierPlano;
+  descricao: string | null;
   maxAlunos: number;
   preco: number;
   isAtivo?: boolean;

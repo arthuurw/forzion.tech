@@ -4,6 +4,7 @@ import Logo from "@/components/ui/Logo";
 import HowItWorks from "./_landing/HowItWorks";
 import type { PlanoTreinadorResponse } from "@/types";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import CheckIcon from "@mui/icons-material/Check";
 
 async function getPlanos(): Promise<PlanoTreinadorResponse[]> {
   try {
@@ -180,6 +181,14 @@ export default async function LandingPage() {
                               ? <>R$ {plano.preco.toFixed(2).replace(".", ",")}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
                               : "Gratuito"}
                           </Typography>
+                          {plano.descricao && (
+                            <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 0.75, textAlign: "left" }}>
+                              <CheckIcon sx={{ fontSize: 15, color: i === 1 ? "secondary.main" : "primary.main", flexShrink: 0 }} />
+                              <Typography variant="caption" sx={{ color: i === 1 ? "rgba(26,26,26,0.75)" : "rgba(255,255,255,0.65)", lineHeight: 1.4 }}>
+                                {plano.descricao}
+                              </Typography>
+                            </Box>
+                          )}
                         </CardContent>
                       </Card>
                     </Link>

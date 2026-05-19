@@ -27,7 +27,7 @@ public class CriarPlanoTreinadorHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var plano = PlanoTreinador.Criar(command.Nome, command.Tier, command.MaxAlunos, command.Preco);
+        var plano = PlanoTreinador.Criar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, command.Descricao);
 
         await planoRepository.AdicionarAsync(plano, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

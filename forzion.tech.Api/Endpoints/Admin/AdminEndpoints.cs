@@ -183,7 +183,7 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarPlanoTreinadorCommand(request.Nome, request.Tier, request.MaxAlunos, request.Preco), cancellationToken);
+                new CriarPlanoTreinadorCommand(request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
 
             return Results.Created($"/admin/planos/{result.PlanoId}", result);
         })
@@ -198,7 +198,7 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarPlanoTreinadorCommand(id, request.Nome, request.Tier, request.MaxAlunos, request.Preco), cancellationToken);
+                new AtualizarPlanoTreinadorCommand(id, request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
             return Results.Ok(result);
         })
         .WithSummary("Atualiza nome, maxAlunos e/ou preço de um plano")
@@ -530,8 +530,8 @@ public record AprovarTreinadorRequest(string? Observacao = null);
 public record ReprovarTreinadorRequest(string? Observacao = null);
 public record InativarTreinadorRequest(string? Observacao = null);
 public record AtribuirPlanoRequest(Guid PlanoId);
-public record CriarPlanoTreinadorRequest(string Nome, forzion.tech.Domain.Enums.TierPlano Tier, int MaxAlunos, decimal Preco);
-public record AtualizarPlanoTreinadorRequest(string? Nome, forzion.tech.Domain.Enums.TierPlano? Tier, int? MaxAlunos, decimal? Preco);
+public record CriarPlanoTreinadorRequest(string Nome, forzion.tech.Domain.Enums.TierPlano Tier, int MaxAlunos, decimal Preco, string? Descricao = null);
+public record AtualizarPlanoTreinadorRequest(string? Nome, forzion.tech.Domain.Enums.TierPlano? Tier, int? MaxAlunos, decimal? Preco, string? Descricao = null);
 public record CriarGrupoMuscularRequest(string Nome);
 public record AtualizarGrupoMuscularRequest(string Nome);
 public record CriarExercicioGlobalRequest(string Nome, forzion.tech.Domain.Enums.TipoGrupoMuscular GrupoMuscular, string? Descricao);

@@ -133,13 +133,13 @@ public class DataSeeder(
         (GrupoMuscularEnum.FullBody, "Deadlift Romeno com Remada", "Stiff seguido de remada curvada em único movimento contínuo."),
     ];
 
-    private static readonly (TierPlanoEnum Tier, string Nome, int MaxAlunos, decimal Preco)[] PlanosPadrao =
+    private static readonly (TierPlanoEnum Tier, string Nome, int MaxAlunos, decimal Preco, string? Descricao)[] PlanosPadrao =
     [
-        (TierPlanoEnum.Free,    "Free",     10,  0m),
-        (TierPlanoEnum.Basic,   "Basic",    25,  50m),
-        (TierPlanoEnum.Pro,     "Pro",      50,  100m),
-        (TierPlanoEnum.ProPlus, "Pro Plus", 100, 200m),
-        (TierPlanoEnum.Elite,   "Elite",    300, 500m),
+        (TierPlanoEnum.Free,    "Free",     10,  0m,    null),
+        (TierPlanoEnum.Basic,   "Basic",    25,  50m,   "Acesso somente à plataforma"),
+        (TierPlanoEnum.Pro,     "Pro",      50,  100m,  "Basic + e-mail"),
+        (TierPlanoEnum.ProPlus, "Pro Plus", 100, 200m,  "Pro + WhatsApp"),
+        (TierPlanoEnum.Elite,   "Elite",    300, 500m,  "Pro Plus + IA"),
     ];
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -159,7 +159,7 @@ public class DataSeeder(
 
         var novos = PlanosPadrao
             .Where(p => !existentes.Contains(p.Tier))
-            .Select(p => PlanoTreinador.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco))
+            .Select(p => PlanoTreinador.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, p.Descricao))
             .ToList();
 
         if (novos.Count == 0)
