@@ -246,8 +246,8 @@ describe("adminApi.atribuirPlano", () => {
 
 describe("adminApi.criarPlano", () => {
   it("chama POST /admin/planos com dados", () => {
-    adminApi.criarPlano("Pro", 50, 299.9);
-    expect(mockPost).toHaveBeenCalledWith("/admin/planos", { nome: "Pro", maxAlunos: 50, preco: 299.9 });
+    adminApi.criarPlano("Pro", "Pro", 50, 299.9);
+    expect(mockPost).toHaveBeenCalledWith("/admin/planos", { nome: "Pro", tier: "Pro", maxAlunos: 50, preco: 299.9, descricao: undefined });
   });
 });
 
