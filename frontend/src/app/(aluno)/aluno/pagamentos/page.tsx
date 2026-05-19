@@ -79,7 +79,7 @@ function TabelaPagamentos({ pagamentos, loading, error, onAtualizar }: Props) {
       <Dialog open={!!pagamentoAberto} onClose={() => setPagamentoAberto(null)} maxWidth="xs" fullWidth>
         <DialogTitle>
           {pagamentoAberto?.metodoPagamento === "Cartao" ? "Pagamento com cartão" : "Pagamento via Pix"}
-          <IconButton onClick={() => setPagamentoAberto(null)} sx={{ position: "absolute", right: 8, top: 8 }}>
+          <IconButton onClick={() => setPagamentoAberto(null)} sx={{ position: "absolute", right: 8, top: 8 }} aria-label="Fechar">
             <CloseIcon />
           </IconButton>
         </DialogTitle>

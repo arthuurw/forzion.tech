@@ -46,6 +46,8 @@ public class AlunoConfiguration : IEntityTypeConfiguration<Aluno>
         builder.Property(a => a.Doencas).HasMaxLength(500);
         builder.Property(a => a.ObservacoesAdicionais).HasMaxLength(1000);
 
+        builder.HasIndex(a => a.Status);
+
         builder.Property(a => a.CreatedAt).IsRequired();
         builder.Property(a => a.UpdatedAt);
     }

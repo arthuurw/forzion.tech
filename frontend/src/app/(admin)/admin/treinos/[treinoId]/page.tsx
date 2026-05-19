@@ -46,7 +46,7 @@ export default function DetalheTreinoAdminPage() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-        <IconButton onClick={() => router.back()} size="small">
+        <IconButton onClick={() => router.back()} size="small" aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>

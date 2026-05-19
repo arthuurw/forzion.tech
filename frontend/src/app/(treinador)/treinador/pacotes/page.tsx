@@ -90,8 +90,10 @@ export default function PacotesTreinadorPage() {
       setDeleteTarget(null);
       load();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(msg ?? "Erro ao excluir pacote.");
+      const detail = err instanceof Object && "response" in err
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail ?? "Erro ao excluir pacote.");
     } finally {
       setDeleting(false);
     }

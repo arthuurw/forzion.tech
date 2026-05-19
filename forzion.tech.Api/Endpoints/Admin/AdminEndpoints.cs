@@ -58,14 +58,15 @@ public static class AdminEndpoints
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            _ = Enum.TryParse<TreinadorStatus>(httpContext.Request.Query["status"], out var status);
-            var hasStatus = httpContext.Request.Query.ContainsKey("status");
+            var statusString = httpContext.Request.Query["status"].ToString();
+            TreinadorStatus status = default;
+            var statusParsed = !string.IsNullOrEmpty(statusString) && Enum.TryParse<TreinadorStatus>(statusString, ignoreCase: true, out status);
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
 
-            var result = await handler.HandleAsync(hasStatus ? status : null, p, tp, cancellationToken);
+            var result = await handler.HandleAsync(statusParsed ? status : null, p, tp, cancellationToken);
             return Results.Ok(result);
         })
         .WithSummary("Lista treinadores com filtro opcional por status")
@@ -465,11 +466,12 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var pagination = httpContext.ObterPaginacaoDoQuery();
-            _ = Enum.TryParse<VinculoStatus>(httpContext.Request.Query["status"], out var status);
-            var hasStatus = httpContext.Request.Query.ContainsKey("status");
+            var statusString = httpContext.Request.Query["status"].ToString();
+            VinculoStatus status = default;
+            var statusParsed = !string.IsNullOrEmpty(statusString) && Enum.TryParse<VinculoStatus>(statusString, ignoreCase: true, out status);
 
             var result = await handler.HandleAsync(
-                id, hasStatus ? status : null, pagination.Pagina, pagination.TamanhoPagina, cancellationToken);
+                id, statusParsed ? status : null, pagination.Pagina, pagination.TamanhoPagina, cancellationToken);
             return Results.Ok(result);
         })
         .WithSummary("Lista vínculos de um treinador com paginação e filtro opcional por status")

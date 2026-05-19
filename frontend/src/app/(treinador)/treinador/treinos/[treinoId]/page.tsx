@@ -311,7 +311,7 @@ export default function DetalheFichaPage() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-        <IconButton onClick={() => router.push("/treinador/treinos")} size="small">
+        <IconButton onClick={() => router.push("/treinador/treinos")} size="small" aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>

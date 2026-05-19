@@ -215,8 +215,9 @@ public static class TreinadorEndpoints
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            _ = Enum.TryParse<VinculoStatus>(httpContext.Request.Query["status"], out var status);
-            var hasStatus = httpContext.Request.Query.ContainsKey("status");
+            var statusString = httpContext.Request.Query["status"].ToString();
+            VinculoStatus status = default;
+            var statusParsed = !string.IsNullOrEmpty(statusString) && Enum.TryParse<VinculoStatus>(statusString, ignoreCase: true, out status);
             _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
             _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
             var p = pagina < 1 ? 1 : pagina;
@@ -224,7 +225,7 @@ public static class TreinadorEndpoints
 
             var result = await handler.HandleAsync(
                 userContext.PerfilId,
-                hasStatus ? status : null,
+                statusParsed ? status : null,
                 p,
                 tp,
                 cancellationToken).ConfigureAwait(false);

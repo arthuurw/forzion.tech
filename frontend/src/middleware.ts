@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { TipoConta } from "@/types";
+import { extractTipoConta } from "@/lib/auth/jwt";
+
+export { extractTipoConta };
 
 const PUBLIC_PATHS = ["/", "/login", "/cadastro"];
 
@@ -8,19 +11,6 @@ const AREA_BY_TIPO: Record<TipoConta, string> = {
   Treinador: "/treinador",
   Aluno: "/aluno",
 };
-
-export function extractTipoConta(token: string): TipoConta | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json = JSON.parse(atob(payload)) as { tipo_conta?: string; exp?: number };
-    if (json.exp && json.exp * 1000 < Date.now()) return null;
-    return (json.tipo_conta as TipoConta) ?? null;
-  } catch {
-    return null;
-  }
-}
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

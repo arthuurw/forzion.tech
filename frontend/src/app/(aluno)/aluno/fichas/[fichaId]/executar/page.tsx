@@ -161,7 +161,7 @@ export default function ExecutarFichaPage() {
     <Box>
       {/* Header */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-        <IconButton onClick={() => router.push(`/aluno/fichas/${fichaId}`)} size="small">
+        <IconButton onClick={() => router.push(`/aluno/fichas/${fichaId}`)} size="small" aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
