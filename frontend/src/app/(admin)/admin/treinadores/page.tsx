@@ -321,12 +321,20 @@ export default function TreinadoresAdminPage() {
       <Dialog open={!!planoDialog} onClose={() => setPlanoDialog(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Atribuir plano — {planoDialog?.nome}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
+          {planoDialog?.planoTreinadorId && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+              Plano atual:{" "}
+              <strong>
+                {planos.find((p) => p.planoId === planoDialog.planoTreinadorId)?.nome ?? "carregando..."}
+              </strong>
+            </Typography>
+          )}
           <Autocomplete
             options={planos}
             getOptionLabel={(p) => `${p.nome} (até ${p.maxAlunos} alunos)`}
             value={selectedPlano}
             onChange={(_, v) => setSelectedPlano(v)}
-            renderInput={(params) => <TextField {...params} label="Plano" size="small" />}
+            renderInput={(params) => <TextField {...params} label="Novo plano" size="small" />}
           />
         </DialogContent>
         <DialogActions>

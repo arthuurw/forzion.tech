@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Box, Typography, Tabs, Tab, Card, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   Stack, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip,
@@ -64,6 +64,8 @@ export default function ExerciciosTreinadorPage() {
     });
   }, [tab]);
 
+  const loadIdRef = useRef(0);
+
   const [exercicios, setExercicios] = useState<ExercicioResponse[]>([]);
   const [grupos, setGrupos] = useState<GrupoMuscularResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -93,6 +95,7 @@ export default function ExerciciosTreinadorPage() {
   const isGlobal = tab === 1;
 
   const load = useCallback(async () => {
+    const callId = ++loadIdRef.current;
     setLoading(true);
     setError("");
     try {
@@ -104,11 +107,14 @@ export default function ExerciciosTreinadorPage() {
         grupoMuscular: filtroGrupo || undefined,
         ordenarPor,
       });
+      if (callId !== loadIdRef.current) return;
       setExercicios(res.data.items);
       setTotal(res.data.total);
     } catch {
+      if (callId !== loadIdRef.current) return;
       setError("Erro ao carregar exercícios.");
     } finally {
+      if (callId !== loadIdRef.current) return;
       setLoading(false);
     }
   }, [isGlobal, page, pageSize, filtroNome, filtroGrupo, ordenarPor]);
@@ -130,7 +136,7 @@ export default function ExerciciosTreinadorPage() {
     try {
       const res = await treinadorApi.listExercicios({ global: false, pagina: 1, tamanhoPagina: 500 });
       setMeusNomes(new Set(res.data.items.map((e: ExercicioResponse) => e.nome.toLowerCase())));
-    } catch { /* silent */ }
+    } catch { /* validação de duplicatas desabilitada — meusNomes permanece vazio */ }
   }, []);
 
   useEffect(() => {
