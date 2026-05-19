@@ -9,7 +9,7 @@ import CheckIcon from "@mui/icons-material/Check";
 async function getPlanos(): Promise<PlanoTreinadorResponse[]> {
   try {
     const base = process.env.API_BASE_URL ?? "https://localhost:7220";
-    const res = await fetch(`${base}/auth/planos`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${base}/auth/planos`, { cache: "no-store" });
     if (!res.ok) return [];
     return res.json();
   } catch {
