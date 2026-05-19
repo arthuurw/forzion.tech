@@ -15,6 +15,11 @@ public class PlanoTreinadorConfiguration : IEntityTypeConfiguration<PlanoTreinad
             .HasMaxLength(100)
             .IsRequired();
 
+        builder.Property(p => p.Tier)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
         builder.Property(p => p.MaxAlunos).IsRequired();
 
         builder.Property(p => p.Preco)

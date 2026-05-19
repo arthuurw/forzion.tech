@@ -29,7 +29,7 @@ public class LimiteTreinadorServiceTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(PlanoTreinador.Criar("Starter", 10, 99m));
+            .ReturnsAsync(PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99m));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
         var act = async () => await _service.ValidarAsync(treinadorId);
@@ -46,7 +46,7 @@ public class LimiteTreinadorServiceTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(PlanoTreinador.Criar("Starter", 5, 99m));
+            .ReturnsAsync(PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 99m));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
         var act = async () => await _service.ValidarAsync(treinadorId);

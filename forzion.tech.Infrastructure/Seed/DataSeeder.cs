@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using GrupoMuscularEnum = forzion.tech.Domain.Enums.TipoGrupoMuscular;
+using TierPlanoEnum = forzion.tech.Domain.Enums.TierPlano;
 
 namespace forzion.tech.Infrastructure.Seed;
 
@@ -132,11 +133,42 @@ public class DataSeeder(
         (GrupoMuscularEnum.FullBody, "Deadlift Romeno com Remada", "Stiff seguido de remada curvada em único movimento contínuo."),
     ];
 
+    private static readonly (TierPlanoEnum Tier, string Nome, int MaxAlunos, decimal Preco)[] PlanosPadrao =
+    [
+        (TierPlanoEnum.Free,    "Free",     10,  0m),
+        (TierPlanoEnum.Basic,   "Basic",    25,  50m),
+        (TierPlanoEnum.Pro,     "Pro",      50,  100m),
+        (TierPlanoEnum.ProPlus, "Pro Plus", 100, 200m),
+        (TierPlanoEnum.Elite,   "Elite",    300, 500m),
+    ];
+
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
         await SeedGruposMuscularesAsync(cancellationToken).ConfigureAwait(false);
         await SeedExerciciosGlobaisAsync(cancellationToken).ConfigureAwait(false);
+        await SeedPlanosTreinadorAsync(cancellationToken).ConfigureAwait(false);
         await SeedAdminAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SeedPlanosTreinadorAsync(CancellationToken cancellationToken)
+    {
+        var existentes = await context.PlanosTreinador
+            .Select(p => p.Tier)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var novos = PlanosPadrao
+            .Where(p => !existentes.Contains(p.Tier))
+            .Select(p => PlanoTreinador.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco))
+            .ToList();
+
+        if (novos.Count == 0)
+            return;
+
+        context.PlanosTreinador.AddRange(novos);
+        await context.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Planos de treinador criados: {Planos}", string.Join(", ", novos.Select(p => p.Nome)));
     }
 
     private async Task SeedGruposMuscularesAsync(CancellationToken cancellationToken)

@@ -104,7 +104,7 @@ public class FluxoCompletoTests
     public async Task AprovarVinculo_DentroDoLimite_AprovaSemExcecao()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var plano = PlanoTreinador.Criar("Starter", 10, 0);
+        var plano = PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 0);
         treinador.AtribuirPlano(plano.Id);
         var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
         var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);

@@ -28,7 +28,7 @@ public class CriarPlanoTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_CriaERetornaResponse()
     {
-        var command = new CriarPlanoTreinadorCommand("Starter", 10, 99.90m);
+        var command = new CriarPlanoTreinadorCommand("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m);
 
         var result = await _handler.HandleAsync(command);
 
