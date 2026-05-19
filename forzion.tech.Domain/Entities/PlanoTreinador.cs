@@ -8,6 +8,7 @@ public class PlanoTreinador
     public Guid Id { get; private set; }
     public string Nome { get; private set; } = string.Empty;
     public TierPlano Tier { get; private set; }
+    public string? Descricao { get; private set; }
     public int MaxAlunos { get; private set; }
     public decimal Preco { get; private set; }
     public bool IsAtivo { get; private set; }
@@ -16,7 +17,7 @@ public class PlanoTreinador
 
     private PlanoTreinador() { }
 
-    public static PlanoTreinador Criar(string nome, TierPlano tier, int maxAlunos, decimal preco)
+    public static PlanoTreinador Criar(string nome, TierPlano tier, int maxAlunos, decimal preco, string? descricao = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
@@ -32,6 +33,7 @@ public class PlanoTreinador
             Id = Guid.NewGuid(),
             Nome = nome.Trim(),
             Tier = tier,
+            Descricao = descricao?.Trim(),
             MaxAlunos = maxAlunos,
             Preco = preco,
             IsAtivo = true,
@@ -39,7 +41,7 @@ public class PlanoTreinador
         };
     }
 
-    public void Atualizar(string? nome, TierPlano? tier, int? maxAlunos, decimal? preco)
+    public void Atualizar(string? nome, TierPlano? tier, int? maxAlunos, decimal? preco, string? descricao = null)
     {
         if (nome is not null)
         {
@@ -66,6 +68,8 @@ public class PlanoTreinador
                 throw new DomainException("O preço não pode ser negativo.");
             Preco = preco.Value;
         }
+
+        Descricao = descricao?.Trim() ?? Descricao;
 
         UpdatedAt = DateTime.UtcNow;
     }

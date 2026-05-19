@@ -11,10 +11,11 @@ public record PlanoTreinadorResponse(
     decimal Preco,
     bool IsAtivo,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string? Descricao = null);
 
 public static class PlanoTreinadorResponseExtensions
 {
     public static PlanoTreinadorResponse ToResponse(PlanoTreinador plano) => new(
-        plano.Id, plano.Nome, plano.Tier, plano.MaxAlunos, plano.Preco, plano.IsAtivo, plano.CreatedAt, plano.UpdatedAt);
+        plano.Id, plano.Nome, plano.Tier, plano.MaxAlunos, plano.Preco, plano.IsAtivo, plano.CreatedAt, plano.UpdatedAt, plano.Descricao);
 }
