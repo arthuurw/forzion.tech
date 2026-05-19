@@ -182,7 +182,7 @@ export default async function LandingPage() {
                               : "Gratuito"}
                           </Typography>
                           {plano.descricao && (
-                            <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 0.75, textAlign: "left" }}>
+                            <Box sx={{ mt: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75 }}>
                               <CheckIcon sx={{ fontSize: 15, color: i === 1 ? "secondary.main" : "primary.main", flexShrink: 0 }} />
                               <Typography variant="caption" sx={{ color: i === 1 ? "rgba(26,26,26,0.75)" : "rgba(255,255,255,0.65)", lineHeight: 1.4 }}>
                                 {plano.descricao}
