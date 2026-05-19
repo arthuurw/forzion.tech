@@ -28,7 +28,7 @@ public class AtribuirPlanoHandlerTests
     public async Task HandleAsync_PlanoETreinadorExistem_AtribuiPlano()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var plano = PlanoTreinador.Criar("Starter", 5, 0);
+        var plano = PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 0);
         var adminId = Guid.NewGuid();
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);

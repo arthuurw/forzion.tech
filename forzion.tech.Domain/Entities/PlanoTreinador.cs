@@ -1,3 +1,4 @@
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Domain.Entities;
@@ -6,6 +7,7 @@ public class PlanoTreinador
 {
     public Guid Id { get; private set; }
     public string Nome { get; private set; } = string.Empty;
+    public TierPlano Tier { get; private set; }
     public int MaxAlunos { get; private set; }
     public decimal Preco { get; private set; }
     public bool IsAtivo { get; private set; }
@@ -14,7 +16,7 @@ public class PlanoTreinador
 
     private PlanoTreinador() { }
 
-    public static PlanoTreinador Criar(string nome, int maxAlunos, decimal preco)
+    public static PlanoTreinador Criar(string nome, TierPlano tier, int maxAlunos, decimal preco)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
@@ -29,6 +31,7 @@ public class PlanoTreinador
         {
             Id = Guid.NewGuid(),
             Nome = nome.Trim(),
+            Tier = tier,
             MaxAlunos = maxAlunos,
             Preco = preco,
             IsAtivo = true,
@@ -36,7 +39,7 @@ public class PlanoTreinador
         };
     }
 
-    public void Atualizar(string? nome, int? maxAlunos, decimal? preco)
+    public void Atualizar(string? nome, TierPlano? tier, int? maxAlunos, decimal? preco)
     {
         if (nome is not null)
         {
@@ -46,6 +49,9 @@ public class PlanoTreinador
                 throw new DomainException("O nome deve ter no máximo 100 caracteres.");
             Nome = nome.Trim();
         }
+
+        if (tier is not null)
+            Tier = tier.Value;
 
         if (maxAlunos is not null)
         {

@@ -27,10 +27,10 @@ public class AtualizarPlanoTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetornaResponse()
     {
-        var plano = PlanoTreinador.Criar("Starter", 10, 99.90m);
+        var plano = PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m);
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
-        var result = await _handler.HandleAsync(new AtualizarPlanoTreinadorCommand(plano.Id, "Pro", 20, 199.90m));
+        var result = await _handler.HandleAsync(new AtualizarPlanoTreinadorCommand(plano.Id, "Pro", null, 20, 199.90m));
 
         result.Nome.Should().Be("Pro");
         result.MaxAlunos.Should().Be(20);
@@ -41,10 +41,10 @@ public class AtualizarPlanoTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_ApenasNome_AtualizaSoNome()
     {
-        var plano = PlanoTreinador.Criar("Starter", 10, 99.90m);
+        var plano = PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m);
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
-        var result = await _handler.HandleAsync(new AtualizarPlanoTreinadorCommand(plano.Id, "Pro", null, null));
+        var result = await _handler.HandleAsync(new AtualizarPlanoTreinadorCommand(plano.Id, "Pro", null, null, null));
 
         result.Nome.Should().Be("Pro");
         result.MaxAlunos.Should().Be(10);
@@ -56,7 +56,7 @@ public class AtualizarPlanoTreinadorHandlerTests
     {
         _planoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((PlanoTreinador?)null);
 
-        var act = async () => await _handler.HandleAsync(new AtualizarPlanoTreinadorCommand(Guid.NewGuid(), "Pro", null, null));
+        var act = async () => await _handler.HandleAsync(new AtualizarPlanoTreinadorCommand(Guid.NewGuid(), "Pro", null, null, null));
         await act.Should().ThrowAsync<DomainException>()
             .WithMessage("*não encontrado*");
     }

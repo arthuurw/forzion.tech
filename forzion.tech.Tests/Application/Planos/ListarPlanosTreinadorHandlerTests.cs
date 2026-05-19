@@ -21,8 +21,8 @@ public class ListarPlanosTreinadorHandlerTests
     {
         var planos = new List<PlanoTreinador>
         {
-            PlanoTreinador.Criar("Starter", 5, 49.90m),
-            PlanoTreinador.Criar("Pro", 20, 149.90m),
+            PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 49.90m),
+            PlanoTreinador.Criar("Pro", forzion.tech.Domain.Enums.TierPlano.Pro, 20, 149.90m),
         };
         _planoRepo.Setup(r => r.ListarAsync(It.IsAny<CancellationToken>())).ReturnsAsync(planos);
 
@@ -45,7 +45,7 @@ public class ListarPlanosTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_MapeiaCamposCorretamente()
     {
-        var plano = PlanoTreinador.Criar("Starter", 10, 99.90m);
+        var plano = PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m);
         _planoRepo.Setup(r => r.ListarAsync(It.IsAny<CancellationToken>())).ReturnsAsync([plano]);
 
         var result = await _handler.HandleAsync();

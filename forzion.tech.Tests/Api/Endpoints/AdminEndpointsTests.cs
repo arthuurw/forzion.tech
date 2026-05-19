@@ -75,7 +75,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         TreinadorId, Guid.NewGuid(), "Carlos", TreinadorStatus.AguardandoAprovacao, null, DateTime.UtcNow);
 
     private static readonly PlanoTreinadorResponse RespostaPlano = new(
-        Guid.NewGuid(), "Starter", 10, 99m, true, DateTime.UtcNow, null);
+        Guid.NewGuid(), "Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99m, true, DateTime.UtcNow, null);
 
     private static readonly GrupoMuscularResponse RespostaGrupo = new(
         Guid.NewGuid(), "Peitoral", DateTime.UtcNow, null);
