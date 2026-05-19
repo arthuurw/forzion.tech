@@ -237,6 +237,8 @@ frontend/
 │   ├── middleware.ts                   # Proteção de rotas server-side
 │   └── types/
 │       └── index.ts                    # Types e interfaces compartilhados
+│                                       # TierPlano: "Free" | "Basic" | "Pro" | "ProPlus" | "Elite"
+│                                       # PlanoTreinadorResponse: inclui tier e descricao (nullable)
 │
 ├── vitest.config.mts                   # Config Vitest
 ├── next.config.ts                      # Headers de segurança, output standalone
@@ -249,7 +251,7 @@ frontend/
 
 | Path | Perfil | Descrição |
 |------|--------|-----------|
-| `/` | público | Landing page — hero, planos, como funciona, CTA de cadastro |
+| `/` | público | Landing page — hero, planos (com tier, preço e `descricao` vindos da API), como funciona, CTA de cadastro |
 | `/login` | público | Formulário de login |
 | `/cadastro/treinador` | público | Cadastro de treinador (seleciona plano) |
 | `/cadastro/aluno` | público | Cadastro de aluno (seleciona treinador + pacote) |
@@ -259,7 +261,7 @@ frontend/
 | `/admin/alunos` | SystemAdmin | Lista todos os alunos com filtros por nome e status |
 | `/admin/alunos/[alunoId]` | SystemAdmin | Detalhe do aluno — tabs: Dados + Vínculo, Fichas, Execuções, Progressão |
 | `/admin/treinos/[treinoId]` | SystemAdmin | Detalhe de treino (read-only) |
-| `/admin/planos` | SystemAdmin | CRUD planos globais (nome, maxAlunos, preço, ativo) |
+| `/admin/planos` | SystemAdmin | CRUD planos globais (nome, tier, maxAlunos, preço, descricao, ativo) |
 | `/admin/grupos-musculares` | SystemAdmin | CRUD grupos musculares |
 | `/admin/exercicios` | SystemAdmin | Biblioteca global de exercícios (CRUD + grupo muscular) |
 | `/treinador` | Treinador | Dashboard — stat cards, donut alunos por status, vínculos pendentes inline |
