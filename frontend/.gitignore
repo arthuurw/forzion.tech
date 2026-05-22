@@ -12,6 +12,15 @@
 
 # testing
 /coverage
+/test-results.json
+/test-results/
+/playwright-report/
+/.lighthouseci/
+/storybook-static/
+/.stryker-tmp/
+/pacts/
+/reports/
+count-tests.cjs
 
 # next.js
 /.next/

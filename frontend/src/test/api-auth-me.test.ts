@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeAll } from "vitest";
 import { SignJWT } from "jose";
 import { GET } from "@/app/api/auth/me/route";
