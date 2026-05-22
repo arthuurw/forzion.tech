@@ -290,12 +290,47 @@ strategy:
 }
 ```
 
+## 5.1 Workflow de desenvolvimento
+
+**Regras invariáveis** (sem exceção):
+
+| Item | Padrão |
+|------|--------|
+| Branch base | `homolog` (apenas centralizador, sem dev direto) |
+| Branch por fase | `chore/harness-fase<N>-<slug-kebab>` |
+| Commits | Conventional Commits (`chore(frontend):`, `test(frontend):`, `feat(frontend):`) |
+| Commits parciais | permitidos dentro da branch (squash no merge) |
+| PR título | `[Harness Fase <N>] <título>` |
+| PR body | link plano + checklist do escopo + resultado validação |
+| Merge | squash → 1 commit por fase em `homolog` |
+| Branch após merge | deletado |
+
+**Validação obrigatória (pre-commit hook + CI)**:
+
+```
+npm test               # vitest run, todos verdes
+npx tsc --noEmit       # zero erros tipo
+npm run lint           # eslint, zero erros
+```
+
+Pre-commit local via husky bloqueia commit se qualquer um falhar.
+CI no GH Actions repete validação no push, bloqueia merge se falhar.
+Nenhum bypass: `--no-verify` proibido.
+
+**Status fases concluídas**:
+
+| Fase | Commit | Branch usado |
+|------|--------|--------------|
+| 0 — Limpeza jsdom | `6a3a636` | direto em `homolog` (legado, antes da regra) |
+
+A partir da Fase 1, **toda** mudança via branch + PR.
+
 ## 6. Fases
 
 | # | Escopo | Esforço | PR |
 |---|--------|---------|----|
 | 0 | Limpeza: remove happy-dom, gitignore, jsdom default | 1h | #1 |
-| 1 | Setup centralizado + determinismo (time/random/uuid/motion) + mocks globais | 5h | #2 |
+| 1 | Setup centralizado + determinismo (time/random/uuid/motion) + mocks globais + ESLint base + husky pre-commit | 6h | #2 |
 | 2 | Vitest projects + coverage per-path + API routes habilitada | 4h | #3 |
 | 3 | MSW + OpenAPI codegen + factories zod + `renderWithProviders` | 1.5d | #4 |
 | 4 | Property-based em zod schemas + utils | 1d | #5 |
