@@ -60,7 +60,11 @@ nunit-*.xml
 /.vs
 
 # Configs locais (não versionar — segredos via user secrets / env vars)
-/.claude
+/.claude/settings.local.json
+/.claude/projects/
+/.claude/shell-snapshots/
+/.claude/statsig/
+/.claude/todos/
 
 # Artefatos de sessão AI (gerados por skills, não pertencem ao repo)
 .security-memory.md
