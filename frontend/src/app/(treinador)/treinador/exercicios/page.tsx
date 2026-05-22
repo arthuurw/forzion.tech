@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Box, Typography, Tabs, Tab, Card, Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -344,7 +344,7 @@ export default function ExerciciosTreinadorPage() {
       </Card>
 
       {/* Criar */}
-      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth>
+      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo exercício</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -365,7 +365,7 @@ export default function ExerciciosTreinadorPage() {
       </Dialog>
 
       {/* Editar */}
-      <Dialog open={!!editEx} onClose={() => setEditEx(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!editEx} onClose={() => setEditEx(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar — {editEx?.nome}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>

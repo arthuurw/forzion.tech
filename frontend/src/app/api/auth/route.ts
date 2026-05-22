@@ -43,8 +43,9 @@ export async function POST(request: NextRequest) {
     maxAge,
   };
 
-  const response = NextResponse.json(data);
-  response.cookies.set("token", data.token, { ...baseOpts, httpOnly: true });
+  const { token, ...clientSafeData } = data;
+  const response = NextResponse.json(clientSafeData);
+  response.cookies.set("token", token, { ...baseOpts, httpOnly: true });
   response.cookies.set("session_guard", "1", { ...baseOpts, httpOnly: true });
 
   return response;

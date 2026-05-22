@@ -15,27 +15,34 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const carregar = async () => {
-    try {
-      const res = await pagamentoApi.obterPagamento(pagamentoId);
-      setPagamento(res.data);
-      if (res.data.status === "Pago") {
-        clearInterval(intervalRef.current!);
-        onPago?.();
-      }
-    } catch {
-      // silencia erros de polling
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+
+    const carregar = async () => {
+      try {
+        const res = await pagamentoApi.obterPagamento(pagamentoId);
+        if (!active) return;
+        setPagamento(res.data);
+        if (res.data.status === "Pago") {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          onPago?.();
+        }
+      } catch {
+        // silencia erros transitórios de polling
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
     carregar();
     intervalRef.current = setInterval(carregar, 30000);
-    return () => clearInterval(intervalRef.current!);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagamentoId]);
+
+    return () => {
+      active = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    };
+  }, [pagamentoId, onPago]);
 
   if (loading) return <CircularProgress />;
   if (!pagamento) return null;
@@ -75,7 +82,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
             component="img"
             src={pagamento.pixQrCodeUrl}
             alt="QR Code Pix"
-            sx={{ width: 220, height: 220 }}
+            sx={{ width: "100%", maxWidth: 220, height: "auto", aspectRatio: "1 / 1" }}
           />
         )}
 
@@ -99,7 +106,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
             <Button
               size="small"
               sx={{ mt: 1 }}
-              onClick={() => navigator.clipboard.writeText(pagamento.pixQrCode!)}
+              onClick={() => { navigator.clipboard.writeText(pagamento.pixQrCode!).catch(() => {}); }}
             >
               Copiar código
             </Button>

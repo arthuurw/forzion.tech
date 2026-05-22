@@ -108,7 +108,7 @@ export default function DetalheAlunoPage() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-        <IconButton onClick={() => router.push("/treinador/alunos")} size="small" aria-label="Voltar">
+        <IconButton onClick={() => router.push("/treinador/alunos")} aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
@@ -200,6 +200,7 @@ export default function DetalheAlunoPage() {
                 onAction={openVincular}
               />
             ) : (
+              <Box sx={{ overflowX: "auto" }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -216,6 +217,7 @@ export default function DetalheAlunoPage() {
                   ))}
                 </TableBody>
               </Table>
+              </Box>
             )}
           </Card>
 
@@ -223,7 +225,7 @@ export default function DetalheAlunoPage() {
         </>
       )}
 
-      <Dialog open={vincularOpen} onClose={() => setVincularOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={vincularOpen} onClose={() => setVincularOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Vincular ficha a {aluno?.nome}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Autocomplete
