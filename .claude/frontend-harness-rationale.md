@@ -702,6 +702,107 @@ Implementar a **camada de tooling** prevista no plano original (commitlint, lint
 
 ---
 
+## Fase 8 — Storybook 10 + 4 stories piloto
+
+**Status**: concluída (branch `chore/harness-fase8-storybook`).
+
+### Objetivo
+
+Estabelecer catálogo de componentes com Storybook 10 (compatível Next 16 + React 19), integrado a MSW para mock de rede e addon a11y para feedback inline de acessibilidade.
+
+### Por que
+
+#### Versão Storybook 10 (não 8)
+
+- Plano original previa Storybook 8 (`@storybook/nextjs@^8`).
+- Storybook 8 peer requer `next@^13.5 || ^14 || ^15` — incompatível com Next 16 que o projeto usa.
+- Storybook 10.4 suporta `next@^14.1 || ^15 || ^16` e React 19. Migração de versão obrigatória.
+- Estrutura mudou: addons `essentials` + `interactions` foram consolidados no core; só precisamos `addon-a11y` explícito.
+
+#### MSW addon
+
+- `msw-storybook-addon` reutiliza os mesmos handlers que MSW server (`src/test/msw/handlers/`). Single source of truth.
+- Stories que renderizam componentes que fazem fetch (ex: AuthProvider) ganham mock automático sem reimplementar.
+- Service Worker gerado em `public/mockServiceWorker.js` via `npx msw init public/`.
+
+#### Theme + providers
+
+- `preview.tsx` envolve toda story em `ThemeProvider` MUI v9 — stories veem o tema do projeto, não MUI default.
+- Decisão: **não envolver em AuthProvider/SnackbarProvider por padrão**. Stories que precisam ativam via decorator local. Razão: stories são unidade isolada; auth/snackbar leak entre stories.
+
+#### Stories piloto
+
+4 componentes UI puros sem deps externas escolhidos como piloto:
+- `StatusChip` — 4 stories (3 estados + tamanho medium)
+- `AlertBanner` — 6 stories (4 severities + sem título + fechado)
+- `LoadingSpinner` — 2 stories (inline + fullPage)
+- `EmptyState` — 2 stories (com/sem ação)
+
+Total: **14 stories** demonstrando o padrão.
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Catálogo visual versionado** | Cada componente UI tem estados documentados como código |
+| **A11y feedback inline** | `addon-a11y` mostra violações axe direto no painel da story |
+| **MSW reuso** | Stories que fazem fetch usam mesmos handlers dos testes integration |
+| **Type-safe stories** | `Meta<typeof Component>` + `StoryObj` garantem tipagem em args |
+| **`autodocs` automático** | Tag gera documentação Markdown a partir de tipos TS + JSDoc |
+| **`fullscreen` layout** | LoadingSpinner.FullPage usa parameter `layout: "fullscreen"` |
+| **Build em CI (Node 22)** | Apesar de exigir Node ≥20.19 (>local 20.17), CI tem 22 |
+
+### Trade-offs aceitos
+
+- **Storybook 10 em vez de 8**: peer dep Next 16 forçou. Documentação online ainda predominantemente Storybook 8 — gap de aprendizado pequeno (sintaxe stories quase idêntica).
+- **Build local bloqueado em Node 20.17**: Storybook 10 exige 20.19+ ou 22.12+. Dev local não builda nem dev server roda até upgrade. CI usa Node 22 (`.nvmrc`), funciona sem mudança. Decisão: aceitar — upgrade local é responsabilidade do dev.
+- **Sem AuthProvider/SnackbarProvider default em preview**: stories isoladas. Componentes que precisam aplicam via decorator local. Trade-off contra `renderWithProviders` que envolve tudo por default (contexto diferente: renderWithProviders é pra testes integration, providers globais).
+- **Apenas 4 componentes story'd nesta fase**: cobertura inicial. Pattern estabelecido; outras stories evoluem incrementalmente conforme componentes mudam.
+- **`storybook:test` (test-runner) não rodado nesta fase**: requer servidor Storybook ativo (`storybook dev`). Será exercitado em CI quando setup completo (Fase 17).
+
+### Mudanças
+
+#### Arquivos novos
+
+- `.storybook/main.ts` — config Storybook (framework Next, addon a11y, autodocs)
+- `.storybook/preview.tsx` — providers (ThemeProvider) + MSW loader + a11y parameter
+- `public/mockServiceWorker.js` — Service Worker MSW (gerado via `npx msw init`)
+- 4 arquivos `*.stories.tsx` em `src/components/ui/`
+
+#### Scripts package.json
+
+- `storybook` — `storybook dev -p 6006`
+- `storybook:build` — produção estática
+- `storybook:test` — test-runner contra servidor rodando
+
+#### Deps novas
+
+- `storybook@^10`
+- `@storybook/nextjs@^10` (framework adapter)
+- `@storybook/test-runner` (test runner CLI)
+- `@storybook/addon-a11y@^10`
+- `msw-storybook-addon` (integração handler MSW)
+
+### Métricas de sucesso
+
+- ✅ Storybook 10.4 instalado + configurado
+- ✅ Framework `@storybook/nextjs` integrando Next 16 + React 19
+- ✅ MSW addon ativo com handlers de `src/test/msw/`
+- ✅ A11y addon ativo
+- ✅ 14 stories piloto em 4 componentes
+- ✅ `npm run validate` passa (tsc + lint + 355 testes)
+- ✅ Pre-commit não bloqueia (lint-staged não toca stories)
+
+### Impacto futuro
+
+- Próximas adições de componente devem trazer `.stories.tsx` por convenção
+- Fase 11 (a11y dedicada): expandir cobertura axe nas stories + CI gate
+- Fase 17 (CI completo): job `storybook-test` builds estático + roda test-runner contra ele
+- Eventual: Chromatic ou Percy para visual regression hospedado (avaliação Fase 19+)
+- Stories complexas (Forms com FormProvider, Pagination, Tables): decorators wrapper especializados
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
