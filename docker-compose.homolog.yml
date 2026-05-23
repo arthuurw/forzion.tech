@@ -35,6 +35,47 @@ services:
       backend:
         condition: service_healthy
 
+  # ─── Pact Broker (contract testing self-hosted) ────────────────────────────
+  # Postgres dedicado do broker (volume proprio, isolado do DB do app).
+  pact-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${PACT_POSTGRES_USER:-pact}
+      POSTGRES_PASSWORD: ${PACT_POSTGRES_PASSWORD}
+      POSTGRES_DB: pact_broker
+    volumes:
+      - pact_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PACT_POSTGRES_USER:-pact} -d pact_broker"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  pact-broker:
+    image: pactfoundation/pact-broker:latest
+    environment:
+      PACT_BROKER_DATABASE_ADAPTER: postgres
+      PACT_BROKER_DATABASE_HOST: pact-postgres
+      PACT_BROKER_DATABASE_NAME: pact_broker
+      PACT_BROKER_DATABASE_USERNAME: ${PACT_POSTGRES_USER:-pact}
+      PACT_BROKER_DATABASE_PASSWORD: ${PACT_POSTGRES_PASSWORD}
+      PACT_BROKER_PORT: "9292"
+      PACT_BROKER_BASE_URL: https://pact.homologacao.forzion.tech
+      # Auth basica: CI publica/consulta com estas credenciais.
+      PACT_BROKER_BASIC_AUTH_USERNAME: ${PACT_BROKER_USERNAME}
+      PACT_BROKER_BASIC_AUTH_PASSWORD: ${PACT_BROKER_PASSWORD}
+      PACT_BROKER_LOG_LEVEL: warn
+    restart: unless-stopped
+    depends_on:
+      pact-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9292/diagnostic/status/heartbeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   nginx:
     image: nginx:1.27-alpine
     ports:
@@ -60,3 +101,6 @@ services:
         sleep 12h & wait $${!};
       done"
     restart: unless-stopped
+
+volumes:
+  pact_pgdata:
