@@ -55,8 +55,14 @@ e2e/
 │  ├─ assert-csp.ts         # parseCsp/assertCspDirective
 │  └─ seed.ts               # Stubs — Fase 10 implementa
 └─ specs/
-   └─ smoke/
-      └─ health.spec.ts     # Piloto Fase 9
+   ├─ smoke/                # Fase 10a — 5 smokes (health + login + listar + criar + checkout)
+   ├─ critical/             # Fase 10a — 8 specs criticos (auth, CRUD, Stripe, inactivity, etc)
+   ├─ security/             # Fase 10b — CSP + cookies + CSRF + rate limit
+   ├─ lgpd/                 # Fase 10b — skeletons fail-loud (features ausentes)
+   ├─ multi-tab/            # Fase 10b — logout cross-tab + session sync
+   ├─ network/              # Fase 10b — slow3G + offline + retry
+   ├─ a11y/                 # Fase 10b — @axe-core/playwright varre rotas
+   └─ visual/               # Fase 10b — snapshots (baselines Linux only, Fase 17)
 ```
 
 ## Pattern de spec
