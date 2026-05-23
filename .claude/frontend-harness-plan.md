@@ -335,7 +335,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 6 — API routes testing completo | `1947dee` (PR #21) | `chore/harness-fase6-api-routes` |
 | 7 — Tooling (commitlint+lint-staged+plugins+Renovate+CODEOWNERS) | `23a0f76` (PR #22) | `chore/harness-fase7-lint-strict` |
 | 8 — Storybook 10 + 4 stories piloto | `86296f7` (PR #23) | `chore/harness-fase8-storybook` |
-| 9 — Playwright base + sharding + network fixtures + auth states | _em PR_ | `chore/harness-fase9-playwright` |
+| 9 — Playwright base + sharding + network fixtures + auth states | `ae2e75c` (PR #24) | `chore/harness-fase9-playwright` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
