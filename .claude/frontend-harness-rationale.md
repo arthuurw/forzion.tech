@@ -111,11 +111,81 @@ Consolidar infraestrutura de testes em estrutura previsível, eliminar fontes de
 
 ---
 
+## Fase 2 — Vitest projects + coverage per-path + API routes habilitada
+
+**Status**: concluída (branch `chore/harness-fase2-vitest-projects`).
+
+### Objetivo
+
+Separar a execução de testes em projects isolados conforme o ambiente que cada tipo exige (node ou jsdom), e estabelecer thresholds de cobertura **por camada** que reflitam o valor real de cada área do código.
+
+### Por que
+
+#### Projects separados
+
+- Em Vitest sem projects, todo teste roda no mesmo env (`jsdom`). Testes puros de `lib/`, `hooks/`, validações zod e API routes pagam o custo de inicializar `jsdom` (≈2-5s) sem ganho — eles não precisam de DOM.
+- `jsdom` introduz cross-realm mismatch com Node APIs (ex: `Uint8Array` em `jose.SignJWT`). Tests de Route Handlers usam `jose` para JWT — env `node` faz funcionar sem hack.
+- Setup específico por env evita carregar polyfills DOM (`matchMedia`, `IntersectionObserver`) em testes que nunca tocam DOM.
+
+#### Coverage per-path
+
+- Coverage global homogêneo penaliza camadas que **deveriam** ter cobertura alta (lógica pura em `lib/`) e nivela por baixo, ou força cobertura alta em camadas onde 100% é inútil (page components Next que são essencialmente JSX layout).
+- Camadas diferentes têm tipos de bug diferentes:
+  - `lib/`, `hooks/`: bugs lógicos, devem ter cobertura quase total
+  - `components/`: bugs de interação, cobertura alta razoável
+  - `app/api/`: handlers críticos de segurança, devem ser muito testados
+  - `app/` (pages): orquestração; faz sentido cobertura média
+- Threshold per-path permite **falhar PR** se cobertura cair em camada crítica, sem bloquear PR que só toca page boilerplate.
+
+#### API routes no coverage
+
+- `src/app/api/**` estava **excluído** de coverage no estado base. Erro grave: API routes são gateway de segurança (auth, rate limit, validação de entrada). Não medir cobertura é cegueira deliberada.
+- Habilitar coverage em API routes (mesmo com baseline modesto) força visibilidade. Próximas fases podem mirar 90/85/90/90.
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Velocidade**: unit roda em ~440ms (138 testes) | env node sem jsdom — 10x mais rápido que o setup unificado |
+| **Watch mode focado** | `vitest --project unit` permite TDD sub-segundo sem rodar suite inteira |
+| **Paralelismo CPU melhor** | unit usa `threads`, integration usa `forks` (isolamento MSW na Fase 3) |
+| **Coverage visível em API routes** | Inclui camada crítica antes invisível |
+| **Threshold reflete camada** | Falha em `lib/` (95%) trava PR; falha em `app/` (70%) também — escala diferente |
+| **Sem regressão** | 302 testes verdes mantidos; distribuição: unit 138 / integration 156 / api 8 |
+| **Determinismo localizado** | unit/api setup minimal; integration carrega jest-dom + polyfills |
+
+### Trade-offs aceitos
+
+- **Manutenção de include lists em `vitest.config.mts`**: tests em `src/test/` (flat herdado) não cabem nos globs convencionais. Listamos cada arquivo por project. Custo elimina-se na Fase 5 (co-localização).
+- **`src/lib/utils/excel.test.ts` no project `integration`**: o teste mexe com `document.createElement` (download de planilha). Diverge do padrão "tudo em `src/lib/` é unit". Aceitamos exceção até refatorar.
+- **Thresholds Fase 2 baseline (não target)**: cobertura atual de `src/app/api/**` (branches 84%) e `src/app/**` (functions 56%) está abaixo dos targets finais. Aceitamos baseline atual com TODO no código. Apertar acontece nas Fases 5 (testes migrados), 6 (API routes testadas) e 11 (mais E2E).
+- **Globs sobrepostos `src/app/api/**` ⊂ `src/app/**`**: o glob `src/app/**` inclui também `api/`. Vitest aplica os dois thresholds independentemente — arquivo precisa passar nos dois. Funciona, mas sutil.
+
+### Métricas de sucesso
+
+- ✅ 3 projects rodando isolados: unit / integration / api
+- ✅ 302 testes verdes mantidos (zero regressão)
+- ✅ unit project em 441ms (10x ganho)
+- ✅ Coverage per-path passa em todas camadas (baseline ajustado)
+- ✅ `src/app/api/**` agora coberto (antes excluído)
+- ✅ Scripts: `test:unit`, `test:integration`, `test:api`, `test:ui`, `test:watch`
+- ✅ Setup em 3 arquivos: `setup/unit.ts`, `setup/integration.ts`, `setup/api.ts`
+- ✅ Diretiva `// @vitest-environment node` removida de `api-auth-me.test.ts`
+
+### Impacto futuro
+
+- Fase 3 (MSW): `setup/integration.ts` ganha `server.listen()` sem afetar unit/api
+- Fase 5 (migração testes): include lists transitórias desaparecem
+- Fase 6 (API routes testing): `createMockRequest()` / `extractCookies()` em `setup/api.ts` já existem
+- Fase 11 (a11y): testes a11y de componentes ficam em `integration`
+- Fase 14 (mutation): Stryker roda contra unit e api (rápidos) primeiro
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 2 — Vitest projects + coverage per-path + API routes habilitada
 - Fase 3 — MSW + OpenAPI codegen + factories + renderWithProviders
 - Fase 4 — Property-based testing
 - Fase 5 — Migração testes existentes para MSW

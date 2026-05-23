@@ -1,20 +1,15 @@
 /**
- * Setup unico do vitest.
+ * Setup base — env node (vitest project "unit").
  *
- * Responsabilidades:
- * - Importar matchers do @testing-library/jest-dom
- * - Instalar polyfills jsdom (matchMedia, IntersectionObserver, ResizeObserver)
- * - Aplicar determinismo (tempo, random, UUID, prefers-reduced-motion) em cada teste
+ * Responsabilidades minimas (sem DOM):
+ * - Limpar mocks entre testes
+ * - Aplicar determinismo (random, UUID) - motion eh ignorado em node
  *
- * Arquivo apontado por vitest.config.mts -> test.setupFiles.
+ * Polyfills DOM e jest-dom matchers ficam em setup/integration.ts.
+ * Helpers de NextRequest ficam em setup/api.ts.
  */
-
-import "@testing-library/jest-dom";
 import { afterEach, beforeEach, vi } from "vitest";
-import { installGlobalMocks } from "./mocks";
 import { installDeterminism, uninstallDeterminism } from "../determinism";
-
-installGlobalMocks();
 
 beforeEach(() => {
   vi.clearAllMocks();
