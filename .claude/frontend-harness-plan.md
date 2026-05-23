@@ -337,7 +337,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 8 — Storybook 10 + 4 stories piloto | `86296f7` (PR #23) | `chore/harness-fase8-storybook` |
 | 9 — Playwright base + sharding + network fixtures + auth states | `ae2e75c` (PR #24) | `chore/harness-fase9-playwright` |
 | 10a — POMs + 5 smokes + 8 critical specs | `f19769d` (PR #25) | `chore/harness-fase10a-e2e-critical` |
-| 10b — Security + LGPD + multi-tab + network + a11y + visual | _em PR_ | `chore/harness-fase10b-e2e-security-lgpd` |
+| 10b — Security + LGPD + multi-tab + network + a11y + visual | `f477456` (PR #26) | `chore/harness-fase10b-e2e-security-lgpd` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
