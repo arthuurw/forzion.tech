@@ -50,12 +50,12 @@ describe("AuthProvider — GET /api/auth/me", () => {
       </AuthProvider>,
     );
 
-    expect(screen.getByTestId("loading").textContent).toBe("true");
+    expect(screen.getByTestId("loading")).toHaveTextContent("true");
 
     await waitFor(() =>
-      expect(screen.getByTestId("loading").textContent).toBe("false"),
+      expect(screen.getByTestId("loading")).toHaveTextContent("false"),
     );
-    expect(screen.getByTestId("user").textContent).toBe("Aluno");
+    expect(screen.getByTestId("user")).toHaveTextContent("Aluno");
   });
 
   it("401 (default handler) → user null, isLoading false", async () => {
@@ -66,9 +66,9 @@ describe("AuthProvider — GET /api/auth/me", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("loading").textContent).toBe("false"),
+      expect(screen.getByTestId("loading")).toHaveTextContent("false"),
     );
-    expect(screen.getByTestId("user").textContent).toBe("null");
+    expect(screen.getByTestId("user")).toHaveTextContent("null");
   });
 
   it("network error → user null, isLoading false", async () => {
@@ -80,9 +80,9 @@ describe("AuthProvider — GET /api/auth/me", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("loading").textContent).toBe("false"),
+      expect(screen.getByTestId("loading")).toHaveTextContent("false"),
     );
-    expect(screen.getByTestId("user").textContent).toBe("null");
+    expect(screen.getByTestId("user")).toHaveTextContent("null");
   });
 });
 
@@ -97,12 +97,12 @@ describe("login()", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("loading").textContent).toBe("false"),
+      expect(screen.getByTestId("loading")).toHaveTextContent("false"),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "login" }));
 
-    expect(screen.getByTestId("user").textContent).toBe("Treinador");
+    expect(screen.getByTestId("user")).toHaveTextContent("Treinador");
   });
 });
 
@@ -126,13 +126,13 @@ describe("logout()", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("user").textContent).toBe("Aluno"),
+      expect(screen.getByTestId("user")).toHaveTextContent("Aluno"),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "logout" }));
 
     await waitFor(() =>
-      expect(screen.getByTestId("user").textContent).toBe("null"),
+      expect(screen.getByTestId("user")).toHaveTextContent("null"),
     );
 
     expect(logoutCalled).toBe(true);

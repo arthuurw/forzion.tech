@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Validacao obrigatoria do harness frontend.
-# Bloqueia commit se typecheck, lint ou testes falharem.
+# Bloqueia commit se typecheck, lint-staged ou testes falharem.
 # NUNCA usar --no-verify (proibido por politica).
 
 cd "$(dirname "$0")/.." || exit 1
@@ -8,8 +8,8 @@ cd "$(dirname "$0")/.." || exit 1
 echo "Pre-commit: typecheck..."
 npm run typecheck || { echo "Pre-commit FAILED: tsc"; exit 1; }
 
-echo "Pre-commit: lint..."
-npm run lint || { echo "Pre-commit FAILED: eslint"; exit 1; }
+echo "Pre-commit: lint-staged (auto-fix arquivos staged)..."
+npx --no-install lint-staged || { echo "Pre-commit FAILED: lint-staged"; exit 1; }
 
 echo "Pre-commit: testes..."
 npm test || { echo "Pre-commit FAILED: vitest"; exit 1; }

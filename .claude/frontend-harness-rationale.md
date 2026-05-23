@@ -589,6 +589,119 @@ Cobrir os **6 Route Handlers** sem testes do estado base (`logout`, `register/al
 
 ---
 
+## Fase 7 — Tooling: commitlint + lint-staged + ESLint plugins + Renovate + CODEOWNERS + PR template
+
+**Status**: concluída (branch `chore/harness-fase7-lint-strict`).
+
+### Objetivo
+
+Implementar a **camada de tooling** prevista no plano original (commitlint, lint-staged, plugins extras, Renovate, CODEOWNERS, PR template). Re-escopo deliberado: **adiar endurecimento de regras Next 16 / React 19 para fase futura de "lint hardening"** (requer refactor de hooks).
+
+### Por que
+
+#### Commitlint
+
+- Conventional Commits já era convenção de facto neste projeto. Sem enforcement, dependia de disciplina humana.
+- `commit-msg` hook valida mensagem ANTES de criar commit. Mensagem fora do padrão = commit rejeitado.
+- `scope-enum` restrito a `[frontend, backend, infra, ci, deps, tests, docs]`: previne typos (`feature` em vez de `feat`, `crontab` em vez de `ci`).
+
+#### lint-staged
+
+- Antes: pre-commit rodava `npm run lint` em **todo o projeto** (5-10s).
+- Agora: lint-staged roda `eslint --fix` apenas em arquivos **staged** (sub-segundo na maioria dos commits).
+- Bonus: `--fix` aplica autofix automático em mudanças do dev (jest-dom matchers, formatting, etc) — menos atrito.
+
+#### eslint-plugin-jest-dom + testing-library
+
+- 117 ocorrências do anti-pattern `expect(x).not.toBeNull()` que `prefer-in-document` recomenda como `expect(x).toBeInTheDocument()`.
+- 40 ocorrências do anti-pattern `await waitFor(() => expect(getBy...))` que `prefer-find-by` recomenda como `await findBy...`.
+- **Auto-fix corrigiu 171 dos 198 warnings**. Dev não precisou intervir manualmente.
+- Restantes (24× `set-state-in-effect`, 1× `purity`, etc) requerem refactor lógico — adiados.
+
+#### eslint-plugin-security
+
+- Heurísticas para `eval`, `child_process`, regex backtracking etc.
+- `detect-object-injection` **desligado globalmente**: heurística ruim (gera false positive em qualquer `obj[key]` legítimo, incluindo factories e mocks).
+- Demais regras ficam ativas — caso surja `eval` ou regex perigosa, é capturado.
+
+#### Renovate (vs Dependabot)
+
+- Dependabot é integrado ao GitHub mas tem config limitada (sem auto-merge granular, sem grouping flexível).
+- Renovate:
+  - **Auto-merge** para patch/pin/digest (sem revisão humana — atualizações de baixo risco)
+  - **Grouping**: Playwright + Storybook + Vitest + MSW + Next.js + React + MUI + Stripe agrupados → 1 PR por área, não 1 por pacote
+  - **`minimumReleaseAge: 7 days`** em majors (evita pegar releases bugadas)
+  - **Lock file maintenance** semanal automerge
+  - Schedule weeknights em America/Sao_Paulo
+
+#### CODEOWNERS
+
+- Não há "review obrigatório" enforcement no repo, mas CODEOWNERS gera review request automático.
+- Paths críticos (test infra, husky, configs, CI workflows, nginx, appsettings) atribuídos ao maintainer.
+
+#### PR template
+
+- Checklist visual em cada PR — força reviewer e autor a confirmar testes, security checks, conventional commit.
+- Reduz "merged em 10s sem ninguém olhar".
+
+### Trade-offs aceitos
+
+- **Endurecimento de regras hooks adiado**: 24× `set-state-in-effect`, 1× `purity`, 1× `exhaustive-deps`, 1× `import/no-anonymous-default-export`. Refactor exige análise caso-a-caso de cada hook. Decisão consciente: tooling primeiro, refactor em fase isolada ("lint hardening"). Regras ficam como `warn` — visíveis mas não bloqueantes.
+- **`security/detect-object-injection` off**: 30 falsos positivos. Heurística não distingue `arr[i]` (seguro) de `obj[userInput]` (perigoso) sem análise de fluxo. Custo > benefício.
+- **`lint-staged` apenas em `.{ts,tsx}`**: arquivos JSON/MD/YAML ignorados. Prettier completo virá em fase futura.
+- **`release-please` / `changesets` não adotado nesta fase**: projeto ainda não tem release pipeline. Adicionar prematuro. Volta no escopo quando houver releases versionadas.
+
+### Mudanças
+
+#### Arquivos novos
+
+- `frontend/commitlint.config.mjs` — `@commitlint/config-conventional` + scope-enum
+- `frontend/.husky/commit-msg` — invoca commitlint na mensagem do commit
+- `frontend/.lintstagedrc.json` — `eslint --fix` em `.{ts,tsx}` staged
+- `renovate.json` — config completa com grouping + auto-merge patch
+- `.github/CODEOWNERS` — paths críticos atribuídos ao maintainer
+- `.github/pull_request_template.md` — checklist obrigatório
+
+#### Arquivos atualizados
+
+- `frontend/eslint.config.mjs`:
+  - Adiciona `eslint-plugin-jest-dom` (apenas em arquivos de teste)
+  - Adiciona `eslint-plugin-testing-library` (apenas em arquivos de teste)
+  - Adiciona `eslint-plugin-security` (global, com `detect-object-injection` off)
+  - Regras novas configuradas como `warn` (não bloqueante)
+  - `ignores` inclui `openapi.json` e `src/test/msw/types.ts` (gerados)
+- `frontend/.husky/pre-commit`: agora roda `lint-staged` em vez de `npm run lint` completo
+
+#### Auto-fix em massa
+
+- `npm run lint:fix` corrigiu **171 dos 198 warnings**:
+  - `expect(x).not.toBeNull()` → `expect(x).toBeInTheDocument()`
+  - `expect(x.textContent).toBe(y)` → `expect(x).toHaveTextContent(y)`
+  - `expect(button.disabled).toBe(true)` → `expect(button).toBeDisabled()`
+  - `await waitFor(() => expect(getByX))` → `await findByX`
+- 355 testes verdes após autofix (zero regressão lógica).
+
+### Métricas de sucesso
+
+- ✅ `commitlint` ativo via `.husky/commit-msg`
+- ✅ `lint-staged` no pre-commit (lint só de staged, sub-segundo)
+- ✅ 3 plugins ESLint novos (testing-library, jest-dom, security)
+- ✅ Auto-fix corrigiu 171 issues sem refactor manual
+- ✅ Renovate configurado (auto-merge patch + 8 groupings + 7-day delay em majors)
+- ✅ CODEOWNERS em paths críticos
+- ✅ PR template obrigatório
+- ✅ 355 testes verdes mantidos (zero regressão)
+- ✅ 27 warnings restantes (era 28; auto-fix + cleanup)
+
+### Impacto futuro
+
+- "Lint hardening" (fase isolada futura): refactor dos 27 warnings restantes
+- Próximas fases: PRs nascem com template + commits validados + lint-staged rápido
+- Renovate começa a abrir PRs automaticamente (após admin ativar no GitHub App)
+- CI eventual pode adicionar `commitlint` em pull_request action (defesa em profundidade)
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
