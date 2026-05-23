@@ -51,15 +51,14 @@ export default defineConfig({
           functions: 85,
           statements: 85,
         },
-        // Baseline Fase 2 — refletindo cobertura atual sem regressao.
-        // Targets finais (Fase 5b/6 quando testes migrarem para MSW e API routes expandirem):
-        // src/app/api/**: 90L / 85B / 90F / 90S
-        // src/app/**:     70L / 60B / 70F / 70S
+        // Fase 6 atingiu target final em src/app/api/** (cobertura completa
+        // dos 8 route handlers). src/app/** ainda em baseline — pages Next
+        // serao expandidas em fases futuras (E2E + storybook + a11y).
         "src/app/api/**": {
-          lines: 85,
-          branches: 80,
+          lines: 90,
+          branches: 85,
           functions: 90,
-          statements: 85,
+          statements: 90,
         },
         "src/app/**": {
           lines: 70,

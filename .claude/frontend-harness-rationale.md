@@ -510,6 +510,85 @@ Reescrito: 141 linhas de `stubFetch + array de respostas` viraram MSW handlers p
 
 ---
 
+## Fase 6 — API routes testing completo
+
+**Status**: concluída (branch `chore/harness-fase6-api-routes`).
+
+### Objetivo
+
+Cobrir os **6 Route Handlers** sem testes do estado base (`logout`, `register/aluno`, `register/treinador`, `treinadores`, `treinadores/[id]/pacotes`, `backend/[...path]`) e atingir o **target final** de cobertura em `src/app/api/**` (90/85/90/90).
+
+### Por que
+
+#### Anti-pattern do estado base
+
+- 2 dos 8 route handlers tinham testes (`auth/route.ts`, `auth/me/route.ts`). 6 estavam sem cobertura.
+- API routes do Next.js são **gateway de segurança crítico**: rate limit, auth, sanitização, proxy. Não testar é cegueira deliberada — bugs aqui vazam pra produção como vulnerabilidades.
+- `backend/[...path]/route.ts` é proxy completo (path traversal sanitization, header allowlist, Bearer injection, body forwarding). Cada um desses controles precisa teste explícito.
+
+#### Reuso da infra MSW (Fase 3 + 5b)
+
+- Route handlers fazem `fetch` para backend `.NET`. MSW intercepta isso com `server.use()`.
+- `setup/api.ts` agora inicia `server.listen()` (Fase 3 só ativava em integration). Decisão antecipada: project `api` também ganha lifecycle MSW.
+- `createMockRequest()` (já existia) expandido com `nextUrl`, `arrayBuffer`, `headers` Headers nativos para suportar handlers que usam essas APIs.
+
+#### Migração colateral
+
+- `auth/route.test.ts` original usava `vi.stubGlobal("fetch", ...)` + `vi.mock("next/server")` complexo. Habilitar MSW no project `api` quebrou esse pattern (MSW detectou fetches "não cobertos").
+- Aproveitamos para **migrar `auth/route.test.ts` para MSW** consistentemente. Simplificou de 80 linhas + mock manual de `NextResponse` para 100 linhas com handlers `server.use()` + `createMockRequest()`.
+- Bug latente eliminado: anteriormente verificava `expect(setCookie).toContain(...)` apenas em 1 cenário. Novo: 4 cenários incluindo HttpOnly/Secure/SameSite + propagação de erro backend.
+
+### Testes adicionados
+
+| Route | Tests | Cenários cobertos |
+|-------|-------|-------------------|
+| `auth/route.ts` (login) | 4 (era 2, +2 novos) | sem token em body / cookie HttpOnly+Secure+SameSite / propagação erro 401 / rate limit |
+| `auth/logout/route.ts` | 3 | com token / sem token / backend falha (cookies ainda limpos) |
+| `auth/register/aluno/route.ts` | 3 | rate limit 429 / sucesso 201 / propagação 400 |
+| `auth/register/treinador/route.ts` | 3 | idêntico ao aluno |
+| `auth/treinadores/route.ts` | 2 | lista do backend / erro 500 |
+| `auth/treinadores/[id]/pacotes/route.ts` | 2 | repassa id no URL / 404 |
+| `backend/[...path]/route.ts` (proxy) | 10 | path traversal `..` / `.` / valido / Bearer injection / sem token / header allowlist (content-type, accept; bloqueia cookie, x-forwarded-for) / 4 métodos HTTP / propaga status / propaga Content-Type |
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Cobertura security-critical** | path traversal explicitamente testado; header allowlist explicitamente testada |
+| **Target final atingido** | `src/app/api/**`: 90L / 85B / 90F / 90S (era baseline 85/80/90/85) |
+| **355 testes verdes** (era 328) | +27 tests novos sem regressão |
+| **Project `api` independente** | MSW lifecycle isolado de `integration`; tests API rodam em <1s |
+| **Bearer injection coberto** | Logout E proxy testados — antes só inferência via E2E |
+| **Header allowlist regressão-proof** | Adicionar header ao allowlist sem teste falha o teste cookie/xff |
+| **CreateMockRequest reusável** | Helper expandido com nextUrl + arrayBuffer atende qualquer route handler futuro |
+
+### Trade-offs aceitos
+
+- **`vi.mock("next/headers")` por arquivo**: cada teste que usa `cookies()` precisa mockar o módulo. Helper centralizado seria possível mas adiciona indireção. Aceitamos repetição mínima.
+- **`onUnhandledRequest: "error"` em `api`**: pode surpreender quando teste adiciona route handler novo sem stub MSW. Default deliberado — força explicitness. Custo: mais setup por teste; benefício: fetches não previstos viram falha óbvia.
+- **Não cobertos**: routes `(public)`, `_landing` (não são API routes, são page components). Cobertura completa de `src/app/**` virá nas Fases 11 (E2E) e 9 (Storybook).
+- **Header `cookie` allowlist**: regra explicitamente NÃO repassa `cookie` do cliente (segurança — backend usa Bearer). Teste protege esse contrato.
+
+### Métricas de sucesso
+
+- ✅ 8 dos 8 route handlers cobertos (era 2)
+- ✅ Coverage `src/app/api/**` atinge target final 90/85/90/90
+- ✅ 355 testes verdes (era 328 antes da Fase 6)
+- ✅ Distribuição: unit 161 / integration 159 / api 35
+- ✅ `setup/api.ts` ganha MSW lifecycle (server.listen, resetHandlers, close)
+- ✅ `createMockRequest` expandido com `nextUrl`, `arrayBuffer`, Headers nativos
+- ✅ `auth/route.test.ts` migrado de stubGlobal+complexMock → MSW + createMockRequest
+- ✅ Path traversal + header allowlist + Bearer injection cobertos explicitamente
+
+### Impacto futuro
+
+- Fase 11 (E2E security specs): tests Playwright validam CSP/cookies em integração, complementando esses unit tests
+- Fase 14 (mutation): Stryker vai stressar handlers — esperamos alto mutation score graças à granularidade
+- Refactor de proxy: qualquer mudança em allowlist quebra teste — mudança consciente requer atualizar teste primeiro
+- Próximas routes (rate limit endpoint, webhooks Stripe etc): pattern estabelecido — criar route + 1 arquivo `route.test.ts` colocated
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:

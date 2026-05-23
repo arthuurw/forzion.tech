@@ -1,59 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-// Mock next/server antes de importar o módulo
-vi.mock("next/server", async (importActual) => {
-  const actual = await importActual<typeof import("next/server")>();
-  return {
-    ...actual,
-    NextResponse: {
-      json: (data: unknown, init?: ResponseInit) => {
-        const body = JSON.stringify(data);
-        const resp = new Response(body, {
-          ...init,
-          headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-        });
-        const cookies = new Map<string, string>();
-        (resp as unknown as Record<string, unknown>).cookies = {
-          set: (name: string, value: string) => cookies.set(name, value),
-          get: (name: string) => cookies.get(name),
-          _map: cookies,
-        };
-        return resp;
-      },
-    },
-  };
-});
+import { describe, it, expect, vi } from "vitest";
+import { http, HttpResponse } from "msw";
+import { server } from "@/test/msw/server";
+import { POST } from "@/app/api/auth/route";
+import { createMockRequest } from "@/test/setup/api";
 
 vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn(() => true),
   getClientIp: vi.fn(() => "127.0.0.1"),
 }));
 
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
+const FUTURE = Math.floor(Date.now() / 1000) + 3600;
+const fakeJwt = `${btoa(JSON.stringify({ alg: "HS256" }))}.${btoa(
+  JSON.stringify({ exp: FUTURE }),
+)}.sig`;
 
 describe("POST /api/auth — resposta de login", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    const FUTURE = Math.floor(Date.now() / 1000) + 3600;
-    const fakeJwt = `${btoa(JSON.stringify({ alg: "HS256" }))}.${btoa(JSON.stringify({ exp: FUTURE }))}.sig`;
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        token: fakeJwt,
-        tipoConta: "Treinador",
-        contaId: "abc",
-        perfilId: "def",
-      }),
-    });
-  });
+  it("resposta JSON nao contem o token JWT", async () => {
+    server.use(
+      http.post("*/auth/login", () =>
+        HttpResponse.json({
+          token: fakeJwt,
+          tipoConta: "Treinador",
+          contaId: "abc",
+          perfilId: "def",
+        }),
+      ),
+    );
 
-  it("resposta JSON não contém o token JWT", async () => {
-    const { POST } = await import("@/app/api/auth/route");
-    const req = {
-      json: async () => ({ email: "test@test.com", senha: "123" }),
-      headers: { get: () => null },
-    } as never;
+    const req = createMockRequest({
+      method: "POST",
+      body: { email: "test@test.com", senha: "123" },
+    });
 
     const res = await POST(req);
     const body = await res.json();
@@ -64,15 +41,57 @@ describe("POST /api/auth — resposta de login", () => {
     expect(body.perfilId).toBe("def");
   });
 
+  it("token JWT setado em cookie HttpOnly Secure SameSite=strict", async () => {
+    server.use(
+      http.post("*/auth/login", () =>
+        HttpResponse.json({
+          token: fakeJwt,
+          tipoConta: "Aluno",
+          contaId: "c1",
+          perfilId: "p1",
+        }),
+      ),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      body: { email: "u@u.com", senha: "secret" },
+    });
+
+    const res = await POST(req);
+    const setCookie = res.headers.get("set-cookie");
+
+    expect(setCookie).toContain("token=");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=strict");
+    expect(setCookie).toContain("session_guard=1");
+  });
+
+  it("backend retorna erro → propaga status sem setar cookies", async () => {
+    server.use(
+      http.post("*/auth/login", () =>
+        HttpResponse.json({ error: "Credenciais invalidas" }, { status: 401 }),
+      ),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      body: { email: "u@u.com", senha: "wrong" },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
+
   it("rate limit excedido → retorna 429", async () => {
     const { checkRateLimit } = await import("@/lib/rateLimit");
     vi.mocked(checkRateLimit).mockReturnValueOnce(false);
 
-    const { POST } = await import("@/app/api/auth/route");
-    const req = {
-      json: async () => ({ email: "test@test.com", senha: "123" }),
-      headers: { get: () => null },
-    } as never;
+    const req = createMockRequest({
+      method: "POST",
+      body: { email: "test@test.com", senha: "123" },
+    });
 
     const res = await POST(req);
     expect(res.status).toBe(429);
