@@ -336,6 +336,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 7 — Tooling (commitlint+lint-staged+plugins+Renovate+CODEOWNERS) | `23a0f76` (PR #22) | `chore/harness-fase7-lint-strict` |
 | 8 — Storybook 10 + 4 stories piloto | `86296f7` (PR #23) | `chore/harness-fase8-storybook` |
 | 9 — Playwright base + sharding + network fixtures + auth states | `ae2e75c` (PR #24) | `chore/harness-fase9-playwright` |
+| 10a — POMs + 5 smokes + 8 critical specs | _em PR_ | `chore/harness-fase10a-e2e-critical` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 

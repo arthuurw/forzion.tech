@@ -86,13 +86,16 @@ export { expect };
  *
  *   useAuthRole(test, "admin");
  *
- * Equivalente a `test.use({ storageState: authStatePath("admin") })` mas com
- * skip automatico quando o arquivo nao existe (CI sem creds).
+ * Equivalente direto a `test.use({ storageState: authStatePath(role) })`.
+ * Fase 10a: estrategia fail loud — se o storage state nao existir, Playwright
+ * erra ao tentar carregar contexto. Mensagem clara via guard explicito.
  */
 export function useAuthRole(t: typeof test, role: AuthRole): void {
   if (!hasAuthState(role)) {
-    t.skip(true, `Storage state ausente pra role ${role} — defina E2E_${role.toUpperCase()}_EMAIL/PASSWORD`);
-    return;
+    throw new Error(
+      `Storage state ausente pra role ${role}. Configure E2E_${role.toUpperCase()}_EMAIL ` +
+        `e E2E_${role.toUpperCase()}_PASSWORD e rode "npx playwright test --project=setup".`,
+    );
   }
   t.use({ storageState: authStatePath(role) });
 }

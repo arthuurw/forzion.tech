@@ -1,13 +1,10 @@
 import { test, expect } from "../../fixtures/test-base";
 
 /**
- * Smoke piloto Fase 9. Valida que a infra Playwright esta funcional:
- * - baseURL configurado
- * - navegacao basica funciona
- * - fixtures (consoleErrors) operam
+ * Smoke 1/5 — landing page responde + zero console.error.
  *
- * Tag @smoke permite filtrar via `npm run e2e:smoke`. Outros smokes vem em
- * Fase 10 (login, listagem alunos, criar+cleanup, checkout).
+ * Nao requer auth/creds. Roda em qualquer ambiente com app acessivel via
+ * baseURL.
  */
 
 test.describe("smoke @smoke", () => {

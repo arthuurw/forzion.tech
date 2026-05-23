@@ -930,11 +930,182 @@ Estabelecer infraestrutura E2E completa: Playwright configurado com 5 projects (
 
 ---
 
+## Fase 10a — Specs E2E críticos (POMs + smoke + critical)
+
+**Status**: concluída (branch `chore/harness-fase10a-e2e-critical`).
+
+A Fase 10 original (specs E2E críticos, 4d) foi dividida em duas — mesma estratégia da Fase 5:
+
+- **10a (esta fase)**: 8 POMs + 5 smoke specs + 8 critical specs
+- **10b (próxima)**: security (4) + lgpd (3) + multi-tab (2) + network (3) + a11y (1) + visual
+
+### Objetivo (10a)
+
+Cobrir o **happy path crítico** do produto com Playwright: login, CRUD admin, treino aluno, checkout Stripe, inatividade, responsive table e excel download. Estabelecer **fail loud** como contrato de execução — sem credenciais/dados de teste configurados, specs falham com mensagem clara em vez de skip silencioso.
+
+### Por que
+
+#### Fail loud (vs skip-gate)
+
+- Fase 9 deixou `auth.setup.ts` com `setup.skip` quando env vars ausentes — permitia CI passar sem rodar nada de E2E. Custo: especificações ficam silenciosamente desativadas; PR pode mergear sem ninguém perceber que E2E está cego.
+- Fase 10a inverte: `expect(email).toBeTruthy()` no setup falha **explicitamente** se `E2E_*_EMAIL/PASSWORD` ausente. Storage state file ausente em `useAuthRole()` lança Error pedindo configuração.
+- Trade-off: PR só mergeia quando Fase 17 (CI) tiver secrets configurados. Aceito — é o ponto. Specs não rodam em CI atual (`npm run e2e` não está em workflow); rodam manualmente até Fase 17.
+
+#### POM separado por área (admin/aluno/comum)
+
+- 8 POMs concretos: `LoginPage`, `CadastroAlunoPage`, `CheckoutPage`, `admin/AdminAlunosPage`, `admin/AdminAlunoDetailPage`, `admin/AdminTreinadoresPage`, `aluno/AlunoFichasPage`, `aluno/AssinaturaPage`.
+- Estrutura `pages/admin/` + `pages/aluno/` reflete o agrupamento route do Next (`(admin)/`, `(aluno)/`). Facilita encontrar.
+- Locators por `getByRole/getByLabel` (a11y-first) em vez de CSS selectors — resilientes a refactor de classes MUI.
+
+#### 5 smoke specs
+
+Smoke valida o **app sobe e responde**, não funcionalidade profunda:
+
+1. `health.spec.ts` — landing 2xx + zero `console.error` (já existia Fase 9, mantido)
+2. `login-admin.spec.ts` — admin loga via UI + redireciona
+3. `listar-alunos.spec.ts` — admin abre `/admin/alunos` + table OU empty state visível
+4. `criar-aluno.spec.ts` — API-only: cria aluno via `/api/auth/register/aluno` + cleanup
+5. `checkout.spec.ts` — aluno abre `/aluno/assinatura` + status visível
+
+Smoke = rápido (~30s), sempre rodado pós-deploy (Fase 17 wire em CI).
+
+#### 8 critical specs
+
+Cobrem o **fluxo essencial** que sustenta o produto:
+
+1. `auth.spec.ts` — login OK / login KO / logout (NÃO usa storageState — testa o login do zero)
+2. `admin-aluno-crud.spec.ts` — seed via API + lista UI + filtro nome + filtro status + cleanup
+3. `admin-treinador-crud.spec.ts` — lista + filtros (write actions adiadas — destrutivo em homolog real)
+4. `aluno-treino.spec.ts` — lista fichas + abrir detalhe (skip se aluno sem fichas)
+5. `checkout-stripe.spec.ts` — 3 cenários: success / decline / 3DS challenge (cartões test mode)
+6. `inactivity.spec.ts` — `Date.now` stub viaja 5min / 20min e valida warn + logout
+7. `responsive-table.spec.ts` — desktop renderiza `<table>`, mobile renderiza cards
+8. `excel-download.spec.ts` — captura download + valida magic bytes XLSX (PK header zip)
+
+#### Seed/cleanup real
+
+- `e2e/utils/seed.ts` (Fase 9 era stub com erro) agora tem implementação real:
+  - `seedAluno()`: POST `/api/auth/register/aluno` com `treinadorId` + `pacoteId` reais (env vars)
+  - `findAlunoByEmail()`: GET admin/alunos lista paginada, busca exato
+  - `cleanupAluno()` / `cleanupAlunoByEmail()`: DELETE admin
+  - `makeTestEmail(prefix)`: sufixo timestamp evita colisão entre runs (`smoke-aluno+1716423456789@e2e.test`)
+- Requer env vars adicionais: `E2E_TREINADOR_ID` + `E2E_PACOTE_ID` (treinador ativo + um pacote dele).
+
+#### Inactivity via Date.now stub
+
+- Hook real espera 20min sem atividade. Inviável em E2E.
+- Spec faz `page.evaluate(() => { Date.now = () => start + 20*60*1000 + 1000 })` — viaja no tempo só pra `Date.now()`. `useInactivity` continua usando `setInterval` real (CHECK_MS=20s); espera o próximo tick disparar `onTimeout`.
+- Trade-off: spec demora ~20-25s por causa do interval. Ainda inviável seria 20min real.
+
+#### Responsive table
+
+- Componente usa `useMediaQuery(theme.breakpoints.down("md"))` para alternar entre `<table>` (desktop) e cards (mobile).
+- Spec usa `page.setViewportSize({ width: 1280, ... })` vs `{ width: 390, ... }` (iPhone) — força os dois modos no mesmo Chromium project sem precisar de mobile project separado.
+
+#### Excel magic bytes (em vez de parsing)
+
+- Validar XLSX completo exigiria reimportar exceljs no spec. Caro e duplicado.
+- XLSX é ZIP por baixo — magic bytes `PK\x03\x04` (50 4B 03 04). Verificar primeiros 4 bytes é suficiente pra confirmar "é um zip válido". Conteúdo é responsabilidade do unit test (`src/lib/utils/excel.test.ts`).
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **5 smoke + 8 critical** | 13 specs cobrindo todo happy path admin/aluno |
+| **8 POMs reutilizáveis** | Fase 10b ganha base; locators a11y-first sobrevivem refactor MUI |
+| **Seed real** | `seedAluno/cleanupAluno` usam API real do backend; tests determinísticos |
+| **Fail loud** | Setup explode se env var ausente; ninguém merge E2E "silencioso" |
+| **Stripe 3 cenários** | Success / decline / 3DS — cobre os 3 estados que produção precisa |
+| **Inactivity sem esperar 20min** | Date.now stub viaja no tempo; spec roda em 25s |
+| **Excel sem dep** | Magic bytes em vez de parsing; unit test cobre conteúdo |
+| **Auth flow completo** | Login OK + KO + logout em um único spec sem depender de storageState |
+
+### Trade-offs aceitos
+
+- **Specs assumem dados existem no homolog**: aluno com fichas, assinatura com pagamento pendente, treinadores ativos. Onde dados podem faltar, spec usa `test.skip()` interno (warn lint `playwright/no-skipped-test`, aceito).
+- **`admin-treinador-crud` não testa write actions**: aprovar/reprovar/inativar/excluir são destrutivos em homolog compartilhado. Cobrimos só list+filtros. Fase 10b ou follow-up pode adicionar com seed dedicado.
+- **`checkout-stripe` exige pagamento pendente seedado**: spec faz `beforeEach` checando botão "Pagar agora". Sem seed do backend (pagamento pendente Cartão com clientSecret), specs skipam. Aceito — Fase 10b ou backend seed.
+- **`webhook stripe-cli` adiado**: validação fim-a-fim (pagamento → webhook → status na UI) precisa stripe-cli configurado em CI. Adiado para follow-up (Fase 13/17).
+- **Lint warnings `no-conditional-in-test`, `no-skipped-test`, `prefer-to-have-count`**: aceitos no contexto Fase 10a — `test.skip()` interno é o melhor que dá com homolog compartilhado; conditional `if (count === 0)` é necessário para distinguir "ainda não criado" de "regressão".
+- **POMs minimalistas**: cada POM expõe apenas locators usados por specs desta fase. Fase 10b expande conforme novos specs precisarem.
+- **Selectors Stripe via `frameLocator`**: API oficial Playwright para iframes. Layout do PaymentElement pode variar entre versões — selector `iframe[name^='__privateStripeFrame']` é a convenção 2025; revisar se Stripe mudar.
+- **`/api/backend/admin/alunos` no seed util**: usa proxy do Next em vez de chamar backend direto. Correto pois passa pelo middleware de Bearer; mantém comportamento idêntico ao UI admin.
+
+### Mudanças
+
+#### Arquivos novos
+
+POMs:
+- `frontend/e2e/pages/LoginPage.ts`
+- `frontend/e2e/pages/CadastroAlunoPage.ts`
+- `frontend/e2e/pages/CheckoutPage.ts`
+- `frontend/e2e/pages/admin/AdminAlunosPage.ts`
+- `frontend/e2e/pages/admin/AdminAlunoDetailPage.ts`
+- `frontend/e2e/pages/admin/AdminTreinadoresPage.ts`
+- `frontend/e2e/pages/aluno/AlunoTreinoPage.ts` (exporta `AlunoFichasPage`)
+- `frontend/e2e/pages/aluno/AssinaturaPage.ts`
+
+Smoke specs (5):
+- `frontend/e2e/specs/smoke/login-admin.spec.ts`
+- `frontend/e2e/specs/smoke/listar-alunos.spec.ts`
+- `frontend/e2e/specs/smoke/criar-aluno.spec.ts`
+- `frontend/e2e/specs/smoke/checkout.spec.ts`
+
+Critical specs (8):
+- `frontend/e2e/specs/critical/auth.spec.ts`
+- `frontend/e2e/specs/critical/admin-aluno-crud.spec.ts`
+- `frontend/e2e/specs/critical/admin-treinador-crud.spec.ts`
+- `frontend/e2e/specs/critical/aluno-treino.spec.ts`
+- `frontend/e2e/specs/critical/checkout-stripe.spec.ts`
+- `frontend/e2e/specs/critical/inactivity.spec.ts`
+- `frontend/e2e/specs/critical/responsive-table.spec.ts`
+- `frontend/e2e/specs/critical/excel-download.spec.ts`
+
+#### Arquivos atualizados
+
+- `frontend/e2e/auth.setup.ts`: skip → `expect.toBeTruthy()` (fail loud)
+- `frontend/e2e/fixtures/test-base.ts`: `useAuthRole` lança Error em vez de skip
+- `frontend/e2e/fixtures/auth.ts`: comentário ajustado (fail loud)
+- `frontend/e2e/utils/seed.ts`: stubs com erro → implementações reais via backend
+- `frontend/e2e/specs/smoke/health.spec.ts`: comentário ajustado pra "Smoke 1/5"
+
+### Métricas de sucesso
+
+- ✅ 8 POMs criados, type-safe end-to-end
+- ✅ 5 smoke specs em `e2e/specs/smoke/`
+- ✅ 8 critical specs em `e2e/specs/critical/`
+- ✅ `auth.setup.ts` fail loud (expect-based)
+- ✅ `seed.ts` com 5 funções reais (seedAluno, findAlunoByEmail, cleanupAluno, cleanupAlunoByEmail, makeTestEmail)
+- ✅ `npm run validate`: tsc 0 erros + ESLint 0 erros + 355 vitest verdes (zero regressão)
+- ✅ Lint warnings novos categorizados (Playwright plugin FPs)
+
+### Env vars necessárias para rodar
+
+| Var | Função |
+|-----|--------|
+| `E2E_BASE_URL` | Onde apontar (`http://localhost:3000` default) |
+| `E2E_ADMIN_EMAIL` + `E2E_ADMIN_PASSWORD` | Admin login + storage state |
+| `E2E_ALUNO_EMAIL` + `E2E_ALUNO_PASSWORD` | Aluno login + storage state |
+| `E2E_TREINADOR_EMAIL` + `E2E_TREINADOR_PASSWORD` | Treinador login + storage state |
+| `E2E_TREINADOR_ID` | UUID de treinador ativo (seed de alunos) |
+| `E2E_PACOTE_ID` | UUID de pacote do treinador (seed de alunos) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_*` para checkout |
+
+### Impacto futuro
+
+- Fase 10b: security/lgpd/multi-tab/network/a11y/visual reutilizam POMs e fixtures Fase 10a
+- Fase 11 (a11y dedicada): expande `axe-playwright` em cada POM
+- Fase 13 (security): `assert-csp` (Fase 9) + cookies/CSRF/rate-limit specs Fase 10b
+- Fase 14 (mutation): Stryker pode rodar critical specs como "integration" (lento mas alto sinal)
+- Fase 17 (CI): job E2E com matrix sharding; secrets configurados; rodar smoke pós-deploy
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 10 — Specs E2E críticos
+- Fase 10b — Security + LGPD + multi-tab + network + a11y + visual
 - Fase 11 — A11y + visual + memory leak
 - Fase 12 — Lighthouse CI + bundle + crawl
 - Fase 13 — Security gates
