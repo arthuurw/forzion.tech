@@ -328,7 +328,8 @@ Nenhum bypass: `--no-verify` proibido.
 | Infra — expor Swagger em homologacao | `7ab3cba` (PR #14) | `feat/infra-expose-swagger-homolog` |
 | Fix CI — restart nginx em deploy | `8c72760` (PR #15) | `fix/ci-restart-nginx-on-deploy` |
 | Fix backend — AllowedHosts homologacao | `ab7cee6` (PR #16) | `fix/backend-allowed-hosts-homologacao` |
-| 3 — MSW + OpenAPI codegen + factories | _em PR_ | `chore/harness-fase3-msw-openapi` |
+| 3 — MSW + OpenAPI codegen + factories | `af32fab` (PR #17) | `chore/harness-fase3-msw-openapi` |
+| 4 — Property-based testing | _em PR_ | `chore/harness-fase4-property-based` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 

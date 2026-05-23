@@ -81,7 +81,9 @@ export default defineConfig({
           setupFiles: ["./src/test/setup/unit.ts"],
           include: [
             "src/lib/**/*.test.ts",
+            "src/lib/**/*.property.test.ts",
             "src/hooks/**/*.test.ts",
+            "src/hooks/**/*.property.test.ts",
             // Transicao: testes ainda em src/test/ que rodam em env node
             "src/test/admin-api.test.ts",
             "src/test/auth.test.ts",
