@@ -7,38 +7,38 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 describe("StatusChip", () => {
   it("renderiza 'Ativo' para status Ativo", () => {
     render(<StatusChip status="Ativo" />);
-    expect(screen.getByText("Ativo")).toBeDefined();
+    expect(screen.getByText("Ativo")).toBeInTheDocument();
   });
 
   it("renderiza 'Inativo' para status Inativo", () => {
     render(<StatusChip status="Inativo" />);
-    expect(screen.getByText("Inativo")).toBeDefined();
+    expect(screen.getByText("Inativo")).toBeInTheDocument();
   });
 
   it("renderiza 'Aguardando' para status AguardandoAprovacao", () => {
     render(<StatusChip status="AguardandoAprovacao" />);
-    expect(screen.getByText("Aguardando")).toBeDefined();
+    expect(screen.getByText("Aguardando")).toBeInTheDocument();
   });
 });
 
 describe("EmptyState", () => {
   it("renderiza mensagem passada via props", () => {
     render(<EmptyState message="Nenhum item encontrado" />);
-    expect(screen.getByText("Nenhum item encontrado")).toBeDefined();
+    expect(screen.getByText("Nenhum item encontrado")).toBeInTheDocument();
   });
 
   it("renderiza botão de ação quando actionLabel e onAction fornecidos", () => {
     const onAction = vi.fn();
     render(<EmptyState message="Vazio" actionLabel="Adicionar" onAction={onAction} />);
     const btn = screen.getByText("Adicionar");
-    expect(btn).toBeDefined();
+    expect(btn).toBeInTheDocument();
     fireEvent.click(btn);
     expect(onAction).toHaveBeenCalledOnce();
   });
 
   it("não renderiza botão quando actionLabel ausente", () => {
     render(<EmptyState message="Vazio" />);
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });
 
@@ -53,8 +53,8 @@ describe("ConfirmDialog", () => {
 
   it("aberto → renderiza título e descrição", () => {
     render(<ConfirmDialog {...baseProps} />);
-    expect(screen.getByText("Confirmar exclusão")).toBeDefined();
-    expect(screen.getByText("Tem certeza?")).toBeDefined();
+    expect(screen.getByText("Confirmar exclusão")).toBeInTheDocument();
+    expect(screen.getByText("Tem certeza?")).toBeInTheDocument();
   });
 
   it("botão cancelar chama onClose", () => {
@@ -73,7 +73,7 @@ describe("ConfirmDialog", () => {
 
   it("fechado → não renderiza conteúdo", () => {
     render(<ConfirmDialog {...baseProps} open={false} />);
-    expect(screen.queryByText("Confirmar exclusão")).toBeNull();
+    expect(screen.queryByText("Confirmar exclusão")).not.toBeInTheDocument();
   });
 
   it("loading → botões desabilitados", () => {

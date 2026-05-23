@@ -1,0 +1,78 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    ":dependencyDashboard",
+    "schedule:weeknights"
+  ],
+  "timezone": "America/Sao_Paulo",
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "packageRules": [
+    {
+      "description": "Auto-merge patches sem revisao",
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Agrupa atualizacoes do Playwright",
+      "matchPackagePatterns": ["^@playwright/", "^playwright"],
+      "groupName": "playwright"
+    },
+    {
+      "description": "Agrupa atualizacoes do Storybook",
+      "matchPackagePatterns": ["^@storybook/", "^storybook"],
+      "groupName": "storybook"
+    },
+    {
+      "description": "Agrupa atualizacoes do Vitest",
+      "matchPackagePatterns": ["^@vitest/", "^vitest"],
+      "groupName": "vitest"
+    },
+    {
+      "description": "Agrupa atualizacoes do MSW",
+      "matchPackagePatterns": ["^msw", "^@mswjs/"],
+      "groupName": "msw"
+    },
+    {
+      "description": "Agrupa atualizacoes de Next.js",
+      "matchPackagePatterns": ["^next$", "^eslint-config-next$"],
+      "groupName": "nextjs"
+    },
+    {
+      "description": "Agrupa atualizacoes do React",
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"],
+      "groupName": "react"
+    },
+    {
+      "description": "Agrupa atualizacoes do MUI",
+      "matchPackagePatterns": ["^@mui/", "^@emotion/"],
+      "groupName": "mui"
+    },
+    {
+      "description": "Agrupa atualizacoes do Stripe",
+      "matchPackagePatterns": ["^@stripe/", "^stripe"],
+      "groupName": "stripe"
+    },
+    {
+      "description": "Aguarda 7 dias antes de subir majors (estabilidade)",
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "7 days"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"],
+    "automerge": true
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "schedule": ["at any time"]
+  },
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 10
+}

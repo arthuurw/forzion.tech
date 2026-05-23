@@ -136,20 +136,20 @@ describe("AlunosAdminPage", () => {
   it("renderiza título 'Alunos'", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
-    expect(screen.getByText("Alunos")).toBeDefined();
+    expect(screen.getByText("Alunos")).toBeInTheDocument();
   });
 
   it("renderiza filtro de status", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
     // MUI Select renders a combobox — label is not associated via `for`
-    expect(screen.getByRole("combobox")).toBeDefined();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
 
   it("renderiza campo de busca por nome", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
-    expect(screen.getByLabelText("Buscar por nome")).toBeDefined();
+    expect(screen.getByLabelText("Buscar por nome")).toBeInTheDocument();
   });
 });
 
@@ -166,14 +166,14 @@ describe("DetalheAlunoAdminPage", () => {
     mockAdminApi.getAluno.mockImplementation(() => new Promise(() => {}));
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("exibe nome do aluno após carregamento", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Maria Silva")).toBeDefined();
+      expect(screen.getByText("Maria Silva")).toBeInTheDocument();
     });
   });
 
@@ -181,10 +181,10 @@ describe("DetalheAlunoAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Dados")).toBeDefined();
-      expect(screen.getByText("Fichas")).toBeDefined();
-      expect(screen.getByText("Execuções")).toBeDefined();
-      expect(screen.getByText("Progressão")).toBeDefined();
+      expect(screen.getByText("Dados")).toBeInTheDocument();
+      expect(screen.getByText("Fichas")).toBeInTheDocument();
+      expect(screen.getByText("Execuções")).toBeInTheDocument();
+      expect(screen.getByText("Progressão")).toBeInTheDocument();
     });
   });
 
@@ -192,7 +192,7 @@ describe("DetalheAlunoAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Ativo")).toBeDefined();
+      expect(screen.getByText("Ativo")).toBeInTheDocument();
     });
   });
 
@@ -201,7 +201,7 @@ describe("DetalheAlunoAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Erro ao carregar dados do aluno.")).toBeDefined();
+      expect(screen.getByText("Erro ao carregar dados do aluno.")).toBeInTheDocument();
     });
   });
 });
@@ -227,14 +227,14 @@ describe("DetalheTreinadorAdminPage", () => {
     mockAdminApi.getTreinador.mockImplementation(() => new Promise(() => {}));
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
-    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("exibe nome do treinador após carregamento", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Carlos Ferreira")).toBeDefined();
+      expect(screen.getByText("Carlos Ferreira")).toBeInTheDocument();
     });
   });
 
@@ -242,10 +242,10 @@ describe("DetalheTreinadorAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Alunos")).toBeDefined();
-      expect(screen.getByText("Vínculos")).toBeDefined();
-      expect(screen.getByText("Treinos")).toBeDefined();
-      expect(screen.getByText("Pacotes")).toBeDefined();
+      expect(screen.getByText("Alunos")).toBeInTheDocument();
+      expect(screen.getByText("Vínculos")).toBeInTheDocument();
+      expect(screen.getByText("Treinos")).toBeInTheDocument();
+      expect(screen.getByText("Pacotes")).toBeInTheDocument();
     });
   });
 
@@ -254,7 +254,7 @@ describe("DetalheTreinadorAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Erro ao carregar dados do treinador.")).toBeDefined();
+      expect(screen.getByText("Erro ao carregar dados do treinador.")).toBeInTheDocument();
     });
   });
 });
@@ -271,14 +271,14 @@ describe("DetalheTreinoAdminPage", () => {
     mockAdminApi.getTreino.mockImplementation(() => new Promise(() => {}));
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);
-    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("exibe nome do treino após carregamento", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Treino de Costas")).toBeDefined();
+      expect(screen.getByText("Treino de Costas")).toBeInTheDocument();
     });
   });
 
@@ -286,7 +286,7 @@ describe("DetalheTreinoAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Hipertrofia")).toBeDefined();
+      expect(screen.getByText("Hipertrofia")).toBeInTheDocument();
     });
   });
 
@@ -294,7 +294,7 @@ describe("DetalheTreinoAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Barra Fixa")).toBeDefined();
+      expect(screen.getByText("Barra Fixa")).toBeInTheDocument();
     });
   });
 
@@ -302,7 +302,7 @@ describe("DetalheTreinoAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Exercícios (1)")).toBeDefined();
+      expect(screen.getByText("Exercícios (1)")).toBeInTheDocument();
     });
   });
 
@@ -311,7 +311,7 @@ describe("DetalheTreinoAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);
     await waitFor(() => {
-      expect(screen.getByText("Erro ao carregar treino.")).toBeDefined();
+      expect(screen.getByText("Erro ao carregar treino.")).toBeInTheDocument();
     });
   });
 });
@@ -358,13 +358,13 @@ describe("AlunosAdminPage — renderCell com dados", () => {
   it("renderiza nome do aluno (i=0)", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
-    expect(screen.getByText("Pedro Render")).toBeDefined();
+    expect(screen.getByText("Pedro Render")).toBeInTheDocument();
   });
 
   it("renderiza email do aluno (i=1)", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
-    expect(screen.getByText("pedro@test.com")).toBeDefined();
+    expect(screen.getByText("pedro@test.com")).toBeInTheDocument();
   });
 
   it("renderiza status chip (i=2)", async () => {
@@ -409,27 +409,25 @@ describe("DetalheAlunoAdminPage — tabs", () => {
   it("tab Fichas → mostra empty state de fichas", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Maria Silva")).toBeDefined());
+    expect(await screen.findByText("Maria Silva")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Fichas" }));
-    expect(screen.getByText("Nenhuma ficha vinculada a este aluno.")).toBeDefined();
+    expect(screen.getByText("Nenhuma ficha vinculada a este aluno.")).toBeInTheDocument();
   });
 
   it("tab Execuções → mostra empty state de execuções", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Maria Silva")).toBeDefined());
+    expect(await screen.findByText("Maria Silva")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Execuções" }));
-    expect(screen.getByText("Nenhuma execução registrada para este aluno.")).toBeDefined();
+    expect(screen.getByText("Nenhuma execução registrada para este aluno.")).toBeInTheDocument();
   });
 
   it("tab Progressão → chama getAlunoProgressao e exibe empty state", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Maria Silva")).toBeDefined());
+    expect(await screen.findByText("Maria Silva")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Progressão" }));
-    await waitFor(() =>
-      expect(screen.getByText("Nenhuma execução registrada no período.")).toBeDefined(),
-    );
+    expect(await screen.findByText("Nenhuma execução registrada no período.")).toBeInTheDocument();
     expect(mockAdminApi.getAlunoProgressao).toHaveBeenCalled();
   });
 
@@ -439,9 +437,7 @@ describe("DetalheAlunoAdminPage — tabs", () => {
     } as never);
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() =>
-      expect(screen.getByText("Treinador Vinculado XYZ")).toBeDefined(),
-    );
+    expect(await screen.findByText("Treinador Vinculado XYZ")).toBeInTheDocument();
   });
 
   it("vinculoPendente (sem ativo) → exibe nome do novo treinador", async () => {
@@ -450,25 +446,19 @@ describe("DetalheAlunoAdminPage — tabs", () => {
     } as never);
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() =>
-      expect(screen.getByText("Novo Treinador ABC")).toBeDefined(),
-    );
+    expect(await screen.findByText("Novo Treinador ABC")).toBeInTheDocument();
   });
 
   it("sem vínculo → exibe mensagem sem vínculo", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() =>
-      expect(screen.getByText("Sem vínculo ativo.")).toBeDefined(),
-    );
+    expect(await screen.findByText("Sem vínculo ativo.")).toBeInTheDocument();
   });
 
   it("aluno com telefone → exibe celular formatado (11 dígitos)", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() =>
-      expect(screen.getByText("(11) 98765-4321")).toBeDefined(),
-    );
+    expect(await screen.findByText("(11) 98765-4321")).toBeInTheDocument();
   });
 
   it("aluno com perfil de treino → exibe seção Perfil de treino", async () => {
@@ -477,9 +467,7 @@ describe("DetalheAlunoAdminPage — tabs", () => {
     } as never);
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() =>
-      expect(screen.getByText("Perfil de treino")).toBeDefined(),
-    );
+    expect(await screen.findByText("Perfil de treino")).toBeInTheDocument();
   });
 });
 
@@ -506,9 +494,7 @@ describe("DetalheAlunoAdminPage — progressão com dados", () => {
     mockAdminApi.getAluno.mockResolvedValue({ data: mockAlunoTel10 } as never);
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() =>
-      expect(screen.getByText("(11) 9876-5432")).toBeDefined()
-    );
+    expect(await screen.findByText("(11) 9876-5432")).toBeInTheDocument();
   });
 
   it("progressão com exercícios → renderiza card de exercício", async () => {
@@ -527,13 +513,11 @@ describe("DetalheAlunoAdminPage — progressão com dados", () => {
     } as never);
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Tel Dez")).toBeDefined());
+    expect(await screen.findByText("Tel Dez")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Progressão" }));
-    await waitFor(() =>
-      expect(screen.getByText("Supino Reto")).toBeDefined()
-    );
-    expect(screen.getByText("Peitoral")).toBeDefined();
-    expect(screen.getByText("Último: 65 kg")).toBeDefined();
+    expect(await screen.findByText("Supino Reto")).toBeInTheDocument();
+    expect(screen.getByText("Peitoral")).toBeInTheDocument();
+    expect(screen.getByText("Último: 65 kg")).toBeInTheDocument();
   });
 });
 
@@ -562,27 +546,25 @@ describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
   it("tab Vínculos → mostra empty state de vínculos", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Carlos Ferreira")).toBeDefined());
+    expect(await screen.findByText("Carlos Ferreira")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Vínculos" }));
-    expect(screen.getByText("Nenhum vínculo encontrado.")).toBeDefined();
+    expect(screen.getByText("Nenhum vínculo encontrado.")).toBeInTheDocument();
   });
 
   it("tab Treinos → mostra empty state de treinos", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Carlos Ferreira")).toBeDefined());
+    expect(await screen.findByText("Carlos Ferreira")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Treinos" }));
-    expect(screen.getByText("Nenhum treino encontrado para este treinador.")).toBeDefined();
+    expect(screen.getByText("Nenhum treino encontrado para este treinador.")).toBeInTheDocument();
   });
 
   it("tab Pacotes → chama getTreinadorPacotes e exibe pacote", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Carlos Ferreira")).toBeDefined());
+    expect(await screen.findByText("Carlos Ferreira")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Pacotes" }));
-    await waitFor(() =>
-      expect(screen.getByText("Pacote Premium")).toBeDefined(),
-    );
+    expect(await screen.findByText("Pacote Premium")).toBeInTheDocument();
     expect(mockAdminApi.getTreinadorPacotes).toHaveBeenCalledWith("t-001");
   });
 
@@ -590,17 +572,15 @@ describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
     mockAdminApi.getTreinadorPacotes.mockResolvedValue({ data: [] } as never);
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Carlos Ferreira")).toBeDefined());
+    expect(await screen.findByText("Carlos Ferreira")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Pacotes" }));
-    await waitFor(() =>
-      expect(screen.getByText("Nenhum pacote cadastrado.")).toBeDefined(),
-    );
+    expect(await screen.findByText("Nenhum pacote cadastrado.")).toBeInTheDocument();
   });
 
   it("tab Alunos → mostra empty state", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
-    await waitFor(() => expect(screen.getByText("Carlos Ferreira")).toBeDefined());
-    expect(screen.getByText("Este treinador não possui alunos ativos.")).toBeDefined();
+    expect(await screen.findByText("Carlos Ferreira")).toBeInTheDocument();
+    expect(screen.getByText("Este treinador não possui alunos ativos.")).toBeInTheDocument();
   });
 });

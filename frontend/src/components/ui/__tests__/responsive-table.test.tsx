@@ -41,9 +41,9 @@ beforeEach(() => {
 describe("ResponsiveTable — desktop", () => {
   it("renderiza cabeçalhos das colunas", () => {
     render(<ResponsiveTable columns={COLS} rows={ROWS} rowKey={(r) => r.id} renderCell={renderCell} />);
-    expect(screen.getByText("Nome")).toBeDefined();
-    expect(screen.getByText("Status")).toBeDefined();
-    expect(screen.getByText("Ações")).toBeDefined();
+    expect(screen.getByText("Nome")).toBeInTheDocument();
+    expect(screen.getByText("Status")).toBeInTheDocument();
+    expect(screen.getByText("Ações")).toBeInTheDocument();
   });
 
   it("onRowClick dispara ao clicar na linha", () => {
@@ -73,7 +73,7 @@ describe("ResponsiveTable — desktop", () => {
       <ResponsiveTable columns={COLS} rows={ROWS} rowKey={(r) => r.id} renderCell={renderCell} />,
     );
     // Apenas verifica que o componente renderiza sem erro
-    expect(screen.getByText("João")).toBeDefined();
+    expect(screen.getByText("João")).toBeInTheDocument();
   });
 });
 
@@ -99,14 +99,14 @@ describe("ResponsiveTable — paginação", () => {
       />,
     );
     // MUI TablePagination exibe o label de linhas por página
-    expect(screen.getByText("Por página:")).toBeDefined();
+    expect(screen.getByText("Por página:")).toBeInTheDocument();
   });
 
   it("não renderiza paginação quando ausente", () => {
     render(
       <ResponsiveTable columns={COLS} rows={ROWS} rowKey={(r) => r.id} renderCell={renderCell} />,
     );
-    expect(screen.queryByText("Por página:")).toBeNull();
+    expect(screen.queryByText("Por página:")).not.toBeInTheDocument();
   });
 
   it("onPageChange dispara ao clicar próxima página", () => {
@@ -144,8 +144,8 @@ describe("ResponsiveTable — mobile", () => {
     render(
       <ResponsiveTable columns={COLS} rows={ROWS} rowKey={(r) => r.id} renderCell={renderCell} />,
     );
-    expect(screen.queryByRole("table")).toBeNull();
-    expect(screen.getByText("João")).toBeDefined();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByText("João")).toBeInTheDocument();
   });
 
   it("múltiplas linhas → renderiza Divider entre rows", () => {
@@ -153,8 +153,8 @@ describe("ResponsiveTable — mobile", () => {
       <ResponsiveTable columns={COLS} rows={ROWS} rowKey={(r) => r.id} renderCell={renderCell} />,
     );
     // Ambas as rows estão presentes
-    expect(screen.getByText("João")).toBeDefined();
-    expect(screen.getByText("Maria")).toBeDefined();
+    expect(screen.getByText("João")).toBeInTheDocument();
+    expect(screen.getByText("Maria")).toBeInTheDocument();
   });
 
   it("onRowClick dispara ao clicar no card", () => {
@@ -191,6 +191,6 @@ describe("ResponsiveTable — mobile", () => {
       />,
     );
     // Label "Oculto:" não aparece como cabeçalho secundário
-    expect(screen.queryByText("Oculto:")).toBeNull();
+    expect(screen.queryByText("Oculto:")).not.toBeInTheDocument();
   });
 });

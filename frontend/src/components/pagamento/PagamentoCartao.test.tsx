@@ -59,7 +59,7 @@ describe("PagamentoCartao — loading", () => {
   it("exibe spinner enquanto carrega", () => {
     vi.mocked(pagamentoApi.obterPagamento).mockReturnValue(new Promise(() => {}));
     render(<PagamentoCartao pagamentoId="p1" />);
-    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 });
 
@@ -69,8 +69,8 @@ describe("PagamentoCartao — sem clientSecret", () => {
   it("exibe alerta de indisponibilidade", async () => {
     mockObter({ clientSecret: null });
     render(<PagamentoCartao pagamentoId="p1" />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
-    expect(screen.getByText(/indisponíveis/)).toBeDefined();
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+    expect(screen.getByText(/indisponíveis/)).toBeInTheDocument();
   });
 });
 
@@ -80,15 +80,15 @@ describe("PagamentoCartao — status terminal", () => {
   it("status Falhou → alerta de falha", async () => {
     mockObter({ status: "Falhou", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
-    expect(screen.getByText(/Pagamento falhou/)).toBeDefined();
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+    expect(screen.getByText(/Pagamento falhou/)).toBeInTheDocument();
   });
 
   it("status Expirado → alerta de expiração", async () => {
     mockObter({ status: "Expirado", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
-    expect(screen.getByText(/Pagamento expirado/)).toBeDefined();
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+    expect(screen.getByText(/Pagamento expirado/)).toBeInTheDocument();
   });
 });
 
@@ -98,16 +98,16 @@ describe("PagamentoCartao — formulário", () => {
   it("clientSecret presente e status Pendente → renderiza PaymentElement", async () => {
     mockObter({ status: "Pendente", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
-    expect(screen.getByTestId("payment-element")).toBeDefined();
-    expect(screen.getByRole("button", { name: "Pagar" })).toBeDefined();
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+    expect(screen.getByTestId("payment-element")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pagar" })).toBeInTheDocument();
   });
 
   it("status Pago dentro do form → exibe confirmação", async () => {
     mockObter({ status: "Pago", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
-    expect(screen.getByText("Pagamento confirmado!")).toBeDefined();
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+    expect(screen.getByText("Pagamento confirmado!")).toBeInTheDocument();
   });
 });
 
@@ -123,13 +123,13 @@ describe("CartaoForm — submit com erro Stripe", () => {
 
     mockObter({ status: "Pendente", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
 
-    await waitFor(() => expect(screen.getByText("Card declined")).toBeDefined());
+    expect(await screen.findByText("Card declined")).toBeInTheDocument();
     // botão volta a ser habilitado após erro
-    expect(screen.getByRole("button", { name: "Pagar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Pagar" })).toBeEnabled();
   });
 
   it("submit sem stripe/elements → não chama confirmPayment", async () => {
@@ -139,7 +139,7 @@ describe("CartaoForm — submit com erro Stripe", () => {
 
     mockObter({ status: "Pendente", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
-    await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
 
     // botão desabilitado quando stripe é null
     expect(screen.getByRole("button", { name: "Pagar" })).toBeDisabled();
