@@ -322,8 +322,18 @@ Nenhum bypass: `--no-verify` proibido.
 | Fase | Commit | Branch usado |
 |------|--------|--------------|
 | 0 — Limpeza jsdom | `6a3a636` | direto em `homolog` (legado, antes da regra) |
+| 1 — Setup + determinismo | _em PR_ | `chore/harness-fase1-setup-determinismo` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
+
+### Decisões técnicas Fase 1
+
+- **Fake Date opt-in**: `installDeterminism({time})` so congela Date se string passada. Default nao congela porque modulos com `Date.now()` top-level (ex: `FUTURE/PAST` em `auth.test.ts`) sao avaliados antes do `beforeEach` e ficariam dessincronizados.
+- **Fake timers seletivo**: apenas `Date` e `performance`. `setTimeout/setInterval` reais para nao quebrar `waitFor()` (Testing Library) e `user-event` v14.
+- **ESLint base via `eslint-config-next/core-web-vitals + typescript`**, flat config.
+- **Regras Next 16/React 19 novas relaxadas para `warn`** (`react-hooks/purity`, `set-state-in-effect`, `exhaustive-deps`, `import/no-anonymous-default-export`). Endurecidas na Fase 7.
+- **Husky no monorepo split**: `core.hooksPath = frontend/.husky` setado via `prepare` script.
+- **Pre-commit hook**: `typecheck && lint && test`. Bloqueia commit se qualquer falhar.
 
 ## 6. Fases
 

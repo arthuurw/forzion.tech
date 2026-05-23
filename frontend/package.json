@@ -8,7 +8,12 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run lint && npm test",
+    "prepare": "cd .. && husky frontend/.husky"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -35,6 +40,7 @@
     "postcss": "^8.5.10"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -42,9 +48,14 @@
     "@types/node": "^20.19.39",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/seedrandom": "^3.0.8",
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-v8": "^4.1.5",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
+    "husky": "^9.1.7",
     "jsdom": "^26.1.0",
+    "seedrandom": "^3.0.5",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.5"
