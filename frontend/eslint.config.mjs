@@ -2,6 +2,7 @@ import next from "eslint-config-next";
 import testingLibrary from "eslint-plugin-testing-library";
 import jestDom from "eslint-plugin-jest-dom";
 import security from "eslint-plugin-security";
+import playwright from "eslint-plugin-playwright";
 
 export default [
   ...next,
@@ -62,6 +63,20 @@ export default [
     files: ["scripts/**/*.mjs", "scripts/**/*.js"],
     rules: {
       "security/detect-non-literal-fs-filename": "off",
+    },
+  },
+
+  // E2E (Playwright) — plugin com regras dedicadas. detect-non-literal-fs-filename
+  // off porque storage states usam path.join() dinamico. rules-of-hooks off
+  // porque o callback `use(fixture)` do Playwright bate falso positivo.
+  {
+    files: ["e2e/**/*.ts", "playwright.config.ts"],
+    plugins: { playwright },
+    rules: {
+      ...playwright.configs["flat/recommended"].rules,
+      "security/detect-non-literal-fs-filename": "off",
+      "react-hooks/rules-of-hooks": "off",
+      "no-console": "off",
     },
   },
 
