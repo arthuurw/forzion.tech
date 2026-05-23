@@ -103,6 +103,12 @@ jobs:
 
             docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env build
             docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env up -d --remove-orphans
+
+            # Nginx config eh bind-mount (./nginx/nginx.conf). "up -d" nao
+            # recria nginx quando so o arquivo muda, entao a config nova so
+            # carrega com restart explicito.
+            docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env restart nginx
+
             docker image prune -f
 
             echo "Deploy homolog OK -- $(date)"
