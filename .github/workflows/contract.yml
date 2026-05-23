@@ -1,9 +1,15 @@
 name: Contract — Pact (consumer)
 
 # Gera e valida o contrato consumer-driven do frontend (forzion-frontend).
-# A geracao/validacao roda em todo PR (gate real, sem broker).
-# Publish no broker + can-i-deploy so ativam quando o secret
-# PACT_BROKER_BASE_URL existe (broker self-hosted ou PactFlow).
+# - pull_request: gera + valida (gate). Publish so ocorre com secret presente.
+# - push (homolog): gera + valida + publica no broker.
+# - workflow_dispatch: disparo manual.
+#
+# Nota: o publish espera o broker responder (heartbeat) antes de subir o pact.
+# Em push, o deploy homolog roda em paralelo e reinicia o nginx; o wait evita
+# que o publish falhe ao bater no broker durante esse restart.
+# (workflow_run nao serve aqui: ele le o workflow do branch default `main`, onde
+#  este arquivo nao existe — entao nunca dispararia.)
 #
 # A verificacao do PROVIDER (backend .NET) NAO esta aqui: roda no pipeline do
 # backend com o pact-verifier .NET, consumindo o contrato publicado no broker.
@@ -39,6 +45,8 @@ jobs:
       PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
       PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
       PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
+      PACT_CONSUMER_VERSION: ${{ github.sha }}
+      PACT_CONSUMER_BRANCH: ${{ github.ref_name }}
     defaults:
       run:
         working-directory: frontend
@@ -64,6 +72,20 @@ jobs:
           path: frontend/pacts/*.json
           if-no-files-found: error
 
+      - name: Aguarda broker disponivel
+        # Em push, o deploy reinicia o nginx em paralelo; espera o heartbeat
+        # responder antes de publicar (evita falha por race com o restart).
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS -u "$PACT_BROKER_USERNAME:$PACT_BROKER_PASSWORD" \
+              "$PACT_BROKER_BASE_URL/diagnostic/status/heartbeat" >/dev/null; then
+              echo "broker ok"; exit 0
+            fi
+            echo "broker indisponivel (deploy/restart?), retry $i/12..."; sleep 15
+          done
+          echo "broker nao respondeu apos ~3min"; exit 1
+
       - name: Publica no broker
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
@@ -72,8 +94,8 @@ jobs:
             -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
             pactfoundation/pact-cli:latest \
             publish /pacts \
-            --consumer-app-version="${GITHUB_SHA}" \
-            --branch="${GITHUB_REF_NAME}"
+            --consumer-app-version="${PACT_CONSUMER_VERSION}" \
+            --branch="${PACT_CONSUMER_BRANCH}"
 
       - name: can-i-deploy (consumer)
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
@@ -87,5 +109,5 @@ jobs:
             pactfoundation/pact-cli:latest \
             broker can-i-deploy \
             --pacticipant=forzion-frontend \
-            --version="${GITHUB_SHA}" \
+            --version="${PACT_CONSUMER_VERSION}" \
             --to-environment=homolog
