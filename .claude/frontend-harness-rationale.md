@@ -1101,11 +1101,164 @@ Critical specs (8):
 
 ---
 
+## Fase 10b — Security + LGPD + multi-tab + network + a11y + visual
+
+**Status**: concluída (branch `chore/harness-fase10b-e2e-security-lgpd`).
+
+Segunda metade da Fase 10 original (após 10a). Cobre 14 specs em 6 categorias.
+
+### Objetivo
+
+Completar a cobertura E2E não-happy-path: segurança (CSP, cookies, CSRF, rate limit), LGPD (skeletons fail-loud para features ausentes), comportamento multi-aba, condições de rede degradadas, acessibilidade WCAG 2.1 AA e snapshots visuais.
+
+### Por que
+
+#### Security (4 specs)
+
+- `csp-headers.spec.ts`: CSP é configurado em `next.config.ts` (`buildCsp()`). Sem teste E2E, mudanças no CSP passam silenciosamente. Spec valida 8 diretivas críticas + 5 headers complementares (X-Frame-Options, HSTS, Referrer-Policy, etc).
+- `cookies-security.spec.ts`: cookies `token` + `session_guard` setados em `/api/auth/route.ts` com HttpOnly + SameSite=Strict + Secure(prod). Spec inspeciona via `context.cookies()` após login real — pega regressão se alguém remover flag.
+- `csrf.spec.ts`: defesa primária é SameSite=Strict + Bearer no proxy `/api/backend/`. Spec valida (a) request cross-origin sem cookie retorna 401; (b) cookie repassado no header não dá acesso (proxy não confia em cookie do cliente).
+- `rate-limit.spec.ts`: `checkRateLimit` em `src/lib/rateLimit.ts` permite 10 req/min/IP. Spec hammer-eia `/api/auth` com 12 attempts e espera transição 401 → 429.
+
+#### LGPD (3 skeletons fail-loud)
+
+Features ausentes no app:
+- Banner de consentimento de cookies — não implementado
+- `/api/perfil/excluir` (direito ao esquecimento) — não implementado
+- `/api/perfil/exportar` (portabilidade) — não implementado
+
+Per estratégia "fail loud" autorizada, specs ficam no repo como **skeletons que falham quando rodados**. Cada um tem comentário no topo descrevendo:
+- Status atual (ausente)
+- Onde implementar quando feature existir
+- Que cenários expandir (banner aparece, persiste escolha, etc)
+
+Quando spec falhar em CI (Fase 17), há 2 caminhos:
+1. Implementar feature (banner / endpoints) → spec deve passar
+2. Decisão consciente de não cobrir → remover spec com PR explicando
+
+Trade-off: PR Fase 10b mergeia com specs LGPD que falhariam se E2E rodasse. Aceito — E2E não está em CI atual; quando entrar (Fase 17), o build vai pedir resolução.
+
+#### Multi-tab (2 specs)
+
+- `logout-cross-tab.spec.ts`: cria 2 `pages` no mesmo `BrowserContext` (cookies compartilhados, simulando 2 abas). Logout em pageA via `request.post("/api/auth/logout")` deve invalidar pageB — próxima navegação redireciona pra `/login` via middleware.
+- `session-sync.spec.ts`: contexto com storage state admin → 2 pages → ambas acessam `/admin` sem redirect.
+
+Multi-tab é diferente de multi-context: Playwright `BrowserContext` é isolado (cada contexto = nova "máquina"); pages no mesmo contexto compartilham cookies/storage — exatamente como abas reais do mesmo browser.
+
+#### Network (3 specs)
+
+Reusa fixtures Fase 9 (`network.slow3G/offline/flaky`):
+- `slow3G.spec.ts`: navega `/admin/alunos` sob throttle CDP (~500Kbps + 400ms latency). Timeout 60s. Skip se browser ≠ chromium (CDP-only).
+- `offline.spec.ts`: navega online → setOffline(true) → tenta nova rota → restaura conectividade.
+- `retry.spec.ts`: `flakyRoute` falha 1ª request com 503; spec valida que UI mostra banner de erro (apiClient axios NÃO retenta automaticamente — decisão do projeto). Reload manual recupera. Regressão-proof: se alguém adicionar retry sem teste, UI ignoraria o erro inicial e este spec detectaria.
+
+#### A11y all-pages-axe (1 spec, ~14 cenários)
+
+- Instalado `@axe-core/playwright@^4`.
+- Helper `e2e/utils/axe.ts` encapsula `AxeBuilder` com tags WCAG 2.1 AA + `disableRules(["color-contrast"])`.
+- Spec varre 4 grupos via `describe`-scoped `test.use({ storageState })`:
+  - Públicas (4 rotas): `/`, `/login`, `/cadastro/aluno`, `/cadastro/treinador`
+  - Admin (3 rotas): `/admin`, `/admin/alunos`, `/admin/treinadores`
+  - Aluno (3 rotas): `/aluno`, `/aluno/fichas`, `/aluno/assinatura`
+  - Treinador (2 rotas): `/treinador`, `/treinador/alunos`
+- Assertion: `results.violations === []` com JSON pretty-printed em caso de falha (debug rápido).
+- `color-contrast` desabilitado: tema MUI tem casos de baixo contraste em chips/text.secondary que viraram dívida. Cobrir em fase a11y dedicada (Fase 11 do plano original) ou agora como follow-up.
+
+#### Visual (1 spec piloto)
+
+- `visual/login.spec.ts`: snapshot `toHaveScreenshot("login.png", { fullPage: true })`.
+- Aguarda `document.fonts.ready` antes do snapshot — reduz flake por jitter de carregamento de fontes.
+- Threshold via `playwright.config.ts`: `maxDiffPixelRatio: 0.01`, `threshold: 0.2`.
+- Baselines **Linux-only** (geradas em Fase 17 CI). Local não gera baseline (regra do plano §12).
+- Apenas 1 página (login) como piloto — Fase futura expande para admin/aluno/checkout + light/dark.
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Security cobertura completa** | CSP + cookies + CSRF + rate limit em E2E real |
+| **LGPD documentado como dívida** | Skeletons fail-loud forçam conversa quando CI ligar |
+| **Multi-tab proof** | 2 specs garantem que logout invalida todas abas |
+| **Network real (CDP)** | slow3G/offline/flaky em Chromium via fixtures Fase 9 |
+| **A11y automatizado** | 14 cenários axe cobrindo todas roles + públicas |
+| **Visual baseline ready** | Spec pronto; CI Fase 17 gera baseline Linux |
+| **Reutiliza POMs + fixtures Fase 10a** | Zero duplicação |
+| **355 vitest verdes mantidos** | Sem regressão |
+
+### Trade-offs aceitos
+
+- **LGPD specs falham quando run**: features ausentes. Decisão consciente — alternativa seria remover specs e esquecer LGPD existe. Skeleton no repo é gatilho permanente.
+- **A11y `color-contrast` desabilitado**: tema MUI legado tem dívida de contraste. Cobrir em fase a11y dedicada (futura) ou hardening separado. Não bloqueia esta fase.
+- **Visual só `/login`**: piloto. Expansão (admin/aluno/checkout, light/dark) em fase futura.
+- **Retry spec valida AUSÊNCIA de retry**: o projeto opta por mostrar erro + reload manual em vez de retry automático. Spec garante que essa decisão se mantenha (regressão-proof).
+- **CSRF token não implementado**: SameSite=Strict + Bearer no proxy backend são suficientes. Spec documenta a defesa atual e valida cenários adversarios.
+- **`a11y/all-pages-axe` em 1 arquivo**: 4 describes + storage state diferente por bloco. Alternativa seria 4 arquivos separados; aceitamos 1 arquivo por simplicidade (plano §7 prevê 1 spec).
+- **Lint warnings novos (~8)**: Playwright `no-conditional-expect`, `no-conditional-in-test`, `no-element-handle`, etc. Aceitos no contexto de specs que dependem de estado de homolog compartilhado.
+
+### Mudanças
+
+#### Deps
+
+- `@axe-core/playwright@^4` (devDependency)
+
+#### Arquivos novos
+
+Security (4):
+- `e2e/specs/security/csp-headers.spec.ts`
+- `e2e/specs/security/cookies-security.spec.ts`
+- `e2e/specs/security/csrf.spec.ts`
+- `e2e/specs/security/rate-limit.spec.ts`
+
+LGPD (3 skeletons):
+- `e2e/specs/lgpd/consent-cookies.spec.ts`
+- `e2e/specs/lgpd/delete-account.spec.ts`
+- `e2e/specs/lgpd/export-data.spec.ts`
+
+Multi-tab (2):
+- `e2e/specs/multi-tab/logout-cross-tab.spec.ts`
+- `e2e/specs/multi-tab/session-sync.spec.ts`
+
+Network (3):
+- `e2e/specs/network/slow3G.spec.ts`
+- `e2e/specs/network/offline.spec.ts`
+- `e2e/specs/network/retry.spec.ts`
+
+A11y (1):
+- `e2e/utils/axe.ts` (helper `runAxe`)
+- `e2e/specs/a11y/all-pages-axe.spec.ts`
+
+Visual (1):
+- `e2e/specs/visual/login.spec.ts`
+
+#### Arquivos atualizados
+
+- `e2e/README.md`: estrutura specs com todas categorias Fase 10b.
+- `frontend/package.json`: `@axe-core/playwright` em devDeps.
+
+### Métricas de sucesso
+
+- ✅ 14 specs novos em 6 categorias (security 4, lgpd 3, multi-tab 2, network 3, a11y 1, visual 1)
+- ✅ `@axe-core/playwright` integrado via helper `runAxe`
+- ✅ Reusa fixtures Fase 9 + POMs Fase 10a (zero duplicação)
+- ✅ `npm run validate`: tsc 0 erros + ESLint 0 erros (49 warnings — baseline + Playwright FPs novos) + 355 vitest verdes
+- ✅ Fail-loud LGPD documentado no spec + rationale
+- ✅ `e2e/README.md` atualizado com novas categorias
+
+### Impacto futuro
+
+- Fase 11 (a11y dedicada): habilitar `color-contrast` + cobertura adicional axe; integrar Storybook test-runner com axe
+- Fase 13 (security): ZAP DAST roda contra preview deploy complementando estes specs
+- Fase 17 (CI): job E2E roda todas categorias; baseline visual gerada uma vez
+- LGPD features (quando implementadas): specs já existem, basta passar
+- Retry: se decisão mudar (adicionar retry automático), spec precisa atualizar primeiro
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 10b — Security + LGPD + multi-tab + network + a11y + visual
+- Fase 11 — A11y dedicada + visual expandido + memory leak
 - Fase 11 — A11y + visual + memory leak
 - Fase 12 — Lighthouse CI + bundle + crawl
 - Fase 13 — Security gates
