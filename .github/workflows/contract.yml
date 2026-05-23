@@ -25,6 +25,7 @@ on:
       - "frontend/vitest.pact.config.mts"
       - "frontend/pact-broker.config.ts"
       - ".github/workflows/contract.yml"
+  workflow_dispatch:
 
 jobs:
   consumer-contract:
