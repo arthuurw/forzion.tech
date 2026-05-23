@@ -1966,6 +1966,55 @@ Consequência: não há preview efêmero por PR. Jobs que exigem **stack viva** 
 
 ---
 
+## Fase 18 — Observability/hygiene (dead code + flake + cobertura)
+
+**Status**: concluída (branch `chore/harness-fase18-observability`).
+
+### Objetivo
+
+Última fase do harness: higiene de código (dead code + dependências circulares), tratamento de flakes e cobertura visível — tudo com ferramentas grátis (decisão do dono, sem SaaS pago).
+
+### O que entrou
+
+- **Dependências circulares — madge** (`npm run deadcode`): `madge --circular --extensions ts,tsx`. Hoje **0 ciclos** → vira check **bloqueante** no `hygiene.yml`. Pega regressão de arquitetura (import cycles) cedo.
+- **Código/deps não usados — knip** (`npm run knip`): unused files/exports/dependencies. **Report-only** (`continue-on-error`) — surfaceia candidatos pra triagem humana, não bloqueia.
+- **`hygiene.yml`**: workflow separado (PR + push em `frontend/**`), madge bloqueante + knip report-only.
+
+### Decisões
+
+- **knip > ts-prune**: o plano §9 listava `ts-prune`, mas está sem manutenção e o knip já cobre unused exports + files + deps num só passe. ts-prune descartado.
+- **knip report-only (não gate)**: com a config de `projects` do Vitest 4, o knip não rastreia bem os test files → gera falsos positivos (ex.: `fast-check`/`axe-core` aparecem como devDeps não usadas porque entram via wrappers `@fast-check/vitest`/`vitest-axe`; barrels de test). Tunado via `knip.json` (entry dos barrels + test globs, ignore de `e2e/` e `pact-broker.config.ts`), mas o restante é candidato p/ revisão, não erro. Gatear o knip travaria o build por ruído.
+- **knip 5, não 6**: knip 6 usa binding nativo do oxc-parser que não instala em Windows local (`@oxc-parser/binding-win32-x64-msvc` ausente) — quebrava o run local. knip 5 (parser sem binding nativo) roda em dev e CI. Coincide com o `^5` do plano §9.
+- **madge com `--extensions ts,tsx --ts-config`**: sem isso o madge processa 0 arquivos (não reconhece TS).
+
+### Cobertura, flake e analytics
+
+- **Cobertura**: já resolvida na Fase 17 (comentário grátis no PR via `vitest-coverage-report-action` + resumo do backend no run). Sem Codecov SaaS. Flags por camada ficam pro dia que houver serviço.
+- **Flake**: Playwright já roda com `retries: 2` em CI + traces (Fase 9), e o determinismo (time/random/uuid/motion travados, Fase 1) minimiza flakes em unit/integration. Tracking agregado (Datadog Test Visibility) é pago — fora de escopo; o sinal hoje é o "flaky" do report do Playwright.
+- **Analytics**: produto/web analytics é decisão à parte. Opção grátis self-hosted (Umami/Plausible na VM, padrão GlitchTip) fica pendente — não foi adicionada pra não subir serviço sem decisão.
+
+### Mudanças
+
+- Deps dev: `knip@^5`, `madge@^8`
+- `frontend/knip.json` — config (entry de barrels/test, ignore e2e/pact config)
+- `frontend/package.json` — scripts `knip`, `deadcode`, `hygiene`
+- `.github/workflows/hygiene.yml` — madge bloqueante + knip report-only
+
+### Métricas de sucesso
+
+- ✅ madge: 0 dependências circulares (157 arquivos TS)
+- ✅ knip roda com config enxuta (shortlist de candidatos reais, sem o ruído inicial de ~50 itens)
+- ✅ `hygiene.yml` separado — não acopla ao gate principal
+
+### Impacto futuro
+
+- Triar o shortlist do knip: barrels `src/components/*/index.ts`, `src/lib/auth/session.ts`, dep `zustand`, export `useSnackbar`/`DIFICULDADE_LABEL` — confirmar e remover o que for morto de verdade
+- Analytics self-hosted (Umami/Plausible) se/quando o dono decidir
+- Flake tracking agregado quando houver budget/serviço
+- Promover knip a gate quando o suporte a Vitest projects melhorar e os falsos positivos zerarem
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
