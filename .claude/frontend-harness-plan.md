@@ -342,6 +342,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 12 — Lighthouse CI + bundle-analyzer + linkinator | `ff13bd4` (PR #28) | `chore/harness-fase12-lighthouse-bundle` |
 | 13 — Security gates (audit + osv + gitleaks + ZAP + SBOM + license + CodeQL) | `bb003bb` (PR #29) | `chore/harness-fase13-security-gates` |
 | 14 — Mutation testing (Stryker) | `be7b938` (PR #30) | `chore/harness-fase14-mutation-stryker` |
+| 15 — Contract testing (Pact consumer-driven) | `67c9b81` (PR #31) | `chore/harness-fase15-contract-pact` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
