@@ -13,9 +13,9 @@
  */
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import { server } from "./msw/server";
+import { server } from "@/test/msw/server";
 import { adminApi } from "@/lib/api/admin";
-import { buildAluno } from "./factories";
+import { buildAluno } from "@/test/factories";
 
 describe("MSW piloto — adminApi.listAlunos via HTTP real", () => {
   it("intercepta GET /admin/alunos e retorna fixture", async () => {
