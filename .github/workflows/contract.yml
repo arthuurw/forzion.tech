@@ -31,6 +31,11 @@ jobs:
   consumer-contract:
     name: Consumer contract (gera + valida + publica)
     runs-on: ubuntu-latest
+    # secrets nao podem ser usados em `if:`; mapeia p/ env do job e checa o env.
+    env:
+      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
+      PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
     defaults:
       run:
         working-directory: frontend
@@ -57,7 +62,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publica no broker
-        if: ${{ secrets.PACT_BROKER_BASE_URL != '' }}
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           docker run --rm \
             -v "$PWD/pacts:/pacts" \
@@ -66,13 +71,9 @@ jobs:
             publish /pacts \
             --consumer-app-version="${GITHUB_SHA}" \
             --branch="${GITHUB_REF_NAME}"
-        env:
-          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
-          PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
-          PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
 
       - name: can-i-deploy (consumer)
-        if: ${{ secrets.PACT_BROKER_BASE_URL != '' }}
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           docker run --rm \
             -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
@@ -81,7 +82,3 @@ jobs:
             --pacticipant=forzion-frontend \
             --version="${GITHUB_SHA}" \
             --to-environment=homolog
-        env:
-          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
-          PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
-          PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
