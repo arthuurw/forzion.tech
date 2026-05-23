@@ -19,6 +19,10 @@
 /frontend/e2e/                          @arthuurw
 /frontend/lighthouserc.json             @arthuurw
 /frontend/stryker.conf.json             @arthuurw
+/.gitleaks.toml                         @arthuurw
+/osv-scanner.toml                       @arthuurw
+/zap.yaml                               @arthuurw
+/.github/codeql/                        @arthuurw
 
 # Infra e CI
 /.github/                               @arthuurw
