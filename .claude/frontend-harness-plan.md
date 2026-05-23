@@ -341,7 +341,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 11 — A11y vitest-axe + visual expandido + memory leak | `71a5e24` (PR #27) | `chore/harness-fase11-a11y-visual-memory` |
 | 12 — Lighthouse CI + bundle-analyzer + linkinator | `ff13bd4` (PR #28) | `chore/harness-fase12-lighthouse-bundle` |
 | 13 — Security gates (audit + osv + gitleaks + ZAP + SBOM + license + CodeQL) | `bb003bb` (PR #29) | `chore/harness-fase13-security-gates` |
-| 14 — Mutation testing (Stryker) | _em PR_ | `chore/harness-fase14-mutation-stryker` |
+| 14 — Mutation testing (Stryker) | `be7b938` (PR #30) | `chore/harness-fase14-mutation-stryker` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
