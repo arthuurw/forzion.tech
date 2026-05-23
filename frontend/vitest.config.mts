@@ -4,13 +4,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 /**
  * Vitest configurado em 3 projects:
- * - "unit"       — env node, codigo puro (lib, hooks, utils, validations, middleware)
+ * - "unit"       — env node, codigo puro (lib, hooks, middleware)
  * - "integration"— env jsdom, componentes/paginas React, com jest-dom + polyfills
  * - "api"        — env node, Next.js Route Handlers (src/app/api/**)
  *
- * Tests em src/test/* sao transitorios: serao colocados (Fase 5) e a entrada
- * por nome desaparece. Por enquanto cada arquivo eh atribuido manualmente ao
- * project correto.
+ * Tests sao colocados perto do codigo testado.
  *
  * Coverage por path: thresholds diferenciados por camada (lib mais rigoroso,
  * app/* mais permissivo por boilerplate Next).
@@ -30,6 +28,7 @@ export default defineConfig({
         "**/*.config.*",
         "**/*.stories.tsx",
         "**/*.property.test.ts",
+        "**/__tests__/**",
         "e2e/**",
         "src/main.tsx",
       ],
@@ -53,7 +52,7 @@ export default defineConfig({
           statements: 85,
         },
         // Baseline Fase 2 — refletindo cobertura atual sem regressao.
-        // Targets finais (Fase 5/6 quando testes migrarem e API routes expandirem):
+        // Targets finais (Fase 5b/6 quando testes migrarem para MSW e API routes expandirem):
         // src/app/api/**: 90L / 85B / 90F / 90S
         // src/app/**:     70L / 60B / 70F / 70S
         "src/app/api/**": {
@@ -84,17 +83,14 @@ export default defineConfig({
             "src/lib/**/*.property.test.ts",
             "src/hooks/**/*.test.ts",
             "src/hooks/**/*.property.test.ts",
-            // Transicao: testes ainda em src/test/ que rodam em env node
-            "src/test/admin-api.test.ts",
-            "src/test/auth.test.ts",
-            "src/test/formatting.test.ts",
-            "src/test/middleware.test.ts",
-            "src/test/rateLimit.test.ts",
-            "src/test/validations.test.ts",
+            "src/middleware.test.ts",
           ],
           exclude: [
             // Testes em src/lib/** que dependem de DOM rodam no project integration
             "src/lib/utils/excel.test.ts",
+            "src/lib/api/admin.msw.test.ts",
+            "src/lib/auth/context.test.tsx",
+            "src/hooks/useInactivity.test.ts",
           ],
         },
       },
@@ -108,18 +104,15 @@ export default defineConfig({
           setupFiles: ["./src/test/setup/integration.ts"],
           include: [
             "src/components/**/*.test.tsx",
+            "src/components/**/__tests__/*.test.tsx",
+            "src/app/**/__tests__/*.test.tsx",
             "src/app/**/*.client.test.tsx",
-            // Tests em src/lib que mexem com DOM (download via anchor, etc)
+            // Tests em src/lib que mexem com DOM ou React (download, hooks RTL)
             "src/lib/utils/excel.test.ts",
-            // Transicao: testes ainda em src/test/ que precisam de DOM
-            "src/test/admin-pages.test.tsx",
-            "src/test/auth-context.test.tsx",
-            "src/test/components.test.tsx",
-            "src/test/pagamento.test.tsx",
-            "src/test/pagamento-cartao.test.tsx",
-            "src/test/responsive-table.test.tsx",
-            "src/test/useInactivity.test.ts",
-            "src/test/msw-pilot.test.ts",
+            "src/lib/auth/context.test.tsx",
+            "src/hooks/useInactivity.test.ts",
+            // Pilot MSW com apiClient real
+            "src/lib/api/admin.msw.test.ts",
           ],
         },
       },
@@ -131,12 +124,7 @@ export default defineConfig({
           environment: "node",
           pool: "threads",
           setupFiles: ["./src/test/setup/api.ts"],
-          include: [
-            "src/app/api/**/*.test.ts",
-            // Transicao
-            "src/test/api-auth-me.test.ts",
-            "src/test/api-auth-route.test.ts",
-          ],
+          include: ["src/app/api/**/*.test.ts"],
         },
       },
     ],
