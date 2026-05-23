@@ -22,6 +22,8 @@
 /storybook-static/
 /.lighthouseci/
 /.stryker-tmp/
+/sbom.cdx.json
+/zap-report/
 /pacts/
 /reports/
 count-tests.cjs

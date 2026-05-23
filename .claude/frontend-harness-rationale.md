@@ -1487,11 +1487,139 @@ Adicionar gates de performance sintética (Lighthouse CI), introspeção de bund
 
 ---
 
+## Fase 13 — Security gates (audit + osv + gitleaks + ZAP + SBOM + license + CodeQL)
+
+**Status**: concluída (branch `chore/harness-fase13-security-gates`).
+
+### Objetivo
+
+Adicionar gates de segurança defesa-em-profundidade: supply chain (npm audit + OSV + license + SBOM), SAST (CodeQL + gitleaks) e DAST (OWASP ZAP). Configs versionadas; workflows GH Actions vêm em Fase 17.
+
+### Por que
+
+#### npm audit (production-only)
+
+- `npm audit` default inclui devDeps. Devs trazem vulns transitivos (e.g., `nyc`, `jest-junit`) que nunca rodam em produção mas inflam o relatório e causam ruído.
+- Script `audit`: `npm audit --omit=dev --audit-level=high`. Falha CI se houver **high** ou **critical** em prod.
+- Script auxiliar `audit:dev`: cobre devDeps quando reviewer quiser inspecionar (manual, não CI).
+- Threshold `high` (não `moderate`): moderate em prod é dívida documentada (ex: `uuid` interno do exceljs); high/critical bloqueia merge.
+
+#### OSV Scanner
+
+- npm audit usa GitHub Advisory Database (GHSA). OSV.dev é meta-database (GHSA + RustSec + PyPA + Go + ...) — cobertura maior, especialmente para deps transitivas que GitHub não indexou.
+- Config `osv-scanner.toml` no root. CI Fase 17 roda `osv-scanner --config osv-scanner.toml --recursive .`.
+- Hoje vazio em `IgnoredVulns` — qualquer ignore deve ter `reason` + `ignoreUntil`.
+
+#### Gitleaks (secrets detection)
+
+- Detecta secrets (API keys, JWTs, AWS creds, etc) commitados acidentalmente. Pre-commit defesa primária; CI defesa secundária.
+- Config `.gitleaks.toml` extende defaults + allowlist do projeto:
+  - Stripe test mode keys (`pk_test_*`, `sk_test_*`) — públicas por design
+  - JWT placeholders em testes
+  - UUIDs zero (`00000000-...`) em fixtures
+  - Paths de teste e arquivos gerados (openapi.json, msw/types.ts)
+
+#### License checker
+
+- Projeto comercial → licenses copyleft (GPL-3.0, AGPL-3.0, LGPL-3.0, CDDL, EPL) podem contaminar código fechado.
+- Script `license`: `license-checker --production --failOn "GPL-3.0;AGPL-3.0;LGPL-3.0;CDDL-1.0;EPL-1.0;EPL-2.0"`.
+- Smoke test local mostrou: 204 MIT, 27 ISC, 9 Apache-2.0, 7 BSD-3-Clause. **Zero copyleft proibido**. Passa.
+- `--production` exclui devDeps (devs podem rodar GPL/AGPL livremente).
+
+#### CycloneDX SBOM
+
+- SBOM = Software Bill of Materials. Padrão emergente (NTIA / EU CRA / executive orders) — eventualmente obrigatório para software comercial.
+- `cyclonedx-npm` gera `sbom.cdx.json` (CycloneDX JSON 1.5). Inclui versões + licenças + hashes + dependency graph.
+- Artefato CI Fase 17 anexado em release. Permite auditoria reversa de "que versão de X estava no release Y".
+
+#### CodeQL (SAST)
+
+- GitHub-nativo, free para repos públicos / Advanced Security para privados.
+- `paths` aponta para `frontend/src` + 4 projects .NET. `paths-ignore` exclui tests, generated, build artifacts.
+- `queries: security-extended + security-and-quality` — catch maior que default.
+- Workflow `.github/workflows/codeql.yml` vem Fase 17.
+
+#### OWASP ZAP (DAST)
+
+- DAST = roda contra app rodando, descobre vulns que SAST não pega (XSS reflexivo, IDOR, header missing, redirects abertos).
+- Config `zap.yaml` usa Automation Framework do ZAP — declarativo, versionável.
+- Context: `https://homologacao.forzion.tech/`. Spider 5min + passive scan. Report HTML.
+- `excludePaths`: `/api/auth` (rate limit), assets binários.
+- `alertFilter`: marca falso-positivos conhecidos (XFO já DENY via headers, CSP `unsafe-inline` arquitetural).
+- Roda via Docker em CI Fase 17 contra preview deploy ou homolog estável.
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Supply chain double-source** | npm audit (GHSA) + OSV (multi-source) cobrem mais vulns que cada um sozinho |
+| **License copyleft bloqueado** | gate explícito em GPL/AGPL/LGPL/CDDL/EPL |
+| **SBOM versionado** | `sbom.cdx.json` gerado on-demand; CI publica como artefato |
+| **Gitleaks com allowlist tipada** | Stripe test keys + JWT placeholders documentados explicitamente |
+| **CodeQL pronto** | config aponta paths corretos; workflow vem Fase 17 |
+| **ZAP automation declarativa** | `zap.yaml` versionado; alertFilter documenta FPs |
+| **CI-friendly threshold** | `npm audit --omit=dev --audit-level=high` falha apenas em prod high/critical |
+| **Zero regressão** | 367 vitest verdes mantidos |
+
+### Trade-offs aceitos
+
+- **`npm audit --omit=dev`**: devDeps high não bloqueiam merge. Fase futura: tratar separadamente (Renovate auto-merge patches).
+- **2 moderate em prod** (uuid via exceljs): aceito por enquanto — `audit-level=high` não dispara. exceljs major bump requer migration; aguardando Renovate ou refactor.
+- **27 vulns em devDeps**: heranças de cyclonedx-npm / lhci / linkinator transitivos. Não bloqueia (devDep, não shipped). `audit:dev` permite inspeção manual.
+- **OSV ignored list vazio**: zero exceções no início. Se OSV reportar FP, adicionar com `reason + ignoreUntil` documentado.
+- **Gitleaks allowlist regex específica**: pode mascarar real secret se padrão coincidir. Aceitamos — Stripe test keys e JWT placeholders são pattern-único.
+- **ZAP só contra homolog** (não preview deploy ainda): preview deploy infra (Vercel/CF Pages) entra Fase 17. Por ora, homolog `https://homologacao.forzion.tech/` é o alvo.
+- **CodeQL paths-ignore inclui tests**: deliberadamente — tests podem ter padrões "perigosos" intencionais (mock secrets, eval simulado, etc) que disparam FP.
+- **SBOM gerado on-demand, não em build**: gerar SBOM em todo build adiciona ~30s. CI Fase 17 gera apenas em release/main.
+- **License-checker em prod-only**: devDep GPL é OK (compilador, formatter, etc não shipped). Aceito.
+
+### Mudanças
+
+#### Deps
+
+- `@cyclonedx/cyclonedx-npm@^2`
+- `license-checker@^25`
+
+#### Arquivos novos (root + frontend)
+
+- `.gitleaks.toml` — config secrets detection + allowlist
+- `osv-scanner.toml` — config OSV scanner
+- `zap.yaml` — config ZAP automation framework
+- `.github/codeql/codeql-config.yml` — config CodeQL paths + queries
+
+#### Arquivos atualizados
+
+- `frontend/package.json` — scripts `audit`, `audit:dev`, `license`, `sbom`, `security:all`
+- `frontend/.gitignore` — `/sbom.cdx.json`, `/zap-report/`
+- `.github/CODEOWNERS` — `.gitleaks.toml`, `osv-scanner.toml`, `zap.yaml`, `.github/codeql/`
+
+### Métricas de sucesso
+
+- ✅ 2 deps novas instaladas (@cyclonedx/cyclonedx-npm + license-checker)
+- ✅ 5 scripts npm novos (audit, audit:dev, license, sbom, security:all)
+- ✅ 4 configs novas (gitleaks, osv, zap, codeql)
+- ✅ `npm run license`: 0 copyleft proibido detectado (204 MIT + 27 ISC + 9 Apache-2.0 + 7 BSD)
+- ✅ `npm run sbom`: gera `sbom.cdx.json` ~3.9MB CycloneDX JSON
+- ✅ `npm run audit`: 2 moderate em prod (< threshold high) — passa
+- ✅ `npm run validate`: tsc 0 + ESLint 0 + 367 vitest verdes
+- ✅ Pre-commit hook passou
+
+### Impacto futuro
+
+- Fase 17 (CI completo): 6 workflows novos — `codeql.yml`, `gitleaks.yml`, `osv.yml`, `zap.yml`, `sbom.yml`, `license.yml`
+- Renovate (Fase 7): auto-merge patches de devDeps reduz vuln count
+- ZAP roda contra preview deploy (Vercel/CF Pages) quando Fase 17 configurar
+- SBOM artefato em releases (NTIA / EU CRA compliance)
+- CodeQL Pull Request alerts automáticos
+- Eventual: SLSA provenance attestation pipeline (cross-cutting com Fase 17)
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 13 — Security gates (audit + osv + gitleaks + ZAP + SBOM + license)
+- Fase 14 — Mutation testing (Stryker, semanal)
 - Fase 11 — A11y + visual + memory leak
 - Fase 12 — Lighthouse CI + bundle + crawl
 - Fase 13 — Security gates
