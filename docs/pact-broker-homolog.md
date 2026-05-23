@@ -39,12 +39,16 @@ Enquanto o cert não cobrir `pact.`, o nginx usa o cert do domínio principal
 (sobe normal, mas o subdomínio serve cert inválido). Expandir:
 
 ```bash
-docker compose -f docker-compose.homolog.yml run --rm certbot \
+docker compose -f docker-compose.homolog.yml run --rm --entrypoint certbot certbot \
   certonly --webroot -w /var/www/certbot \
   -d homologacao.forzion.tech -d pact.homologacao.forzion.tech --expand
 
 docker compose -f docker-compose.homolog.yml restart nginx
 ```
+
+> O `--entrypoint certbot` é **obrigatório**: o serviço `certbot` no compose tem
+> um entrypoint que é o loop de renovação (`while :; do certbot renew; sleep 12h`).
+> Sem sobrescrever, `compose run` roda o loop e **trava** em vez do `certonly`.
 
 ### 5. Criar o environment `homolog` no broker (para `can-i-deploy`)
 
