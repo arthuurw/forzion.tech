@@ -330,7 +330,8 @@ Nenhum bypass: `--no-verify` proibido.
 | Fix backend — AllowedHosts homologacao | `ab7cee6` (PR #16) | `fix/backend-allowed-hosts-homologacao` |
 | 3 — MSW + OpenAPI codegen + factories | `af32fab` (PR #17) | `chore/harness-fase3-msw-openapi` |
 | 4 — Property-based testing | `898473b` (PR #18) | `chore/harness-fase4-property-based` |
-| 5a — Co-localização de testes | _em PR_ | `chore/harness-fase5-migracao-msw` |
+| 5a — Co-localização de testes | `efda572` (PR #19) | `chore/harness-fase5-migracao-msw` |
+| 5b — Migração auth/fetch para MSW | _em PR_ | `chore/harness-fase5b-msw-migration` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
