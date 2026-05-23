@@ -333,7 +333,8 @@ Nenhum bypass: `--no-verify` proibido.
 | 5a — Co-localização de testes | `efda572` (PR #19) | `chore/harness-fase5-migracao-msw` |
 | 5b — Migração auth/fetch para MSW | `5577436` (PR #20) | `chore/harness-fase5b-msw-migration` |
 | 6 — API routes testing completo | `1947dee` (PR #21) | `chore/harness-fase6-api-routes` |
-| 7 — Tooling (commitlint+lint-staged+plugins+Renovate+CODEOWNERS) | _em PR_ | `chore/harness-fase7-lint-strict` |
+| 7 — Tooling (commitlint+lint-staged+plugins+Renovate+CODEOWNERS) | `23a0f76` (PR #22) | `chore/harness-fase7-lint-strict` |
+| 8 — Storybook 10 + 4 stories piloto | _em PR_ | `chore/harness-fase8-storybook` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
