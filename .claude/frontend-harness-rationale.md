@@ -1902,21 +1902,27 @@ Consequência: não há preview efêmero por PR. Jobs que exigem **stack viva** 
 
 **`ci.yml` (gate de PR + push, deploy intacto):**
 - `commitlint` (só PR) — valida Conventional Commits do range do PR.
-- `test-backend` — testes .NET + thresholds + upload Codecov (flag `backend`).
-- `test-frontend` — **lint** (gap antigo: CI não lintava!) + tsc + coverage + Codecov (flag `frontend`).
+- `test-backend` — testes .NET + thresholds + resumo de cobertura no run (sem SaaS).
+- `test-frontend` — **lint** (gap antigo: CI não lintava!) + tsc + coverage + comentário de cobertura no PR.
 - `build-frontend` — `next build` (gap antigo: CI nunca buildava!) + `storybook:build`.
-- `security` — `npm audit` prod (bloqueante) + license + SBOM (artifact) + gitleaks + OSV.
+- `security` — gitleaks + OSV (antes do `npm ci`) + `npm audit` prod (bloqueante) + license + SBOM (artifact).
 - `gate` — agrega os obrigatórios; vira o required check de branch protection.
 - `deploy-homolog` — agora `needs: [gate]` (antes `[test-backend, test-frontend]`). Lógica do deploy **inalterada**.
 
-**Workflows separados:** `codeql.yml` (JS/TS, PR+push+semanal), `mutation.yml` (Stryker semanal+dispatch), `smoke.yml` (Playwright @smoke pós-deploy, gated em `vars.HOMOLOG_BASE_URL`), `lighthouse.yml` + `zap.yml` (dispatch manual contra homolog). `contract.yml` já existia (Fase 15).
+**Workflows separados:** `semgrep.yml` (SAST OSS, PR+push+semanal), `mutation.yml` (Stryker semanal+dispatch), `smoke.yml` (Playwright @smoke pós-deploy, gated em `vars.HOMOLOG_BASE_URL`), `lighthouse.yml` + `zap.yml` (dispatch manual contra homolog). `contract.yml` já existia (Fase 15).
+
+### Ferramentas grátis (decisão do dono — sem SaaS pago)
+
+- **Codecov → Action grátis**: cobertura comentada no PR (`davelosert/vitest-coverage-report-action`, exige reporter `json-summary`) + resumo do backend no run (`irongut/CodeCoverageSummary` → `$GITHUB_STEP_SUMMARY`). Sem token, sem serviço externo.
+- **CodeQL → Semgrep**: CodeQL é grátis só em repo público; privado exige GHAS (pago) — o upload falhava com "Code scanning is not enabled". Semgrep OSS (`p/default`) roda 100% no CI, falha em findings, sem upload. Pegou **shell-injection real** nos próprios workflows (`github.base_ref`/inputs interpolados em `run:`) — corrigido via env vars. nginx (h2c/add_header) e fixture bcrypt de teste ficam em `.semgrepignore` (fora do escopo do harness).
+- **Sentry → GlitchTip self-hosted**: SDK `@sentry/nextjs` (Fase 16) intacto; só aponta o DSN pra um GlitchTip na VM (open-source, leve, API-compatível). Pendente de provisionar.
+- **Pact Broker → self-hosted**: Docker + Postgres na VM. Pendente.
 
 ### Decisões de robustez (por que não quebra)
 
 - **OSV report-only** (`continue-on-error: true`): o lockfile inclui deps **dev** (Pact/Sentry puxam glob/graphql legados). O gate bloqueante de vuln é `npm audit --omit=dev`. OSV vira informativo até triagem das vulns dev — senão o gate vira vermelho permanente por ruído.
-- **Gitleaks `--no-git`**: varre a working tree (não o histórico) com o allowlist do `.gitleaks.toml` (chaves Stripe `*_test_*` são públicas por design). Evita falso-positivo de commits anteriores ao allowlist.
-- **CodeQL só JS/TS**: C# via autobuild é arriscado com o formato `.slnx`; e CodeQL é workflow separado (não no gate), então não bloquearia o merge — mas evita X vermelho de ruído.
-- **Codecov `fail_ci_if_error: false`**: upload não derruba o gate se o token/serviço oscilar. (Dono optou por adicionar Codecov — `CODECOV_TOKEN` será configurado nos secrets.)
+- **Gitleaks antes do `npm ci`**, `--no-git`: varre só a árvore versionada (sem node_modules nem sbom gerado), com allowlist do `.gitleaks.toml`. O `UserSecretsId` .NET do README (GUID, não é segredo — está no `.csproj`) entrou no allowlist; chaves Stripe `*_test_*` já eram públicas por design.
+- **Semgrep escopado por `.semgrepignore`**: nginx (hardening de infra) e fixtures de teste do backend fora do escopo do harness frontend. Findings de injeção nos workflows foram **corrigidos**, não ignorados.
 - **smoke/lighthouse/zap gated em `vars.HOMOLOG_BASE_URL`**: sem a variável, `smoke.yml` (pós-deploy) é **skipped** — zero falha vermelha no merge. Lighthouse/ZAP são dispatch manual.
 - **`build-frontend` com `API_BASE_URL` dummy**: o guard de produção do `next.config` exige a var; valor `http://backend.invalid` deixa o build estático passar sem chamadas reais.
 - **`concurrency` com cancel-in-progress só em PR**: cancela runs antigos de PR (economiza minutos), mas **não** cancela push/deploy.
@@ -1931,11 +1937,14 @@ Consequência: não há preview efêmero por PR. Jobs que exigem **stack viva** 
 
 #### Arquivos novos
 
-- `.github/workflows/codeql.yml`, `mutation.yml`, `smoke.yml`, `lighthouse.yml`, `zap.yml`
+- `.github/workflows/semgrep.yml`, `mutation.yml`, `smoke.yml`, `lighthouse.yml`, `zap.yml`
+- `.semgrepignore` — escopo do SAST (exclui nginx/infra + fixtures de teste)
 
 #### Arquivos atualizados
 
-- `.github/workflows/ci.yml` — gate de PR (commitlint, lint, build, security, Codecov, gate) + deploy `needs: gate`
+- `.github/workflows/ci.yml` — gate de PR (commitlint, lint, build, security, cobertura, gate) + deploy `needs: gate`
+- `frontend/vitest.config.mts` — reporter `json-summary` (p/ comentário de cobertura no PR)
+- `.gitleaks.toml` — allowlist do `UserSecretsId` .NET (não é segredo)
 - `.claude/frontend-harness-plan.md` — §8 reescrita pra infra self-hosted (sem Vercel)
 
 ### Métricas de sucesso
@@ -1948,8 +1957,9 @@ Consequência: não há preview efêmero por PR. Jobs que exigem **stack viva** 
 
 ### Impacto futuro
 
-- Configurar secrets/vars: `CODECOV_TOKEN`, `HOMOLOG_BASE_URL`, `E2E_*` creds → ativa Codecov, smoke, lighthouse, zap
-- Branch protection: marcar `gate` (e `commitlint`, `CodeQL`) como required checks
+- Provisionar na VM: **GlitchTip** (DSN p/ Sentry SDK) + **Pact Broker** (Docker+Postgres) no `docker-compose.homolog.yml` + nginx
+- Configurar vars/secrets: `HOMOLOG_BASE_URL`, `E2E_*` creds → ativa smoke, lighthouse, zap
+- Branch protection: marcar `gate` (e `commitlint`, `Semgrep`) como required checks
 - Preview deploy por PR: decidir abordagem (efêmero na VM, container por PR, ou PaaS) → destrava e2e/visual/a11y no gate
 - Matriz Node 22+24; `release.yml`; ZAP Automation Framework completo via `action-af`
 - Mutation/contract publish: setar dashboards + broker (Fase 18 / infra)

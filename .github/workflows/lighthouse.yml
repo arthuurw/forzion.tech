@@ -30,9 +30,12 @@ jobs:
 
       - name: Resolve base URL
         id: url
+        env:
+          INPUT_URL: ${{ github.event.inputs.base_url }}
+          VAR_URL: ${{ vars.HOMOLOG_BASE_URL }}
         run: |
-          BASE="${{ github.event.inputs.base_url }}"
-          if [ -z "$BASE" ]; then BASE="${{ vars.HOMOLOG_BASE_URL }}"; fi
+          BASE="$INPUT_URL"
+          if [ -z "$BASE" ]; then BASE="$VAR_URL"; fi
           if [ -z "$BASE" ]; then
             echo "Sem base_url e sem HOMOLOG_BASE_URL — abortando."
             exit 1
@@ -40,12 +43,14 @@ jobs:
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Lighthouse (páginas públicas)
-        run: >
-          npx lhci collect
-          --url="${{ steps.url.outputs.base }}/login"
-          --url="${{ steps.url.outputs.base }}/cadastro/aluno"
-          --url="${{ steps.url.outputs.base }}/cadastro/treinador"
-          && npx lhci assert
+        env:
+          BASE: ${{ steps.url.outputs.base }}
+        run: |
+          npx lhci collect \
+            --url="$BASE/login" \
+            --url="$BASE/cadastro/aluno" \
+            --url="$BASE/cadastro/treinador"
+          npx lhci assert
 
       - name: Upload lhci report
         if: always()

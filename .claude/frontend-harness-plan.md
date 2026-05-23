@@ -446,24 +446,34 @@ PR. Jobs que precisam de stack viva (E2E, Lighthouse, ZAP) rodam **pós-deploy**
 contra a URL homolog ou via `workflow_dispatch` — não no gate de PR.
 
 **Implementado na Fase 17** (`ci.yml`, gate de PR + push, sem tocar no deploy):
-- `commitlint` (PR), `test-backend` (+ Codecov flag backend),
-  `test-frontend` (lint + tsc + coverage + Codecov flag frontend),
+- `commitlint` (PR), `test-backend` (+ resumo de cobertura no run),
+  `test-frontend` (lint + tsc + coverage + comentário de cobertura no PR),
   `build-frontend` (next build + storybook build),
-  `security` (audit prod + license + sbom artifact + gitleaks + osv report-only),
+  `security` (gitleaks + osv report-only + audit prod + license + sbom artifact),
   `gate` (required check, agrega os obrigatórios), `deploy-homolog` (needs gate).
+
+**Ferramentas grátis (decisão do dono — sem SaaS pago):**
+- Cobertura: GitHub Action que comenta no PR (front) + resumo no run (back) —
+  sem Codecov SaaS, sem token.
+- SAST: **Semgrep** OSS (`p/default`) no CI — sem GitHub Advanced Security.
+  Substitui CodeQL (exigia GHAS em repo privado).
+- Observabilidade: **GlitchTip** self-hosted (API-compatível com Sentry; SDK
+  da Fase 16 intacto, só aponta o DSN) — pendente de provisionar na VM.
+- Pact Broker: **self-hosted** na VM (Docker + Postgres) — pendente.
 
 Workflows separados (implementados):
 - `ci.yml` — gate de PR/push + deploy homolog
-- `codeql.yml` — SAST JS/TS (PR + push + semanal)
+- `semgrep.yml` — SAST (Semgrep OSS, PR + push + semanal)
 - `mutation.yml` — Stryker semanal + `workflow_dispatch`
 - `contract.yml` — Pact consumer (gera/valida; publish gated em broker)
 - `smoke.yml` — Playwright @smoke pós-deploy homolog (gated em `vars.HOMOLOG_BASE_URL`)
 - `lighthouse.yml` — lhci páginas públicas, `workflow_dispatch`
 - `zap.yml` — DAST baseline, `workflow_dispatch`
 
-Pendente (fase futura): preview deploy por PR (decisão de infra), Codecov flags
-por camada refinadas, `release.yml`, ZAP Automation Framework completo, matriz
-Node 22+24, e2e/visual/a11y no gate (dependem de preview ou stack no runner).
+Pendente (próxima entrega): GlitchTip + Pact Broker self-hosted no
+`docker-compose.homolog.yml` + nginx. Mais adiante: preview deploy por PR,
+`release.yml`, ZAP Automation Framework, matriz Node 22+24, e2e/visual/a11y no
+gate (dependem de preview ou stack no runner).
 
 ## 9. Deps (devDependencies)
 

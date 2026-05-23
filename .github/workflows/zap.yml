@@ -22,9 +22,12 @@ jobs:
 
       - name: Resolve target
         id: t
+        env:
+          INPUT_URL: ${{ github.event.inputs.target_url }}
+          VAR_URL: ${{ vars.HOMOLOG_BASE_URL }}
         run: |
-          T="${{ github.event.inputs.target_url }}"
-          if [ -z "$T" ]; then T="${{ vars.HOMOLOG_BASE_URL }}"; fi
+          T="$INPUT_URL"
+          if [ -z "$T" ]; then T="$VAR_URL"; fi
           if [ -z "$T" ]; then
             echo "Sem target_url e sem HOMOLOG_BASE_URL — abortando."
             exit 1
