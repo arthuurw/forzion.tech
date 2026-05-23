@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useCallback, useState } from "react";
 import {
   Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -241,7 +241,7 @@ export default function TreinosTreinadorPage() {
       />
 
       {/* Dialog: criar */}
-      <Dialog open={createOpen} onClose={() => { closeCreate(); resetForm(); }} maxWidth="xs" fullWidth>
+      <Dialog open={createOpen} onClose={() => { closeCreate(); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Nova ficha de treino</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -324,7 +324,7 @@ export default function TreinosTreinadorPage() {
       </Dialog>
 
       {/* Dialog: editar */}
-      <Dialog open={!!editTarget} onClose={closeEdit} maxWidth="xs" fullWidth>
+      <Dialog open={!!editTarget} onClose={closeEdit} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar ficha</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>

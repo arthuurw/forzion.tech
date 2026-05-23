@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, CardActions, Grid, Button, Chip,
@@ -191,7 +191,7 @@ export default function PlanosAdminPage() {
       )}
 
       {/* Criar */}
-      <Dialog open={criarOpen} onClose={() => setCriarOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={criarOpen} onClose={() => setCriarOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo plano</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -216,7 +216,7 @@ export default function PlanosAdminPage() {
       </Dialog>
 
       {/* Editar */}
-      <Dialog open={!!editPlano} onClose={() => setEditPlano(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!editPlano} onClose={() => setEditPlano(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar — {editPlano?.nome}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>

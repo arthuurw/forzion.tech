@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Grid, Button,
@@ -188,7 +188,7 @@ export default function PacotesTreinadorPage() {
       )}
 
       {/* Dialog: criar */}
-      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth>
+      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo pacote</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -237,7 +237,7 @@ export default function PacotesTreinadorPage() {
       </Dialog>
 
       {/* Dialog: excluir */}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Excluir pacote</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
@@ -259,7 +259,7 @@ export default function PacotesTreinadorPage() {
       </Dialog>
 
       {/* Dialog: editar */}
-      <Dialog open={!!editTarget} onClose={() => setEditTarget(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!editTarget} onClose={() => setEditTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar pacote</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>

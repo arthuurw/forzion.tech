@@ -161,7 +161,7 @@ export default function ExecutarFichaPage() {
     <Box>
       {/* Header */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-        <IconButton onClick={() => router.push(`/aluno/fichas/${fichaId}`)} size="small" aria-label="Voltar">
+        <IconButton onClick={() => router.push(`/aluno/fichas/${fichaId}`)} aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
@@ -285,7 +285,7 @@ export default function ExecutarFichaPage() {
                         value={set.reps}
                         onChange={(e) => setSetField(current.treinoExercicioId, idx, "reps", e.target.value)}
                         slotProps={{ htmlInput: { min: 0 } }}
-                        sx={{ width: 76 }}
+                        sx={{ flex: 1, minWidth: 68, maxWidth: 90 }}
                       />
                       <TextField
                         label="kg"
@@ -294,7 +294,7 @@ export default function ExecutarFichaPage() {
                         value={set.carga}
                         onChange={(e) => setSetField(current.treinoExercicioId, idx, "carga", e.target.value)}
                         slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
-                        sx={{ width: 76 }}
+                        sx={{ flex: 1, minWidth: 68, maxWidth: 90 }}
                       />
                     </Box>
                   </Box>
@@ -358,7 +358,7 @@ export default function ExecutarFichaPage() {
       </Stack>
 
       {/* Confirm dialog */}
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Registrar sessão</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>

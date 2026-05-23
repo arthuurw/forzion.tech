@@ -22,7 +22,7 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 - [Utilitários e Constantes](#utilitários-e-constantes)
 - [Padrões de Desenvolvimento](#padrões-de-desenvolvimento)
 - [API Client](#api-client)
-- [Tema](#tema)
+- [Tema e Responsividade](#tema-e-responsividade)
 - [Segurança](#segurança)
 - [Testes](#testes)
 
@@ -40,7 +40,10 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 | Estado global | Zustand | 5 |
 | Datas | Day.js | 1.x |
 | Runtime | React | 19 |
+| Gráficos | Recharts | 3.x |
+| Exportação | ExcelJS | 4.x |
 | Pagamentos | @stripe/stripe-js + @stripe/react-stripe-js | 9.x / 6.x |
+| JWT (servidor) | jose | 6.x |
 | Testes | Vitest + happy-dom + Testing Library | 4 |
 
 ---
@@ -72,6 +75,9 @@ npm run test
 
 # Testes em modo watch
 npm run test:watch
+
+# Testes com cobertura
+npm run test -- --coverage
 ```
 
 ---
@@ -84,6 +90,12 @@ Crie `.env.local` na raiz de `frontend/`:
 # URL base usada pelo proxy server-side para chamar o backend
 # (nunca exposta ao browser)
 API_BASE_URL=https://localhost:7220
+
+# Segredo JWT — deve ser idêntico ao JWT_SECRET do backend
+# Usado por /api/auth/me para verificar assinatura HMAC do token
+JWT_SECRET=sua_chave_secreta_minimo_32_chars
+JWT_ISSUER=forzion.tech
+JWT_AUDIENCE=forzion.tech
 
 # Exposta ao browser — aponta para o proxy Next.js, NÃO para o backend diretamente
 # O proxy injeta o token Bearer server-side; o browser nunca vê o token
@@ -116,7 +128,7 @@ frontend/
 │   │   │       │   └── [alunoId]/      # Detalhe — tabs: Dados+Vínculo, Fichas, Execuções, Progressão
 │   │   │       ├── treinos/
 │   │   │       │   └── [treinoId]/     # Detalhe de treino (read-only)
-│   │   │       ├── planos/             # CRUD planos globais
+│   │   │       ├── planos/             # CRUD planos globais (nome, tier, maxAlunos, preço, descricao, ativo)
 │   │   │       ├── grupos-musculares/  # CRUD grupos musculares
 │   │   │       └── exercicios/         # Biblioteca global de exercícios
 │   │   │
@@ -126,10 +138,10 @@ frontend/
 │   │   │       ├── page.tsx            # Dashboard (stat cards, donut alunos, vínculos pendentes)
 │   │   │       ├── alunos/
 │   │   │       │   ├── page.tsx        # Lista de alunos vinculados
-│   │   │       │   └── [alunoId]/      # Detalhe do aluno + fichas vinculadas
+│   │   │       │   └── [alunoId]/      # Detalhe do aluno + fichas vinculadas + progressão
 │   │   │       ├── treinos/
-│   │   │       │   ├── page.tsx        # Lista fichas + criar (filtro por objetivo)
-│   │   │       │   └── [treinoId]/     # Editor de ficha (exercícios, séries)
+│   │   │       │   ├── page.tsx        # Lista fichas + criar (filtro por objetivo/dificuldade)
+│   │   │       │   └── [treinoId]/     # Editor de ficha (exercícios, séries, ordem, cargas)
 │   │   │       ├── exercicios/         # Biblioteca pessoal + copiar global
 │   │   │       ├── pacotes/            # CRUD pacotes (nome + descrição + preço)
 │   │   │       ├── pagamentos/         # Stripe Connect onboarding + status da conta
@@ -143,8 +155,8 @@ frontend/
 │   │   │       ├── fichas/
 │   │   │       │   ├── page.tsx        # Lista fichas ativas
 │   │   │       │   └── [fichaId]/
-│   │   │       │       ├── page.tsx    # Detalhe da ficha com exercícios
-│   │   │       │       └── executar/   # Execução passo a passo
+│   │   │       │       ├── page.tsx    # Detalhe da ficha com exercícios + exportar Excel
+│   │   │       │       └── executar/   # Execução passo a passo com registro de cargas
 │   │   │       ├── historico/          # Histórico de execuções com gráficos
 │   │   │       ├── assinatura/         # Status da assinatura + pagamento pendente
 │   │   │       └── pagamentos/         # Histórico de cobranças (Pix ou cartão)
@@ -158,8 +170,8 @@ frontend/
 │   │   │
 │   │   ├── api/                        # Route Handlers (BFF — server-side only)
 │   │   │   ├── auth/
-│   │   │   │   ├── route.ts            # POST /api/auth — login; seta cookies httpOnly
-│   │   │   │   ├── me/route.ts         # GET /api/auth/me — valida sessão server-side
+│   │   │   │   ├── route.ts            # POST /api/auth — login; seta cookies httpOnly; token não retornado no body
+│   │   │   │   ├── me/route.ts         # GET /api/auth/me — verifica JWT via jose jwtVerify (HMAC)
 │   │   │   │   ├── logout/route.ts     # POST /api/auth/logout — revoga JTI, limpa cookies
 │   │   │   │   ├── register/
 │   │   │   │   │   ├── treinador/route.ts
@@ -175,7 +187,7 @@ frontend/
 │   │   ├── perfil/
 │   │   │   ├── layout.tsx
 │   │   │   └── page.tsx                # Perfil + alterar senha (todos os perfis)
-│   │   ├── layout.tsx                  # Root layout — AuthProvider + SnackbarProvider
+│   │   ├── layout.tsx                  # Root layout — AuthProvider + SnackbarProvider + viewport
 │   │   ├── page.tsx                    # Landing page (hero + planos + CTA)
 │   │   ├── error.tsx                   # Error boundary global
 │   │   └── not-found.tsx
@@ -186,9 +198,9 @@ frontend/
 │   │   │   ├── FormSelect.tsx          # Select integrado com react-hook-form
 │   │   │   └── PasswordField.tsx       # TextField com toggle de visibilidade
 │   │   ├── layout/
-│   │   │   ├── AppLayout.tsx           # Layout autenticado + proteção client-side
+│   │   │   ├── AppLayout.tsx           # Layout autenticado + proteção client-side + safe-area
 │   │   │   ├── AppHeader.tsx           # Header com nav + avatar + logout
-│   │   │   ├── PublicLayout.tsx        # Layout para páginas públicas
+│   │   │   ├── PublicLayout.tsx        # Layout para páginas públicas (100dvh)
 │   │   │   └── NavConfig.tsx           # Itens de nav por TipoConta
 │   │   ├── pagamento/
 │   │   │   ├── PagamentoPix.tsx        # QR Code + copia e cola + polling 30s de status
@@ -198,12 +210,12 @@ frontend/
 │   │   └── ui/
 │   │       ├── AlertBanner.tsx         # Banner de erro/sucesso inline
 │   │       ├── ConfirmDialog.tsx       # Dialog de confirmação genérico
-│   │       ├── DataList.tsx            # Card com loading + empty + tabela
+│   │       ├── DataList.tsx            # Card com loading + empty + tabela paginada
 │   │       ├── EmptyState.tsx          # Estado vazio com ícone e mensagem
 │   │       ├── InfoLine.tsx            # Label + valor em linha (detalhe)
 │   │       ├── LoadingSpinner.tsx      # Spinner centralizado
 │   │       ├── Logo.tsx                # Logo forzion.tech
-│   │       ├── ResponsiveTable.tsx     # Tabela com paginação MUI
+│   │       ├── ResponsiveTable.tsx     # Tabela desktop / cards mobile com paginação MUI
 │   │       ├── SnackbarProvider.tsx    # Contexto global de snackbar
 │   │       └── StatusChip.tsx          # Chip colorido para status (AlunoStatus, TreinadorStatus, VinculoStatus)
 │   │
@@ -215,26 +227,30 @@ frontend/
 │   ├── lib/
 │   │   ├── api/
 │   │   │   ├── client.ts               # Instância Axios configurada
-│   │   │   ├── admin.ts                # Treinadores, planos, grupos, exercícios globais
+│   │   │   ├── admin.ts                # Treinadores, planos, grupos, exercícios globais, visibilidade admin
 │   │   │   ├── treinador.ts            # Alunos, vínculos, fichas, exercícios, pacotes
 │   │   │   ├── aluno.ts                # Fichas, execuções, vínculo
 │   │   │   ├── pagamento.ts            # Onboarding Stripe, cobranças, pagamentos
 │   │   │   └── conta.ts                # Perfil, senha
 │   │   ├── auth/
-│   │   │   ├── AuthContext.tsx          # Contexto de sessão React
-│   │   │   └── session.ts              # extractTipoConta, homeRouteFor
+│   │   │   ├── AuthContext.tsx         # Contexto de sessão React
+│   │   │   ├── context.ts             # homeRouteFor
+│   │   │   └── jwt.ts                 # parseJwtPayload + extractTipoConta (base64-decode, sem HMAC — uso só em middleware)
 │   │   ├── constants/
 │   │   │   ├── labels.ts               # Maps enum → label PT-BR
 │   │   │   └── enrollmentOptions.ts    # Opções de select do cadastro aluno
 │   │   ├── theme/
-│   │   │   └── index.ts                # Tema MUI (paleta + tipografia + overrides)
+│   │   │   └── index.ts                # Tema MUI (paleta + tipografia + overrides responsivos)
 │   │   ├── utils/
 │   │   │   ├── formatting.ts           # Funções de formatação
-│   │   │   └── excel.ts               # Exportação de fichas para .xlsx (ExcelJS)
-│   │   └── validations/
-│   │       └── common.ts               # Schemas Zod reutilizáveis
+│   │   │   └── excel.ts                # Exportação de fichas para .xlsx (ExcelJS)
+│   │   ├── validations/
+│   │   │   └── common.ts               # Schemas Zod reutilizáveis
+│   │   └── rateLimit.ts                # Rate limiter in-memory para /api/auth (10 req/min por IP)
 │   │
 │   ├── middleware.ts                   # Proteção de rotas server-side
+│   ├── styles/
+│   │   └── globals.css                 # Reset + 100dvh + safe-area-inset
 │   └── types/
 │       └── index.ts                    # Types e interfaces compartilhados
 │                                       # TierPlano: "Free" | "Basic" | "Pro" | "ProPlus" | "Elite"
@@ -268,14 +284,14 @@ frontend/
 | `/treinador/alunos` | Treinador | Lista de alunos vinculados com filtro por status |
 | `/treinador/alunos/[alunoId]` | Treinador | Detalhe do aluno + fichas vinculadas + progressão |
 | `/treinador/treinos` | Treinador | Lista fichas (filtro por objetivo/dificuldade); criar; duplicar |
-| `/treinador/treinos/[treinoId]` | Treinador | Editor de ficha — exercícios, séries, cargas, ordem |
+| `/treinador/treinos/[treinoId]` | Treinador | Editor de ficha — exercícios, séries, cargas, ordem + exportar Excel |
 | `/treinador/exercicios` | Treinador | Biblioteca pessoal + copiar exercícios globais |
 | `/treinador/pacotes` | Treinador | CRUD pacotes (nome, descrição, preço) |
 | `/treinador/pagamentos` | Treinador | Stripe Connect onboarding — configura conta de recebimentos |
 | `/treinador/onboarding/retorno` | Treinador | Retorno pós-onboarding Stripe — verifica e exibe status |
 | `/aluno` | Aluno | Dashboard |
 | `/aluno/fichas` | Aluno | Lista fichas ativas vinculadas ao aluno |
-| `/aluno/fichas/[fichaId]` | Aluno | Detalhe da ficha com exercícios e instruções |
+| `/aluno/fichas/[fichaId]` | Aluno | Detalhe da ficha com exercícios, instruções e botão exportar |
 | `/aluno/fichas/[fichaId]/executar` | Aluno | Execução passo a passo — registra séries e cargas |
 | `/aluno/historico` | Aluno | Histórico de execuções com gráficos de progressão |
 | `/aluno/assinatura` | Aluno | Status da assinatura + pagamento pendente (Pix ou cartão) |
@@ -302,8 +318,9 @@ O fluxo usa dois cookies complementares, ambos `httpOnly`:
 1. Página `/login` chama `POST /api/auth` (Route Handler — server-side)
 2. Route Handler repassa para `POST /auth/login` na API backend
 3. Em sucesso: seta cookies `token` + `session_guard` (httpOnly, maxAge = exp do JWT)
-4. `AuthContext.login()` atualiza o estado React com os dados do usuário
-5. `router.push(homeRouteFor(tipoConta))` redireciona para a área correta
+4. **Token JWT não é retornado no body da resposta** — permanece exclusivamente nos cookies
+5. `AuthContext.login()` atualiza o estado React com os dados do usuário
+6. `router.push(homeRouteFor(tipoConta))` redireciona para a área correta
 
 ### Validação de Sessão no Mount
 
@@ -312,7 +329,10 @@ O fluxo usa dois cookies complementares, ambos `httpOnly`:
 ```
 Browser → GET /api/auth/me (server-side Route Handler)
             └── lê cookie 'token' (httpOnly) + 'session_guard'
-            └── decodifica JWT, valida expiração
+            └── jose.jwtVerify(token, JWT_SECRET, { issuer, audience })
+                  ├── verifica assinatura HMAC-SHA256
+                  ├── valida exp, iss, aud
+                  └── extrai conta_id, tipo_conta, perfil_id
             └── retorna SessionUser | null
 ```
 
@@ -349,7 +369,7 @@ Suporta `GET`, `POST`, `PUT`, `PATCH`, `DELETE`. Repassa body, query string e he
 
 ### Server-side — `middleware.ts`
 
-Executa em cada request (exceto assets estáticos e `/api/`). Lê `token` + `session_guard` (httpOnly) e extrai `tipo_conta` do JWT payload **sem verificar assinatura** (performance — a assinatura é verificada pelo backend em cada chamada autenticada):
+Executa em cada request (exceto assets estáticos e `/api/`). Lê `token` + `session_guard` (httpOnly) e extrai `tipo_conta` do JWT payload via **base64-decode** (sem verificação HMAC — performance; a verificação HMAC acontece em `/api/auth/me` e o backend valida em cada chamada autenticada):
 
 | Situação | Comportamento |
 |----------|--------------|
@@ -498,7 +518,7 @@ useInactivity({
 | `InfoLine` | `label, value` | Label + valor em linha (para telas de detalhe) |
 | `LoadingSpinner` | — | `CircularProgress` centralizado na tela |
 | `Logo` | `size?` | Logo forzion.tech em texto estilizado |
-| `ResponsiveTable` | `columns, rows, total, page, pageSize, onPageChange, onPageSizeChange` | Tabela com paginação MUI integrada |
+| `ResponsiveTable` | `columns, rows, total, page, pageSize, onPageChange, onPageSizeChange` | Tabela desktop; cards mobile com Divider; paginação MUI |
 | `SnackbarProvider` | — | Contexto global de notificação via `useSnackbar()` |
 | `StatusChip` | `status, type` | Chip colorido para `AlunoStatus`, `TreinadorStatus` ou `VinculoStatus` |
 
@@ -548,6 +568,19 @@ Exportação de ficha de treino para Excel (`.xlsx`) via **ExcelJS** (`exceljs@^
 **Segurança**: `sanitizeFilename` remove path traversal (`.`, `/`, `\`), null byte, angle brackets e formula triggers no nome do arquivo. `safeCell` previne formula injection nas células — necessário porque ExcelJS avalia strings iniciadas com `=` como fórmulas (ao contrário do SheetJS que usava type `'s'`). O `'` prefixado é o marcador de string forçada do Excel e não é exibido ao usuário.
 
 Disponível em: `/treinador/treinos/[treinoId]` (botão "Exportar") e `/aluno/fichas/[fichaId]` (botão "Exportar").
+
+### `src/lib/rateLimit.ts`
+
+Rate limiter in-memory para `POST /api/auth` (rota de login).
+
+| Parâmetro | Valor |
+|-----------|-------|
+| Limite | 10 requests por janela |
+| Janela | 60 segundos |
+| IP preferencial | `x-real-ip` (set pelo nginx, não spoofável) |
+| Fallback | Último IP de `x-forwarded-for` |
+
+`getClientIp` prioriza `x-real-ip` (definido pelo nginx via `proxy_set_header X-Real-IP $remote_addr`) em vez de `x-forwarded-for` (que pode ser forjado pelo cliente antes de chegar ao nginx).
 
 ### `src/lib/constants/labels.ts`
 
@@ -633,6 +666,20 @@ const handleCriar = async (data: CriarPlanoForm) => {
 />
 ```
 
+### Dialogs MUI v9
+
+MUI v9 substituiu `PaperProps` por `slotProps`. Todos os `<Dialog>` com altura máxima usam:
+
+```tsx
+<Dialog
+  open={open}
+  onClose={onClose}
+  maxWidth="xs"
+  fullWidth
+  slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}
+>
+```
+
 ### Validação de formulário com Zod + React Hook Form
 
 ```tsx
@@ -689,7 +736,9 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 
 ---
 
-## Tema
+## Tema e Responsividade
+
+### Paleta
 
 Paleta: **amarelo** (`#F5C400`) / **preto** (`#1A1A1A`) / **vermelho** (`#D32F2F`)
 
@@ -706,6 +755,40 @@ Paleta: **amarelo** (`#F5C400`) / **preto** (`#1A1A1A`) / **vermelho** (`#D32F2F
 
 Localização: `ptBR` (MUI + Day.js).
 
+### Responsividade Mobile / iOS
+
+| Problema | Solução |
+|----------|---------|
+| `100vh` ≠ viewport visível no iOS (barra de endereço) | `100dvh` em todos os layouts (`PublicLayout`, `AppLayout`, `globals.css`) |
+| Input `font-size < 16px` causa zoom automático no iOS Safari | Override `MuiOutlinedInput.input { fontSize: 1rem }` no tema; reduz para `0.875rem` em `sm+` |
+| BottomNav sobrepõe conteúdo com home indicator (iPhone) | `pb: "env(safe-area-inset-bottom, 0px)"` no Paper + `viewport-fit=cover` no `layout.tsx` |
+| Dialogs saem da tela com teclado virtual aberto | `slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } } }` em todos os Dialogs |
+| Tabelas largas overflow no mobile | Todas as tabelas envolvidas em `<Box sx={{ overflowX: "auto" }}>` |
+| QR Code Pix distorce em telas pequenas | `width: "100%", maxWidth: 220, height: "auto", aspectRatio: "1 / 1"` |
+
+**Viewport** configurado em `src/app/layout.tsx` via export `Viewport`:
+
+```ts
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // necessário para env(safe-area-inset-*)
+};
+```
+
+**globals.css**:
+
+```css
+html, body {
+  min-height: 100%;
+  min-height: 100dvh; /* fallback → dvh */
+}
+body {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+```
+
 ---
 
 ## Segurança
@@ -721,17 +804,27 @@ Localização: `ptBR` (MUI + Day.js).
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Força HTTPS (HSTS) |
 | `Permissions-Policy` | camera, microphone, geolocation: `()` | Bloqueia APIs sensíveis |
 
-### Outros mecanismos
+### Mecanismos de autenticação
 
 | Mecanismo | Detalhe |
 |-----------|---------|
 | Token JWT | Nunca exposto ao browser — apenas em cookies httpOnly |
+| Token no body | **Removido**: login retorna dados do usuário sem o campo `token` |
 | `SameSite: strict` | Cookies não enviados em requests cross-site |
+| HMAC verification | `/api/auth/me` usa `jose.jwtVerify` com `JWT_SECRET` — token forjado no cookie é rejeitado |
+| Middleware | Base64-decode apenas (performance); verificação HMAC em `/api/auth/me` + backend |
 | Proxy server-side | Browser nunca vê a URL real do backend |
+| Rate limit | 10 req/60s por IP real (`x-real-ip` nginx, não spoofável via `x-forwarded-for`) |
+
+### Outros mecanismos
+
+| Mecanismo | Detalhe |
+|-----------|---------|
 | Validação de formulários | Zod + React Hook Form em todos os forms públicos |
 | Senhas de cadastro | Mínimo 8 chars, uppercase, lowercase, dígito |
 | Mensagens de erro | Login/cadastro nunca exibe detalhes internos do backend |
 | Stripe Publishable Key | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` é pública por design — tokeniza cartões no browser sem expor dados ao servidor; a chave secreta fica exclusivamente no backend |
+| Formula injection (Excel) | `safeCell` prefixia strings com `'` para prevenir execução de fórmulas no ExcelJS |
 
 Build configurado como `output: "standalone"` para deploy em container.
 
@@ -751,26 +844,37 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 | @testing-library/user-event | Simulação de interações |
 | @testing-library/jest-dom | Matchers extras (`toBeDisabled`, `toBeInTheDocument`, etc.) |
 
+### Cobertura atual
+
+| Métrica | Valor | Threshold |
+|---------|-------|-----------|
+| Statements | 87.04% | 83% |
+| Branches | 81.65% | 75% |
+| Functions | 78.57% | 74% |
+| Lines | 89.78% | 85% |
+
 ### Suíte atual
 
 | Arquivo | O que testa | Testes |
 |---------|------------|--------|
-| `validations.test.ts` | Schemas Zod — email, senha, nome, telefone, loginSchema, cadastroTreinadorSchema, cadastroAlunoSchema (incl. campos de perfil obrigatórios) | 32 |
-| `auth.test.ts` | `extractTipoConta` + `homeRouteFor` | 8 |
-| `auth-context.test.tsx` | `AuthProvider` — fetch /api/auth/me, login, logout, useAuth fora do provider | 6 |
-| `api-auth-me.test.ts` | Handler `GET /api/auth/me` — cookies, JWT válido, expirado, sem session_guard | 5 |
-| `middleware.test.ts` | Proteção de rotas server-side — sem auth, papel errado, autenticado na área correta, rotas públicas | 19 |
-| `useInactivity.test.ts` | Hook com `vi.useFakeTimers()` — warn, timeout, reset | 6 |
-| `components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` | 11 |
-| `responsive-table.test.tsx` | `ResponsiveTable` — desktop (headers, row click, actions), paginação, mobile (cards, Divider, propagação) | 13 |
-| `formatting.test.ts` | `formatarSeries`, `formatarData`, `getWeekLabel`, `periodoParaDatas` | 24 |
-| `excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `safeCell` (formula-trigger chars, passthrough seguro), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls, valores brutos), `exportarFichaParaExcel` async (mock ExcelJS via `vi.hoisted` + class, DOM spy, sanitized filename, safeCell aplicado, column widths) | 50 |
-| `admin-api.test.ts` | Todos os métodos de visibilidade de `adminApi` + funções preexistentes. Mock de `@/lib/api/client`. Verifica URL, params e retorno. | 48 |
-| `admin-pages.test.tsx` | Páginas admin — alunos (filtros, renderCell, tabs), detalhe aluno (tabs, vínculo, perfil), detalhe treinador (tabs, pacotes), detalhe treino. Mock de `next/navigation`, `adminApi`, `usePaginatedList`, `recharts`. | 33 |
-| `pagamento.test.tsx` | `PagamentoPix` (spinner, estados Pago/Expirado/Falhou/Pendente, clipboard, polling), `PagamentosTreinadorPage` (onboarding completo/incompleto/erro, redirect Stripe), `OnboardingRetornoPage` (completo/incompleto/erro), `PagamentosAlunoPage` (estado inicial). | 19 |
-| `pagamento-cartao.test.tsx` | `PagamentoCartao` — loading, sem clientSecret, status terminal (Falhou/Expirado), formulário (PaymentElement, status Pago), submit com erro Stripe, submit sem stripe/elements | 8 |
+| `src/test/validations.test.ts` | Schemas Zod — email, senha, nome, telefone, loginSchema, cadastroTreinadorSchema, cadastroAlunoSchema (incl. campos de perfil obrigatórios) | 32 |
+| `src/test/auth.test.ts` | `extractTipoConta` + `homeRouteFor` | 8 |
+| `src/test/auth-context.test.tsx` | `AuthProvider` — fetch /api/auth/me, login, logout, useAuth fora do provider | 6 |
+| `src/test/api-auth-me.test.ts` | Handler `GET /api/auth/me` — cookies ausentes, JWT válido (HMAC), expirado, sem perfil_id, assinatura inválida | 6 |
+| `src/test/api-auth-route.test.ts` | `POST /api/auth` — token não exposto no body da resposta; rate limit 429 | 2 |
+| `src/test/rateLimit.test.ts` | `getClientIp` (x-real-ip, x-forwarded-for, fallback) + `checkRateLimit` (janela, bloqueio, IPs independentes) | 7 |
+| `src/test/middleware.test.ts` | Proteção de rotas server-side — sem auth, papel errado, autenticado na área correta, rotas públicas | 19 |
+| `src/test/useInactivity.test.ts` | Hook com `vi.useFakeTimers()` — warn, timeout, reset | 6 |
+| `src/test/components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` | 11 |
+| `src/test/responsive-table.test.tsx` | `ResponsiveTable` — desktop (headers, row click, actions), paginação, mobile (cards, Divider, propagação) | 13 |
+| `src/test/formatting.test.ts` | `formatarSeries`, `formatarData`, `getWeekLabel`, `periodoParaDatas` | 24 |
+| `src/lib/utils/excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `safeCell` (formula-trigger chars, passthrough seguro), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls, valores brutos), `exportarFichaParaExcel` async (mock ExcelJS via `vi.hoisted` + class, DOM spy, sanitized filename, safeCell aplicado, column widths) | 50 |
+| `src/test/admin-api.test.ts` | Todos os métodos de `adminApi`. Mock de `@/lib/api/client`. Verifica URL, params e retorno. | 48 |
+| `src/test/admin-pages.test.tsx` | Páginas admin — alunos (filtros, renderCell, tabs, vínculo, perfil, formatPhone, progressão com dados), treinador (tabs, pacotes cheio/vazio, alunos), treino. Mock de `next/navigation`, `adminApi`, `usePaginatedList`, `recharts`. | 37 |
+| `src/test/pagamento.test.tsx` | `PagamentoPix` (spinner, estados, clipboard, polling), `PagamentosTreinadorPage` (onboarding), `OnboardingRetornoPage`, `PagamentosAlunoPage` (spinner, erro, tabela, Pagar, Expirado, dialog Pix) | 25 |
+| `src/test/pagamento-cartao.test.tsx` | `PagamentoCartao` — loading, sem clientSecret, status terminal, formulário, submit com erro Stripe, submit sem stripe/elements | 8 |
 
-**Total: 282 testes**
+**Total: 302 testes**
 
 ### Armadilhas conhecidas
 
@@ -778,10 +882,12 @@ Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
 |---------|-------|---------|
 | Conflito ESM no DOM | jsdom@27 + `@csstools/css-calc` incompatível com Vitest 4 | Usar `happy-dom` |
 | `NextRequest.cookies` não parseia header em testes | API interna do Next.js não disponível em unit tests | Mock direto do objeto `{ cookies: { get: vi.fn() } }` |
+| `jwtVerify` falha em testes de `/api/auth/me` | Necessita JWT assinado com HMAC real | Usar `jose.SignJWT` com `TEST_SECRET` + `beforeAll(() => { process.env.JWT_SECRET = TEST_SECRET })` |
+| Formatação de moeda com non-breaking space | `toLocaleString("pt-BR")` produz `R$ 99,90` — `getByText("R$ 99,90")` falha | Usar `getByText((c) => c.includes("99,90"))` |
 | `extractTipoConta` não exportada | Era função local | Exportar explicitamente com `export function` |
 | Base64 padding em JWT de teste | `btoa(payload).replace(/=/g, "")` → `atob` falha silenciosamente | Usar `btoa` sem strip dos `=` |
 | `onTimeout` chamado múltiplas vezes | `setInterval` continua após `TIMEOUT_MS` | Usar `toHaveBeenCalled()`, não `toHaveBeenCalledOnce()` |
 | Mock de módulo com constructor (`new ExcelJS.Workbook()`) | `vi.fn(() => instance)` com arrow function não é construtível | Usar `vi.hoisted` + `class WorkbookMock { addWorksheet = fn; xlsx = { writeBuffer: fn }; }` e referenciar em `vi.mock("exceljs", () => ({ default: { Workbook: excelMocks.WorkbookMock } }))` |
 | MUI Select + `getByLabelText` | MUI Select não associa label ao controle via atributo `for` | Usar `getByRole("combobox")` em vez de `getByLabelText("Status")` |
-| Namespace `Email` colide com VO | Pasta de teste `...Notifications.Email` → `Email` resolve para o namespace, não o tipo | Alias: `using EmailVO = forzion.tech.Domain.ValueObjects.Email;` (backend) |
 | `@stripe/stripe-js` em testes | `loadStripe` dispara fetch para o SDK Stripe, falha em happy-dom | Mockar `@stripe/stripe-js` e `@stripe/react-stripe-js` com `vi.mock` antes dos imports |
+| `PaperProps` em MUI v9 | MUI v9 removeu `PaperProps` do `Dialog` em favor de `slotProps` | Usar `slotProps={{ paper: { sx: ... } }}` em todos os `<Dialog>` |

@@ -483,6 +483,60 @@ describe("DetalheAlunoAdminPage — tabs", () => {
   });
 });
 
+// ─── DetalheAlunoAdminPage — progressão com dados e formatPhone ──────────────
+
+describe("DetalheAlunoAdminPage — progressão com dados", () => {
+  const mockAlunoTel10: AlunoResponse = {
+    alunoId: "aluno-tel10", nome: "Tel Dez", email: "tel@test.com",
+    telefone: "1198765432", // 10 dígitos
+    status: "Ativo", contaId: "c1",
+    createdAt: "2024-01-15T00:00:00Z", updatedAt: null,
+    diasDisponiveis: null, tempoDisponivelMinutos: null,
+    finalidade: null, focoTreino: null, nivelCondicionamento: null,
+    limitacoesFisicas: null, doencas: null, observacoesAdicionais: null,
+  };
+
+  beforeEach(() => {
+    mockUseParams.mockReturnValue({ alunoId: "aluno-tel10" });
+    mockAdminApi.getAlunoVinculo.mockResolvedValue({ data: { vinculoAtivo: null, vinculoPendente: null } } as never);
+    mockUsePaginatedList.mockReturnValue({ ...BASE_PAGINATED, items: [] });
+  });
+
+  it("aluno com telefone 10 dígitos → exibe formato (XX) XXXX-XXXX", async () => {
+    mockAdminApi.getAluno.mockResolvedValue({ data: mockAlunoTel10 } as never);
+    const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
+    render(<Page />);
+    await waitFor(() =>
+      expect(screen.getByText("(11) 9876-5432")).toBeDefined()
+    );
+  });
+
+  it("progressão com exercícios → renderiza card de exercício", async () => {
+    mockAdminApi.getAluno.mockResolvedValue({ data: mockAlunoTel10 } as never);
+    mockAdminApi.getAlunoProgressao.mockResolvedValue({
+      data: {
+        exercicios: [{
+          nomeExercicio: "Supino Reto",
+          grupoMuscular: "Peitoral",
+          historico: [
+            { data: "2025-05-01", cargaMaxima: 60, seriesExecutadas: 4, repeticoesExecutadas: 10 },
+            { data: "2025-05-08", cargaMaxima: 65, seriesExecutadas: 4, repeticoesExecutadas: 10 },
+          ],
+        }],
+      },
+    } as never);
+    const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
+    render(<Page />);
+    await waitFor(() => expect(screen.getByText("Tel Dez")).toBeDefined());
+    fireEvent.click(screen.getByRole("tab", { name: "Progressão" }));
+    await waitFor(() =>
+      expect(screen.getByText("Supino Reto")).toBeDefined()
+    );
+    expect(screen.getByText("Peitoral")).toBeDefined();
+    expect(screen.getByText("Último: 65 kg")).toBeDefined();
+  });
+});
+
 // ─── DetalheTreinadorAdminPage — tabs ────────────────────────────────────────
 
 describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
@@ -530,5 +584,23 @@ describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
       expect(screen.getByText("Pacote Premium")).toBeDefined(),
     );
     expect(mockAdminApi.getTreinadorPacotes).toHaveBeenCalledWith("t-001");
+  });
+
+  it("tab Pacotes → sem pacotes exibe 'Nenhum pacote cadastrado.'", async () => {
+    mockAdminApi.getTreinadorPacotes.mockResolvedValue({ data: [] } as never);
+    const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
+    render(<Page />);
+    await waitFor(() => expect(screen.getByText("Carlos Ferreira")).toBeDefined());
+    fireEvent.click(screen.getByRole("tab", { name: "Pacotes" }));
+    await waitFor(() =>
+      expect(screen.getByText("Nenhum pacote cadastrado.")).toBeDefined(),
+    );
+  });
+
+  it("tab Alunos → mostra empty state", async () => {
+    const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
+    render(<Page />);
+    await waitFor(() => expect(screen.getByText("Carlos Ferreira")).toBeDefined());
+    expect(screen.getByText("Este treinador não possui alunos ativos.")).toBeDefined();
   });
 });

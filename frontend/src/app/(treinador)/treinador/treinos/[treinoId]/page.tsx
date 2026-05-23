@@ -311,7 +311,7 @@ export default function DetalheFichaPage() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-        <IconButton onClick={() => router.push("/treinador/treinos")} size="small" aria-label="Voltar">
+        <IconButton onClick={() => router.push("/treinador/treinos")} aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
@@ -401,7 +401,7 @@ export default function DetalheFichaPage() {
       </Card>
 
       {/* Dialog: adicionar exercício */}
-      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="md" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Adicionar exercício</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
@@ -517,7 +517,7 @@ export default function DetalheFichaPage() {
       />
 
       {/* Dialog: editar ficha */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar ficha</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -562,7 +562,7 @@ export default function DetalheFichaPage() {
       />
 
       {/* Dialog: editar séries do exercício */}
-      <Dialog open={!!editExTarget} onClose={() => setEditExTarget(null)} maxWidth="md" fullWidth>
+      <Dialog open={!!editExTarget} onClose={() => setEditExTarget(null)} maxWidth="md" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar séries — {editExTarget?.nomeExercicio}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
@@ -653,7 +653,7 @@ export default function DetalheFichaPage() {
       </Dialog>
 
       {/* Dialog: observação do exercício */}
-      <Dialog open={!!obsTarget} onClose={() => setObsTarget(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!obsTarget} onClose={() => setObsTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>
           {obsTarget?.observacao ? "Editar observação" : "Adicionar observação"}
         </DialogTitle>
@@ -687,7 +687,7 @@ export default function DetalheFichaPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={vincularOpen} onClose={() => setVincularOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={vincularOpen} onClose={() => setVincularOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Vincular ficha a aluno</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Autocomplete

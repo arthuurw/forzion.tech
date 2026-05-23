@@ -105,6 +105,13 @@ const theme = createTheme(
             "& fieldset": { borderColor: "rgba(0,0,0,0.15)" },
             "&:hover fieldset": { borderColor: "rgba(0,0,0,0.4)" },
           },
+          input: {
+            // Prevents iOS Safari from auto-zooming on focus (requires >= 16px)
+            fontSize: "1rem",
+            "@media (min-width: 600px)": {
+              fontSize: "0.875rem",
+            },
+          },
         },
       },
       MuiCard: {

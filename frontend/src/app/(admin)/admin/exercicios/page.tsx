@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useCallback, useEffect, useState } from "react";
 import {
   Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -209,7 +209,7 @@ export default function ExerciciosAdminPage() {
       />
 
       {/* Criar */}
-      <Dialog open={criarOpen} onClose={() => { closeCriar(); resetForm(); }} maxWidth="xs" fullWidth>
+      <Dialog open={criarOpen} onClose={() => { closeCriar(); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo exercício global</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -230,7 +230,7 @@ export default function ExerciciosAdminPage() {
       </Dialog>
 
       {/* Editar */}
-      <Dialog open={!!editEx} onClose={closeEdit} maxWidth="xs" fullWidth>
+      <Dialog open={!!editEx} onClose={closeEdit} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar — {editEx?.nome}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>

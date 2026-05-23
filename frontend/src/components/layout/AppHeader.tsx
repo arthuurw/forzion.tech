@@ -52,17 +52,7 @@ export default function AppHeader({ onMenuToggle, showMenuButton = true }: AppHe
             edge="start"
             onClick={onMenuToggle}
             aria-label="Abrir menu"
-            sx={{ mr: 1.5, color: "rgba(255,255,255,0.8)", display: { md: "none" } }}
-          >
-            <MenuIcon />
-          </IconButton>
-        )}
-
-        {showMenuButton && (
-          <IconButton
-            onClick={onMenuToggle}
-            aria-label="Abrir menu"
-            sx={{ mr: 1.5, color: "rgba(255,255,255,0.8)", display: { xs: "none", md: "flex" } }}
+            sx={{ mr: 1.5, color: "rgba(255,255,255,0.8)" }}
           >
             <MenuIcon />
           </IconButton>

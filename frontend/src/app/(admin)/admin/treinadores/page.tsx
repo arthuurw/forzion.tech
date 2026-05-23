@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -318,7 +318,7 @@ export default function TreinadoresAdminPage() {
         onClose={() => setConfirmExcluir(null)}
       />
 
-      <Dialog open={!!planoDialog} onClose={() => setPlanoDialog(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!planoDialog} onClose={() => setPlanoDialog(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Atribuir plano — {planoDialog?.nome}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           {planoDialog?.planoTreinadorId && (

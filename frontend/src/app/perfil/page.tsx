@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Stack, TextField, Button, Divider, Chip, Avatar,
@@ -308,7 +308,7 @@ export default function PerfilPage() {
           </Stack>
         </CardContent>
       </Card>
-      <Dialog open={trocaDialog} onClose={() => setTrocaDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={trocaDialog} onClose={() => setTrocaDialog(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Solicitar troca de treinador</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
