@@ -60,6 +60,7 @@
     "postcss": "^8.5.10"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
     "@eslint/eslintrc": "^3.3.5",
