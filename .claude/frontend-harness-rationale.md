@@ -803,14 +803,137 @@ Total: **14 stories** demonstrando o padrão.
 
 ---
 
+## Fase 9 — Playwright base + sharding + network fixtures + auth states
+
+**Status**: concluída (branch `chore/harness-fase9-playwright`).
+
+### Objetivo
+
+Estabelecer infraestrutura E2E completa: Playwright configurado com 5 projects (3 desktop + 2 mobile), project "setup" gerando storage states por role, fixtures custom para auth/network/console, POM base e utils placeholders. **Sem** specs reais — Fase 10 popula `critical/`, `security/`, `lgpd/`, `multi-tab/`, `network/`, `a11y/`, `visual/`.
+
+### Por que
+
+#### Playwright (não Cypress/WebdriverIO)
+
+- Playwright já era a escolha do plano original (§3). Razões: multi-browser nativo (Chromium + Firefox + WebKit), trace viewer, auto-wait, parallelism + sharding first-class, fixtures tipadas.
+- Cypress permanece single-browser por padrão e cobra plano para sharding. WebdriverIO é mais verboso e tem ergonomia inferior para Next.js app router.
+- Trace viewer do Playwright (`trace: "on-first-retry"`) é diferencial: PR com flake reproduzível em 1 clique.
+
+#### Project "setup" + storage state
+
+- Pattern oficial Playwright para E2E autenticado: roda uma vez antes dos specs, faz login via `request.post()`, persiste `storageState`. Specs subsequentes carregam estado pronto — login não é repetido N vezes.
+- Reduz tempo de E2E suite ~5-10x quando há muitos specs autenticados (sem isso, cada teste faz login UI).
+- 3 roles do produto (admin/aluno/treinador) = 3 storage states independentes. Spec opta via `useAuthRole(test, "admin")`.
+
+#### Credenciais via env + skip elegante
+
+- Backend de homologação tem usuários reais. Credenciais não vão pro repo (LGPD + segurança básica).
+- `auth.setup.ts` lê `E2E_<ROLE>_EMAIL/PASSWORD`. Se ausente, `test.skip()` com mensagem clara.
+- Permite: (a) CI rodar sem secrets (smoke piloto + lint dos specs); (b) dev local rodar contra mocks ou credenciais próprias.
+- Fase 10 popula CI com secrets reais.
+
+#### Network fixtures via CDP
+
+- `applyNetwork()` usa Chrome DevTools Protocol (`Network.emulateNetworkConditions`) — único modo confiável de simular slow3G/offline no Playwright.
+- Limitação: CDP só funciona em Chromium. Helpers no-op em Firefox/WebKit (log warning). Specs que precisam network throttling devem `test.skip(browserName !== "chromium")`.
+- `flakyRoute()` complementa: simula falhas intermitentes via `page.route()` — funciona em todos browsers, valida retry/backoff de `apiClient`.
+
+#### Fixture `consoleErrors`
+
+- `page.on("console")` capturado em fixture reutilizável. Spec chama `consoleErrors.assertNoErrors()` para validar zero erros JS no console durante a interação.
+- Pega regressões silenciosas (warnings React, Sentry, MUI deprecations) que UI tests não detectariam.
+
+#### POM em `e2e/pages/`
+
+- Padrão Page Object Model: classe encapsula seletores + ações de uma rota. Spec foca no "o que" (clica login, valida home), não no "como" (seletor exato do botão).
+- Fase 9 só define `BasePage` abstract — Fase 10 popula `LoginPage`, `AdminAlunoPage`, etc, conforme specs forem escritos.
+
+#### Utils placeholders (Stripe/CSP/memory/seed)
+
+- Estabelecem **interface** que specs futuros consomem. Stubs documentam o contrato e impedem improvisação ad-hoc na Fase 10.
+- `stripe.ts` lista cartões test-mode oficiais — checkout spec não copia números de Stack Overflow.
+- `assert-csp.ts` parsea header CSP — security specs validam diretivas obrigatórias.
+- `memory.ts` expõe `measureHeap/forceGC` — memory leak specs (Fase 11) já têm API canônica.
+- `seed.ts` é **stub que lança erro** — decisão consciente de Fase 10 (test-only API vs fixtures).
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **5 projects prontos** | chromium/firefox/webkit desktop + Pixel5/iPhone13 mobile, todos com `dependencies: ["setup"]` |
+| **Sharding first-class** | `--shard 1/4` funciona out-of-the-box; CI Fase 17 só precisa matrix |
+| **Auth zero-overhead** | Storage state cache; specs autenticados não re-fazem login |
+| **Network throttling realista** | CDP + presets slow3G/fast3G/offline; flakyRoute para retry tests |
+| **Console errors gate** | Fixture captura `console.error` automaticamente; spec opta via `assertNoErrors()` |
+| **Reporter dual** | CI: html + junit + github + blob; local: html + list |
+| **TypeScript end-to-end** | `tsconfig.e2e.json` herda config base; tsc --noEmit cobre e2e/ no validate |
+| **ESLint plugin Playwright** | `no-networkidle`, `no-focused-test`, `no-skipped-test` em warn — pega anti-patterns |
+| **Smoke piloto verde** | `health.spec.ts` valida infra com tag `@smoke` |
+| **README dedicado** | `e2e/README.md` documenta quick-start, env vars, estrutura, pattern de spec |
+
+### Trade-offs aceitos
+
+- **Sem `webServer` no playwright.config.ts**: dev local precisa `npm run dev` em terminal separado, ou `E2E_BASE_URL` apontando pra homolog. CI Fase 17 sobe servidor em job dedicado. Razão: Next 16 dev server tem startup ~5s; integrar em Playwright causa flakes em workers paralelos.
+- **CDP só em Chromium**: helpers de network em Firefox/WebKit são no-op com warning. Aceitamos — slow3G/offline são specs de feature, não regressão cross-browser. Mobile-safari mais relevante para visual/responsive.
+- **`seed.ts` lança erro nas funções**: decisão deliberada de adiar seed strategy para Fase 10. Stub força conversa (test-only endpoint vs fixtures vs DB direto) em vez de improvisar.
+- **`flakyRoute()` simples**: não suporta delay variável ou jitter. Fase 10+ pode estender se padrão aparecer.
+- **`hasAuthState()` lido em module load**: `useAuthRole()` decide skip no carregamento do spec, não por teste. Se storage state aparecer mid-run, primeiro spec já foi descartado. Aceitamos — auth setup roda antes via `dependencies`.
+- **Sem `BasePage` populated**: só abstract + `goto/waitForLoad`. Pages concretas vêm com specs em Fase 10 — antecipar perde valor (não sabemos quais seletores vão importar até escrever os specs).
+- **Mobile projects sem grep/filtro**: rodam por default. CI Fase 17 vai filtrar via matrix ou `--project chromium-desktop` para reduzir custo.
+- **Smoke piloto só valida landing**: confirma que infra (config + fixtures + report) está sã, não que app funciona. Fase 10 expande smoke com 5 fluxos críticos (login admin, listar alunos, criar+cleanup, checkout 1 plano, health).
+- **Engines warning Storybook persiste**: Node local 20.17 vs Storybook 10 (≥20.19). Playwright funciona em 20.17, então adicionar Playwright não piora; mas CI Node 22 continua sendo a fonte da verdade.
+
+### Mudanças
+
+#### Arquivos novos
+
+- `frontend/playwright.config.ts` — 5 projects + setup, sharding-ready, expect/use config
+- `frontend/tsconfig.e2e.json` — herda base + types `@playwright/test`
+- `frontend/e2e/auth.setup.ts` — gera `.auth/{admin,aluno,treinador}.json` via `/api/auth`
+- `frontend/e2e/fixtures/test-base.ts` — `test` custom com fixtures network + consoleErrors + `useAuthRole`
+- `frontend/e2e/fixtures/auth.ts` — `authStatePath`, `hasAuthState`, type `AuthRole`
+- `frontend/e2e/fixtures/network.ts` — `applyNetwork`, `goOffline`, `goOnline`, `flakyRoute`, presets
+- `frontend/e2e/pages/BasePage.ts` — abstract POM base
+- `frontend/e2e/utils/stripe.ts` — `STRIPE_TEST_CARDS` + expiry/cvc/zip
+- `frontend/e2e/utils/memory.ts` — `measureHeap`, `forceGC`
+- `frontend/e2e/utils/assert-csp.ts` — `parseCsp`, `assertCspDirective`, `assertCspHasDirective`
+- `frontend/e2e/utils/seed.ts` — stubs com erro
+- `frontend/e2e/specs/smoke/health.spec.ts` — piloto `@smoke`
+- `frontend/e2e/README.md` — documentação
+
+#### Arquivos atualizados
+
+- `frontend/package.json` — `@playwright/test`, `eslint-plugin-playwright`; scripts e2e/e2e:ui/e2e:debug/e2e:smoke/e2e:security/e2e:lgpd/e2e:update-snapshots/e2e:install
+- `frontend/eslint.config.mjs` — `plugin-playwright` em `e2e/**` + `playwright.config.ts`; rules-of-hooks off (Playwright `use(fixture)` triggera FP); no-console off; detect-non-literal-fs-filename off
+- `frontend/.gitignore` — `/playwright/.cache/` + `/e2e/.auth/`
+- `.github/CODEOWNERS` — `/frontend/e2e/`, `/frontend/tsconfig.e2e.json`
+
+### Métricas de sucesso
+
+- ✅ `@playwright/test` + `eslint-plugin-playwright` instalados
+- ✅ 5 projects definidos (3 desktop + 2 mobile) com `dependencies: ["setup"]`
+- ✅ `auth.setup.ts` cria storage state por role; skip elegante sem env
+- ✅ 4 fixtures custom (network, consoleErrors) + helper `useAuthRole`
+- ✅ 4 utils (stripe, memory, csp, seed) com APIs canônicas
+- ✅ Smoke piloto `@smoke` em `e2e/specs/smoke/health.spec.ts`
+- ✅ `npm run validate`: tsc 0 erros + ESLint 0 erros (30 warnings baseline Fase 7) + 355 vitest verdes
+- ✅ `e2e/README.md` documenta quick-start + env vars + estrutura
+- ✅ CODEOWNERS cobre `e2e/`, `tsconfig.e2e.json`, `playwright.config.ts`
+
+### Impacto futuro
+
+- Fase 10 (specs E2E críticos): popula `critical/`, `security/`, `lgpd/`, `multi-tab/`, `network/`, `a11y/`, `visual/`, `smoke/` em cima da infra desta fase
+- Fase 11 (a11y + visual + memory): `measureHeap`/`forceGC` já existem; `axe-playwright` integra via fixture adicional
+- Fase 13 (security): ZAP DAST roda contra preview deploy; `assert-csp` valida headers em unit-level E2E
+- Fase 17 (CI completo): matrix sharding (`--shard N/M` × `--project <browser>`); secrets `E2E_*_EMAIL/PASSWORD` no GH Actions; preview deploy URL via `E2E_BASE_URL`
+- Renovate (Fase 7): grupo `playwright` já configurado; bumps de `@playwright/test` chegam agrupados
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 6 — API routes testing
-- Fase 7 — Lint endurecido + commitlint + lint-staged + Renovate + CODEOWNERS
-- Fase 8 — Storybook
-- Fase 9 — Playwright base + sharding + network fixtures
 - Fase 10 — Specs E2E críticos
 - Fase 11 — A11y + visual + memory leak
 - Fase 12 — Lighthouse CI + bundle + crawl

@@ -16,6 +16,8 @@
 /openapi.json
 /test-results/
 /playwright-report/
+/playwright/.cache/
+/e2e/.auth/
 /.lighthouseci/
 /storybook-static/
 /.stryker-tmp/
