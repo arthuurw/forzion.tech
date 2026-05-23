@@ -343,6 +343,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 13 — Security gates (audit + osv + gitleaks + ZAP + SBOM + license + CodeQL) | `bb003bb` (PR #29) | `chore/harness-fase13-security-gates` |
 | 14 — Mutation testing (Stryker) | `be7b938` (PR #30) | `chore/harness-fase14-mutation-stryker` |
 | 15 — Contract testing (Pact consumer-driven) | `67c9b81` (PR #31) | `chore/harness-fase15-contract-pact` |
+| 16 — Sentry + Web Vitals RUM + source maps | `fe8c067` (PR #32) | `chore/harness-fase16-sentry-webvitals` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
