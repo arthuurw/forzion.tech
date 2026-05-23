@@ -19,6 +19,9 @@
 /frontend/e2e/                          @arthuurw
 /frontend/lighthouserc.json             @arthuurw
 /frontend/stryker.conf.json             @arthuurw
+/frontend/vitest.pact.config.mts        @arthuurw
+/frontend/pact-broker.config.ts         @arthuurw
+/frontend/src/test/pact/                 @arthuurw
 
 /.gitleaks.toml                         @arthuurw
 /osv-scanner.toml                       @arthuurw
