@@ -117,6 +117,7 @@ export default defineConfig({
             "src/test/pagamento-cartao.test.tsx",
             "src/test/responsive-table.test.tsx",
             "src/test/useInactivity.test.ts",
+            "src/test/msw-pilot.test.ts",
           ],
         },
       },
