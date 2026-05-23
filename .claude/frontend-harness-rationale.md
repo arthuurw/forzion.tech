@@ -1379,11 +1379,119 @@ Memory leak (1):
 
 ---
 
+## Fase 12 — Lighthouse CI + bundle-analyzer + linkinator
+
+**Status**: concluída (branch `chore/harness-fase12-lighthouse-bundle`).
+
+### Objetivo
+
+Adicionar gates de performance sintética (Lighthouse CI), introspeção de bundle (next/bundle-analyzer) e validação de links quebrados (linkinator). Diferente das fases anteriores que cobriam correção, esta fase cobre **velocidade percebida + custo de payload**.
+
+### Por que
+
+#### Lighthouse CI
+
+- Performance score, accessibility score, best-practices e Core Web Vitals (LCP, CLS, TBT) impactam diretamente conversão + SEO. Sem gate automatizado, regressão entra produção silenciosa.
+- LHCI roda 3 vezes por URL e usa mediana (anti-flake). Compara contra budgets configurados em `lighthouserc.json`.
+- 4 URLs cobertas inicialmente: landing, login, cadastro/aluno, cadastro/treinador. Todas públicas (sem auth) — LHCI não autentica.
+- Budgets (per plano §5):
+  - performance ≥ 0.85
+  - accessibility ≥ 0.95
+  - best-practices ≥ 0.9
+  - LCP ≤ 2500ms
+  - CLS ≤ 0.1
+  - TBT ≤ 300ms
+
+#### Bundle analyzer
+
+- `@next/bundle-analyzer` integra com `next build` quando `ANALYZE=true`. Gera 2 reports HTML (server + client) com treemap visual mostrando o que cada chunk inclui.
+- Detectar bloat (lib pesada desnecessária, duplicação de versões, imports não tree-shaken) é manual hoje. Bundle analyzer materializa o problema.
+- Renovate (Fase 7) sugere bumps de MUI/Stripe etc — analyzer mostra impacto real no payload antes de aceitar bump.
+
+#### Linkinator
+
+- Páginas com links `<a href>` para rotas internas e externas. Link quebrado interno = bug; externo = link rot.
+- `linkinator http://localhost:3000 --recurse --skip "^https?://(?!localhost)"` varre apenas internos (pular externos por padrão — evita 429 contra GitHub/Twitter/etc).
+- Roda em CI (Fase 17) contra build estático ou dev server.
+
+#### Scripts antecipados (Fase 17 pode usar)
+
+- `analyze`: `cross-env ANALYZE=true next build`
+- `lhci`: `lhci autorun` (collect + assert + upload)
+- `lhci:collect`, `lhci:assert`: estágios isolados para CI debugging
+- `links`: linkinator contra localhost
+
+#### Por que `cross-env`
+
+- Windows não interpreta `ANALYZE=true command`. `cross-env` é o padrão npm para variáveis de ambiente cross-platform. Dependência mínima (zero runtime cost).
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Gates de performance** | LHCI bloqueia PR se LCP > 2.5s, CLS > 0.1, TBT > 300ms |
+| **Performance budget explícito** | `lighthouserc.json` versionado; histórico de mudanças audível |
+| **Bundle introspection on-demand** | `npm run analyze` antes de merge de bump de deps |
+| **Link rot detection** | linkinator pega href quebrado interno antes de produção |
+| **Anti-flake LHCI** | 3 runs, mediana — reduz falsos positivos |
+| **Upload temporário grátis** | LHCI usa `temporary-public-storage` — comparação cross-PR sem servidor próprio |
+| **Bundle analyzer transparente** | `ANALYZE=true next build` ativa wrapper; sem afetar build padrão |
+
+### Trade-offs aceitos
+
+- **LHCI requer Chrome instalado**: CI Fase 17 instalará via Playwright deps. Local: dev precisa Chrome no PATH ou usa Docker.
+- **`startServerCommand` em LHCI**: precisa `npm run start` funcionar (build prévio necessário). CI Fase 17 builda antes.
+- **Budgets conservadores em SEO (warn, não error)**: app não é landing pública intensa; SEO menos crítico que performance pura. Pode hardener depois.
+- **`uses-text-compression` off**: dev local sem gzip configurado. Em produção (nginx + brotli/gzip), passa. CI Fase 17 com proxy de prod pode reativar.
+- **`csp-xss` off**: heurística do Lighthouse marca CSP com `'unsafe-inline'` como warn. Aplicação usa `'unsafe-inline'` necessariamente (Next.js hydration sem nonce + Emotion injeta estilos inline). Decisão arquitetural; CSP é defesa-em-profundidade, não única.
+- **`uses-rel-preconnect` off**: heurística sugere preconnect para domínios externos (Stripe). Premature optimization neste estágio; reativar quando otimizar checkout.
+- **linkinator pula externos por padrão**: domínios externos (GitHub, docs.stripe.com) geram 429/timeouts em CI. Externos validados manualmente quando necessário.
+- **`@lhci/cli` 259 packages**: peso transitivo (puppeteer, axe, etc). Aceitamos — só devDep, não impacta bundle.
+- **Bundle analyzer só ativa com `ANALYZE=true`**: build padrão não muda. Trade-off zero — só liga sob demanda.
+
+### Mudanças
+
+#### Deps
+
+- `@lhci/cli@^0.15.1`
+- `@next/bundle-analyzer@^16.2.6`
+- `linkinator@^6.3.0`
+- `cross-env@^7.0.3` (variáveis de ambiente cross-platform)
+
+#### Arquivos novos
+
+- `frontend/lighthouserc.json` — config LHCI completa (4 URLs, budgets, anti-flake)
+
+#### Arquivos atualizados
+
+- `frontend/next.config.ts` — `withBundleAnalyzer(nextConfig)` quando `ANALYZE=true`
+- `frontend/package.json` — scripts `analyze`, `lhci`, `lhci:collect`, `lhci:assert`, `links`
+- `frontend/.gitignore` — `/.lighthouseci/`
+- `.github/CODEOWNERS` — `lighthouserc.json`
+
+### Métricas de sucesso
+
+- ✅ Deps instaladas (4 novas)
+- ✅ `lighthouserc.json` versionado com 4 URLs + budgets
+- ✅ `next.config.ts` wrapped `withBundleAnalyzer`
+- ✅ 5 scripts npm novos (analyze, lhci, lhci:collect, lhci:assert, links)
+- ✅ `npm run validate`: tsc 0 erros + ESLint 0 erros + 367 vitest verdes (zero regressão)
+
+### Impacto futuro
+
+- Fase 17 (CI completo): job `lighthouse` roda LHCI contra preview deploy (Vercel/CF Pages)
+- Fase 17: job `links` roda linkinator após deploy
+- Bundle analyzer pode virar parte do PR checks via comentário automático (delta bundle size vs main) — Fase 17 ou follow-up
+- LHCI dashboard via `target: "lhci"` (servidor próprio) ou `target: "temporary-public-storage"` (free, retenção 7 dias) — atual usa temporary
+- Renovate + bundle analyzer: PR de bump pode incluir delta de bundle automatizado
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 12 — Lighthouse CI + bundle-analyzer + linkinator
+- Fase 13 — Security gates (audit + osv + gitleaks + ZAP + SBOM + license)
 - Fase 11 — A11y + visual + memory leak
 - Fase 12 — Lighthouse CI + bundle + crawl
 - Fase 13 — Security gates

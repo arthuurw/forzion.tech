@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import bundleAnalyzerImport from "@next/bundle-analyzer";
+
+// @next/bundle-analyzer eh CommonJS — esmModuleInterop normaliza
+const withBundleAnalyzer = bundleAnalyzerImport({
+  enabled: process.env.ANALYZE === "true",
+});
 
 if (process.env.NODE_ENV === "production" && !process.env.API_BASE_URL) {
   throw new Error("API_BASE_URL is required in production.");
@@ -46,4 +52,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

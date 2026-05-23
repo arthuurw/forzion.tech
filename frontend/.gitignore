@@ -20,6 +20,7 @@
 /e2e/.auth/
 /.lighthouseci/
 /storybook-static/
+/.lighthouseci/
 /.stryker-tmp/
 /pacts/
 /reports/

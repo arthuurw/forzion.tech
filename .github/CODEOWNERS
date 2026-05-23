@@ -17,6 +17,7 @@
 /frontend/playwright.config.ts          @arthuurw
 /frontend/tsconfig.e2e.json             @arthuurw
 /frontend/e2e/                          @arthuurw
+/frontend/lighthouserc.json             @arthuurw
 /frontend/stryker.conf.json             @arthuurw
 
 # Infra e CI
