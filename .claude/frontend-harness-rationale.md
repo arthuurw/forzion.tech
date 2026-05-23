@@ -1615,11 +1615,134 @@ Adicionar gates de segurança defesa-em-profundidade: supply chain (npm audit + 
 
 ---
 
+## Fase 14 — Mutation testing (Stryker)
+
+**Status**: concluída (branch `chore/harness-fase14-mutation-stryker`).
+
+### Objetivo
+
+Adicionar mutation testing como **qualidade dos testes** — não cobertura. Stryker injeta mutações no código (trocar `>` por `<`, `&&` por `||`, etc) e roda a suíte. Se nenhum teste falhar com a mutação, ela "sobrevive" — sinal de teste fraco ou ausente.
+
+Roda **semanal via GH Actions** (Fase 17), não em PR — custo computacional alto (cada mutante reroda subset de testes).
+
+### Por que
+
+#### Mutation > Coverage
+
+- Coverage mede **linhas executadas**, não **comportamento verificado**. Teste pode passar e cobrir 100% sem asserir nada significativo (`expect(true).toBe(true)`).
+- Mutation testing mede o **poder** do conjunto de testes. Score mutação 80% = 80% das mudanças semânticas são detectadas.
+- Plano §11 princípio 9: "Quality > Coverage: mutation score > linha; property > example."
+
+#### Escopo limitado a lib + hooks
+
+- `mutate: ["src/lib/**/*.ts", "src/hooks/**/*.ts"]` — funções puras + hooks customizados.
+- Componentes React (`src/components/**`) excluídos: bugs visuais não viram mutantes detectáveis automaticamente. E2E + visual regression (Fases 10/11) cobrem isso.
+- `app/api/**` (route handlers) excluídos nesta fase: rodar mutation em handlers com fetch/cookies/proxy é lento e ruidoso. Fase futura considera.
+
+#### Determinismo como pré-requisito
+
+- Fase 1 instalou determinismo (time, random, UUID, motion). Mutation **só faz sentido** se cada execução do teste é determinística — senão mutantes "sobrevivem" por aleatoriedade.
+- `Date.now` stubado, `Math.random` seedado, motion forçado. Stryker roda em ambiente reproduzível.
+
+#### Thresholds
+
+```json
+"thresholds": { "high": 85, "low": 75, "break": 75 }
+```
+
+- `break: 75`: build falha se score < 75% em `src/lib/**` + `src/hooks/**` combinados
+- `low: 75`: warning entre 75-85
+- `high: 85`: meta de excelência
+
+Per plano §2 decisão 7: "Mutation score ≥ 75% em `src/lib/**` e `src/hooks/**`".
+
+#### vitest-runner
+
+- `@stryker-mutator/vitest-runner` integra com vitest direto (mesmo config). Stryker reaproveita `vitest.config.mts`.
+- `coverageAnalysis: "perTest"`: rastreia qual teste cobre qual linha. Mutante de linha X só roda testes que tocam linha X — 10-100x speedup.
+
+#### TypeScript checker
+
+- `@stryker-mutator/typescript-checker`: descarta mutantes que quebram compilação (ex: trocar `string` por `number`). Evita ruído.
+- Requer `tsconfig.json` válido (já existe).
+
+#### Exclusões deliberadas
+
+- `src/lib/api/client.ts`: interceptor axios, side-effecty, lib externa. Mutantes não significam regressão real.
+- `src/lib/auth/context.tsx`: contém React Context provider. Mutation em JSX é caso edge do Stryker; coberto por integration tests.
+- `*.test.*`, `*.property.test.ts`, `*.stories.*`, `*.d.ts`, `src/test/**`: meta/aux files.
+
+#### `--incremental` mode
+
+- Script `test:mutation:incremental` usa `--incremental`: Stryker armazena resultados anteriores em arquivo e só remuta o que mudou. Acelera reruns dramaticamente (5min → 30s típico).
+- CI semanal: roda full (sem `--incremental`) toda segunda; PR opcional (manual) usa incremental.
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Qualidade dos testes mensurada** | Score em vez de coverage cego |
+| **Pega testes fracos** | `expect(result).toBeDefined()` sobreviveria a maioria das mutações — Stryker força assertion forte |
+| **Scope correto** | lib + hooks (puro/funcional); componentes/API excluídos |
+| **Reuso vitest config** | Mesmo runner, mesmas factories, mesmo determinismo |
+| **perTest coverage** | 10-100x speedup vs `all` |
+| **TypeScript checker** | Descarta mutantes não-compiláveis (sem ruído) |
+| **Incremental mode** | Reruns ultra-rápidos para iteração local |
+| **Smoke valida config** | `dryRunOnly` rodou 68 tests OK; instrumentou 72 mutantes em 1 arquivo |
+
+### Trade-offs aceitos
+
+- **Roda semanal, não em PR**: full mutation pode levar 10-30min em CI. PR gate excessivo. Decisão alinhada com plano §6.
+- **`break: 75`**: meta inicial conservadora. Eleva pra 85 quando código atual estabilizar (fase futura).
+- **Componentes React excluídos**: mutation em JSX é menos efetiva; E2E + visual cobrem. Pode incluir em fase futura se ferramenta evoluir.
+- **API routes excluídos por agora**: rodar Stryker com MSW + cookies + fetch é caro. Fase futura quando mutation rodar em CI estável.
+- **`client.ts` + `context.tsx` excluídos**: side-effect / framework code. Coberto por integration tests.
+- **Engine warning Stryker (Node ≥20.19)**: same do Storybook 10. CI Node 22 OK; dev local 20.17 ainda funciona.
+- **Dashboard reporter não habilitado**: `stryker.io/dashboard` requer token público. Habilitar em Fase 17 quando CI tiver secret configurado.
+
+### Mudanças
+
+#### Deps
+
+- `@stryker-mutator/core@^9.6.1`
+- `@stryker-mutator/vitest-runner@^9.6.1`
+- `@stryker-mutator/typescript-checker@^9.6.1`
+
+#### Arquivos novos
+
+- `frontend/stryker.conf.json` — config completa (mutate paths, thresholds, vitest runner, ts checker, reporters)
+
+#### Arquivos atualizados
+
+- `frontend/package.json` — scripts `test:mutation`, `test:mutation:incremental`
+- `frontend/.gitignore` — `/reports/`, `/.stryker.json` (incremental cache)
+- `.github/CODEOWNERS` — já cobria `stryker.conf.json` (preventivo desde Fase 9)
+
+### Métricas de sucesso
+
+- ✅ Stryker config funcional: `--dryRunOnly` rodou 68 testes + instrumentou 72 mutantes em `src/lib/utils/formatting.ts`
+- ✅ Vitest runner integrado (reusa `vitest.config.mts`)
+- ✅ TypeScript checker ativo (descarta mutantes não-compiláveis)
+- ✅ `coverageAnalysis: perTest` para speedup
+- ✅ Threshold `break: 75` configurado (alinhado plano §2 decisão 7)
+- ✅ `npm run validate`: tsc 0 + ESLint 0 + 367 vitest verdes (zero regressão)
+
+### Impacto futuro
+
+- Fase 17 (CI completo): workflow `mutation.yml` com `schedule: cron` semanal (segunda 4am UTC) + `workflow_dispatch` manual
+- Fase 17: artefato `reports/mutation/index.html` publicado como GitHub Pages ou Codecov
+- Stryker dashboard (`stryker.io`): habilitar quando secret `STRYKER_DASHBOARD_API_KEY` configurado
+- Property-based tests (Fase 4) elevam score: cada property mata mais mutantes que example tests
+- Eventual: estender scope para `app/api/**` quando run time tolerar
+- Score histórico: trend tracking via Stryker dashboard ou Datadog
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 14 — Mutation testing (Stryker, semanal)
+- Fase 15 — Contract testing (Pact + broker + can-i-deploy)
 - Fase 11 — A11y + visual + memory leak
 - Fase 12 — Lighthouse CI + bundle + crawl
 - Fase 13 — Security gates
