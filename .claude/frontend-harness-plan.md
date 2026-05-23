@@ -340,6 +340,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 10b — Security + LGPD + multi-tab + network + a11y + visual | `f477456` (PR #26) | `chore/harness-fase10b-e2e-security-lgpd` |
 | 11 — A11y vitest-axe + visual expandido + memory leak | `71a5e24` (PR #27) | `chore/harness-fase11-a11y-visual-memory` |
 | 12 — Lighthouse CI + bundle-analyzer + linkinator | `ff13bd4` (PR #28) | `chore/harness-fase12-lighthouse-bundle` |
+| 13 — Security gates (audit + osv + gitleaks + ZAP + SBOM + license + CodeQL) | _em PR_ | `chore/harness-fase13-security-gates` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 

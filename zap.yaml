@@ -1,0 +1,60 @@
+# OWASP ZAP Automation Framework — DAST contra preview deploy.
+# Roda via GH Action (Fase 17): `docker run -v $PWD:/zap/wrk owasp/zap2docker-stable zap.sh -cmd -autorun /zap/wrk/zap.yaml`
+# https://www.zaproxy.org/docs/automate/automation-framework/
+
+env:
+  contexts:
+    - name: forzion-homolog
+      urls:
+        - https://homologacao.forzion.tech/
+      includePaths:
+        - https://homologacao.forzion.tech/.*
+      excludePaths:
+        - .*\.png$
+        - .*\.jpg$
+        - .*\.svg$
+        - .*\.woff2?$
+        - .*/api/auth$       # rate limit + auth real — nao bombardear
+      authentication:
+        method: manual
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+
+  - type: spider
+    parameters:
+      context: forzion-homolog
+      maxDuration: 5
+      maxDepth: 5
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 10
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: ./zap-report
+      reportFile: zap-report
+    risks:
+      - high
+      - medium
+      - low
+
+  - type: alertFilter
+    rules:
+      # X-Frame-Options ja DENY via next.config.ts — false positive em SPA
+      - ruleId: 10020
+        newRisk: false-positive
+        context: forzion-homolog
+        # CSP unsafe-inline necessario (Next hydration + Emotion)
+      - ruleId: 10055
+        newRisk: false-positive
+        context: forzion-homolog

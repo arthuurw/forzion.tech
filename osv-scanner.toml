@@ -1,0 +1,21 @@
+# osv-scanner config — varredura de vulnerabilidades em lockfiles via OSV.dev.
+# Roda via GH Action (Fase 17) ou CLI: `osv-scanner --config osv-scanner.toml --recursive .`
+
+[[IgnoredVulns]]
+# Exemplo (vazio agora). Para ignorar vuln com justificativa:
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2026-12-31
+# reason = "Risk accepted - no exploitable path; tracking upstream fix"
+
+[GoVersionOverride]
+# nao aplica — projeto eh .NET + Node
+
+[ImageTarget]
+# nao aplica — sem container scan local; CI fara
+
+[PackageOverrides]
+# Exemplo: forcar reconhecimento de package que OSV nao indexou bem
+# [[PackageOverrides.package]]
+# name = "exemplo"
+# version = "1.0.0"
+# ecosystem = "npm"
