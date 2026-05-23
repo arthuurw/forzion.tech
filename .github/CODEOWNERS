@@ -22,6 +22,11 @@
 /frontend/vitest.pact.config.mts        @arthuurw
 /frontend/pact-broker.config.ts         @arthuurw
 /frontend/src/test/pact/                 @arthuurw
+/frontend/instrumentation.ts            @arthuurw
+/frontend/instrumentation-client.ts     @arthuurw
+/frontend/sentry.server.config.ts       @arthuurw
+/frontend/sentry.edge.config.ts         @arthuurw
+/frontend/next.config.ts                @arthuurw
 
 /.gitleaks.toml                         @arthuurw
 /osv-scanner.toml                       @arthuurw
