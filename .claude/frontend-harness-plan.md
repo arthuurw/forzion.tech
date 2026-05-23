@@ -471,8 +471,10 @@ Workflows separados (implementados):
 - `lighthouse.yml` — lhci páginas públicas, `workflow_dispatch`
 - `zap.yml` — DAST baseline, `workflow_dispatch`
 
-Pendente (próxima entrega): GlitchTip + Pact Broker self-hosted no
-`docker-compose.homolog.yml` + nginx. Mais adiante: preview deploy por PR,
+Pact Broker self-hosted: **implementado** (`pact-postgres` + `pact-broker` no
+`docker-compose.homolog.yml`, rota nginx `pact.homologacao.forzion.tech`,
+runbook em `docs/pact-broker-homolog.md`). Pendente: GlitchTip self-hosted na
+VM (observabilidade). Mais adiante: preview deploy por PR,
 `release.yml`, ZAP Automation Framework, matriz Node 22+24, e2e/visual/a11y no
 gate (dependem de preview ou stack no runner).
 
