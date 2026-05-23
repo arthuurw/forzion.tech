@@ -124,7 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
+    <Box sx={{ display: "flex", minHeight: "100dvh", bgcolor: "background.default" }}>
       <AppHeader
         onMenuToggle={() => (isMobile ? setMobileOpen((v) => !v) : setCollapsed((v) => !v))}
       />
@@ -171,7 +171,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         sx={{
           flex: 1,
           p: { xs: 2.5, md: 3.5 },
-          pb: { xs: 10, md: 3.5 },
+          pb: { xs: "calc(72px + env(safe-area-inset-bottom, 0px))", md: 3.5 },
           mt: { xs: "60px", sm: "64px" },
           minWidth: 0,
           maxWidth: "100%",
@@ -191,6 +191,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             zIndex: "appBar",
             borderTop: "1px solid",
             borderColor: "divider",
+            pb: "env(safe-area-inset-bottom, 0px)",
           }}
         >
           <BottomNavigation

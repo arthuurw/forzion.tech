@@ -283,4 +283,73 @@ describe("PagamentosAlunoPage", () => {
     );
     expect(screen.getByText("Histórico de Pagamentos")).toBeDefined();
   });
+
+  it("exibe spinner durante carregamento", () => {
+    vi.mocked(pagamentoApi.obterMinhaAssinatura).mockReturnValue(new Promise(() => {}));
+    render(<PagamentosAlunoPage />);
+    expect(screen.getByRole("progressbar")).toBeDefined();
+  });
+
+  it("erro na API → exibe mensagem de erro", async () => {
+    vi.mocked(pagamentoApi.obterMinhaAssinatura).mockRejectedValue(new Error("fail"));
+    render(<PagamentosAlunoPage />);
+    await waitFor(() =>
+      expect(screen.getByText("Erro ao carregar pagamentos.")).toBeDefined()
+    );
+  });
+
+  it("com pagamentos → exibe tabela com data, valor e status", async () => {
+    vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
+      data: { assinaturaId: "ass-1" },
+    } as never);
+    vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
+      data: [makePagamento({ valor: 99.9, status: "Pago", createdAt: "2025-03-15T00:00:00Z" })],
+    } as never);
+
+    render(<PagamentosAlunoPage />);
+    await waitFor(() => expect(screen.getByText("Pago")).toBeDefined());
+    expect(screen.getByText((c) => c.includes("99,90"))).toBeDefined();
+  });
+
+  it("pagamento Pendente → exibe botão 'Pagar'", async () => {
+    vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
+      data: { assinaturaId: "ass-1" },
+    } as never);
+    vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
+      data: [makePagamento({ status: "Pendente" })],
+    } as never);
+
+    render(<PagamentosAlunoPage />);
+    await waitFor(() => expect(screen.getByText("Pagar")).toBeDefined());
+  });
+
+  it("pagamento Expirado → não exibe botão 'Pagar'", async () => {
+    vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
+      data: { assinaturaId: "ass-1" },
+    } as never);
+    vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
+      data: [makePagamento({ status: "Expirado", pixQrCode: null })],
+    } as never);
+
+    render(<PagamentosAlunoPage />);
+    await waitFor(() => expect(screen.getByText("Expirado")).toBeDefined());
+    expect(screen.queryByText("Pagar")).toBeNull();
+  });
+
+  it("pagamento Pendente Pix -> clicar Pagar abre dialog 'Pagamento via Pix'", async () => {
+    vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
+      data: { assinaturaId: "ass-1" },
+    } as never);
+    vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
+      data: [makePagamento({ status: "Pendente", metodoPagamento: "Pix" })],
+    } as never);
+    vi.mocked(pagamentoApi.obterPagamento).mockReturnValue(new Promise(() => {}));
+
+    render(<PagamentosAlunoPage />);
+    await waitFor(() => expect(screen.getByText("Pagar")).toBeDefined());
+    fireEvent.click(screen.getByText("Pagar"));
+    await waitFor(() =>
+      expect(screen.getByText("Pagamento via Pix")).toBeDefined()
+    );
+  });
 });

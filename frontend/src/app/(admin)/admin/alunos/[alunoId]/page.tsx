@@ -136,7 +136,7 @@ export default function DetalheAlunoAdminPage() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-        <IconButton onClick={() => router.push("/admin/alunos")} size="small" aria-label="Voltar">
+        <IconButton onClick={() => router.push("/admin/alunos")} aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>

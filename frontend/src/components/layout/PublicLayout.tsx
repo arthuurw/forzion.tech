@@ -17,7 +17,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   if (isMobile) {
     return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
+      <Box sx={{ minHeight: "100dvh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
         <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
           <Logo size="md" />
         </Box>
@@ -34,7 +34,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <Box sx={{ display: "flex", minHeight: "100dvh" }}>
       {/* Painel esquerdo — branding */}
       <Box
         sx={{
@@ -43,7 +43,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           alignSelf: "flex-start",
           position: "sticky",
           top: 0,
-          height: "100vh",
+          height: "100dvh",
           bgcolor: "secondary.main",
           display: "flex",
           flexDirection: "column",
@@ -124,7 +124,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         sx={{
           flex: 1,
           alignSelf: "flex-start",
-          minHeight: "100vh",
+          minHeight: "100dvh",
           bgcolor: "background.default",
           display: "flex",
           flexDirection: "column",

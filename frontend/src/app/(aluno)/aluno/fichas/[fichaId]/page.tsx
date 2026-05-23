@@ -53,7 +53,7 @@ export default function DetalheFichaAlunoPage() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-        <IconButton onClick={() => router.push("/aluno/fichas")} size="small" aria-label="Voltar">
+        <IconButton onClick={() => router.push("/aluno/fichas")} aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>

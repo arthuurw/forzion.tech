@@ -5,9 +5,9 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
-    environment: "happy-dom",
+    environment: "jsdom",
     globals: true,
-    setupFiles: ["./src/test/setup.ts"],
+    setupFiles: ["./src/test/setup/unit.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useCallback, useState } from "react";
 import {
   Box, Typography, Select, MenuItem, FormControl, InputLabel, IconButton,
@@ -209,7 +209,7 @@ export default function AlunosTreinadorPage() {
         }}
       />
 
-      <Dialog open={!!aprovarDialog} onClose={() => setAprovarDialog(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!aprovarDialog} onClose={() => setAprovarDialog(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Aprovar — {aprovarDialog?.nomeAluno}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Autocomplete
@@ -249,7 +249,7 @@ export default function AlunosTreinadorPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={!!reativarDialog} onClose={() => setReativarDialog(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!reativarDialog} onClose={() => setReativarDialog(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Reativar — {reativarDialog?.nomeAluno}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Autocomplete
