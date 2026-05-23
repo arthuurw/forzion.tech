@@ -1807,6 +1807,83 @@ Garantir que o frontend (consumer) e o backend .NET (provider) não divirjam no 
 
 ---
 
+## Fase 16 — Sentry + Web Vitals RUM + source maps
+
+**Status**: concluída (branch `chore/harness-fase16-sentry-webvitals`).
+
+### Objetivo
+
+Observabilidade em produção: error tracking, performance tracing, session replay e RUM de Web Vitals — tudo via Sentry. Plano §11 princípio 12 ("Observability obrigatória: Sentry + Web Vitals desde dia 1"). Primeira fase que instrumenta **código de produção**, não só o harness de teste.
+
+### Por que
+
+- Bug em produção sem stack trace + contexto = horas de debug às cegas. Sentry captura exceção, breadcrumbs, replay da sessão e trace distribuído no momento da falha.
+- Web Vitals (LCP/CLS/INP) medem performance **real** do usuário (RUM), complementando o Lighthouse sintético da Fase 12.
+- Source maps fazem o stack trace minificado de produção voltar a apontar pro código TS original.
+
+### Decisões de arquitetura
+
+- **Sentry v10 (não v8 do plano)**: v8 não suporta Next 16. v10.53 é a linha compatível com Next 16.2 + React 19. Plano §9 desatualizado nesse ponto.
+- **API moderna do SDK Next**: `instrumentation-client.ts` (substitui `sentry.client.config`) com `onRouterTransitionStart`; `instrumentation.ts` com `register()` + `onRequestError` (captura SSR/RSC/route handlers); `sentry.server.config.ts` + `sentry.edge.config.ts` carregados por runtime.
+- **`global-error.tsx`**: captura falhas do próprio root layout (fora dos providers) — renderiza HTML puro pt-BR, sem MUI. `error.tsx` (segmento) agora também faz `captureException`.
+- **Web Vitals via `next/web-vitals`**: usa `useReportWebVitals` (já embrulha a lib `web-vitals`), evitando dependência redundante. Encaminha cada métrica como breadcrumb do Sentry; os core vitals de pageload também são auto-coletados pelo browserTracing. Agregação p75 fica na Fase 18.
+
+### Privacidade / segurança (LGPD)
+
+- `sendDefaultPii: false` em todos os runtimes — nunca anexa IP/cookies/headers.
+- Session Replay com `maskAllText: true` + `blockAllMedia: true` — nenhum texto/mídia do usuário vaza pro replay.
+- CSP: `connect-src` ganha `https://*.sentry.io` (ingest) e novo `worker-src 'self' blob:` (worker do replay). Sem DSN, nada é enviado — as diretivas ficam inertes.
+
+### Gating (dev/CI seguros)
+
+- Todo init é gated por `NEXT_PUBLIC_SENTRY_DSN`: sem DSN, SDK no-op (zero eventos, zero ruído). Dev e CI rodam sem nenhuma config Sentry.
+- Upload de source maps gated por `SENTRY_AUTH_TOKEN` (`sourcemaps.disable: !token`): `next build` sem token compila normal, só não publica mapas.
+
+### Trade-offs aceitos
+
+- **RUM ainda sem agregação**: Fase 16 coleta e encaminha Web Vitals; dashboards/p75/alertas entram na Fase 18.
+- **Sampling conservador**: traces 10%, replay 10% sessão / 100% on-error (plano §12, controla quota). Ajustável por env sem deploy.
+- **`next build` não roda em CI hoje**: `withSentryConfig` só afeta build/dev. Wiring do build + secrets Sentry no CI entra na Fase 17.
+
+### Mudanças
+
+#### Deps
+
+- `@sentry/nextjs@^10` (v10.53.1) — runtime (dependencies, não dev). Web Vitals via `next/web-vitals` (sem dep extra).
+
+#### Arquivos novos
+
+- `frontend/instrumentation.ts` — register por runtime + `onRequestError`
+- `frontend/instrumentation-client.ts` — init browser + replay + `onRouterTransitionStart`
+- `frontend/sentry.server.config.ts`, `frontend/sentry.edge.config.ts` — init por runtime
+- `frontend/src/app/global-error.tsx` — boundary do root layout
+- `frontend/src/components/observability/WebVitals.tsx` — RUM → breadcrumb Sentry
+
+#### Arquivos atualizados
+
+- `frontend/next.config.ts` — `withSentryConfig` (source maps gated) + CSP (`*.sentry.io`, `worker-src blob:`)
+- `frontend/src/app/layout.tsx` — monta `<WebVitals />`
+- `frontend/src/app/error.tsx` — `Sentry.captureException`
+- `frontend/.gitignore` — `.sentryclirc`, `.env.sentry-build-plugin`
+- `.github/CODEOWNERS` — configs Sentry + `next.config.ts`
+
+### Métricas de sucesso
+
+- ✅ `npm run validate`: tsc 0 + ESLint 0 erros + 367 vitest verdes
+- ✅ `next build` compila com Sentry wired (no-op sem DSN, sem upload sem token)
+- ✅ Init gated por DSN em client/server/edge; replay com mask/block
+- ✅ CSP cobre ingest + worker do replay
+- ✅ `global-error.tsx` + `error.tsx` reportam ao Sentry
+
+### Impacto futuro
+
+- Fase 17: setar secrets `NEXT_PUBLIC_SENTRY_DSN`/`SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/`SENTRY_PROJECT` no CI + job de build que publica source maps por release
+- Fase 18: dashboards de Web Vitals p75, alerta de error rate < 0.5% e quota a 80%, flake tracking
+- Releases: amarrar `release` do Sentry ao SHA do deploy para regressão por release
+- Refinar Web Vitals: enviar como measurement/metric agregável (não só breadcrumb) quando a API de métricas estabilizar
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:

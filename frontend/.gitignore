@@ -57,6 +57,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# sentry
+.sentryclirc
+.env.sentry-build-plugin
+
 # IA
 AGENTS.md
 CLAUDE.md
