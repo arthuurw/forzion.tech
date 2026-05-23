@@ -31,6 +31,9 @@ jobs:
   consumer-contract:
     name: Consumer contract (gera + valida + publica)
     runs-on: ubuntu-latest
+    # Os secrets PACT_BROKER_* vivem no Environment `homolog` — sem isto o job
+    # nao os enxerga e o publish e skipado.
+    environment: homolog
     # secrets nao podem ser usados em `if:`; mapeia p/ env do job e checa o env.
     env:
       PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
