@@ -418,11 +418,102 @@ Eliminar a pasta `src/test/` flat (anti-padrão herdado) movendo cada arquivo `*
 
 ---
 
+## Fase 5b — Migração de testes auth/fetch para MSW
+
+**Status**: concluída (branch `chore/harness-fase5b-msw-migration`).
+
+### Objetivo
+
+Eliminar o anti-pattern crítico restante (`stubFetch` global em `context.test.tsx`) substituindo por MSW handlers. Após análise dos demais testes, **delimitar o escopo da migração**: nem todo `vi.mock(...)` é anti-pattern.
+
+### Por que (e por que NÃO migrar tudo)
+
+Auditoria dos testes que tocam API revelou três categorias distintas:
+
+| Categoria | Exemplo | É anti-pattern? | Ação |
+|-----------|---------|----------------|------|
+| **fetch global stubado** | `context.test.tsx` (`vi.stubGlobal("fetch", ...)`) | **Sim** | **Migrar para MSW** |
+| **Contract test do API adapter** | `admin.test.ts` (mocka `apiClient` ao testar `adminApi`) | **Não** | Manter — testa shape de URL/params do adapter |
+| **Mock de módulo API em component test** | `admin-pages.test.tsx`, `pagamento.test.tsx`, `PagamentoCartao.test.tsx` (mocka `@/lib/api/admin`, `@/lib/api/pagamento`) | **Não** | Manter — boundary aceitável em testes de componente |
+
+#### Por que `admin.test.ts` NÃO migra
+
+- Esse arquivo testa **o próprio adapter** (`adminApi`): cada `it` verifica que `adminApi.listAlunos()` chama `apiClient.get("/admin/alunos", { params: ... })`.
+- O valor é detectar typo de URL ou shape de query — **bug class diferente** do que MSW pega.
+- Migrar transforma 96 contract tests em integration tests redundantes (admin.msw.test.ts já demonstra integration). Perderíamos granularidade.
+- Pattern correto: **dois níveis** — adapter contract tests (mocka apiClient) + integration tests do consumidor (MSW + apiClient real).
+
+#### Por que component tests NÃO migram
+
+- `admin-pages.test.tsx` mocka `@/lib/api/admin` para isolar UI da camada de dados. **Não mocka HTTP** — mocka boundary do component.
+- Migrar para MSW exigiria reescrever centenas de linhas e tornaria testes de componente acoplados ao shape de resposta do backend real. Custo alto, valor incremental baixo.
+- Manter este pattern em componentes é **convenção React/Next padrão**.
+
+#### Por que `context.test.tsx` migra
+
+- Original: `vi.stubGlobal("fetch", vi.fn().mockImplementation(...))`. **Substitui fetch global** — mock invasivo, não isolável por rota.
+- Cada teste configurava sequência de respostas via array indexado. Frágil: se ordem de fetches mudar, teste quebra silenciosamente.
+- MSW: handler por rota (`http.get("*/api/auth/me", ...)`, `http.post("*/api/auth/logout", ...)`). Realista, override por teste com `server.use()`, reset automático no `afterEach`.
+
+### Mudanças
+
+#### `src/test/msw/handlers/auth.ts`
+
+Saiu de stub vazio para handlers default:
+```ts
+http.get("*/api/auth/me", () => HttpResponse.json(null, { status: 401 })),
+http.post("*/api/auth/logout", () => HttpResponse.json({ ok: true })),
+```
+
+Default = "não autenticado" (401). Testes que precisam sessão ativa usam `server.use()` com override.
+
+#### `src/lib/auth/context.test.tsx`
+
+Reescrito: 141 linhas de `stubFetch + array de respostas` viraram MSW handlers por teste. 6 tests verdes:
+- `GET /api/auth/me` sucesso/401/network-error
+- `login()` seta tipoConta
+- `logout()` chama POST + redirect (verifica handler invocado, sem precisar spy em fetch)
+- `useAuth` fora do provider lança erro
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Realismo** | fetch real → MSW intercepta na network layer (igual produção) |
+| **Override por rota, não ordem** | Pre-existia bug latente: stub array indexado quebrava se ordem mudasse |
+| **Sem `vi.stubGlobal`** | Mais limpo; sem efeitos colaterais cross-test |
+| **Handlers reutilizáveis** | Próximos tests que tocam `/api/auth/*` já têm default; só override se precisar |
+| **Verificação de chamada por handler** | Em logout, contamos invocações via closure no handler (mais explícito que `expect(fetch).toHaveBeenCalledWith(...)`) |
+| **Sem regressão** | 328 testes verdes mantidos |
+
+### Trade-offs aceitos e re-escopo
+
+- **Re-escopo deliberado de "migrar todos `vi.mock`"** para "migrar fetch global stub": auditoria identificou que outros usos de `vi.mock` testam contratos de adapter ou isolam boundary de componente. Migrar todos seria **trabalho mecânico sem ganho real** — testes ficariam mais complexos sem detectar mais bugs.
+- **`admin.test.ts` permanece com `vi.mock("@/lib/api/client")`**: contract test do adapter. Decisão documentada — futura "Fase 6+" ou refactor pode consolidar com `admin.msw.test.ts`, mas o valor atual justifica manutenção.
+- **Component tests mantêm `vi.mock("@/lib/api/<area>")`**: boundary em testes de componente é convenção; migrar perde valor.
+- **Handler `/api/auth/me` default retorna 401**: pode surpreender em testes futuros. Documentar via comentário no handler. Tests que precisam de auth ativo aplicam `server.use()`.
+
+### Métricas de sucesso
+
+- ✅ `vi.stubGlobal("fetch", ...)` eliminado de toda a suite
+- ✅ `context.test.tsx` reescrito com MSW (6 tests verdes)
+- ✅ Handler `auth.ts` populado com defaults úteis
+- ✅ 328 testes verdes mantidos
+- ✅ Validação cross-camada: tsc + lint + 3 projects vitest
+
+### Impacto futuro
+
+- Fase 6 (API routes): handlers de auth já existem como defaults; tests novos compõem via `server.use()`
+- Fase 10 (E2E Playwright): mesmo handler MSW pode ser reaproveitado em modo dev/storybook
+- Fase 11 (a11y): tests de páginas autenticadas usam `server.use(http.get(/api/auth/me, json(user)))` consistentemente
+- Eventual refactor: se valer, consolidar `admin.test.ts` + `admin.msw.test.ts` em padrão único quando outros adapters migrarem
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 5b — Migração `vi.mock("@/lib/api/client")` para MSW handlers
 - Fase 6 — API routes testing
 - Fase 7 — Lint endurecido + commitlint + lint-staged + Renovate + CODEOWNERS
 - Fase 8 — Storybook
