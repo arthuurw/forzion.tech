@@ -1,0 +1,40 @@
+name: Hygiene — dead code
+
+# Higiene de código: dependências circulares (madge, bloqueante) + código/deps
+# não usados (knip, report-only — tem falsos positivos com a config de projects
+# do Vitest 4, então informa sem derrubar o build).
+on:
+  push:
+    branches: [homolog]
+    paths:
+      - "frontend/**"
+  pull_request:
+    branches: [homolog]
+    paths:
+      - "frontend/**"
+
+jobs:
+  hygiene:
+    name: Dead code (madge + knip)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Dependências circulares (madge)
+        run: npm run deadcode
+
+      - name: Código/deps não usados (knip) — report-only
+        continue-on-error: true
+        run: npm run knip

@@ -44,7 +44,24 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 | Exportação | ExcelJS | 4.x |
 | Pagamentos | @stripe/stripe-js + @stripe/react-stripe-js | 9.x / 6.x |
 | JWT (servidor) | jose | 6.x |
-| Testes | Vitest + happy-dom + Testing Library | 4 |
+| Observabilidade | Sentry + Web Vitals (RUM) | 10 |
+
+### Test harness
+
+| Camada | Ferramenta | Versão |
+|--------|------------|--------|
+| Unit / integration / api | Vitest 4 (projects) + jsdom + Testing Library | 4 |
+| Mock de API HTTP | MSW + @mswjs/data + OpenAPI codegen | 2 |
+| Property-based | fast-check + @fast-check/vitest | 4 |
+| A11y (componente) | vitest-axe | 1 |
+| E2E + a11y de página | Playwright + @axe-core/playwright | 1.x |
+| Component workshop | Storybook 10 + test-runner | 10 |
+| Mutation testing | Stryker (lib + hooks) | 9 |
+| Contract testing | Pact (consumer-driven, broker self-hosted) | 13 |
+| Performance | Lighthouse CI + bundle-analyzer + linkinator | — |
+| Dead code | knip + madge | 5 / 8 |
+
+> Detalhes completos do harness: [`../docs/frontend-harness-plan.md`](../docs/frontend-harness-plan.md) (plano + status por fase) e [`../docs/frontend-harness-rationale.md`](../docs/frontend-harness-rationale.md) (decisões e trade-offs por fase).
 
 ---
 
@@ -58,27 +75,54 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 ## Comandos
 
 ```bash
-# Instalar dependências
-npm install
+# ── App ─────────────────────────────────────────────
+npm install            # dependências
+npm run dev            # dev server (http://localhost:3000)
+npm run build          # build de produção (standalone)
+npm start              # serve o build
 
-# Desenvolvimento (http://localhost:3000)
-npm run dev
+# ── Qualidade (gate local) ──────────────────────────
+npm run validate       # typecheck + lint + test (roda no pre-commit)
+npm run typecheck      # tsc --noEmit
+npm run lint           # eslint .
 
-# Build de produção
-npm run build
+# ── Testes Vitest (projects) ────────────────────────
+npm test               # todos os projects, single run
+npm run test:unit      # project unit (node) — lib, hooks, middleware
+npm run test:integration # project integration (jsdom) — componentes/páginas
+npm run test:api       # project api (node) — route handlers
+npm run test:watch     # watch (project unit)
+npm run test:coverage  # cobertura (thresholds por camada)
+npm run test:property  # só property-based (fast-check)
 
-# Iniciar build de produção
-npm start
+# ── E2E (Playwright) ────────────────────────────────
+npm run e2e            # suite completa (precisa de E2E_BASE_URL + creds)
+npm run e2e:smoke      # só @smoke
+npm run e2e:ui         # modo UI
+npm run e2e:install    # instala browsers
 
-# Testes (single run)
-npm run test
+# ── Storybook ───────────────────────────────────────
+npm run storybook      # dev (http://localhost:6006)
+npm run storybook:build
+npm run storybook:test # test-runner contra o storybook
 
-# Testes em modo watch
-npm run test:watch
+# ── Qualidade avançada ──────────────────────────────
+npm run test:mutation  # Stryker (mutation score em lib + hooks)
+npm run test:contract  # Pact (gera/valida contratos consumer)
+npm run hygiene        # madge (circular) + knip (dead code)
+npm run analyze        # bundle analyzer (ANALYZE=true build)
+npm run lhci           # Lighthouse CI
+npm run links          # linkinator (links quebrados)
 
-# Testes com cobertura
-npm run test -- --coverage
+# ── Segurança / supply chain ────────────────────────
+npm run security:all   # audit (prod) + license-checker + SBOM
+
+# ── OpenAPI ─────────────────────────────────────────
+npm run openapi:sync   # baixa spec do backend + gera tipos MSW
+npm run openapi:check   # falha se os tipos divergirem do spec
 ```
+
+> CI roda esses lanes no GitHub Actions (`.github/workflows/`): `ci.yml` (gate de PR: lint, build, testes, security, cobertura), `semgrep.yml` (SAST), `hygiene.yml` (dead code), `contract.yml` (Pact), `mutation.yml` (semanal), `smoke.yml`/`lighthouse.yml`/`zap.yml` (pós-deploy/manual contra homolog).
 
 ---
 
@@ -832,55 +876,67 @@ Build configurado como `output: "standalone"` para deploy em container.
 
 ## Testes
 
-Stack: **Vitest 4 + happy-dom + @testing-library/react**
+Harness completo em camadas. Detalhe por fase: [`../docs/frontend-harness-plan.md`](../docs/frontend-harness-plan.md) (plano + status) e [`../docs/frontend-harness-rationale.md`](../docs/frontend-harness-rationale.md) (decisões/trade-offs).
 
-Configuração em `vitest.config.mts` + setup em `src/test/setup.ts`.
+### Vitest — 3 projects
 
-| Ferramenta | Uso |
-|------------|-----|
-| Vitest 4 | Runner + assertions |
-| happy-dom | Simulação de DOM (sem conflito ESM — jsdom@27 é incompatível com Vitest 4) |
-| @testing-library/react | Render de componentes + queries |
-| @testing-library/user-event | Simulação de interações |
-| @testing-library/jest-dom | Matchers extras (`toBeDisabled`, `toBeInTheDocument`, etc.) |
+`vitest.config.mts` define 3 projects com env e setup próprios. Testes são **co-localizados** (ao lado do código); só infra fica em `src/test/`.
 
-### Cobertura atual
+| Project | Env | Escopo | Setup |
+|---------|-----|--------|-------|
+| `unit` | node | `src/lib/**`, `src/hooks/**`, `middleware` | `src/test/setup/unit.ts` |
+| `integration` | jsdom | componentes e páginas React (`*.test.tsx`) | `src/test/setup/integration.ts` |
+| `api` | node | route handlers (`src/app/api/**`) | `src/test/setup/api.ts` |
 
-| Métrica | Valor | Threshold |
-|---------|-------|-----------|
-| Statements | 87.04% | 83% |
-| Branches | 81.65% | 75% |
-| Functions | 78.57% | 74% |
-| Lines | 89.78% | 85% |
+> jsdom (não happy-dom): a Fase 1 migrou para jsdom@26 + determinismo — time/random/uuid/motion travados em `src/test/determinism/` para zero flake.
 
-### Suíte atual
+### Mock de API — MSW
 
-| Arquivo | O que testa | Testes |
-|---------|------------|--------|
-| `src/test/validations.test.ts` | Schemas Zod — email, senha, nome, telefone, loginSchema, cadastroTreinadorSchema, cadastroAlunoSchema (incl. campos de perfil obrigatórios) | 32 |
-| `src/test/auth.test.ts` | `extractTipoConta` + `homeRouteFor` | 8 |
-| `src/test/auth-context.test.tsx` | `AuthProvider` — fetch /api/auth/me, login, logout, useAuth fora do provider | 6 |
-| `src/test/api-auth-me.test.ts` | Handler `GET /api/auth/me` — cookies ausentes, JWT válido (HMAC), expirado, sem perfil_id, assinatura inválida | 6 |
-| `src/test/api-auth-route.test.ts` | `POST /api/auth` — token não exposto no body da resposta; rate limit 429 | 2 |
-| `src/test/rateLimit.test.ts` | `getClientIp` (x-real-ip, x-forwarded-for, fallback) + `checkRateLimit` (janela, bloqueio, IPs independentes) | 7 |
-| `src/test/middleware.test.ts` | Proteção de rotas server-side — sem auth, papel errado, autenticado na área correta, rotas públicas | 19 |
-| `src/test/useInactivity.test.ts` | Hook com `vi.useFakeTimers()` — warn, timeout, reset | 6 |
-| `src/test/components.test.tsx` | `StatusChip`, `EmptyState`, `ConfirmDialog` | 11 |
-| `src/test/responsive-table.test.tsx` | `ResponsiveTable` — desktop (headers, row click, actions), paginação, mobile (cards, Divider, propagação) | 13 |
-| `src/test/formatting.test.ts` | `formatarSeries`, `formatarData`, `getWeekLabel`, `periodoParaDatas` | 24 |
-| `src/lib/utils/excel.test.ts` | `sanitizeFilename` (path traversal, null byte, formula injection), `safeCell` (formula-trigger chars, passthrough seguro), `buildFichaRows` (estrutura, ordenação, imutabilidade, nulls, valores brutos), `exportarFichaParaExcel` async (mock ExcelJS via `vi.hoisted` + class, DOM spy, sanitized filename, safeCell aplicado, column widths) | 50 |
-| `src/test/admin-api.test.ts` | Todos os métodos de `adminApi`. Mock de `@/lib/api/client`. Verifica URL, params e retorno. | 48 |
-| `src/test/admin-pages.test.tsx` | Páginas admin — alunos (filtros, renderCell, tabs, vínculo, perfil, formatPhone, progressão com dados), treinador (tabs, pacotes cheio/vazio, alunos), treino. Mock de `next/navigation`, `adminApi`, `usePaginatedList`, `recharts`. | 37 |
-| `src/test/pagamento.test.tsx` | `PagamentoPix` (spinner, estados, clipboard, polling), `PagamentosTreinadorPage` (onboarding), `OnboardingRetornoPage`, `PagamentosAlunoPage` (spinner, erro, tabela, Pagar, Expirado, dialog Pix) | 25 |
-| `src/test/pagamento-cartao.test.tsx` | `PagamentoCartao` — loading, sem clientSecret, status terminal, formulário, submit com erro Stripe, submit sem stripe/elements | 8 |
+`apiClient` real exercitado contra **MSW** (sem `vi.mock` do client — pega bug de URL/serialização). Handlers em `src/test/msw/handlers/`, factories zod em `src/test/factories/`, tipos gerados do OpenAPI do backend (`npm run openapi:sync`). Drift de contrato barrado por `openapi:check`.
 
-**Total: 302 testes**
+### Property-based, a11y e visual
+
+- **fast-check** (`*.property.test.ts`): invariantes de formatação/validação.
+- **vitest-axe**: a11y de componentes (WCAG 2.1 AA) no project integration.
+- **@axe-core/playwright** + snapshots visuais: a11y e regressão visual de páginas no E2E.
+
+### E2E — Playwright
+
+5 projects (3 desktop + 2 mobile) + project `setup` que gera storage states de auth por papel. Specs em `e2e/specs/` (`smoke`, `critical`, `security`, `lgpd`, `multi-tab`, `network`, `a11y`, `visual`). **Fail-loud**: falham com mensagem clara quando faltam `E2E_BASE_URL`/`E2E_*`, não silenciam. Rodam **pós-deploy** contra homolog (`smoke.yml`), fora do gate de PR.
+
+### Storybook / mutation / contract
+
+- **Storybook 10** (`.storybook/`) com `addon-a11y` + `msw-storybook-addon`; `storybook:test` roda interações via test-runner.
+- **Stryker** (`test:mutation`): mutation score em `src/lib` + `src/hooks` (thresholds 85/75, break 75). Semanal no CI.
+- **Pact** (`test:contract`): contratos consumer-driven publicados num broker self-hosted; `can-i-deploy` antes do deploy. Setup: [`../docs/pact-broker-homolog.md`](../docs/pact-broker-homolog.md).
+
+### Observabilidade
+
+Sentry (`instrumentation*.ts`, `sentry.*.config.ts`) + Web Vitals RUM (`src/components/observability/WebVitals.tsx`). Gated por `NEXT_PUBLIC_SENTRY_DSN` (no-op sem DSN). `global-error.tsx` captura erros do root layout.
+
+### Cobertura
+
+Thresholds **por camada** em `vitest.config.mts` (lines/branches/functions/statements):
+
+| Camada | Threshold |
+|--------|-----------|
+| `src/lib/**` | 95 / 90 / 95 / 95 |
+| `src/hooks/**` | 90 / 85 / 90 / 90 |
+| `src/components/**` | 85 / 75 / 85 / 85 |
+| `src/app/api/**` | 90 / 85 / 90 / 90 |
+
+Relatório comentado no PR via `vitest-coverage-report-action` (sem SaaS). Backend: resumo no run.
+
+### Suíte
+
+Testes **co-localizados** com o código (`*.test.ts`/`*.test.tsx` ao lado do alvo) — não há mais um diretório central de specs. Os projects do Vitest selecionam por path (ver tabela acima). Property tests em `*.property.test.ts`, a11y em `*.a11y.test.tsx`, contratos Pact em `src/test/pact/`, E2E em `e2e/specs/`.
+
+Rode `npm run test:coverage` para o panorama atual.
 
 ### Armadilhas conhecidas
 
 | Problema | Causa | Solução |
 |---------|-------|---------|
-| Conflito ESM no DOM | jsdom@27 + `@csstools/css-calc` incompatível com Vitest 4 | Usar `happy-dom` |
 | `NextRequest.cookies` não parseia header em testes | API interna do Next.js não disponível em unit tests | Mock direto do objeto `{ cookies: { get: vi.fn() } }` |
 | `jwtVerify` falha em testes de `/api/auth/me` | Necessita JWT assinado com HMAC real | Usar `jose.SignJWT` com `TEST_SECRET` + `beforeAll(() => { process.env.JWT_SECRET = TEST_SECRET })` |
 | Formatação de moeda com non-breaking space | `toLocaleString("pt-BR")` produz `R$ 99,90` — `getByText("R$ 99,90")` falha | Usar `getByText((c) => c.includes("99,90"))` |
