@@ -334,11 +334,95 @@ Adicionar testes que verificam **propriedades universais** (invariantes) sobre f
 
 ---
 
+## Fase 5a — Co-localização de testes
+
+**Status**: concluída (branch `chore/harness-fase5-migracao-msw`).
+
+A Fase 5 original (migração testes → MSW) foi dividida em duas para tornar PRs digestíveis:
+
+- **5a (esta fase)**: move mecânico de arquivos para perto do código testado, sem mudança lógica
+- **5b (próxima)**: substituição efetiva de `vi.mock("@/lib/api/client")` por `server.use()` MSW
+
+### Objetivo (5a)
+
+Eliminar a pasta `src/test/` flat (anti-padrão herdado) movendo cada arquivo `*.test.*` para junto do código que ele testa. Sem mudança lógica nos testes — apenas reorganização estrutural.
+
+### Por que
+
+#### Estado base do anti-pattern
+
+- `src/test/` flat continha 16 arquivos de teste misturados com infra (`setup/`, `factories/`, `msw/`, `determinism/`, `render.tsx`).
+- Não existe relação visual entre código e teste. Renomeação de arquivo testado deixava o teste órfão silenciosamente.
+- `vitest.config.mts` precisava manter listas explícitas de cada arquivo flat distribuídas por project. Inevitável drift quando dev novo adiciona teste e esquece de incluir.
+
+#### Co-localização
+
+- Padrão amplamente adotado em projetos React/Next modernos: teste fica ao lado do módulo testado (`Foo.tsx` + `Foo.test.tsx`) ou em `__tests__/` adjacente.
+- Vantagem mecânica: glob `src/lib/**/*.test.ts` pega tudo automaticamente. Zero manutenção em include lists.
+- Vantagem cognitiva: PR review vê código + teste no mesmo diff. Esquecer de atualizar teste vira óbvio.
+
+### Mapa de moves
+
+| De `src/test/` | Para |
+|---|---|
+| `admin-api.test.ts` | `src/lib/api/admin.test.ts` |
+| `admin-pages.test.tsx` | `src/app/(admin)/__tests__/admin-pages.test.tsx` |
+| `api-auth-me.test.ts` | `src/app/api/auth/me/route.test.ts` |
+| `api-auth-route.test.ts` | `src/app/api/auth/route.test.ts` |
+| `auth-context.test.tsx` | `src/lib/auth/context.test.tsx` |
+| `auth.test.ts` | `src/lib/auth/helpers.test.ts` (testa helpers de auth/middleware) |
+| `components.test.tsx` | `src/components/__tests__/components.test.tsx` |
+| `formatting.test.ts` | `src/lib/utils/formatting.test.ts` |
+| `middleware.test.ts` | `src/middleware.test.ts` |
+| `msw-pilot.test.ts` | `src/lib/api/admin.msw.test.ts` (vira referência permanente do padrão) |
+| `pagamento-cartao.test.tsx` | `src/components/pagamento/PagamentoCartao.test.tsx` |
+| `pagamento.test.tsx` | `src/app/(aluno)/__tests__/pagamento.test.tsx` |
+| `rateLimit.test.ts` | `src/lib/rateLimit.test.ts` |
+| `responsive-table.test.tsx` | `src/components/ui/__tests__/responsive-table.test.tsx` |
+| `useInactivity.test.ts` | `src/hooks/useInactivity.test.ts` |
+| `validations.test.ts` | `src/lib/validations/common.test.ts` |
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Includes canônicos** | `vitest.config.mts` perde 17 entradas transitórias; usa só globs |
+| **Zero drift include** | Novo teste em `src/lib/foo.test.ts` é pego automaticamente |
+| **Diff de PR mais óbvio** | Código + teste no mesmo file tree path = mesma janela de review |
+| **`src/test/` purificado** | Agora só infra (`setup/`, `factories/`, `msw/`, `determinism/`, `render.tsx`) |
+| **Sem regressão** | 328 testes verdes mantidos (19 arquivos, mesma contagem da Fase 4) |
+| **Coverage exclude expandido** | `**/__tests__/**` adicionado ao coverage exclude para não contar `__tests__` dirs como produto |
+
+### Trade-offs aceitos
+
+- **Parênteses em paths Next route groups**: globs picomatch interpretam `(admin)` como alternation. Usamos padrão mais amplo `src/app/**/__tests__/*.test.tsx` em vez de listar cada route group. Funciona desde que convenção `__tests__/` seja respeitada.
+- **`src/test/setup/api.ts` ainda referenciado por testes movidos sem renomear**: imports relativos `./msw/server` no `admin.msw.test.ts` mudaram para alias `@/test/msw/server`. Pattern dali em diante: usar alias `@/test/...` para infra cross-module.
+- **`helpers.test.ts` não-canonical**: arquivo testa funções de dois módulos diferentes (`middleware.extractTipoConta` + `context.homeRouteFor`). Mantido como nome genérico em `src/lib/auth/` porque dividir gera fricção sem ganho. Pode renomear na Fase 5b se ajustes lógicos forem feitos.
+- **`admin.msw.test.ts` em `src/lib/api/`**: piloto MSW que será modelo para migração 5b. Path destacado (`.msw.test.ts`) ajuda buscar referência rápida. Pode ser consolidado em `admin.test.ts` se migração 5b unificar pattern.
+
+### Métricas de sucesso
+
+- ✅ 16 arquivos movidos para co-localização
+- ✅ `src/test/` agora contém apenas infra (sem `*.test.*`)
+- ✅ `vitest.config.mts` sem include lists transitórias
+- ✅ 328 testes verdes (zero regressão)
+- ✅ Distribuição por project: unit 161 / integration 159 / api 8
+- ✅ `npm run validate` passa (tsc + lint + test)
+
+### Impacto futuro
+
+- Fase 5b (próxima): substituição de `vi.mock("@/lib/api/client")` por MSW handlers. Agora cada teste está perto do módulo testado, facilitando ver qual handler é necessário.
+- Fase 6 (API routes): `src/app/api/auth/me/route.test.ts` já está no padrão final. Novos route handlers seguem mesma convenção.
+- Fase 11 (a11y): testes a11y co-localizados (`Foo.a11y.test.tsx` ao lado de `Foo.tsx`) são triviais agora.
+- Fase 14 (mutation): Stryker mapeia código ↔ testes via convenção colocated automaticamente.
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 5 — Migração testes existentes para MSW
+- Fase 5b — Migração `vi.mock("@/lib/api/client")` para MSW handlers
 - Fase 6 — API routes testing
 - Fase 7 — Lint endurecido + commitlint + lint-staged + Renovate + CODEOWNERS
 - Fase 8 — Storybook
