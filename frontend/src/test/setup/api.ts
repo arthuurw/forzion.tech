@@ -1,13 +1,28 @@
 /**
  * Setup API — env node (vitest project "api").
  *
- * Estende setup/unit com helpers para testes de Next.js Route Handlers.
+ * Estende setup/unit com:
+ * - Helpers para testes de Next.js Route Handlers (createMockRequest, extractCookies)
+ * - MSW server (route handlers fazem fetch para backend .NET externo)
  *
- * Exporta utilitarios reutilizaveis (createMockRequest, extractCookies)
- * que tests importam quando precisam fabricar NextRequest sem subir um
- * servidor HTTP.
+ * Exporta utilitarios reutilizaveis que tests importam quando precisam
+ * fabricar NextRequest sem subir um servidor HTTP.
  */
 import "./unit";
+import { afterAll, afterEach, beforeAll } from "vitest";
+import { server } from "../msw/server";
+
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: "error" });
+});
+
+afterEach(() => {
+  server.resetHandlers();
+});
+
+afterAll(() => {
+  server.close();
+});
 
 import type { NextRequest } from "next/server";
 
@@ -28,11 +43,26 @@ export interface MockRequestInit {
 export function createMockRequest(init: MockRequestInit = {}): NextRequest {
   const cookies = init.cookies ?? {};
   const headers = new Headers(init.headers ?? {});
+  const urlStr = init.url ?? "http://localhost:3000/";
+  const parsedUrl = new URL(urlStr);
+
+  const body = init.body !== undefined ? JSON.stringify(init.body) : "";
+  const arrayBuffer = body
+    ? new TextEncoder().encode(body).buffer
+    : new ArrayBuffer(0);
 
   const request = {
     method: init.method ?? "GET",
-    url: init.url ?? "http://localhost:3000/",
+    url: urlStr,
     headers,
+    nextUrl: {
+      pathname: parsedUrl.pathname,
+      search: parsedUrl.search,
+      searchParams: parsedUrl.searchParams,
+      href: parsedUrl.href,
+      origin: parsedUrl.origin,
+      clone: () => ({ ...parsedUrl }),
+    },
     cookies: {
       get: (name: string) => {
         const value = cookies[name];
@@ -43,8 +73,8 @@ export function createMockRequest(init: MockRequestInit = {}): NextRequest {
       has: (name: string) => name in cookies,
     },
     json: async () => (init.body !== undefined ? init.body : {}),
-    text: async () =>
-      init.body !== undefined ? JSON.stringify(init.body) : "",
+    text: async () => body,
+    arrayBuffer: async () => arrayBuffer,
   };
 
   return request as unknown as NextRequest;
