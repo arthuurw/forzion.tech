@@ -14,6 +14,7 @@
  * onUnhandledRequest nao dispara para esses casos.
  */
 import "@testing-library/jest-dom";
+import "vitest-axe/extend-expect";
 import "./unit";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { installGlobalMocks } from "./mocks";

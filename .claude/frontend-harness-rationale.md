@@ -1254,11 +1254,136 @@ Visual (1):
 
 ---
 
+## Fase 11 — A11y vitest-axe + visual expandido + memory leak
+
+**Status**: concluída (branch `chore/harness-fase11-a11y-visual-memory`).
+
+### Objetivo
+
+Fase 11 fecha o tripe de qualidade não-funcional: acessibilidade em nível de componente (vitest-axe), cobertura visual ampliada para todas roles, e detecção de memory leak via navegação repetida. Complementa Fase 10b (axe E2E + visual piloto) com profundidade no Vitest e amplitude no Playwright.
+
+### Por que
+
+#### A11y em duas camadas (vitest-axe + axe-playwright)
+
+Fase 10b cobriu axe **no nível de página** (E2E completo). Fase 11 adiciona axe **no nível de componente** (vitest-axe + jsdom + render isolado):
+
+- **Por que ambos**: violations comuns aparecem em componentes (chip sem aria-label, spinner sem nome acessível, alert sem role). Pegar no nível de componente é mais rápido (~100ms por test vs ~10s E2E) e mais granular — falha aponta o componente exato.
+- **vitest-axe** (fork de jest-axe): `expect(container).toHaveNoViolations()`. Imports `vitest-axe/extend-expect` no setup integration.
+- **Cobertura inicial**: 4 componentes piloto (mesmos do Storybook Fase 8): AlertBanner, StatusChip, LoadingSpinner, EmptyState. 12 testes cobrindo todas variações (severities, sizes, action button).
+
+#### Bug real encontrado
+
+vitest-axe **pegou bug** em LoadingSpinner já no primeiro run: `CircularProgress` sem aria-label viola `aria-progressbar-name`. Fix: prop `label?: string` default "Carregando" passada como `aria-label`. Hoje 1 componente, amanhã pode pegar dezenas — vale o investimento.
+
+#### Visual snapshots por role
+
+Fase 10b deixou piloto só de `/login`. Fase 11 expande para **8 rotas distribuídas em 4 specs**:
+
+- `visual/public.spec.ts` (3 rotas): landing, cadastro/aluno, cadastro/treinador
+- `visual/admin.spec.ts` (3 rotas): /admin, /admin/alunos, /admin/treinadores
+- `visual/aluno.spec.ts` (2 rotas): /aluno, /aluno/assinatura
+- `visual/treinador.spec.ts` (2 rotas): /treinador, /treinador/alunos
+
+Cada spec usa `useAuthRole(test, role)` no escopo do arquivo. Cada snapshot espera `document.fonts.ready` antes do screenshot (anti-flake).
+
+Baselines **Linux-only**. CI Fase 17 gera baselines pela primeira vez via `playwright test --update-snapshots`. Local não deve gerar — fontes/OS diferentes mascaram regressão real.
+
+#### Memory leak via navegação repetida
+
+Padrão clássico de leak detection:
+1. Warmup (2 navegações), forceGC, medir baseline
+2. Stress (10 navegações alternadas alunos ↔ treinadores)
+3. forceGC, medir final
+4. Assertion: `final / baseline < 1.5`
+
+Threshold 1.5x conservador per plano §12 (evita false positive — heap legítimo cresce com cache, fonts, etc).
+
+Requer:
+- Chromium com `--js-flags=--expose-gc` (window.gc disponível)
+- `performance.memory` API (Chromium-only)
+
+Spec skipa em Firefox/WebKit com mensagem clara. Em CI Fase 17, job de memory leak roda só em projeto chromium.
+
+Helpers `measureHeap()` + `forceGC()` já existem em `e2e/utils/memory.ts` desde Fase 9 — Fase 11 finalmente os usa.
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **A11y dois níveis** | vitest-axe rápido (componente) + axe-playwright amplo (página) |
+| **Bug real pego** | LoadingSpinner aria-label adicionado por causa de vitest-axe |
+| **12 a11y tests novos** | 4 componentes × 2-4 variações |
+| **8 snapshots novos** | Cobertura visual completa por role |
+| **Memory leak quantificado** | Threshold 1.5x conservador; assertion explícita |
+| **Reusa utils Fase 9** | `measureHeap`/`forceGC` finalmente exercitados |
+| **367 vitest verdes** | +12 a11y (era 355); zero regressão |
+| **Lint zero erros** | 51 warnings (baseline + 2 novos memory/visual) |
+
+### Trade-offs aceitos
+
+- **vitest-axe 1.0.0-pre.5**: versão pre-release ainda. API estável (fork de jest-axe). Renovate pinned; revisar quando 1.0.0 estável sair.
+- **Componentes piloto apenas (4)**: cobertura inicial. Cada nova adição de componente UI deve trazer `.a11y.test.tsx` ao lado (convenção). Storybook Fase 8 e a11y Fase 11 caminham juntos.
+- **Visual snapshots sem light/dark**: app não tem dark mode atualmente. Quando implementar, expandir cada spec com `{ name, theme: "dark" }` variante.
+- **Memory leak threshold 1.5x conservador**: pode mascarar leak gradual. Fase futura pode adicionar regressão tracking (delta entre runs) para detectar tendência. Por ora, 1.5x absoluto basta para leak grosseiro.
+- **Visual specs admin/aluno/treinador dependem de seed estável**: dados dinâmicos (lista de alunos, status) variam entre runs em homolog. Aceitamos com threshold global `maxDiffPixelRatio: 0.01`. Se ficar flaky, mascarar regiões dinâmicas via `mask` option ou seed dedicado.
+- **Memory leak só em Chromium**: Firefox/WebKit não expõem heap API. Aceitamos — memory leak é cross-browser na prática (V8 vs SpiderMonkey vs JavaScriptCore comportam-se similar para o tipo de leak que pegamos).
+- **LoadingSpinner default `label="Carregando"`**: hardcoded pt-BR. Quando i18n entrar, expor via prop ou contexto. Por ora, aceita-se default em pt-BR (idioma único do app).
+
+### Mudanças
+
+#### Deps
+
+- `vitest-axe@^1.0.0-pre.5`
+- `axe-core@^4` (peer requirement)
+
+#### Arquivos novos
+
+A11y component tests (4):
+- `src/components/ui/AlertBanner.a11y.test.tsx`
+- `src/components/ui/StatusChip.a11y.test.tsx`
+- `src/components/ui/LoadingSpinner.a11y.test.tsx`
+- `src/components/ui/EmptyState.a11y.test.tsx`
+
+Visual specs (4):
+- `e2e/specs/visual/public.spec.ts`
+- `e2e/specs/visual/admin.spec.ts`
+- `e2e/specs/visual/aluno.spec.ts`
+- `e2e/specs/visual/treinador.spec.ts`
+
+Memory leak (1):
+- `e2e/specs/memory/navigation-leak.spec.ts`
+
+#### Arquivos atualizados
+
+- `frontend/src/test/setup/integration.ts`: importa `vitest-axe/extend-expect`
+- `frontend/src/components/ui/LoadingSpinner.tsx`: prop `label` + aria-label (fix a11y)
+- `frontend/package.json`: deps vitest-axe + axe-core
+
+### Métricas de sucesso
+
+- ✅ `vitest-axe` integrado em integration setup
+- ✅ 12 a11y tests novos passando (4 componentes piloto)
+- ✅ Bug real detectado e corrigido (LoadingSpinner aria-label)
+- ✅ 8 visual specs novos (3 públicos + 3 admin + 2 aluno + 2 treinador)
+- ✅ 1 memory leak spec com threshold 1.5x
+- ✅ `npm run validate`: tsc 0 erros + ESLint 0 erros + **367 vitest verdes** (era 355)
+
+### Impacto futuro
+
+- Convenção a partir desta fase: novo componente UI vem com `.a11y.test.tsx` ao lado
+- Fase 17 (CI): job `visual` gera baselines Linux pela primeira vez; job `memory` roda chromium-only
+- Fase futura (dark mode): visual specs ganham variante dark
+- Fase futura (i18n): LoadingSpinner.label vira chave de tradução
+- Lint hardening: violations a11y em componentes podem virar regra lint custom
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 11 — A11y dedicada + visual expandido + memory leak
+- Fase 12 — Lighthouse CI + bundle-analyzer + linkinator
 - Fase 11 — A11y + visual + memory leak
 - Fase 12 — Lighthouse CI + bundle + crawl
 - Fase 13 — Security gates
