@@ -1,16 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { server } from "@/test/msw/server";
 import { AuthProvider, useAuth } from "@/lib/auth/context";
-import type { LoginResponse } from "@/types";
+import type { LoginResponse, SessionUser } from "@/types";
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const SESSION_USER = { contaId: "c1", perfilId: "p1", tipoConta: "Aluno" as const };
+const SESSION_USER: SessionUser = {
+  contaId: "c1",
+  perfilId: "p1",
+  tipoConta: "Aluno",
+};
 
 const LOGIN_PAYLOAD: LoginResponse = {
   token: "fake-token",
@@ -31,28 +35,20 @@ function Consumer() {
   );
 }
 
-function stubFetch(responses: { ok: boolean; body?: unknown }[]) {
-  let call = 0;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockImplementation(() => {
-      const r = responses[call++] ?? { ok: false };
-      return Promise.resolve({ ok: r.ok, json: async () => r.body ?? null });
-    }),
-  );
-}
-
 afterEach(() => {
   vi.clearAllMocks();
-  vi.unstubAllGlobals();
 });
 
-// ─── Montagem / fetch /api/auth/me ───────────────────────────────────────────
+// ─── Montagem / GET /api/auth/me ─────────────────────────────────────────────
 
 describe("AuthProvider — GET /api/auth/me", () => {
-  it("sucesso → popula user, isLoading false", async () => {
-    stubFetch([{ ok: true, body: SESSION_USER }]);
-    render(<AuthProvider><Consumer /></AuthProvider>);
+  it("sucesso (200 com user) → popula user, isLoading false", async () => {
+    server.use(http.get("*/api/auth/me", () => HttpResponse.json(SESSION_USER)));
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
 
     expect(screen.getByTestId("loading").textContent).toBe("true");
 
@@ -62,9 +58,12 @@ describe("AuthProvider — GET /api/auth/me", () => {
     expect(screen.getByTestId("user").textContent).toBe("Aluno");
   });
 
-  it("resposta não-ok → user null, isLoading false", async () => {
-    stubFetch([{ ok: false }]);
-    render(<AuthProvider><Consumer /></AuthProvider>);
+  it("401 (default handler) → user null, isLoading false", async () => {
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
 
     await waitFor(() =>
       expect(screen.getByTestId("loading").textContent).toBe("false"),
@@ -72,9 +71,13 @@ describe("AuthProvider — GET /api/auth/me", () => {
     expect(screen.getByTestId("user").textContent).toBe("null");
   });
 
-  it("fetch rejeita → user null, isLoading false", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
-    render(<AuthProvider><Consumer /></AuthProvider>);
+  it("network error → user null, isLoading false", async () => {
+    server.use(http.get("*/api/auth/me", () => HttpResponse.error()));
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
 
     await waitFor(() =>
       expect(screen.getByTestId("loading").textContent).toBe("false"),
@@ -87,8 +90,11 @@ describe("AuthProvider — GET /api/auth/me", () => {
 
 describe("login()", () => {
   it("seta user com tipoConta do LoginResponse", async () => {
-    stubFetch([{ ok: false }]);
-    render(<AuthProvider><Consumer /></AuthProvider>);
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
 
     await waitFor(() =>
       expect(screen.getByTestId("loading").textContent).toBe("false"),
@@ -104,12 +110,20 @@ describe("login()", () => {
 
 describe("logout()", () => {
   it("POST /api/auth/logout → user null → push /login", async () => {
-    stubFetch([
-      { ok: true, body: SESSION_USER }, // GET /api/auth/me
-      { ok: true },                     // POST /api/auth/logout
-    ]);
+    let logoutCalled = false;
+    server.use(
+      http.get("*/api/auth/me", () => HttpResponse.json(SESSION_USER)),
+      http.post("*/api/auth/logout", () => {
+        logoutCalled = true;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
 
-    render(<AuthProvider><Consumer /></AuthProvider>);
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
 
     await waitFor(() =>
       expect(screen.getByTestId("user").textContent).toBe("Aluno"),
@@ -121,7 +135,7 @@ describe("logout()", () => {
       expect(screen.getByTestId("user").textContent).toBe("null"),
     );
 
-    expect(vi.mocked(fetch)).toHaveBeenCalledWith("/api/auth/logout", { method: "POST" });
+    expect(logoutCalled).toBe(true);
     expect(mockPush).toHaveBeenCalledWith("/login");
   });
 });
@@ -129,13 +143,15 @@ describe("logout()", () => {
 // ─── useAuth fora do provider ─────────────────────────────────────────────────
 
 describe("useAuth fora do provider", () => {
-  it("lança erro descritivo", () => {
+  it("lanca erro descritivo", () => {
     function BadConsumer() {
       useAuth();
       return null;
     }
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(() => render(<BadConsumer />)).toThrow("useAuth must be used inside AuthProvider");
+    expect(() => render(<BadConsumer />)).toThrow(
+      "useAuth must be used inside AuthProvider",
+    );
     spy.mockRestore();
   });
 });
