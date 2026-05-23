@@ -69,7 +69,7 @@ describe("PagamentoPix", () => {
   it("exibe spinner durante carregamento inicial", () => {
     vi.mocked(pagamentoApi.obterPagamento).mockReturnValue(new Promise(() => {}));
     render(<PagamentoPix pagamentoId="pay-1" />);
-    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("estado Pago → exibe confirmação", async () => {
@@ -78,9 +78,7 @@ describe("PagamentoPix", () => {
     } as never);
 
     render(<PagamentoPix pagamentoId="pay-1" />);
-    await waitFor(() =>
-      expect(screen.getByText("Pagamento confirmado!")).toBeDefined()
-    );
+    expect(await screen.findByText("Pagamento confirmado!")).toBeInTheDocument();
   });
 
   it("estado Pago → chama onPago", async () => {
@@ -99,9 +97,7 @@ describe("PagamentoPix", () => {
     } as never);
 
     render(<PagamentoPix pagamentoId="pay-1" />);
-    await waitFor(() =>
-      expect(screen.getByText("Solicite uma nova cobrança ao seu treinador.")).toBeDefined()
-    );
+    expect(await screen.findByText("Solicite uma nova cobrança ao seu treinador.")).toBeInTheDocument();
   });
 
   it("estado Falhou → exibe mensagem", async () => {
@@ -110,9 +106,7 @@ describe("PagamentoPix", () => {
     } as never);
 
     render(<PagamentoPix pagamentoId="pay-1" />);
-    await waitFor(() =>
-      expect(screen.getByText("Solicite uma nova cobrança ao seu treinador.")).toBeDefined()
-    );
+    expect(await screen.findByText("Solicite uma nova cobrança ao seu treinador.")).toBeInTheDocument();
   });
 
   it("estado Pendente → exibe 'Pague via Pix' e botão copiar", async () => {
@@ -121,9 +115,9 @@ describe("PagamentoPix", () => {
     } as never);
 
     render(<PagamentoPix pagamentoId="pay-1" />);
-    await waitFor(() => expect(screen.getByText("Pague via Pix")).toBeDefined());
-    expect(screen.getByText("Copiar código")).toBeDefined();
-    expect(screen.getByText("Aguardando pagamento...")).toBeDefined();
+    expect(await screen.findByText("Pague via Pix")).toBeInTheDocument();
+    expect(screen.getByText("Copiar código")).toBeInTheDocument();
+    expect(screen.getByText("Aguardando pagamento...")).toBeInTheDocument();
   });
 
   it("botão copiar → escreve no clipboard", async () => {
@@ -132,7 +126,7 @@ describe("PagamentoPix", () => {
     } as never);
 
     render(<PagamentoPix pagamentoId="pay-1" />);
-    await waitFor(() => expect(screen.getByText("Copiar código")).toBeDefined());
+    expect(await screen.findByText("Copiar código")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Copiar código"));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("CODIGO_PIX_LONGO");
   });
@@ -158,7 +152,7 @@ describe("PagamentosTreinadorPage", () => {
   it("exibe spinner durante carregamento", () => {
     vi.mocked(pagamentoApi.verificarOnboarding).mockReturnValue(new Promise(() => {}));
     render(<PagamentosTreinadorPage />);
-    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("onboarding completo → exibe 'Ativo'", async () => {
@@ -166,7 +160,7 @@ describe("PagamentosTreinadorPage", () => {
     vi.mocked(pagamentoApi.verificarOnboarding).mockResolvedValue({ data: status } as never);
 
     render(<PagamentosTreinadorPage />);
-    await waitFor(() => expect(screen.getByText("Ativo")).toBeDefined());
+    expect(await screen.findByText("Ativo")).toBeInTheDocument();
   });
 
   it("não configurado → exibe botão 'Configurar recebimentos'", async () => {
@@ -174,9 +168,7 @@ describe("PagamentosTreinadorPage", () => {
     vi.mocked(pagamentoApi.verificarOnboarding).mockResolvedValue({ data: status } as never);
 
     render(<PagamentosTreinadorPage />);
-    await waitFor(() =>
-      expect(screen.getByText("Configurar recebimentos")).toBeDefined()
-    );
+    expect(await screen.findByText("Configurar recebimentos")).toBeInTheDocument();
   });
 
   it("configurado mas incompleto → exibe 'Continuar cadastro'", async () => {
@@ -184,7 +176,7 @@ describe("PagamentosTreinadorPage", () => {
     vi.mocked(pagamentoApi.verificarOnboarding).mockResolvedValue({ data: status } as never);
 
     render(<PagamentosTreinadorPage />);
-    await waitFor(() => expect(screen.getByText("Continuar cadastro")).toBeDefined());
+    expect(await screen.findByText("Continuar cadastro")).toBeInTheDocument();
   });
 
   it("clique em configurar → redireciona para URL do Stripe", async () => {
@@ -203,7 +195,7 @@ describe("PagamentosTreinadorPage", () => {
     });
 
     render(<PagamentosTreinadorPage />);
-    await waitFor(() => expect(screen.getByText("Configurar recebimentos")).toBeDefined());
+    expect(await screen.findByText("Configurar recebimentos")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Configurar recebimentos"));
     await waitFor(() =>
       expect(vi.mocked(pagamentoApi.iniciarOnboarding)).toHaveBeenCalledOnce()
@@ -216,9 +208,7 @@ describe("PagamentosTreinadorPage", () => {
     vi.mocked(pagamentoApi.verificarOnboarding).mockRejectedValue(new Error("network"));
 
     render(<PagamentosTreinadorPage />);
-    await waitFor(() =>
-      expect(screen.getByText("Erro ao verificar status do cadastro Stripe.")).toBeDefined()
-    );
+    expect(await screen.findByText("Erro ao verificar status do cadastro Stripe.")).toBeInTheDocument();
   });
 });
 
@@ -232,7 +222,7 @@ describe("OnboardingRetornoPage", () => {
   it("exibe spinner durante carregamento", () => {
     vi.mocked(pagamentoApi.verificarOnboarding).mockReturnValue(new Promise(() => {}));
     render(<OnboardingRetornoPage />);
-    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("onboarding completo → exibe 'Cadastro concluído!'", async () => {
@@ -241,8 +231,8 @@ describe("OnboardingRetornoPage", () => {
     } as never);
 
     render(<OnboardingRetornoPage />);
-    await waitFor(() => expect(screen.getByText("Cadastro concluído!")).toBeDefined());
-    expect(screen.getByText("Ir para recebimentos")).toBeDefined();
+    expect(await screen.findByText("Cadastro concluído!")).toBeInTheDocument();
+    expect(screen.getByText("Ir para recebimentos")).toBeInTheDocument();
   });
 
   it("onboarding incompleto → exibe 'Cadastro incompleto'", async () => {
@@ -251,14 +241,14 @@ describe("OnboardingRetornoPage", () => {
     } as never);
 
     render(<OnboardingRetornoPage />);
-    await waitFor(() => expect(screen.getByText("Cadastro incompleto")).toBeDefined());
+    expect(await screen.findByText("Cadastro incompleto")).toBeInTheDocument();
   });
 
   it("erro na API → exibe 'Cadastro incompleto'", async () => {
     vi.mocked(pagamentoApi.verificarOnboarding).mockRejectedValue(new Error("fail"));
 
     render(<OnboardingRetornoPage />);
-    await waitFor(() => expect(screen.getByText("Cadastro incompleto")).toBeDefined());
+    expect(await screen.findByText("Cadastro incompleto")).toBeInTheDocument();
   });
 });
 
@@ -278,24 +268,20 @@ describe("PagamentosAlunoPage", () => {
     } as never);
 
     render(<PagamentosAlunoPage />);
-    await waitFor(() =>
-      expect(screen.getByText("Nenhum pagamento encontrado.")).toBeDefined()
-    );
-    expect(screen.getByText("Histórico de Pagamentos")).toBeDefined();
+    expect(await screen.findByText("Nenhum pagamento encontrado.")).toBeInTheDocument();
+    expect(screen.getByText("Histórico de Pagamentos")).toBeInTheDocument();
   });
 
   it("exibe spinner durante carregamento", () => {
     vi.mocked(pagamentoApi.obterMinhaAssinatura).mockReturnValue(new Promise(() => {}));
     render(<PagamentosAlunoPage />);
-    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("erro na API → exibe mensagem de erro", async () => {
     vi.mocked(pagamentoApi.obterMinhaAssinatura).mockRejectedValue(new Error("fail"));
     render(<PagamentosAlunoPage />);
-    await waitFor(() =>
-      expect(screen.getByText("Erro ao carregar pagamentos.")).toBeDefined()
-    );
+    expect(await screen.findByText("Erro ao carregar pagamentos.")).toBeInTheDocument();
   });
 
   it("com pagamentos → exibe tabela com data, valor e status", async () => {
@@ -307,8 +293,8 @@ describe("PagamentosAlunoPage", () => {
     } as never);
 
     render(<PagamentosAlunoPage />);
-    await waitFor(() => expect(screen.getByText("Pago")).toBeDefined());
-    expect(screen.getByText((c) => c.includes("99,90"))).toBeDefined();
+    expect(await screen.findByText("Pago")).toBeInTheDocument();
+    expect(screen.getByText((c) => c.includes("99,90"))).toBeInTheDocument();
   });
 
   it("pagamento Pendente → exibe botão 'Pagar'", async () => {
@@ -320,7 +306,7 @@ describe("PagamentosAlunoPage", () => {
     } as never);
 
     render(<PagamentosAlunoPage />);
-    await waitFor(() => expect(screen.getByText("Pagar")).toBeDefined());
+    expect(await screen.findByText("Pagar")).toBeInTheDocument();
   });
 
   it("pagamento Expirado → não exibe botão 'Pagar'", async () => {
@@ -332,8 +318,8 @@ describe("PagamentosAlunoPage", () => {
     } as never);
 
     render(<PagamentosAlunoPage />);
-    await waitFor(() => expect(screen.getByText("Expirado")).toBeDefined());
-    expect(screen.queryByText("Pagar")).toBeNull();
+    expect(await screen.findByText("Expirado")).toBeInTheDocument();
+    expect(screen.queryByText("Pagar")).not.toBeInTheDocument();
   });
 
   it("pagamento Pendente Pix -> clicar Pagar abre dialog 'Pagamento via Pix'", async () => {
@@ -346,10 +332,8 @@ describe("PagamentosAlunoPage", () => {
     vi.mocked(pagamentoApi.obterPagamento).mockReturnValue(new Promise(() => {}));
 
     render(<PagamentosAlunoPage />);
-    await waitFor(() => expect(screen.getByText("Pagar")).toBeDefined());
+    expect(await screen.findByText("Pagar")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Pagar"));
-    await waitFor(() =>
-      expect(screen.getByText("Pagamento via Pix")).toBeDefined()
-    );
+    expect(await screen.findByText("Pagamento via Pix")).toBeInTheDocument();
   });
 });

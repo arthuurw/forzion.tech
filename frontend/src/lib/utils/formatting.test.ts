@@ -23,7 +23,7 @@ describe("formatarSeries", () => {
     expect(formatarSeries([])).toBe("—");
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   it("null → —", () => expect(formatarSeries(null as any)).toBe("—"));
 
   it("1 série sem repeticoesMax → 3×10", () => {

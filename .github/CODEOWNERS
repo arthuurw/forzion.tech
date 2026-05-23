@@ -1,0 +1,31 @@
+# CODEOWNERS — review obrigatorio quando arquivos sob estes paths mudam.
+# Ordem importa: a ultima regra que casa vence.
+
+# Default owner
+*                                       @arthuurw
+
+# Frontend test harness — arquivos sensiveis exigem review explicito
+/frontend/src/test/                     @arthuurw
+/frontend/src/test/setup/               @arthuurw
+/frontend/src/test/determinism/         @arthuurw
+/frontend/src/test/msw/                 @arthuurw
+/frontend/.husky/                       @arthuurw
+/frontend/vitest.config.mts             @arthuurw
+/frontend/eslint.config.mjs             @arthuurw
+/frontend/commitlint.config.mjs         @arthuurw
+/frontend/.lintstagedrc.json            @arthuurw
+/frontend/playwright.config.ts          @arthuurw
+/frontend/stryker.conf.json             @arthuurw
+
+# Infra e CI
+/.github/                               @arthuurw
+/.github/workflows/                     @arthuurw
+/nginx/                                 @arthuurw
+/docker-compose.*.yml                   @arthuurw
+/Dockerfile                             @arthuurw
+
+# Backend ops criticos
+/forzion.tech.Api/appsettings.*.json    @arthuurw
+
+# Plano e documentos meta do harness
+/.claude/                               @arthuurw
