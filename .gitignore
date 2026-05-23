@@ -59,12 +59,8 @@ TestResult.xml
 nunit-*.xml
 /.vs
 
-# Configs locais (não versionar — segredos via user secrets / env vars)
-/.claude/settings.local.json
-/.claude/projects/
-/.claude/shell-snapshots/
-/.claude/statsig/
-/.claude/todos/
+# Pasta do Claude Code (agente) — não versionar. Docs do harness vivem em docs/.
+/.claude/
 
 # Artefatos de sessão AI (gerados por skills, não pertencem ao repo)
 .security-memory.md

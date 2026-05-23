@@ -44,4 +44,5 @@
 /forzion.tech.Api/appsettings.*.json    @arthuurw
 
 # Plano e documentos meta do harness
-/.claude/                               @arthuurw
+/docs/frontend-harness-plan.md          @arthuurw
+/docs/frontend-harness-rationale.md     @arthuurw
