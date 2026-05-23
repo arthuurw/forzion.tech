@@ -22,6 +22,8 @@
 /storybook-static/
 /.lighthouseci/
 /.stryker-tmp/
+/reports/
+/.stryker.json
 /sbom.cdx.json
 /zap-report/
 /pacts/
