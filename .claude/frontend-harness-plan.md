@@ -339,7 +339,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 10a — POMs + 5 smokes + 8 critical specs | `f19769d` (PR #25) | `chore/harness-fase10a-e2e-critical` |
 | 10b — Security + LGPD + multi-tab + network + a11y + visual | `f477456` (PR #26) | `chore/harness-fase10b-e2e-security-lgpd` |
 | 11 — A11y vitest-axe + visual expandido + memory leak | `71a5e24` (PR #27) | `chore/harness-fase11-a11y-visual-memory` |
-| 12 — Lighthouse CI + bundle-analyzer + linkinator | _em PR_ | `chore/harness-fase12-lighthouse-bundle` |
+| 12 — Lighthouse CI + bundle-analyzer + linkinator | `ff13bd4` (PR #28) | `chore/harness-fase12-lighthouse-bundle` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
