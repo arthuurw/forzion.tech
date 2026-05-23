@@ -321,8 +321,10 @@ Nenhum bypass: `--no-verify` proibido.
 
 | Fase | Commit | Branch usado |
 |------|--------|--------------|
-| 0 — Limpeza jsdom | `6a3a636` | direto em `homolog` (legado, antes da regra) |
-| 1 — Setup + determinismo | _em PR_ | `chore/harness-fase1-setup-determinismo` |
+| 0 — Limpeza jsdom | `6a3a636` (no squash `bd086ce`) | direto em `homolog` (legado, antes da regra) |
+| 1 — Setup + determinismo | `bd086ce` (PR #11) | `chore/harness-fase1-setup-determinismo` |
+| Docs rationale inicial | `8436426` (PR #12) | `docs/harness-rationale` |
+| 2 — Vitest projects + coverage per-path | _em PR_ | `chore/harness-fase2-vitest-projects` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
