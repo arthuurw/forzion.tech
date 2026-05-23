@@ -6,9 +6,37 @@ on:
   pull_request:
     branches: [homolog]
 
-# ─── TESTES ──────────────────────────────────────────────────────────────────
+# Cancela runs antigos do mesmo ref quando um novo push chega.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # ─── HIGIENE ───────────────────────────────────────────────────────────────
+  commitlint:
+    name: Commitlint (PR)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Lint commits do PR
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: npx commitlint --from "origin/$BASE_REF" --to HEAD --verbose
+
+  # ─── TESTES ──────────────────────────────────────────────────────────────────
   test-backend:
     name: Backend — testes
     runs-on: ubuntu-latest
@@ -57,8 +85,58 @@ jobs:
           /p:ThresholdType=branch
           /p:ThresholdStat=Total
 
+      - name: Coverage summary (backend)
+        if: always()
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: forzion.tech.Tests/coverage/coverage.cobertura.xml
+          format: markdown
+          output: both
+          badge: true
+
+      - name: Publica summary no run
+        if: always()
+        run: cat code-coverage-results.md >> "$GITHUB_STEP_SUMMARY"
+        working-directory: ${{ github.workspace }}
+
   test-frontend:
-    name: Frontend — type check + testes
+    name: Frontend — lint + type check + testes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test + coverage
+        run: npm run test:coverage
+
+      - name: Coverage report (frontend, PR comment)
+        if: github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          working-directory: frontend
+
+  build-frontend:
+    name: Frontend — build + storybook
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -75,17 +153,82 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Type check
-        run: npx tsc --noEmit
+      - name: Build (next)
+        run: npm run build
+        env:
+          # Guard de produção no next.config exige API_BASE_URL; valor dummy
+          # serve só para o build estático passar (sem chamadas reais).
+          API_BASE_URL: http://backend.invalid
 
-      - name: Test
-        run: npm run test:coverage
+      - name: Build Storybook
+        run: npm run storybook:build
 
-# ─── DEPLOY HOMOLOG ──────────────────────────────────────────────────────────
+  # ─── SEGURANÇA / SUPPLY CHAIN ─────────────────────────────────────────────────
+  security:
+    name: Security — gitleaks + osv + audit + license + sbom
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
 
+      # Gitleaks roda ANTES do npm ci: varre só a árvore versionada (sem
+      # node_modules instalado nem sbom gerado).
+      - name: Gitleaks (working tree)
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source=/repo --no-git \
+            --config=/repo/.gitleaks.toml --redact --no-banner
+
+      - name: OSV scanner (report-only)
+        # Informativo: lockfile inclui deps dev. O gate bloqueante de vuln é o
+        # `npm audit --omit=dev`. Triagem de vulns dev em fase futura.
+        continue-on-error: true
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:latest \
+            --config=/src/osv-scanner.toml \
+            --lockfile=/src/frontend/package-lock.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: npm audit (prod, >= high)
+        run: npm run audit
+
+      - name: License check
+        run: npm run license
+
+      - name: SBOM (CycloneDX)
+        run: npm run sbom
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: frontend/sbom.cdx.json
+          if-no-files-found: error
+
+  # ─── GATE (required check) ─────────────────────────────────────────────────────
+  gate:
+    name: Gate
+    needs: [test-backend, test-frontend, build-frontend, security]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Todos os checks obrigatórios passaram."
+
+  # ─── DEPLOY HOMOLOG ──────────────────────────────────────────────────────────
   deploy-homolog:
     name: Deploy -> homolog
-    needs: [test-backend, test-frontend]
+    needs: [gate]
     runs-on: ubuntu-latest
     environment: homolog
     if: github.event_name == 'push'

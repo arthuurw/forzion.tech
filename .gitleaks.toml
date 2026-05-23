@@ -29,6 +29,9 @@ regexes = [
   '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9._-]+''',
   # UUIDs determanisticos em tests
   '''00000000-0000-0000-0000-000000000000''',
+  # .NET UserSecretsId — identificador de projeto (pasta de secrets locais),
+  # nao e segredo: aparece tambem no .csproj. Documentado no README.
+  '''049d65fb-2c12-483c-b56e-cb753632d11f''',
 ]
 
 commits = []

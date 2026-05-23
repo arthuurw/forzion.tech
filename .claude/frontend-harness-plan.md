@@ -440,15 +440,40 @@ A partir da Fase 1, **toda** mudança via branch + PR.
 18. coverage (merge → Codecov flags por camada)
 19. gate (depende de tudo, required check)
 
-Preview deploy: Vercel/CF Pages por PR. E2E e ZAP rodam contra preview URL.
+**Infra real (atualizado Fase 17)**: deploy é self-hosted numa VM homolog via
+SSH + `docker compose` (não Vercel/CF Pages). Não há preview deploy efêmero por
+PR. Jobs que precisam de stack viva (E2E, Lighthouse, ZAP) rodam **pós-deploy**
+contra a URL homolog ou via `workflow_dispatch` — não no gate de PR.
 
-Workflows separados:
-- `mutation.yml` — semanal + `workflow_dispatch`
-- `contract.yml` — publish + verify Pact
-- `smoke.yml` — pós-deploy homolog
-- `zap.yml` — DAST baseline
-- `sbom.yml` — supply chain
-- `release.yml` — release-please ou changesets
+**Implementado na Fase 17** (`ci.yml`, gate de PR + push, sem tocar no deploy):
+- `commitlint` (PR), `test-backend` (+ resumo de cobertura no run),
+  `test-frontend` (lint + tsc + coverage + comentário de cobertura no PR),
+  `build-frontend` (next build + storybook build),
+  `security` (gitleaks + osv report-only + audit prod + license + sbom artifact),
+  `gate` (required check, agrega os obrigatórios), `deploy-homolog` (needs gate).
+
+**Ferramentas grátis (decisão do dono — sem SaaS pago):**
+- Cobertura: GitHub Action que comenta no PR (front) + resumo no run (back) —
+  sem Codecov SaaS, sem token.
+- SAST: **Semgrep** OSS (`p/default`) no CI — sem GitHub Advanced Security.
+  Substitui CodeQL (exigia GHAS em repo privado).
+- Observabilidade: **GlitchTip** self-hosted (API-compatível com Sentry; SDK
+  da Fase 16 intacto, só aponta o DSN) — pendente de provisionar na VM.
+- Pact Broker: **self-hosted** na VM (Docker + Postgres) — pendente.
+
+Workflows separados (implementados):
+- `ci.yml` — gate de PR/push + deploy homolog
+- `semgrep.yml` — SAST (Semgrep OSS, PR + push + semanal)
+- `mutation.yml` — Stryker semanal + `workflow_dispatch`
+- `contract.yml` — Pact consumer (gera/valida; publish gated em broker)
+- `smoke.yml` — Playwright @smoke pós-deploy homolog (gated em `vars.HOMOLOG_BASE_URL`)
+- `lighthouse.yml` — lhci páginas públicas, `workflow_dispatch`
+- `zap.yml` — DAST baseline, `workflow_dispatch`
+
+Pendente (próxima entrega): GlitchTip + Pact Broker self-hosted no
+`docker-compose.homolog.yml` + nginx. Mais adiante: preview deploy por PR,
+`release.yml`, ZAP Automation Framework, matriz Node 22+24, e2e/visual/a11y no
+gate (dependem de preview ou stack no runner).
 
 ## 9. Deps (devDependencies)
 
