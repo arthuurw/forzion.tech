@@ -440,15 +440,30 @@ A partir da Fase 1, **toda** mudança via branch + PR.
 18. coverage (merge → Codecov flags por camada)
 19. gate (depende de tudo, required check)
 
-Preview deploy: Vercel/CF Pages por PR. E2E e ZAP rodam contra preview URL.
+**Infra real (atualizado Fase 17)**: deploy é self-hosted numa VM homolog via
+SSH + `docker compose` (não Vercel/CF Pages). Não há preview deploy efêmero por
+PR. Jobs que precisam de stack viva (E2E, Lighthouse, ZAP) rodam **pós-deploy**
+contra a URL homolog ou via `workflow_dispatch` — não no gate de PR.
 
-Workflows separados:
-- `mutation.yml` — semanal + `workflow_dispatch`
-- `contract.yml` — publish + verify Pact
-- `smoke.yml` — pós-deploy homolog
-- `zap.yml` — DAST baseline
-- `sbom.yml` — supply chain
-- `release.yml` — release-please ou changesets
+**Implementado na Fase 17** (`ci.yml`, gate de PR + push, sem tocar no deploy):
+- `commitlint` (PR), `test-backend` (+ Codecov flag backend),
+  `test-frontend` (lint + tsc + coverage + Codecov flag frontend),
+  `build-frontend` (next build + storybook build),
+  `security` (audit prod + license + sbom artifact + gitleaks + osv report-only),
+  `gate` (required check, agrega os obrigatórios), `deploy-homolog` (needs gate).
+
+Workflows separados (implementados):
+- `ci.yml` — gate de PR/push + deploy homolog
+- `codeql.yml` — SAST JS/TS (PR + push + semanal)
+- `mutation.yml` — Stryker semanal + `workflow_dispatch`
+- `contract.yml` — Pact consumer (gera/valida; publish gated em broker)
+- `smoke.yml` — Playwright @smoke pós-deploy homolog (gated em `vars.HOMOLOG_BASE_URL`)
+- `lighthouse.yml` — lhci páginas públicas, `workflow_dispatch`
+- `zap.yml` — DAST baseline, `workflow_dispatch`
+
+Pendente (fase futura): preview deploy por PR (decisão de infra), Codecov flags
+por camada refinadas, `release.yml`, ZAP Automation Framework completo, matriz
+Node 22+24, e2e/visual/a11y no gate (dependem de preview ou stack no runner).
 
 ## 9. Deps (devDependencies)
 

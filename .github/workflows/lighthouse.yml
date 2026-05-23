@@ -1,0 +1,56 @@
+name: Lighthouse CI (manual)
+
+# Performance/a11y/SEO contra a URL homolog. Manual (precisa de stack viva).
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "URL base (default: variável HOMOLOG_BASE_URL)"
+        required: false
+        default: ""
+
+jobs:
+  lighthouse:
+    name: lhci — páginas públicas
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Resolve base URL
+        id: url
+        run: |
+          BASE="${{ github.event.inputs.base_url }}"
+          if [ -z "$BASE" ]; then BASE="${{ vars.HOMOLOG_BASE_URL }}"; fi
+          if [ -z "$BASE" ]; then
+            echo "Sem base_url e sem HOMOLOG_BASE_URL — abortando."
+            exit 1
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Lighthouse (páginas públicas)
+        run: >
+          npx lhci collect
+          --url="${{ steps.url.outputs.base }}/login"
+          --url="${{ steps.url.outputs.base }}/cadastro/aluno"
+          --url="${{ steps.url.outputs.base }}/cadastro/treinador"
+          && npx lhci assert
+
+      - name: Upload lhci report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: frontend/.lighthouseci/
+          if-no-files-found: warn
