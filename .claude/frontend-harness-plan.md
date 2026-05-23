@@ -344,6 +344,7 @@ Nenhum bypass: `--no-verify` proibido.
 | 14 — Mutation testing (Stryker) | `be7b938` (PR #30) | `chore/harness-fase14-mutation-stryker` |
 | 15 — Contract testing (Pact consumer-driven) | `67c9b81` (PR #31) | `chore/harness-fase15-contract-pact` |
 | 16 — Sentry + Web Vitals RUM + source maps | `fe8c067` (PR #32) | `chore/harness-fase16-sentry-webvitals` |
+| 17 — CI completo (gate PR + workflows; Semgrep/coverage grátis) | `12edc2f` (PR #33) | `chore/harness-fase17-ci-completo` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
