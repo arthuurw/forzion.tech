@@ -1,0 +1,86 @@
+name: Contract — Pact (consumer)
+
+# Gera e valida o contrato consumer-driven do frontend (forzion-frontend).
+# A geracao/validacao roda em todo PR (gate real, sem broker).
+# Publish no broker + can-i-deploy so ativam quando o secret
+# PACT_BROKER_BASE_URL existe (broker self-hosted ou PactFlow).
+#
+# A verificacao do PROVIDER (backend .NET) NAO esta aqui: roda no pipeline do
+# backend com o pact-verifier .NET, consumindo o contrato publicado no broker.
+
+on:
+  push:
+    branches: [homolog]
+    paths:
+      - "frontend/src/lib/api/**"
+      - "frontend/src/test/pact/**"
+      - "frontend/vitest.pact.config.mts"
+      - "frontend/pact-broker.config.ts"
+      - ".github/workflows/contract.yml"
+  pull_request:
+    branches: [homolog]
+    paths:
+      - "frontend/src/lib/api/**"
+      - "frontend/src/test/pact/**"
+      - "frontend/vitest.pact.config.mts"
+      - "frontend/pact-broker.config.ts"
+      - ".github/workflows/contract.yml"
+
+jobs:
+  consumer-contract:
+    name: Consumer contract (gera + valida + publica)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Gera + valida contrato consumer
+        run: npm run test:contract
+
+      - name: Upload pact (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacts
+          path: frontend/pacts/*.json
+          if-no-files-found: error
+
+      - name: Publica no broker
+        if: ${{ secrets.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          docker run --rm \
+            -v "$PWD/pacts:/pacts" \
+            pactfoundation/pact-cli:latest \
+            publish /pacts \
+            --consumer-app-version="${GITHUB_SHA}" \
+            --branch="${GITHUB_REF_NAME}" \
+            --broker-base-url="${PACT_BROKER_BASE_URL}" \
+            --broker-token="${PACT_BROKER_TOKEN}"
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+
+      - name: can-i-deploy (consumer)
+        if: ${{ secrets.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          docker run --rm \
+            pactfoundation/pact-cli:latest \
+            broker can-i-deploy \
+            --pacticipant=forzion-frontend \
+            --version="${GITHUB_SHA}" \
+            --to-environment=homolog \
+            --broker-base-url="${PACT_BROKER_BASE_URL}" \
+            --broker-token="${PACT_BROKER_TOKEN}"
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}

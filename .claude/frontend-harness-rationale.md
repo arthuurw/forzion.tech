@@ -1738,6 +1738,75 @@ Per plano §2 decisão 7: "Mutation score ≥ 75% em `src/lib/**` e `src/hooks/*
 
 ---
 
+## Fase 15 — Contract testing (Pact, consumer-driven)
+
+**Status**: concluída (branch `chore/harness-fase15-contract-pact`).
+
+### Objetivo
+
+Garantir que o frontend (consumer) e o backend .NET (provider) não divirjam no contrato HTTP sem que ninguém perceba. Pact gera um **contrato consumer-driven**: os testes exercitam o `apiClient` REAL contra um mock server do Pact e gravam, a partir das requisições que o frontend de fato emite, um arquivo `pacts/forzion-frontend-forzion-api.json`. O provider verifica esse contrato no seu próprio pipeline.
+
+### Por que
+
+#### Contract over snapshot (plano §11 princípio 14)
+
+- Snapshot de resposta HTTP é frágil: quebra com qualquer reordenação/campo novo, e não diz **o que o consumer realmente precisa**.
+- Pact captura só os campos/tipos que o consumer consome (matchers `like`/`eachLike`/`uuid`). Provider pode adicionar campos sem quebrar; só quebra se **remover/renomear** algo usado.
+- O contrato é executável dos dois lados: consumer gera, provider verifica. Drift vira build vermelho, não bug em produção.
+
+#### Exercita o `apiClient` real, não um stub
+
+- Os testes re-apontam `apiClient.defaults.baseURL` para o mock server efêmero e chamam `alunoApi`/`contaApi`/`adminApi` reais. Pega bug de path/serialização que um stub manual mascararia (mesma filosofia do piloto MSW da Fase 3).
+
+#### Isolado do lane padrão
+
+- Pact sobe mock server nativo (FFI Rust) por interação e grava arquivos em disco — efeito colateral indesejado em `npm test` / pre-commit.
+- Por isso roda via `vitest.pact.config.mts` próprio (env node, sem MSW, `fileParallelism: false` para evitar corrida por portas), disparado só por `npm run test:contract`. Os 367 testes do lane padrão permanecem inalterados.
+
+### Trade-offs aceitos
+
+- **4 interações iniciais (GETs representativos)**: `/aluno/fichas`, `/aluno/vinculo`, `/conta/perfil`, `/admin/alunos`. Cobrem paginação, objeto aninhado nullable e perfil. Mais interações (POST/PATCH, paths de erro) entram quando os endpoints estabilizarem — evita travar contrato em shape de erro ainda não definido pelo backend.
+- **Sem assert de `Content-Type`**: o FFI do Pact tenta parsear matcher no header como mime e quebra (`mime parse error`). Pact infere `application/json` do `jsonBody`. Assert de header não agrega valor aqui.
+- **Provider verification fora deste pacote**: o backend .NET roda o `pact-verifier` no seu pipeline, consumindo o contrato do broker. Documentado, não implementado aqui.
+- **Broker opcional por ora**: publish + `can-i-deploy` no `contract.yml` só ativam quando o secret `PACT_BROKER_BASE_URL` existe. Sem broker, o contrato ainda é gerado e validado em todo PR (gate real). Broker (self-hosted Docker em homolog ou PactFlow free tier) entra na Fase 17.
+
+### Mudanças
+
+#### Deps
+
+- `@pact-foundation/pact@^13` (v13.2.0) — `PactV3` + `MatchersV3` (FFI nativo). Puxa deps dev legadas (glob/graphql) → vulns dev-only; `npm run audit` é `--omit=dev`, prod intacto.
+
+#### Arquivos novos
+
+- `frontend/src/test/pact/consumer.test.ts` — 4 contratos consumer-driven
+- `frontend/src/test/pact/support/pact-config.ts` — nomes canônicos consumer/provider + dir de saída
+- `frontend/vitest.pact.config.mts` — config isolada (node, serial, include `src/test/pact/**`)
+- `frontend/pact-broker.config.ts` — fonte única para publish no broker (consumido pelo `contract.yml`)
+- `.github/workflows/contract.yml` — gera+valida em todo PR; publish + `can-i-deploy` gated em secret
+
+#### Arquivos atualizados
+
+- `frontend/package.json` — script `test:contract`
+- `.github/CODEOWNERS` — `vitest.pact.config.mts`, `pact-broker.config.ts`, `src/test/pact/`
+- `frontend/.gitignore` — `/pacts/` já presente (preventivo desde fase anterior)
+
+### Métricas de sucesso
+
+- ✅ `npm run test:contract`: 4 contratos verdes, pact V3 gerado (`forzion-frontend` → `forzion-api`, 4 interações)
+- ✅ `apiClient` real exercitado contra mock server (path + paginação corretos)
+- ✅ Lane padrão isolado: `npm test` segue 367 testes (zero pact no pre-commit)
+- ✅ `npm run validate`: tsc 0 + ESLint 0 + 367 vitest verdes
+- ✅ `contract.yml` gera+valida sem broker; publish/can-i-deploy gated por secret
+
+### Impacto futuro
+
+- Fase 17 (CI completo): provisionar broker (PactFlow free tier ou Docker em homolog), setar `PACT_BROKER_BASE_URL`/`PACT_BROKER_TOKEN` → ativa publish + `can-i-deploy` como gate de deploy
+- Backend: adicionar job de provider verification (`PactNet` verifier) consumindo o contrato publicado
+- Expandir interações: POST/PATCH com body matchers + contratos de erro (401/404) quando shapes estabilizarem
+- `can-i-deploy` vira gate do `deploy-homolog`: só sobe se o contrato é compatível com o provider já em homolog
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
