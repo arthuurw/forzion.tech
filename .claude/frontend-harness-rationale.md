@@ -264,11 +264,80 @@ Estabelecer infraestrutura de mock de rede **realista** (intercepta HTTP no nív
 
 ---
 
+## Fase 4 — Property-based testing
+
+**Status**: concluída (branch `chore/harness-fase4-property-based`).
+
+### Objetivo
+
+Adicionar testes que verificam **propriedades universais** (invariantes) sobre funções puras — validadores zod e formatters — usando geração automática de inputs (`fast-check`). Complementa testes baseados em exemplos com cobertura de espaços de input praticamente infinitos.
+
+### Por que
+
+#### Limite do teste por exemplo
+
+- Tests existentes usam exemplos manualmente escolhidos (`expect(emailSchema.parse("a@b.com"))...`). Dev escolhe inputs que **acha** representativos — vieses humanos escondem edge cases.
+- Schemas zod e formatters são **funções puras**: same input → same output, sem side effects. Caso ideal para property testing.
+- Inputs em validators são essencialmente infinitos. Cobrir "todos" é impossível, mas gerar 100-1000 inputs aleatórios pega classes inteiras de bugs (unicode, vazio, max+1, regex backtracking, format edge cases).
+
+#### Shrinking automático
+
+- Quando `fast-check` encontra contra-exemplo, ele **diminui** (shrink) até o menor caso que reproduz a falha. Bug aparece com input mínimo (ex: `!@a.aa` em vez de `J0hn.D03+spam@my-corp.us`).
+- Loga seed da execução → reprodução determinística pra debug.
+
+#### Pega bugs reais imediatamente
+
+- Já nesta fase, `fast-check` **expôs gap real**: `fc.emailAddress()` gera RFC-válidos (ex: `a..b@c.com`, `!@a.com`) que `emailSchema` rejeita. Documentamos como bug de validação (regex zod mais conservadora que RFC) e ajustamos arbitrary pra subconjunto seguro.
+- Sem property test, teríamos descoberto isso só em produção, com usuário real.
+
+#### Pré-requisito de mutation testing
+
+- Fase 14 (Stryker) só faz sentido se testes pegam mudanças semânticas. Property tests aumentam drasticamente sensibilidade — mutação que muda comportamento em qualquer input válido é detectada.
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **23 properties em 1.7s** | Cada property roda 100 cenários por default; 2300 assertions efetivas |
+| **Bugs encontrados de graça** | Já achou: `fc.emailAddress()` vs `emailSchema` divergem em RFC-válidos não-zod-aceitos |
+| **Reprodução determinística** | Seed logado em falha permite reproduzir bug exato |
+| **Shrinking** | Bugs reportados com input mínimo (`!@a.aa` em vez de gigante) |
+| **Cobertura de classe** | "qualquer string com >= 8 chars passa passwordSchema" cobre infinitos casos |
+| **Type-safe arbitraries** | `fc.Arbitrary<T>` valida que generator produz tipo correto em compile time |
+| **Determinismo respeitado** | `installDeterminism` (Fase 1) reproduzível; fast-check usa seed próprio integrado |
+| **Mutation-ready** | Property tests aumentam sensibilidade pra Fase 14 (Stryker) |
+
+### Trade-offs aceitos
+
+- **Arbitraries customizadas para zod**: `fc.emailAddress()` é demais permissivo (gera RFC casos que zod rejeita). Criamos `safeEmailArb` com subconjunto seguro. **Custo**: arbitrary não cobre toda semântica do schema. **Mitigação**: comentário documenta gap, futura issue pra alinhar zod com RFC.
+- **`as unknown as T` em algumas arbitraries**: `fc.record({...})` gera objeto com inferência ampla; type narrowing exigiria type-guards. Aceitamos cast em casos isolados (com `satisfies` em outros).
+- **100 runs por property (default)**: balanço velocidade vs cobertura. Bugs raros podem escapar. Pra criticidade alta (auth, pagamento), aumentar `{ numRuns: 1000 }` por property. Configurar global via `fc.configureGlobal` no setup se necessário.
+- **Cobertura apenas em `src/lib/`**: hooks puros e utilidades adicionais (em `src/hooks/`, `src/components/*/utils`) ficam pra fases seguintes ou conforme aparecem.
+- **`@fast-check/vitest` v0.x**: ainda pre-1.0. API pode mudar. Pin minor; revisar mudanças em Renovate.
+
+### Métricas de sucesso
+
+- ✅ 23 property tests verdes em 1.71s
+- ✅ Cobertura: `emailSchema`, `passwordSchema`, `registerPasswordSchema`, `nomeSchema`, `telefoneSchema`, `loginSchema`, `formatarSeries`, `formatarData`, `getWeekLabel`
+- ✅ 1 bug real descoberto e documentado (fc.emailAddress vs zod email regex)
+- ✅ 328 testes totais verdes (305 + 23 property)
+- ✅ Script `test:property` para execução isolada
+- ✅ Vitest project `unit` inclui `*.property.test.ts`
+- ✅ Coverage exclude já cobre `*.property.test.ts` (testes não contam pra coverage de produção)
+
+### Impacto futuro
+
+- Fase 5 (migração testes): tests migrados podem ganhar variantes property (ex: factory `buildAluno` testada via property que sempre passa schema zod)
+- Fase 14 (mutation): Stryker score cresce porque properties pegam mais mutantes que examples-only
+- Fase 6 (API routes): handlers podem ser testados via property — payload aleatório → resposta sempre coerente
+- Fase 9+ (Playwright): scenarios baseados em property generators (raro mas possível)
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 4 — Property-based testing
 - Fase 5 — Migração testes existentes para MSW
 - Fase 6 — API routes testing
 - Fase 7 — Lint endurecido + commitlint + lint-staged + Renovate + CODEOWNERS
