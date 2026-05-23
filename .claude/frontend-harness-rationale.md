@@ -182,11 +182,92 @@ Separar a execução de testes em projects isolados conforme o ambiente que cada
 
 ---
 
+## Fase 3 — MSW + OpenAPI codegen + factories + renderWithProviders
+
+**Status**: concluída (branch `chore/harness-fase3-msw-openapi`).
+
+### Objetivo
+
+Estabelecer infraestrutura de mock de rede **realista** (intercepta HTTP no nível de fetch/XHR, não substitui módulos), gerar **tipos canônicos** a partir do contrato OpenAPI do backend, e padronizar **dados de teste** via factories e **render com providers**.
+
+### Por que
+
+#### MSW vs `vi.mock("@/lib/api/client")`
+
+- Pattern atual mocka `apiClient` diretamente. Testes verificam que função X chama `apiClient.get("/admin/alunos", ...)` — testam **contrato interno** entre módulos, não que a request HTTP funciona.
+- Bug class **invisível**: se `apiClient.get` muda a forma de serializar params (axios → fetch, ou novo interceptor), todos os testes continuam verdes mas produção quebra.
+- MSW intercepta no nível de network. Teste fica realista: axios sério monta query string, MSW recebe URL final, valida.
+- Mesmo handler funciona em vitest (Node), Storybook (browser) e dev mode (browser worker). Single source of truth.
+
+#### OpenAPI codegen
+
+- Backend .NET 8 expõe spec em `https://homologacao.forzion.tech/swagger/v1/swagger.json` (após PR #14/#15/#16 de infra).
+- `openapi-typescript` gera 5464 linhas de tipos tipados. Handlers MSW agora podem importar `paths["/admin/alunos"]["get"]["responses"]["200"]["content"]["application/json"]` e ganhar autocomplete + checagem.
+- Job CI futuro (`openapi:check`) regenera os tipos e falha se `git diff` aparecer — backend renomeou campo ou endpoint sem coordenar com frontend.
+- Snapshot do `openapi.json` é cache (gitignored); apenas `src/test/msw/types.ts` é versionado.
+
+#### Factories com Faker
+
+- Fixtures literais em testes (`{ id: "1", nome: "X" }`) escondem campos opcionais que produção tem. Quando schema cresce, factory falha em compile time, fixture inline silenciosamente fica obsoleta.
+- Factory `buildAluno()` retorna sempre objeto completo (todos os campos requeridos). Tests passam `overrides` apenas para o que importa pro caso.
+- Determinismo: factories usam `faker` que respeita `Math.random` seedado (Fase 1). Mesmo input → mesma saída.
+
+#### renderWithProviders
+
+- Sem helper, cada teste replica `<ThemeProvider><AuthProvider><Snackbar>...</Snackbar></AuthProvider></ThemeProvider>` boilerplate. Esquecimento gera bug obscuro.
+- Helper centraliza ordem correta dos providers (mesma do `layout.tsx`).
+- Opções `skipAuth`, `skipSnackbar` permitem isolar componentes em testes unitários puros sem providers irrelevantes.
+
+### Vantagens
+
+| Vantagem | Concretude |
+|----------|------------|
+| **Tipos canônicos backend↔frontend** | 5464 linhas auto-geradas; renomeio de campo no .NET quebra compile no frontend |
+| **Mock de rede realista** | axios serializa query, MSW recebe URL final, valida — pega bugs de cliente HTTP |
+| **Reuso de handlers** | Mesma definição em Vitest (Node), Storybook (browser), dev mode (worker) |
+| **Override por teste** | `server.use(...)` adiciona handler temporário; `afterEach` reseta automático |
+| **Factories tipadas** | `Partial<T>` overrides + defaults completos → tests resistem a expansão de schema |
+| **renderWithProviders centraliza setup** | Reduz boilerplate; ordem de providers correta automaticamente |
+| **Determinismo preservado** | Faker respeita `Math.random` seedado (Fase 1); mesmas datas/IDs entre runs |
+| **PoC validado** | `msw-pilot.test.ts` demonstra padrão end-to-end com apiClient REAL (não mockado) |
+
+### Trade-offs aceitos
+
+- **Coexistência com `vi.mock("@/lib/api/client")`**: 17 arquivos de teste existentes ainda mockam apiClient. Não migramos todos nesta fase — Fase 5 fará migração em massa. MSW server.listen() está ativo mas só intercepta requests que **escapam** dos mocks atuais (zero, pois apiClient é mockado completamente). `onUnhandledRequest: "error"` portanto não dispara erros em testes legacy.
+- **OpenAPI snapshot manual**: hoje `openapi:sync` é manual. Job CI `openapi:check` virá com Fase 17. Até lá, dev precisa rodar `npm run openapi:sync` localmente quando backend mudar — risco de drift silencioso.
+- **Handlers vazios por área**: criamos arquivos stub (`admin.ts`, `aluno.ts`, etc) com `[]` exportado. Padrão estabelecido, mas valor zero até Fase 5 popular. Aceitamos placeholder para reduzir delta da Fase 5.
+- **`buildAluno` etc retornam objeto único**: não há `buildList()` ou `pick from pool`. Pra suítes que precisam coleção, dev itera manualmente. Simples por enquanto; expandir se padrão aparecer.
+- **`renderWithProviders` sem Router**: Next.js `app router` é mockado por arquivo via `vi.mock("next/navigation")`. Não tem ainda providers de router no helper. Adicionar quando necessário (provavelmente Fase 5 ou Fase 8 com Storybook).
+- **`@mswjs/data` instalado mas não usado**: pacote pra DB in-memory. Será aproveitado em testes mais complexos (CRUD com estado entre requests). Por enquanto, handlers simples retornam fixtures factories.
+
+### Métricas de sucesso
+
+- ✅ Spec OpenAPI baixado de homologação (153 KB)
+- ✅ `src/test/msw/types.ts` gerado (5464 linhas tipadas)
+- ✅ MSW server lifecycle integrado em `setup/integration.ts`
+- ✅ `onUnhandledRequest: "error"` ativo (sem regressão em testes legacy)
+- ✅ 5 arquivos de handlers stub (admin/aluno/treinador/pagamento/auth + index)
+- ✅ 4 factories: buildAluno, buildTreinador, buildPlano, buildPagamento + buildAssinatura
+- ✅ `renderWithProviders()` com opções skipAuth/skipSnackbar
+- ✅ Piloto MSW funcional: 3 testes novos cobrindo GET sucesso, query params, erro 500
+- ✅ 305 testes verdes (302 + 3 piloto)
+- ✅ Scripts: `openapi:fetch`, `openapi:gen`, `openapi:sync`, `openapi:check`
+
+### Impacto futuro
+
+- Fase 4 (property-based): factories geram inputs aleatórios bem-formados; `fast-check` complementa em validators
+- Fase 5 (migração testes): substituir `vi.mock("@/lib/api/client")` por `server.use(...)` em 17 arquivos
+- Fase 6 (API routes testing): MSW também serve handlers em testes de Route Handlers se necessário
+- Fase 8 (Storybook): `msw-storybook-addon` reaproveita handlers
+- Fase 11 (a11y): `renderWithProviders` reduz boilerplate em testes axe
+- Fase 17 (CI completo): job `openapi:check` detecta drift backend↔frontend
+
+---
+
 ## Próximas fases
 
 A serem adicionadas à medida que concluídas:
 
-- Fase 3 — MSW + OpenAPI codegen + factories + renderWithProviders
 - Fase 4 — Property-based testing
 - Fase 5 — Migração testes existentes para MSW
 - Fase 6 — API routes testing

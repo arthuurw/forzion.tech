@@ -324,7 +324,11 @@ Nenhum bypass: `--no-verify` proibido.
 | 0 — Limpeza jsdom | `6a3a636` (no squash `bd086ce`) | direto em `homolog` (legado, antes da regra) |
 | 1 — Setup + determinismo | `bd086ce` (PR #11) | `chore/harness-fase1-setup-determinismo` |
 | Docs rationale inicial | `8436426` (PR #12) | `docs/harness-rationale` |
-| 2 — Vitest projects + coverage per-path | _em PR_ | `chore/harness-fase2-vitest-projects` |
+| 2 — Vitest projects + coverage per-path | `1774421` (PR #13) | `chore/harness-fase2-vitest-projects` |
+| Infra — expor Swagger em homologacao | `7ab3cba` (PR #14) | `feat/infra-expose-swagger-homolog` |
+| Fix CI — restart nginx em deploy | `8c72760` (PR #15) | `fix/ci-restart-nginx-on-deploy` |
+| Fix backend — AllowedHosts homologacao | `ab7cee6` (PR #16) | `fix/backend-allowed-hosts-homologacao` |
+| 3 — MSW + OpenAPI codegen + factories | _em PR_ | `chore/harness-fase3-msw-openapi` |
 
 A partir da Fase 1, **toda** mudança via branch + PR.
 
