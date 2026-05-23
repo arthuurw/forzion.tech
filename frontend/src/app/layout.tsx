@@ -4,6 +4,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { AuthProvider } from "@/lib/auth/context";
 import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
 import ThemeRegistry from "@/lib/theme/ThemeRegistry";
+import { WebVitals } from "@/components/observability/WebVitals";
 import "@/styles/globals.css";
 
 const inter = Inter({
@@ -31,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={inter.className} suppressHydrationWarning>
       <body>
+        <WebVitals />
         <AppRouterCacheProvider>
           <ThemeRegistry>
             <AuthProvider>
