@@ -21,7 +21,7 @@ public class Pagamento
 
     private Pagamento() { }
 
-    public static Pagamento Criar(Guid assinaturaId, decimal valor, MetodoPagamento metodo = MetodoPagamento.Pix)
+    public static Pagamento Criar(Guid assinaturaId, decimal valor, DateTime agora, MetodoPagamento metodo = MetodoPagamento.Pix)
     {
         if (assinaturaId == Guid.Empty)
             throw new DomainException("O identificador da assinatura é inválido.");
@@ -35,7 +35,7 @@ public class Pagamento
             Valor = valor,
             Status = PagamentoStatus.Pendente,
             MetodoPagamento = metodo,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

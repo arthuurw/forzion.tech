@@ -15,6 +15,7 @@ public class CriarTreinoHandler(
     IUnitOfWork unitOfWork,
     IUserContext userContext,
     IValidator<CriarTreinoCommand> validator,
+    TimeProvider timeProvider,
     ILogger<CriarTreinoHandler> logger)
 {
     public virtual Task<TreinoResponse> HandleAsync(
@@ -49,12 +50,13 @@ public class CriarTreinoHandler(
             }
         }
 
-        var treino = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId, command.Dificuldade, command.DataInicio, command.DataFim);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var treino = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId, agora, command.Dificuldade, command.DataInicio, command.DataFim);
         await treinoRepository.AdicionarAsync(treino, cancellationToken).ConfigureAwait(false);
 
         if (command.AlunoId.HasValue)
         {
-            var treinoAluno = TreinoAluno.Criar(treino.Id, command.AlunoId.Value);
+            var treinoAluno = TreinoAluno.Criar(treino.Id, command.AlunoId.Value, agora);
             await treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         }
 

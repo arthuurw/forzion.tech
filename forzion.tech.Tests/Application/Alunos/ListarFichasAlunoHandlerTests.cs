@@ -23,8 +23,8 @@ public class ListarFichasAlunoHandlerTests
 
     private static TreinoAlunoDetalhe CriarDetalhe(Guid alunoId)
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
-        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), DateTime.UtcNow);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow);
         return new TreinoAlunoDetalhe(treinoAluno, treino);
     }
 

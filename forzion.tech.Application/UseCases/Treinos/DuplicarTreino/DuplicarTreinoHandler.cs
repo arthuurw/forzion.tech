@@ -10,6 +10,7 @@ public class DuplicarTreinoHandler(
     IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<DuplicarTreinoHandler> logger)
 {
     public virtual Task<TreinoResponse> HandleAsync(
@@ -33,7 +34,7 @@ public class DuplicarTreinoHandler(
         if (!userContext.IsSystemAdmin && original.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        var copia = original.Duplicar();
+        var copia = original.Duplicar(timeProvider.GetUtcNow().UtcDateTime);
 
         await treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

@@ -41,7 +41,8 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
             pacote.Id,
             domainEvent.TreinadorId,
             domainEvent.AlunoId,
-            pacote.Preco);
+            pacote.Preco,
+            domainEvent.OcorridoEm);
 
         await assinaturaRepository.AdicionarAsync(assinatura, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

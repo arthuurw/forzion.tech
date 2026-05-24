@@ -15,7 +15,7 @@ public class ContaRecebimento
 
     private ContaRecebimento() { }
 
-    public static ContaRecebimento Criar(Guid treinadorId)
+    public static ContaRecebimento Criar(Guid treinadorId, DateTime agora)
     {
         if (treinadorId == Guid.Empty)
             throw new DomainException("O identificador do treinador é inválido.");
@@ -25,7 +25,7 @@ public class ContaRecebimento
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
             OnboardingCompleto = false,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

@@ -11,7 +11,7 @@ public class GrupoMuscularTests
     [Fact]
     public void Criar_DadosValidos_RetornaGrupoMuscular()
     {
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
 
         grupo.Id.Should().NotBeEmpty();
         grupo.Nome.Should().Be("Peito");
@@ -22,7 +22,7 @@ public class GrupoMuscularTests
     [Fact]
     public void Criar_NomeComEspacos_Remove()
     {
-        var grupo = GrupoMuscular.Criar("  Costas  ");
+        var grupo = GrupoMuscular.Criar("  Costas  ", DateTime.UtcNow);
         grupo.Nome.Should().Be("Costas");
     }
 
@@ -31,21 +31,21 @@ public class GrupoMuscularTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => GrupoMuscular.Criar(nome);
+        var act = () => GrupoMuscular.Criar(nome, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O nome do grupo muscular é obrigatório.");
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => GrupoMuscular.Criar(new string('a', 51));
+        var act = () => GrupoMuscular.Criar(new string('a', 51), DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O nome do grupo muscular deve ter no máximo 50 caracteres.");
     }
 
     [Fact]
     public void Criar_NomeExatamente50Chars_Permitido()
     {
-        var grupo = GrupoMuscular.Criar(new string('a', 50));
+        var grupo = GrupoMuscular.Criar(new string('a', 50), DateTime.UtcNow);
         grupo.Nome.Should().HaveLength(50);
     }
 
@@ -54,7 +54,7 @@ public class GrupoMuscularTests
     [Fact]
     public void Atualizar_DadosValidos_AtualizaNomeEUpdatedAt()
     {
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
         grupo.Atualizar("Tríceps");
 
         grupo.Nome.Should().Be("Tríceps");
@@ -64,7 +64,7 @@ public class GrupoMuscularTests
     [Fact]
     public void Atualizar_NomeComEspacos_Remove()
     {
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
         grupo.Atualizar("  Bíceps  ");
         grupo.Nome.Should().Be("Bíceps");
     }
@@ -74,7 +74,7 @@ public class GrupoMuscularTests
     [InlineData("   ")]
     public void Atualizar_NomeVazio_LancaDomainException(string nome)
     {
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
         var act = () => grupo.Atualizar(nome);
         act.Should().Throw<DomainException>().WithMessage("O nome do grupo muscular não pode ser vazio.");
     }
@@ -82,7 +82,7 @@ public class GrupoMuscularTests
     [Fact]
     public void Atualizar_NomeMuitoLongo_LancaDomainException()
     {
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
         var act = () => grupo.Atualizar(new string('a', 51));
         act.Should().Throw<DomainException>().WithMessage("O nome do grupo muscular deve ter no máximo 50 caracteres.");
     }

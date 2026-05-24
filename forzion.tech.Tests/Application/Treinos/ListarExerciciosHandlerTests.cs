@@ -29,8 +29,8 @@ public class ListarExerciciosHandlerTests
         var treinadorId = Guid.NewGuid();
         var exercicios = new List<Exercicio>
         {
-            Exercicio.Criar("Supino Reto", GrupoId, treinadorId),
-            Exercicio.Criar("Agachamento", GrupoId, treinadorId)
+            Exercicio.Criar("Supino Reto", GrupoId, DateTime.UtcNow, treinadorId),
+            Exercicio.Criar("Agachamento", GrupoId, DateTime.UtcNow, treinadorId)
         };
 
         _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
@@ -79,7 +79,7 @@ public class ListarExerciciosHandlerTests
         var treinadorB = Guid.NewGuid();
 
         _exercicioRepo.Setup(r => r.ListarAsync(treinadorA, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
-            .ReturnsAsync(((IReadOnlyList<Exercicio>)[Exercicio.Criar("Supino", GrupoId, treinadorA)], 1));
+            .ReturnsAsync(((IReadOnlyList<Exercicio>)[Exercicio.Criar("Supino", GrupoId, DateTime.UtcNow, treinadorA)], 1));
 
         _exercicioRepo.Setup(r => r.ListarAsync(treinadorB, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))
             .ReturnsAsync(((IReadOnlyList<Exercicio>)[], 0));
@@ -97,8 +97,8 @@ public class ListarExerciciosHandlerTests
         var treinadorId = Guid.NewGuid();
         var exercicios = new List<Exercicio>
         {
-            Exercicio.Criar("Supino Reto", GrupoId, treinadorId),
-            Exercicio.Criar("Agachamento Livre", GrupoId, null)
+            Exercicio.Criar("Supino Reto", GrupoId, DateTime.UtcNow, treinadorId),
+            Exercicio.Criar("Agachamento Livre", GrupoId, DateTime.UtcNow, null)
         };
 
         _exercicioRepo.Setup(r => r.ListarAsync(treinadorId, 1, 10, It.IsAny<CancellationToken>(), null, null, "nome"))

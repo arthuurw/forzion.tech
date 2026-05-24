@@ -119,7 +119,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
-            CriarValidator,
+            CriarValidator, TimeProvider.System,
             Mock.Of<ILogger<CriarExercicioHandler>>())
         {
             CallBase = true

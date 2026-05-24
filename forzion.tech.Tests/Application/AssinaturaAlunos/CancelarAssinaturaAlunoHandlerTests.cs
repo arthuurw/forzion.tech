@@ -23,7 +23,7 @@ public class CancelarAssinaturaAlunoHandlerTests
     }
 
     private static AssinaturaAluno CriarAssinaturaAluno() =>
-        AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 100m);
+        AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 100m, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_AssinaturaAlunoAtiva_Cancela()

@@ -13,7 +13,7 @@ public sealed class AlunoRegistradoSincronizarAssinanteHandler(
 {
     public async Task HandleAsync(AlunoRegistradoEvent domainEvent, CancellationToken cancellationToken = default)
     {
-        var assinante = Assinante.Criar(domainEvent.AlunoId, domainEvent.Nome, domainEvent.Email);
+        var assinante = Assinante.Criar(domainEvent.AlunoId, domainEvent.Nome, domainEvent.Email, domainEvent.OcorridoEm);
         await assinanteRepository.AdicionarAsync(assinante, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

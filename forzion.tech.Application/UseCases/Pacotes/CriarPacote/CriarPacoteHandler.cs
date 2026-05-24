@@ -10,6 +10,7 @@ public class CriarPacoteHandler(
     IPacoteRepository pacoteRepository,
     IUnitOfWork unitOfWork,
     IValidator<CriarPacoteCommand> validator,
+    TimeProvider timeProvider,
     ILogger<CriarPacoteHandler> logger)
 {
     public virtual Task<PacoteResponse> HandleAsync(
@@ -26,7 +27,7 @@ public class CriarPacoteHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var pacote = Pacote.Criar(command.TreinadorId, command.Nome, command.Preco, command.Descricao);
+        var pacote = Pacote.Criar(command.TreinadorId, command.Nome, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
 
         await pacoteRepository.AdicionarAsync(pacote, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

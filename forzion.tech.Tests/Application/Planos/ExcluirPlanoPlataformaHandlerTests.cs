@@ -22,7 +22,7 @@ public class ExcluirPlanoPlataformaHandlerTests
     [Fact]
     public async Task HandleAsync_PlanoExiste_InativaEComita()
     {
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow);
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
         await _handler.HandleAsync(new ExcluirPlanoPlataformaCommand(plano.Id));

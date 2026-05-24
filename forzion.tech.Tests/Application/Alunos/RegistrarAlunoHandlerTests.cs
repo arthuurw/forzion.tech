@@ -39,7 +39,7 @@ public class RegistrarAlunoHandlerTests
             _passwordHasher.Object,
             _unitOfWork.Object,
             new RegistrarAlunoCommandValidator(),
-            _whatsAppNotifier.Object,
+            _whatsAppNotifier.Object, TimeProvider.System,
             _logger.Object);
     }
 
@@ -47,9 +47,9 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_DadosValidos_CriaContaAlunoEVinculo()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         treinador.Aprovar(Guid.NewGuid());
-        var pacote = Pacote.Criar(treinadorId, "Basic", 10);
+        var pacote = Pacote.Criar(treinadorId, "Basic", 10, DateTime.UtcNow);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -69,7 +69,7 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_TreinadorInativo_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         treinador.Aprovar(Guid.NewGuid());
         treinador.Inativar();
 
@@ -85,7 +85,7 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_TreinadorAguardandoAprovacao_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         // Status padrão = AguardandoAprovacao
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
@@ -99,7 +99,7 @@ public class RegistrarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_EmailJaCadastrado_LancaException()
     {
-        var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com"), "hash", TipoConta.Aluno);
+        var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));

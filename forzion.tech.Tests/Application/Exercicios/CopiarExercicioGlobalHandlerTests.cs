@@ -22,15 +22,15 @@ public class CopiarExercicioGlobalHandlerTests
     public CopiarExercicioGlobalHandlerTests()
     {
         _grupoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GrupoMuscular.Criar("Peito"));
+            .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow));
         _handler = new CopiarExercicioGlobalHandler(
-            _exercicioRepo.Object, _grupoRepo.Object, _unitOfWork.Object, _logger.Object);
+            _exercicioRepo.Object, _grupoRepo.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_ExercicioGlobal_CriaCopiaNaBibliotecaDoTreinador()
     {
-        var global = Exercicio.Criar("Supino", GrupoId, null, "desc");
+        var global = Exercicio.Criar("Supino", GrupoId, DateTime.UtcNow, null, "desc");
         var treinadorId = Guid.NewGuid();
 
         _exercicioRepo.Setup(r => r.ObterPorIdAsync(global.Id, It.IsAny<CancellationToken>())).ReturnsAsync(global);
@@ -57,7 +57,7 @@ public class CopiarExercicioGlobalHandlerTests
     [Fact]
     public async Task HandleAsync_ExercicioNaoGlobal_LancaAcessoNegado()
     {
-        var proprio = Exercicio.Criar("Supino", GrupoId, Guid.NewGuid());
+        var proprio = Exercicio.Criar("Supino", GrupoId, DateTime.UtcNow, Guid.NewGuid());
         _exercicioRepo.Setup(r => r.ObterPorIdAsync(proprio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(proprio);
 
         var act = async () => await _handler.HandleAsync(new CopiarExercicioGlobalCommand(proprio.Id, Guid.NewGuid()));

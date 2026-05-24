@@ -10,6 +10,7 @@ public class CopiarExercicioGlobalHandler(
     IExercicioRepository exercicioRepository,
     IGrupoMuscularRepository grupoMuscularRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<CopiarExercicioGlobalHandler> logger)
 {
     public virtual Task<ExercicioResponse> HandleAsync(
@@ -30,7 +31,7 @@ public class CopiarExercicioGlobalHandler(
         if (!original.IsGlobal)
             throw new AcessoNegadoException();
 
-        var copia = Exercicio.Criar(original.Nome, original.GrupoMuscularId, command.TreinadorId, original.Descricao);
+        var copia = Exercicio.Criar(original.Nome, original.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, original.Descricao);
 
         await exercicioRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
