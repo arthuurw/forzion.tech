@@ -26,7 +26,7 @@ public class RegistrarTreinadorHandlerTests
         _passwordHasher.Setup(p => p.Hash(It.IsAny<string>())).Returns("hash");
         _handler = new RegistrarTreinadorHandler(
             _contaRepo.Object, _treinadorRepo.Object, _passwordHasher.Object,
-            _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), _logger.Object);
+            _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), TimeProvider.System, _logger.Object);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class RegistrarTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_EmailJaCadastrado_LancaException()
     {
-        var conta = Conta.Criar(Email.Criar("ana@teste.com"), "hash", TipoConta.Treinador);
+        var conta = Conta.Criar(Email.Criar("ana@teste.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var act = async () => await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "Senha123", "Ana"));

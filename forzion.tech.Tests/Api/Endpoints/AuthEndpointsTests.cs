@@ -204,7 +204,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<RegistrarTreinadorCommand>>(),
+            Mock.Of<IValidator<RegistrarTreinadorCommand>>(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarTreinadorHandler>>());
 
         public Mock<RegistrarAlunoHandler> RegistrarAlunoHandlerMock { get; } = new(
@@ -216,7 +216,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<RegistrarAlunoCommand>>(),
-            Mock.Of<IWhatsAppNotifier>(),
+            Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         public Mock<ListarTreinadoresPublicosHandler> ListarTreinadoresPublicosHandlerMock { get; } = new(

@@ -23,7 +23,7 @@ public class ObterProgressaoAlunoHandlerTests
 
     private static VinculoTreinadorAluno CriarVinculo(Guid treinadorId, Guid alunoId)
     {
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow, Guid.NewGuid());
         return vinculo;
     }
 

@@ -15,7 +15,7 @@ public class Conta
 
     private Conta() { }
 
-    public static Conta Criar(Email email, string passwordHash, TipoConta tipoConta)
+    public static Conta Criar(Email email, string passwordHash, TipoConta tipoConta, DateTime agora)
     {
         ArgumentNullException.ThrowIfNull(email);
 
@@ -28,7 +28,7 @@ public class Conta
             Email = email,
             PasswordHash = passwordHash,
             TipoConta = tipoConta,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

@@ -10,6 +10,7 @@ public class CadastrarAlunoHandler(
     IAlunoRepository alunoRepository,
     IUnitOfWork unitOfWork,
     IValidator<CadastrarAlunoCommand> validator,
+    TimeProvider timeProvider,
     ILogger<CadastrarAlunoHandler> logger)
 {
     public virtual Task<AlunoResponse> HandleAsync(
@@ -26,7 +27,7 @@ public class CadastrarAlunoHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var aluno = Aluno.Criar(command.ContaId, command.Nome, command.Email, command.Telefone);
+        var aluno = Aluno.Criar(command.ContaId, command.Nome, timeProvider.GetUtcNow().UtcDateTime, command.Email, command.Telefone);
 
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

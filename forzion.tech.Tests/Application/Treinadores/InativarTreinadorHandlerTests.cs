@@ -28,15 +28,15 @@ public class InativarTreinadorHandlerTests
             .ReturnsAsync((IReadOnlyList<Pacote>)[]);
         _handler = new InativarTreinadorHandler(
             _treinadorRepo.Object, _vinculoRepo.Object, _treinoAlunoRepo.Object,
-            _pacoteRepo.Object, _logRepo.Object, _unitOfWork.Object, _logger.Object);
+            _pacoteRepo.Object, _logRepo.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_InativaCascade()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, Guid.NewGuid());
-        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, Guid.NewGuid(), DateTime.UtcNow);
+        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId, DateTime.UtcNow);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _vinculoRepo.Setup(r => r.ListarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
@@ -64,7 +64,7 @@ public class InativarTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorJaInativo_LancaDomainException()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         treinador.Aprovar(Guid.NewGuid());
         treinador.Inativar();
 

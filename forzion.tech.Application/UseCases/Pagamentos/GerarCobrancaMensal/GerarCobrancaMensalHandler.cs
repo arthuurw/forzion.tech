@@ -17,6 +17,7 @@ public class GerarCobrancaMensalHandler(
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
     IOptions<PaymentSettings> paymentSettings,
+    TimeProvider timeProvider,
     ILogger<GerarCobrancaMensalHandler> logger)
 {
     private readonly decimal _taxaPlataformaPercent = paymentSettings.Value.TaxaPlataformaPercent;
@@ -52,7 +53,7 @@ public class GerarCobrancaMensalHandler(
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
             throw new DomainException("Treinador sem conta Stripe configurada.");
 
-        var pagamento = Pagamento.Criar(assinatura.Id, assinatura.Valor, command.Metodo);
+        var pagamento = Pagamento.Criar(assinatura.Id, assinatura.Valor, timeProvider.GetUtcNow().UtcDateTime, command.Metodo);
         await pagamentoRepository.AdicionarAsync(pagamento, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

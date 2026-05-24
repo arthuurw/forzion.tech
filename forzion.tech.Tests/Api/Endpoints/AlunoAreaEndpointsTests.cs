@@ -384,7 +384,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<SolicitarTrocaTreinadorHandler>>());
 
         public Mock<ListarFichasAlunoHandler> ListarFichasHandlerMock { get; } = new(
@@ -411,7 +411,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
         public Mock<ObterAssinaturaAlunoHandler> ObterAssinaturaAlunoHandlerMock { get; } = new(

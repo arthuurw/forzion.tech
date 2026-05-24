@@ -11,7 +11,7 @@ public class Assinante
 
     private Assinante() { }
 
-    public static Assinante Criar(Guid alunoId, string nome, string? email)
+    public static Assinante Criar(Guid alunoId, string nome, string? email, DateTime agora)
     {
         return new Assinante
         {
@@ -19,7 +19,7 @@ public class Assinante
             AlunoId = alunoId,
             Nome = nome,
             Email = email,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

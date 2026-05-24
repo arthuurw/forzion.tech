@@ -45,7 +45,7 @@ public class AprovarVinculoHandlerTests
             _logRepo.Object,
             _unitOfWork.Object,
             _transactionProvider.Object,
-            _whatsAppNotifier.Object,
+            _whatsAppNotifier.Object, TimeProvider.System,
             _logger.Object);
     }
 
@@ -53,7 +53,7 @@ public class AprovarVinculoHandlerTests
     public async Task HandleAsync_VinculoValido_Aprova()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
         var pacoteId = Guid.NewGuid();
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -72,8 +72,8 @@ public class AprovarVinculoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
-        var vinculoAtivo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
+        var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
+        var vinculoAtivo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculoPendente.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtivo);
@@ -86,7 +86,7 @@ public class AprovarVinculoHandlerTests
     public async Task HandleAsync_LimiteAtingido_LancaException()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(vinculo.AlunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
@@ -99,7 +99,7 @@ public class AprovarVinculoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorDiferente_LancaAcessoNegado()
     {
-        var vinculo = VinculoTreinadorAluno.Criar(Guid.NewGuid(), Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
 
         var act = async () => await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, Guid.NewGuid(), Guid.NewGuid()));
@@ -120,7 +120,7 @@ public class AprovarVinculoHandlerTests
     public async Task HandleAsync_VinculoJaAtivo_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
         vinculo.Aprovar(treinadorId, Guid.NewGuid());
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -136,7 +136,7 @@ public class AprovarVinculoHandlerTests
     public async Task HandleAsync_VinculoInativo_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
         vinculo.Inativar();
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -152,7 +152,7 @@ public class AprovarVinculoHandlerTests
     public async Task HandleAsync_VinculoValido_CommitaUmaVez()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
         var pacoteId = Guid.NewGuid();
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);

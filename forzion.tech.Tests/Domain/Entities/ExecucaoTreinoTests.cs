@@ -7,7 +7,7 @@ namespace forzion.tech.Tests.Domain.Entities;
 public class ExecucaoTreinoTests
 {
     private static ExecucaoTreino CriarExecucao() =>
-        ExecucaoTreino.Criar(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow);
+        ExecucaoTreino.Criar(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow);
 
     // --- Criar ---
 
@@ -22,21 +22,21 @@ public class ExecucaoTreinoTests
     [Fact]
     public void Criar_TreinoIdVazio_LancaDomainException()
     {
-        var act = () => ExecucaoTreino.Criar(Guid.Empty, Guid.NewGuid(), DateTime.UtcNow);
+        var act = () => ExecucaoTreino.Criar(Guid.Empty, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_AlunoIdVazio_LancaDomainException()
     {
-        var act = () => ExecucaoTreino.Criar(Guid.NewGuid(), Guid.Empty, DateTime.UtcNow);
+        var act = () => ExecucaoTreino.Criar(Guid.NewGuid(), Guid.Empty, DateTime.UtcNow, DateTime.UtcNow);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_DataDefault_LancaDomainException()
     {
-        var act = () => ExecucaoTreino.Criar(Guid.NewGuid(), Guid.NewGuid(), default);
+        var act = () => ExecucaoTreino.Criar(Guid.NewGuid(), Guid.NewGuid(), default, DateTime.UtcNow);
         act.Should().Throw<DomainException>();
     }
 
@@ -44,7 +44,7 @@ public class ExecucaoTreinoTests
     public void Criar_ObservacaoMuitoLonga_LancaDomainException()
     {
         var act = () => ExecucaoTreino.Criar(
-            Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, new string('a', 501));
+            Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow, new string('a', 501));
         act.Should().Throw<DomainException>();
     }
 

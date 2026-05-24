@@ -22,7 +22,7 @@ public class ListarTreinosDoTreinadorHandlerTests
     }
 
     private static Treino CriarTreino(Guid treinadorId) =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
 
     private static IReadOnlyList<(Treino Treino, string? NomeAluno)> EmptyItems() =>
         new List<(Treino, string?)>();

@@ -11,7 +11,7 @@ public class GrupoMuscular
 
     private GrupoMuscular() { }
 
-    public static GrupoMuscular Criar(string nome)
+    public static GrupoMuscular Criar(string nome, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome do grupo muscular é obrigatório.");
@@ -23,7 +23,7 @@ public class GrupoMuscular
         {
             Id = Guid.NewGuid(),
             Nome = nome.Trim(),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

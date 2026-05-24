@@ -21,14 +21,14 @@ public class AtribuirPlanoHandlerTests
     public AtribuirPlanoHandlerTests()
     {
         _handler = new AtribuirPlanoHandler(
-            _treinadorRepo.Object, _planoRepo.Object, _logRepo.Object, _unitOfWork.Object, _logger.Object);
+            _treinadorRepo.Object, _planoRepo.Object, _logRepo.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_PlanoETreinadorExistem_AtribuiPlano()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 0);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 0, DateTime.UtcNow);
         var adminId = Guid.NewGuid();
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -53,7 +53,7 @@ public class AtribuirPlanoHandlerTests
     [Fact]
     public async Task HandleAsync_PlanoNaoEncontrado_LancaException()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((PlanoPlataforma?)null);
 
