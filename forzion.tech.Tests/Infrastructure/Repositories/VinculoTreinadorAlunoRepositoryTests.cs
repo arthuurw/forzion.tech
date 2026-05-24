@@ -33,8 +33,8 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
 
     private static async Task<Guid> SeedPacoteAsync(AppDbContext ctx, Guid treinadorId)
     {
-        var pacote = PacoteAluno.Criar(treinadorId, "Pacote Teste", 100m);
-        await ctx.PacotesAluno.AddAsync(pacote);
+        var pacote = Pacote.Criar(treinadorId, "Pacote Teste", 100m);
+        await ctx.Pacotes.AddAsync(pacote);
         await ctx.SaveChangesAsync();
         return pacote.Id;
     }

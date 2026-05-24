@@ -13,7 +13,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { adminApi } from "@/lib/api/admin";
-import type { PlanoTreinadorResponse, TierPlano } from "@/types";
+import type { PlanoPlataformaResponse, TierPlano } from "@/types";
 
 const TIER_OPTIONS: { value: TierPlano; label: string }[] = [
   { value: "Free",    label: "Free" },
@@ -24,7 +24,7 @@ const TIER_OPTIONS: { value: TierPlano; label: string }[] = [
 ];
 
 export default function PlanosAdminPage() {
-  const [planos, setPlanos] = useState<PlanoTreinadorResponse[]>([]);
+  const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -39,7 +39,7 @@ export default function PlanosAdminPage() {
   const [saving, setSaving] = useState(false);
 
   // editar
-  const [editPlano, setEditPlano] = useState<PlanoTreinadorResponse | null>(null);
+  const [editPlano, setEditPlano] = useState<PlanoPlataformaResponse | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editTier, setEditTier] = useState<TierPlano>("Basic");
   const [editMaxAlunos, setEditMaxAlunos] = useState("");
@@ -48,7 +48,7 @@ export default function PlanosAdminPage() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   // excluir
-  const [confirmExcluir, setConfirmExcluir] = useState<PlanoTreinadorResponse | null>(null);
+  const [confirmExcluir, setConfirmExcluir] = useState<PlanoPlataformaResponse | null>(null);
   const [loadingExcluir, setLoadingExcluir] = useState(false);
 
   const load = async () => {
@@ -81,7 +81,7 @@ export default function PlanosAdminPage() {
     }
   };
 
-  const openEdit = (p: PlanoTreinadorResponse) => {
+  const openEdit = (p: PlanoPlataformaResponse) => {
     setEditPlano(p);
     setEditNome(p.nome);
     setEditTier(p.tier);

@@ -12,10 +12,10 @@ using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterMinhaProgressao;
 using forzion.tech.Application.UseCases.Alunos.ObterProgressaoAluno;
-using forzion.tech.Application.UseCases.Assinaturas;
-using forzion.tech.Application.UseCases.Assinaturas.ObterAssinaturaAluno;
+using forzion.tech.Application.UseCases.AssinaturaAlunos;
+using forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos;
-using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinatura;
+using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Vinculos;
@@ -62,14 +62,14 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
         Guid.NewGuid(), TreinoId, AlunoId, DateTime.UtcNow, null, DateTime.UtcNow);
 
     private static readonly Guid PagamentoId = Guid.NewGuid();
-    private static readonly Guid AssinaturaId = Guid.NewGuid();
+    private static readonly Guid AssinaturaAlunoId = Guid.NewGuid();
 
-    private static readonly AssinaturaResponse RespostaAssinatura = new(
-        AssinaturaId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), AlunoId,
-        99.90m, AssinaturaStatus.Ativa, DateTime.UtcNow, DateTime.UtcNow.AddMonths(1), null, DateTime.UtcNow);
+    private static readonly AssinaturaAlunoResponse RespostaAssinaturaAluno = new(
+        AssinaturaAlunoId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), AlunoId,
+        99.90m, AssinaturaAlunoStatus.Ativa, DateTime.UtcNow, DateTime.UtcNow.AddMonths(1), null, DateTime.UtcNow);
 
     private static readonly PagamentoResponse RespostaPagamento = new(
-        PagamentoId, AssinaturaId, 99.90m, PagamentoStatus.Pendente, MetodoPagamento.Pix,
+        PagamentoId, AssinaturaAlunoId, 99.90m, PagamentoStatus.Pendente, MetodoPagamento.Pix,
         "qrcode", "https://example.com/qr", DateTime.UtcNow.AddHours(1), null, null, DateTime.UtcNow);
 
     public AlunoAreaEndpointsTests(AlunoAreaWebFactory factory)
@@ -218,11 +218,11 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     // --- GET /aluno/assinatura ---
 
     [Fact]
-    public async Task Get_Assinatura_Aluno_Retorna200()
+    public async Task Get_AssinaturaAluno_Aluno_Retorna200()
     {
-        _factory.ObterAssinaturaHandlerMock
+        _factory.ObterAssinaturaAlunoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaAssinatura);
+            .ReturnsAsync(RespostaAssinaturaAluno);
 
         var response = await CriarClienteAluno().GetAsync("/aluno/assinatura");
 
@@ -230,11 +230,11 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     }
 
     [Fact]
-    public async Task Get_Assinatura_SemAssinatura_Retorna204()
+    public async Task Get_AssinaturaAluno_SemAssinaturaAluno_Retorna204()
     {
-        _factory.ObterAssinaturaHandlerMock
+        _factory.ObterAssinaturaAlunoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((AssinaturaResponse?)null);
+            .ReturnsAsync((AssinaturaAlunoResponse?)null);
 
         var response = await CriarClienteAluno().GetAsync("/aluno/assinatura");
 
@@ -270,13 +270,13 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     // --- GET /aluno/pagamentos/assinatura/{id} ---
 
     [Fact]
-    public async Task Get_ListarPagamentosAssinatura_Aluno_Retorna200()
+    public async Task Get_ListarPagamentosAssinaturaAluno_Aluno_Retorna200()
     {
         _factory.ListarPagamentosHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<ListarPagamentosAssinaturaQuery>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<ListarPagamentosAssinaturaAlunoQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<PagamentoResponse> { RespostaPagamento });
 
-        var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/assinatura/{AssinaturaId}");
+        var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/assinatura/{AssinaturaAlunoId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -326,10 +326,10 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     // --- GET /aluno/pagamentos/assinatura/{id} error path ---
 
     [Fact]
-    public async Task Get_PagamentosAssinatura_AcessoNegado_Retorna403()
+    public async Task Get_PagamentosAssinaturaAluno_AcessoNegado_Retorna403()
     {
         _factory.ListarPagamentosHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<ListarPagamentosAssinaturaQuery>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<ListarPagamentosAssinaturaAlunoQuery>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new AcessoNegadoException());
 
         var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/assinatura/{Guid.NewGuid()}");
@@ -414,16 +414,16 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
             Mock.Of<IUserContext>(),
             Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
-        public Mock<ObterAssinaturaAlunoHandler> ObterAssinaturaHandlerMock { get; } = new(
-            Mock.Of<IAssinaturaRepository>());
+        public Mock<ObterAssinaturaAlunoHandler> ObterAssinaturaAlunoHandlerMock { get; } = new(
+            Mock.Of<IAssinaturaAlunoRepository>());
 
         public Mock<ObterStatusPagamentoHandler> ObterStatusPagamentoHandlerMock { get; } = new(
             Mock.Of<IPagamentoRepository>(),
-            Mock.Of<IAssinaturaRepository>());
+            Mock.Of<IAssinaturaAlunoRepository>());
 
-        public Mock<ListarPagamentosAssinaturaHandler> ListarPagamentosHandlerMock { get; } = new(
+        public Mock<ListarPagamentosAssinaturaAlunoHandler> ListarPagamentosHandlerMock { get; } = new(
             Mock.Of<IPagamentoRepository>(),
-            Mock.Of<IAssinaturaRepository>());
+            Mock.Of<IAssinaturaAlunoRepository>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -442,7 +442,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
                 services.RemoveAll<RegistrarExecucaoHandler>();
                 services.RemoveAll<ObterAssinaturaAlunoHandler>();
                 services.RemoveAll<ObterStatusPagamentoHandler>();
-                services.RemoveAll<ListarPagamentosAssinaturaHandler>();
+                services.RemoveAll<ListarPagamentosAssinaturaAlunoHandler>();
                 services.RemoveAll<IUserContext>();
 
                 services.AddScoped(_ => ObterVinculoHandlerMock.Object);
@@ -452,7 +452,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
                 services.AddScoped(_ => ListarExecucoesHandlerMock.Object);
                 services.AddScoped(_ => ObterProgressaoHandlerMock.Object);
                 services.AddScoped(_ => RegistrarExecucaoHandlerMock.Object);
-                services.AddScoped(_ => ObterAssinaturaHandlerMock.Object);
+                services.AddScoped(_ => ObterAssinaturaAlunoHandlerMock.Object);
                 services.AddScoped(_ => ObterStatusPagamentoHandlerMock.Object);
                 services.AddScoped(_ => ListarPagamentosHandlerMock.Object);
 

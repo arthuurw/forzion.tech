@@ -15,7 +15,7 @@ public class RegistrarAlunoHandler(
     IAlunoRepository alunoRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinadorRepository treinadorRepository,
-    IPacoteAlunoRepository pacoteRepository,
+    IPacoteRepository pacoteRepository,
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
     IValidator<RegistrarAlunoCommand> validator,

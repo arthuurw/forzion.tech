@@ -146,26 +146,26 @@ public class DataSeeder(
     {
         await SeedGruposMuscularesAsync(cancellationToken).ConfigureAwait(false);
         await SeedExerciciosGlobaisAsync(cancellationToken).ConfigureAwait(false);
-        await SeedPlanosTreinadorAsync(cancellationToken).ConfigureAwait(false);
+        await SeedPlanosPlataformaAsync(cancellationToken).ConfigureAwait(false);
         await SeedAdminAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task SeedPlanosTreinadorAsync(CancellationToken cancellationToken)
+    private async Task SeedPlanosPlataformaAsync(CancellationToken cancellationToken)
     {
-        var existentes = await context.PlanosTreinador
+        var existentes = await context.PlanosPlataforma
             .Select(p => p.Tier)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         var novos = PlanosPadrao
             .Where(p => !existentes.Contains(p.Tier))
-            .Select(p => PlanoTreinador.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, p.Descricao))
+            .Select(p => PlanoPlataforma.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, p.Descricao))
             .ToList();
 
         if (novos.Count == 0)
             return;
 
-        context.PlanosTreinador.AddRange(novos);
+        context.PlanosPlataforma.AddRange(novos);
         await context.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Planos de treinador criados: {Planos}", string.Join(", ", novos.Select(p => p.Nome)));
@@ -200,9 +200,13 @@ public class DataSeeder(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var gruposPorNome = await context.GruposMusculares
+            .ToDictionaryAsync(g => g.Nome, g => g.Id, cancellationToken)
+            .ConfigureAwait(false);
+
         var novos = ExerciciosGlobais
             .Where(e => !existentes.Contains(e.Nome))
-            .Select(e => Exercicio.Criar(e.Nome, e.Grupo, treinadorId: null, descricao: e.Descricao))
+            .Select(e => Exercicio.Criar(e.Nome, gruposPorNome[e.Grupo.ToString()], treinadorId: null, descricao: e.Descricao))
             .ToList();
 
         if (novos.Count == 0)

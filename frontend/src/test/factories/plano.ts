@@ -1,9 +1,9 @@
 import { faker } from "@faker-js/faker";
-import type { PlanoTreinadorResponse } from "@/types";
+import type { PlanoPlataformaResponse } from "@/types";
 
 export function buildPlano(
-  overrides: Partial<PlanoTreinadorResponse> = {},
-): PlanoTreinadorResponse {
+  overrides: Partial<PlanoPlataformaResponse> = {},
+): PlanoPlataformaResponse {
   return {
     planoId: faker.string.uuid(),
     nome: `Plano ${faker.commerce.productAdjective()}`,

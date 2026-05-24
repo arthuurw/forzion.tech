@@ -63,7 +63,7 @@ public class AprovarVinculoHandlerTests
         var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacoteId));
 
         result.Status.Should().Be(VinculoStatus.Ativo);
-        result.PacoteAlunoId.Should().Be(pacoteId);
+        result.PacoteId.Should().Be(pacoteId);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

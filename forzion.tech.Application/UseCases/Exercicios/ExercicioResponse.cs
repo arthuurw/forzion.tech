@@ -1,12 +1,12 @@
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.UseCases.Exercicios;
 
 public record ExercicioResponse(
     Guid ExercicioId,
     string Nome,
-    forzion.tech.Domain.Enums.TipoGrupoMuscular GrupoMuscular,
+    Guid GrupoMuscularId,
+    string GrupoMuscular,
     string? Descricao,
     Guid? TreinadorId,
     bool IsGlobal,
@@ -15,10 +15,11 @@ public record ExercicioResponse(
 
 public static class ExercicioResponseExtensions
 {
-    public static ExercicioResponse ToResponse(Exercicio exercicio) => new(
+    public static ExercicioResponse ToResponse(Exercicio exercicio, string grupoMuscularNome) => new(
         exercicio.Id,
         exercicio.Nome,
-        exercicio.GrupoMuscular,
+        exercicio.GrupoMuscularId,
+        grupoMuscularNome,
         exercicio.Descricao,
         exercicio.TreinadorId,
         exercicio.IsGlobal,

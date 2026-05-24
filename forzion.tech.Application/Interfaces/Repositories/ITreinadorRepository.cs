@@ -11,5 +11,4 @@ public interface ITreinadorRepository
     Task<(IReadOnlyList<Treinador> Items, int Total)> ListarAsync(TreinadorStatus? status, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
     Task AdicionarAsync(Treinador treinador, CancellationToken cancellationToken = default);
     Task ExcluirComDependenciasAsync(Treinador treinador, CancellationToken cancellationToken = default);
-    Task<Treinador?> ObterPorStripeAccountIdAsync(string stripeAccountId, CancellationToken cancellationToken = default);
 }

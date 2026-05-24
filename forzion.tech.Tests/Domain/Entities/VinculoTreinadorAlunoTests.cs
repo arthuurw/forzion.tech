@@ -21,7 +21,7 @@ public class VinculoTreinadorAlunoTests
         v.TreinadorId.Should().Be(TreinadorId);
         v.AlunoId.Should().Be(AlunoId);
         v.Status.Should().Be(VinculoStatus.AguardandoAprovacao);
-        v.PacoteAlunoId.Should().BeNull();
+        v.PacoteId.Should().BeNull();
         v.AprovadoPorId.Should().BeNull();
         v.DataInicio.Should().BeNull();
         v.DataFim.Should().BeNull();
@@ -52,7 +52,7 @@ public class VinculoTreinadorAlunoTests
         v.Aprovar(TreinadorId, pacoteId);
 
         v.Status.Should().Be(VinculoStatus.Ativo);
-        v.PacoteAlunoId.Should().Be(pacoteId);
+        v.PacoteId.Should().Be(pacoteId);
         v.AprovadoPorId.Should().Be(TreinadorId);
         v.AprovadoEm.Should().NotBeNull();
         v.DataInicio.Should().NotBeNull();

@@ -12,10 +12,10 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { treinadorApi } from "@/lib/api/treinador";
-import type { PacoteAlunoResponse } from "@/types";
+import type { PacoteResponse } from "@/types";
 
 export default function PacotesTreinadorPage() {
-  const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
+  const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -28,11 +28,11 @@ export default function PacotesTreinadorPage() {
   const [saving, setSaving] = useState(false);
 
   // excluir
-  const [deleteTarget, setDeleteTarget] = useState<PacoteAlunoResponse | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PacoteResponse | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // editar
-  const [editTarget, setEditTarget] = useState<PacoteAlunoResponse | null>(null);
+  const [editTarget, setEditTarget] = useState<PacoteResponse | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editDescricao, setEditDescricao] = useState("");
   const [editPreco, setEditPreco] = useState("");
@@ -74,7 +74,7 @@ export default function PacotesTreinadorPage() {
     }
   };
 
-  const openEdit = (p: PacoteAlunoResponse) => {
+  const openEdit = (p: PacoteResponse) => {
     setEditTarget(p);
     setEditNome(p.nome);
     setEditDescricao(p.descricao ?? "");

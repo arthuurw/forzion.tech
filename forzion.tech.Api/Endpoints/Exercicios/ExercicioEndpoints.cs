@@ -4,7 +4,6 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Exercicios;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
-using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace forzion.tech.Api.Endpoints.Exercicios;
@@ -26,7 +25,7 @@ public static class ExercicioEndpoints
                 return Results.Unauthorized();
 
             var command = new CriarExercicioCommand(
-                userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao);
+                userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao);
             var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Created($"/exercicios/{result.Value.ExercicioId}", result.Value);
@@ -61,4 +60,4 @@ public static class ExercicioEndpoints
     }
 }
 
-public record CriarExercicioRequest(string Nome, TipoGrupoMuscular GrupoMuscular, string? Descricao);
+public record CriarExercicioRequest(string Nome, Guid GrupoMuscularId, string? Descricao);

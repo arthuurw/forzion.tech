@@ -104,7 +104,7 @@ export default function ExerciciosTreinadorPage() {
         pagina: page + 1,
         tamanhoPagina: pageSize,
         nome: filtroNome || undefined,
-        grupoMuscular: filtroGrupo || undefined,
+        grupoMuscularId: filtroGrupo || undefined,
         ordenarPor,
       });
       if (callId !== loadIdRef.current) return;
@@ -124,8 +124,8 @@ export default function ExerciciosTreinadorPage() {
       const res = await treinadorApi.listGruposMusculares();
       setGrupos(res.data);
       if (res.data.length > 0) {
-        setGrupoMuscular(res.data[0].nome);
-        setEditGrupo(res.data[0].nome);
+        setGrupoMuscular(res.data[0].id);
+        setEditGrupo(res.data[0].id);
       }
     } catch {
       // grupos musculares indisponíveis — formulário fica sem seleção de grupo
@@ -149,7 +149,7 @@ export default function ExerciciosTreinadorPage() {
     setTab(v);
   };
 
-  const resetForm = () => { setNome(""); setDescricao(""); setGrupoMuscular("Peito"); };
+  const resetForm = () => { setNome(""); setDescricao(""); setGrupoMuscular(grupos.length > 0 ? grupos[0].id : ""); };
 
   const handleCriar = async () => {
     if (!nome.trim()) return;
@@ -158,7 +158,7 @@ export default function ExerciciosTreinadorPage() {
       await treinadorApi.criarExercicio({
         nome: nome.trim(),
         descricao: descricao.trim() || null,
-        grupoMuscular: grupoMuscular || null,
+        grupoMuscularId: grupoMuscular,
       });
       setSuccess(`Exercício "${nome.trim()}" criado.`);
       setOpen(false);
@@ -175,7 +175,7 @@ export default function ExerciciosTreinadorPage() {
   const openEdit = (ex: ExercicioResponse) => {
     setEditEx(ex);
     setEditNome(ex.nome);
-    setEditGrupo(ex.grupoMuscular ?? (grupos.length > 0 ? grupos[0].nome : ""));
+    setEditGrupo(ex.grupoMuscularId);
     setEditDescricao(ex.descricao ?? "");
   };
 
@@ -185,7 +185,7 @@ export default function ExerciciosTreinadorPage() {
     try {
       await treinadorApi.atualizarExercicio(editEx.exercicioId, {
         nome: editNome.trim() || undefined,
-        grupoMuscular: editGrupo || undefined,
+        grupoMuscularId: editGrupo || undefined,
         descricao: editDescricao.trim() || null,
       });
       setSuccess(`"${editNome}" atualizado.`);
@@ -270,7 +270,7 @@ export default function ExerciciosTreinadorPage() {
             onChange={(e) => patchTab({ filtroGrupo: e.target.value, page: 0 })}
           >
             <MenuItem value="">Todos</MenuItem>
-            {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+            {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -352,7 +352,7 @@ export default function ExerciciosTreinadorPage() {
             <FormControl size="small" fullWidth>
               <InputLabel>Grupo muscular</InputLabel>
               <Select value={grupoMuscular} label="Grupo muscular" onChange={(e) => setGrupoMuscular(e.target.value)}>
-                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+                {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} size="small" fullWidth multiline rows={2} />
@@ -373,7 +373,7 @@ export default function ExerciciosTreinadorPage() {
             <FormControl size="small" fullWidth>
               <InputLabel>Grupo muscular</InputLabel>
               <Select value={editGrupo} label="Grupo muscular" onChange={(e) => setEditGrupo(e.target.value)}>
-                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+                {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={2} />

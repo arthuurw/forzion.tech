@@ -12,8 +12,8 @@ namespace forzion.tech.Tests.Application.Pagamentos;
 public class ProcessarWebhookStripeHandlerTests
 {
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
-    private readonly Mock<IAssinaturaRepository> _assinaturaRepo = new();
-    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
+    private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _logger = new();
@@ -24,7 +24,7 @@ public class ProcessarWebhookStripeHandlerTests
     public ProcessarWebhookStripeHandlerTests()
     {
         _handler = new ProcessarWebhookStripeHandler(
-            _pagamentoRepo.Object, _assinaturaRepo.Object, _treinadorRepo.Object,
+            _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
             _stripeService.Object, _unitOfWork.Object, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
@@ -38,7 +38,7 @@ public class ProcessarWebhookStripeHandlerTests
         "{\"type\":\"account.updated\",\"account\":\"" + accountId + "\",\"data\":{\"object\":{\"charges_enabled\":" + (chargesEnabled ? "true" : "false") + "}}}";
 
     [Fact]
-    public async Task HandleAsync_AssinaturaInvalida_RetornaFailure()
+    public async Task HandleAsync_AssinaturaAlunoInvalida_RetornaFailure()
     {
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(false);
@@ -54,7 +54,7 @@ public class ProcessarWebhookStripeHandlerTests
         var assinaturaId = Guid.NewGuid();
         var pagamento = Pagamento.Criar(assinaturaId, 150m);
         pagamento.DefinirDadosPix("pi_abc", "qr", "url", DateTime.UtcNow.AddHours(1));
-        var assinatura = Assinatura.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_abc", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -66,7 +66,7 @@ public class ProcessarWebhookStripeHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.Pago);
-        assinatura.Status.Should().Be(AssinaturaStatus.Ativa);
+        assinatura.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
         assinatura.DataProximaCobranca.Should().BeAfter(DateTime.UtcNow);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -124,7 +124,7 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_PaymentIntentSucceeded_AssinaturaNaoEncontrada_MarcaPagoSemAtivar()
+    public async Task HandleAsync_PaymentIntentSucceeded_AssinaturaAlunoNaoEncontrada_MarcaPagoSemAtivar()
     {
         // Cenário: pagamento confirmado mas assinatura foi excluída/não existe — dinheiro chegou, registra Pago
         var assinaturaId = Guid.NewGuid();
@@ -134,7 +134,7 @@ public class ProcessarWebhookStripeHandlerTests
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_orphan", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Assinatura?)null);
+            .ReturnsAsync((AssinaturaAluno?)null);
 
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_orphan"), ValidSig));
@@ -178,16 +178,16 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_AccountUpdatedComChargesEnabled_ConfirmaOnboarding()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        treinador.ConfigurarStripeConnect("acct_ok");
-        _treinadorRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_ok", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(treinador);
+        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid());
+        contaRecebimento.ConfigurarStripeConnect("acct_ok");
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_ok", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
 
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(AccountPayload("acct_ok", true), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
-        treinador.StripeOnboardingCompleto.Should().BeTrue();
+        contaRecebimento.OnboardingCompleto.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

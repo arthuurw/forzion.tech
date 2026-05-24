@@ -6,6 +6,6 @@ public record VinculoResponse(
     Guid VinculoId,
     Guid TreinadorId,
     Guid AlunoId,
-    Guid? PacoteAlunoId,
+    Guid? PacoteId,
     VinculoStatus Status,
     DateTime CreatedAt);

@@ -27,7 +27,7 @@ vi.mock("@/lib/api/pagamento", () => ({
 
 const BASE: PagamentoResponse = {
   pagamentoId: "p1",
-  assinaturaId: "a1",
+  assinaturaAlunoId: "a1",
   valor: 150,
   status: "Pendente",
   metodoPagamento: "Cartao",

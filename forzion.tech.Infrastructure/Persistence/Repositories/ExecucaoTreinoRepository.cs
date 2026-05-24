@@ -26,13 +26,14 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
             from ee in _context.ExecucoesExercicio
             join te in _context.TreinoExercicios on ee.TreinoExercicioId equals te.Id
             join ex in _context.Exercicios on te.ExercicioId equals ex.Id
+            join gm in _context.GruposMusculares on ex.GrupoMuscularId equals gm.Id
             where ids.Contains(ee.ExecucaoTreinoId)
             select new
             {
                 ee.ExecucaoTreinoId,
                 ee.TreinoExercicioId,
                 NomeExercicio = ex.Nome,
-                GrupoMuscular = ex.GrupoMuscular.ToString(),
+                GrupoMuscular = gm.Nome,
                 ee.SeriesExecutadas,
                 ee.RepeticoesExecutadas,
                 ee.CargaExecutada,

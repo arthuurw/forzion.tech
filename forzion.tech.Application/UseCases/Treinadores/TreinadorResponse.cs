@@ -7,5 +7,5 @@ public record TreinadorResponse(
     Guid ContaId,
     string Nome,
     TreinadorStatus Status,
-    Guid? PlanoTreinadorId,
+    Guid? PlanoPlataformaId,
     DateTime CreatedAt);

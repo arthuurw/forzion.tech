@@ -18,7 +18,7 @@ public class RegistrarAlunoHandlerTests
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
-    private readonly Mock<IPacoteAlunoRepository> _pacoteRepo = new();
+    private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IWhatsAppNotifier> _whatsAppNotifier = new();
@@ -49,7 +49,7 @@ public class RegistrarAlunoHandlerTests
         var treinadorId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
         treinador.Aprovar(Guid.NewGuid());
-        var pacote = PacoteAluno.Criar(treinadorId, "Basic", 10);
+        var pacote = Pacote.Criar(treinadorId, "Basic", 10);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
