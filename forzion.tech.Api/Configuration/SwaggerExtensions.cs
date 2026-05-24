@@ -35,11 +35,14 @@ public static class SwaggerExtensions
         return services;
     }
 
-    public static WebApplication UseSwaggerInNonProduction(this WebApplication app)
+    // Swagger UI/JSON exposto APENAS em Development (local). Em Homolog/Production
+    // fica desligado para nao expor a superficie da API publicamente. Os tipos do
+    // harness frontend sao gerados de uma instancia local (npm run openapi:sync).
+    public static WebApplication UseSwaggerInDevelopment(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        if (!app.Environment.IsProduction())
+        if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
             app.UseSwaggerUI();
