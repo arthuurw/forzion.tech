@@ -1,7 +1,7 @@
 # Backend Test Harness — Quebra de Tasks
 
 **Spec**: `docs/backend-harness-plan.md` (roadmap 13 fases, full parity)
-**Status**: Fase 0 ✅ concluída (PR #39 / commit `a27a1d9`) · Fases 1–12 pendentes
+**Status**: ✅ F0 (#39) · F1 (#42) · F3–F6 (#44) · F8–F9–F12 (#43) · F10 (#40) · F11 (#41) — mergeadas em `backend`. **Pendentes: F2 (split unit/integration) + F7 (E2E real, depende de F2).**
 
 Quebra atômica e executável da spec aprovada. Cada task tem entregável único,
 dependências explícitas, critério de pronto verificável e **guard rails**.
@@ -39,19 +39,21 @@ dependências explícitas, critério de pronto verificável e **guard rails**.
 
 ```
 F0 ✅
-  └→ F1 (determinismo, fundacional)
-        ├→ F2 (split unit/integration)
-        ├→ F3 (arch tests)            [P] com F2/F4
-        ├→ F4 (test builders)         [P] com F2/F3
-        ├→ F5 (property-based) ── depende de F1
-        └→ F8 (mutation CI) ── depende de F1 (+ idealmente F5)
-  F2 └→ F7 (E2E real)
-  F0 └→ F6 (snapshot/Verify)          [P]
-  F0 └→ F9 (cobertura)                [P]
-  F0 └→ F10 (supply-chain NuGet)      [P]
-  F0 └→ F11 (pre-commit backend)      [P]
-  F0 └→ F12 (openapi drift, opcional) [P]
+  └→ F1 ✅ (determinismo, fundacional)
+        ├→ F2 ⬜ (split unit/integration)  ← PENDENTE
+        ├→ F3 ✅ (arch tests)
+        ├→ F4 ✅ (test builders)
+        ├→ F5 ✅ (property-based)
+        └→ F8 ✅ (mutation CI)
+  F2 └→ F7 ⬜ (E2E real)               ← PENDENTE (depende de F2)
+  F0 └→ F6 ✅ (snapshot/Verify)
+  F0 └→ F9 ✅ (cobertura)
+  F0 └→ F10 ✅ (supply-chain NuGet)
+  F0 └→ F11 ✅ (pre-commit backend)
+  F0 └→ F12 ✅ (openapi drift)
 ```
+
+> **Restam só F2 e F7.** Todas as outras fases estão mergeadas em `backend`.
 
 Fases independentes de F1 (F6, F9, F10, F11, F12) podem ser feitas em qualquer ordem após F0.
 F5 e F8 **exigem** F1. F7 exige F2.
@@ -76,7 +78,7 @@ F5 e F8 **exigem** F1. F7 exige F2.
 
 ---
 
-## Fase 1 — Determinismo (TimeProvider + IGuidProvider) *(fundacional)*
+## Fase 1 — Determinismo (TimeProvider + IGuidProvider) *(fundacional)* ✅
 
 **Branch**: `chore/backend-harness-fase1-determinismo` · **Commit**: `refactor(backend): injeta TimeProvider no dominio (harness fase 1)`
 
@@ -151,7 +153,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 2 — Split unit vs integration
+## Fase 2 — Split unit vs integration ⬜ PENDENTE
 
 **Branch**: `chore/backend-harness-fase2-split-tests`
 
@@ -179,7 +181,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 3 — Architecture tests (NetArchTest.Rules) [P com F2/F4]
+## Fase 3 — Architecture tests (NetArchTest.Rules) [P com F2/F4] ✅
 
 **Branch**: `chore/backend-harness-fase3-arch-tests`
 
@@ -217,7 +219,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 4 — Test data builders [P com F2/F3]
+## Fase 4 — Test data builders [P com F2/F3] ✅
 
 **Branch**: `chore/backend-harness-fase4-builders`
 
@@ -244,7 +246,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 5 — Property-based testing (CsCheck) — exige F1
+## Fase 5 — Property-based testing (CsCheck) — exige F1 ✅
 
 **Branch**: `chore/backend-harness-fase5-property`
 
@@ -271,7 +273,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 6 — Snapshot / contract de saída (Verify.Xunit) [P]
+## Fase 6 — Snapshot / contract de saída (Verify.Xunit) [P] ✅
 
 **Branch**: `chore/backend-harness-fase6-verify`
 
@@ -298,7 +300,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 7 — Integração / E2E real pela pipeline — exige F2
+## Fase 7 — Integração / E2E real pela pipeline — exige F2 ⬜ PENDENTE
 
 **Branch**: `chore/backend-harness-fase7-e2e-real`
 
@@ -326,7 +328,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 8 — Mutation testing em CI (Stryker.NET) — exige F1
+## Fase 8 — Mutation testing em CI (Stryker.NET) — exige F1 ✅
 
 **Branch**: `chore/backend-harness-fase8-mutation`
 
@@ -353,7 +355,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 9 — Endurecimento de cobertura [P]
+## Fase 9 — Endurecimento de cobertura [P] ✅
 
 **Branch**: `chore/backend-harness-fase9-coverage`
 
@@ -379,7 +381,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 10 — Supply-chain + dependências NuGet [P]
+## Fase 10 — Supply-chain + dependências NuGet [P] ✅
 
 **Branch**: `chore/backend-harness-fase10-supply-chain`
 
@@ -415,7 +417,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 11 — Hygiene de commit/PR no backend [P]
+## Fase 11 — Hygiene de commit/PR no backend [P] ✅
 
 **Branch**: `chore/backend-harness-fase11-hooks`
 
@@ -441,7 +443,7 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 12 — Fechamento de contrato / observabilidade *(opcional)* [P]
+## Fase 12 — Fechamento de contrato / observabilidade *(opcional)* [P] ✅
 
 **Branch**: `chore/backend-harness-fase12-openapi-drift`
 
