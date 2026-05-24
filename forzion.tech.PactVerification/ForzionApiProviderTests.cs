@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using forzion.tech.Application.Interfaces;
@@ -124,7 +123,7 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
     {
         var testHost = base.CreateHost(builder);
 
-        builder.ConfigureWebHost(b => b.UseKestrel(o => o.Listen(IPAddress.Loopback, 0)));
+        builder.ConfigureWebHost(b => b.UseKestrel().UseUrls("http://127.0.0.1:0"));
         _kestrelHost = builder.Build();
         _kestrelHost.Start();
 
