@@ -3,6 +3,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -15,7 +16,13 @@ public class AssinaturaAlunoTests
     private const decimal Valor = 150m;
 
     private static AssinaturaAluno CriarValida() =>
-        AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, AlunoId, Valor, DateTime.UtcNow);
+        new AssinaturaAlunoBuilder()
+            .ComVinculoId(VinculoId)
+            .ComPacoteId(PacoteId)
+            .ComTreinadorId(TreinadorId)
+            .ComAlunoId(AlunoId)
+            .ComValor(Valor)
+            .Build();
 
     // --- Criar ---
 
