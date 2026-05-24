@@ -73,5 +73,11 @@ stryker-output/
 StrykerOutput/
 .stryker-tmp/
 
+# Cobertura/coverlet + ReportGenerator (gerados em CI e localmente, não versionar)
+coverage/
+coverage-report/
+**/coverage.cobertura.xml
+**/coverage.opencover.xml
+
 # Scripts SQL gerados pontualmente (não versionar)
 migration_public_schema.sql
