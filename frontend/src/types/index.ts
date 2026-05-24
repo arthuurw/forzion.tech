@@ -136,6 +136,7 @@ export interface ExercicioResponse {
   exercicioId: string;
   nome: string;
   descricao: string | null;
+  grupoMuscularId: string;
   grupoMuscular: string | null;
   treinadorId: string | null;
   isGlobal: boolean;

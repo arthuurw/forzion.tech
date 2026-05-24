@@ -14,7 +14,7 @@ public class CriarExercicioCommandValidator : AbstractValidator<CriarExercicioCo
             .MaximumLength(500).WithMessage("A descrição deve ter no máximo 500 caracteres.")
             .When(x => !string.IsNullOrEmpty(x.Descricao));
 
-        RuleFor(x => x.GrupoMuscular)
-            .IsInEnum().WithMessage("Grupo muscular inválido.");
+        RuleFor(x => x.GrupoMuscularId)
+            .NotEmpty().WithMessage("O grupo muscular é obrigatório.");
     }
 }

@@ -1,6 +1,5 @@
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
@@ -16,7 +15,7 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
 
     public async Task<(IReadOnlyList<Exercicio> Items, int Total)> ListarAsync(
         Guid? treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default,
-        string? nome = null, forzion.tech.Domain.Enums.TipoGrupoMuscular? grupoMuscular = null, string ordenarPor = "nome")
+        string? nome = null, Guid? grupoMuscularId = null, string ordenarPor = "nome")
     {
         var query = _context.Exercicios
             .AsNoTracking()
@@ -26,12 +25,20 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
         if (!string.IsNullOrWhiteSpace(nome))
             query = query.Where(e => e.Nome.ToLower().Contains(nome.ToLower()));
 
-        if (grupoMuscular.HasValue)
-            query = query.Where(e => e.GrupoMuscular == grupoMuscular.Value);
+        if (grupoMuscularId.HasValue)
+            query = query.Where(e => e.GrupoMuscularId == grupoMuscularId.Value);
 
-        query = ordenarPor == "grupoMuscular"
-            ? query.OrderBy(e => e.GrupoMuscular).ThenBy(e => e.Nome)
-            : query.OrderBy(e => e.Nome);
+        if (ordenarPor == "grupoMuscular")
+        {
+            query = from e in query
+                    join g in _context.GruposMusculares on e.GrupoMuscularId equals g.Id
+                    orderby g.Nome, e.Nome
+                    select e;
+        }
+        else
+        {
+            query = query.OrderBy(e => e.Nome);
+        }
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await query
@@ -67,6 +74,11 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
     public async Task<bool> EstaEmUsoAsync(Guid exercicioId, CancellationToken cancellationToken = default) =>
         await _context.TreinoExercicios
             .AnyAsync(te => te.ExercicioId == exercicioId, cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<bool> ExisteComGrupoMuscularAsync(Guid grupoMuscularId, CancellationToken cancellationToken = default) =>
+        await _context.Exercicios
+            .AnyAsync(e => e.GrupoMuscularId == grupoMuscularId, cancellationToken)
             .ConfigureAwait(false);
 
     public async Task<IReadOnlyDictionary<Guid, string>> ObterNomesPorIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)

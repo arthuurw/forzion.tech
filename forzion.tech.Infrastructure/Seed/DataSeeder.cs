@@ -200,9 +200,13 @@ public class DataSeeder(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var gruposPorNome = await context.GruposMusculares
+            .ToDictionaryAsync(g => g.Nome, g => g.Id, cancellationToken)
+            .ConfigureAwait(false);
+
         var novos = ExerciciosGlobais
             .Where(e => !existentes.Contains(e.Nome))
-            .Select(e => Exercicio.Criar(e.Nome, e.Grupo, treinadorId: null, descricao: e.Descricao))
+            .Select(e => Exercicio.Criar(e.Nome, gruposPorNome[e.Grupo.ToString()], treinadorId: null, descricao: e.Descricao))
             .ToList();
 
         if (novos.Count == 0)

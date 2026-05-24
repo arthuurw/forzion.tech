@@ -304,8 +304,7 @@ public static class TreinadorEndpoints
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
             var apenasGlobal = q["global"].ToString() == "true";
-            _ = Enum.TryParse<forzion.tech.Domain.Enums.TipoGrupoMuscular>(q["grupoMuscular"], out var grupo);
-            var hasGrupo = q.ContainsKey("grupoMuscular");
+            var hasGrupo = Guid.TryParse(q["grupoMuscularId"], out var grupoId);
             var nome = q["nome"].ToString();
             var ordenarPorRaw = q["ordenarPor"].ToString();
 
@@ -318,7 +317,7 @@ public static class TreinadorEndpoints
 
             var query = new ListarExerciciosQuery(treinadorId, p, tp,
                 string.IsNullOrEmpty(nome) ? null : nome,
-                hasGrupo ? grupo : null,
+                hasGrupo ? grupoId : null,
                 ordenarPor);
 
             var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
@@ -334,7 +333,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarExercicioCommand(userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao),
+                new CriarExercicioCommand(userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao),
                 cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
@@ -368,7 +367,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarExercicioCommand(id, userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao),
+                new AtualizarExercicioCommand(id, userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao),
                 cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
@@ -467,7 +466,7 @@ public record IniciarOnboardingRequest(string UrlRetorno, string UrlCancelamento
 public record AprovarVinculoRequest(Guid PacoteAlunoId, bool TrarFichas = false);
 public record ReativarVinculoRequest(Guid PacoteAlunoId);
 public record DesvincularAlunoRequest(string? Observacao = null);
-public record CriarExercicioTreinadorRequest(string Nome, TipoGrupoMuscular GrupoMuscular, string? Descricao = null);
-public record AtualizarExercicioTreinadorRequest(string? Nome, TipoGrupoMuscular? GrupoMuscular, string? Descricao);
+public record CriarExercicioTreinadorRequest(string Nome, Guid GrupoMuscularId, string? Descricao = null);
+public record AtualizarExercicioTreinadorRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao);
 public record CriarPacoteAlunoRequest(string Nome, decimal Preco, string? Descricao = null);
 public record AtualizarPacoteAlunoRequest(string? Nome, decimal? Preco, string? Descricao);

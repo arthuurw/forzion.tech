@@ -23,9 +23,14 @@ public class ExercicioConfiguration : IEntityTypeConfiguration<Exercicio>
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.Property(e => e.GrupoMuscular)
-            .HasConversion<string>()
-            .IsRequired();
+        builder.Property(e => e.GrupoMuscularId).IsRequired();
+
+        builder.HasOne<GrupoMuscular>()
+            .WithMany()
+            .HasForeignKey(e => e.GrupoMuscularId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => e.GrupoMuscularId);
 
         builder.Property(e => e.Descricao)
             .HasMaxLength(500);

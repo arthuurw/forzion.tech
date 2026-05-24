@@ -3,7 +3,6 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -12,20 +11,26 @@ namespace forzion.tech.Tests.Application.Exercicios;
 
 public class CopiarExercicioGlobalHandlerTests
 {
+    private static readonly Guid GrupoId = Guid.NewGuid();
+
     private readonly Mock<IExercicioRepository> _exercicioRepo = new();
+    private readonly Mock<IGrupoMuscularRepository> _grupoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<CopiarExercicioGlobalHandler>> _logger = new();
     private readonly CopiarExercicioGlobalHandler _handler;
 
     public CopiarExercicioGlobalHandlerTests()
     {
-        _handler = new CopiarExercicioGlobalHandler(_exercicioRepo.Object, _unitOfWork.Object, _logger.Object);
+        _grupoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GrupoMuscular.Criar("Peito"));
+        _handler = new CopiarExercicioGlobalHandler(
+            _exercicioRepo.Object, _grupoRepo.Object, _unitOfWork.Object, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_ExercicioGlobal_CriaCopiaNaBibliotecaDoTreinador()
     {
-        var global = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.TipoGrupoMuscular.Peito, null, "desc");
+        var global = Exercicio.Criar("Supino", GrupoId, null, "desc");
         var treinadorId = Guid.NewGuid();
 
         _exercicioRepo.Setup(r => r.ObterPorIdAsync(global.Id, It.IsAny<CancellationToken>())).ReturnsAsync(global);
@@ -52,7 +57,7 @@ public class CopiarExercicioGlobalHandlerTests
     [Fact]
     public async Task HandleAsync_ExercicioNaoGlobal_LancaAcessoNegado()
     {
-        var proprio = Exercicio.Criar("Supino", forzion.tech.Domain.Enums.TipoGrupoMuscular.Peito, Guid.NewGuid());
+        var proprio = Exercicio.Criar("Supino", GrupoId, Guid.NewGuid());
         _exercicioRepo.Setup(r => r.ObterPorIdAsync(proprio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(proprio);
 
         var act = async () => await _handler.HandleAsync(new CopiarExercicioGlobalCommand(proprio.Id, Guid.NewGuid()));

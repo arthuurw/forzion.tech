@@ -273,14 +273,13 @@ public static class AdminEndpoints
         {
             var pagination = httpContext.ObterPaginacaoDoQuery();
             var q = httpContext.Request.Query;
-            _ = Enum.TryParse<forzion.tech.Domain.Enums.TipoGrupoMuscular>(q["grupoMuscular"], out var grupo);
-            var hasGrupo = q.ContainsKey("grupoMuscular");
+            var hasGrupo = Guid.TryParse(q["grupoMuscularId"], out var grupoId);
             var nome = q["nome"].ToString();
             var ordenarPor = q["ordenarPor"].ToString();
             var result = await handler.HandleAsync(
                 new ListarExerciciosQuery(null, pagination.Pagina, pagination.TamanhoPagina,
                     string.IsNullOrEmpty(nome) ? null : nome,
-                    hasGrupo ? grupo : null,
+                    hasGrupo ? grupoId : null,
                     string.IsNullOrEmpty(ordenarPor) ? "nome" : ordenarPor),
                 cancellationToken);
             return Results.Ok(result);
@@ -294,7 +293,7 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarExercicioCommand(null, request.Nome, request.GrupoMuscular, request.Descricao),
+                new CriarExercicioCommand(null, request.Nome, request.GrupoMuscularId, request.Descricao),
                 cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Created($"/admin/exercicios/{result.Value.ExercicioId}", result.Value);
@@ -310,7 +309,7 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarExercicioCommand(id, null, request.Nome, request.GrupoMuscular, request.Descricao),
+                new AtualizarExercicioCommand(id, null, request.Nome, request.GrupoMuscularId, request.Descricao),
                 cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
@@ -536,5 +535,5 @@ public record CriarPlanoTreinadorRequest(string Nome, forzion.tech.Domain.Enums.
 public record AtualizarPlanoTreinadorRequest(string? Nome, forzion.tech.Domain.Enums.TierPlano? Tier, int? MaxAlunos, decimal? Preco, string? Descricao = null);
 public record CriarGrupoMuscularRequest(string Nome);
 public record AtualizarGrupoMuscularRequest(string Nome);
-public record CriarExercicioGlobalRequest(string Nome, forzion.tech.Domain.Enums.TipoGrupoMuscular GrupoMuscular, string? Descricao);
-public record AtualizarExercicioGlobalRequest(string? Nome, forzion.tech.Domain.Enums.TipoGrupoMuscular? GrupoMuscular, string? Descricao);
+public record CriarExercicioGlobalRequest(string Nome, Guid GrupoMuscularId, string? Descricao);
+public record AtualizarExercicioGlobalRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao);

@@ -84,7 +84,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         "qrcode", "https://example.com/qr", DateTime.UtcNow.AddHours(1), null, null, DateTime.UtcNow);
 
     private static readonly ExercicioResponse RespostaExercicio = new(
-        Guid.NewGuid(), "Supino", TipoGrupoMuscular.Peito, null, TreinadorId, false, DateTime.UtcNow, null);
+        Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null, TreinadorId, false, DateTime.UtcNow, null);
 
     private static readonly GrupoMuscularResponse RespostaGrupoMuscular = new(
         Guid.NewGuid(), "Peitoral", DateTime.UtcNow, null);
@@ -514,7 +514,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .ReturnsAsync(Result.Success(RespostaExercicio));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/exercicios",
-            new { nome = "Supino", grupoMuscular = 0 });
+            new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -527,7 +527,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/exercicios",
-            new { nome = "Supino", grupoMuscular = 0 });
+            new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
@@ -753,6 +753,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<ListarExerciciosHandler> ListarExerciciosHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<ILogger<ListarExerciciosHandler>>());
 
         public Mock<ListarPacotesAlunoHandler> ListarPacotesHandlerMock { get; } = new(
@@ -832,17 +833,20 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<CopiarExercicioGlobalHandler> CopiarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<CopiarExercicioGlobalHandler>>());
 
         public Mock<CriarExercicioHandler> CriarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<CriarExercicioCommand>>(),
             Mock.Of<ILogger<CriarExercicioHandler>>());
 
         public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>());
 
         public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(
