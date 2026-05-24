@@ -11,6 +11,10 @@
 # Hooks husky sao shell scripts: sempre LF (CRLF quebra o shebang/exec no git).
 frontend/.husky/* text eol=lf
 
+# Snapshots do Verify (Fase 6): mantidos com LF para casar com o que o Verify
+# escreve em runtime — evita falso-diff no checkout (Windows e Linux CI).
+*.verified.txt text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
