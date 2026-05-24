@@ -11,6 +11,13 @@
 # Hooks husky sao shell scripts: sempre LF (CRLF quebra o shebang/exec no git).
 frontend/.husky/* text eol=lf
 
+# Scripts shell: LF (CRLF quebra o shebang ao rodar via bash).
+*.sh text eol=lf
+
+# Spec OpenAPI versionado: LF para casar com a geração no CI Linux e evitar
+# falso-positivo de drift por diferença de EOL (ver .github/workflows/openapi-drift.yml).
+docs/api/*.json text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
