@@ -5,6 +5,7 @@ using forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -33,7 +34,7 @@ public class AtualizarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetorna()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
+        var aluno = new AlunoBuilder().ComNome("João").Build();
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var result = await _handler.HandleAsync(new AtualizarAlunoCommand(aluno.Id, "Maria", null, null));
@@ -45,9 +46,9 @@ public class AtualizarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AcessoNegado_LancaAcessoNegadoException()
     {
-        var alunoId = Guid.NewGuid();
         var treinadorId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
+        var aluno = new AlunoBuilder().ComNome("João").Build();
+        var alunoId = aluno.Id;
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.IsTreinador).Returns(true);
@@ -79,7 +80,7 @@ public class AtualizarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
+        var aluno = new AlunoBuilder().ComNome("João").Build();
         aluno.Ativar();
         aluno.Inativar();
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
