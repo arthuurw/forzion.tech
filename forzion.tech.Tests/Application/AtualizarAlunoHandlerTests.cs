@@ -23,9 +23,9 @@ public class AtualizarAlunoHandlerTests
     {
         _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
         _handler = new AtualizarAlunoHandler(
-            _alunoRepo.Object, 
+            _alunoRepo.Object,
             _vinculoRepo.Object,
-            _unitOfWork.Object, 
+            _unitOfWork.Object,
             _userContext.Object,
             _logger.Object);
     }
@@ -52,7 +52,7 @@ public class AtualizarAlunoHandlerTests
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.IsTreinador).Returns(true);
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
-        
+
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((VinculoTreinadorAluno?)null);

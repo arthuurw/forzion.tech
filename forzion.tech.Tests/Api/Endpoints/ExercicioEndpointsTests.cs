@@ -112,7 +112,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
 
     public class ExercicioWebFactory : WebApplicationFactory<Program>
     {
-        private static readonly IValidator<CriarExercicioCommand> CriarValidator = 
+        private static readonly IValidator<CriarExercicioCommand> CriarValidator =
             new CriarExercicioCommandValidator();
 
         public Mock<CriarExercicioHandler> CriarHandlerMock { get; } = new(

@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    Propriedades compartilhadas por todos os projetos .NET da solution.
+    Centraliza o que antes era repetido em cada .csproj (TFM, ImplicitUsings,
+    Nullable) e habilita o baseline de qualidade do harness backend (Fase 0).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Qualidade: analyzers .NET no nível mais recente + estilo verificado no build. -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!--
+      Endurecimento faseado: nullable já é zero-warning hoje, então promover
+      avisos de nullability a erro trava regressão sem quebrar o build atual.
+      Demais regras seguem como warning/suggestion e endurecem em fases futuras.
+    -->
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

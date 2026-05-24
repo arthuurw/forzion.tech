@@ -53,7 +53,7 @@ public class RemoverExercicioHandlerTests
         var treinadorLogadoId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, outroTreinadorId);
-        
+
         _userContext.Setup(u => u.PerfilId).Returns(treinadorLogadoId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 

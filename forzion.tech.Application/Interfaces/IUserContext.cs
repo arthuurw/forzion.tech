@@ -16,6 +16,6 @@ public interface IUserContext
     DateTime TokenExpiraEm { get; }
 
     bool IsSystemAdmin => TipoConta == TipoConta.SystemAdmin;
-    bool IsTreinador  => TipoConta == TipoConta.Treinador;
-    bool IsAluno      => TipoConta == TipoConta.Aluno;
+    bool IsTreinador => TipoConta == TipoConta.Treinador;
+    bool IsAluno => TipoConta == TipoConta.Aluno;
 }

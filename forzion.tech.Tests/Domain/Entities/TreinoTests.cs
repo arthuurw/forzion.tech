@@ -58,7 +58,7 @@ public class TreinoTests
     {
         var act = () => Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId,
             dataInicio: new DateOnly(2025, 6, 1),
-            dataFim:    new DateOnly(2025, 5, 1));
+            dataFim: new DateOnly(2025, 5, 1));
 
         act.Should().Throw<DomainException>();
     }
@@ -151,7 +151,7 @@ public class TreinoTests
         var t = CriarTreino();
         var act = () => t.Atualizar(null, null,
             dataInicio: new DateOnly(2025, 6, 1),
-            dataFim:    new DateOnly(2025, 5, 1));
+            dataFim: new DateOnly(2025, 5, 1));
 
         act.Should().Throw<DomainException>();
     }
@@ -161,7 +161,7 @@ public class TreinoTests
     {
         var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId,
             dataInicio: new DateOnly(2025, 1, 1),
-            dataFim:    new DateOnly(2025, 12, 31));
+            dataFim: new DateOnly(2025, 12, 31));
 
         t.Atualizar(null, null, limparDataInicio: true, limparDataFim: true);
 
