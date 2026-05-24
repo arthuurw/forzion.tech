@@ -3,6 +3,11 @@
 ###############################################################################
 * text=auto
 
+# .cs sempre com CRLF no working tree (Windows e Linux CI), casando com o
+# .editorconfig (end_of_line=crlf). Sem isso, o checkout no CI Linux fica LF
+# e o gate `dotnet format --verify-no-changes` falharia. O repo continua LF.
+*.cs text eol=crlf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

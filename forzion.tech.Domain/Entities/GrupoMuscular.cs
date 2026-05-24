@@ -15,7 +15,7 @@ public class GrupoMuscular
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome do grupo muscular é obrigatório.");
-        
+
         if (nome.Trim().Length > 50)
             throw new DomainException("O nome do grupo muscular deve ter no máximo 50 caracteres.");
 
@@ -31,7 +31,7 @@ public class GrupoMuscular
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome do grupo muscular não pode ser vazio.");
-        
+
         if (nome.Trim().Length > 50)
             throw new DomainException("O nome do grupo muscular deve ter no máximo 50 caracteres.");
 

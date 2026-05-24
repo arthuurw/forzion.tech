@@ -9,9 +9,6 @@
     broker. Sem PACT_BROKER_BASE_URL o teste e no-op.
   -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
