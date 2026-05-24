@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Verificacao do provider Pact (forzion-api) contra os contratos publicados
+    no broker pelo consumer (forzion-frontend).
+
+    Projeto ISOLADO da solution principal: o gate (`dotnet test forzion.tech.Tests`)
+    NAO roda isto. So o workflow pact-provider.yml executa, com os secrets do
+    broker. Sem PACT_BROKER_BASE_URL o teste e no-op.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PactNet" Version="4.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\forzion.tech.Domain\forzion.tech.Domain.csproj" />
+    <ProjectReference Include="..\forzion.tech.Application\forzion.tech.Application.csproj" />
+    <ProjectReference Include="..\forzion.tech.Infrastructure\forzion.tech.Infrastructure.csproj" />
+    <ProjectReference Include="..\forzion.tech.Api\forzion.tech.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
