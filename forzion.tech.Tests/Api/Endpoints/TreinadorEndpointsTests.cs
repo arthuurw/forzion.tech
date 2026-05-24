@@ -775,6 +775,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<IniciarOnboardingTreinadorHandler> IniciarOnboardingHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IContaRepository>(),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(),
@@ -782,6 +783,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<VerificarOnboardingTreinadorHandler> VerificarOnboardingHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<VerificarOnboardingTreinadorHandler>>());
@@ -789,7 +791,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<GerarCobrancaMensalHandler> GerarCobrancaHandlerMock { get; } = new(
             Mock.Of<IAssinaturaRepository>(),
             Mock.Of<IPagamentoRepository>(),
-            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(),
             Microsoft.Extensions.Options.Options.Create(new PaymentSettings()),

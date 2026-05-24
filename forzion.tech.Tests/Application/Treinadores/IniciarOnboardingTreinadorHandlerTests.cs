@@ -14,6 +14,7 @@ namespace forzion.tech.Tests.Application.Treinadores;
 public class IniciarOnboardingTreinadorHandlerTests
 {
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -23,8 +24,8 @@ public class IniciarOnboardingTreinadorHandlerTests
     public IniciarOnboardingTreinadorHandlerTests()
     {
         _handler = new IniciarOnboardingTreinadorHandler(
-            _treinadorRepo.Object, _contaRepo.Object, _stripeService.Object,
-            _unitOfWork.Object, _logger.Object);
+            _treinadorRepo.Object, _contaRecebimentoRepo.Object, _contaRepo.Object,
+            _stripeService.Object, _unitOfWork.Object, _logger.Object);
     }
 
     [Fact]
@@ -33,16 +34,24 @@ public class IniciarOnboardingTreinadorHandlerTests
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
         var conta = Conta.Criar(Email.Criar("carlos@test.com"), "hash", TipoConta.Treinador);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
         _contaRepo.Setup(r => r.ObterPorIdAsync(treinador.ContaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
         _stripeService.Setup(s => s.CriarContaConnectAsync("carlos@test.com", "Carlos", It.IsAny<CancellationToken>()))
             .ReturnsAsync("acct_new");
         _stripeService.Setup(s => s.GerarLinkOnboardingAsync("acct_new", "https://ret", "https://cancel", It.IsAny<CancellationToken>()))
             .ReturnsAsync("https://stripe.com/onboard");
 
+        ContaRecebimento? adicionada = null;
+        _contaRecebimentoRepo.Setup(r => r.AdicionarAsync(It.IsAny<ContaRecebimento>(), It.IsAny<CancellationToken>()))
+            .Callback<ContaRecebimento, CancellationToken>((c, _) => adicionada = c);
+
         var result = await _handler.HandleAsync(new IniciarOnboardingTreinadorCommand(treinador.Id, "https://ret", "https://cancel"));
 
         result.Value.Should().Be("https://stripe.com/onboard");
-        treinador.StripeConnectAccountId.Should().Be("acct_new");
+        adicionada.Should().NotBeNull();
+        adicionada!.TreinadorId.Should().Be(treinador.Id);
+        adicionada.StripeConnectAccountId.Should().Be("acct_new");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -50,8 +59,11 @@ public class IniciarOnboardingTreinadorHandlerTests
     public async Task HandleAsync_TreinadorComContaExistente_NaoCriaNovaConta()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        treinador.ConfigurarStripeConnect("acct_existing");
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id);
+        contaRecebimento.ConfigurarStripeConnect("acct_existing");
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
         _stripeService.Setup(s => s.GerarLinkOnboardingAsync("acct_existing", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("https://stripe.com/onboard");
 

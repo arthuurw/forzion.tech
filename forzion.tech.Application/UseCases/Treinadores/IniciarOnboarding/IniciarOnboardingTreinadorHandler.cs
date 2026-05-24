@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Results;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -8,6 +9,7 @@ namespace forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 
 public class IniciarOnboardingTreinadorHandler(
     ITreinadorRepository treinadorRepository,
+    IContaRecebimentoRepository contaRecebimentoRepository,
     IContaRepository contaRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
@@ -22,7 +24,14 @@ public class IniciarOnboardingTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        if (string.IsNullOrEmpty(treinador.StripeConnectAccountId))
+        var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
+        if (contaRecebimento is null)
+        {
+            contaRecebimento = ContaRecebimento.Criar(treinador.Id);
+            await contaRecebimentoRepository.AdicionarAsync(contaRecebimento, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
         {
             var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, cancellationToken).ConfigureAwait(false)
                 ?? throw new DomainException("Conta do treinador não encontrada.");
@@ -30,7 +39,7 @@ public class IniciarOnboardingTreinadorHandler(
             var accountId = await stripeService.CriarContaConnectAsync(
                 conta.Email.Value, treinador.Nome, cancellationToken).ConfigureAwait(false);
 
-            treinador.ConfigurarStripeConnect(accountId);
+            contaRecebimento.ConfigurarStripeConnect(accountId);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
             logger.LogInformation("Conta Stripe Connect criada para treinador {TreinadorId}: {AccountId}.",
@@ -38,7 +47,7 @@ public class IniciarOnboardingTreinadorHandler(
         }
 
         var link = await stripeService.GerarLinkOnboardingAsync(
-            treinador.StripeConnectAccountId!,
+            contaRecebimento.StripeConnectAccountId!,
             command.UrlRetorno,
             command.UrlCancelamento,
             cancellationToken).ConfigureAwait(false);

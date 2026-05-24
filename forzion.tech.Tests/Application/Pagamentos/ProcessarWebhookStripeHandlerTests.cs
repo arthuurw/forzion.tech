@@ -13,7 +13,7 @@ public class ProcessarWebhookStripeHandlerTests
 {
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
     private readonly Mock<IAssinaturaRepository> _assinaturaRepo = new();
-    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _logger = new();
@@ -24,7 +24,7 @@ public class ProcessarWebhookStripeHandlerTests
     public ProcessarWebhookStripeHandlerTests()
     {
         _handler = new ProcessarWebhookStripeHandler(
-            _pagamentoRepo.Object, _assinaturaRepo.Object, _treinadorRepo.Object,
+            _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
             _stripeService.Object, _unitOfWork.Object, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
@@ -178,16 +178,16 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_AccountUpdatedComChargesEnabled_ConfirmaOnboarding()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        treinador.ConfigurarStripeConnect("acct_ok");
-        _treinadorRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_ok", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(treinador);
+        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid());
+        contaRecebimento.ConfigurarStripeConnect("acct_ok");
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_ok", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
 
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(AccountPayload("acct_ok", true), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
-        treinador.StripeOnboardingCompleto.Should().BeTrue();
+        contaRecebimento.OnboardingCompleto.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

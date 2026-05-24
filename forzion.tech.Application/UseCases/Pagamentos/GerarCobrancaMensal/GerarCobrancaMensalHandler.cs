@@ -13,7 +13,7 @@ namespace forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 public class GerarCobrancaMensalHandler(
     IAssinaturaRepository assinaturaRepository,
     IPagamentoRepository pagamentoRepository,
-    ITreinadorRepository treinadorRepository,
+    IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
     IOptions<PaymentSettings> paymentSettings,
@@ -47,10 +47,9 @@ public class GerarCobrancaMensalHandler(
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(assinatura.TreinadorId, cancellationToken).ConfigureAwait(false)
-            ?? throw new TreinadorNaoEncontradoException();
+        var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(assinatura.TreinadorId, cancellationToken).ConfigureAwait(false);
 
-        if (!treinador.StripeOnboardingCompleto || string.IsNullOrEmpty(treinador.StripeConnectAccountId))
+        if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
             throw new DomainException("Treinador sem conta Stripe configurada.");
 
         var pagamento = Pagamento.Criar(assinatura.Id, assinatura.Valor, command.Metodo);
@@ -63,7 +62,7 @@ public class GerarCobrancaMensalHandler(
             {
                 var cartaoResult = await stripeService.CriarCartaoPaymentIntentAsync(
                     assinatura.Valor,
-                    treinador.StripeConnectAccountId,
+                    contaRecebimento.StripeConnectAccountId,
                     pagamento.Id,
                     _taxaPlataformaPercent,
                     cancellationToken).ConfigureAwait(false);
@@ -74,7 +73,7 @@ public class GerarCobrancaMensalHandler(
             {
                 var pixResult = await stripeService.CriarPixPaymentIntentAsync(
                     assinatura.Valor,
-                    treinador.StripeConnectAccountId,
+                    contaRecebimento.StripeConnectAccountId,
                     pagamento.Id,
                     _taxaPlataformaPercent,
                     cancellationToken).ConfigureAwait(false);

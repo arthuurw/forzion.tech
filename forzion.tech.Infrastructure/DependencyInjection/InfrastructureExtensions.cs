@@ -65,6 +65,8 @@ public static class InfrastructureExtensions
         services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
         services.AddScoped<IAssinaturaRepository, AssinaturaRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
+        services.AddScoped<IAssinanteRepository, AssinanteRepository>();
+        services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
 
         // Stripe — valida no startup que SecretKey e WebhookSecret estão configurados
         services.AddOptions<StripeSettings>()
@@ -115,6 +117,10 @@ public static class InfrastructureExtensions
 
         // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaHandler>();
+
+        // Domain event handlers — projeção billing
+        services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();
+        services.AddScoped<IDomainEventHandler<AlunoAtualizadoEvent>, AlunoAtualizadoSincronizarAssinanteHandler>();
 
         // WhatsApp notifier — Evolution API when configured, no-op otherwise
         var whatsAppBase = configuration["WhatsApp:BaseUrl"];

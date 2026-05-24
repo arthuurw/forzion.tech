@@ -9,7 +9,7 @@ public sealed class VinculoAprovadoCriarAssinaturaHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IPacoteAlunoRepository pacoteRepository,
     IAssinaturaRepository assinaturaRepository,
-    ITreinadorRepository treinadorRepository,
+    IContaRecebimentoRepository contaRecebimentoRepository,
     IUnitOfWork unitOfWork,
     ILogger<VinculoAprovadoCriarAssinaturaHandler> logger) : IDomainEventHandler<VinculoAprovadoEvent>
 {
@@ -22,8 +22,8 @@ public sealed class VinculoAprovadoCriarAssinaturaHandler(
             return;
         }
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(domainEvent.TreinadorId, cancellationToken).ConfigureAwait(false);
-        if (treinador is null || !treinador.StripeOnboardingCompleto)
+        var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(domainEvent.TreinadorId, cancellationToken).ConfigureAwait(false);
+        if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
         {
             logger.LogWarning("Treinador {TreinadorId} sem onboarding Stripe — assinatura não criada.", domainEvent.TreinadorId);
             return;

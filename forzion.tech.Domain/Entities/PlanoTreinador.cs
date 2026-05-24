@@ -1,9 +1,10 @@
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Interfaces;
 
 namespace forzion.tech.Domain.Entities;
 
-public class PlanoTreinador
+public class PlanoTreinador : ICapacidadePlano
 {
     public Guid Id { get; private set; }
     public string Nome { get; private set; } = string.Empty;
