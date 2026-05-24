@@ -297,25 +297,25 @@ describe("adminApi.listExerciciosGlobais", () => {
   });
 
   it("chama GET /admin/exercicios com filtros", () => {
-    adminApi.listExerciciosGlobais({ nome: "Supino", grupoMuscular: "Peito", pagina: 1, tamanhoPagina: 20 });
+    adminApi.listExerciciosGlobais({ nome: "Supino", grupoMuscularId: "gm-01", pagina: 1, tamanhoPagina: 20 });
     expect(mockGet).toHaveBeenCalledWith("/admin/exercicios", {
-      params: { nome: "Supino", grupoMuscular: "Peito", pagina: 1, tamanhoPagina: 20 },
+      params: { nome: "Supino", grupoMuscularId: "gm-01", pagina: 1, tamanhoPagina: 20 },
     });
   });
 });
 
 describe("adminApi.criarExercicioGlobal", () => {
   it("chama POST /admin/exercicios com dados", () => {
-    adminApi.criarExercicioGlobal({ nome: "Supino Reto", grupoMuscular: "Peito", descricao: "Barra" });
+    adminApi.criarExercicioGlobal({ nome: "Supino Reto", grupoMuscularId: "gm-01", descricao: "Barra" });
     expect(mockPost).toHaveBeenCalledWith("/admin/exercicios", {
-      nome: "Supino Reto", grupoMuscular: "Peito", descricao: "Barra",
+      nome: "Supino Reto", grupoMuscularId: "gm-01", descricao: "Barra",
     });
   });
 
   it("descricao null quando omitida", () => {
-    adminApi.criarExercicioGlobal({ nome: "Agachamento", grupoMuscular: "Pernas" });
+    adminApi.criarExercicioGlobal({ nome: "Agachamento", grupoMuscularId: "gm-02" });
     expect(mockPost).toHaveBeenCalledWith("/admin/exercicios", {
-      nome: "Agachamento", grupoMuscular: "Pernas",
+      nome: "Agachamento", grupoMuscularId: "gm-02",
     });
   });
 });

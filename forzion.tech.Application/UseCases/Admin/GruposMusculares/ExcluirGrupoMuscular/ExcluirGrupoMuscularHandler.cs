@@ -6,6 +6,7 @@ namespace forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoM
 
 public class ExcluirGrupoMuscularHandler(
     IGrupoMuscularRepository repository,
+    IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork)
 {
     public virtual Task HandleAsync(ExcluirGrupoMuscularCommand command, CancellationToken cancellationToken = default)
@@ -18,6 +19,9 @@ public class ExcluirGrupoMuscularHandler(
     {
         var grupo = await repository.ObterPorIdAsync(command.Id, cancellationToken)
             ?? throw new GrupoMuscularNaoEncontradoException();
+
+        if (await exercicioRepository.ExisteComGrupoMuscularAsync(command.Id, cancellationToken).ConfigureAwait(false))
+            throw new DomainException("Não é possível excluir um grupo muscular em uso por exercícios.");
 
         repository.Excluir(grupo);
         await unitOfWork.CommitAsync(cancellationToken);

@@ -116,7 +116,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         Guid.NewGuid(), TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);
 
     private static readonly ExercicioResponse RespostaExercicio = new(
-        Guid.NewGuid(), "Supino", TipoGrupoMuscular.Peito, null, null, true, DateTime.UtcNow, null);
+        Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null, null, true, DateTime.UtcNow, null);
 
     private static readonly ListarExerciciosResponse RespostaExercicios =
         new([RespostaExercicio], 1, 1, 20);
@@ -1007,7 +1007,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .ReturnsAsync(Result.Success(RespostaExercicio));
 
         var response = await CriarClienteAdmin()
-            .PostAsJsonAsync("/admin/exercicios", new { nome = "Supino", grupoMuscular = 1 });
+            .PostAsJsonAsync("/admin/exercicios", new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -1020,7 +1020,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteAdmin()
-            .PostAsJsonAsync("/admin/exercicios", new { nome = "Supino", grupoMuscular = 1 });
+            .PostAsJsonAsync("/admin/exercicios", new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
@@ -1209,20 +1209,24 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
         public Mock<ExcluirGrupoMuscularHandler> ExcluirGrupoHandlerMock { get; } = new(
             Mock.Of<IGrupoMuscularRepository>(),
+            Mock.Of<IExercicioRepository>(),
             Mock.Of<IUnitOfWork>());
 
         public Mock<ListarExerciciosHandler> ListarExerciciosHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<ILogger<ListarExerciciosHandler>>());
 
         public Mock<CriarExercicioHandler> CriarExercicioAdminHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<CriarExercicioCommand>>(),
             Mock.Of<ILogger<CriarExercicioHandler>>());
 
         public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>());
 
         public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(

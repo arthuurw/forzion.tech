@@ -19,10 +19,6 @@ import type {
   PacoteAlunoResponse,
 } from "@/types";
 
-export type GrupoMuscularEnum =
-  | "Peito" | "Costas" | "Ombro" | "Biceps" | "Triceps"
-  | "Pernas" | "Gluteos" | "Core" | "FullBody";
-
 export interface ListarExerciciosGlobaisResponse {
   items: ExercicioResponse[];
   total: number;
@@ -98,15 +94,15 @@ export const adminApi = {
     return apiClient.delete(`/admin/grupos-musculares/${id}`);
   },
 
-  listExerciciosGlobais(params?: { pagina?: number; tamanhoPagina?: number; nome?: string; grupoMuscular?: string; ordenarPor?: string }) {
+  listExerciciosGlobais(params?: { pagina?: number; tamanhoPagina?: number; nome?: string; grupoMuscularId?: string; ordenarPor?: string }) {
     return apiClient.get<ListarExerciciosGlobaisResponse>("/admin/exercicios", { params });
   },
 
-  criarExercicioGlobal(data: { nome: string; grupoMuscular: GrupoMuscularEnum; descricao?: string | null }) {
+  criarExercicioGlobal(data: { nome: string; grupoMuscularId: string; descricao?: string | null }) {
     return apiClient.post<ExercicioResponse>("/admin/exercicios", data);
   },
 
-  atualizarExercicioGlobal(exercicioId: string, data: { nome?: string; grupoMuscular?: GrupoMuscularEnum; descricao?: string | null }) {
+  atualizarExercicioGlobal(exercicioId: string, data: { nome?: string; grupoMuscularId?: string; descricao?: string | null }) {
     return apiClient.patch<ExercicioResponse>(`/admin/exercicios/${exercicioId}`, data);
   },
 

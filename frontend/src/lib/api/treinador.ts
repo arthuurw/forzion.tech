@@ -42,7 +42,7 @@ export interface AdicionarExercicioData {
 export interface CriarExercicioData {
   nome: string;
   descricao?: string | null;
-  grupoMuscular?: string | null;
+  grupoMuscularId: string;
 }
 
 export interface CriarPacoteData {
@@ -123,7 +123,7 @@ export const treinadorApi = {
   },
 
   // ── Biblioteca ──
-  listExercicios(params?: { global?: boolean; pagina?: number; tamanhoPagina?: number; nome?: string; grupoMuscular?: string; ordenarPor?: string }) {
+  listExercicios(params?: { global?: boolean; pagina?: number; tamanhoPagina?: number; nome?: string; grupoMuscularId?: string; ordenarPor?: string }) {
     return apiClient.get<PaginatedResponse<ExercicioResponse>>("/treinador/exercicios", { params });
   },
   criarExercicio(data: CriarExercicioData) {
@@ -132,7 +132,7 @@ export const treinadorApi = {
   copiarExercicioGlobal(exercicioId: string) {
     return apiClient.post<ExercicioResponse>(`/treinador/exercicios/${exercicioId}/copiar`);
   },
-  atualizarExercicio(exercicioId: string, data: { nome?: string; grupoMuscular?: string; descricao?: string | null }) {
+  atualizarExercicio(exercicioId: string, data: { nome?: string; grupoMuscularId?: string; descricao?: string | null }) {
     return apiClient.patch<ExercicioResponse>(`/treinador/exercicios/${exercicioId}`, data);
   },
   excluirExercicio(exercicioId: string) {
