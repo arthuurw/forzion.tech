@@ -8,6 +8,9 @@
 # e o gate `dotnet format --verify-no-changes` falharia. O repo continua LF.
 *.cs text eol=crlf
 
+# Hooks husky sao shell scripts: sempre LF (CRLF quebra o shebang/exec no git).
+frontend/.husky/* text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
