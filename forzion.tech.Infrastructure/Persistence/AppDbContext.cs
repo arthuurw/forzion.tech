@@ -14,8 +14,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<Conta> Contas => Set<Conta>();
     public DbSet<SystemUser> SystemUsers => Set<SystemUser>();
     public DbSet<Treinador> Treinadores => Set<Treinador>();
-    public DbSet<PlanoTreinador> PlanosTreinador => Set<PlanoTreinador>();
-    public DbSet<PacoteAluno> PacotesAluno => Set<PacoteAluno>();
+    public DbSet<PlanoPlataforma> PlanosPlataforma => Set<PlanoPlataforma>();
+    public DbSet<Pacote> Pacotes => Set<Pacote>();
     public DbSet<Aluno> Alunos => Set<Aluno>();
     public DbSet<VinculoTreinadorAluno> VinculosTreinadorAluno => Set<VinculoTreinadorAluno>();
     public DbSet<LogAprovacao> LogsAprovacao => Set<LogAprovacao>();
@@ -27,8 +27,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<ExecucaoTreino> ExecucoesTreino => Set<ExecucaoTreino>();
     internal DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
     public DbSet<TokenRevogado> TokensRevogados => Set<TokenRevogado>();
-    public DbSet<Assinatura> Assinaturas => Set<Assinatura>();
+    public DbSet<AssinaturaAluno> AssinaturaAlunos => Set<AssinaturaAluno>();
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
+    public DbSet<Assinante> Assinantes => Set<Assinante>();
+    public DbSet<ContaRecebimento> ContasRecebimento => Set<ContaRecebimento>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {

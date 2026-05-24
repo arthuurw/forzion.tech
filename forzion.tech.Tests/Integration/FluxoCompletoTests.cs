@@ -21,8 +21,8 @@ public class FluxoCompletoTests
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
-    private readonly Mock<IPlanoTreinadorRepository> _planoRepo = new();
-    private readonly Mock<IPacoteAlunoRepository> _pacoteRepo = new();
+    private readonly Mock<IPlanoPlataformaRepository> _planoRepo = new();
+    private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
@@ -80,7 +80,7 @@ public class FluxoCompletoTests
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
         treinador.Aprovar(Guid.NewGuid());
-        var pacote = PacoteAluno.Criar(treinador.Id, "Pacote Basico", 0);
+        var pacote = Pacote.Criar(treinador.Id, "Pacote Basico", 0);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
@@ -104,11 +104,11 @@ public class FluxoCompletoTests
     public async Task AprovarVinculo_DentroDoLimite_AprovaSemExcecao()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var plano = PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 0);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 0);
         treinador.AtribuirPlano(plano.Id);
         var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
         var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
-        var pacote = PacoteAluno.Criar(treinador.Id, "Pacote", 0);
+        var pacote = Pacote.Criar(treinador.Id, "Pacote", 0);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);

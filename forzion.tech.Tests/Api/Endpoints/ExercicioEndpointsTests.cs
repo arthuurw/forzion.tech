@@ -46,12 +46,12 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     [Fact]
     public async Task Post_Criar_DadosValidos_Retorna201()
     {
-        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", TipoGrupoMuscular.Peito, "Desc", TreinadorId, false, DateTime.UtcNow, null);
+        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", "Desc", TreinadorId, false, DateTime.UtcNow, null);
         _factory.CriarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(responseExercicio));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
-            new { nome = "Supino", grupoMuscular = TipoGrupoMuscular.Peito, descricao = "Desc" });
+            new { nome = "Supino", grupoMuscularId = Guid.NewGuid(), descricao = "Desc" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -60,7 +60,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     public async Task Post_Criar_SemAutenticacao_Retorna401()
     {
         var response = await _factory.CreateClient().PostAsJsonAsync("/exercicios",
-            new { nome = "X", grupoMuscular = TipoGrupoMuscular.Peito });
+            new { nome = "X", grupoMuscularId = Guid.NewGuid() });
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -72,7 +72,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
             .ThrowsAsync(new DomainException("Nome duplicado."));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
-            new { nome = "Supino", grupoMuscular = TipoGrupoMuscular.Peito });
+            new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
@@ -86,7 +86,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
                 new[] { new FluentValidation.Results.ValidationFailure("Nome", "Obrigatório") }));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
-            new { nome = "", grupoMuscular = TipoGrupoMuscular.Peito });
+            new { nome = "", grupoMuscularId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -117,6 +117,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
 
         public Mock<CriarExercicioHandler> CriarHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
             CriarValidator,
             Mock.Of<ILogger<CriarExercicioHandler>>())
@@ -126,6 +127,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
 
         public Mock<ListarExerciciosHandler> ListarHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<ILogger<ListarExerciciosHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

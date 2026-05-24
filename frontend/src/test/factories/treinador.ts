@@ -10,7 +10,7 @@ export function buildTreinador(
     nome: faker.person.fullName(),
     contaId: faker.string.uuid(),
     status,
-    planoTreinadorId: faker.string.uuid(),
+    planoPlataformaId: faker.string.uuid(),
     createdAt: faker.date.recent({ days: 60 }).toISOString(),
     ...overrides,
   };

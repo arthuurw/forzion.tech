@@ -314,7 +314,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Atribui um PlanoTreinador a um treinador */
+        /** Atribui um PlanoPlataforma a um treinador */
         patch: {
             parameters: {
                 query?: never;
@@ -375,7 +375,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PlanoTreinadorResponse"][];
+                        "application/json": components["schemas"]["PlanoPlataformaResponse"][];
                     };
                 };
             };
@@ -391,7 +391,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["CriarPlanoTreinadorRequest"];
+                    "application/json": components["schemas"]["CriarPlanoPlataformaRequest"];
                 };
             };
             responses: {
@@ -401,7 +401,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PlanoTreinadorResponse"];
+                        "application/json": components["schemas"]["PlanoPlataformaResponse"];
                     };
                 };
                 /** @description Bad Request */
@@ -475,7 +475,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["AtualizarPlanoTreinadorRequest"];
+                    "application/json": components["schemas"]["AtualizarPlanoPlataformaRequest"];
                 };
             };
             responses: {
@@ -485,7 +485,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PlanoTreinadorResponse"];
+                        "application/json": components["schemas"]["PlanoPlataformaResponse"];
                     };
                 };
                 /** @description Not Found */
@@ -1285,7 +1285,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PacoteAlunoResponse"][];
+                        "application/json": components["schemas"]["PacoteResponse"][];
                     };
                 };
             };
@@ -1321,7 +1321,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["AssinaturaResponse"];
+                        "application/json": components["schemas"]["AssinaturaAlunoResponse"];
                     };
                 };
                 /** @description No Content */
@@ -2155,7 +2155,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PlanoTreinadorResponse"][];
+                        "application/json": components["schemas"]["PlanoPlataformaResponse"][];
                     };
                 };
             };
@@ -2193,7 +2193,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PacoteAlunoResponse"][];
+                        "application/json": components["schemas"]["PacoteResponse"][];
                     };
                 };
                 /** @description Not Found */
@@ -3689,7 +3689,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PacoteAlunoResponse"][];
+                        "application/json": components["schemas"]["PacoteResponse"][];
                     };
                 };
             };
@@ -3705,7 +3705,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["CriarPacoteAlunoRequest"];
+                    "application/json": components["schemas"]["CriarPacoteRequest"];
                 };
             };
             responses: {
@@ -3715,7 +3715,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PacoteAlunoResponse"];
+                        "application/json": components["schemas"]["PacoteResponse"];
                     };
                 };
                 /** @description Bad Request */
@@ -3807,7 +3807,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["AtualizarPacoteAlunoRequest"];
+                    "application/json": components["schemas"]["AtualizarPacoteRequest"];
                 };
             };
             responses: {
@@ -3817,7 +3817,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PacoteAlunoResponse"];
+                        "application/json": components["schemas"]["PacoteResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -4741,23 +4741,23 @@ export interface components {
         };
         AprovarVinculoRequest: {
             /** Format: uuid */
-            pacoteAlunoId?: string;
+            pacoteId?: string;
             trarFichas?: boolean;
         };
-        AssinaturaResponse: {
+        AssinaturaAlunoResponse: {
             /** Format: uuid */
-            assinaturaId?: string;
+            assinaturaAlunoId?: string;
             /** Format: uuid */
             vinculoId?: string;
             /** Format: uuid */
-            pacoteAlunoId?: string;
+            pacoteId?: string;
             /** Format: uuid */
             treinadorId?: string;
             /** Format: uuid */
             alunoId?: string;
             /** Format: double */
             valor?: number;
-            status?: components["schemas"]["AssinaturaStatus"];
+            status?: components["schemas"]["AssinaturaAlunoStatus"];
             /** Format: date-time */
             dataInicio?: string;
             /** Format: date-time */
@@ -4771,7 +4771,7 @@ export interface components {
          * Format: int32
          * @enum {integer}
          */
-        AssinaturaStatus: 0 | 1 | 2 | 3;
+        AssinaturaAlunoStatus: 0 | 1 | 2 | 3;
         AtribuirPlanoRequest: {
             /** Format: uuid */
             planoId?: string;
@@ -4797,7 +4797,7 @@ export interface components {
         AtualizarObservacaoExercicioRequest: {
             observacao?: string | null;
         };
-        AtualizarPacoteAlunoRequest: {
+        AtualizarPacoteRequest: {
             nome?: string | null;
             /** Format: double */
             preco?: number | null;
@@ -4806,7 +4806,7 @@ export interface components {
         AtualizarPerfilRequest: {
             nome?: string | null;
         };
-        AtualizarPlanoTreinadorRequest: {
+        AtualizarPlanoPlataformaRequest: {
             nome?: string | null;
             tier?: components["schemas"]["TierPlano"];
             /** Format: int32 */
@@ -4844,13 +4844,13 @@ export interface components {
         CriarGrupoMuscularRequest: {
             nome?: string | null;
         };
-        CriarPacoteAlunoRequest: {
+        CriarPacoteRequest: {
             nome?: string | null;
             /** Format: double */
             preco?: number;
             descricao?: string | null;
         };
-        CriarPlanoTreinadorRequest: {
+        CriarPlanoPlataformaRequest: {
             nome?: string | null;
             tier?: components["schemas"]["TierPlano"];
             /** Format: int32 */
@@ -5057,7 +5057,7 @@ export interface components {
             onboardingCompleto?: boolean;
             contaConfigurada?: boolean;
         };
-        PacoteAlunoResponse: {
+        PacoteResponse: {
             /** Format: uuid */
             pacoteId?: string;
             /** Format: uuid */
@@ -5076,7 +5076,7 @@ export interface components {
             /** Format: uuid */
             pagamentoId?: string;
             /** Format: uuid */
-            assinaturaId?: string;
+            assinaturaAlunoId?: string;
             /** Format: double */
             valor?: number;
             status?: components["schemas"]["PagamentoStatus"];
@@ -5101,7 +5101,7 @@ export interface components {
             email?: string | null;
             tipoConta?: string | null;
         };
-        PlanoTreinadorResponse: {
+        PlanoPlataformaResponse: {
             /** Format: uuid */
             planoId?: string;
             nome?: string | null;
@@ -5142,7 +5142,7 @@ export interface components {
         };
         ReativarVinculoRequest: {
             /** Format: uuid */
-            pacoteAlunoId?: string;
+            pacoteId?: string;
         };
         RegistrarAlunoRequest: {
             email?: string | null;
@@ -5278,7 +5278,7 @@ export interface components {
             nome?: string | null;
             status?: components["schemas"]["TreinadorStatus"];
             /** Format: uuid */
-            planoTreinadorId?: string | null;
+            planoPlataformaId?: string | null;
             /** Format: date-time */
             createdAt?: string;
         };
@@ -5375,7 +5375,7 @@ export interface components {
             /** Format: uuid */
             alunoId?: string;
             /** Format: uuid */
-            pacoteAlunoId?: string | null;
+            pacoteId?: string | null;
             status?: components["schemas"]["VinculoStatus"];
             nomeAluno?: string | null;
             emailAluno?: string | null;
@@ -5391,7 +5391,7 @@ export interface components {
             /** Format: uuid */
             alunoId?: string;
             /** Format: uuid */
-            pacoteAlunoId?: string | null;
+            pacoteId?: string | null;
             status?: components["schemas"]["VinculoStatus"];
             /** Format: date-time */
             createdAt?: string;

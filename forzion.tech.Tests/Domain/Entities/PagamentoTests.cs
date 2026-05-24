@@ -7,10 +7,10 @@ namespace forzion.tech.Tests.Domain.Entities;
 
 public class PagamentoTests
 {
-    private static readonly Guid AssinaturaId = Guid.NewGuid();
+    private static readonly Guid AssinaturaAlunoId = Guid.NewGuid();
     private const decimal Valor = 150m;
 
-    private static Pagamento CriarValido() => Pagamento.Criar(AssinaturaId, Valor);
+    private static Pagamento CriarValido() => Pagamento.Criar(AssinaturaAlunoId, Valor);
 
     // --- Criar ---
 
@@ -20,7 +20,7 @@ public class PagamentoTests
         var p = CriarValido();
 
         p.Id.Should().NotBeEmpty();
-        p.AssinaturaId.Should().Be(AssinaturaId);
+        p.AssinaturaAlunoId.Should().Be(AssinaturaAlunoId);
         p.Valor.Should().Be(Valor);
         p.Status.Should().Be(PagamentoStatus.Pendente);
         p.StripePaymentIntentId.Should().BeNull();
@@ -29,7 +29,7 @@ public class PagamentoTests
     }
 
     [Fact]
-    public void Criar_AssinaturaIdVazio_LancaDomainException()
+    public void Criar_AssinaturaAlunoIdVazio_LancaDomainException()
     {
         var act = () => Pagamento.Criar(Guid.Empty, Valor);
         act.Should().Throw<DomainException>().WithMessage("O identificador da assinatura é inválido.");
@@ -40,7 +40,7 @@ public class PagamentoTests
     [InlineData(-1)]
     public void Criar_ValorInvalido_LancaDomainException(decimal valor)
     {
-        var act = () => Pagamento.Criar(AssinaturaId, valor);
+        var act = () => Pagamento.Criar(AssinaturaAlunoId, valor);
         act.Should().Throw<DomainException>().WithMessage("O valor do pagamento deve ser maior que zero.");
     }
 

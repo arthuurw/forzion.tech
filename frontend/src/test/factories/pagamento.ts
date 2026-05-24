@@ -3,8 +3,8 @@ import type {
   PagamentoResponse,
   PagamentoStatus,
   MetodoPagamento,
-  AssinaturaResponse,
-  AssinaturaStatus,
+  AssinaturaAlunoResponse,
+  AssinaturaAlunoStatus,
 } from "@/types";
 
 export function buildPagamento(
@@ -14,7 +14,7 @@ export function buildPagamento(
   const metodoPagamento: MetodoPagamento = "Cartao";
   return {
     pagamentoId: faker.string.uuid(),
-    assinaturaId: faker.string.uuid(),
+    assinaturaAlunoId: faker.string.uuid(),
     valor: faker.number.float({ min: 50, max: 500, fractionDigits: 2 }),
     status,
     metodoPagamento,
@@ -28,14 +28,14 @@ export function buildPagamento(
   };
 }
 
-export function buildAssinatura(
-  overrides: Partial<AssinaturaResponse> = {},
-): AssinaturaResponse {
-  const status: AssinaturaStatus = "Ativa";
+export function buildAssinaturaAluno(
+  overrides: Partial<AssinaturaAlunoResponse> = {},
+): AssinaturaAlunoResponse {
+  const status: AssinaturaAlunoStatus = "Ativa";
   return {
-    assinaturaId: faker.string.uuid(),
+    assinaturaAlunoId: faker.string.uuid(),
     vinculoId: faker.string.uuid(),
-    pacoteAlunoId: faker.string.uuid(),
+    pacoteId: faker.string.uuid(),
     treinadorId: faker.string.uuid(),
     alunoId: faker.string.uuid(),
     valor: faker.number.float({ min: 50, max: 500, fractionDigits: 2 }),

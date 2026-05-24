@@ -112,7 +112,7 @@ export default function PagamentosAlunoPage() {
     setLoading(true);
     try {
       const assRes = await pagamentoApi.obterMinhaAssinatura();
-      const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaId);
+      const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
       setPagamentos(pgRes.data);
     } catch {
       setError("Erro ao carregar pagamentos.");

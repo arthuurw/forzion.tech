@@ -12,10 +12,10 @@ public class PagamentoConfiguration : IEntityTypeConfiguration<Pagamento>
         builder.ToTable("pagamentos");
         builder.HasKey(p => p.Id);
 
-        builder.Property(p => p.AssinaturaId).IsRequired();
-        builder.HasOne<Assinatura>()
+        builder.Property(p => p.AssinaturaAlunoId).IsRequired();
+        builder.HasOne<AssinaturaAluno>()
             .WithMany()
-            .HasForeignKey(p => p.AssinaturaId)
+            .HasForeignKey(p => p.AssinaturaAlunoId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(p => p.Valor)
@@ -48,17 +48,17 @@ public class PagamentoConfiguration : IEntityTypeConfiguration<Pagamento>
         builder.Property(p => p.UpdatedAt);
 
         // Índice de performance para listagem por assinatura
-        builder.HasIndex(p => p.AssinaturaId)
-            .HasDatabaseName("ix_pagamentos_assinatura_id");
+        builder.HasIndex(p => p.AssinaturaAlunoId)
+            .HasDatabaseName("ix_pagamentos_assinatura_aluno_id");
 
         // Índice de performance para query de status
-        builder.HasIndex(p => new { p.AssinaturaId, p.Status })
-            .HasDatabaseName("ix_pagamentos_assinatura_id_status");
+        builder.HasIndex(p => new { p.AssinaturaAlunoId, p.Status })
+            .HasDatabaseName("ix_pagamentos_assinatura_aluno_id_status");
 
         // Índice parcial único: previne race condition de cobrança dupla — no máx 1 pagamento Pendente por assinatura
-        builder.HasIndex(p => p.AssinaturaId)
+        builder.HasIndex(p => p.AssinaturaAlunoId)
             .HasFilter("status = 'Pendente'")
             .IsUnique()
-            .HasDatabaseName("ix_pagamentos_assinatura_id_pendente_unique");
+            .HasDatabaseName("ix_pagamentos_assinatura_aluno_id_pendente_unique");
     }
 }

@@ -12,7 +12,7 @@ public class InativarTreinadorHandler(
     ITreinadorRepository treinadorRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
-    IPacoteAlunoRepository pacoteRepository,
+    IPacoteRepository pacoteRepository,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
     ILogger<InativarTreinadorHandler> logger)

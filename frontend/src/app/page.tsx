@@ -2,11 +2,11 @@ import { Box, Container, Typography, Button, Grid, Card, CardContent } from "@mu
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import HowItWorks from "./_landing/HowItWorks";
-import type { PlanoTreinadorResponse } from "@/types";
+import type { PlanoPlataformaResponse } from "@/types";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
 
-async function getPlanos(): Promise<PlanoTreinadorResponse[]> {
+async function getPlanos(): Promise<PlanoPlataformaResponse[]> {
   try {
     const base = process.env.API_BASE_URL ?? "https://localhost:7220";
     const res = await fetch(`${base}/auth/planos`, { cache: "no-store" });

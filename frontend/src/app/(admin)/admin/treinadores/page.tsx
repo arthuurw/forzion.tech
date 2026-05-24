@@ -18,7 +18,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
-import type { TreinadorResponse, TreinadorStatus, PlanoTreinadorResponse } from "@/types";
+import type { TreinadorResponse, TreinadorStatus, PlanoPlataformaResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 
 const COLUMNS: Column[] = [
@@ -51,8 +51,8 @@ export default function TreinadoresAdminPage() {
   const [loadingExcluir, setLoadingExcluir] = useState(false);
 
   const [planoDialog, setPlanoDialog] = useState<TreinadorResponse | null>(null);
-  const [planos, setPlanos] = useState<PlanoTreinadorResponse[]>([]);
-  const [selectedPlano, setSelectedPlano] = useState<PlanoTreinadorResponse | null>(null);
+  const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
+  const [selectedPlano, setSelectedPlano] = useState<PlanoPlataformaResponse | null>(null);
   const [loadingPlano, setLoadingPlano] = useState(false);
 
   const fetcher = useCallback(
@@ -189,7 +189,7 @@ export default function TreinadoresAdminPage() {
         renderCell={(t, i) => {
           if (i === 0) return t.nome;
           if (i === 1) return <StatusChip status={t.status} />;
-          if (i === 2) return t.planoTreinadorId ? (
+          if (i === 2) return t.planoPlataformaId ? (
             <Typography variant="caption" color="text.secondary">Atribuído</Typography>
           ) : (
             <Typography variant="caption" color="text.disabled">-</Typography>
@@ -321,11 +321,11 @@ export default function TreinadoresAdminPage() {
       <Dialog open={!!planoDialog} onClose={() => setPlanoDialog(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Atribuir plano — {planoDialog?.nome}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
-          {planoDialog?.planoTreinadorId && (
+          {planoDialog?.planoPlataformaId && (
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
               Plano atual:{" "}
               <strong>
-                {planos.find((p) => p.planoId === planoDialog.planoTreinadorId)?.nome ?? "carregando..."}
+                {planos.find((p) => p.planoId === planoDialog.planoPlataformaId)?.nome ?? "carregando..."}
               </strong>
             </Typography>
           )}

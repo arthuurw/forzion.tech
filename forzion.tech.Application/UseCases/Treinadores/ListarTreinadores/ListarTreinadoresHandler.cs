@@ -20,7 +20,7 @@ public class ListarTreinadoresHandler(ITreinadorRepository treinadorRepository)
             .ConfigureAwait(false);
 
         var response = items.Select(t => new TreinadorResponse(
-            t.Id, t.ContaId, t.Nome, t.Status, t.PlanoTreinadorId, t.CreatedAt)).ToList();
+            t.Id, t.ContaId, t.Nome, t.Status, t.PlanoPlataformaId, t.CreatedAt)).ToList();
 
         return new ListarTreinadoresResponse(response, total, pagina, tamanhoPagina);
     }

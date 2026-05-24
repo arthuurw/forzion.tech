@@ -2,7 +2,7 @@ using forzion.tech.Api.Extensions;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
-using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinatura;
+using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Enums;
@@ -39,12 +39,12 @@ public static class PagamentosEndpoints
 
         alunoGroup.MapGet("/assinatura/{assinaturaId:guid}", async (
             Guid assinaturaId,
-            [FromServices] ListarPagamentosAssinaturaHandler handler,
+            [FromServices] ListarPagamentosAssinaturaAlunoHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new ListarPagamentosAssinaturaQuery(assinaturaId, userContext.PerfilId), cancellationToken).ConfigureAwait(false);
+                new ListarPagamentosAssinaturaAlunoQuery(assinaturaId, userContext.PerfilId), cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         })
         .WithSummary("Lista histórico de pagamentos de uma assinatura")
@@ -77,7 +77,7 @@ public static class PagamentosEndpoints
         endpoints.MapPost("/internal/processar-renovacoes", async (
             HttpContext httpContext,
             [FromServices] GerarCobrancaMensalHandler gerarHandler,
-            [FromServices] IAssinaturaRepository assinaturaRepository,
+            [FromServices] IAssinaturaAlunoRepository assinaturaRepository,
             [FromServices] ILogger<Program> logger,
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
@@ -106,7 +106,7 @@ public static class PagamentosEndpoints
                 if (result.IsFailure)
                 {
                     falhas++;
-                    logger.LogWarning("Falha ao renovar assinatura {AssinaturaId}: {Erro}.",
+                    logger.LogWarning("Falha ao renovar assinatura {AssinaturaAlunoId}: {Erro}.",
                         assinatura.Id, result.Error?.Message);
                 }
             }

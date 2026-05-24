@@ -11,7 +11,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
-import { adminApi, type GrupoMuscularEnum } from "@/lib/api/admin";
+import { adminApi } from "@/lib/api/admin";
 import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { useCRUDDialog } from "@/hooks/useCRUDDialog";
@@ -51,7 +51,7 @@ export default function ExerciciosAdminPage() {
         pagina: p + 1,
         tamanhoPagina: ps,
         nome: filtroNome || undefined,
-        grupoMuscular: filtroGrupo || undefined,
+        grupoMuscularId: filtroGrupo || undefined,
         ordenarPor,
       }).then((r) => r.data),
     [filtroNome, filtroGrupo, ordenarPor]
@@ -64,8 +64,8 @@ export default function ExerciciosAdminPage() {
       const res = await adminApi.listGruposMusculares();
       setGrupos(res.data);
       if (res.data.length > 0) {
-        setGrupoMuscular(res.data[0].nome);
-        setEditGrupo(res.data[0].nome);
+        setGrupoMuscular(res.data[0].id);
+        setEditGrupo(res.data[0].id);
       }
     } catch {
       // grupos musculares indisponíveis — formulário fica sem seleção de grupo
@@ -76,7 +76,7 @@ export default function ExerciciosAdminPage() {
 
   const resetForm = () => {
     setNome("");
-    if (grupos.length > 0) setGrupoMuscular(grupos[0].nome);
+    if (grupos.length > 0) setGrupoMuscular(grupos[0].id);
     setDescricao("");
   };
 
@@ -84,7 +84,7 @@ export default function ExerciciosAdminPage() {
     if (!nome.trim()) return;
     setSaving(true);
     try {
-      await adminApi.criarExercicioGlobal({ nome: nome.trim(), grupoMuscular: grupoMuscular as GrupoMuscularEnum, descricao: descricao.trim() || null });
+      await adminApi.criarExercicioGlobal({ nome: nome.trim(), grupoMuscularId: grupoMuscular, descricao: descricao.trim() || null });
       setSuccess(`"${nome.trim()}" adicionado.`);
       closeCriar();
       resetForm();
@@ -99,7 +99,7 @@ export default function ExerciciosAdminPage() {
   const handleOpenEdit = (ex: ExercicioResponse) => {
     openEdit(ex);
     setEditNome(ex.nome);
-    setEditGrupo((ex.grupoMuscular as GrupoMuscularEnum) ?? "Peito");
+    setEditGrupo(ex.grupoMuscularId);
     setEditDescricao(ex.descricao ?? "");
   };
 
@@ -109,7 +109,7 @@ export default function ExerciciosAdminPage() {
     try {
       await adminApi.atualizarExercicioGlobal(editEx.exercicioId, {
         nome: editNome.trim() || undefined,
-        grupoMuscular: (editGrupo as GrupoMuscularEnum) || undefined,
+        grupoMuscularId: editGrupo || undefined,
         descricao: editDescricao.trim() || null,
       });
       setSuccess(`"${editNome}" atualizado.`);
@@ -166,7 +166,7 @@ export default function ExerciciosAdminPage() {
           <InputLabel>Grupo muscular</InputLabel>
           <Select value={filtroGrupo} label="Grupo muscular" onChange={(e) => { setFiltroGrupo(e.target.value as string); setPage(0); }}>
             <MenuItem value="">Todos</MenuItem>
-            {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+            {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -217,7 +217,7 @@ export default function ExerciciosAdminPage() {
             <FormControl size="small" fullWidth required>
               <InputLabel>Grupo muscular</InputLabel>
               <Select value={grupoMuscular} label="Grupo muscular" onChange={(e) => setGrupoMuscular(e.target.value)}>
-                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+                {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} size="small" fullWidth multiline rows={3} />
@@ -238,7 +238,7 @@ export default function ExerciciosAdminPage() {
             <FormControl size="small" fullWidth>
               <InputLabel>Grupo muscular</InputLabel>
               <Select value={editGrupo} label="Grupo muscular" onChange={(e) => setEditGrupo(e.target.value as string)}>
-                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+                {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={3} />

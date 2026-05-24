@@ -16,10 +16,10 @@ using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Application.UseCases.Pacotes;
-using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
-using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
-using forzion.tech.Application.UseCases.Pacotes.ExcluirPacoteAluno;
-using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
+using forzion.tech.Application.UseCases.Pacotes.CriarPacote;
+using forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Treinos.ListarFichasDoAluno;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
@@ -93,7 +93,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AprovarVinculoCommand(id, userContext.PerfilId, request.PacoteAlunoId, request.TrarFichas), cancellationToken);
+                new AprovarVinculoCommand(id, userContext.PerfilId, request.PacoteId, request.TrarFichas), cancellationToken);
 
             return Results.Ok(result);
         })
@@ -127,7 +127,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new ReativarVinculoCommand(userContext.PerfilId, alunoId, request.PacoteAlunoId), cancellationToken);
+                new ReativarVinculoCommand(userContext.PerfilId, alunoId, request.PacoteId), cancellationToken);
 
             return Results.Ok(result);
         })
@@ -304,8 +304,7 @@ public static class TreinadorEndpoints
             var p = pagina < 1 ? 1 : pagina;
             var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
             var apenasGlobal = q["global"].ToString() == "true";
-            _ = Enum.TryParse<forzion.tech.Domain.Enums.TipoGrupoMuscular>(q["grupoMuscular"], out var grupo);
-            var hasGrupo = q.ContainsKey("grupoMuscular");
+            var hasGrupo = Guid.TryParse(q["grupoMuscularId"], out var grupoId);
             var nome = q["nome"].ToString();
             var ordenarPorRaw = q["ordenarPor"].ToString();
 
@@ -318,7 +317,7 @@ public static class TreinadorEndpoints
 
             var query = new ListarExerciciosQuery(treinadorId, p, tp,
                 string.IsNullOrEmpty(nome) ? null : nome,
-                hasGrupo ? grupo : null,
+                hasGrupo ? grupoId : null,
                 ordenarPor);
 
             var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
@@ -334,7 +333,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarExercicioCommand(userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao),
+                new CriarExercicioCommand(userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao),
                 cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
@@ -368,7 +367,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarExercicioCommand(id, userContext.PerfilId, request.Nome, request.GrupoMuscular, request.Descricao),
+                new AtualizarExercicioCommand(id, userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao),
                 cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
@@ -397,7 +396,7 @@ public static class TreinadorEndpoints
         // --- Pacotes ---
 
         group.MapGet("/pacotes", async (
-            [FromServices] ListarPacotesAlunoHandler handler,
+            [FromServices] ListarPacotesHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
@@ -405,49 +404,49 @@ public static class TreinadorEndpoints
             return Results.Ok(result);
         })
         .WithSummary("Lista pacotes criados pelo treinador")
-        .Produces<IReadOnlyList<PacoteAlunoResponse>>();
+        .Produces<IReadOnlyList<PacoteResponse>>();
 
         group.MapPost("/pacotes", async (
-            [FromBody] CriarPacoteAlunoRequest request,
-            [FromServices] CriarPacoteAlunoHandler handler,
+            [FromBody] CriarPacoteRequest request,
+            [FromServices] CriarPacoteHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarPacoteAlunoCommand(userContext.PerfilId, request.Nome, request.Preco, request.Descricao),
+                new CriarPacoteCommand(userContext.PerfilId, request.Nome, request.Preco, request.Descricao),
                 cancellationToken);
 
             return Results.Created($"/treinador/pacotes/{result.PacoteId}", result);
         })
         .WithSummary("Cria um novo pacote de fichas para alunos")
-        .Produces<PacoteAlunoResponse>(StatusCodes.Status201Created)
+        .Produces<PacoteResponse>(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapPatch("/pacotes/{pacoteId:guid}", async (
             Guid pacoteId,
-            [FromBody] AtualizarPacoteAlunoRequest request,
-            [FromServices] AtualizarPacoteAlunoHandler handler,
+            [FromBody] AtualizarPacoteRequest request,
+            [FromServices] AtualizarPacoteHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarPacoteAlunoCommand(userContext.PerfilId, pacoteId, request.Nome, request.Preco, request.Descricao),
+                new AtualizarPacoteCommand(userContext.PerfilId, pacoteId, request.Nome, request.Preco, request.Descricao),
                 cancellationToken);
 
             return Results.Ok(result);
         })
         .WithSummary("Atualiza um pacote de fichas do treinador")
-        .Produces<PacoteAlunoResponse>()
+        .Produces<PacoteResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapDelete("/pacotes/{pacoteId:guid}", async (
             Guid pacoteId,
-            [FromServices] ExcluirPacoteAlunoHandler handler,
+            [FromServices] ExcluirPacoteHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            var result = await handler.HandleAsync(new ExcluirPacoteAlunoCommand(userContext.PerfilId, pacoteId), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirPacoteCommand(userContext.PerfilId, pacoteId), cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
@@ -464,10 +463,10 @@ public static class TreinadorEndpoints
 public record IniciarOnboardingRequest(string UrlRetorno, string UrlCancelamento);
 
 
-public record AprovarVinculoRequest(Guid PacoteAlunoId, bool TrarFichas = false);
-public record ReativarVinculoRequest(Guid PacoteAlunoId);
+public record AprovarVinculoRequest(Guid PacoteId, bool TrarFichas = false);
+public record ReativarVinculoRequest(Guid PacoteId);
 public record DesvincularAlunoRequest(string? Observacao = null);
-public record CriarExercicioTreinadorRequest(string Nome, TipoGrupoMuscular GrupoMuscular, string? Descricao = null);
-public record AtualizarExercicioTreinadorRequest(string? Nome, TipoGrupoMuscular? GrupoMuscular, string? Descricao);
-public record CriarPacoteAlunoRequest(string Nome, decimal Preco, string? Descricao = null);
-public record AtualizarPacoteAlunoRequest(string? Nome, decimal? Preco, string? Descricao);
+public record CriarExercicioTreinadorRequest(string Nome, Guid GrupoMuscularId, string? Descricao = null);
+public record AtualizarExercicioTreinadorRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao);
+public record CriarPacoteRequest(string Nome, decimal Preco, string? Descricao = null);
+public record AtualizarPacoteRequest(string? Nome, decimal? Preco, string? Descricao);

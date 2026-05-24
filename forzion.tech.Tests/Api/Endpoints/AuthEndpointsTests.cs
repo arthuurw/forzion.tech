@@ -11,9 +11,9 @@ using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
 using forzion.tech.Application.UseCases.Pacotes;
-using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
-using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
@@ -212,7 +212,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<ITreinadorRepository>(),
-            Mock.Of<IPacoteAlunoRepository>(),
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<RegistrarAlunoCommand>>(),
@@ -222,11 +222,11 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
         public Mock<ListarTreinadoresPublicosHandler> ListarTreinadoresPublicosHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>());
 
-        public Mock<ListarPlanosTreinadorHandler> ListarPlanosHandlerMock { get; } = new(
-            Mock.Of<IPlanoTreinadorRepository>());
+        public Mock<ListarPlanosPlataformaHandler> ListarPlanosHandlerMock { get; } = new(
+            Mock.Of<IPlanoPlataformaRepository>());
 
-        public Mock<ListarPacotesAlunoHandler> ListarPacotesHandlerMock { get; } = new(
-            Mock.Of<IPacoteAlunoRepository>());
+        public Mock<ListarPacotesHandler> ListarPacotesHandlerMock { get; } = new(
+            Mock.Of<IPacoteRepository>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -240,8 +240,8 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
                 services.RemoveAll<RegistrarTreinadorHandler>();
                 services.RemoveAll<RegistrarAlunoHandler>();
                 services.RemoveAll<ListarTreinadoresPublicosHandler>();
-                services.RemoveAll<ListarPlanosTreinadorHandler>();
-                services.RemoveAll<ListarPacotesAlunoHandler>();
+                services.RemoveAll<ListarPlanosPlataformaHandler>();
+                services.RemoveAll<ListarPacotesHandler>();
 
                 services.AddScoped(_ => LoginHandlerMock.Object);
                 services.AddScoped(_ => RegistrarTreinadorHandlerMock.Object);

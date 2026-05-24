@@ -58,13 +58,15 @@ public static class InfrastructureExtensions
         services.AddScoped<IExecucaoTreinoRepository, ExecucaoTreinoRepository>();
         services.AddScoped<ISystemUserRepository, SystemUserRepository>();
         services.AddScoped<ITreinadorRepository, TreinadorRepository>();
-        services.AddScoped<IPlanoTreinadorRepository, PlanoTreinadorRepository>();
-        services.AddScoped<IPacoteAlunoRepository, PacoteAlunoRepository>();
+        services.AddScoped<IPlanoPlataformaRepository, PlanoPlataformaRepository>();
+        services.AddScoped<IPacoteRepository, PacoteRepository>();
         services.AddScoped<IVinculoTreinadorAlunoRepository, VinculoTreinadorAlunoRepository>();
         services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
         services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
-        services.AddScoped<IAssinaturaRepository, AssinaturaRepository>();
+        services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
+        services.AddScoped<IAssinanteRepository, AssinanteRepository>();
+        services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
 
         // Stripe — valida no startup que SecretKey e WebhookSecret estão configurados
         services.AddOptions<StripeSettings>()
@@ -111,10 +113,14 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<TreinadorReprovadoEvent>, TreinadorReprovadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoEmailHandler>();
-        services.AddScoped<IDomainEventHandler<AssinaturaCriadaEvent>, AssinaturaCriadaEmailHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoCriadaEvent>, AssinaturaAlunoCriadaEmailHandler>();
 
         // Domain event handlers — pagamento
-        services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaHandler>();
+        services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
+
+        // Domain event handlers — projeção billing
+        services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();
+        services.AddScoped<IDomainEventHandler<AlunoAtualizadoEvent>, AlunoAtualizadoSincronizarAssinanteHandler>();
 
         // WhatsApp notifier — Evolution API when configured, no-op otherwise
         var whatsAppBase = configuration["WhatsApp:BaseUrl"];

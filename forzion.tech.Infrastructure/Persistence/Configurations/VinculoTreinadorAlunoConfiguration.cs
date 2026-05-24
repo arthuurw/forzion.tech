@@ -24,11 +24,11 @@ public class VinculoTreinadorAlunoConfiguration : IEntityTypeConfiguration<Vincu
             .HasForeignKey(v => v.AlunoId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.Property(v => v.PacoteAlunoId);
+        builder.Property(v => v.PacoteId);
 
-        builder.HasOne<PacoteAluno>()
+        builder.HasOne<Pacote>()
             .WithMany()
-            .HasForeignKey(v => v.PacoteAlunoId)
+            .HasForeignKey(v => v.PacoteId)
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 

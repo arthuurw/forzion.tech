@@ -4,7 +4,6 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
-using TipoGrupoMuscular = forzion.tech.Domain.Enums.TipoGrupoMuscular;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Exercicios;
@@ -20,11 +19,13 @@ public class ExcluirExercicioHandlerTests
         _handler = new ExcluirExercicioHandler(_exercicioRepo.Object, _unitOfWork.Object);
     }
 
+    private static readonly Guid GrupoId = Guid.NewGuid();
+
     private static Exercicio CriarExercicioTreinador(Guid treinadorId) =>
-        Exercicio.Criar("Supino Reto", TipoGrupoMuscular.Peito, treinadorId);
+        Exercicio.Criar("Supino Reto", GrupoId, treinadorId);
 
     private static Exercicio CriarExercicioGlobal() =>
-        Exercicio.Criar("Agachamento", TipoGrupoMuscular.Pernas);
+        Exercicio.Criar("Agachamento", GrupoId);
 
     [Fact]
     public async Task HandleAsync_TreinadorExcluiProprio_RemoveEComita()
