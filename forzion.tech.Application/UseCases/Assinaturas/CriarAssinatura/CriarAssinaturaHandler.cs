@@ -8,7 +8,7 @@ namespace forzion.tech.Application.UseCases.Assinaturas.CriarAssinatura;
 
 public class CriarAssinaturaHandler(
     IAssinaturaRepository assinaturaRepository,
-    ITreinadorRepository treinadorRepository,
+    IContaRecebimentoRepository contaRecebimentoRepository,
     IUnitOfWork unitOfWork,
     ILogger<CriarAssinaturaHandler> logger)
 {
@@ -18,10 +18,9 @@ public class CriarAssinaturaHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
-            ?? throw new TreinadorNaoEncontradoException();
+        var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
-        if (!treinador.StripeOnboardingCompleto)
+        if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
             throw new DomainException("O treinador não concluiu a configuração de recebimentos.");
 
         var assinatura = Assinatura.Criar(

@@ -12,7 +12,7 @@ namespace forzion.tech.Tests.Application.Assinaturas;
 public class CriarAssinaturaHandlerTests
 {
     private readonly Mock<IAssinaturaRepository> _assinaturaRepo = new();
-    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<CriarAssinaturaHandler>> _logger = new();
     private readonly CriarAssinaturaHandler _handler;
@@ -20,46 +20,56 @@ public class CriarAssinaturaHandlerTests
     public CriarAssinaturaHandlerTests()
     {
         _handler = new CriarAssinaturaHandler(
-            _assinaturaRepo.Object, _treinadorRepo.Object, _unitOfWork.Object, _logger.Object);
+            _assinaturaRepo.Object, _contaRecebimentoRepo.Object, _unitOfWork.Object, _logger.Object);
     }
 
     private static CriarAssinaturaCommand BuildCommand(Guid treinadorId) => new(
         Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m);
 
+    private static ContaRecebimento ContaOnboarded(Guid treinadorId)
+    {
+        var conta = ContaRecebimento.Criar(treinadorId);
+        conta.ConfigurarStripeConnect("acct_123");
+        conta.ConfirmarOnboarding();
+        return conta;
+    }
+
     [Fact]
     public async Task HandleAsync_TreinadorComOnboarding_CriaAssinatura()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        treinador.ConfigurarStripeConnect("acct_123");
-        treinador.ConfirmarOnboarding();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        var treinadorId = Guid.NewGuid();
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ContaOnboarded(treinadorId));
 
-        var result = await _handler.HandleAsync(BuildCommand(treinador.Id));
+        var result = await _handler.HandleAsync(BuildCommand(treinadorId));
 
-        result.TreinadorId.Should().Be(treinador.Id);
+        result.TreinadorId.Should().Be(treinadorId);
         _assinaturaRepo.Verify(r => r.AdicionarAsync(It.IsAny<Assinatura>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorSemOnboarding_LancaDomainException()
+    public async Task HandleAsync_ContaRecebimentoSemOnboarding_LancaDomainException()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        var treinadorId = Guid.NewGuid();
+        var conta = ContaRecebimento.Criar(treinadorId);
+        conta.ConfigurarStripeConnect("acct_123");
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
 
-        var act = async () => await _handler.HandleAsync(BuildCommand(treinador.Id));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*recebimentos*");
+        var act = async () => await _handler.HandleAsync(BuildCommand(treinadorId));
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*recebimentos*");
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorNaoEncontrado_LancaException()
+    public async Task HandleAsync_SemContaRecebimento_LancaDomainException()
     {
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Treinador?)null);
+        var treinadorId = Guid.NewGuid();
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
 
-        var act = async () => await _handler.HandleAsync(BuildCommand(Guid.NewGuid()));
-        await act.Should().ThrowAsync<TreinadorNaoEncontradoException>();
+        var act = async () => await _handler.HandleAsync(BuildCommand(treinadorId));
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*recebimentos*");
     }
 
     [Fact]

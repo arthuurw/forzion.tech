@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using forzion.tech.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using forzion.tech.Infrastructure.Persistence;
 namespace forzion.tech.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260524013607_AddAssinanteBillingProjection")]
+    partial class AddAssinanteBillingProjection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -266,49 +269,6 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_contas_email");
 
                     b.ToTable("contas", "homolog");
-                });
-
-            modelBuilder.Entity("forzion.tech.Domain.Entities.ContaRecebimento", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<bool>("OnboardingCompleto")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("onboarding_completo");
-
-                    b.Property<string>("StripeConnectAccountId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("stripe_connect_account_id");
-
-                    b.Property<Guid>("TreinadorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("treinador_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_conta_recebimento");
-
-                    b.HasIndex("StripeConnectAccountId")
-                        .HasDatabaseName("ix_conta_recebimento_stripe_connect_account_id");
-
-                    b.HasIndex("TreinadorId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_conta_recebimento_treinador_id");
-
-                    b.ToTable("conta_recebimento", "homolog");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.ExecucaoExercicio", b =>
@@ -845,6 +805,17 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
+                    b.Property<string>("StripeConnectAccountId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("stripe_connect_account_id");
+
+                    b.Property<bool>("StripeOnboardingCompleto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("stripe_onboarding_completo");
+
                     b.Property<string>("Telefone")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -866,6 +837,9 @@ namespace forzion.tech.Infrastructure.Migrations
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_treinadores_status");
+
+                    b.HasIndex("StripeConnectAccountId")
+                        .HasDatabaseName("ix_treinadores_stripe_connect_account_id");
 
                     b.ToTable("treinadores", "homolog");
                 });
@@ -1103,16 +1077,6 @@ namespace forzion.tech.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_assinaturas_vinculos_treinador_aluno_vinculo_id");
-                });
-
-            modelBuilder.Entity("forzion.tech.Domain.Entities.ContaRecebimento", b =>
-                {
-                    b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
-                        .WithMany()
-                        .HasForeignKey("TreinadorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_conta_recebimento_treinadores_treinador_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.ExecucaoExercicio", b =>

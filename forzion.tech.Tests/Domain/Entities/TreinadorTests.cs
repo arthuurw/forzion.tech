@@ -128,51 +128,6 @@ public class TreinadorTests
         act.Should().Throw<DomainException>().WithMessage("O identificador do plano é inválido.");
     }
 
-    // --- ConfigurarStripeConnect ---
-
-    [Fact]
-    public void ConfigurarStripeConnect_AccountIdValido_Salva()
-    {
-        var t = Treinador.Criar(ContaId, "Carlos");
-
-        t.ConfigurarStripeConnect("acct_123");
-
-        t.StripeConnectAccountId.Should().Be("acct_123");
-        t.UpdatedAt.Should().NotBeNull();
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void ConfigurarStripeConnect_AccountIdVazio_LancaDomainException(string accountId)
-    {
-        var t = Treinador.Criar(ContaId, "Carlos");
-        var act = () => t.ConfigurarStripeConnect(accountId);
-        act.Should().Throw<DomainException>().WithMessage("O identificador da conta Stripe é inválido.");
-    }
-
-    // --- ConfirmarOnboarding ---
-
-    [Fact]
-    public void ConfirmarOnboarding_ComContaConfigurada_MarcaCompleto()
-    {
-        var t = Treinador.Criar(ContaId, "Carlos");
-        t.ConfigurarStripeConnect("acct_123");
-
-        t.ConfirmarOnboarding();
-
-        t.StripeOnboardingCompleto.Should().BeTrue();
-        t.UpdatedAt.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void ConfirmarOnboarding_SemContaConfigurada_LancaDomainException()
-    {
-        var t = Treinador.Criar(ContaId, "Carlos");
-        var act = () => t.ConfirmarOnboarding();
-        act.Should().Throw<DomainException>().WithMessage("O treinador não possui conta Stripe configurada.");
-    }
-
     // --- Reprovar ---
 
     [Fact]

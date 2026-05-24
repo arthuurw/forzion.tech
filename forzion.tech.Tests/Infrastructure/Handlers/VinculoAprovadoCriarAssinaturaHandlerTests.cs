@@ -14,7 +14,7 @@ public class VinculoAprovadoCriarAssinaturaHandlerTests
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<IPacoteAlunoRepository> _pacoteRepo = new();
     private readonly Mock<IAssinaturaRepository> _assinaturaRepo = new();
-    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<VinculoAprovadoCriarAssinaturaHandler>> _logger = new();
     private readonly VinculoAprovadoCriarAssinaturaHandler _handler;
@@ -26,7 +26,15 @@ public class VinculoAprovadoCriarAssinaturaHandlerTests
     {
         _handler = new VinculoAprovadoCriarAssinaturaHandler(
             _vinculoRepo.Object, _pacoteRepo.Object, _assinaturaRepo.Object,
-            _treinadorRepo.Object, _unitOfWork.Object, _logger.Object);
+            _contaRecebimentoRepo.Object, _unitOfWork.Object, _logger.Object);
+    }
+
+    private static ContaRecebimento ContaOnboarded(Guid treinadorId)
+    {
+        var conta = ContaRecebimento.Criar(treinadorId);
+        conta.ConfigurarStripeConnect("acct_123");
+        conta.ConfirmarOnboarding();
+        return conta;
     }
 
     [Fact]
@@ -47,12 +55,12 @@ public class VinculoAprovadoCriarAssinaturaHandlerTests
         var pacoteId = Guid.NewGuid();
         var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId);
         vinculo.Aprovar(Evento.TreinadorId, pacoteId);
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var contaRecebimento = ContaRecebimento.Criar(Evento.TreinadorId);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(treinador);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
 
         await _handler.HandleAsync(Evento);
 
@@ -77,16 +85,14 @@ public class VinculoAprovadoCriarAssinaturaHandlerTests
         var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId);
         vinculo.Aprovar(Evento.TreinadorId, pacoteId);
 
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        treinador.ConfigurarStripeConnect("acct_123");
-        treinador.ConfirmarOnboarding();
+        var contaRecebimento = ContaOnboarded(Evento.TreinadorId);
 
         var pacote = PacoteAluno.Criar(Evento.TreinadorId, "Plano mensal", 150m);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(treinador);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pacote);
 

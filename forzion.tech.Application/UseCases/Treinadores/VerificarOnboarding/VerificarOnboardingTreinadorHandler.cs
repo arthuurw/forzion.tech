@@ -9,6 +9,7 @@ public record OnboardingStatusResponse(bool OnboardingCompleto, bool ContaConfig
 
 public class VerificarOnboardingTreinadorHandler(
     ITreinadorRepository treinadorRepository,
+    IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
     ILogger<VerificarOnboardingTreinadorHandler> logger)
@@ -19,23 +20,25 @@ public class VerificarOnboardingTreinadorHandler(
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(query.TreinadorId, cancellationToken).ConfigureAwait(false)
+        _ = await treinadorRepository.ObterPorIdAsync(query.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        if (string.IsNullOrEmpty(treinador.StripeConnectAccountId))
+        var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(query.TreinadorId, cancellationToken).ConfigureAwait(false);
+
+        if (contaRecebimento is null || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
             return new OnboardingStatusResponse(false, false);
 
-        if (treinador.StripeOnboardingCompleto)
+        if (contaRecebimento.OnboardingCompleto)
             return new OnboardingStatusResponse(true, true);
 
         var ativa = await stripeService.ContaEstaAtivadaAsync(
-            treinador.StripeConnectAccountId, cancellationToken).ConfigureAwait(false);
+            contaRecebimento.StripeConnectAccountId, cancellationToken).ConfigureAwait(false);
 
         if (ativa)
         {
-            treinador.ConfirmarOnboarding();
+            contaRecebimento.ConfirmarOnboarding();
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-            logger.LogInformation("Onboarding Stripe confirmado para treinador {TreinadorId}.", treinador.Id);
+            logger.LogInformation("Onboarding Stripe confirmado para treinador {TreinadorId}.", query.TreinadorId);
         }
 
         return new OnboardingStatusResponse(ativa, true);

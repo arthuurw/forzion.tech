@@ -66,7 +66,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
         public Mock<ProcessarWebhookStripeHandler> ProcessarWebhookHandlerMock { get; } = new(
             Mock.Of<IPagamentoRepository>(),
             Mock.Of<IAssinaturaRepository>(),
-            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<ProcessarWebhookStripeHandler>>());

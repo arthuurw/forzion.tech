@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Interfaces;
 
 namespace forzion.tech.Application.Services;
 
@@ -17,12 +18,12 @@ public class LimiteTreinadorService(
         if (treinador.PlanoTreinadorId is null)
             throw new DomainException("Treinador sem plano atribuído.");
 
-        var plano = await planoRepository.ObterPorIdAsync(treinador.PlanoTreinadorId.Value, cancellationToken).ConfigureAwait(false)
+        ICapacidadePlano capacidade = await planoRepository.ObterPorIdAsync(treinador.PlanoTreinadorId.Value, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoTreinadorNaoEncontradoException();
 
         var ativos = await vinculoRepository.ContarAtivosPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
 
-        if (ativos >= plano.MaxAlunos)
+        if (ativos >= capacidade.MaxAlunos)
             throw new LimiteAlunosAtingidoException();
     }
 }
