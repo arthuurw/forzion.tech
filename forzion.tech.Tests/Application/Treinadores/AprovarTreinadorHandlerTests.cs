@@ -20,13 +20,13 @@ public class AprovarTreinadorHandlerTests
 
     public AprovarTreinadorHandlerTests()
     {
-        _handler = new AprovarTreinadorHandler(_treinadorRepo.Object, _logRepo.Object, _unitOfWork.Object, _logger.Object);
+        _handler = new AprovarTreinadorHandler(_treinadorRepo.Object, _logRepo.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_TreinadorAguardando_Aprova()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         var adminId = Guid.NewGuid();
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 

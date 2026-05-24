@@ -25,6 +25,7 @@ public class Treino
         string nome,
         ObjetivoTreino objetivo,
         Guid treinadorId,
+        DateTime agora,
         DificuldadeTreino dificuldade = DificuldadeTreino.Iniciante,
         DateOnly? dataInicio = null,
         DateOnly? dataFim = null)
@@ -47,7 +48,7 @@ public class Treino
             Dificuldade = dificuldade,
             DataInicio = dataInicio,
             DataFim = dataFim,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 
@@ -111,7 +112,7 @@ public class Treino
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public Treino Duplicar()
+    public Treino Duplicar(DateTime agora)
     {
         var copia = new Treino
         {
@@ -120,7 +121,7 @@ public class Treino
             Nome = $"{Nome} (cópia)",
             Objetivo = Objetivo,
             Dificuldade = Dificuldade,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
 
         foreach (var e in _exercicios)
@@ -134,7 +135,7 @@ public class Treino
         return copia;
     }
 
-    public Treino DuplicarPara(Guid novoTreinadorId)
+    public Treino DuplicarPara(Guid novoTreinadorId, DateTime agora)
     {
         if (novoTreinadorId == Guid.Empty)
             throw new DomainException("O treinador de destino é inválido.");
@@ -146,7 +147,7 @@ public class Treino
             Nome = Nome,
             Objetivo = Objetivo,
             Dificuldade = Dificuldade,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
 
         foreach (var e in _exercicios)

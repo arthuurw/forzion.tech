@@ -23,15 +23,15 @@ public class DesvincularAlunoHandlerTests
     public DesvincularAlunoHandlerTests()
     {
         _handler = new DesvincularAlunoHandler(
-            _vinculoRepo.Object, _treinoAlunoRepo.Object, _logRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
+            _vinculoRepo.Object, _treinoAlunoRepo.Object, _logRepo.Object, _unitOfWork.Object, _userContext.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_InativaVinculoECascadeTreinoAluno()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid());
-        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
+        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId, DateTime.UtcNow);
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -50,7 +50,7 @@ public class DesvincularAlunoHandlerTests
     {
         var treinadorLogadoId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(outroTreinadorId, Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(outroTreinadorId, Guid.NewGuid(), DateTime.UtcNow);
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorLogadoId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -72,7 +72,7 @@ public class DesvincularAlunoHandlerTests
     public async Task HandleAsync_VinculoJaInativo_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid());
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
         vinculo.Inativar();
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);

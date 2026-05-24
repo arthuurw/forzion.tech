@@ -22,7 +22,7 @@ public class CriarPacoteHandlerTests
     {
         _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
-        _handler = new CriarPacoteHandler(_pacoteRepo.Object, _unitOfWork.Object, _validator.Object, _logger.Object);
+        _handler = new CriarPacoteHandler(_pacoteRepo.Object, _unitOfWork.Object, _validator.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]

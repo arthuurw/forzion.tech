@@ -13,7 +13,7 @@ public class PacoteTests
     [Fact]
     public void Criar_DadosValidos_RetornaPacote()
     {
-        var p = Pacote.Criar(TreinadorId, "Pacote A", 99.90m, "Treino + whatsapp");
+        var p = Pacote.Criar(TreinadorId, "Pacote A", 99.90m, DateTime.UtcNow, "Treino + whatsapp");
 
         p.Id.Should().NotBeEmpty();
         p.TreinadorId.Should().Be(TreinadorId);
@@ -26,14 +26,14 @@ public class PacoteTests
     [Fact]
     public void Criar_SemDescricao_DescricaoNula()
     {
-        var p = Pacote.Criar(TreinadorId, "Pacote A", 99.90m);
+        var p = Pacote.Criar(TreinadorId, "Pacote A", 99.90m, DateTime.UtcNow);
         p.Descricao.Should().BeNull();
     }
 
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => Pacote.Criar(Guid.Empty, "Nome", 0);
+        var act = () => Pacote.Criar(Guid.Empty, "Nome", 0, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O identificador do treinador é inválido.");
     }
 
@@ -42,14 +42,14 @@ public class PacoteTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => Pacote.Criar(TreinadorId, nome, 0);
+        var act = () => Pacote.Criar(TreinadorId, nome, 0, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O nome é obrigatório.");
     }
 
     [Fact]
     public void Criar_PrecoNegativo_LancaDomainException()
     {
-        var act = () => Pacote.Criar(TreinadorId, "Nome", -1);
+        var act = () => Pacote.Criar(TreinadorId, "Nome", -1, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O preço não pode ser negativo.");
     }
 
@@ -57,7 +57,7 @@ public class PacoteTests
     public void Criar_DescricaoMuitoLonga_LancaDomainException()
     {
         var descricaoLonga = new string('x', 501);
-        var act = () => Pacote.Criar(TreinadorId, "Nome", 0, descricaoLonga);
+        var act = () => Pacote.Criar(TreinadorId, "Nome", 0, DateTime.UtcNow, descricaoLonga);
         act.Should().Throw<DomainException>().WithMessage("A descrição deve ter no máximo 500 caracteres.");
     }
 
@@ -66,7 +66,7 @@ public class PacoteTests
     [Fact]
     public void Atualizar_ComNome_AtualizaNome()
     {
-        var p = Pacote.Criar(TreinadorId, "A", 0);
+        var p = Pacote.Criar(TreinadorId, "A", 0, DateTime.UtcNow);
         p.Atualizar("B", null, null);
         p.Nome.Should().Be("B");
         p.UpdatedAt.Should().NotBeNull();
@@ -75,7 +75,7 @@ public class PacoteTests
     [Fact]
     public void Atualizar_ComDescricao_AtualizaDescricao()
     {
-        var p = Pacote.Criar(TreinadorId, "A", 0);
+        var p = Pacote.Criar(TreinadorId, "A", 0, DateTime.UtcNow);
         p.Atualizar(null, null, "Premium com vídeo");
         p.Descricao.Should().Be("Premium com vídeo");
         p.UpdatedAt.Should().NotBeNull();
@@ -84,7 +84,7 @@ public class PacoteTests
     [Fact]
     public void Atualizar_ComPreco_AtualizaPreco()
     {
-        var p = Pacote.Criar(TreinadorId, "A", 50);
+        var p = Pacote.Criar(TreinadorId, "A", 50, DateTime.UtcNow);
         p.Atualizar(null, 120m, null);
         p.Preco.Should().Be(120m);
     }
@@ -92,7 +92,7 @@ public class PacoteTests
     [Fact]
     public void Atualizar_CamposNulos_NaoAltera()
     {
-        var p = Pacote.Criar(TreinadorId, "A", 50, "desc");
+        var p = Pacote.Criar(TreinadorId, "A", 50, DateTime.UtcNow, "desc");
         p.Atualizar(null, null, null);
         p.Nome.Should().Be("A");
         p.Descricao.Should().Be("desc");
@@ -102,7 +102,7 @@ public class PacoteTests
     [Fact]
     public void Atualizar_DescricaoMuitoLonga_LancaDomainException()
     {
-        var p = Pacote.Criar(TreinadorId, "A", 0);
+        var p = Pacote.Criar(TreinadorId, "A", 0, DateTime.UtcNow);
         var descricaoLonga = new string('x', 501);
         var act = () => p.Atualizar(null, null, descricaoLonga);
         act.Should().Throw<DomainException>().WithMessage("A descrição deve ter no máximo 500 caracteres.");
@@ -113,7 +113,7 @@ public class PacoteTests
     [Fact]
     public void Inativar_Ativo_MudaParaInativo()
     {
-        var p = Pacote.Criar(TreinadorId, "A", 0);
+        var p = Pacote.Criar(TreinadorId, "A", 0, DateTime.UtcNow);
         p.Inativar();
         p.IsAtivo.Should().BeFalse();
         p.UpdatedAt.Should().NotBeNull();

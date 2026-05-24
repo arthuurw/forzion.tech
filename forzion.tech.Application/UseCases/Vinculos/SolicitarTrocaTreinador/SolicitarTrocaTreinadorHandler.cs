@@ -12,6 +12,7 @@ public class SolicitarTrocaTreinadorHandler(
     ITreinadorRepository treinadorRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<SolicitarTrocaTreinadorHandler> logger)
 {
     public virtual Task<VinculoResponse> HandleAsync(
@@ -45,7 +46,7 @@ public class SolicitarTrocaTreinadorHandler(
         if (vinculoPendente is not null)
             throw new DomainException("Você já possui uma solicitação pendente com este treinador.");
 
-        var novoVinculo = VinculoTreinadorAluno.Criar(command.NovoTreinadorId, command.AlunoId, command.PacoteId);
+        var novoVinculo = VinculoTreinadorAluno.Criar(command.NovoTreinadorId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime, command.PacoteId);
 
         await vinculoRepository.AdicionarAsync(novoVinculo, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

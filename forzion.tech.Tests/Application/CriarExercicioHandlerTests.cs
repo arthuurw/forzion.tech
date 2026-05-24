@@ -22,14 +22,14 @@ public class CriarExercicioHandlerTests
     public CriarExercicioHandlerTests()
     {
         _handler = new CriarExercicioHandler(
-            _exercicioRepo.Object, _grupoRepo.Object, _unitOfWork.Object, _validator, _logger.Object);
+            _exercicioRepo.Object, _grupoRepo.Object, _unitOfWork.Object, _validator, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_DadosValidos_CadastraERetorna()
     {
         var treinadorId = Guid.NewGuid();
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
         _grupoRepo.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         var command = new CriarExercicioCommand(treinadorId, "Supino Reto", grupo.Id, "Descrição");
 

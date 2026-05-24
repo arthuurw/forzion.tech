@@ -27,7 +27,7 @@ public class AlterarStatusAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoExistente_E_UsuarioSystemAdmin_AlteraStatus()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
 
@@ -41,7 +41,7 @@ public class AlterarStatusAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoExistente_Mas_UsuarioNaoSystemAdmin_LancaAcessoNegadoException()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(false);
 

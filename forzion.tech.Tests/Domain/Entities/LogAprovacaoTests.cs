@@ -14,7 +14,7 @@ public class LogAprovacaoTests
     public void Registrar_DadosValidos_RetornaLog()
     {
         var log = LogAprovacao.Registrar(
-            TipoAcaoAprovacao.AprovacaoTreinador, RealizadoPorId, EntidadeId, "Treinador");
+            TipoAcaoAprovacao.AprovacaoTreinador, RealizadoPorId, EntidadeId, "Treinador", DateTime.UtcNow);
 
         log.Id.Should().NotBeEmpty();
         log.TipoAcao.Should().Be(TipoAcaoAprovacao.AprovacaoTreinador);
@@ -29,7 +29,7 @@ public class LogAprovacaoTests
     public void Registrar_ComObservacao_Preenche()
     {
         var log = LogAprovacao.Registrar(
-            TipoAcaoAprovacao.InativacaoTreinador, RealizadoPorId, EntidadeId, "Treinador", "obs");
+            TipoAcaoAprovacao.InativacaoTreinador, RealizadoPorId, EntidadeId, "Treinador", DateTime.UtcNow, "obs");
 
         log.Observacao.Should().Be("obs");
     }
@@ -37,14 +37,14 @@ public class LogAprovacaoTests
     [Fact]
     public void Registrar_RealizadoPorIdVazio_LancaDomainException()
     {
-        var act = () => LogAprovacao.Registrar(TipoAcaoAprovacao.AprovacaoTreinador, Guid.Empty, EntidadeId, "Treinador");
+        var act = () => LogAprovacao.Registrar(TipoAcaoAprovacao.AprovacaoTreinador, Guid.Empty, EntidadeId, "Treinador", DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O identificador de quem realizou a ação é inválido.");
     }
 
     [Fact]
     public void Registrar_EntidadeIdVazio_LancaDomainException()
     {
-        var act = () => LogAprovacao.Registrar(TipoAcaoAprovacao.AprovacaoTreinador, RealizadoPorId, Guid.Empty, "Treinador");
+        var act = () => LogAprovacao.Registrar(TipoAcaoAprovacao.AprovacaoTreinador, RealizadoPorId, Guid.Empty, "Treinador", DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O identificador da entidade é inválido.");
     }
 
@@ -53,14 +53,14 @@ public class LogAprovacaoTests
     [InlineData("   ")]
     public void Registrar_EntidadeTipoVazio_LancaDomainException(string tipo)
     {
-        var act = () => LogAprovacao.Registrar(TipoAcaoAprovacao.AprovacaoTreinador, RealizadoPorId, EntidadeId, tipo);
+        var act = () => LogAprovacao.Registrar(TipoAcaoAprovacao.AprovacaoTreinador, RealizadoPorId, EntidadeId, tipo, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O tipo da entidade é obrigatório.");
     }
 
     [Fact]
     public void Registrar_ObservacaoMuitoLonga_LancaDomainException()
     {
-        var act = () => LogAprovacao.Registrar(TipoAcaoAprovacao.AprovacaoTreinador, RealizadoPorId, EntidadeId, "T", new string('x', 501));
+        var act = () => LogAprovacao.Registrar(TipoAcaoAprovacao.AprovacaoTreinador, RealizadoPorId, EntidadeId, "T", DateTime.UtcNow, new string('x', 501));
         act.Should().Throw<DomainException>().WithMessage("A observação deve ter no máximo 500 caracteres.");
     }
 }

@@ -12,6 +12,7 @@ public class ReprovarTreinadorHandler(
     ITreinadorRepository treinadorRepository,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<ReprovarTreinadorHandler> logger)
 {
     public virtual Task<Result> HandleAsync(
@@ -36,6 +37,7 @@ public class ReprovarTreinadorHandler(
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
+            timeProvider.GetUtcNow().UtcDateTime,
             command.Observacao);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);

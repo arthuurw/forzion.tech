@@ -26,7 +26,7 @@ public class AtualizarPacoteHandlerTests
     }
 
     private static Pacote CriarPacote(Guid treinadorId) =>
-        Pacote.Criar(treinadorId, "Básico", 100m);
+        Pacote.Criar(treinadorId, "Básico", 100m, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_PacoteExistenteMesmoDono_AtualizaECommita()

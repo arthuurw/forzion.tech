@@ -26,7 +26,7 @@ public class RegistrarExecucaoHandlerTests
     {
         _handler = new RegistrarExecucaoHandler(
             _treinoRepo.Object, _alunoRepo.Object, _treinoAlunoRepo.Object,
-            _vinculoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
+            _vinculoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, TimeProvider.System, _logger.Object);
     }
 
     private static RegistrarExecucaoCommand ComandoValido(Guid treinoId, Guid alunoId) =>
@@ -36,11 +36,11 @@ public class RegistrarExecucaoHandlerTests
     public async Task HandleAsync_DadosValidos_RegistraERetorna()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João");
-        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
         vinculo.Aprovar(treinadorId, Guid.NewGuid());
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
@@ -60,7 +60,7 @@ public class RegistrarExecucaoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoNaoVinculadoAoAluno_LancaAcessoNegadoException()
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), DateTime.UtcNow);
         var alunoId = Guid.NewGuid();
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
@@ -75,9 +75,9 @@ public class RegistrarExecucaoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinoVinculadoInativo_LancaAcessoNegadoException()
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid());
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), DateTime.UtcNow);
         var alunoId = Guid.NewGuid();
-        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow);
         treinoAluno.AlterarStatus(TreinoAlunoStatus.Inativo);
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
@@ -93,9 +93,9 @@ public class RegistrarExecucaoHandlerTests
     public async Task HandleAsync_VinculoInativo_LancaAcessoNegadoException()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
         var alunoId = Guid.NewGuid();
-        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow);
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
@@ -124,10 +124,10 @@ public class RegistrarExecucaoHandlerTests
     public async Task HandleAsync_AlunoNaoEncontrado_LancaAlunoNaoEncontradoException()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
         var alunoId = Guid.NewGuid();
-        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
         vinculo.Aprovar(treinadorId, Guid.NewGuid());
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
@@ -145,13 +145,13 @@ public class RegistrarExecucaoHandlerTests
     public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João");
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
         aluno.Ativar();
         aluno.Inativar();
-        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
         vinculo.Aprovar(treinadorId, Guid.NewGuid());
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);

@@ -30,7 +30,7 @@ public class GerarCobrancaMensalHandlerTests
 
         _handler = new GerarCobrancaMensalHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, _contaRecebimentoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, paymentSettings, _logger.Object);
+            _stripeService.Object, _unitOfWork.Object, paymentSettings, TimeProvider.System, _logger.Object);
 
         _stripeService.Setup(s => s.CriarPixPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid>(),
@@ -40,15 +40,15 @@ public class GerarCobrancaMensalHandlerTests
 
     private static AssinaturaAluno CriarAssinaturaAluno(Guid treinadorId)
     {
-        var a = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m);
+        var a = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, DateTime.UtcNow);
         return a;
     }
 
-    private static Treinador CriarTreinadorComOnboarding() => Treinador.Criar(Guid.NewGuid(), "Carlos");
+    private static Treinador CriarTreinadorComOnboarding() => Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
 
     private static ContaRecebimento ContaOnboarded(Guid treinadorId)
     {
-        var c = ContaRecebimento.Criar(treinadorId);
+        var c = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
         c.ConfigurarStripeConnect("acct_123");
         c.ConfirmarOnboarding();
         return c;
@@ -89,7 +89,7 @@ public class GerarCobrancaMensalHandlerTests
     {
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
-        var pagamentoPendente = Pagamento.Criar(assinatura.Id, assinatura.Valor);
+        var pagamentoPendente = Pagamento.Criar(assinatura.Id, assinatura.Valor, DateTime.UtcNow);
         pagamentoPendente.DefinirDadosPix("pi_old", "qr", "url", DateTime.UtcNow.AddHours(1));
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
@@ -110,7 +110,7 @@ public class GerarCobrancaMensalHandlerTests
         // Zumbi: Pendente sem StripePaymentIntentId — Stripe falhou em tentativa anterior
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
-        var zumbi = Pagamento.Criar(assinatura.Id, assinatura.Valor); // sem DefinirDadosPix
+        var zumbi = Pagamento.Criar(assinatura.Id, assinatura.Valor, DateTime.UtcNow); // sem DefinirDadosPix
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
@@ -170,7 +170,7 @@ public class GerarCobrancaMensalHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorSemOnboarding_LancaDomainException()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         var assinatura = CriarAssinaturaAluno(treinador.Id);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))

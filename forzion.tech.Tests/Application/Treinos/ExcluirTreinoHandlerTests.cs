@@ -33,7 +33,7 @@ public class ExcluirTreinoHandlerTests
     }
 
     private static Treino CriarTreino(Guid treinadorId) =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_TreinoValido_RemoveFichasEComita()

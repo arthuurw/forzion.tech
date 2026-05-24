@@ -26,13 +26,13 @@ public class SolicitarTrocaTreinadorHandlerTests
             _vinculoRepo.Object,
             _treinadorRepo.Object,
             _unitOfWork.Object,
-            _userContext.Object,
+            _userContext.Object, TimeProvider.System,
             _logger.Object);
     }
 
     private static Treinador CriarTreinadorAtivo()
     {
-        var t = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var t = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         t.Aprovar(Guid.NewGuid());
         return t;
     }
@@ -42,7 +42,7 @@ public class SolicitarTrocaTreinadorHandlerTests
     {
         var novoTreinador = CriarTreinadorAtivo();
         var alunoId = Guid.NewGuid();
-        var vinculoAtual = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId);
+        var vinculoAtual = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow);
         var pacoteId = Guid.NewGuid();
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(novoTreinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(novoTreinador);
@@ -68,7 +68,7 @@ public class SolicitarTrocaTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorInativo_LancaDomainException()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var act = async () => await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(Guid.NewGuid(), treinador.Id, Guid.NewGuid()));
@@ -95,7 +95,7 @@ public class SolicitarTrocaTreinadorHandlerTests
         var treinadorId = Guid.NewGuid();
         var novoTreinador = CriarTreinadorAtivo();
         var alunoId = Guid.NewGuid();
-        var vinculoAtual = VinculoTreinadorAluno.Criar(novoTreinador.Id, alunoId);
+        var vinculoAtual = VinculoTreinadorAluno.Criar(novoTreinador.Id, alunoId, DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(novoTreinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(novoTreinador);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtual);
 
@@ -109,8 +109,8 @@ public class SolicitarTrocaTreinadorHandlerTests
     {
         var novoTreinador = CriarTreinadorAtivo();
         var alunoId = Guid.NewGuid();
-        var vinculoAtual = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId);
-        var vinculoPendente = VinculoTreinadorAluno.Criar(novoTreinador.Id, alunoId);
+        var vinculoAtual = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow);
+        var vinculoPendente = VinculoTreinadorAluno.Criar(novoTreinador.Id, alunoId, DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(novoTreinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(novoTreinador);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtual);
         _vinculoRepo.Setup(r => r.ObterPendentePorParAsync(novoTreinador.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);

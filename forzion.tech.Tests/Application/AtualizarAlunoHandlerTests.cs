@@ -33,7 +33,7 @@ public class AtualizarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetorna()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var result = await _handler.HandleAsync(new AtualizarAlunoCommand(aluno.Id, "Maria", null, null));
@@ -47,7 +47,7 @@ public class AtualizarAlunoHandlerTests
     {
         var alunoId = Guid.NewGuid();
         var treinadorId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João");
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.IsTreinador).Returns(true);
@@ -79,7 +79,7 @@ public class AtualizarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
         aluno.Ativar();
         aluno.Inativar();
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);

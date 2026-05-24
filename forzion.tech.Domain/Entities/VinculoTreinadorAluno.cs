@@ -23,7 +23,7 @@ public class VinculoTreinadorAluno : IHasDomainEvents
 
     private VinculoTreinadorAluno() { }
 
-    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId, Guid? pacoteId = null)
+    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId, DateTime agora, Guid? pacoteId = null)
     {
         if (treinadorId == Guid.Empty)
             throw new DomainException("O identificador do treinador é inválido.");
@@ -39,7 +39,7 @@ public class VinculoTreinadorAluno : IHasDomainEvents
             AlunoId = alunoId,
             PacoteId = pacoteId,
             Status = VinculoStatus.AguardandoAprovacao,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

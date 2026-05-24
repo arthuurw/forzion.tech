@@ -17,7 +17,7 @@ public class ExecucaoTreino
 
     private ExecucaoTreino() { }
 
-    public static ExecucaoTreino Criar(Guid treinoId, Guid alunoId, DateTime dataExecucao, string? observacao = null)
+    public static ExecucaoTreino Criar(Guid treinoId, Guid alunoId, DateTime dataExecucao, DateTime agora, string? observacao = null)
     {
         if (treinoId == Guid.Empty)
             throw new DomainException("O treino é inválido.");
@@ -35,7 +35,7 @@ public class ExecucaoTreino
             AlunoId = alunoId,
             DataExecucao = dataExecucao,
             Observacao = observacao,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

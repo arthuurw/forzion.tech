@@ -25,14 +25,14 @@ public class IniciarOnboardingTreinadorHandlerTests
     {
         _handler = new IniciarOnboardingTreinadorHandler(
             _treinadorRepo.Object, _contaRecebimentoRepo.Object, _contaRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _logger.Object);
+            _stripeService.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_TreinadorSemConta_CriaContaERetornaLink()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var conta = Conta.Criar(Email.Criar("carlos@test.com"), "hash", TipoConta.Treinador);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("carlos@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ContaRecebimento?)null);
@@ -58,8 +58,8 @@ public class IniciarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorComContaExistente_NaoCriaNovaConta()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var contaRecebimento = ContaRecebimento.Criar(treinador.Id);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow);
         contaRecebimento.ConfigurarStripeConnect("acct_existing");
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))

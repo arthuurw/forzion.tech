@@ -25,7 +25,7 @@ public class AssinaturaAluno : IHasDomainEvents
 
     private AssinaturaAluno() { }
 
-    public static AssinaturaAluno Criar(Guid vinculoId, Guid pacoteId, Guid treinadorId, Guid alunoId, decimal valor)
+    public static AssinaturaAluno Criar(Guid vinculoId, Guid pacoteId, Guid treinadorId, Guid alunoId, decimal valor, DateTime agora)
     {
         if (vinculoId == Guid.Empty)
             throw new DomainException("O identificador do vínculo é inválido.");
@@ -47,13 +47,13 @@ public class AssinaturaAluno : IHasDomainEvents
             AlunoId = alunoId,
             Valor = valor,
             Status = AssinaturaAlunoStatus.Pendente,
-            DataInicio = DateTime.UtcNow,
-            DataProximaCobranca = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
+            DataInicio = agora,
+            DataProximaCobranca = agora,
+            CreatedAt = agora
         };
 
         assinatura._domainEvents.Add(new AssinaturaAlunoCriadaEvent(
-            assinatura.Id, treinadorId, alunoId, pacoteId, valor, DateTime.UtcNow));
+            assinatura.Id, treinadorId, alunoId, pacoteId, valor, agora));
 
         return assinatura;
     }
@@ -86,12 +86,12 @@ public class AssinaturaAluno : IHasDomainEvents
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AgendarProximaCobranca(DateTime dataProximaCobranca)
+    public void AgendarProximaCobranca(DateTime dataProximaCobranca, DateTime agora)
     {
-        if (dataProximaCobranca <= DateTime.UtcNow)
+        if (dataProximaCobranca <= agora)
             throw new DomainException("A data da próxima cobrança deve ser futura.");
 
         DataProximaCobranca = dataProximaCobranca;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 }

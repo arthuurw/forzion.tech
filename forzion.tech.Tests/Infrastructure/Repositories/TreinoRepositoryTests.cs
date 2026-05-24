@@ -15,8 +15,8 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
     private static async Task<Guid> SeedTreinadorAsync(AppDbContext ctx)
     {
         var email = Email.Criar($"t{Guid.NewGuid():N}@test.com");
-        var conta = Conta.Criar(email, "hash", TipoConta.Treinador);
-        var treinador = Treinador.Criar(conta.Id, "Treinador");
+        var conta = Conta.Criar(email, "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var treinador = Treinador.Criar(conta.Id, "Treinador", DateTime.UtcNow);
         await ctx.Contas.AddAsync(conta);
         await ctx.Treinadores.AddAsync(treinador);
         await ctx.SaveChangesAsync();
@@ -26,8 +26,8 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
     private static async Task<Aluno> SeedAlunoAsync(AppDbContext ctx)
     {
         var email = Email.Criar($"a{Guid.NewGuid():N}@test.com");
-        var conta = Conta.Criar(email, "hash", TipoConta.Aluno);
-        var aluno = Aluno.Criar(conta.Id, "Aluno");
+        var conta = Conta.Criar(email, "hash", TipoConta.Aluno, DateTime.UtcNow);
+        var aluno = Aluno.Criar(conta.Id, "Aluno", DateTime.UtcNow);
         await ctx.Contas.AddAsync(conta);
         await ctx.Alunos.AddAsync(aluno);
         await ctx.SaveChangesAsync();
@@ -37,7 +37,7 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
     private static async Task<Treino> SeedTreinoAsync(AppDbContext ctx, Guid treinadorId,
         string nome, ObjetivoTreino objetivo = ObjetivoTreino.Hipertrofia)
     {
-        var treino = Treino.Criar(nome, objetivo, treinadorId);
+        var treino = Treino.Criar(nome, objetivo, treinadorId, DateTime.UtcNow);
         await ctx.Treinos.AddAsync(treino);
         await ctx.SaveChangesAsync();
         return treino;
@@ -147,7 +147,7 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
         var treino = await SeedTreinoAsync(ctx, tid, $"ComAluno-{Guid.NewGuid():N}");
         var aluno = await SeedAlunoAsync(ctx);
 
-        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id, DateTime.UtcNow);
         await ctx.TreinoAlunos.AddAsync(treinoAluno);
         await ctx.SaveChangesAsync();
 
@@ -181,7 +181,7 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
         var aluno = await SeedAlunoAsync(ctx);
         var treino = await SeedTreinoAsync(ctx, tid, $"FichaAluno-{Guid.NewGuid():N}");
 
-        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id, DateTime.UtcNow);
         await ctx.TreinoAlunos.AddAsync(treinoAluno);
         await ctx.SaveChangesAsync();
 
@@ -212,7 +212,7 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
         var aluno2 = await SeedAlunoAsync(ctx);
         var treino = await SeedTreinoAsync(ctx, tid, $"FichaIsolada-{Guid.NewGuid():N}");
 
-        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno1.Id);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno1.Id, DateTime.UtcNow);
         await ctx.TreinoAlunos.AddAsync(treinoAluno);
         await ctx.SaveChangesAsync();
 
@@ -231,7 +231,7 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
         for (var i = 0; i < 5; i++)
         {
             var treino = await SeedTreinoAsync(ctx, tid, $"FichaPag{i}-{Guid.NewGuid():N}");
-            var ta = TreinoAluno.Criar(treino.Id, aluno.Id);
+            var ta = TreinoAluno.Criar(treino.Id, aluno.Id, DateTime.UtcNow);
             await ctx.TreinoAlunos.AddAsync(ta);
         }
         await ctx.SaveChangesAsync();
