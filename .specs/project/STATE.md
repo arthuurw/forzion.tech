@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-05-24
-**Current Work:** Backend Test Harness — Fase 0 ✅ (PR #39 aberto → `backend`); Fases 1–12 pendentes (`docs/backend-harness-tasks.md`)
+**Current Work:** Backend Test Harness — F0/F1/F3–F6/F8–F12/F10/F11 ✅ mergeadas em `backend`. **Pendentes: F2 (split unit/integration) + F7 (E2E real, depende de F2)** — branch `chore/backend-harness-fase2-7-integration` criada (vazia). (`docs/backend-harness-tasks.md`)
 
 ---
 
@@ -91,7 +91,12 @@
 | 002 | DDD #3 GrupoMuscular FK | 2026-05-24 | `e879e46` | ✅ |
 | 003 | DDD #2 rename plataforma/aluno | 2026-05-24 | `b2e0802` | ✅ |
 | 004 | docs backend-harness-plan | 2026-05-24 | `9be698a` | ✅ |
-| 005 | Harness Fase 0 (tooling baseline) | 2026-05-24 | `a27a1d9` | ✅ (PR #39) |
+| 005 | Harness Fase 0 (tooling baseline) | 2026-05-24 | `0e759db` | ✅ (PR #39) |
+| 006 | Harness Fase 1 (determinismo TimeProvider) | 2026-05-24 | `aaee4fd` | ✅ (PR #42) |
+| 007 | Harness Fase 10 (supply-chain NuGet) | 2026-05-24 | `ca482e6` | ✅ (PR #40) |
+| 008 | Harness Fase 11 (pre-commit + CODEOWNERS) | 2026-05-24 | `832c72f` | ✅ (PR #41) |
+| 009 | Harness Fases 3–6 (arch + builders + property + snapshot) | 2026-05-24 | `8fac562` | ✅ (PR #44) |
+| 010 | Harness Fases 8–9–12 (mutation + cobertura + openapi) | 2026-05-24 | `2e60a65` | ✅ (PR #43) |
 
 ---
 
@@ -105,11 +110,10 @@
 
 ## Todos
 
-- [ ] Decidir merge do PR #39 (Fase 0 → `backend`).
-- [ ] Commitar `docs/backend-harness-tasks.md` (criado, ainda não commitado).
-- [ ] `docs/pact-broker-homolog.md`: deleção feita pelo usuário, deixada fora dos commits do assistente — usuário commita quando quiser.
-- [ ] Antes de F4/F5: confirmar ferramentas (builder à mão vs AutoFixture/Bogus; CsCheck vs FsCheck) e validar APIs via context7.
-- [ ] Fase 1 toca o Domain (~21 entidades) — revisar escopo com cuidado; suíte verde por grupo.
+- [ ] **F2 — split unit vs integration**: Trait `Category=Integration` nos testes Docker + jobs CI separados (unit todo PR / integration com Postgres). Branch `chore/backend-harness-fase2-7-integration` (vazia). Bloqueia F7.
+- [ ] **F7 — E2E real**: WebApplicationFactory + Testcontainers Postgres + ≥3 fluxos críticos ponta-a-ponta. Depende de F2.
+- [ ] `docs/pact-broker-homolog.md`: deleção feita pelo usuário, ainda não commitada — usuário commita quando quiser.
+- [ ] Antes de F2/F7: validar fixture WebApplicationFactory + isolamento de DB por teste/coleção; Stripe via fake/stub (não chamar real).
 
 ---
 
