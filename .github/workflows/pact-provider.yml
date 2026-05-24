@@ -1,0 +1,41 @@
+name: Pact — provider verification (backend)
+
+# Verifica a API .NET (provider forzion-api) contra os contratos publicados no
+# broker pelo consumer (forzion-frontend) e publica o resultado da verificacao.
+#
+# Projeto isolado (forzion.tech.PactVerification) — nao faz parte da solution,
+# entao o gate de PR nao o builda. Roda aqui, com os secrets do broker do
+# Environment homolog. Sem broker, o teste e no-op.
+on:
+  workflow_dispatch:
+  schedule:
+    # Terca 05:00 UTC — re-verifica contra o ultimo contrato publicado.
+    - cron: "0 5 * * 2"
+  push:
+    branches: [homolog]
+    paths:
+      - "forzion.tech.Api/**"
+      - "forzion.tech.Application/**"
+      - "forzion.tech.PactVerification/**"
+      - ".github/workflows/pact-provider.yml"
+
+jobs:
+  verify:
+    name: Provider verification
+    runs-on: ubuntu-latest
+    environment: homolog
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Verifica contratos (provider)
+        run: dotnet test forzion.tech.PactVerification/forzion.tech.PactVerification.csproj -c Release --nologo
+        env:
+          CI: "true"
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
+          PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
+          GITHUB_SHA: ${{ github.sha }}
