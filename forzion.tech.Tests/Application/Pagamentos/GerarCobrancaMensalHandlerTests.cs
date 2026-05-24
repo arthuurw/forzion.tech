@@ -14,7 +14,7 @@ namespace forzion.tech.Tests.Application.Pagamentos;
 
 public class GerarCobrancaMensalHandlerTests
 {
-    private readonly Mock<IAssinaturaRepository> _assinaturaRepo = new();
+    private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
@@ -38,9 +38,9 @@ public class GerarCobrancaMensalHandlerTests
             .ReturnsAsync(PixResult);
     }
 
-    private static Assinatura CriarAssinatura(Guid treinadorId)
+    private static AssinaturaAluno CriarAssinaturaAluno(Guid treinadorId)
     {
-        var a = Assinatura.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m);
+        var a = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m);
         return a;
     }
 
@@ -55,12 +55,12 @@ public class GerarCobrancaMensalHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_AssinaturaValida_GeraPixERetornaResponse()
+    public async Task HandleAsync_AssinaturaAlunoValida_GeraPixERetornaResponse()
     {
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Pagamento?)null);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));
@@ -77,7 +77,7 @@ public class GerarCobrancaMensalHandlerTests
     public async Task HandleAsync_TreinadorErrado_LancaAcessoNegado()
     {
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 
         var act = async () => await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, Guid.NewGuid()));
@@ -88,11 +88,11 @@ public class GerarCobrancaMensalHandlerTests
     public async Task HandleAsync_PagamentoPendenteExistente_RetornaExistente()
     {
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
         var pagamentoPendente = Pagamento.Criar(assinatura.Id, assinatura.Valor);
         pagamentoPendente.DefinirDadosPix("pi_old", "qr", "url", DateTime.UtcNow.AddHours(1));
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamentoPendente);
 
         var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
@@ -109,11 +109,11 @@ public class GerarCobrancaMensalHandlerTests
     {
         // Zumbi: Pendente sem StripePaymentIntentId — Stripe falhou em tentativa anterior
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
         var zumbi = Pagamento.Criar(assinatura.Id, assinatura.Valor); // sem DefinirDadosPix
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(zumbi);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));
@@ -132,9 +132,9 @@ public class GerarCobrancaMensalHandlerTests
     public async Task HandleAsync_StripeFalha_MarcaPagamentoFalhouEPropagaExcecao()
     {
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Pagamento?)null);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));
@@ -155,10 +155,10 @@ public class GerarCobrancaMensalHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_AssinaturaCancelada_RetornaFailure()
+    public async Task HandleAsync_AssinaturaAlunoCancelada_RetornaFailure()
     {
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
         assinatura.Cancelar();
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 
@@ -171,9 +171,9 @@ public class GerarCobrancaMensalHandlerTests
     public async Task HandleAsync_TreinadorSemOnboarding_LancaDomainException()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Pagamento?)null);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ContaRecebimento?)null);
@@ -183,13 +183,13 @@ public class GerarCobrancaMensalHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_AssinaturaNaoEncontrada_LancaDomainException()
+    public async Task HandleAsync_AssinaturaAlunoNaoEncontrada_LancaDomainException()
     {
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Assinatura?)null);
+            .ReturnsAsync((AssinaturaAluno?)null);
 
         var act = async () => await _handler.HandleAsync(new GerarCobrancaMensalCommand(Guid.NewGuid(), Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("Assinatura não encontrada.");
+        await act.Should().ThrowAsync<DomainException>().WithMessage("AssinaturaAluno não encontrada.");
     }
 
     [Fact]
@@ -207,10 +207,10 @@ public class GerarCobrancaMensalHandlerTests
     public async Task HandleAsync_MetodoCartao_GeraCartaoERetornaResponse()
     {
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Pagamento?)null);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));
@@ -233,10 +233,10 @@ public class GerarCobrancaMensalHandlerTests
     public async Task HandleAsync_MetodoCartao_StripeFalha_MarcaPagamentoFalhouEPropagaExcecao()
     {
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Pagamento?)null);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));
@@ -261,10 +261,10 @@ public class GerarCobrancaMensalHandlerTests
     public async Task HandleAsync_MetodoCartao_NaoChama_CriarPixPaymentIntent()
     {
         var treinador = CriarTreinadorComOnboarding();
-        var assinatura = CriarAssinatura(treinador.Id);
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Pagamento?)null);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));

@@ -6,7 +6,7 @@ namespace forzion.tech.Domain.Entities;
 public class Pagamento
 {
     public Guid Id { get; private set; }
-    public Guid AssinaturaId { get; private set; }
+    public Guid AssinaturaAlunoId { get; private set; }
     public decimal Valor { get; private set; }
     public PagamentoStatus Status { get; private set; }
     public MetodoPagamento MetodoPagamento { get; private set; }
@@ -31,7 +31,7 @@ public class Pagamento
         return new Pagamento
         {
             Id = Guid.NewGuid(),
-            AssinaturaId = assinaturaId,
+            AssinaturaAlunoId = assinaturaId,
             Valor = valor,
             Status = PagamentoStatus.Pendente,
             MetodoPagamento = metodo,

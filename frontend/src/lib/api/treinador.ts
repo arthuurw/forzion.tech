@@ -7,7 +7,7 @@ import type {
   TreinoAlunoResponse,
   TreinoAlunoVinculado,
   ExercicioResponse,
-  PacoteAlunoResponse,
+  PacoteResponse,
   GrupoMuscularResponse,
   PaginatedResponse,
   AlunoStatus,
@@ -71,7 +71,7 @@ export const treinadorApi = {
     return apiClient.get<PaginatedResponse<VinculoDetalheResponse>>("/treinador/vinculos", { params });
   },
   aprovarVinculo(vinculoId: string, pacoteId: string, trarFichas = false) {
-    return apiClient.post(`/treinador/vinculos/${vinculoId}/aprovar`, { pacoteAlunoId: pacoteId, trarFichas });
+    return apiClient.post(`/treinador/vinculos/${vinculoId}/aprovar`, { pacoteId, trarFichas });
   },
   desvincularAluno(vinculoId: string, observacao?: string | null) {
     return apiClient.post(`/treinador/vinculos/${vinculoId}/desvincular`, { observacao: observacao ?? null });
@@ -139,19 +139,19 @@ export const treinadorApi = {
     return apiClient.delete(`/treinador/exercicios/${exercicioId}`);
   },
 
-  reativarAluno(alunoId: string, pacoteAlunoId: string) {
-    return apiClient.post<VinculoDetalheResponse>(`/treinador/alunos/${alunoId}/reativar`, { pacoteAlunoId });
+  reativarAluno(alunoId: string, pacoteId: string) {
+    return apiClient.post<VinculoDetalheResponse>(`/treinador/alunos/${alunoId}/reativar`, { pacoteId });
   },
 
   // ── Pacotes ──
   listPacotes() {
-    return apiClient.get<PacoteAlunoResponse[]>("/treinador/pacotes");
+    return apiClient.get<PacoteResponse[]>("/treinador/pacotes");
   },
   criarPacote(data: CriarPacoteData) {
-    return apiClient.post<PacoteAlunoResponse>("/treinador/pacotes", data);
+    return apiClient.post<PacoteResponse>("/treinador/pacotes", data);
   },
   atualizarPacote(pacoteId: string, data: { nome?: string; preco?: number; descricao?: string | null }) {
-    return apiClient.patch<PacoteAlunoResponse>(`/treinador/pacotes/${pacoteId}`, data);
+    return apiClient.patch<PacoteResponse>(`/treinador/pacotes/${pacoteId}`, data);
   },
   excluirPacote(pacoteId: string) {
     return apiClient.delete(`/treinador/pacotes/${pacoteId}`);

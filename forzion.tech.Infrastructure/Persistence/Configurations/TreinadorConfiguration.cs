@@ -26,11 +26,11 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
 
         builder.Property(t => t.Telefone).HasMaxLength(20);
 
-        builder.Property(t => t.PlanoTreinadorId);
+        builder.Property(t => t.PlanoPlataformaId);
 
-        builder.HasOne<PlanoTreinador>()
+        builder.HasOne<PlanoPlataforma>()
             .WithMany()
-            .HasForeignKey(t => t.PlanoTreinadorId)
+            .HasForeignKey(t => t.PlanoPlataformaId)
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 

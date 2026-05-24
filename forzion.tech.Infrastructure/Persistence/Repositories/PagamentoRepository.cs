@@ -17,17 +17,17 @@ public class PagamentoRepository(AppDbContext context) : IPagamentoRepository
             .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntentId, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<Pagamento>> ListarPorAssinaturaAsync(Guid assinaturaId, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<Pagamento>> ListarPorAssinaturaAlunoAsync(Guid assinaturaId, CancellationToken cancellationToken = default) =>
         await context.Pagamentos
             .AsNoTracking()
-            .Where(p => p.AssinaturaId == assinaturaId)
+            .Where(p => p.AssinaturaAlunoId == assinaturaId)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<Pagamento?> ObterPendentePorAssinaturaAsync(Guid assinaturaId, CancellationToken cancellationToken = default) =>
+    public async Task<Pagamento?> ObterPendentePorAssinaturaAlunoAsync(Guid assinaturaId, CancellationToken cancellationToken = default) =>
         await context.Pagamentos
-            .FirstOrDefaultAsync(p => p.AssinaturaId == assinaturaId && p.Status == PagamentoStatus.Pendente, cancellationToken)
+            .FirstOrDefaultAsync(p => p.AssinaturaAlunoId == assinaturaId && p.Status == PagamentoStatus.Pendente, cancellationToken)
             .ConfigureAwait(false);
 
     public async Task AdicionarAsync(Pagamento pagamento, CancellationToken cancellationToken = default) =>

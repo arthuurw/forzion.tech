@@ -16,7 +16,7 @@ import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import type {
   TreinadorResponse, AlunoResponse, VinculoDetalheResponse,
-  TreinoResponse, PacoteAlunoResponse,
+  TreinoResponse, PacoteResponse,
 } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
@@ -56,7 +56,7 @@ export default function DetalheTreinadorAdminPage() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState(0);
 
-  const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
+  const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
   const [pacotesLoading, setPacotesLoading] = useState(false);
   const [pacotesLoaded, setPacotesLoaded] = useState(false);
 

@@ -52,6 +52,6 @@ public class SolicitarTrocaTreinadorHandler(
 
         logger.LogInformation("Aluno {AlunoId} solicitou troca para treinador {TreinadorId}.", command.AlunoId, command.NovoTreinadorId);
 
-        return new VinculoResponse(novoVinculo.Id, novoVinculo.TreinadorId, novoVinculo.AlunoId, novoVinculo.PacoteAlunoId, novoVinculo.Status, novoVinculo.CreatedAt);
+        return new VinculoResponse(novoVinculo.Id, novoVinculo.TreinadorId, novoVinculo.AlunoId, novoVinculo.PacoteId, novoVinculo.Status, novoVinculo.CreatedAt);
     }
 }

@@ -82,7 +82,7 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             ExercicioNaoEncontradoException ex          => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
             PacoteNaoEncontradoException ex             => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
             GrupoMuscularNaoEncontradoException ex      => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
-            PlanoTreinadorNaoEncontradoException ex     => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            PlanoPlataformaNaoEncontradoException ex     => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
 
             AlunoInativoException ex            => (StatusCodes.Status403Forbidden, "Inativo",       ex.Message),
             AcessoNegadoException ex            => (StatusCodes.Status403Forbidden, "Acesso negado", ex.Message),

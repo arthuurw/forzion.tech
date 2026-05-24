@@ -5,7 +5,7 @@ namespace forzion.tech.Application.UseCases.Pagamentos;
 
 public record PagamentoResponse(
     Guid PagamentoId,
-    Guid AssinaturaId,
+    Guid AssinaturaAlunoId,
     decimal Valor,
     PagamentoStatus Status,
     MetodoPagamento MetodoPagamento,
@@ -20,14 +20,14 @@ public static class PagamentoResponseExtensions
 {
     // Para o treinador — ClientSecret omitido (não deve sair do contexto do aluno)
     public static PagamentoResponse ToResponseTreinador(Pagamento p) => new(
-        p.Id, p.AssinaturaId, p.Valor, p.Status, p.MetodoPagamento,
+        p.Id, p.AssinaturaAlunoId, p.Valor, p.Status, p.MetodoPagamento,
         p.PixQrCode, p.PixQrCodeUrl, p.PixExpiracao,
         null,
         p.DataPagamento, p.CreatedAt);
 
     // Para o aluno — inclui ClientSecret para confirmação de cartão
     public static PagamentoResponse ToResponseAluno(Pagamento p) => new(
-        p.Id, p.AssinaturaId, p.Valor, p.Status, p.MetodoPagamento,
+        p.Id, p.AssinaturaAlunoId, p.Valor, p.Status, p.MetodoPagamento,
         p.PixQrCode, p.PixQrCodeUrl, p.PixExpiracao,
         p.ClientSecret,
         p.DataPagamento, p.CreatedAt);

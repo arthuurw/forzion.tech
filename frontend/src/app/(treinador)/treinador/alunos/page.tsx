@@ -17,7 +17,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
-import type { VinculoDetalheResponse, VinculoStatus, PacoteAlunoResponse } from "@/types";
+import type { VinculoDetalheResponse, VinculoStatus, PacoteResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 
 const COLUMNS: Column[] = [
@@ -36,13 +36,13 @@ export default function AlunosTreinadorPage() {
   const [observacaoDesvincular, setObservacaoDesvincular] = useState("");
 
   const [aprovarDialog, setAprovarDialog] = useState<VinculoDetalheResponse | null>(null);
-  const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
-  const [selectedPacote, setSelectedPacote] = useState<PacoteAlunoResponse | null>(null);
+  const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
+  const [selectedPacote, setSelectedPacote] = useState<PacoteResponse | null>(null);
   const [trarFichas, setTrarFichas] = useState(false);
   const [loadingAprovar, setLoadingAprovar] = useState(false);
 
   const [reativarDialog, setReativarDialog] = useState<VinculoDetalheResponse | null>(null);
-  const [selectedPacoteReativar, setSelectedPacoteReativar] = useState<PacoteAlunoResponse | null>(null);
+  const [selectedPacoteReativar, setSelectedPacoteReativar] = useState<PacoteResponse | null>(null);
   const [loadingReativar, setLoadingReativar] = useState(false);
 
   const fetcher = useCallback(

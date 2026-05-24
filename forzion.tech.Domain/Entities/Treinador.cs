@@ -13,7 +13,7 @@ public class Treinador : IHasDomainEvents
     public Guid Id { get; private set; }
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
-    public Guid? PlanoTreinadorId { get; private set; }
+    public Guid? PlanoPlataformaId { get; private set; }
     public TreinadorStatus Status { get; private set; }
     public string? Telefone { get; private set; }
     public Guid? AprovadoPorId { get; private set; }
@@ -81,14 +81,14 @@ public class Treinador : IHasDomainEvents
             throw new DomainException("O treinador selecionado não está disponível.");
     }
 
-    public void AtribuirPlano(Guid planoTreinadorId)
+    public void AtribuirPlano(Guid planoPlataformaId)
     {
-        if (planoTreinadorId == Guid.Empty)
+        if (planoPlataformaId == Guid.Empty)
             throw new DomainException("O identificador do plano é inválido.");
         if (Status == TreinadorStatus.Inativo)
             throw new DomainException("Não é possível atribuir plano a um treinador inativo.");
 
-        PlanoTreinadorId = planoTreinadorId;
+        PlanoPlataformaId = planoPlataformaId;
         UpdatedAt = DateTime.UtcNow;
     }
 

@@ -153,7 +153,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("assinantes", "homolog");
                 });
 
-            modelBuilder.Entity("forzion.tech.Domain.Entities.Assinatura", b =>
+            modelBuilder.Entity("forzion.tech.Domain.Entities.AssinaturaAluno", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -180,9 +180,9 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_proxima_cobranca");
 
-                    b.Property<Guid>("PacoteAlunoId")
+                    b.Property<Guid>("PacoteId")
                         .HasColumnType("uuid")
-                        .HasColumnName("pacote_aluno_id");
+                        .HasColumnName("pacote_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -206,25 +206,25 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnName("vinculo_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_assinaturas");
+                        .HasName("pk_assinaturas_aluno");
 
                     b.HasIndex("AlunoId")
-                        .HasDatabaseName("ix_assinaturas_aluno_id");
+                        .HasDatabaseName("ix_assinaturas_aluno_aluno_id");
 
-                    b.HasIndex("PacoteAlunoId")
-                        .HasDatabaseName("ix_assinaturas_pacote_aluno_id");
+                    b.HasIndex("PacoteId")
+                        .HasDatabaseName("ix_assinaturas_aluno_pacote_id");
 
                     b.HasIndex("TreinadorId")
-                        .HasDatabaseName("ix_assinaturas_treinador_id");
+                        .HasDatabaseName("ix_assinaturas_aluno_treinador_id");
 
                     b.HasIndex("VinculoId")
                         .IsUnique()
-                        .HasDatabaseName("ix_assinaturas_vinculo_id");
+                        .HasDatabaseName("ix_assinaturas_aluno_vinculo_id");
 
                     b.HasIndex("Status", "DataProximaCobranca")
-                        .HasDatabaseName("ix_assinaturas_status_data_proxima_cobranca");
+                        .HasDatabaseName("ix_assinaturas_aluno_status_data_proxima_cobranca");
 
-                    b.ToTable("assinaturas", "homolog");
+                    b.ToTable("assinaturas_aluno", "homolog");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Conta", b =>
@@ -519,7 +519,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("logs_aprovacao", "homolog");
                 });
 
-            modelBuilder.Entity("forzion.tech.Domain.Entities.PacoteAluno", b =>
+            modelBuilder.Entity("forzion.tech.Domain.Entities.Pacote", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -558,12 +558,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_pacotes_aluno");
+                        .HasName("pk_pacotes");
 
                     b.HasIndex("TreinadorId")
-                        .HasDatabaseName("ix_pacotes_aluno_treinador_id");
+                        .HasDatabaseName("ix_pacotes_treinador_id");
 
-                    b.ToTable("pacotes_aluno", "homolog");
+                    b.ToTable("pacotes", "homolog");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Pagamento", b =>
@@ -573,9 +573,9 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("AssinaturaId")
+                    b.Property<Guid>("AssinaturaAlunoId")
                         .HasColumnType("uuid")
-                        .HasColumnName("assinatura_id");
+                        .HasColumnName("assinatura_aluno_id");
 
                     b.Property<string>("ClientSecret")
                         .HasMaxLength(500)
@@ -631,22 +631,22 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_pagamentos");
 
-                    b.HasIndex("AssinaturaId")
+                    b.HasIndex("AssinaturaAlunoId")
                         .IsUnique()
-                        .HasDatabaseName("ix_pagamentos_assinatura_id_pendente_unique")
+                        .HasDatabaseName("ix_pagamentos_assinatura_aluno_id_pendente_unique")
                         .HasFilter("status = 'Pendente'");
 
                     b.HasIndex("StripePaymentIntentId")
                         .IsUnique()
                         .HasDatabaseName("ix_pagamentos_stripe_payment_intent_id");
 
-                    b.HasIndex("AssinaturaId", "Status")
-                        .HasDatabaseName("ix_pagamentos_assinatura_id_status");
+                    b.HasIndex("AssinaturaAlunoId", "Status")
+                        .HasDatabaseName("ix_pagamentos_assinatura_aluno_id_status");
 
                     b.ToTable("pagamentos", "homolog");
                 });
 
-            modelBuilder.Entity("forzion.tech.Domain.Entities.PlanoTreinador", b =>
+            modelBuilder.Entity("forzion.tech.Domain.Entities.PlanoPlataforma", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -691,9 +691,9 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_planos_treinador");
+                        .HasName("pk_planos_plataforma");
 
-                    b.ToTable("planos_treinador", "homolog");
+                    b.ToTable("planos_plataforma", "homolog");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.SerieConfig", b =>
@@ -838,9 +838,9 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("nome");
 
-                    b.Property<Guid?>("PlanoTreinadorId")
+                    b.Property<Guid?>("PlanoPlataformaId")
                         .HasColumnType("uuid")
-                        .HasColumnName("plano_treinador_id");
+                        .HasColumnName("plano_plataforma_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -863,8 +863,8 @@ namespace forzion.tech.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_treinadores_conta_id");
 
-                    b.HasIndex("PlanoTreinadorId")
-                        .HasDatabaseName("ix_treinadores_plano_treinador_id");
+                    b.HasIndex("PlanoPlataformaId")
+                        .HasDatabaseName("ix_treinadores_plano_plataforma_id");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_treinadores_status");
@@ -1035,9 +1035,9 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_inicio");
 
-                    b.Property<Guid?>("PacoteAlunoId")
+                    b.Property<Guid?>("PacoteId")
                         .HasColumnType("uuid")
-                        .HasColumnName("pacote_aluno_id");
+                        .HasColumnName("pacote_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1054,8 +1054,8 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("AlunoId")
                         .HasDatabaseName("ix_vinculos_treinador_aluno_aluno_id");
 
-                    b.HasIndex("PacoteAlunoId")
-                        .HasDatabaseName("ix_vinculos_treinador_aluno_pacote_aluno_id");
+                    b.HasIndex("PacoteId")
+                        .HasDatabaseName("ix_vinculos_treinador_aluno_pacote_id");
 
                     b.HasIndex("TreinadorId", "AlunoId")
                         .HasDatabaseName("ix_vinculos_treinador_aluno_treinador_id_aluno_id");
@@ -1076,35 +1076,35 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasConstraintName("fk_alunos_contas_conta_id");
                 });
 
-            modelBuilder.Entity("forzion.tech.Domain.Entities.Assinatura", b =>
+            modelBuilder.Entity("forzion.tech.Domain.Entities.AssinaturaAluno", b =>
                 {
                     b.HasOne("forzion.tech.Domain.Entities.Aluno", null)
                         .WithMany()
                         .HasForeignKey("AlunoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_assinaturas_alunos_aluno_id");
+                        .HasConstraintName("fk_assinaturas_aluno_alunos_aluno_id");
 
-                    b.HasOne("forzion.tech.Domain.Entities.PacoteAluno", null)
+                    b.HasOne("forzion.tech.Domain.Entities.Pacote", null)
                         .WithMany()
-                        .HasForeignKey("PacoteAlunoId")
+                        .HasForeignKey("PacoteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_assinaturas_pacotes_aluno_pacote_aluno_id");
+                        .HasConstraintName("fk_assinaturas_aluno_pacotes_pacote_id");
 
                     b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
                         .WithMany()
                         .HasForeignKey("TreinadorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_assinaturas_treinadores_treinador_id");
+                        .HasConstraintName("fk_assinaturas_aluno_treinadores_treinador_id");
 
                     b.HasOne("forzion.tech.Domain.Entities.VinculoTreinadorAluno", null)
                         .WithMany()
                         .HasForeignKey("VinculoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_assinaturas_vinculos_treinador_aluno_vinculo_id");
+                        .HasConstraintName("fk_assinaturas_aluno_vinculos_treinador_aluno_vinculo_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.ContaRecebimento", b =>
@@ -1167,24 +1167,24 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasConstraintName("fk_exercicios_treinadores_treinador_id");
                 });
 
-            modelBuilder.Entity("forzion.tech.Domain.Entities.PacoteAluno", b =>
+            modelBuilder.Entity("forzion.tech.Domain.Entities.Pacote", b =>
                 {
                     b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
                         .WithMany()
                         .HasForeignKey("TreinadorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_pacotes_aluno_treinadores_treinador_id");
+                        .HasConstraintName("fk_pacotes_treinadores_treinador_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Pagamento", b =>
                 {
-                    b.HasOne("forzion.tech.Domain.Entities.Assinatura", null)
+                    b.HasOne("forzion.tech.Domain.Entities.AssinaturaAluno", null)
                         .WithMany()
-                        .HasForeignKey("AssinaturaId")
+                        .HasForeignKey("AssinaturaAlunoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_pagamentos_assinaturas_assinatura_id");
+                        .HasConstraintName("fk_pagamentos_assinaturas_aluno_assinatura_aluno_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.SerieConfig", b =>
@@ -1216,11 +1216,11 @@ namespace forzion.tech.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_treinadores_contas_conta_id");
 
-                    b.HasOne("forzion.tech.Domain.Entities.PlanoTreinador", null)
+                    b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
                         .WithMany()
-                        .HasForeignKey("PlanoTreinadorId")
+                        .HasForeignKey("PlanoPlataformaId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_treinadores_planos_treinador_plano_treinador_id");
+                        .HasConstraintName("fk_treinadores_planos_plataforma_plano_plataforma_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Treino", b =>
@@ -1276,11 +1276,11 @@ namespace forzion.tech.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_vinculos_treinador_aluno_alunos_aluno_id");
 
-                    b.HasOne("forzion.tech.Domain.Entities.PacoteAluno", null)
+                    b.HasOne("forzion.tech.Domain.Entities.Pacote", null)
                         .WithMany()
-                        .HasForeignKey("PacoteAlunoId")
+                        .HasForeignKey("PacoteId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_vinculos_treinador_aluno_pacotes_aluno_pacote_aluno_id");
+                        .HasConstraintName("fk_vinculos_treinador_aluno_pacotes_pacote_id");
 
                     b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
                         .WithMany()

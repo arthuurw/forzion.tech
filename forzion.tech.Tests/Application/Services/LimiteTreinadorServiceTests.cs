@@ -10,7 +10,7 @@ namespace forzion.tech.Tests.Application.Services;
 public class LimiteTreinadorServiceTests
 {
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
-    private readonly Mock<IPlanoTreinadorRepository> _planoRepo = new();
+    private readonly Mock<IPlanoPlataformaRepository> _planoRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly LimiteTreinadorService _service;
 
@@ -29,7 +29,7 @@ public class LimiteTreinadorServiceTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99m));
+            .ReturnsAsync(PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99m));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
         var act = async () => await _service.ValidarAsync(treinadorId);
@@ -46,7 +46,7 @@ public class LimiteTreinadorServiceTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(PlanoTreinador.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 99m));
+            .ReturnsAsync(PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 99m));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
         var act = async () => await _service.ValidarAsync(treinadorId);
@@ -75,7 +75,7 @@ public class LimiteTreinadorServiceTests
         treinador.AtribuirPlano(planoId);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>())).ReturnsAsync((PlanoTreinador?)null);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>())).ReturnsAsync((PlanoPlataforma?)null);
 
         var act = async () => await _service.ValidarAsync(treinadorId);
         await act.Should().ThrowAsync<DomainException>()

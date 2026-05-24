@@ -17,7 +17,7 @@ public class ListarTreinadoresPublicosHandler(ITreinadorRepository treinadorRepo
                 t.ContaId,
                 t.Nome,
                 t.Status,
-                t.PlanoTreinadorId,
+                t.PlanoPlataformaId,
                 t.CreatedAt))
             .ToList();
     }

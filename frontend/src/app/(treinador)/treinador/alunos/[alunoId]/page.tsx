@@ -57,8 +57,8 @@ export default function DetalheAlunoPage() {
       setFichas(fichasRes.data);
 
       const vinculo = vinculosRes.data.items.find((v) => v.alunoId === alunoId);
-      if (vinculo?.pacoteAlunoId) {
-        const pacote = pacotesRes.data.find((p) => p.pacoteId === vinculo.pacoteAlunoId);
+      if (vinculo?.pacoteId) {
+        const pacote = pacotesRes.data.find((p) => p.pacoteId === vinculo.pacoteId);
         setPacoteNome(pacote?.nome ?? null);
       }
     } catch {

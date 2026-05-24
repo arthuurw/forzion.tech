@@ -71,7 +71,7 @@ export interface TreinadorResponse {
   nome: string;
   contaId: string;
   status: TreinadorStatus;
-  planoTreinadorId: string | null;
+  planoPlataformaId: string | null;
   createdAt: string;
 }
 
@@ -79,7 +79,7 @@ export interface VinculoResponse {
   vinculoId: string;
   treinadorId: string;
   alunoId: string;
-  pacoteAlunoId: string | null;
+  pacoteId: string | null;
   status: VinculoStatus;
   createdAt: string;
 }
@@ -144,7 +144,7 @@ export interface ExercicioResponse {
 
 export type TierPlano = "Free" | "Basic" | "Pro" | "ProPlus" | "Elite";
 
-export interface PlanoTreinadorResponse {
+export interface PlanoPlataformaResponse {
   planoId: string;
   nome: string;
   tier: TierPlano;
@@ -164,7 +164,7 @@ export interface GrupoMuscularResponse {
   updatedAt: string | null;
 }
 
-export interface PacoteAlunoResponse {
+export interface PacoteResponse {
   pacoteId: string;
   nome: string;
   descricao: string | null;
@@ -241,18 +241,18 @@ export interface ProgressaoAlunoResponse {
   exercicios: ExercicioProgressao[];
 }
 
-export type AssinaturaStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
+export type AssinaturaAlunoStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
 export type PagamentoStatus = "Pendente" | "Pago" | "Expirado" | "Falhou";
 export type MetodoPagamento = "Pix" | "Cartao";
 
-export interface AssinaturaResponse {
-  assinaturaId: string;
+export interface AssinaturaAlunoResponse {
+  assinaturaAlunoId: string;
   vinculoId: string;
-  pacoteAlunoId: string;
+  pacoteId: string;
   treinadorId: string;
   alunoId: string;
   valor: number;
-  status: AssinaturaStatus;
+  status: AssinaturaAlunoStatus;
   dataInicio: string;
   dataProximaCobranca: string;
   dataCancelamento: string | null;
@@ -261,7 +261,7 @@ export interface AssinaturaResponse {
 
 export interface PagamentoResponse {
   pagamentoId: string;
-  assinaturaId: string;
+  assinaturaAlunoId: string;
   valor: number;
   status: PagamentoStatus;
   metodoPagamento: MetodoPagamento;

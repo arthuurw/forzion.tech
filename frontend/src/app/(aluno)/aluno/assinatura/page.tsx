@@ -5,7 +5,7 @@ import {
   CircularProgress, Alert, Divider,
 } from "@mui/material";
 import { pagamentoApi } from "@/lib/api/pagamento";
-import type { AssinaturaResponse, PagamentoResponse } from "@/types";
+import type { AssinaturaAlunoResponse, PagamentoResponse } from "@/types";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 
@@ -17,7 +17,7 @@ const statusColor: Record<string, "default" | "success" | "warning" | "error"> =
 };
 
 export default function AssinaturaAlunoPage() {
-  const [assinatura, setAssinatura] = useState<AssinaturaResponse | null>(null);
+  const [assinatura, setAssinatura] = useState<AssinaturaAlunoResponse | null>(null);
   const [pagamentoPendente, setPagamentoPendente] = useState<PagamentoResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -29,7 +29,7 @@ export default function AssinaturaAlunoPage() {
       const assRes = await pagamentoApi.obterMinhaAssinatura();
       setAssinatura(assRes.data);
 
-      const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaId);
+      const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
       setPagamentoPendente(pgRes.data.find(p => p.status === "Pendente") ?? null);
     } catch {
       setError("Erro ao carregar assinatura.");

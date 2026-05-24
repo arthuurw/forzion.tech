@@ -39,12 +39,12 @@ using forzion.tech.Api.Services;
 using forzion.tech.Application.UseCases.Conta.Logout;
 using forzion.tech.Application.UseCases.Conta.ObterPerfil;
 using forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
-using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
-using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
-using forzion.tech.Application.UseCases.Planos.AtualizarPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.ExcluirPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
+using forzion.tech.Application.UseCases.Pacotes.CriarPacote;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
+using forzion.tech.Application.UseCases.Planos.AtualizarPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.CriarPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.ListarFichasDoAluno;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
@@ -70,16 +70,16 @@ using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscula
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
 using forzion.tech.Infrastructure.DependencyInjection;
-using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
-using forzion.tech.Application.UseCases.Pacotes.ExcluirPacoteAluno;
+using forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
+using forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
-using forzion.tech.Application.UseCases.Assinaturas.CriarAssinatura;
-using forzion.tech.Application.UseCases.Assinaturas.CancelarAssinatura;
-using forzion.tech.Application.UseCases.Assinaturas.ObterAssinaturaAluno;
+using forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
+using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno;
+using forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
-using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinatura;
+using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 
 namespace forzion.tech.Api.Extensions;
@@ -222,29 +222,29 @@ public static class DependencyInjectionExtensions
         services.AddScoped<RegistrarExecucaoHandler>();
         services.AddScoped<VincularFichaAoAlunoHandler>();
 
-        services.AddScoped<CriarPlanoTreinadorHandler>();
-        services.AddScoped<AtualizarPlanoTreinadorHandler>();
-        services.AddScoped<ExcluirPlanoTreinadorHandler>();
-        services.AddScoped<ListarPlanosTreinadorHandler>();
+        services.AddScoped<CriarPlanoPlataformaHandler>();
+        services.AddScoped<AtualizarPlanoPlataformaHandler>();
+        services.AddScoped<ExcluirPlanoPlataformaHandler>();
+        services.AddScoped<ListarPlanosPlataformaHandler>();
 
         services.AddScoped<CriarGrupoMuscularHandler>();
         services.AddScoped<AtualizarGrupoMuscularHandler>();
         services.AddScoped<ExcluirGrupoMuscularHandler>();
         services.AddScoped<ListarGruposMuscularesHandler>();
 
-        services.AddScoped<CriarPacoteAlunoHandler>();
-        services.AddScoped<AtualizarPacoteAlunoHandler>();
-        services.AddScoped<ExcluirPacoteAlunoHandler>();
-        services.AddScoped<ListarPacotesAlunoHandler>();
+        services.AddScoped<CriarPacoteHandler>();
+        services.AddScoped<AtualizarPacoteHandler>();
+        services.AddScoped<ExcluirPacoteHandler>();
+        services.AddScoped<ListarPacotesHandler>();
 
         services.AddScoped<IniciarOnboardingTreinadorHandler>();
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
-        services.AddScoped<CriarAssinaturaHandler>();
-        services.AddScoped<CancelarAssinaturaHandler>();
+        services.AddScoped<CriarAssinaturaAlunoHandler>();
+        services.AddScoped<CancelarAssinaturaAlunoHandler>();
         services.AddScoped<ObterAssinaturaAlunoHandler>();
         services.AddScoped<GerarCobrancaMensalHandler>();
         services.AddScoped<ObterStatusPagamentoHandler>();
-        services.AddScoped<ListarPagamentosAssinaturaHandler>();
+        services.AddScoped<ListarPagamentosAssinaturaAlunoHandler>();
         services.AddScoped<ProcessarWebhookStripeHandler>();
 
         services.AddScoped<ListarFichasAlunoHandler>();
