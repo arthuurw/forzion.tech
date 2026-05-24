@@ -18,6 +18,10 @@ frontend/.husky/* text eol=lf
 # falso-positivo de drift por diferença de EOL (ver .github/workflows/openapi-drift.yml).
 docs/api/*.json text eol=lf
 
+# Snapshots do Verify (Fase 6): mantidos com LF para casar com o que o Verify
+# escreve em runtime — evita falso-diff no checkout (Windows e Linux CI).
+*.verified.txt text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

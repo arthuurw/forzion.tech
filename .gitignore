@@ -81,3 +81,6 @@ coverage-report/
 
 # Scripts SQL gerados pontualmente (não versionar)
 migration_public_schema.sql
+
+# Snapshots do Verify (Fase 6): .received e gerado a cada run; so o .verified e versionado.
+*.received.*
