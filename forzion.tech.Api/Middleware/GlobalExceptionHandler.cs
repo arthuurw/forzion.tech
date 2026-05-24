@@ -73,26 +73,26 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
     private static (int StatusCode, string Title, string Detail) MapException(Exception exception) =>
         exception switch
         {
-            CredenciaisInvalidasException ex    => (StatusCodes.Status401Unauthorized,        "Não autorizado",  ex.Message),
+            CredenciaisInvalidasException ex => (StatusCodes.Status401Unauthorized, "Não autorizado", ex.Message),
 
-            AlunoNaoEncontradoException ex              => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
-            TreinadorNaoEncontradoException ex          => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
-            TreinoNaoEncontradoException ex             => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
-            VinculoNaoEncontradoException ex            => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
-            ExercicioNaoEncontradoException ex          => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
-            PacoteNaoEncontradoException ex             => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
-            GrupoMuscularNaoEncontradoException ex      => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
-            PlanoPlataformaNaoEncontradoException ex     => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            AlunoNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            TreinadorNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            TreinoNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            VinculoNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            ExercicioNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            PacoteNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            GrupoMuscularNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
+            PlanoPlataformaNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
 
-            AlunoInativoException ex            => (StatusCodes.Status403Forbidden, "Inativo",       ex.Message),
-            AcessoNegadoException ex            => (StatusCodes.Status403Forbidden, "Acesso negado", ex.Message),
+            AlunoInativoException ex => (StatusCodes.Status403Forbidden, "Inativo", ex.Message),
+            AcessoNegadoException ex => (StatusCodes.Status403Forbidden, "Acesso negado", ex.Message),
 
-            EmailJaCadastradoException ex       => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
-            AlunoJaVinculadoException ex        => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
+            EmailJaCadastradoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
+            AlunoJaVinculadoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
 
-            DomainException ex                  => (StatusCodes.Status422UnprocessableEntity, "Erro de domínio", ex.Message),
+            DomainException ex => (StatusCodes.Status422UnprocessableEntity, "Erro de domínio", ex.Message),
 
-            _                                   => (StatusCodes.Status500InternalServerError, "Erro interno", "Ocorreu um erro inesperado. Tente novamente mais tarde.")
+            _ => (StatusCodes.Status500InternalServerError, "Erro interno", "Ocorreu um erro inesperado. Tente novamente mais tarde.")
         };
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Erro inesperado: {Message}")]

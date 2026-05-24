@@ -53,6 +53,9 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
+      - name: Format — verifica estilo (.editorconfig)
+        run: dotnet format forzion.tech.slnx --verify-no-changes --no-restore
+
       - name: Test (global — 50% branch)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
