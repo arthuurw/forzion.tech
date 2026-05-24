@@ -73,7 +73,7 @@ public class AprovarVinculoHandler(
             logger.LogInformation("{Count} ficha(s) copiada(s) para o treinador {TreinadorId} durante troca.", treinosAntigos.Count, command.TreinadorId);
         }
 
-        vinculo.Aprovar(command.TreinadorId, command.PacoteAlunoId);
+        vinculo.Aprovar(command.TreinadorId, command.PacoteId);
 
         var aluno = await alunoRepository.ObterPorIdAsync(vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         if (aluno is not null && aluno.Status != AlunoStatus.Ativo)
@@ -99,6 +99,6 @@ public class AprovarVinculoHandler(
                 cancellationToken).ConfigureAwait(false);
         }
 
-        return new VinculoResponse(vinculo.Id, vinculo.TreinadorId, vinculo.AlunoId, vinculo.PacoteAlunoId, vinculo.Status, vinculo.CreatedAt);
+        return new VinculoResponse(vinculo.Id, vinculo.TreinadorId, vinculo.AlunoId, vinculo.PacoteId, vinculo.Status, vinculo.CreatedAt);
     }
 }

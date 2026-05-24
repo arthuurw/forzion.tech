@@ -38,7 +38,7 @@ const makePagamento = (
   overrides: Partial<PagamentoResponse> = {}
 ): PagamentoResponse => ({
   pagamentoId: "pay-1",
-  assinaturaId: "ass-1",
+  assinaturaAlunoId: "ass-1",
   valor: 150,
   status: "Pendente",
   metodoPagamento: "Pix",
@@ -261,7 +261,7 @@ describe("PagamentosAlunoPage", () => {
 
   it("estado inicial → exibe 'Nenhum pagamento encontrado.'", async () => {
     vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
-      data: { assinaturaId: "ass-1" },
+      data: { assinaturaAlunoId: "ass-1" },
     } as never);
     vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
       data: [],
@@ -286,7 +286,7 @@ describe("PagamentosAlunoPage", () => {
 
   it("com pagamentos → exibe tabela com data, valor e status", async () => {
     vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
-      data: { assinaturaId: "ass-1" },
+      data: { assinaturaAlunoId: "ass-1" },
     } as never);
     vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
       data: [makePagamento({ valor: 99.9, status: "Pago", createdAt: "2025-03-15T00:00:00Z" })],
@@ -299,7 +299,7 @@ describe("PagamentosAlunoPage", () => {
 
   it("pagamento Pendente → exibe botão 'Pagar'", async () => {
     vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
-      data: { assinaturaId: "ass-1" },
+      data: { assinaturaAlunoId: "ass-1" },
     } as never);
     vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
       data: [makePagamento({ status: "Pendente" })],
@@ -311,7 +311,7 @@ describe("PagamentosAlunoPage", () => {
 
   it("pagamento Expirado → não exibe botão 'Pagar'", async () => {
     vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
-      data: { assinaturaId: "ass-1" },
+      data: { assinaturaAlunoId: "ass-1" },
     } as never);
     vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
       data: [makePagamento({ status: "Expirado", pixQrCode: null })],
@@ -324,7 +324,7 @@ describe("PagamentosAlunoPage", () => {
 
   it("pagamento Pendente Pix -> clicar Pagar abre dialog 'Pagamento via Pix'", async () => {
     vi.mocked(pagamentoApi.obterMinhaAssinatura).mockResolvedValue({
-      data: { assinaturaId: "ass-1" },
+      data: { assinaturaAlunoId: "ass-1" },
     } as never);
     vi.mocked(pagamentoApi.listarPagamentosAssinatura).mockResolvedValue({
       data: [makePagamento({ status: "Pendente", metodoPagamento: "Pix" })],

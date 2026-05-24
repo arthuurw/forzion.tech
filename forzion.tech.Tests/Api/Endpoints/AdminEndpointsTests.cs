@@ -22,12 +22,12 @@ using forzion.tech.Application.UseCases.Alunos.ObterAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterProgressaoAluno;
 using forzion.tech.Application.UseCases.Pacotes;
-using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
-using forzion.tech.Application.UseCases.Planos.AtualizarPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.ExcluirPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
+using forzion.tech.Application.UseCases.Planos.AtualizarPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.CriarPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
@@ -74,7 +74,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     private static readonly TreinadorResponse RespostaTreinador = new(
         TreinadorId, Guid.NewGuid(), "Carlos", TreinadorStatus.AguardandoAprovacao, null, DateTime.UtcNow);
 
-    private static readonly PlanoTreinadorResponse RespostaPlano = new(
+    private static readonly PlanoPlataformaResponse RespostaPlano = new(
         Guid.NewGuid(), "Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99m, true, DateTime.UtcNow, null);
 
     private static readonly GrupoMuscularResponse RespostaGrupo = new(
@@ -112,7 +112,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         TreinoId, "Treino A", ObjetivoTreino.Hipertrofia, DificuldadeTreino.Iniciante,
         null, null, TreinadorId, [], DateTime.UtcNow, null);
 
-    private static readonly PacoteAlunoResponse RespostaPacote = new(
+    private static readonly PacoteResponse RespostaPacote = new(
         Guid.NewGuid(), TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);
 
     private static readonly ExercicioResponse RespostaExercicio = new(
@@ -325,7 +325,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     public async Task Post_CriarPlano_Admin_Retorna201()
     {
         _factory.CriarPlanoHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<CriarPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<CriarPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RespostaPlano);
 
         var response = await CriarClienteAdmin()
@@ -382,7 +382,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     [Fact]
     public async Task Patch_AtribuirPlano_Admin_Retorna200()
     {
-        var atribuido = RespostaTreinador with { PlanoTreinadorId = Guid.NewGuid() };
+        var atribuido = RespostaTreinador with { PlanoPlataformaId = Guid.NewGuid() };
         _factory.AtribuirPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtribuirPlanoCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(atribuido);
@@ -877,7 +877,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     public async Task Patch_AtualizarPlano_Admin_Retorna200()
     {
         _factory.AtualizarPlanoHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RespostaPlano);
 
         var response = await CriarClienteAdmin()
@@ -890,8 +890,8 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     public async Task Patch_AtualizarPlano_NaoEncontrado_Retorna404()
     {
         _factory.AtualizarPlanoHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new PlanoTreinadorNaoEncontradoException());
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new PlanoPlataformaNaoEncontradoException());
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/planos/{Guid.NewGuid()}", new { nome = "X" });
@@ -905,7 +905,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     public async Task Delete_Plano_Admin_Retorna204()
     {
         _factory.ExcluirPlanoHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var response = await CriarClienteAdmin()
@@ -918,8 +918,8 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     public async Task Delete_Plano_NaoEncontrado_Retorna404()
     {
         _factory.ExcluirPlanoHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPlanoTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new PlanoTreinadorNaoEncontradoException());
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new PlanoPlataformaNaoEncontradoException());
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/planos/{Guid.NewGuid()}");
@@ -1104,7 +1104,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<ITreinoAlunoRepository>(),
-            Mock.Of<IPacoteAlunoRepository>(),
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<InativarTreinadorHandler>>());
@@ -1115,20 +1115,20 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
         public Mock<AtribuirPlanoHandler> AtribuirPlanoHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
-            Mock.Of<IPlanoTreinadorRepository>(),
+            Mock.Of<IPlanoPlataformaRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<AtribuirPlanoHandler>>());
 
-        public Mock<ListarPlanosTreinadorHandler> ListarPlanosHandlerMock { get; } = new(
-            Mock.Of<IPlanoTreinadorRepository>());
+        public Mock<ListarPlanosPlataformaHandler> ListarPlanosHandlerMock { get; } = new(
+            Mock.Of<IPlanoPlataformaRepository>());
 
-        public Mock<CriarPlanoTreinadorHandler> CriarPlanoHandlerMock { get; } = new(
-            Mock.Of<IPlanoTreinadorRepository>(),
+        public Mock<CriarPlanoPlataformaHandler> CriarPlanoHandlerMock { get; } = new(
+            Mock.Of<IPlanoPlataformaRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<CriarPlanoTreinadorCommand>>(),
+            Mock.Of<IValidator<CriarPlanoPlataformaCommand>>(),
             Mock.Of<IUserContext>(),
-            Mock.Of<ILogger<CriarPlanoTreinadorHandler>>());
+            Mock.Of<ILogger<CriarPlanoPlataformaHandler>>());
 
         public Mock<ListarGruposMuscularesHandler> ListarGruposHandlerMock { get; } = new(
             Mock.Of<IGrupoMuscularRepository>());
@@ -1187,19 +1187,19 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ObterTreinoHandler>>());
 
-        public Mock<ListarPacotesAlunoHandler> ListarPacotesHandlerMock { get; } = new(
-            Mock.Of<IPacoteAlunoRepository>());
+        public Mock<ListarPacotesHandler> ListarPacotesHandlerMock { get; } = new(
+            Mock.Of<IPacoteRepository>());
 
         public Mock<ObterTreinadorHandler> ObterTreinadorHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>());
 
-        public Mock<AtualizarPlanoTreinadorHandler> AtualizarPlanoHandlerMock { get; } = new(
-            Mock.Of<IPlanoTreinadorRepository>(),
+        public Mock<AtualizarPlanoPlataformaHandler> AtualizarPlanoHandlerMock { get; } = new(
+            Mock.Of<IPlanoPlataformaRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<AtualizarPlanoTreinadorCommand>>());
+            Mock.Of<IValidator<AtualizarPlanoPlataformaCommand>>());
 
-        public Mock<ExcluirPlanoTreinadorHandler> ExcluirPlanoHandlerMock { get; } = new(
-            Mock.Of<IPlanoTreinadorRepository>(),
+        public Mock<ExcluirPlanoPlataformaHandler> ExcluirPlanoHandlerMock { get; } = new(
+            Mock.Of<IPlanoPlataformaRepository>(),
             Mock.Of<IUnitOfWork>());
 
         public Mock<AtualizarGrupoMuscularHandler> AtualizarGrupoHandlerMock { get; } = new(
@@ -1247,8 +1247,8 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.RemoveAll<InativarTreinadorHandler>();
                 services.RemoveAll<ExcluirTreinadorHandler>();
                 services.RemoveAll<AtribuirPlanoHandler>();
-                services.RemoveAll<ListarPlanosTreinadorHandler>();
-                services.RemoveAll<CriarPlanoTreinadorHandler>();
+                services.RemoveAll<ListarPlanosPlataformaHandler>();
+                services.RemoveAll<CriarPlanoPlataformaHandler>();
                 services.RemoveAll<ListarGruposMuscularesHandler>();
                 services.RemoveAll<CriarGrupoMuscularHandler>();
                 services.RemoveAll<ListarAlunosAdminHandler>();
@@ -1262,10 +1262,10 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.RemoveAll<ListarVinculosHandler>();
                 services.RemoveAll<ListarTreinosDoTreinadorHandler>();
                 services.RemoveAll<ObterTreinoHandler>();
-                services.RemoveAll<ListarPacotesAlunoHandler>();
+                services.RemoveAll<ListarPacotesHandler>();
                 services.RemoveAll<ObterTreinadorHandler>();
-                services.RemoveAll<AtualizarPlanoTreinadorHandler>();
-                services.RemoveAll<ExcluirPlanoTreinadorHandler>();
+                services.RemoveAll<AtualizarPlanoPlataformaHandler>();
+                services.RemoveAll<ExcluirPlanoPlataformaHandler>();
                 services.RemoveAll<AtualizarGrupoMuscularHandler>();
                 services.RemoveAll<ExcluirGrupoMuscularHandler>();
                 services.RemoveAll<ListarExerciciosHandler>();

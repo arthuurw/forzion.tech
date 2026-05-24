@@ -9,8 +9,8 @@ using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
-using forzion.tech.Application.UseCases.Assinaturas;
-using forzion.tech.Application.UseCases.Assinaturas.ObterAssinaturaAluno;
+using forzion.tech.Application.UseCases.AssinaturaAlunos;
+using forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 using Microsoft.AspNetCore.Mvc;
 
 namespace forzion.tech.Api.Endpoints.AlunoArea;
@@ -32,7 +32,7 @@ public static class AlunoAreaEndpoints
             return result is null ? Results.NoContent() : Results.Ok(result);
         })
         .WithSummary("Retorna a assinatura ativa do aluno autenticado")
-        .Produces<AssinaturaResponse>()
+        .Produces<AssinaturaAlunoResponse>()
         .Produces(StatusCodes.Status204NoContent);
 
         group.MapGet("/vinculo", async (

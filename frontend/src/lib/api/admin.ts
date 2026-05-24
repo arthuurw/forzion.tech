@@ -1,7 +1,7 @@
 import { apiClient } from "./client";
 import type {
   TreinadorResponse,
-  PlanoTreinadorResponse,
+  PlanoPlataformaResponse,
   TierPlano,
   ExercicioResponse,
   GrupoMuscularResponse,
@@ -16,7 +16,7 @@ import type {
   VinculoDetalheResponse,
   VinculoStatus,
   TreinoResponse,
-  PacoteAlunoResponse,
+  PacoteResponse,
 } from "@/types";
 
 export interface ListarExerciciosGlobaisResponse {
@@ -62,15 +62,15 @@ export const adminApi = {
   },
 
   listPlanos() {
-    return apiClient.get<PlanoTreinadorResponse[]>("/admin/planos");
+    return apiClient.get<PlanoPlataformaResponse[]>("/admin/planos");
   },
 
   criarPlano(nome: string, tier: TierPlano, maxAlunos: number, preco: number, descricao?: string) {
-    return apiClient.post<PlanoTreinadorResponse>("/admin/planos", { nome, tier, maxAlunos, preco, descricao });
+    return apiClient.post<PlanoPlataformaResponse>("/admin/planos", { nome, tier, maxAlunos, preco, descricao });
   },
 
   atualizarPlano(planoId: string, data: { nome?: string; tier?: TierPlano; maxAlunos?: number; preco?: number; descricao?: string | null }) {
-    return apiClient.patch<PlanoTreinadorResponse>(`/admin/planos/${planoId}`, data);
+    return apiClient.patch<PlanoPlataformaResponse>(`/admin/planos/${planoId}`, data);
   },
 
   excluirPlano(planoId: string) {
@@ -161,6 +161,6 @@ export const adminApi = {
   },
 
   getTreinadorPacotes(treinadorId: string) {
-    return apiClient.get<PacoteAlunoResponse[]>(`/admin/treinadores/${treinadorId}/pacotes`);
+    return apiClient.get<PacoteResponse[]>(`/admin/treinadores/${treinadorId}/pacotes`);
   },
 };

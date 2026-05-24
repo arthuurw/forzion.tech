@@ -84,7 +84,7 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
                 .Where(e => e.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
-            await _context.PacotesAluno
+            await _context.Pacotes
                 .Where(p => p.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 

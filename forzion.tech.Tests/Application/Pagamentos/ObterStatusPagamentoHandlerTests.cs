@@ -10,7 +10,7 @@ namespace forzion.tech.Tests.Application.Pagamentos;
 public class ObterStatusPagamentoHandlerTests
 {
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
-    private readonly Mock<IAssinaturaRepository> _assinaturaRepo = new();
+    private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly ObterStatusPagamentoHandler _handler;
 
     public ObterStatusPagamentoHandlerTests()
@@ -22,7 +22,7 @@ public class ObterStatusPagamentoHandlerTests
     public async Task HandleAsync_DonoPagamento_RetornaResponse()
     {
         var alunoId = Guid.NewGuid();
-        var assinatura = Assinatura.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 150m);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 150m);
         var pagamento = Pagamento.Criar(assinatura.Id, 150m);
 
         _pagamentoRepo.Setup(r => r.ObterPorIdAsync(pagamento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
@@ -37,7 +37,7 @@ public class ObterStatusPagamentoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoErrado_LancaAcessoNegado()
     {
-        var assinatura = Assinatura.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m);
         var pagamento = Pagamento.Criar(assinatura.Id, 150m);
 
         _pagamentoRepo.Setup(r => r.ObterPorIdAsync(pagamento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);

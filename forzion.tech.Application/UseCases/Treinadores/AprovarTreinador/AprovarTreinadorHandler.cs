@@ -43,6 +43,6 @@ public class AprovarTreinadorHandler(
 
         logger.LogInformation("Treinador {TreinadorId} aprovado por {AdminId}.", treinador.Id, command.AdminId);
 
-        return Result.Success(new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoTreinadorId, treinador.CreatedAt));
+        return Result.Success(new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoPlataformaId, treinador.CreatedAt));
     }
 }

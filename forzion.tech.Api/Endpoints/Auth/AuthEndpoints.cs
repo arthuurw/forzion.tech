@@ -3,9 +3,9 @@ using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
 using forzion.tech.Application.UseCases.Pacotes;
-using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
-using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
@@ -79,7 +79,7 @@ public static class AuthEndpoints
         // --- Endpoints Públicos (para Cadastro) ---
 
         group.MapGet("/planos", async (
-            [FromServices] ListarPlanosTreinadorHandler handler,
+            [FromServices] ListarPlanosPlataformaHandler handler,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(cancellationToken);
@@ -88,11 +88,11 @@ public static class AuthEndpoints
         .AllowAnonymous()
         .RequireRateLimiting("auth")
         .WithSummary("Lista todos os planos de treinador disponíveis")
-        .Produces<IReadOnlyList<PlanoTreinadorResponse>>();
+        .Produces<IReadOnlyList<PlanoPlataformaResponse>>();
 
         group.MapGet("/treinadores/{id:guid}/pacotes", async (
             Guid id,
-            [FromServices] ListarPacotesAlunoHandler handler,
+            [FromServices] ListarPacotesHandler handler,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(id, cancellationToken);
@@ -101,7 +101,7 @@ public static class AuthEndpoints
         .AllowAnonymous()
         .RequireRateLimiting("auth")
         .WithSummary("Lista pacotes de um treinador específico (para escolha do aluno no cadastro)")
-        .Produces<IReadOnlyList<PacoteAlunoResponse>>()
+        .Produces<IReadOnlyList<PacoteResponse>>()
         .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/treinadores", async (

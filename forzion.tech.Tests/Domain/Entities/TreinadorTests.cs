@@ -20,7 +20,7 @@ public class TreinadorTests
         t.ContaId.Should().Be(ContaId);
         t.Nome.Should().Be("Carlos");
         t.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
-        t.PlanoTreinadorId.Should().BeNull();
+        t.PlanoPlataformaId.Should().BeNull();
         t.AprovadoPorId.Should().BeNull();
         t.AprovadoEm.Should().BeNull();
     }
@@ -116,7 +116,7 @@ public class TreinadorTests
 
         t.AtribuirPlano(planoId);
 
-        t.PlanoTreinadorId.Should().Be(planoId);
+        t.PlanoPlataformaId.Should().Be(planoId);
         t.UpdatedAt.Should().NotBeNull();
     }
 

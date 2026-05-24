@@ -8,7 +8,7 @@ namespace forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 
 public class ProcessarWebhookStripeHandler(
     IPagamentoRepository pagamentoRepository,
-    IAssinaturaRepository assinaturaRepository,
+    IAssinaturaAlunoRepository assinaturaRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
@@ -20,9 +20,9 @@ public class ProcessarWebhookStripeHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var valido = await stripeService.ValidarWebhookAsync(command.Payload, command.AssinaturaStripe).ConfigureAwait(false);
+        var valido = await stripeService.ValidarWebhookAsync(command.Payload, command.AssinaturaAlunoStripe).ConfigureAwait(false);
         if (!valido)
-            return Result.Failure(Error.Business("Assinatura do webhook inválida."));
+            return Result.Failure(Error.Business("AssinaturaAluno do webhook inválida."));
 
         var evento = StripeWebhookParser.Parse(command.Payload);
 
@@ -70,7 +70,7 @@ public class ProcessarWebhookStripeHandler(
 
         pagamento.MarcarPago();
 
-        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaId, ct).ConfigureAwait(false);
+        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         if (assinatura is not null)
         {
             assinatura.Ativar();

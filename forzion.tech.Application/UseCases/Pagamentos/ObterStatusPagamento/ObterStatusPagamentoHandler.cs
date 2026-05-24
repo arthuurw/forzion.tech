@@ -5,7 +5,7 @@ namespace forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 
 public class ObterStatusPagamentoHandler(
     IPagamentoRepository pagamentoRepository,
-    IAssinaturaRepository assinaturaRepository)
+    IAssinaturaAlunoRepository assinaturaRepository)
 {
     public virtual async Task<PagamentoResponse> HandleAsync(
         ObterStatusPagamentoQuery query,
@@ -16,7 +16,7 @@ public class ObterStatusPagamentoHandler(
         var pagamento = await pagamentoRepository.ObterPorIdAsync(query.PagamentoId, cancellationToken).ConfigureAwait(false)
             ?? throw new DomainException("Pagamento não encontrado.");
 
-        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaId, cancellationToken).ConfigureAwait(false);
+        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false);
         if (assinatura is null || assinatura.AlunoId != query.AlunoId)
             throw new AcessoNegadoException();
 

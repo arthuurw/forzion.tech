@@ -14,7 +14,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { adminApi } from "@/lib/api/admin";
 import type {
-  TreinadorResponse, PlanoTreinadorResponse, AlunoResponse, GrupoMuscularResponse,
+  TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
 } from "@/types";
 import { FINALIDADE_LABEL } from "@/lib/constants/labels";
 
@@ -33,7 +33,7 @@ export default function DashboardAdminPage() {
   const [recentTreinadores, setRecentTreinadores] = useState<TreinadorResponse[]>([]);
   const [planoStats, setPlanoStats] = useState<PlanoStat[]>([]);
   const [finalidadeData, setFinalidadeData] = useState<DistItem[]>([]);
-  const [planos, setPlanos] = useState<PlanoTreinadorResponse[]>([]);
+  const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
   const [totalExercicios, setTotalExercicios] = useState(0);
   const [totalGrupos, setTotalGrupos] = useState(0);
   const [tab, setTab] = useState(0);
@@ -83,13 +83,13 @@ export default function DashboardAdminPage() {
       setRecentTreinadores(sorted.slice(0, 5));
 
       // Plan distribution
-      const planosData = planosRes.data as PlanoTreinadorResponse[];
+      const planosData = planosRes.data as PlanoPlataformaResponse[];
       setPlanos(planosData);
       const planoMap = new Map(planosData.map((p) => [p.planoId, p]));
       const contT: Record<string, PlanoStat> = {};
       for (const t of todosTRes.data.items) {
-        const key = t.planoTreinadorId ?? "__none";
-        const plano = t.planoTreinadorId ? planoMap.get(t.planoTreinadorId) : null;
+        const key = t.planoPlataformaId ?? "__none";
+        const plano = t.planoPlataformaId ? planoMap.get(t.planoPlataformaId) : null;
         if (!contT[key]) {
           contT[key] = {
             planoId: key,

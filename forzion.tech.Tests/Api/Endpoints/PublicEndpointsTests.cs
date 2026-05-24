@@ -2,9 +2,9 @@ using System.Net;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pacotes;
-using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
-using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,11 +18,11 @@ public class PublicEndpointsTests(PublicEndpointsTests.PublicWebFactory factory)
 {
     public class PublicWebFactory : WebApplicationFactory<Program>
     {
-        public Mock<ListarPlanosTreinadorHandler> ListarPlanosHandlerMock { get; } = new(
-            Mock.Of<IPlanoTreinadorRepository>());
+        public Mock<ListarPlanosPlataformaHandler> ListarPlanosHandlerMock { get; } = new(
+            Mock.Of<IPlanoPlataformaRepository>());
 
-        public Mock<ListarPacotesAlunoHandler> ListarPacotesHandlerMock { get; } = new(
-            Mock.Of<IPacoteAlunoRepository>());
+        public Mock<ListarPacotesHandler> ListarPacotesHandlerMock { get; } = new(
+            Mock.Of<IPacoteRepository>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -32,8 +32,8 @@ public class PublicEndpointsTests(PublicEndpointsTests.PublicWebFactory factory)
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<ListarPlanosTreinadorHandler>();
-                services.RemoveAll<ListarPacotesAlunoHandler>();
+                services.RemoveAll<ListarPlanosPlataformaHandler>();
+                services.RemoveAll<ListarPacotesHandler>();
 
                 services.AddSingleton(ListarPlanosHandlerMock.Object);
                 services.AddSingleton(ListarPacotesHandlerMock.Object);
@@ -46,7 +46,7 @@ public class PublicEndpointsTests(PublicEndpointsTests.PublicWebFactory factory)
     {
         factory.ListarPlanosHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<PlanoTreinadorResponse>());
+            .ReturnsAsync(new List<PlanoPlataformaResponse>());
 
         var response = await factory.CreateClient().GetAsync("/auth/planos");
 
@@ -58,7 +58,7 @@ public class PublicEndpointsTests(PublicEndpointsTests.PublicWebFactory factory)
     {
         factory.ListarPacotesHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<PacoteAlunoResponse>());
+            .ReturnsAsync(new List<PacoteResponse>());
 
         var response = await factory.CreateClient().GetAsync($"/auth/treinadores/{Guid.NewGuid()}/pacotes");
 

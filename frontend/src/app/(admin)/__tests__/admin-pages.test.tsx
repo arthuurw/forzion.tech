@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import type {
   AlunoResponse, TreinoResponse, MeuVinculoResponse,
-  VinculoAlunoItemResponse, FichaAlunoResponse, PacoteAlunoResponse,
+  VinculoAlunoItemResponse, FichaAlunoResponse, PacoteResponse,
 } from "@/types";
 
 // ─── Mocks globais ────────────────────────────────────────────────────────────
@@ -214,7 +214,7 @@ describe("DetalheTreinadorAdminPage", () => {
     nome: "Carlos Ferreira",
     contaId: "conta-t-001",
     status: "Ativo" as const,
-    planoTreinadorId: null,
+    planoPlataformaId: null,
     createdAt: "2024-01-01T00:00:00Z",
   };
 
@@ -527,10 +527,10 @@ describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
   const mockTreinador = {
     treinadorId: "t-001", nome: "Carlos Ferreira",
     contaId: "conta-t-001", status: "Ativo" as const,
-    planoTreinadorId: null, createdAt: "2024-01-01T00:00:00Z",
+    planoPlataformaId: null, createdAt: "2024-01-01T00:00:00Z",
   };
 
-  const mockPacote: PacoteAlunoResponse = {
+  const mockPacote: PacoteResponse = {
     pacoteId: "p-1", nome: "Pacote Premium",
     descricao: "Acompanhamento completo", preco: 400,
     treinadorId: "t-001",

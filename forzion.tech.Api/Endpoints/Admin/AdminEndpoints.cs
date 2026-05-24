@@ -20,12 +20,12 @@ using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.UseCases.Pacotes;
-using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
-using forzion.tech.Application.UseCases.Planos.AtualizarPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.CriarPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.ExcluirPlanoTreinador;
-using forzion.tech.Application.UseCases.Planos.ListarPlanosTreinador;
+using forzion.tech.Application.UseCases.Planos.AtualizarPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.CriarPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
+using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
@@ -164,54 +164,54 @@ public static class AdminEndpoints
 
             return Results.Ok(result);
         })
-        .WithSummary("Atribui um PlanoTreinador a um treinador")
+        .WithSummary("Atribui um PlanoPlataforma a um treinador")
         .Produces<TreinadorResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/planos", async (
-            [FromServices] ListarPlanosTreinadorHandler handler,
+            [FromServices] ListarPlanosPlataformaHandler handler,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(cancellationToken);
             return Results.Ok(result);
         })
         .WithSummary("Lista todos os planos de treinador")
-        .Produces<IReadOnlyList<PlanoTreinadorResponse>>();
+        .Produces<IReadOnlyList<PlanoPlataformaResponse>>();
 
         group.MapPost("/planos", async (
-            [FromBody] CriarPlanoTreinadorRequest request,
-            [FromServices] CriarPlanoTreinadorHandler handler,
+            [FromBody] CriarPlanoPlataformaRequest request,
+            [FromServices] CriarPlanoPlataformaHandler handler,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarPlanoTreinadorCommand(request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
+                new CriarPlanoPlataformaCommand(request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
 
             return Results.Created($"/admin/planos/{result.PlanoId}", result);
         })
         .WithSummary("Cria um novo plano de treinador")
-        .Produces<PlanoTreinadorResponse>(StatusCodes.Status201Created)
+        .Produces<PlanoPlataformaResponse>(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapPatch("/planos/{id:guid}", async (
             Guid id,
-            [FromBody] AtualizarPlanoTreinadorRequest request,
-            [FromServices] AtualizarPlanoTreinadorHandler handler,
+            [FromBody] AtualizarPlanoPlataformaRequest request,
+            [FromServices] AtualizarPlanoPlataformaHandler handler,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarPlanoTreinadorCommand(id, request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
+                new AtualizarPlanoPlataformaCommand(id, request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
             return Results.Ok(result);
         })
         .WithSummary("Atualiza nome, maxAlunos e/ou preço de um plano")
-        .Produces<PlanoTreinadorResponse>()
+        .Produces<PlanoPlataformaResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/planos/{id:guid}", async (
             Guid id,
-            [FromServices] ExcluirPlanoTreinadorHandler handler,
+            [FromServices] ExcluirPlanoPlataformaHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirPlanoTreinadorCommand(id), cancellationToken);
+            await handler.HandleAsync(new ExcluirPlanoPlataformaCommand(id), cancellationToken);
             return Results.NoContent();
         })
         .WithSummary("Inativa um plano de treinador")
@@ -514,14 +514,14 @@ public static class AdminEndpoints
 
         group.MapGet("/treinadores/{id:guid}/pacotes", async (
             Guid id,
-            [FromServices] ListarPacotesAlunoHandler handler,
+            [FromServices] ListarPacotesHandler handler,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(id, cancellationToken);
             return Results.Ok(result);
         })
         .WithSummary("Lista pacotes de um treinador")
-        .Produces<IReadOnlyList<PacoteAlunoResponse>>();
+        .Produces<IReadOnlyList<PacoteResponse>>();
 
         return endpoints;
     }
@@ -531,8 +531,8 @@ public record AprovarTreinadorRequest(string? Observacao = null);
 public record ReprovarTreinadorRequest(string? Observacao = null);
 public record InativarTreinadorRequest(string? Observacao = null);
 public record AtribuirPlanoRequest(Guid PlanoId);
-public record CriarPlanoTreinadorRequest(string Nome, forzion.tech.Domain.Enums.TierPlano Tier, int MaxAlunos, decimal Preco, string? Descricao = null);
-public record AtualizarPlanoTreinadorRequest(string? Nome, forzion.tech.Domain.Enums.TierPlano? Tier, int? MaxAlunos, decimal? Preco, string? Descricao = null);
+public record CriarPlanoPlataformaRequest(string Nome, forzion.tech.Domain.Enums.TierPlano Tier, int MaxAlunos, decimal Preco, string? Descricao = null);
+public record AtualizarPlanoPlataformaRequest(string? Nome, forzion.tech.Domain.Enums.TierPlano? Tier, int? MaxAlunos, decimal? Preco, string? Descricao = null);
 public record CriarGrupoMuscularRequest(string Nome);
 public record AtualizarGrupoMuscularRequest(string Nome);
 public record CriarExercicioGlobalRequest(string Nome, Guid GrupoMuscularId, string? Descricao);
