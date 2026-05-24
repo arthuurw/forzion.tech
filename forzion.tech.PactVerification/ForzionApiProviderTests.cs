@@ -121,16 +121,19 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
     // Kestrel real numa porta livre, que o verifier do Pact consome via HTTP.
     protected override IHost CreateHost(IHostBuilder builder)
     {
-        var testHost = base.CreateHost(builder);
+        // Host do TestServer (o WAF ja configurou UseTestServer no builder).
+        var testHost = builder.Build();
 
-        builder.ConfigureWebHost(b => b.UseKestrel().UseUrls("http://127.0.0.1:0"));
+        // Reconfigura o mesmo builder pra Kestrel real e sobe um 2o host.
+        builder.ConfigureWebHost(b => b.UseKestrel());
         _kestrelHost = builder.Build();
         _kestrelHost.Start();
 
         var addresses = _kestrelHost.Services.GetRequiredService<IServer>()
             .Features.Get<IServerAddressesFeature>();
-        ServerUri = addresses!.Addresses.First();
+        ServerUri = addresses!.Addresses.Last();
 
+        testHost.Start();
         return testHost;
     }
 
