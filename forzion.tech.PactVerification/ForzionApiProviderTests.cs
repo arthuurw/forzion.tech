@@ -47,6 +47,10 @@ public class ForzionApiProviderTests : IClassFixture<ForzionApiProviderFactory>
         var providerVersion = Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "local-dev";
         var publish = string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase);
 
+        // WebApplicationFactory e lazy: forca o boot do host (CreateHost sobe o
+        // Kestrel e popula ServerUri) antes de ler a URL.
+        _ = _factory.CreateClient();
+
         var config = new PactVerifierConfig();
         using var verifier = new PactVerifier(config);
 
