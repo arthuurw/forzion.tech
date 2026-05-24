@@ -166,7 +166,53 @@ jobs:
       - name: Build Storybook
         run: npm run storybook:build
 
-  # ─── SEGURANÇA / SUPPLY CHAIN ─────────────────────────────────────────────────
+  # ─── SEGURANÇA / SUPPLY CHAIN (BACKEND .NET) ──────────────────────────────────
+  security-backend:
+    name: Security backend — vuln NuGet + SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      # Gate de vulnerabilidade: lista pacotes (diretos + transitivos) com CVE
+      # conhecido. `dotnet list package --vulnerable` sempre sai com código 0,
+      # então detectamos a presença do header de vulnerabilidade na saída e
+      # falhamos o job manualmente (gate bloqueante).
+      - name: Vuln NuGet (gate — direto + transitivo)
+        run: |
+          set -euo pipefail
+          dotnet list forzion.tech.slnx package --vulnerable --include-transitive \
+            | tee vuln-report.txt
+          if grep -q "has the following vulnerable packages" vuln-report.txt; then
+            echo "::error::Pacotes NuGet vulneráveis encontrados (ver log acima)."
+            exit 1
+          fi
+          echo "Nenhum pacote NuGet vulnerável encontrado."
+
+      # SBOM .NET (CycloneDX) — tool global pinada. Gera o BOM da solução em
+      # JSON e publica como artifact.
+      - name: Instala CycloneDX (tool pinada)
+        run: dotnet tool install --global CycloneDX --version 6.2.0
+
+      - name: SBOM (CycloneDX .NET)
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet CycloneDX forzion.tech.slnx -o ./sbom-backend -F Json -fn sbom.cdx.json
+
+      - name: Upload SBOM (backend)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-backend
+          path: sbom-backend/sbom.cdx.json
+          if-no-files-found: error
+
+  # ─── SEGURANÇA / SUPPLY CHAIN (FRONTEND) ──────────────────────────────────────
   security:
     name: Security — gitleaks + osv + audit + license + sbom
     runs-on: ubuntu-latest
@@ -223,7 +269,7 @@ jobs:
   # ─── GATE (required check) ─────────────────────────────────────────────────────
   gate:
     name: Gate
-    needs: [test-backend, test-frontend, build-frontend, security]
+    needs: [test-backend, test-frontend, build-frontend, security, security-backend]
     runs-on: ubuntu-latest
     steps:
       - run: echo "Todos os checks obrigatórios passaram."
