@@ -275,8 +275,8 @@ public static class DependencyInjectionExtensions
             options.AddPolicy("AllowFrontend", builder =>
                 builder
                     .WithOrigins(allowedOrigins)
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
+                    .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                    .WithHeaders("Content-Type", "Authorization", "Accept", "X-Requested-With")
                     .AllowCredentials());
         });
 
