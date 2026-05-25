@@ -10,6 +10,8 @@ RUN npm ci
 COPY . .
 ARG API_BASE_URL=http://backend:8080
 ENV API_BASE_URL=$API_BASE_URL
+ARG CSP_REPORT_ONLY=false
+ENV CSP_REPORT_ONLY=$CSP_REPORT_ONLY
 RUN npm run build
 
 FROM node:22-alpine AS runner

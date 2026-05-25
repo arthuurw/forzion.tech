@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { AuthProvider } from "@/lib/auth/context";
 import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import ThemeRegistry from "@/lib/theme/ThemeRegistry";
 import { WebVitals } from "@/components/observability/WebVitals";
 import "@/styles/globals.css";
@@ -35,9 +36,11 @@ export default function RootLayout({
         <WebVitals />
         <AppRouterCacheProvider>
           <ThemeRegistry>
-            <AuthProvider>
-              <SnackbarProvider>{children}</SnackbarProvider>
-            </AuthProvider>
+            <ErrorBoundary>
+              <AuthProvider>
+                <SnackbarProvider>{children}</SnackbarProvider>
+              </AuthProvider>
+            </ErrorBoundary>
           </ThemeRegistry>
         </AppRouterCacheProvider>
       </body>
