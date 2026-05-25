@@ -43,11 +43,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
 
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        // Snapshot + limpa ANTES de despachar. Handlers podem chamar CommitAsync de
+        // novo (re-entrância); se os eventos ainda estivessem na entidade, o commit
+        // aninhado os re-coletaria e re-despacharia (ex.: projeção Assinante inserida
+        // 2x → duplicate key). Limpar antes garante "dispara cada evento uma vez".
+        var domainEvents = new List<IDomainEvent>();
         foreach (var entity in entitiesWithEvents)
         {
-            await eventDispatcher!.DispatchAsync(entity.DomainEvents, cancellationToken).ConfigureAwait(false);
+            domainEvents.AddRange(entity.DomainEvents);
             entity.ClearDomainEvents();
         }
+
+        if (domainEvents.Count > 0)
+            await eventDispatcher!.DispatchAsync(domainEvents, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<ITransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
