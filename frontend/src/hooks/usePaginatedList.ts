@@ -23,6 +23,7 @@ export function usePaginatedList<T>({
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    setSuccess("");
     try {
       const data = await fetcher(page, pageSize);
       setItems(data.items as T[]);

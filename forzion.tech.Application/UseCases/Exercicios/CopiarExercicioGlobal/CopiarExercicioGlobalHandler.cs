@@ -8,7 +8,9 @@ namespace forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
 
 public class CopiarExercicioGlobalHandler(
     IExercicioRepository exercicioRepository,
+    IGrupoMuscularRepository grupoMuscularRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<CopiarExercicioGlobalHandler> logger)
 {
     public virtual Task<ExercicioResponse> HandleAsync(
@@ -29,7 +31,7 @@ public class CopiarExercicioGlobalHandler(
         if (!original.IsGlobal)
             throw new AcessoNegadoException();
 
-        var copia = Exercicio.Criar(original.Nome, original.GrupoMuscular, command.TreinadorId, original.Descricao);
+        var copia = Exercicio.Criar(original.Nome, original.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, original.Descricao);
 
         await exercicioRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -37,6 +39,9 @@ public class CopiarExercicioGlobalHandler(
         logger.LogInformation("Exercício global {OriginalId} copiado para treinador {TreinadorId} como {CopiaId}.",
             command.ExercicioId, command.TreinadorId, copia.Id);
 
-        return ExercicioResponseExtensions.ToResponse(copia);
+        var grupoMuscular = await grupoMuscularRepository.ObterPorIdAsync(copia.GrupoMuscularId, cancellationToken).ConfigureAwait(false)
+            ?? throw new GrupoMuscularNaoEncontradoException();
+
+        return ExercicioResponseExtensions.ToResponse(copia, grupoMuscular.Nome);
     }
 }

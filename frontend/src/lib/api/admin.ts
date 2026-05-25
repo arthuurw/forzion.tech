@@ -1,7 +1,8 @@
 import { apiClient } from "./client";
 import type {
   TreinadorResponse,
-  PlanoTreinadorResponse,
+  PlanoPlataformaResponse,
+  TierPlano,
   ExercicioResponse,
   GrupoMuscularResponse,
   PaginatedResponse,
@@ -15,12 +16,8 @@ import type {
   VinculoDetalheResponse,
   VinculoStatus,
   TreinoResponse,
-  PacoteAlunoResponse,
+  PacoteResponse,
 } from "@/types";
-
-export type GrupoMuscularEnum =
-  | "Peito" | "Costas" | "Ombro" | "Biceps" | "Triceps"
-  | "Pernas" | "Gluteos" | "Core" | "FullBody";
 
 export interface ListarExerciciosGlobaisResponse {
   items: ExercicioResponse[];
@@ -65,15 +62,15 @@ export const adminApi = {
   },
 
   listPlanos() {
-    return apiClient.get<PlanoTreinadorResponse[]>("/admin/planos");
+    return apiClient.get<PlanoPlataformaResponse[]>("/admin/planos");
   },
 
-  criarPlano(nome: string, maxAlunos: number, preco: number) {
-    return apiClient.post<PlanoTreinadorResponse>("/admin/planos", { nome, maxAlunos, preco });
+  criarPlano(nome: string, tier: TierPlano, maxAlunos: number, preco: number, descricao?: string) {
+    return apiClient.post<PlanoPlataformaResponse>("/admin/planos", { nome, tier, maxAlunos, preco, descricao });
   },
 
-  atualizarPlano(planoId: string, data: { nome?: string; maxAlunos?: number; preco?: number }) {
-    return apiClient.patch<PlanoTreinadorResponse>(`/admin/planos/${planoId}`, data);
+  atualizarPlano(planoId: string, data: { nome?: string; tier?: TierPlano; maxAlunos?: number; preco?: number; descricao?: string | null }) {
+    return apiClient.patch<PlanoPlataformaResponse>(`/admin/planos/${planoId}`, data);
   },
 
   excluirPlano(planoId: string) {
@@ -97,15 +94,15 @@ export const adminApi = {
     return apiClient.delete(`/admin/grupos-musculares/${id}`);
   },
 
-  listExerciciosGlobais(params?: { pagina?: number; tamanhoPagina?: number; nome?: string; grupoMuscular?: string; ordenarPor?: string }) {
+  listExerciciosGlobais(params?: { pagina?: number; tamanhoPagina?: number; nome?: string; grupoMuscularId?: string; ordenarPor?: string }) {
     return apiClient.get<ListarExerciciosGlobaisResponse>("/admin/exercicios", { params });
   },
 
-  criarExercicioGlobal(data: { nome: string; grupoMuscular: GrupoMuscularEnum; descricao?: string | null }) {
+  criarExercicioGlobal(data: { nome: string; grupoMuscularId: string; descricao?: string | null }) {
     return apiClient.post<ExercicioResponse>("/admin/exercicios", data);
   },
 
-  atualizarExercicioGlobal(exercicioId: string, data: { nome?: string; grupoMuscular?: GrupoMuscularEnum; descricao?: string | null }) {
+  atualizarExercicioGlobal(exercicioId: string, data: { nome?: string; grupoMuscularId?: string; descricao?: string | null }) {
     return apiClient.patch<ExercicioResponse>(`/admin/exercicios/${exercicioId}`, data);
   },
 
@@ -164,6 +161,6 @@ export const adminApi = {
   },
 
   getTreinadorPacotes(treinadorId: string) {
-    return apiClient.get<PacoteAlunoResponse[]>(`/admin/treinadores/${treinadorId}/pacotes`);
+    return apiClient.get<PacoteResponse[]>(`/admin/treinadores/${treinadorId}/pacotes`);
   },
 };

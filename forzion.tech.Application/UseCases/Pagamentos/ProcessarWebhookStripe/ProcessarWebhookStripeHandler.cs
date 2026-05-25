@@ -8,10 +8,11 @@ namespace forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 
 public class ProcessarWebhookStripeHandler(
     IPagamentoRepository pagamentoRepository,
-    IAssinaturaRepository assinaturaRepository,
-    ITreinadorRepository treinadorRepository,
+    IAssinaturaAlunoRepository assinaturaRepository,
+    IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<ProcessarWebhookStripeHandler> logger)
 {
     public virtual async Task<Result> HandleAsync(
@@ -20,9 +21,9 @@ public class ProcessarWebhookStripeHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var valido = await stripeService.ValidarWebhookAsync(command.Payload, command.AssinaturaStripe).ConfigureAwait(false);
+        var valido = await stripeService.ValidarWebhookAsync(command.Payload, command.AssinaturaAlunoStripe).ConfigureAwait(false);
         if (!valido)
-            return Result.Failure(Error.Business("Assinatura do webhook inválida."));
+            return Result.Failure(Error.Business("AssinaturaAluno do webhook inválida."));
 
         var evento = StripeWebhookParser.Parse(command.Payload);
 
@@ -70,11 +71,12 @@ public class ProcessarWebhookStripeHandler(
 
         pagamento.MarcarPago();
 
-        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaId, ct).ConfigureAwait(false);
+        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         if (assinatura is not null)
         {
             assinatura.Ativar();
-            assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddMonths(1));
+            var agora = timeProvider.GetUtcNow().UtcDateTime;
+            assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
         }
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
@@ -117,11 +119,11 @@ public class ProcessarWebhookStripeHandler(
     {
         if (!chargesEnabled) return;
 
-        var treinador = await treinadorRepository.ObterPorStripeAccountIdAsync(accountId, ct).ConfigureAwait(false);
-        if (treinador is null || treinador.StripeOnboardingCompleto) return;
+        var contaRecebimento = await contaRecebimentoRepository.ObterPorStripeAccountIdAsync(accountId, ct).ConfigureAwait(false);
+        if (contaRecebimento is null || contaRecebimento.OnboardingCompleto) return;
 
-        treinador.ConfirmarOnboarding();
+        contaRecebimento.ConfirmarOnboarding();
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
-        logger.LogInformation("Onboarding confirmado via webhook para treinador {TreinadorId}.", treinador.Id);
+        logger.LogInformation("Onboarding confirmado via webhook para treinador {TreinadorId}.", contaRecebimento.TreinadorId);
     }
 }

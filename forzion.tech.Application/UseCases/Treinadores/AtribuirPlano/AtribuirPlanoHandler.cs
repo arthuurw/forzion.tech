@@ -9,9 +9,10 @@ namespace forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
 
 public class AtribuirPlanoHandler(
     ITreinadorRepository treinadorRepository,
-    IPlanoTreinadorRepository planoRepository,
+    IPlanoPlataformaRepository planoRepository,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<AtribuirPlanoHandler> logger)
 {
     public virtual Task<TreinadorResponse> HandleAsync(
@@ -30,7 +31,7 @@ public class AtribuirPlanoHandler(
             ?? throw new TreinadorNaoEncontradoException();
 
         _ = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
-            ?? throw new PlanoTreinadorNaoEncontradoException();
+            ?? throw new PlanoPlataformaNaoEncontradoException();
 
         treinador.AtribuirPlano(command.PlanoId);
 
@@ -39,6 +40,7 @@ public class AtribuirPlanoHandler(
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
+            timeProvider.GetUtcNow().UtcDateTime,
             $"Plano {command.PlanoId} atribuído.");
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
@@ -46,6 +48,6 @@ public class AtribuirPlanoHandler(
 
         logger.LogInformation("Plano {PlanoId} atribuído ao treinador {TreinadorId}.", command.PlanoId, treinador.Id);
 
-        return new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoTreinadorId, treinador.CreatedAt);
+        return new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoPlataformaId, treinador.CreatedAt);
     }
 }

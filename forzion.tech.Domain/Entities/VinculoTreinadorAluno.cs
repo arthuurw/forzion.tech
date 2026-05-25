@@ -13,7 +13,7 @@ public class VinculoTreinadorAluno : IHasDomainEvents
     public Guid Id { get; private set; }
     public Guid TreinadorId { get; private set; }
     public Guid AlunoId { get; private set; }
-    public Guid? PacoteAlunoId { get; private set; }
+    public Guid? PacoteId { get; private set; }
     public VinculoStatus Status { get; private set; }
     public Guid? AprovadoPorId { get; private set; }
     public DateTime? AprovadoEm { get; private set; }
@@ -23,13 +23,13 @@ public class VinculoTreinadorAluno : IHasDomainEvents
 
     private VinculoTreinadorAluno() { }
 
-    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId, Guid? pacoteAlunoId = null)
+    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId, DateTime agora, Guid? pacoteId = null)
     {
         if (treinadorId == Guid.Empty)
             throw new DomainException("O identificador do treinador é inválido.");
         if (alunoId == Guid.Empty)
             throw new DomainException("O identificador do aluno é inválido.");
-        if (pacoteAlunoId.HasValue && pacoteAlunoId.Value == Guid.Empty)
+        if (pacoteId.HasValue && pacoteId.Value == Guid.Empty)
             throw new DomainException("O identificador do pacote é inválido.");
 
         return new VinculoTreinadorAluno
@@ -37,21 +37,21 @@ public class VinculoTreinadorAluno : IHasDomainEvents
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
             AlunoId = alunoId,
-            PacoteAlunoId = pacoteAlunoId,
+            PacoteId = pacoteId,
             Status = VinculoStatus.AguardandoAprovacao,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 
-    public void Aprovar(Guid aprovadoPorId, Guid pacoteAlunoId)
+    public void Aprovar(Guid aprovadoPorId, Guid pacoteId)
     {
         if (Status != VinculoStatus.AguardandoAprovacao)
             throw new DomainException("Apenas vínculos aguardando aprovação podem ser aprovados.");
-        if (pacoteAlunoId == Guid.Empty)
+        if (pacoteId == Guid.Empty)
             throw new DomainException("O identificador do pacote é inválido.");
 
         Status = VinculoStatus.Ativo;
-        PacoteAlunoId = pacoteAlunoId;
+        PacoteId = pacoteId;
         AprovadoPorId = aprovadoPorId;
         AprovadoEm = DateTime.UtcNow;
         DataInicio = DateTime.UtcNow;

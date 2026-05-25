@@ -1,0 +1,54 @@
+# CODEOWNERS — review obrigatorio quando arquivos sob estes paths mudam.
+# Ordem importa: a ultima regra que casa vence.
+
+# Default owner
+*                                       @arthuurw
+
+# Frontend test harness — arquivos sensiveis exigem review explicito
+/frontend/src/test/                     @arthuurw
+/frontend/src/test/setup/               @arthuurw
+/frontend/src/test/determinism/         @arthuurw
+/frontend/src/test/msw/                 @arthuurw
+/frontend/.husky/                       @arthuurw
+/frontend/vitest.config.mts             @arthuurw
+/frontend/eslint.config.mjs             @arthuurw
+/frontend/commitlint.config.mjs         @arthuurw
+/frontend/.lintstagedrc.json            @arthuurw
+/frontend/playwright.config.ts          @arthuurw
+/frontend/tsconfig.e2e.json             @arthuurw
+/frontend/e2e/                          @arthuurw
+/frontend/lighthouserc.json             @arthuurw
+/frontend/stryker.conf.json             @arthuurw
+/frontend/vitest.pact.config.mts        @arthuurw
+/frontend/pact-broker.config.ts         @arthuurw
+/frontend/src/test/pact/                 @arthuurw
+/frontend/instrumentation.ts            @arthuurw
+/frontend/instrumentation-client.ts     @arthuurw
+/frontend/sentry.server.config.ts       @arthuurw
+/frontend/sentry.edge.config.ts         @arthuurw
+/frontend/next.config.ts                @arthuurw
+
+/.gitleaks.toml                         @arthuurw
+/osv-scanner.toml                       @arthuurw
+/zap.yaml                               @arthuurw
+/.github/codeql/                        @arthuurw
+
+# Infra e CI
+/.github/                               @arthuurw
+/.github/workflows/                     @arthuurw
+/nginx/                                 @arthuurw
+/docker-compose.*.yml                   @arthuurw
+/Dockerfile                             @arthuurw
+
+# Backend — projetos .NET (gera review request via CODEOWNERS, nao bloqueio)
+/forzion.tech.Api/                      @arthuurw
+/forzion.tech.Application/              @arthuurw
+/forzion.tech.Domain/                   @arthuurw
+/forzion.tech.Infrastructure/           @arthuurw
+/forzion.tech.Tests/                    @arthuurw
+/forzion.tech.slnx                      @arthuurw
+/Directory.Build.props                  @arthuurw
+/.editorconfig                          @arthuurw
+
+# Backend ops criticos
+/forzion.tech.Api/appsettings.*.json    @arthuurw

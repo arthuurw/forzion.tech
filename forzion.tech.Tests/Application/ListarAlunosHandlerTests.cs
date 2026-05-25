@@ -24,8 +24,8 @@ public class ListarAlunosHandlerTests
         var treinadorId = Guid.NewGuid();
         var alunos = new List<Aluno>
         {
-            Aluno.Criar(Guid.NewGuid(), "Ana"),
-            Aluno.Criar(Guid.NewGuid(), "Bruno")
+            Aluno.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow),
+            Aluno.Criar(Guid.NewGuid(), "Bruno", DateTime.UtcNow)
         };
         _alunoRepo.Setup(r => r.ListarPorTreinadorAsync(treinadorId, 1, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(((IReadOnlyList<Aluno>)alunos, 2));

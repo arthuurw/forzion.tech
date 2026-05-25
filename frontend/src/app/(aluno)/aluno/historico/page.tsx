@@ -68,26 +68,24 @@ export default function HistoricoAlunoPage() {
     usePaginatedList<ExecucaoTreinoResponse>({ fetcher, errorMessage: "Erro ao carregar histórico." });
 
   useEffect(() => {
+    let active = true;
     alunoApi.listExecucoes({ pagina: 1, tamanhoPagina: 200 })
-      .then((r) => setAllExecucoes(r.data.items))
-      .catch(() => {})
-      .finally(() => setAllLoading(false));
+      .then((r) => { if (active) setAllExecucoes(r.data.items); })
+      .catch(() => { if (active) setAllExecucoes([]); })
+      .finally(() => { if (active) setAllLoading(false); });
+    return () => { active = false; };
   }, []);
 
-  const loadProgressao = useCallback(async () => {
+  useEffect(() => {
+    let active = true;
     setProgLoading(true);
-    try {
-      const { de, ate } = periodoParaDatas(periodo);
-      const res = await alunoApi.getMinhaProgressao(de, ate);
-      setExercicios(res.data.exercicios);
-    } catch {
-      setExercicios([]);
-    } finally {
-      setProgLoading(false);
-    }
+    const { de, ate } = periodoParaDatas(periodo);
+    alunoApi.getMinhaProgressao(de, ate)
+      .then((res) => { if (active) setExercicios(res.data.exercicios); })
+      .catch(() => { if (active) setExercicios([]); })
+      .finally(() => { if (active) setProgLoading(false); });
+    return () => { active = false; };
   }, [periodo]);
-
-  useEffect(() => { loadProgressao(); }, [loadProgressao]);
 
   const hoje = new Date();
   const sessoesEsseMes = allExecucoes.filter((ex) => {

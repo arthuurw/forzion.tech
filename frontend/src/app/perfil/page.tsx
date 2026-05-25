@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Stack, TextField, Button, Divider, Chip, Avatar,
@@ -13,7 +13,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { contaApi, type PerfilResponse } from "@/lib/api/conta";
 import { alunoApi } from "@/lib/api/aluno";
 import { apiClient } from "@/lib/api/client";
-import type { MeuVinculoResponse, TreinadorResponse, PacoteAlunoResponse } from "@/types";
+import type { MeuVinculoResponse, TreinadorResponse, PacoteResponse } from "@/types";
 
 export default function PerfilPage() {
   const [perfil, setPerfil] = useState<PerfilResponse | null>(null);
@@ -34,8 +34,8 @@ export default function PerfilPage() {
   const [trocaDialog, setTrocaDialog] = useState(false);
   const [treinadores, setTreinadores] = useState<TreinadorResponse[]>([]);
   const [selectedTreinador, setSelectedTreinador] = useState<TreinadorResponse | null>(null);
-  const [pacotesTroca, setPacotesTroca] = useState<PacoteAlunoResponse[]>([]);
-  const [selectedPacoteTroca, setSelectedPacoteTroca] = useState<PacoteAlunoResponse | null>(null);
+  const [pacotesTroca, setPacotesTroca] = useState<PacoteResponse[]>([]);
+  const [selectedPacoteTroca, setSelectedPacoteTroca] = useState<PacoteResponse | null>(null);
   const [loadingTrocaPacotes, setLoadingTrocaPacotes] = useState(false);
   const [savingTroca, setSavingTroca] = useState(false);
 
@@ -80,7 +80,7 @@ export default function PerfilPage() {
     if (!treinador) return;
     setLoadingTrocaPacotes(true);
     try {
-      const res = await apiClient.get<PacoteAlunoResponse[]>(`/auth/treinadores/${treinador.treinadorId}/pacotes`);
+      const res = await apiClient.get<PacoteResponse[]>(`/auth/treinadores/${treinador.treinadorId}/pacotes`);
       setPacotesTroca(res.data);
     } catch {
       setError("Erro ao carregar pacotes.");
@@ -308,7 +308,7 @@ export default function PerfilPage() {
           </Stack>
         </CardContent>
       </Card>
-      <Dialog open={trocaDialog} onClose={() => setTrocaDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={trocaDialog} onClose={() => setTrocaDialog(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Solicitar troca de treinador</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>

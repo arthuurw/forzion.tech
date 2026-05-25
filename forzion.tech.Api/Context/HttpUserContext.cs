@@ -36,5 +36,5 @@ public class HttpUserContext(IHttpContextAccessor httpContextAccessor) : IUserCo
     private Guid ParseClaim(string type) =>
         Guid.TryParse(Claim(type), out var id)
             ? id
-            : throw new InvalidOperationException($"Claim '{type}' ausente ou inválido no token.");
+            : throw new AcessoNegadoException();
 }

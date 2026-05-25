@@ -14,7 +14,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { adminApi } from "@/lib/api/admin";
 import type {
-  TreinadorResponse, PlanoTreinadorResponse, AlunoResponse, GrupoMuscularResponse,
+  TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
 } from "@/types";
 import { FINALIDADE_LABEL } from "@/lib/constants/labels";
 
@@ -33,7 +33,7 @@ export default function DashboardAdminPage() {
   const [recentTreinadores, setRecentTreinadores] = useState<TreinadorResponse[]>([]);
   const [planoStats, setPlanoStats] = useState<PlanoStat[]>([]);
   const [finalidadeData, setFinalidadeData] = useState<DistItem[]>([]);
-  const [planos, setPlanos] = useState<PlanoTreinadorResponse[]>([]);
+  const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
   const [totalExercicios, setTotalExercicios] = useState(0);
   const [totalGrupos, setTotalGrupos] = useState(0);
   const [tab, setTab] = useState(0);
@@ -83,13 +83,13 @@ export default function DashboardAdminPage() {
       setRecentTreinadores(sorted.slice(0, 5));
 
       // Plan distribution
-      const planosData = planosRes.data as PlanoTreinadorResponse[];
+      const planosData = planosRes.data as PlanoPlataformaResponse[];
       setPlanos(planosData);
       const planoMap = new Map(planosData.map((p) => [p.planoId, p]));
       const contT: Record<string, PlanoStat> = {};
       for (const t of todosTRes.data.items) {
-        const key = t.planoTreinadorId ?? "__none";
-        const plano = t.planoTreinadorId ? planoMap.get(t.planoTreinadorId) : null;
+        const key = t.planoPlataformaId ?? "__none";
+        const plano = t.planoPlataformaId ? planoMap.get(t.planoPlataformaId) : null;
         if (!contT[key]) {
           contT[key] = {
             planoId: key,
@@ -186,7 +186,7 @@ export default function DashboardAdminPage() {
       <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
         TREINADORES
       </Typography>
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mt: 1, mb: 3 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 2, mt: 1, mb: 3 }}>
         {treinadorStats.map((s) => (
           <Paper key={s.name} sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}>
             <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</Typography>
@@ -199,7 +199,7 @@ export default function DashboardAdminPage() {
       <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
         ALUNOS
       </Typography>
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mt: 1, mb: 4 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 2, mt: 1, mb: 4 }}>
         {alunoStats.map((s) => (
           <Paper key={s.name} sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}>
             <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</Typography>
@@ -383,7 +383,7 @@ export default function DashboardAdminPage() {
       {tab === 2 && (
         <Box>
           {/* Platform counters */}
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mb: 3 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 2, mb: 3 }}>
             <Paper sx={{ p: 3, borderLeft: "4px solid #7c3aed", borderRadius: 2 }}>
               <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#7c3aed" }}>{planos.length}</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Planos</Typography>
@@ -404,6 +404,7 @@ export default function DashboardAdminPage() {
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 2 }}>
                 PLANOS DE TREINADORES
               </Typography>
+              <Box sx={{ overflowX: "auto" }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -436,6 +437,7 @@ export default function DashboardAdminPage() {
                   )}
                 </TableBody>
               </Table>
+              </Box>
             </Paper>
 
             {/* Recent trainers */}

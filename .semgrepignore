@@ -1,0 +1,17 @@
+# Semgrep ignore — escopo do SAST no harness frontend + app code.
+
+# Infra nginx: hardening (h2c smuggling, add_header) tratado como tarefa de
+# infra separada, fora do escopo do harness frontend.
+nginx/
+
+# Fixtures de teste do backend contem hashes bcrypt de exemplo (nao sao
+# segredos reais).
+forzion.tech.Tests/
+
+# Dependencias e artefatos gerados.
+frontend/node_modules/
+frontend/.next/
+frontend/coverage/
+frontend/storybook-static/
+frontend/playwright-report/
+frontend/test-results/

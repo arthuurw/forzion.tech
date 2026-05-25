@@ -12,9 +12,10 @@ public class InativarTreinadorHandler(
     ITreinadorRepository treinadorRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
-    IPacoteAlunoRepository pacoteRepository,
+    IPacoteRepository pacoteRepository,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<InativarTreinadorHandler> logger)
 {
     public virtual Task<Result> HandleAsync(
@@ -53,6 +54,7 @@ public class InativarTreinadorHandler(
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
+            timeProvider.GetUtcNow().UtcDateTime,
             command.Observacao);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);

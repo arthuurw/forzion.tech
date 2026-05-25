@@ -12,7 +12,7 @@ import {
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { treinadorApi } from "@/lib/api/treinador";
-import type { VinculoDetalheResponse, PacoteAlunoResponse, TreinoResponse } from "@/types";
+import type { VinculoDetalheResponse, PacoteResponse, TreinoResponse } from "@/types";
 import { OBJETIVO_LABEL, ALUNO_STATUS_COLORS } from "@/lib/constants/labels";
 
 interface StatItem {
@@ -36,7 +36,7 @@ export default function DashboardTreinadorPage() {
   const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
   const [objetivoData, setObjetivoData] = useState<ObjetivoItem[]>([]);
   const [pendentes, setPendentes] = useState<VinculoDetalheResponse[]>([]);
-  const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
+  const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
   const [totalFichas, setTotalFichas] = useState(0);
   const [mrr, setMrr] = useState(0);
   const [receitaPorPacote, setReceitaPorPacote] = useState<ReceitaPacoteItem[]>([]);
@@ -54,7 +54,7 @@ export default function DashboardTreinadorPage() {
         treinadorApi.listPacotes(),
       ]);
 
-      const pacotesList = pacotesRes.data as PacoteAlunoResponse[];
+      const pacotesList = pacotesRes.data as PacoteResponse[];
       setPacotes(pacotesList);
 
       setAlunoStats([
@@ -71,15 +71,15 @@ export default function DashboardTreinadorPage() {
       let totalMrr = 0;
       const receitaMap: Record<string, ReceitaPacoteItem> = {};
       for (const v of ativoRes.data.items as VinculoDetalheResponse[]) {
-        if (!v.pacoteAlunoId) continue;
-        const pacote = precoMap.get(v.pacoteAlunoId);
+        if (!v.pacoteId) continue;
+        const pacote = precoMap.get(v.pacoteId);
         if (!pacote) continue;
         totalMrr += pacote.preco;
-        if (!receitaMap[v.pacoteAlunoId]) {
-          receitaMap[v.pacoteAlunoId] = { name: pacote.nome, alunos: 0, receita: 0 };
+        if (!receitaMap[v.pacoteId]) {
+          receitaMap[v.pacoteId] = { name: pacote.nome, alunos: 0, receita: 0 };
         }
-        receitaMap[v.pacoteAlunoId].alunos += 1;
-        receitaMap[v.pacoteAlunoId].receita += pacote.preco;
+        receitaMap[v.pacoteId].alunos += 1;
+        receitaMap[v.pacoteId].receita += pacote.preco;
       }
       setMrr(totalMrr);
       setReceitaPorPacote(
@@ -106,13 +106,13 @@ export default function DashboardTreinadorPage() {
   useEffect(() => { load(); }, [load]);
 
   const handleAprovar = async (vinculo: VinculoDetalheResponse) => {
-    if (!vinculo.pacoteAlunoId) {
+    if (!vinculo.pacoteId) {
       setError("Vínculo sem pacote associado. Contate o suporte.");
       return;
     }
     setActionLoading(`${vinculo.vinculoId}_aprovar`);
     try {
-      await treinadorApi.aprovarVinculo(vinculo.vinculoId, vinculo.pacoteAlunoId);
+      await treinadorApi.aprovarVinculo(vinculo.vinculoId, vinculo.pacoteId);
       await load();
     } catch {
       setError("Erro ao aprovar vínculo.");
@@ -300,9 +300,9 @@ export default function DashboardTreinadorPage() {
                   </Typography>
                 </Box>
                 <Stack direction="row" spacing={1} sx={{ flexShrink: 0, alignItems: "center" }}>
-                  {v.pacoteAlunoId && pacotes.length > 0 && (
+                  {v.pacoteId && pacotes.length > 0 && (
                     <Typography variant="caption" color="text.secondary">
-                      Pacote: <strong>{pacotes.find((p) => p.pacoteId === v.pacoteAlunoId)?.nome ?? "—"}</strong>
+                      Pacote: <strong>{pacotes.find((p) => p.pacoteId === v.pacoteId)?.nome ?? "—"}</strong>
                     </Typography>
                   )}
                   <Button
@@ -310,7 +310,7 @@ export default function DashboardTreinadorPage() {
                     variant="contained"
                     color="success"
                     startIcon={<CheckIcon />}
-                    disabled={!!actionLoading || !v.pacoteAlunoId}
+                    disabled={!!actionLoading || !v.pacoteId}
                     onClick={() => handleAprovar(v)}
                   >
                     Aprovar

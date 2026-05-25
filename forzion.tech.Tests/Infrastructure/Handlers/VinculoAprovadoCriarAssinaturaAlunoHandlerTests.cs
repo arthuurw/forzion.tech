@@ -1,0 +1,104 @@
+using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Events;
+using forzion.tech.Infrastructure.Handlers;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+namespace forzion.tech.Tests.Infrastructure.Handlers;
+
+public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
+{
+    private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
+    private readonly Mock<IPacoteRepository> _pacoteRepo = new();
+    private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
+    private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogger<VinculoAprovadoCriarAssinaturaAlunoHandler>> _logger = new();
+    private readonly VinculoAprovadoCriarAssinaturaAlunoHandler _handler;
+
+    private static readonly VinculoAprovadoEvent Evento = new(
+        Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow);
+
+    public VinculoAprovadoCriarAssinaturaAlunoHandlerTests()
+    {
+        _handler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
+            _vinculoRepo.Object, _pacoteRepo.Object, _assinaturaRepo.Object,
+            _contaRecebimentoRepo.Object, _unitOfWork.Object, _logger.Object);
+    }
+
+    private static ContaRecebimento ContaOnboarded(Guid treinadorId)
+    {
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
+        conta.ConfigurarStripeConnect("acct_123");
+        conta.ConfirmarOnboarding();
+        return conta;
+    }
+
+    [Fact]
+    public async Task HandleAsync_VinculoSemPacote_NaoCriaAssinaturaAluno()
+    {
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(vinculo);
+
+        await _handler.HandleAsync(Evento);
+
+        _assinaturaRepo.Verify(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorSemOnboarding_NaoCriaAssinaturaAluno()
+    {
+        var pacoteId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
+        vinculo.Aprovar(Evento.TreinadorId, pacoteId);
+        var contaRecebimento = ContaRecebimento.Criar(Evento.TreinadorId, DateTime.UtcNow);
+
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(vinculo);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
+
+        await _handler.HandleAsync(Evento);
+
+        _assinaturaRepo.Verify(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_VinculoNaoEncontrado_NaoCriaAssinaturaAluno()
+    {
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VinculoTreinadorAluno?)null);
+
+        await _handler.HandleAsync(Evento);
+
+        _assinaturaRepo.Verify(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_HappyPath_CriaAssinaturaAlunoECommita()
+    {
+        var pacoteId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
+        vinculo.Aprovar(Evento.TreinadorId, pacoteId);
+
+        var contaRecebimento = ContaOnboarded(Evento.TreinadorId);
+
+        var pacote = Pacote.Criar(Evento.TreinadorId, "Plano mensal", 150m, DateTime.UtcNow);
+
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(vinculo);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pacote);
+
+        await _handler.HandleAsync(Evento);
+
+        _assinaturaRepo.Verify(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+}

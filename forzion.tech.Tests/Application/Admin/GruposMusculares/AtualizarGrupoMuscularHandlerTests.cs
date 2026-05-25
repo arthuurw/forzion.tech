@@ -27,7 +27,7 @@ public class AtualizarGrupoMuscularHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetornaResponse()
     {
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         _repository.Setup(r => r.ObterPorNomeAsync("Costas", It.IsAny<CancellationToken>())).ReturnsAsync((GrupoMuscular?)null);
 
@@ -50,8 +50,8 @@ public class AtualizarGrupoMuscularHandlerTests
     [Fact]
     public async Task HandleAsync_NomeDuplicadoOutroGrupo_LancaDomainException()
     {
-        var grupo = GrupoMuscular.Criar("Peito");
-        var outro = GrupoMuscular.Criar("Costas");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
+        var outro = GrupoMuscular.Criar("Costas", DateTime.UtcNow);
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         _repository.Setup(r => r.ObterPorNomeAsync("Costas", It.IsAny<CancellationToken>())).ReturnsAsync(outro);
 
@@ -63,7 +63,7 @@ public class AtualizarGrupoMuscularHandlerTests
     [Fact]
     public async Task HandleAsync_MesmoNomeMesmoId_NaoLancaException()
     {
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         _repository.Setup(r => r.ObterPorNomeAsync("Peito", It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
 

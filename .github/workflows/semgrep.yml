@@ -1,0 +1,25 @@
+name: SAST — Semgrep
+
+# SAST gratuito, roda 100% no CI (sem GitHub Advanced Security, sem upload).
+# Substitui o CodeQL (que exigia code scanning/GHAS em repo privado).
+on:
+  push:
+    branches: [homolog]
+  pull_request:
+    branches: [homolog]
+  schedule:
+    - cron: "0 5 * * 1"
+
+jobs:
+  semgrep:
+    name: Semgrep scan
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      # --error: falha o job em qualquer finding bloqueante.
+      # Escopo via .semgrepignore (nginx/infra + fixtures de teste fora).
+      - name: Semgrep scan
+        run: semgrep scan --config p/default --error --metrics=off

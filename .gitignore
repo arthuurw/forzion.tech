@@ -59,8 +59,15 @@ TestResult.xml
 nunit-*.xml
 /.vs
 
-# Configs locais (não versionar — segredos via user secrets / env vars)
-/.claude
+# Artefatos de agente/IA e docs gerados — não versionar.
+# docs/api/ é exceção: swagger.v1.json é baseline do gate OpenAPI drift (CI).
+/.claude/
+/.specs/
+/docs/*
+!/docs/api/
+
+# Arquivos locais do Visual Studio (preferências por-usuário, não versionar)
+*.user
 
 # Artefatos de sessão AI (gerados por skills, não pertencem ao repo)
 .security-memory.md
@@ -70,7 +77,17 @@ nunit-*.xml
 
 # Stryker mutation testing output
 stryker-output/
+StrykerOutput/
 .stryker-tmp/
+
+# Cobertura/coverlet + ReportGenerator (gerados em CI e localmente, não versionar)
+coverage/
+coverage-report/
+**/coverage.cobertura.xml
+**/coverage.opencover.xml
 
 # Scripts SQL gerados pontualmente (não versionar)
 migration_public_schema.sql
+
+# Snapshots do Verify (Fase 6): .received e gerado a cada run; so o .verified e versionado.
+*.received.*

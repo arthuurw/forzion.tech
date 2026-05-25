@@ -4,27 +4,31 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
-using TipoGrupoMuscular = forzion.tech.Domain.Enums.TipoGrupoMuscular;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Exercicios;
 
 public class AtualizarExercicioHandlerTests
 {
+    private static readonly Guid GrupoId = Guid.NewGuid();
+
     private readonly Mock<IExercicioRepository> _exercicioRepo = new();
+    private readonly Mock<IGrupoMuscularRepository> _grupoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly AtualizarExercicioHandler _handler;
 
     public AtualizarExercicioHandlerTests()
     {
-        _handler = new AtualizarExercicioHandler(_exercicioRepo.Object, _unitOfWork.Object);
+        _grupoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow));
+        _handler = new AtualizarExercicioHandler(_exercicioRepo.Object, _grupoRepo.Object, _unitOfWork.Object);
     }
 
     private static Exercicio CriarExercicioTreinador(Guid treinadorId) =>
-        Exercicio.Criar("Supino Reto", TipoGrupoMuscular.Peito, treinadorId);
+        Exercicio.Criar("Supino Reto", GrupoId, DateTime.UtcNow, treinadorId);
 
     private static Exercicio CriarExercicioGlobal() =>
-        Exercicio.Criar("Agachamento", TipoGrupoMuscular.Pernas);
+        Exercicio.Criar("Agachamento", GrupoId, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_TreinadorAtualizaProprio_RetornaResponse()

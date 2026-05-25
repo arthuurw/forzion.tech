@@ -80,9 +80,9 @@ internal static class EmailTemplates
             </a>
             """);
 
-    public static string AssinaturaCriada(string nomeAluno, string nomeTreinador, string nomePacote, decimal valor) =>
+    public static string AssinaturaAlunoCriada(string nomeAluno, string nomeTreinador, string nomePacote, decimal valor) =>
         Layout(
-            "Assinatura criada!",
+            "AssinaturaAluno criada!",
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{nomeAluno}</strong>!</p>
             <p style="color:#444;line-height:1.6">

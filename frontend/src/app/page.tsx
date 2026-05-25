@@ -2,13 +2,14 @@ import { Box, Container, Typography, Button, Grid, Card, CardContent } from "@mu
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import HowItWorks from "./_landing/HowItWorks";
-import type { PlanoTreinadorResponse } from "@/types";
+import type { PlanoPlataformaResponse } from "@/types";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import CheckIcon from "@mui/icons-material/Check";
 
-async function getPlanos(): Promise<PlanoTreinadorResponse[]> {
+async function getPlanos(): Promise<PlanoPlataformaResponse[]> {
   try {
     const base = process.env.API_BASE_URL ?? "https://localhost:7220";
-    const res = await fetch(`${base}/auth/planos`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${base}/auth/planos`, { cache: "no-store" });
     if (!res.ok) return [];
     return res.json();
   } catch {
@@ -180,6 +181,14 @@ export default async function LandingPage() {
                               ? <>R$ {plano.preco.toFixed(2).replace(".", ",")}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
                               : "Gratuito"}
                           </Typography>
+                          {plano.descricao && (
+                            <Box sx={{ mt: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75 }}>
+                              <CheckIcon sx={{ fontSize: 15, color: i === 1 ? "secondary.main" : "primary.main", flexShrink: 0 }} />
+                              <Typography variant="caption" sx={{ color: i === 1 ? "rgba(26,26,26,0.75)" : "rgba(255,255,255,0.65)", lineHeight: 1.4 }}>
+                                {plano.descricao}
+                              </Typography>
+                            </Box>
+                          )}
                         </CardContent>
                       </Card>
                     </Link>

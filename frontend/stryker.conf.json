@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Mutation testing — src/lib + src/hooks (logica pura/funcional). Roda semanal via GH Actions (Fase 17), nao em PR. Determinismo (Fase 1) eh pre-requisito.",
+  "packageManager": "npm",
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "vitest.config.mts"
+  },
+  "checkers": ["typescript"],
+  "tsconfigFile": "tsconfig.json",
+  "mutate": [
+    "src/lib/**/*.ts",
+    "src/hooks/**/*.ts",
+    "!src/**/*.test.*",
+    "!src/**/*.test.ts",
+    "!src/**/*.property.test.ts",
+    "!src/**/*.stories.*",
+    "!src/**/*.d.ts",
+    "!src/test/**",
+    "!src/lib/api/client.ts",
+    "!src/lib/auth/context.tsx"
+  ],
+  "ignorePatterns": [
+    "node_modules",
+    ".next",
+    "coverage",
+    "playwright-report",
+    "test-results",
+    "storybook-static",
+    "e2e",
+    ".stryker-tmp",
+    "reports"
+  ],
+  "thresholds": {
+    "high": 85,
+    "low": 75,
+    "break": 75
+  },
+  "reporters": ["html", "clear-text", "progress"],
+  "htmlReporter": {
+    "fileName": "reports/mutation/index.html"
+  },
+  "coverageAnalysis": "perTest",
+  "timeoutMS": 60000,
+  "concurrency": 4,
+  "dryRunTimeoutMinutes": 5,
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": "always"
+}

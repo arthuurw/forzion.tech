@@ -27,13 +27,13 @@ public class ReativarVinculoHandlerTests
             _alunoRepo.Object,
             _limiteService.Object,
             _logRepo.Object,
-            _unitOfWork.Object,
+            _unitOfWork.Object, TimeProvider.System,
             _logger.Object);
     }
 
     private static Aluno CriarAluno()
     {
-        var a = Aluno.Criar(Guid.NewGuid(), "João Silva");
+        var a = Aluno.Criar(Guid.NewGuid(), "João Silva", DateTime.UtcNow);
         a.Ativar();
         return a;
     }
@@ -71,7 +71,7 @@ public class ReativarVinculoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var aluno = CriarAluno();
-        var vinculoAtivo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id);
+        var vinculoAtivo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, DateTime.UtcNow);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtivo);
 

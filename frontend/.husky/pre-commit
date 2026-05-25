@@ -1,0 +1,76 @@
+#!/usr/bin/env sh
+# Pre-commit do monorepo (raiz .NET + frontend/ Node).
+# Husky vive em frontend/ e aponta core.hooksPath para frontend/.husky.
+# Este hook roda a partir da RAIZ do repo e decide por area conforme os
+# arquivos staged:
+#   - toca frontend/  -> gate frontend (typecheck + lint-staged + vitest)
+#   - toca backend    -> gate backend (dotnet format --verify + build + unit rapidos)
+# Commit que so toca uma area NAO paga o custo da outra.
+# NUNCA usar --no-verify (proibido por politica).
+
+# Raiz do repo (este script vive em frontend/.husky/, sobe dois niveis).
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)" || exit 1
+cd "$ROOT" || exit 1
+
+# Arquivos staged (Added/Copied/Modified/Renamed) — ignora deletados.
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+# --- Deteccao de area backend ---------------------------------------------
+# Backend = projetos forzion.tech.*, qualquer .cs/.csproj, ou config de build
+# compartilhada (.slnx, Directory.Build.props, .editorconfig).
+BACKEND_CHANGED=0
+case "$STAGED" in
+  *forzion.tech.*|*.cs|*.csproj) BACKEND_CHANGED=1 ;;
+esac
+# .cs/.csproj podem aparecer no meio da lista (multilinha) — cobre esses casos.
+if [ "$BACKEND_CHANGED" -eq 0 ]; then
+  if printf '%s\n' "$STAGED" | grep -Eq '(^|/)forzion\.tech\.|\.cs$|\.csproj$|(^|/)Directory\.Build\.props$|(^|/)forzion\.tech\.slnx$|(^|/)\.editorconfig$'; then
+    BACKEND_CHANGED=1
+  fi
+fi
+
+# --- Deteccao de area frontend --------------------------------------------
+FRONTEND_CHANGED=0
+if printf '%s\n' "$STAGED" | grep -Eq '(^|/)frontend/'; then
+  FRONTEND_CHANGED=1
+fi
+
+# --- Gate backend ----------------------------------------------------------
+if [ "$BACKEND_CHANGED" -eq 1 ]; then
+  if ! command -v dotnet >/dev/null 2>&1; then
+    echo "Pre-commit FAILED: arquivos backend staged mas 'dotnet' nao esta no PATH."
+    exit 1
+  fi
+  echo "Pre-commit [backend]: dotnet format --verify-no-changes..."
+  dotnet format forzion.tech.slnx --verify-no-changes \
+    || { echo "Pre-commit FAILED: dotnet format (rode 'dotnet format forzion.tech.slnx')"; exit 1; }
+
+  echo "Pre-commit [backend]: dotnet build -c Release..."
+  dotnet build forzion.tech.slnx -c Release \
+    || { echo "Pre-commit FAILED: dotnet build"; exit 1; }
+
+  echo "Pre-commit [backend]: testes unit rapidos..."
+  dotnet test forzion.tech.Tests \
+    --filter "FullyQualifiedName!~Infrastructure.Repositories&FullyQualifiedName!~Tests.Integration&FullyQualifiedName!~Infrastructure.Notifications" \
+    || { echo "Pre-commit FAILED: dotnet test (unit rapidos)"; exit 1; }
+fi
+
+# --- Gate frontend ---------------------------------------------------------
+if [ "$FRONTEND_CHANGED" -eq 1 ]; then
+  cd "$ROOT/frontend" || exit 1
+
+  echo "Pre-commit [frontend]: typecheck..."
+  npm run typecheck || { echo "Pre-commit FAILED: tsc"; exit 1; }
+
+  echo "Pre-commit [frontend]: lint-staged (auto-fix arquivos staged)..."
+  npx --no-install lint-staged || { echo "Pre-commit FAILED: lint-staged"; exit 1; }
+
+  echo "Pre-commit [frontend]: testes..."
+  npm test || { echo "Pre-commit FAILED: vitest"; exit 1; }
+fi
+
+if [ "$BACKEND_CHANGED" -eq 0 ] && [ "$FRONTEND_CHANGED" -eq 0 ]; then
+  echo "Pre-commit: nenhuma area backend/frontend staged — nada a validar."
+fi
+
+echo "Pre-commit OK."

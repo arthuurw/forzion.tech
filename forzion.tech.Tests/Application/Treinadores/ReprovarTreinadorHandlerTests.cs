@@ -23,7 +23,7 @@ public class ReprovarTreinadorHandlerTests
         _handler = new ReprovarTreinadorHandler(
             _treinadorRepo.Object,
             _logRepo.Object,
-            _unitOfWork.Object,
+            _unitOfWork.Object, TimeProvider.System,
             _logger.Object);
     }
 
@@ -31,7 +31,7 @@ public class ReprovarTreinadorHandlerTests
     public async Task HandleAsync_TreinadorAguardando_ReprovaEComita()
     {
         var adminId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         await _handler.HandleAsync(new ReprovarTreinadorCommand(treinador.Id, adminId));
@@ -45,7 +45,7 @@ public class ReprovarTreinadorHandlerTests
     public async Task HandleAsync_ComObservacao_RegistraLog()
     {
         var adminId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         await _handler.HandleAsync(new ReprovarTreinadorCommand(treinador.Id, adminId, "Documentação inválida"));
@@ -57,7 +57,7 @@ public class ReprovarTreinadorHandlerTests
     public async Task HandleAsync_TreinadorJaAtivo_LancaDomainException()
     {
         var adminId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         treinador.Aprovar(adminId);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 

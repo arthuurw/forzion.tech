@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import bundleAnalyzerImport from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
+
+// @next/bundle-analyzer eh CommonJS — esmModuleInterop normaliza
+const withBundleAnalyzer = bundleAnalyzerImport({
+  enabled: process.env.ANALYZE === "true",
+});
 
 if (process.env.NODE_ENV === "production" && !process.env.API_BASE_URL) {
   throw new Error("API_BASE_URL is required in production.");
@@ -16,8 +23,11 @@ const buildCsp = () =>
     "style-src 'self' 'unsafe-inline'",                // necessário: Emotion injeta estilos inline
     "img-src 'self' data: blob: https://*.stripe.com",
     "font-src 'self'",
-    "connect-src 'self' https://api.stripe.com",
+    // *.sentry.io: ingest de erros/replay/tracing (RUM). No-op sem DSN.
+    "connect-src 'self' https://api.stripe.com https://*.sentry.io",
     "frame-src https://js.stripe.com",
+    // blob:: worker do Sentry Session Replay.
+    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -46,4 +56,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * withSentryConfig: injeta o plugin de build do Sentry (source maps + tunelamento
+ * opcional). O upload de source maps so ocorre quando SENTRY_AUTH_TOKEN existe,
+ * entao `next build` em dev/CI sem token funciona normal (sem upload).
+ */
+export default withSentryConfig(withBundleAnalyzer(nextConfig), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  disableLogger: true,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});

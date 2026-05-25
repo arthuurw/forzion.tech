@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using GrupoMuscularEnum = forzion.tech.Domain.Enums.TipoGrupoMuscular;
+using TierPlanoEnum = forzion.tech.Domain.Enums.TierPlano;
 
 namespace forzion.tech.Infrastructure.Seed;
 
@@ -14,6 +15,7 @@ public class DataSeeder(
     AppDbContext context,
     IPasswordHasher passwordHasher,
     IConfiguration configuration,
+    TimeProvider timeProvider,
     ILogger<DataSeeder> logger)
 {
     private static readonly string[] GruposMuscularesPadrao =
@@ -132,11 +134,43 @@ public class DataSeeder(
         (GrupoMuscularEnum.FullBody, "Deadlift Romeno com Remada", "Stiff seguido de remada curvada em único movimento contínuo."),
     ];
 
+    private static readonly (TierPlanoEnum Tier, string Nome, int MaxAlunos, decimal Preco, string? Descricao)[] PlanosPadrao =
+    [
+        (TierPlanoEnum.Free,    "Free",     10,  0m,    null),
+        (TierPlanoEnum.Basic,   "Basic",    25,  50m,   "Acesso somente à plataforma"),
+        (TierPlanoEnum.Pro,     "Pro",      50,  100m,  "Basic + e-mail"),
+        (TierPlanoEnum.ProPlus, "Pro Plus", 100, 200m,  "Pro + WhatsApp"),
+        (TierPlanoEnum.Elite,   "Elite",    300, 500m,  "Pro Plus + IA"),
+    ];
+
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
         await SeedGruposMuscularesAsync(cancellationToken).ConfigureAwait(false);
         await SeedExerciciosGlobaisAsync(cancellationToken).ConfigureAwait(false);
+        await SeedPlanosPlataformaAsync(cancellationToken).ConfigureAwait(false);
         await SeedAdminAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SeedPlanosPlataformaAsync(CancellationToken cancellationToken)
+    {
+        var existentes = await context.PlanosPlataforma
+            .Select(p => p.Tier)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var novos = PlanosPadrao
+            .Where(p => !existentes.Contains(p.Tier))
+            .Select(p => PlanoPlataforma.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, agora, p.Descricao))
+            .ToList();
+
+        if (novos.Count == 0)
+            return;
+
+        context.PlanosPlataforma.AddRange(novos);
+        await context.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Planos de treinador criados: {Planos}", string.Join(", ", novos.Select(p => p.Nome)));
     }
 
     private async Task SeedGruposMuscularesAsync(CancellationToken cancellationToken)
@@ -146,9 +180,10 @@ public class DataSeeder(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = GruposMuscularesPadrao
             .Where(n => !existentes.Contains(n))
-            .Select(Domain.Entities.GrupoMuscular.Criar)
+            .Select(n => Domain.Entities.GrupoMuscular.Criar(n, agora))
             .ToList();
 
         if (novos.Count == 0)
@@ -168,9 +203,14 @@ public class DataSeeder(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var gruposPorNome = await context.GruposMusculares
+            .ToDictionaryAsync(g => g.Nome, g => g.Id, cancellationToken)
+            .ConfigureAwait(false);
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = ExerciciosGlobais
             .Where(e => !existentes.Contains(e.Nome))
-            .Select(e => Exercicio.Criar(e.Nome, e.Grupo, treinadorId: null, descricao: e.Descricao))
+            .Select(e => Exercicio.Criar(e.Nome, gruposPorNome[e.Grupo.ToString()], agora, treinadorId: null, descricao: e.Descricao))
             .ToList();
 
         if (novos.Count == 0)
@@ -195,8 +235,9 @@ public class DataSeeder(
         var senha = configuration["Seed:AdminPassword"]
             ?? throw new InvalidOperationException("Seed:AdminPassword não configurado.");
 
-        var conta = Conta.Criar(Email.Criar(email), passwordHasher.Hash(senha), TipoConta.SystemAdmin);
-        var systemUser = SystemUser.Criar(conta.Id, "Super Admin");
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var conta = Conta.Criar(Email.Criar(email), passwordHasher.Hash(senha), TipoConta.SystemAdmin, agora);
+        var systemUser = SystemUser.Criar(conta.Id, "Super Admin", agora);
 
         context.Contas.Add(conta);
         context.SystemUsers.Add(systemUser);

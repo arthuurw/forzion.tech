@@ -9,7 +9,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { pagamentoApi } from "@/lib/api/pagamento";
 import type { PagamentoResponse } from "@/types";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 // ── Inner form (must be inside <Elements>) ────────────────────────────────────
 

@@ -110,7 +110,7 @@ npm install
 npm run dev   # http://localhost:3000
 ```
 
-> No primeiro start em Development/Homolog, o `DataSeeder` cria automaticamente a conta admin definida em `Seed:AdminEmail` + `Seed:AdminPassword`.
+> No primeiro start em Development/Homolog, o `DataSeeder` cria automaticamente a conta admin definida em `Seed:AdminEmail` + `Seed:AdminPassword`, além de popular os 5 planos padrão da plataforma (Free, Basic, Pro, Pro Plus, Elite) de forma idempotente.
 
 ---
 
@@ -233,7 +233,8 @@ forzion.tech.Domain/
 │                         # Assinatura, Pagamento, SystemUser, TokenRevogado
 ├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus,
 │                         # VinculoStatus, ObjetivoTreino, DificuldadeTreino,
-│                         # TipoGrupoMuscular, AssinaturaStatus, PagamentoStatus, MetodoPagamento
+│                         # TipoGrupoMuscular, AssinaturaStatus, PagamentoStatus, MetodoPagamento,
+│                         # TierPlano (Free, Basic, Pro, ProPlus, Elite)
 ├── Events/               # IDomainEvent, IHasDomainEvents,
 │                         # TreinadorAprovadoEvent, TreinadorReprovadoEvent,
 │                         # TreinadorInativadoEvent, VinculoAprovadoEvent,
@@ -288,7 +289,7 @@ forzion.tech.Tests/
 | `Treinador` | Perfil de treinador. Possui `PlanoTreinadorId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
 | `Aluno` | Perfil de aluno vinculado a uma `Conta`. Email armazenado como `Email` VO. Máquina de estados: `AguardandoAprovacao → Ativo ⇌ Inativo` via `Ativar()`/`Inativar()`. |
 | `VinculoTreinadorAluno` | Relação entre treinador e aluno. Carrega `PacoteAlunoId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
-| `PlanoTreinador` | Plano global (gerido pelo admin). Define `MaxAlunos` por treinador. |
+| `PlanoTreinador` | Plano global (gerido pelo admin). Define `Tier` (Free/Basic/Pro/ProPlus/Elite), `MaxAlunos` por treinador e `Descricao` opcional com as funcionalidades incluídas. |
 | `PacoteAluno` | Pacote criado pelo treinador. Define nome, descrição e preço. Sem limite de fichas. |
 | `Treino` | Ficha de treino com nome, objetivo, dificuldade e lista de `TreinoExercicio`. |
 | `TreinoExercicio` | Item de exercício em uma ficha: séries, repetições, carga, descanso, ordem, observação. Referencia `Exercicio` por ID (sem nav prop — DDD). |
@@ -465,8 +466,8 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `DELETE` | `/admin/treinadores/{id}` | — | `204` (só Inativo; hard delete em cascata) |
 | `PATCH` | `/admin/treinadores/{id}/plano` | `{ planoId }` | `200 TreinadorResponse` |
 | `GET` | `/admin/planos` | — | `[PlanoTreinadorResponse]` |
-| `POST` | `/admin/planos` | `{ nome, maxAlunos, preco, ativo }` | `201 PlanoTreinadorResponse` |
-| `PATCH` | `/admin/planos/{id}` | `{ nome?, maxAlunos?, preco?, ativo? }` | `200 PlanoTreinadorResponse` |
+| `POST` | `/admin/planos` | `{ nome, tier, maxAlunos, preco, descricao? }` | `201 PlanoTreinadorResponse` |
+| `PATCH` | `/admin/planos/{id}` | `{ nome?, tier?, maxAlunos?, preco?, descricao? }` | `200 PlanoTreinadorResponse` |
 | `DELETE` | `/admin/planos/{id}` | — | `204` |
 | `GET` | `/admin/grupos-musculares` | — | `[GrupoMuscularResponse]` |
 | `POST` | `/admin/grupos-musculares` | `{ nome }` | `201 GrupoMuscularResponse` |
@@ -766,6 +767,8 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 | `AdicionarPagamentos` | Colunas Stripe em `treinadores`; tabelas `assinaturas` e `pagamentos` com índices de performance |
 | `SegurancaPagamentos` | Partial unique index `pagamentos(assinatura_id)` onde `status='Pendente'`; unique em `stripe_payment_intent_id` |
 | `CartaoPagamento` | Colunas `client_secret varchar(500)` e `metodo_pagamento text DEFAULT 'Pix'` em `pagamentos` |
+| `AdicionarTierPlanoTreinador` | Coluna `tier varchar(20) NOT NULL` em `planos_treinador`; seed popula Free/Basic/Pro/ProPlus/Elite |
+| `AdicionarDescricaoPlanoTreinador` | Coluna `descricao varchar(200)` nullable em `planos_treinador` com descrição das funcionalidades por tier |
 
 ---
 

@@ -1,5 +1,5 @@
-"use client";
-import { useCallback, useEffect, useState } from "react";
+﻿"use client";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Box, Typography, Tabs, Tab, Card, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   Stack, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip,
@@ -64,6 +64,8 @@ export default function ExerciciosTreinadorPage() {
     });
   }, [tab]);
 
+  const loadIdRef = useRef(0);
+
   const [exercicios, setExercicios] = useState<ExercicioResponse[]>([]);
   const [grupos, setGrupos] = useState<GrupoMuscularResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -93,6 +95,7 @@ export default function ExerciciosTreinadorPage() {
   const isGlobal = tab === 1;
 
   const load = useCallback(async () => {
+    const callId = ++loadIdRef.current;
     setLoading(true);
     setError("");
     try {
@@ -101,14 +104,17 @@ export default function ExerciciosTreinadorPage() {
         pagina: page + 1,
         tamanhoPagina: pageSize,
         nome: filtroNome || undefined,
-        grupoMuscular: filtroGrupo || undefined,
+        grupoMuscularId: filtroGrupo || undefined,
         ordenarPor,
       });
+      if (callId !== loadIdRef.current) return;
       setExercicios(res.data.items);
       setTotal(res.data.total);
     } catch {
+      if (callId !== loadIdRef.current) return;
       setError("Erro ao carregar exercícios.");
     } finally {
+      if (callId !== loadIdRef.current) return;
       setLoading(false);
     }
   }, [isGlobal, page, pageSize, filtroNome, filtroGrupo, ordenarPor]);
@@ -118,8 +124,8 @@ export default function ExerciciosTreinadorPage() {
       const res = await treinadorApi.listGruposMusculares();
       setGrupos(res.data);
       if (res.data.length > 0) {
-        setGrupoMuscular(res.data[0].nome);
-        setEditGrupo(res.data[0].nome);
+        setGrupoMuscular(res.data[0].id);
+        setEditGrupo(res.data[0].id);
       }
     } catch {
       // grupos musculares indisponíveis — formulário fica sem seleção de grupo
@@ -130,7 +136,7 @@ export default function ExerciciosTreinadorPage() {
     try {
       const res = await treinadorApi.listExercicios({ global: false, pagina: 1, tamanhoPagina: 500 });
       setMeusNomes(new Set(res.data.items.map((e: ExercicioResponse) => e.nome.toLowerCase())));
-    } catch { /* silent */ }
+    } catch { /* validação de duplicatas desabilitada — meusNomes permanece vazio */ }
   }, []);
 
   useEffect(() => {
@@ -143,7 +149,7 @@ export default function ExerciciosTreinadorPage() {
     setTab(v);
   };
 
-  const resetForm = () => { setNome(""); setDescricao(""); setGrupoMuscular("Peito"); };
+  const resetForm = () => { setNome(""); setDescricao(""); setGrupoMuscular(grupos.length > 0 ? grupos[0].id : ""); };
 
   const handleCriar = async () => {
     if (!nome.trim()) return;
@@ -152,7 +158,7 @@ export default function ExerciciosTreinadorPage() {
       await treinadorApi.criarExercicio({
         nome: nome.trim(),
         descricao: descricao.trim() || null,
-        grupoMuscular: grupoMuscular || null,
+        grupoMuscularId: grupoMuscular,
       });
       setSuccess(`Exercício "${nome.trim()}" criado.`);
       setOpen(false);
@@ -169,7 +175,7 @@ export default function ExerciciosTreinadorPage() {
   const openEdit = (ex: ExercicioResponse) => {
     setEditEx(ex);
     setEditNome(ex.nome);
-    setEditGrupo(ex.grupoMuscular ?? (grupos.length > 0 ? grupos[0].nome : ""));
+    setEditGrupo(ex.grupoMuscularId);
     setEditDescricao(ex.descricao ?? "");
   };
 
@@ -179,7 +185,7 @@ export default function ExerciciosTreinadorPage() {
     try {
       await treinadorApi.atualizarExercicio(editEx.exercicioId, {
         nome: editNome.trim() || undefined,
-        grupoMuscular: editGrupo || undefined,
+        grupoMuscularId: editGrupo || undefined,
         descricao: editDescricao.trim() || null,
       });
       setSuccess(`"${editNome}" atualizado.`);
@@ -264,7 +270,7 @@ export default function ExerciciosTreinadorPage() {
             onChange={(e) => patchTab({ filtroGrupo: e.target.value, page: 0 })}
           >
             <MenuItem value="">Todos</MenuItem>
-            {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+            {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -338,7 +344,7 @@ export default function ExerciciosTreinadorPage() {
       </Card>
 
       {/* Criar */}
-      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth>
+      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo exercício</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -346,7 +352,7 @@ export default function ExerciciosTreinadorPage() {
             <FormControl size="small" fullWidth>
               <InputLabel>Grupo muscular</InputLabel>
               <Select value={grupoMuscular} label="Grupo muscular" onChange={(e) => setGrupoMuscular(e.target.value)}>
-                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+                {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} size="small" fullWidth multiline rows={2} />
@@ -359,7 +365,7 @@ export default function ExerciciosTreinadorPage() {
       </Dialog>
 
       {/* Editar */}
-      <Dialog open={!!editEx} onClose={() => setEditEx(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!editEx} onClose={() => setEditEx(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar — {editEx?.nome}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -367,7 +373,7 @@ export default function ExerciciosTreinadorPage() {
             <FormControl size="small" fullWidth>
               <InputLabel>Grupo muscular</InputLabel>
               <Select value={editGrupo} label="Grupo muscular" onChange={(e) => setEditGrupo(e.target.value)}>
-                {grupos.map((g) => <MenuItem key={g.id} value={g.nome}>{g.nome}</MenuItem>)}
+                {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
               </Select>
             </FormControl>
             <TextField label="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={2} />

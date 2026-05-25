@@ -5,6 +5,7 @@ using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -27,7 +28,7 @@ public class AlterarStatusAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoExistente_E_UsuarioSystemAdmin_AlteraStatus()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        var aluno = new AlunoBuilder().ComNome("João").Build();
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
 
@@ -41,7 +42,7 @@ public class AlterarStatusAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoExistente_Mas_UsuarioNaoSystemAdmin_LancaAcessoNegadoException()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        var aluno = new AlunoBuilder().ComNome("João").Build();
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(false);
 

@@ -9,10 +9,14 @@
 html,
 body {
   min-height: 100%;
+  min-height: 100dvh;
 }
 
 body {
   background-color: #f5f5f5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Safe area padding for iOS notch/home indicator */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }

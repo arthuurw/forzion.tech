@@ -26,7 +26,7 @@ import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { cadastroAlunoSchema, type CadastroAlunoFormData } from "@/lib/validations/common";
-import type { ProblemDetails, TreinadorResponse, PacoteAlunoResponse } from "@/types";
+import type { ProblemDetails, TreinadorResponse, PacoteResponse } from "@/types";
 import { DIAS_OPTIONS, TEMPO_OPTIONS, FINALIDADE_OPTIONS, NIVEL_OPTIONS } from "@/lib/constants/enrollmentOptions";
 
 const STEPS = ["Escolher treinador", "Escolher pacote", "Seus dados", "Informações adicionais"];
@@ -42,9 +42,9 @@ const STEP2_FIELDS: (keyof CadastroAlunoFormData)[] = [
 export default function CadastroAlunoPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [treinadores, setTreinadores] = useState<TreinadorResponse[]>([]);
-  const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
+  const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
   const [selectedTreinador, setSelectedTreinador] = useState<TreinadorResponse | null>(null);
-  const [selectedPacote, setSelectedPacote] = useState<PacoteAlunoResponse | null>(null);
+  const [selectedPacote, setSelectedPacote] = useState<PacoteResponse | null>(null);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -111,7 +111,7 @@ export default function CadastroAlunoPage() {
     setActiveStep(1);
   };
 
-  const handleSelectPacote = (pacote: PacoteAlunoResponse) => {
+  const handleSelectPacote = (pacote: PacoteResponse) => {
     setSelectedPacote(pacote);
     setActiveStep(2);
   };

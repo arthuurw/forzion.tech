@@ -6,11 +6,148 @@ on:
   pull_request:
     branches: [homolog]
 
-# ─── TESTES ──────────────────────────────────────────────────────────────────
+# Cancela runs antigos do mesmo ref quando um novo push chega.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test-backend:
-    name: Backend — testes
+  # ─── HIGIENE ───────────────────────────────────────────────────────────────
+  commitlint:
+    name: Commitlint (PR)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Lint commits do PR
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: npx commitlint --from "origin/$BASE_REF" --to HEAD --verbose
+
+  # ─── TESTES BACKEND — unit (rápido, sem Docker, todo PR) ─────────────────────
+  # F2: roda só os testes sem dependência de Docker (--filter Category!=Integration).
+  # Os gates aqui (Domain/Application branch 75 + line/method 85; Api line 85 +
+  # method 70) são 100% sustentados por testes unit — medido localmente, não caem
+  # ao excluir os de integração. Os 5 RepositoryTests (Testcontainers) ficam fora.
+  test-backend-unit:
+    name: Backend — testes unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Format — verifica estilo (.editorconfig)
+        run: dotnet format forzion.tech.slnx --verify-no-changes --no-restore
+
+      - name: Coverage — Domain (75% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
+          --logger "console;verbosity=minimal"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Domain]*
+          /p:Threshold=75
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
+
+      - name: Coverage — Application (75% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Application]*
+          /p:Threshold=75
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
+
+      # ─── F9: endurecimento de cobertura — thresholds de line/method + Api ────────
+      # Os gates de branch acima (75/75) ficam INTACTOS. Abaixo só ADICIONAMOS
+      # eixos novos (line/method) e gates dedicados de Api. Valores iniciais ficam
+      # abaixo do baseline medido (sem nunca abaixar nada):
+      #   Domain  line 95.6% branch 94.2% method 92.7%
+      #   Applic. line 93.0% branch 96.4% method 93.1%
+      #   Api     line 96.8% branch 91.0% method 77.6%
+      - name: Coverage — Domain (line/method 85%)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Domain]*
+          /p:Threshold=85
+          /p:ThresholdType=line%2cmethod
+          /p:ThresholdStat=Total
+
+      - name: Coverage — Application (line/method 85%)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Application]*
+          /p:Threshold=85
+          /p:ThresholdType=line%2cmethod
+          /p:ThresholdStat=Total
+
+      # Api: gateamos line (base 96.8%) e method (base 77.6%). Branch fica fora do
+      # gate dedicado porque depende dos testes de integração (Docker) — o branch
+      # do Api já é coberto pelo gate global de branch no job de integração.
+      - name: Coverage — Api (line 85)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Api]*
+          "/p:Exclude=[*]*.Migrations.*%2c[*]Program"
+          /p:Threshold=85
+          /p:ThresholdType=line
+          /p:ThresholdStat=Total
+
+      - name: Coverage — Api (method 70)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include=[forzion.tech.Api]*
+          "/p:Exclude=[*]*.Migrations.*%2c[*]Program"
+          /p:Threshold=70
+          /p:ThresholdType=method
+          /p:ThresholdStat=Total
+
+  # ─── TESTES BACKEND — integração (Docker / Testcontainers) ───────────────────
+  # F2: roda a suíte COMPLETA (sem filtro). Os RepositoryTests sobem um Postgres
+  # via Testcontainers — ubuntu-latest já traz Docker, sem precisar de `services:`.
+  # A suíte inteira roda aqui porque os gates global (50 branch) e Infra (35 branch)
+  # só fecham com a cobertura da UNIÃO unit + integração; medir só Category=Integration
+  # derrubaria ambos. O gate Infra 35 também guarda contra os testes de integração
+  # pararem de rodar em silêncio (cairia abaixo de 35 e falharia — sinal desejado).
+  test-backend-integration:
+    name: Backend — testes integração
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,28 +174,100 @@ jobs:
           /p:ThresholdStat=Total
           "/p:Exclude=[forzion.tech.Tests]*%2C[*]*.Migrations.*%2C[*]Program"
 
-      - name: Coverage — Domain (75% branch)
+      # Infra é coberta pelos testes de integração (Testcontainers / Docker).
+      # Excluindo Migrations/Snapshot do EF Core (que diluem a métrica), o baseline
+      # real é line 50.2% / branch 51.9% / method 34.5%. Gateamos branch num piso
+      # de 35: guarda contra regressão e contra os testes de integração pararem de
+      # rodar silenciosamente (cairia abaixo de 35 e falharia — sinal desejado).
+      - name: Coverage — Infrastructure (branch 35, exclui Migrations)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Domain]*
-          /p:Threshold=75
+          /p:Include=[forzion.tech.Infrastructure]*
+          "/p:Exclude=[*]*.Migrations.*"
+          /p:Threshold=35
           /p:ThresholdType=branch
           /p:ThresholdStat=Total
 
-      - name: Coverage — Application (75% branch)
-        run: >
-          dotnet test forzion.tech.Tests --no-build -c Release
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Application]*
-          /p:Threshold=75
-          /p:ThresholdType=branch
-          /p:ThresholdStat=Total
+      - name: Coverage summary (backend)
+        if: always()
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: forzion.tech.Tests/coverage/coverage.cobertura.xml
+          format: markdown
+          output: both
+          badge: true
+
+      - name: Publica summary no run
+        if: always()
+        run: cat code-coverage-results.md >> "$GITHUB_STEP_SUMMARY"
+        working-directory: ${{ github.workspace }}
+
+      # F9.2 — relatório HTML de cobertura (ReportGenerator). Non-blocking: nunca
+      # derruba o gate, serve só de artifact navegável. Tool global pinada.
+      - name: Instala ReportGenerator (tool pinada)
+        if: always()
+        continue-on-error: true
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.3.11
+
+      - name: Gera relatório HTML de cobertura
+        if: always()
+        continue-on-error: true
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          reportgenerator \
+            -reports:forzion.tech.Tests/coverage/coverage.cobertura.xml \
+            -targetdir:coverage-report \
+            -reporttypes:Html
+
+      - name: Upload relatório HTML de cobertura
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-backend
+          path: coverage-report/
+          if-no-files-found: warn
 
   test-frontend:
-    name: Frontend — type check + testes
+    name: Frontend — lint + type check + testes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test + coverage
+        run: npm run test:coverage
+
+      - name: Coverage report (frontend, PR comment)
+        if: github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          working-directory: frontend
+
+  build-frontend:
+    name: Frontend — build + storybook
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -75,17 +284,128 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Type check
-        run: npx tsc --noEmit
+      - name: Build (next)
+        run: npm run build
+        env:
+          # Guard de produção no next.config exige API_BASE_URL; valor dummy
+          # serve só para o build estático passar (sem chamadas reais).
+          API_BASE_URL: http://backend.invalid
 
-      - name: Test
-        run: npm run test:coverage
+      - name: Build Storybook
+        run: npm run storybook:build
 
-# ─── DEPLOY HOMOLOG ──────────────────────────────────────────────────────────
+  # ─── SEGURANÇA / SUPPLY CHAIN (BACKEND .NET) ──────────────────────────────────
+  security-backend:
+    name: Security backend — vuln NuGet + SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      # Gate de vulnerabilidade: lista pacotes (diretos + transitivos) com CVE
+      # conhecido. `dotnet list package --vulnerable` sempre sai com código 0,
+      # então detectamos a presença do header de vulnerabilidade na saída e
+      # falhamos o job manualmente (gate bloqueante).
+      - name: Vuln NuGet (gate — direto + transitivo)
+        run: |
+          set -euo pipefail
+          dotnet list forzion.tech.slnx package --vulnerable --include-transitive \
+            | tee vuln-report.txt
+          if grep -q "has the following vulnerable packages" vuln-report.txt; then
+            echo "::error::Pacotes NuGet vulneráveis encontrados (ver log acima)."
+            exit 1
+          fi
+          echo "Nenhum pacote NuGet vulnerável encontrado."
+
+      # SBOM .NET (CycloneDX) — tool global pinada. Gera o BOM da solução em
+      # JSON e publica como artifact.
+      - name: Instala CycloneDX (tool pinada)
+        run: dotnet tool install --global CycloneDX --version 6.2.0
+
+      - name: SBOM (CycloneDX .NET)
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet CycloneDX forzion.tech.slnx -o ./sbom-backend -F Json -fn sbom.cdx.json
+
+      - name: Upload SBOM (backend)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-backend
+          path: sbom-backend/sbom.cdx.json
+          if-no-files-found: error
+
+  # ─── SEGURANÇA / SUPPLY CHAIN (FRONTEND) ──────────────────────────────────────
+  security:
+    name: Security — gitleaks + osv + audit + license + sbom
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # Gitleaks roda ANTES do npm ci: varre só a árvore versionada (sem
+      # node_modules instalado nem sbom gerado).
+      - name: Gitleaks (working tree)
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source=/repo --no-git \
+            --config=/repo/.gitleaks.toml --redact --no-banner
+
+      - name: OSV scanner (report-only)
+        # Informativo: lockfile inclui deps dev. O gate bloqueante de vuln é o
+        # `npm audit --omit=dev`. Triagem de vulns dev em fase futura.
+        continue-on-error: true
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:latest \
+            --config=/src/osv-scanner.toml \
+            --lockfile=/src/frontend/package-lock.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: npm audit (prod, >= high)
+        run: npm run audit
+
+      - name: License check
+        run: npm run license
+
+      - name: SBOM (CycloneDX)
+        run: npm run sbom
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: frontend/sbom.cdx.json
+          if-no-files-found: error
+
+  # ─── GATE (required check) ─────────────────────────────────────────────────────
+  gate:
+    name: Gate
+    needs: [test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Todos os checks obrigatórios passaram."
+
+  # ─── DEPLOY HOMOLOG ──────────────────────────────────────────────────────────
   deploy-homolog:
     name: Deploy -> homolog
-    needs: [test-backend, test-frontend]
+    needs: [gate]
     runs-on: ubuntu-latest
     environment: homolog
     if: github.event_name == 'push'
@@ -103,6 +423,12 @@ jobs:
 
             docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env build
             docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env up -d --remove-orphans
+
+            # Nginx config eh bind-mount (./nginx/nginx.conf). "up -d" nao
+            # recria nginx quando so o arquivo muda, entao a config nova so
+            # carrega com restart explicito.
+            docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env restart nginx
+
             docker image prune -f
 
             echo "Deploy homolog OK -- $(date)"

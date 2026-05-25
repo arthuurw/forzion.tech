@@ -1,0 +1,122 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    ":dependencyDashboard",
+    "schedule:weeknights"
+  ],
+  "timezone": "America/Sao_Paulo",
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "packageRules": [
+    {
+      "description": "Auto-merge patches sem revisao",
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Agrupa atualizacoes do Playwright",
+      "matchPackagePatterns": ["^@playwright/", "^playwright"],
+      "groupName": "playwright"
+    },
+    {
+      "description": "Agrupa atualizacoes do Storybook",
+      "matchPackagePatterns": ["^@storybook/", "^storybook"],
+      "groupName": "storybook"
+    },
+    {
+      "description": "Agrupa atualizacoes do Vitest",
+      "matchPackagePatterns": ["^@vitest/", "^vitest"],
+      "groupName": "vitest"
+    },
+    {
+      "description": "Agrupa atualizacoes do MSW",
+      "matchPackagePatterns": ["^msw", "^@mswjs/"],
+      "groupName": "msw"
+    },
+    {
+      "description": "Agrupa atualizacoes de Next.js",
+      "matchPackagePatterns": ["^next$", "^eslint-config-next$"],
+      "groupName": "nextjs"
+    },
+    {
+      "description": "Agrupa atualizacoes do React",
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"],
+      "groupName": "react"
+    },
+    {
+      "description": "Agrupa atualizacoes do MUI",
+      "matchPackagePatterns": ["^@mui/", "^@emotion/"],
+      "groupName": "mui"
+    },
+    {
+      "description": "Agrupa atualizacoes do Stripe",
+      "matchPackagePatterns": ["^@stripe/", "^stripe"],
+      "groupName": "stripe"
+    },
+    {
+      "description": "Aguarda 7 dias antes de subir majors (estabilidade)",
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "NuGet — agrupa EF Core + Npgsql (camada de dados)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^Microsoft\\.EntityFrameworkCore", "^Npgsql", "^EFCore\\."],
+      "groupName": "nuget efcore"
+    },
+    {
+      "description": "NuGet — agrupa runtime Microsoft.Extensions / ASP.NET Core",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^Microsoft\\.Extensions\\.", "^Microsoft\\.AspNetCore\\."],
+      "groupName": "nuget microsoft"
+    },
+    {
+      "description": "NuGet — agrupa stack de testes (xunit, coverlet, moq, fluentassertions, testcontainers)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": [
+        "^xunit",
+        "^coverlet\\.",
+        "^Moq$",
+        "^FluentAssertions$",
+        "^Testcontainers",
+        "^Microsoft\\.NET\\.Test\\.Sdk$"
+      ],
+      "groupName": "nuget testing"
+    },
+    {
+      "description": "NuGet — agrupa Stripe (billing)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^Stripe\\."],
+      "groupName": "nuget stripe"
+    },
+    {
+      "description": "NuGet — agrupa Pact (contract testing)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^PactNet"],
+      "groupName": "nuget pact"
+    },
+    {
+      "description": "NuGet — analyzers: nao automergear, revisao manual (podem quebrar build)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^SonarAnalyzer\\."],
+      "groupName": "nuget analyzers",
+      "automerge": false
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"],
+    "automerge": true
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "schedule": ["at any time"]
+  },
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 10
+}

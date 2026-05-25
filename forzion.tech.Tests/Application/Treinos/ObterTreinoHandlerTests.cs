@@ -32,7 +32,7 @@ public class ObterTreinoHandlerTests
     public async Task HandleAsync_TreinoExistente_RetornaTreino()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 
@@ -47,8 +47,8 @@ public class ObterTreinoHandlerTests
     {
         var treinadorLogadoId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, outroTreinadorId);
-        
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, outroTreinadorId, DateTime.UtcNow);
+
         _userContext.Setup(u => u.PerfilId).Returns(treinadorLogadoId);
         _userContext.Setup(u => u.IsTreinador).Returns(true);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
@@ -74,8 +74,8 @@ public class ObterTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
-        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow);
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(false);
@@ -93,7 +93,7 @@ public class ObterTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(false);
@@ -111,7 +111,7 @@ public class ObterTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
 
         _userContext.Setup(u => u.PerfilId).Returns(adminId);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
