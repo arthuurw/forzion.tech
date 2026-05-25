@@ -1,0 +1,132 @@
+using System.Text.Json;
+using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Results;
+using forzion.tech.Domain.Entities;
+using Microsoft.Extensions.Logging;
+using Svix;
+
+namespace forzion.tech.Infrastructure.Notifications.Email;
+
+public record ProcessarWebhookResendCommand(
+    string Payload,
+    string SvixId,
+    string SvixTimestamp,
+    string SvixSignature);
+
+public class ProcessarWebhookResendHandler(
+    IEmailDeliveryLogRepository logRepository,
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
+    ILogger<ProcessarWebhookResendHandler> logger)
+{
+    private static readonly HashSet<string> EventosRelevantes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "email.delivered",
+        "email.bounced",
+        "email.complained",
+        "email.spam_complaint"
+    };
+
+    public virtual async Task<Result> HandleAsync(
+        ProcessarWebhookResendCommand command,
+        string webhookSecret,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        if (string.IsNullOrWhiteSpace(webhookSecret))
+        {
+            logger.LogWarning("ProcessarWebhookResendHandler: Resend:WebhookSecret não configurado.");
+            return Result.Failure(Error.Business("Webhook não configurado."));
+        }
+
+        if (!VerificarAssinatura(command, webhookSecret))
+            return Result.Failure(Error.Business("Assinatura do webhook inválida."));
+
+        var parsed = ParsePayload(command.Payload);
+        if (parsed is null)
+        {
+            logger.LogWarning("ProcessarWebhookResendHandler: payload inválido.");
+            return Result.Failure(Error.Business("Payload inválido."));
+        }
+
+        if (!EventosRelevantes.Contains(parsed.EventType))
+        {
+            logger.LogDebug("Evento Resend ignorado: {EventType}.", parsed.EventType);
+            return Result.Success();
+        }
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var log = EmailDeliveryLog.Criar(
+            parsed.EmailId,
+            parsed.EventType,
+            parsed.RecipientEmail,
+            parsed.CreatedAt,
+            command.Payload,
+            agora);
+
+        await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation(
+            "Evento Resend registrado: {EventType} para {Email} (messageId: {MessageId}).",
+            parsed.EventType, parsed.RecipientEmail, parsed.EmailId);
+
+        return Result.Success();
+    }
+
+    private static bool VerificarAssinatura(ProcessarWebhookResendCommand command, string secret)
+    {
+        try
+        {
+            var headers = new System.Net.WebHeaderCollection
+            {
+                ["svix-id"] = command.SvixId,
+                ["svix-timestamp"] = command.SvixTimestamp,
+                ["svix-signature"] = command.SvixSignature
+            };
+
+            new Webhook(secret).Verify(command.Payload, headers);
+            return true;
+        }
+        catch (Exception ex) when (ex.GetType().Name.Contains("Verification") || ex.GetType().Name.Contains("Webhook"))
+        {
+            return false;
+        }
+    }
+
+    private static ResendEventData? ParsePayload(string payload)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payload);
+            var root = doc.RootElement;
+
+            var eventType = root.GetProperty("type").GetString() ?? string.Empty;
+
+            if (!root.TryGetProperty("data", out var data))
+                return null;
+
+            var emailId = data.TryGetProperty("email_id", out var emailIdProp)
+                ? emailIdProp.GetString() ?? string.Empty
+                : string.Empty;
+
+            var recipientEmail = string.Empty;
+            if (data.TryGetProperty("to", out var toArr) && toArr.GetArrayLength() > 0)
+                recipientEmail = toArr[0].GetString() ?? string.Empty;
+
+            var createdAt = root.TryGetProperty("created_at", out var caProp)
+                ? caProp.GetDateTime()
+                : DateTime.UtcNow;
+
+            return new ResendEventData(eventType, emailId, recipientEmail, createdAt);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private sealed record ResendEventData(string EventType, string EmailId, string RecipientEmail, DateTime CreatedAt);
+}

@@ -67,6 +67,7 @@ public static class InfrastructureExtensions
         services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
         services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
