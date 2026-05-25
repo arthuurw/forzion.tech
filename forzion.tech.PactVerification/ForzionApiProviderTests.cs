@@ -47,6 +47,10 @@ public class ForzionApiProviderTests : IClassFixture<ForzionApiProviderFactory>
         var providerVersion = Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "local-dev";
         var publish = string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase);
 
+        // WebApplicationFactory e lazy: forca o boot do host (CreateHost sobe o
+        // Kestrel e popula ServerUri) antes de ler a URL.
+        _ = _factory.CreateClient();
+
         var config = new PactVerifierConfig();
         using var verifier = new PactVerifier(config);
 
@@ -117,16 +121,19 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
     // Kestrel real numa porta livre, que o verifier do Pact consome via HTTP.
     protected override IHost CreateHost(IHostBuilder builder)
     {
-        var testHost = base.CreateHost(builder);
+        // Host do TestServer (o WAF ja configurou UseTestServer no builder).
+        var testHost = builder.Build();
 
-        builder.ConfigureWebHost(b => b.UseKestrel(o => o.ListenLocalhost(0)));
+        // Reconfigura o mesmo builder pra Kestrel real e sobe um 2o host.
+        builder.ConfigureWebHost(b => b.UseKestrel());
         _kestrelHost = builder.Build();
         _kestrelHost.Start();
 
         var addresses = _kestrelHost.Services.GetRequiredService<IServer>()
             .Features.Get<IServerAddressesFeature>();
-        ServerUri = addresses!.Addresses.First();
+        ServerUri = addresses!.Addresses.Last();
 
+        testHost.Start();
         return testHost;
     }
 
