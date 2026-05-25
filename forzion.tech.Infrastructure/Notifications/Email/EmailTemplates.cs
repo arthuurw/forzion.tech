@@ -106,6 +106,27 @@ internal static class EmailTemplates
             </p>
             """);
 
+    public static string RedefinirSenha(string email, string resetLink) =>
+        Layout(
+            "Redefinição de senha",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá!</p>
+            <p style="color:#444;line-height:1.6">
+              Recebemos uma solicitação de redefinição de senha para a conta associada ao e-mail
+              <strong>{email}</strong>.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.
+            </p>
+            <a href="{resetLink}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Redefinir senha
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Se você não solicitou a redefinição, ignore este e-mail. Sua senha permanece a mesma.
+            </p>
+            """);
+
     public static string AssinaturaAlunoCriada(string nomeAluno, string nomeTreinador, string nomePacote, decimal valor) =>
         Layout(
             "AssinaturaAluno criada!",
