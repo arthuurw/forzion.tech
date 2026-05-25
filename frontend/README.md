@@ -298,7 +298,7 @@ frontend/
 │   └── types/
 │       └── index.ts                    # Types e interfaces compartilhados
 │                                       # TierPlano: "Free" | "Basic" | "Pro" | "ProPlus" | "Elite"
-│                                       # PlanoTreinadorResponse: inclui tier e descricao (nullable)
+│                                       # PlanoPlataformaResponse: inclui tier e descricao (nullable)
 │
 ├── vitest.config.mts                   # Config Vitest
 ├── next.config.ts                      # Headers de segurança, output standalone
@@ -534,7 +534,7 @@ const {
   openDelete,   // (item: T) => void
   closeDelete,
   deleting, setDeleting,
-} = useCRUDDialog<PlanoTreinadorResponse>();
+} = useCRUDDialog<PlanoPlataformaResponse>();
 ```
 
 ### `useInactivity`
@@ -675,8 +675,8 @@ const handleStatus = (v: string) => { setFiltroStatus(v); setPage(0); };
 ### CRUD completo (criar + editar + excluir)
 
 ```tsx
-const dialog = useCRUDDialog<PlanoTreinadorResponse>();
-const { reload } = usePaginatedList<PlanoTreinadorResponse>({ fetcher });
+const dialog = useCRUDDialog<PlanoPlataformaResponse>();
+const { reload } = usePaginatedList<PlanoPlataformaResponse>({ fetcher });
 
 // Criar
 const handleCriar = async (data: CriarPlanoForm) => {
