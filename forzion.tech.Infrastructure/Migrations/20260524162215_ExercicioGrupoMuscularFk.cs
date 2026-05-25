@@ -18,7 +18,7 @@ namespace forzion.tech.Infrastructure.Migrations
                 type: "uuid",
                 nullable: true);
 
-            // Garante que todo grupo referenciado por exercícios exista como entidade
+            // Garante que cada grupo referenciado por exercícios exista como entidade
             // (o grupo era armazenado como string do enum; o nome casa 1:1 com grupos_musculares).
             migrationBuilder.Sql(@"
                 INSERT INTO homolog.grupos_musculares (id, nome, created_at)
