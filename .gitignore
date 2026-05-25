@@ -59,8 +59,15 @@ TestResult.xml
 nunit-*.xml
 /.vs
 
-# Pasta do Claude Code (agente) — não versionar. Docs do harness vivem em docs/.
+# Artefatos de agente/IA e docs gerados — não versionar.
+# docs/api/ é exceção: swagger.v1.json é baseline do gate OpenAPI drift (CI).
 /.claude/
+/.specs/
+/docs/*
+!/docs/api/
+
+# Arquivos locais do Visual Studio (preferências por-usuário, não versionar)
+*.user
 
 # Artefatos de sessão AI (gerados por skills, não pertencem ao repo)
 .security-memory.md
