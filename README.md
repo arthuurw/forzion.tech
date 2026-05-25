@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 997 testes backend + 282 testes frontend | Clean Architecture | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Auditoria de segurança OWASP | DDD tático aplicado
+**Status**: ✅ 1067 testes backend (999 unit + 68 integração) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
 
 ---
 
@@ -62,8 +62,11 @@ forzion.tech/
 ├── docker-compose.server.yml  # Stack de servidor (sem banco — usa Supabase)
 ├── .dockerignore              # Exclui bin/, obj/, node_modules/ do build Docker
 ├── .env.example               # Variáveis necessárias para docker-compose
-└── docs/                      # Documentação adicional (fluxo-sistema.md, etc.)
+└── docs/                      # Documentação (gitignored, exceto docs/api/)
+    └── api/swagger.v1.json    # Contrato OpenAPI versionado (baseline do gate openapi-drift)
 ```
+
+> `docs/` (planos, notas de design gerados por agente) é ignorado pelo git via `.gitignore`, **exceto** `docs/api/` — o `swagger.v1.json` ali é o baseline do check de drift de contrato no CI.
 
 ---
 
@@ -212,7 +215,7 @@ forzion.tech.Application/
 └── UseCases/                      # Handler CQRS-like por domínio
     ├── Admin/
     ├── Alunos/
-    ├── Assinaturas/               # CriarAssinatura, CancelarAssinatura
+    ├── AssinaturaAlunos/          # CriarAssinaturaAluno, CancelarAssinaturaAluno, ObterAssinaturaAluno
     ├── Auth/
     ├── Conta/
     ├── Exercicios/
@@ -226,25 +229,27 @@ forzion.tech.Application/
 
 forzion.tech.Domain/
 ├── Entities/             # Conta, Treinador, Aluno, VinculoTreinadorAluno,
-│                         # Treino, TreinoExercicio, TreinoAluno, Exercicio,
+│                         # Treino, TreinoExercicio, SerieConfig, TreinoAluno, Exercicio,
 │                         # ExecucaoTreino, ExecucaoExercicio, LogAprovacao,
-│                         # PlanoTreinador, PacoteAluno, GrupoMuscular,
-│                         # Assinatura, Pagamento, SystemUser, TokenRevogado
+│                         # PlanoPlataforma, Pacote, GrupoMuscular, ContaRecebimento,
+│                         # AssinaturaAluno, Assinante, Pagamento, SystemUser, TokenRevogado
 ├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus,
 │                         # VinculoStatus, ObjetivoTreino, DificuldadeTreino,
-│                         # TipoGrupoMuscular, AssinaturaStatus, PagamentoStatus, MetodoPagamento,
+│                         # TipoGrupoMuscular, status de assinatura/pagamento, MetodoPagamento,
 │                         # TierPlano (Free, Basic, Pro, ProPlus, Elite)
 ├── Events/               # IDomainEvent, IHasDomainEvents,
-│                         # TreinadorAprovadoEvent, TreinadorReprovadoEvent,
-│                         # TreinadorInativadoEvent, VinculoAprovadoEvent,
-│                         # AlunoInativadoEvent
+│                         # TreinadorAprovado/Reprovado/Inativado, VinculoAprovado,
+│                         # AlunoRegistrado, AlunoAtualizado, AlunoInativado,
+│                         # AssinaturaAlunoCriada
 ├── Exceptions/           # Exceções de domínio tipadas (DomainException base)
 └── ValueObjects/         # Email
 
 forzion.tech.Infrastructure/
 ├── DependencyInjection/
 │   └── InfrastructureExtensions.cs
-├── Migrations/           # EF Core migrations (14 total)
+├── Migrations/           # EF Core migrations (21 total, schema homolog)
+├── Handlers/             # Handlers de domain events em Infra: cria AssinaturaAluno no
+│                         # VinculoAprovado; sincroniza projeção Assinante (billing)
 ├── Notifications/
 │   ├── Email/            # EmailTemplates + 5 handlers de eventos de domínio (Resend)
 │   └── WhatsApp/         # EvolutionApiWhatsAppNotifier + NullWhatsAppNotifier
@@ -279,38 +284,43 @@ forzion.tech.Tests/
 |----------|-----------|
 | `Conta` | Auth unificada. E-mail + PasswordHash (BCrypt). `TipoConta`: `SystemAdmin`, `Treinador`, `Aluno`. |
 | `SystemUser` | Perfil de admin vinculado a uma `Conta` do tipo `SystemAdmin`. |
-| `Treinador` | Perfil de treinador. Possui `PlanoTreinadorId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
+| `Treinador` | Perfil de treinador. Possui `PlanoPlataformaId`. Status: `AguardandoAprovacao → Ativo → Inativo`. Dados de Stripe Connect foram extraídos para `ContaRecebimento` (contexto Billing). |
 | `Aluno` | Perfil de aluno vinculado a uma `Conta`. Email armazenado como `Email` VO. Máquina de estados: `AguardandoAprovacao → Ativo ⇌ Inativo` via `Ativar()`/`Inativar()`. |
-| `VinculoTreinadorAluno` | Relação entre treinador e aluno. Carrega `PacoteAlunoId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
-| `PlanoTreinador` | Plano global (gerido pelo admin). Define `Tier` (Free/Basic/Pro/ProPlus/Elite), `MaxAlunos` por treinador e `Descricao` opcional com as funcionalidades incluídas. |
-| `PacoteAluno` | Pacote criado pelo treinador. Define nome, descrição e preço. Sem limite de fichas. |
+| `VinculoTreinadorAluno` | Relação entre treinador e aluno. Carrega `PacoteId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
+| `PlanoPlataforma` | Plano global (gerido pelo admin; ex-`PlanoTreinador`). Define `Tier` (Free/Basic/Pro/ProPlus/Elite), `MaxAlunos` por treinador e `Descricao` opcional com as funcionalidades incluídas. |
+| `Pacote` | Pacote criado pelo treinador (ex-`PacoteAluno`). Define nome, descrição e preço. Sem limite de fichas. |
 | `Treino` | Ficha de treino com nome, objetivo, dificuldade e lista de `TreinoExercicio`. |
-| `TreinoExercicio` | Item de exercício em uma ficha: séries, repetições, carga, descanso, ordem, observação. Referencia `Exercicio` por ID (sem nav prop — DDD). |
+| `TreinoExercicio` | Item de exercício em uma ficha: configurações de série (`SerieConfig`), carga, descanso, ordem, observação. Referencia `Exercicio` por ID (sem nav prop — DDD). |
+| `SerieConfig` | Configuração de série de um `TreinoExercicio` (qtd séries, reps mín/máx). Owned/value-style por ficha. |
 | `TreinoAluno` | Vínculo ficha × aluno. Status: `Ativo / Inativo`. |
-| `Exercicio` | Global (`TreinadorId = null`) ou privado do treinador. Possui `GrupoMuscular`. |
-| `GrupoMuscular` | Grupo muscular global (gerido pelo admin). |
+| `Exercicio` | Global (`TreinadorId = null`) ou privado do treinador. FK para `GrupoMuscular` (fonte da verdade). |
+| `GrupoMuscular` | Grupo muscular global (gerido pelo admin) — entidade fonte da verdade, referenciada por FK em `Exercicio`. |
 | `ExecucaoTreino` | Registro de sessão realizada pelo aluno. Contém lista de `ExecucaoExercicio`. |
 | `LogAprovacao` | Auditoria de aprovações e inativações. `EntidadeId` sem FK — sobrevive a hard deletes. |
 | `TokenRevogado` | JTI de tokens revogados (logout). Sem RLS. Limpo automaticamente ao expirar. |
-| `Assinatura` | Cobrança recorrente mensal de um aluno. Vinculada ao `VinculoTreinadorAluno` e ao `PacoteAluno`. Status: `Pendente → Ativa → Inadimplente → Cancelada`. |
+| `ContaRecebimento` | Conta de recebimentos do treinador no Stripe Connect (`StripeConnectAccountId`, `OnboardingCompleto`). Extraída de `Treinador` (contexto Billing). |
+| `AssinaturaAluno` | Cobrança recorrente mensal de um aluno (ex-`Assinatura`). Vinculada ao `VinculoTreinadorAluno` e ao `Pacote`. Status: `Pendente → Ativa → Inadimplente → Cancelada`. |
+| `Assinante` | Projeção de billing read-side do aluno (nome/email/alunoId). Sincronizada por eventos de domínio (`AlunoRegistrado`/`AlunoAtualizado`). Unique por `AlunoId`. |
 | `Pagamento` | Tentativa de cobrança individual. Armazena `StripePaymentIntentId`, QR Code Pix ou `ClientSecret` para cartão. Status: `Pendente → Pago / Expirado / Falhou`. |
 
 ---
 
 ### Domain Events
 
-`Treinador`, `VinculoTreinadorAluno`, `Aluno` e `Assinatura` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada):
+`Treinador`, `VinculoTreinadorAluno` e `Aluno` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada):
 
-| Evento | Levantado em |
-|--------|-------------|
-| `TreinadorAprovadoEvent` | `Treinador.Aprovar()` |
-| `TreinadorReprovadoEvent` | `Treinador.Reprovar()` |
-| `TreinadorInativadoEvent` | `Treinador.Inativar()` |
-| `VinculoAprovadoEvent` | `VinculoTreinadorAluno.Aprovar()` |
-| `AlunoInativadoEvent` | `Aluno.Inativar()` |
-| `AssinaturaCriadaEvent` | `Assinatura.Criar()` |
+| Evento | Levantado em | Consumido por |
+|--------|-------------|---------------|
+| `TreinadorAprovadoEvent` | `Treinador.Aprovar()` | e-mail (Resend) |
+| `TreinadorReprovadoEvent` | `Treinador.Reprovar()` | e-mail |
+| `TreinadorInativadoEvent` | `Treinador.Inativar()` | e-mail |
+| `VinculoAprovadoEvent` | `VinculoTreinadorAluno.Aprovar()` | e-mail + cria `AssinaturaAluno` (se treinador com onboarding Stripe completo) |
+| `AlunoInativadoEvent` | `Aluno.Inativar()` | — |
+| `AlunoRegistradoEvent` | `Aluno.Criar()` | sincroniza projeção `Assinante` (billing) |
+| `AlunoAtualizadoEvent` | `Aluno` (atualização de perfil) | sincroniza projeção `Assinante` |
+| `AssinaturaAlunoCriadaEvent` | `AssinaturaAluno.Criar()` | e-mail |
 
-Eventos são despachados sem persistência — handlers de notificação os consomem in-process.
+Eventos são despachados **após** `SaveChangesAsync` e **antes** disso os eventos da entidade são limpos (snapshot + `ClearDomainEvents` antes do dispatch). Isso evita re-entrância: um handler que chama `CommitAsync` de novo (ex.: a projeção `Assinante`) não re-despacha os mesmos eventos. Handlers são in-process, resolvidos no mesmo escopo de DI (compartilham o `AppDbContext`).
 
 ---
 
@@ -390,9 +400,9 @@ Exceder retorna **429 Too Many Requests**.
 | `POST` | `/auth/login` | `{ email, senha }` | `{ token, tipoConta, contaId, perfilId }` |
 | `POST` | `/auth/register/treinador` | `{ nome, email, senha, telefone?, planoId? }` | `201 { treinadorId }` |
 | `POST` | `/auth/register/aluno` | `{ nome, email, senha, treinadorId, pacoteId?, ... }` | `201 { alunoId, vinculoId }` |
-| `GET` | `/auth/planos` | — | `[PlanoTreinadorResponse]` · rate: `auth` |
+| `GET` | `/auth/planos` | — | `[PlanoPlataformaResponse]` · rate: `auth` |
 | `GET` | `/auth/treinadores` | — | `[TreinadorPublicoResponse]` (apenas ativos) · rate: `auth` |
-| `GET` | `/auth/treinadores/{id}/pacotes` | — | `[PacoteAlunoResponse]` · rate: `auth` |
+| `GET` | `/auth/treinadores/{id}/pacotes` | — | `[PacoteResponse]` · rate: `auth` |
 
 #### Admin — `/admin` (política `SystemAdmin`)
 
@@ -407,9 +417,9 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `POST` | `/admin/treinadores/{id}/inativar` | `{ observacao? }` | `204` |
 | `DELETE` | `/admin/treinadores/{id}` | — | `204` (só Inativo; hard delete em cascata) |
 | `PATCH` | `/admin/treinadores/{id}/plano` | `{ planoId }` | `200 TreinadorResponse` |
-| `GET` | `/admin/planos` | — | `[PlanoTreinadorResponse]` |
-| `POST` | `/admin/planos` | `{ nome, tier, maxAlunos, preco, descricao? }` | `201 PlanoTreinadorResponse` |
-| `PATCH` | `/admin/planos/{id}` | `{ nome?, tier?, maxAlunos?, preco?, descricao? }` | `200 PlanoTreinadorResponse` |
+| `GET` | `/admin/planos` | — | `[PlanoPlataformaResponse]` |
+| `POST` | `/admin/planos` | `{ nome, tier, maxAlunos, preco, descricao? }` | `201 PlanoPlataformaResponse` |
+| `PATCH` | `/admin/planos/{id}` | `{ nome?, tier?, maxAlunos?, preco?, descricao? }` | `200 PlanoPlataformaResponse` |
 | `DELETE` | `/admin/planos/{id}` | — | `204` |
 | `GET` | `/admin/grupos-musculares` | — | `[GrupoMuscularResponse]` |
 | `POST` | `/admin/grupos-musculares` | `{ nome }` | `201 GrupoMuscularResponse` |
@@ -431,14 +441,14 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `GET` | `/admin/treinadores/{id}/vinculos` | `?status=` | `PaginatedResponse<VinculoDetalheResponse>` |
 | `GET` | `/admin/treinadores/{id}/treinos` | `?nome=&objetivo=&pagina=&tamanhoPagina=` | `PaginatedResponse<TreinoResponse>` |
 | `GET` | `/admin/treinos/{id}` | — | `TreinoResponse` |
-| `GET` | `/admin/treinadores/{id}/pacotes` | — | `PacoteAlunoResponse[]` |
+| `GET` | `/admin/treinadores/{id}/pacotes` | — | `PacoteResponse[]` |
 
 #### Treinador — `/treinador` (política `Treinador`)
 
 | Método | Rota | Body | Resposta |
 |--------|------|------|----------|
 | `GET` | `/treinador/vinculos` | `?status=&pagina=&tamanhoPagina=` | `ListarVinculosResponse` |
-| `POST` | `/treinador/vinculos/{id}/aprovar` | `{ pacoteAlunoId? }` | `200 VinculoResponse` |
+| `POST` | `/treinador/vinculos/{id}/aprovar` | `{ pacoteId, trarFichas? }` | `200 VinculoResponse` |
 | `POST` | `/treinador/vinculos/{id}/desvincular` | `{ observacao? }` | `204` |
 | `POST` | `/treinador/vinculos/{id}/reativar` | — | `200 VinculoResponse` |
 | `GET` | `/treinador/alunos` | `?pagina=&tamanhoPagina=` | `ListarAlunosResponse` |
@@ -450,9 +460,9 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `PATCH` | `/treinador/exercicios/{id}` | `{ nome?, descricao?, grupoMuscularId? }` | `200 ExercicioResponse` |
 | `DELETE` | `/treinador/exercicios/{id}` | — | `204` |
 | `POST` | `/treinador/exercicios/{id}/copiar` | — | `201 ExercicioResponse` |
-| `GET` | `/treinador/pacotes` | — | `[PacoteAlunoResponse]` |
-| `POST` | `/treinador/pacotes` | `{ nome, descricao?, preco }` | `201 PacoteAlunoResponse` |
-| `PATCH` | `/treinador/pacotes/{id}` | `{ nome?, descricao?, preco? }` | `200 PacoteAlunoResponse` |
+| `GET` | `/treinador/pacotes` | — | `[PacoteResponse]` |
+| `POST` | `/treinador/pacotes` | `{ nome, descricao?, preco }` | `201 PacoteResponse` |
+| `PATCH` | `/treinador/pacotes/{id}` | `{ nome?, descricao?, preco? }` | `200 PacoteResponse` |
 | **Stripe** | | | |
 | `POST` | `/treinador/onboarding` | `{ urlRetorno, urlCancelamento }` | `200 { url }` |
 | `GET` | `/treinador/onboarding/status` | — | `OnboardingStatusResponse` |
@@ -558,9 +568,9 @@ Toda aprovação, reprovação e inativação registra um `LogAprovacao` com `En
 
 | Serviço | O que valida | Quando | Exceção |
 |---------|-------------|--------|---------|
-| `LimiteTreinadorService` | `PlanoTreinador.MaxAlunos` vs alunos ativos do treinador | Ao aprovar vínculo | `LimiteAlunosAtingidoException` → 422 |
+| `LimiteTreinadorService` | `PlanoPlataforma.MaxAlunos` vs alunos ativos do treinador | Ao aprovar vínculo | `LimiteAlunosAtingidoException` → 422 |
 
-`PacoteAluno` não tem mais limite de fichas — campo `MaxFichas` foi removido. Controle é feito via `Descricao` livre.
+`Pacote` não tem mais limite de fichas — campo `MaxFichas` foi removido. Controle é feito via `Descricao` livre.
 
 #### Cascata de Inativação
 
@@ -709,20 +719,45 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 | `CartaoPagamento` | Colunas `client_secret varchar(500)` e `metodo_pagamento text DEFAULT 'Pix'` em `pagamentos` |
 | `AdicionarTierPlanoTreinador` | Coluna `tier varchar(20) NOT NULL` em `planos_treinador`; seed popula Free/Basic/Pro/ProPlus/Elite |
 | `AdicionarDescricaoPlanoTreinador` | Coluna `descricao varchar(200)` nullable em `planos_treinador` com descrição das funcionalidades por tier |
+| `AdicionarIndiceAlunoStatus` | Índice parcial em `alunos(status)` para acelerar filtros por status |
+| `AddAssinanteBillingProjection` | Tabela `assinantes` (projeção billing read-side) com unique em `aluno_id` |
+| `MoverStripeParaContaRecebimento` | Extrai dados de Stripe Connect de `treinadores` para a nova tabela `contas_recebimento` (contexto Billing) |
+| `ExercicioGrupoMuscularFk` | FK `grupo_muscular_id` em `exercicios` + backfill a partir do nome do enum (data-preserving) |
+| `RenomearPlanoPacoteAssinatura` | Rename data-preserving: `planos_treinador → planos_plataforma`, `pacotes_aluno → pacotes`, `assinaturas → assinaturas_aluno` (linguagem plataforma/aluno) |
+
+> **Migrations fixam o schema `homolog`** (ToTable/SQL com schema hardcoded). Rodar `MigrateAsync` exige o mesmo schema no `DbContext` (`Database:Schema=homolog`); a 1ª migration é schema-agnostic e usa `current_schema()`, então o schema precisa existir no `search_path` antes.
 
 ---
 
 ### Testes
 
 ```
-997 testes | 0 falhas
+1067 testes | 0 falhas  (999 unit/rápidos + 68 integração com Docker)
 
 Domain/                  → entidades, value objects, domain events, exceções, máquina de estados
-Application/             → handlers (unit), services de limite
-Infrastructure/          → JwtService, email handlers (TreinadorAprovado, Reprovado, Inativado, VinculoAprovado, AssinaturaCriada)
-Infrastructure/Repositories/ → 62 testes de repositório com Testcontainers.PostgreSql (banco real)
-Api/Endpoints/           → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação, admin visibilidade)
-Integration/             → fluxo completo
+Domain/Properties/       → property-based (CsCheck): Email VO, Result<T>, invariantes de entidade
+Application/             → handlers (unit), services de limite, lógica temporal (FakeTimeProvider)
+Architecture/            → arch tests (NetArchTest): direção de dependência entre camadas, convenções
+Api/Snapshots/           → snapshot/contract de saída (Verify.Xunit): response DTOs + mapa exceção→ProblemDetails
+Api/Endpoints/           → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação)
+Builders/                → test data builders determinísticos
+Infrastructure/          → JwtService, email handlers, dispatch de domain events (regressão de re-entrância)
+Infrastructure/Repositories/ → 62 testes de repositório com Testcontainers.PostgreSql (banco real)  [Integration]
+E2E/                     → pipeline real: WebApplicationFactory + Postgres real + migrations + seed,
+                           handlers reais, só Stripe fake  [Integration]
+```
+
+**Determinismo**: `TimeProvider` (BCL .NET 8) injetado no domínio; testes usam `FakeTimeProvider`. Sem `DateTime.UtcNow` nas factories.
+
+**Split unit vs integração**: testes que precisam de Docker (Testcontainers) são marcados `[Trait("Category","Integration")]`. O CI roda dois jobs: `test-backend-unit` (`--filter "Category!=Integration"`, sem Docker, rápido) e `test-backend-integration` (suíte completa com Docker). Gates de cobertura: Domain/Application branch 75 + line/method 85 e Api line 85/method 70 no job unit; global 50 + Infra 35 no job de integração.
+
+**Outras fases do harness em CI**: mutation testing (Stryker), endurecimento de cobertura (line/method + ReportGenerator), drift de contrato OpenAPI (`docs/api/swagger.v1.json`), supply-chain NuGet (vuln + SBOM + Renovate), pre-commit backend, Pact provider verification.
+
+Comandos úteis:
+
+```bash
+dotnet test forzion.tech.Tests --filter "Category!=Integration"   # rápido, sem Docker (999)
+dotnet test forzion.tech.Tests                                    # suíte inteira, exige Docker (1067)
 ```
 
 Padrões adotados:
@@ -734,7 +769,7 @@ Padrões adotados:
 - Handlers mockados via `RemoveAll + AddSingleton` no `WebApplicationFactory`
 - `TreinadorId` injetado via reflection quando necessário
 - Testcontainers: `InfrastructureTestFixture` + `[Collection(InfrastructureTestCollection.Name)]`. `CreateContext()` requer `.UseSnakeCaseNamingConvention()` — sem ele, índices parciais `HasFilter("status = 'Ativo'")` falham com `42703`
-- `VinculoTreinadorAluno.Aprovar(treinadorId, pacoteAlunoId)` exige `PacoteAlunoId` real no banco — sempre usar `SeedPacoteAsync` nos testes de repositório
+- `VinculoTreinadorAluno.Aprovar(treinadorId, pacoteId)` exige `PacoteId` real no banco — sempre usar `SeedPacoteAsync` nos testes de repositório
 - `BeInAscendingOrder` não aceita method calls — enums armazenados como string ordenam alfabeticamente: usar `.Select(e => e.Prop.ToString()).Should().BeInAscendingOrder()`
 
 ---
@@ -749,8 +784,9 @@ Ver [`frontend/README.md`](frontend/README.md) para detalhes completos.
 cd frontend
 npm install
 npm run dev     # http://localhost:3000
-npm run test    # Vitest (174 testes)
-npm run build   # build de produção
+npm test        # Vitest (unit + integration + api projects)
+npm run e2e     # Playwright (pós-deploy, contra homolog)
+npm run build   # build de produção (standalone)
 ```
 
 ---
