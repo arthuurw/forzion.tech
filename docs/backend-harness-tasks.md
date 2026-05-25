@@ -1,7 +1,7 @@
 # Backend Test Harness — Quebra de Tasks
 
 **Spec**: `docs/backend-harness-plan.md` (roadmap 13 fases, full parity)
-**Status**: ✅ F0 (#39) · F1 (#42) · F2 (split unit/integration) · F3–F6 (#44) · F8–F9–F12 (#43) · F10 (#40) · F11 (#41) — mergeadas em `backend`. **Pendente: F7 (E2E real, depende de F2).**
+**Status**: ✅ **Todas as 13 fases mergeadas em `backend`.** F0 (#39) · F1 (#42) · F2 (#45) · F3–F6 (#44) · F7 (E2E real) · F8–F9–F12 (#43) · F10 (#40) · F11 (#41). O F7 expôs e motivou o fix de re-entrância no `AppDbContext.CommitAsync` (#46).
 
 Quebra atômica e executável da spec aprovada. Cada task tem entregável único,
 dependências explícitas, critério de pronto verificável e **guard rails**.
@@ -21,7 +21,7 @@ dependências explícitas, critério de pronto verificável e **guard rails**.
 |------|---------|----------|
 | **build** | `dotnet build forzion.tech.slnx -c Release` + `dotnet format forzion.tech.slnx --verify-no-changes` | 0 warning / 0 error / format limpo |
 | **quick** | build + `dotnet test forzion.tech.Tests --filter "Category!=Integration"` (sem Docker) | 999 testes verdes |
-| **full** | build + `dotnet test forzion.tech.Tests` (suíte inteira, exige Docker) | 1061 testes verdes (999 unit + 62 integração) |
+| **full** | build + `dotnet test forzion.tech.Tests` (suíte inteira, exige Docker) | 1067 testes verdes (999 unit + 68 integração: 62 repo + 1 regressão + 5 E2E) |
 
 ## Guard rails globais (valem para TODA task)
 
@@ -45,7 +45,7 @@ F0 ✅
         ├→ F4 ✅ (test builders)
         ├→ F5 ✅ (property-based)
         └→ F8 ✅ (mutation CI)
-  F2 └→ F7 ⬜ (E2E real)               ← PENDENTE (depende de F2 ✅)
+  F2 └→ F7 ✅ (E2E real)               (expôs fix de re-entrância — PR #46)
   F0 └→ F6 ✅ (snapshot/Verify)
   F0 └→ F9 ✅ (cobertura)
   F0 └→ F10 ✅ (supply-chain NuGet)
@@ -53,7 +53,7 @@ F0 ✅
   F0 └→ F12 ✅ (openapi drift)
 ```
 
-> **Resta só F7.** Todas as outras fases estão mergeadas em `backend`.
+> **Harness completo.** As 13 fases estão mergeadas em `backend`.
 
 Fases independentes de F1 (F6, F9, F10, F11, F12) podem ser feitas em qualquer ordem após F0.
 F5 e F8 **exigem** F1. F7 exige F2.
@@ -301,30 +301,32 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 7 — Integração / E2E real pela pipeline — exige F2 ⬜ PENDENTE
+## Fase 7 — Integração / E2E real pela pipeline — exige F2 ✅
 
 **Branch**: `chore/backend-harness-fase7-e2e-real`
 
-### F7.1 — Fixture WebApplicationFactory + Postgres real
+### F7.1 — Fixture WebApplicationFactory + Postgres real ✅
 **What**: Factory que sobe a app com handlers **reais** (não mockados) + Testcontainers Postgres + DB semeado.
 **Where**: `forzion.tech.Tests/E2E/RealPipelineFixture.cs`.
 **Depends on**: F2
 **Done when**:
-- [ ] Factory inicia app real apontando pro container; migrations/EnsureCreated aplicados.
-- [ ] 1 teste smoke (health/endpoint público) verde.
-- [ ] Gate **full** verde.
-**Guard rails**: marcar `Category=Integration`; não mockar handler; isolar DB por teste/coleção.
+- [x] Factory inicia app real apontando pro container; **migrations reais** (`MigrateAsync`) + seed aplicados. Env `Test` (rate limiter no-op + pula infra auto) + `AddInfrastructure` manual com connection do container; Stripe trocado por `FakeStripeService`.
+- [x] Smoke verde: `GET /health` 200 + `/auth/planos` com planos semeados.
+- [x] Gate **full** verde.
+**Guard rails**: marcado `Category=Integration`; nenhum handler mockado (só Stripe é fake); DB compartilhado pela coleção, isolamento por e-mail único (Guid).
+**Notas**: as migrations fixam o schema `homolog` (ToTable/SQL hardcoded) — a fixture roda com `Database:Schema=homolog` + `Search Path=homolog,public` e pré-cria o schema (a 1ª migration usa `current_schema()`).
 **Tests**: integration · **Gate**: full
 
-### F7.2 — Fluxos críticos E2E
-**What**: Testes ponta-a-ponta: cadastro aluno/treinador; aprovação de vínculo → criação de `AssinaturaAluno`; geração de cobrança.
-**Where**: `forzion.tech.Tests/E2E/`.
+### F7.2 — Fluxos críticos E2E ✅
+**What**: Testes ponta-a-ponta: cadastro treinador/aluno; aprovação de vínculo → criação de `AssinaturaAluno`.
+**Where**: `forzion.tech.Tests/E2E/FluxosCriticosE2ETests.cs`.
 **Depends on**: F7.1
 **Done when**:
-- [ ] ≥3 fluxos críticos verdes E2E reais.
-- [ ] ≥1 fluxo toca migração/persistência real.
-- [ ] Gate **full** verde.
-**Guard rails**: Stripe/serviços externos via fake/stub (não chamar Stripe real); não duplicar o que o teste de handler já cobre — focar em wiring/serialização/persistência.
+- [x] 3 fluxos críticos verdes E2E reais via HTTP com JWT real: (1) cadastro treinador → login admin → aprovação; (2) cadastro aluno → vínculo pendente; (3) onboarding (fake) + aprovação de vínculo → **AssinaturaAluno** criada via domain event handler real, asserida no banco real.
+- [x] Todos os fluxos tocam migração/persistência real (Testcontainers).
+- [x] Gate **full** verde.
+**Guard rails**: só o Stripe é fake (`IStripeService`); login/auth/handlers reais.
+**Bug encontrado**: o fluxo 3 expôs re-entrância no `AppDbContext.CommitAsync` (projeção `Assinante` inserida 2x → 500 no cadastro de aluno). Corrigido em PR separado (#46, clear-before-dispatch) antes de finalizar o F7.
 **Tests**: integration · **Gate**: full
 
 ---
