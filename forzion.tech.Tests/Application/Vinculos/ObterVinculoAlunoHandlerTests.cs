@@ -36,8 +36,8 @@ public class ObterVinculoAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
 
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _vinculoRepo.Setup(r => r.ObterPendentePorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
@@ -56,8 +56,8 @@ public class ObterVinculoAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana");
+        var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow);
 
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
         _vinculoRepo.Setup(r => r.ObterPendentePorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);
@@ -75,7 +75,7 @@ public class ObterVinculoAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
 
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _vinculoRepo.Setup(r => r.ObterPendentePorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);

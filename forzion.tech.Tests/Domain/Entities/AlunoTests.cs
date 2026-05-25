@@ -14,7 +14,7 @@ public class AlunoTests
     [Fact]
     public void Criar_ComDadosMinimos_RetornaAluno()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
 
         aluno.Id.Should().NotBeEmpty();
         aluno.Nome.Should().Be("João");
@@ -27,7 +27,7 @@ public class AlunoTests
     [Fact]
     public void Criar_ComEmailETelefone_Preenche()
     {
-        var aluno = Aluno.Criar(ContaId, "João", "joao@email.com", "11999999999");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow, "joao@email.com", "11999999999");
 
         aluno.Email?.Value.Should().Be("joao@email.com");
         aluno.Telefone.Should().Be("11999999999");
@@ -36,7 +36,7 @@ public class AlunoTests
     [Fact]
     public void Criar_NomeComEspacos_Remove()
     {
-        var aluno = Aluno.Criar(ContaId, "  João  ");
+        var aluno = Aluno.Criar(ContaId, "  João  ", DateTime.UtcNow);
         aluno.Nome.Should().Be("João");
     }
 
@@ -44,7 +44,7 @@ public class AlunoTests
     public void Criar_DefinCreatedAt()
     {
         var antes = DateTime.UtcNow;
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.CreatedAt.Should().BeOnOrAfter(antes);
         aluno.UpdatedAt.Should().BeNull();
     }
@@ -54,35 +54,35 @@ public class AlunoTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => Aluno.Criar(ContaId, nome);
+        var act = () => Aluno.Criar(ContaId, nome, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O nome é obrigatório.");
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => Aluno.Criar(ContaId, new string('a', 101));
+        var act = () => Aluno.Criar(ContaId, new string('a', 101), DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
     }
 
     [Fact]
     public void Criar_ContaIdVazio_LancaDomainException()
     {
-        var act = () => Aluno.Criar(Guid.Empty, "João");
+        var act = () => Aluno.Criar(Guid.Empty, "João", DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O identificador da conta é inválido.");
     }
 
     [Fact]
     public void Criar_EmailInvalido_LancaDomainException()
     {
-        var act = () => Aluno.Criar(ContaId, "João", email: "invalido");
+        var act = () => Aluno.Criar(ContaId, "João", DateTime.UtcNow, email: "invalido");
         act.Should().Throw<DomainException>().WithMessage("O e-mail informado é inválido.");
     }
 
     [Fact]
     public void Criar_TelefoneMuitoLongo_LancaDomainException()
     {
-        var act = () => Aluno.Criar(ContaId, "João", telefone: new string('9', 21));
+        var act = () => Aluno.Criar(ContaId, "João", DateTime.UtcNow, telefone: new string('9', 21));
         act.Should().Throw<DomainException>().WithMessage("O telefone deve ter no máximo 20 caracteres.");
     }
 
@@ -91,7 +91,7 @@ public class AlunoTests
     [Fact]
     public void Atualizar_ComNome_AtualizaNome()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.Atualizar("Maria", null, null);
         aluno.Nome.Should().Be("Maria");
     }
@@ -99,7 +99,7 @@ public class AlunoTests
     [Fact]
     public void Atualizar_ComEmail_AtualizaEmail()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.Atualizar(null, "novo@email.com", null);
         aluno.Email?.Value.Should().Be("novo@email.com");
     }
@@ -107,7 +107,7 @@ public class AlunoTests
     [Fact]
     public void Atualizar_ComEmailVazio_LimpaEmail()
     {
-        var aluno = Aluno.Criar(ContaId, "João", "joao@email.com");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow, "joao@email.com");
         aluno.Atualizar(null, "", null);
         aluno.Email.Should().BeNull();
     }
@@ -115,7 +115,7 @@ public class AlunoTests
     [Fact]
     public void Atualizar_ComTelefoneVazio_LimpaTelefone()
     {
-        var aluno = Aluno.Criar(ContaId, "João", telefone: "11999");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow, telefone: "11999");
         aluno.Atualizar(null, null, "");
         aluno.Telefone.Should().BeNull();
     }
@@ -123,7 +123,7 @@ public class AlunoTests
     [Fact]
     public void Atualizar_ComCamposNulos_NaoAltera()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.Atualizar(null, null, null);
         aluno.Nome.Should().Be("João");
     }
@@ -131,7 +131,7 @@ public class AlunoTests
     [Fact]
     public void Atualizar_DefinUpdatedAt()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         var antes = DateTime.UtcNow;
         aluno.Atualizar("Maria", null, null);
         aluno.UpdatedAt.Should().BeOnOrAfter(antes);
@@ -140,7 +140,7 @@ public class AlunoTests
     [Fact]
     public void Atualizar_NomeVazio_LancaDomainException()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         var act = () => aluno.Atualizar("", null, null);
         act.Should().Throw<DomainException>().WithMessage("O nome não pode ser vazio.");
     }
@@ -150,7 +150,7 @@ public class AlunoTests
     [Fact]
     public void Ativar_DeAguardandoAprovacao_AlteraStatusParaAtivo()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.Ativar();
         aluno.Status.Should().Be(AlunoStatus.Ativo);
     }
@@ -158,7 +158,7 @@ public class AlunoTests
     [Fact]
     public void Ativar_DeInativo_AlteraStatusParaAtivo()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.Ativar();
         aluno.Inativar();
         aluno.Ativar();
@@ -168,7 +168,7 @@ public class AlunoTests
     [Fact]
     public void Ativar_JaAtivo_LancaDomainException()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.Ativar();
         var act = () => aluno.Ativar();
         act.Should().Throw<DomainException>().WithMessage("O aluno já está ativo.");
@@ -177,7 +177,7 @@ public class AlunoTests
     [Fact]
     public void Inativar_DeAtivo_AlteraStatusParaInativo()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.Ativar();
         aluno.Inativar();
         aluno.Status.Should().Be(AlunoStatus.Inativo);
@@ -186,7 +186,7 @@ public class AlunoTests
     [Fact]
     public void Inativar_JaInativo_LancaDomainException()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         aluno.Ativar();
         aluno.Inativar();
         var act = () => aluno.Inativar();
@@ -196,7 +196,7 @@ public class AlunoTests
     [Fact]
     public void Ativar_DefinUpdatedAt()
     {
-        var aluno = Aluno.Criar(ContaId, "João");
+        var aluno = Aluno.Criar(ContaId, "João", DateTime.UtcNow);
         var antes = DateTime.UtcNow;
         aluno.Ativar();
         aluno.UpdatedAt.Should().BeOnOrAfter(antes);

@@ -33,7 +33,7 @@ public class CriarTreinoHandlerTests
             _vinculoRepo.Object,
             _unitOfWork.Object,
             _userContext.Object,
-            _validator,
+            _validator, TimeProvider.System,
             _logger.Object);
     }
 
@@ -42,7 +42,7 @@ public class CriarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João");
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
@@ -61,7 +61,7 @@ public class CriarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João");
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
@@ -114,7 +114,7 @@ public class CriarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João");
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var inicio = new DateOnly(2025, 1, 1);

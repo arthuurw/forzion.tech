@@ -3,6 +3,25 @@
 ###############################################################################
 * text=auto
 
+# .cs sempre com CRLF no working tree (Windows e Linux CI), casando com o
+# .editorconfig (end_of_line=crlf). Sem isso, o checkout no CI Linux fica LF
+# e o gate `dotnet format --verify-no-changes` falharia. O repo continua LF.
+*.cs text eol=crlf
+
+# Hooks husky sao shell scripts: sempre LF (CRLF quebra o shebang/exec no git).
+frontend/.husky/* text eol=lf
+
+# Scripts shell: LF (CRLF quebra o shebang ao rodar via bash).
+*.sh text eol=lf
+
+# Spec OpenAPI versionado: LF para casar com a geração no CI Linux e evitar
+# falso-positivo de drift por diferença de EOL (ver .github/workflows/openapi-drift.yml).
+docs/api/*.json text eol=lf
+
+# Snapshots do Verify (Fase 6): mantidos com LF para casar com o que o Verify
+# escreve em runtime — evita falso-diff no checkout (Windows e Linux CI).
+*.verified.txt text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

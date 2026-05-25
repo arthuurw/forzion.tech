@@ -11,24 +11,40 @@ namespace forzion.tech.Tests.Application.Admin.GruposMusculares;
 public class ExcluirGrupoMuscularHandlerTests
 {
     private readonly Mock<IGrupoMuscularRepository> _repository = new();
+    private readonly Mock<IExercicioRepository> _exercicioRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly ExcluirGrupoMuscularHandler _handler;
 
     public ExcluirGrupoMuscularHandlerTests()
     {
-        _handler = new ExcluirGrupoMuscularHandler(_repository.Object, _unitOfWork.Object);
+        _handler = new ExcluirGrupoMuscularHandler(_repository.Object, _exercicioRepository.Object, _unitOfWork.Object);
     }
 
     [Fact]
     public async Task HandleAsync_GrupoExiste_ExcluiEComita()
     {
-        var grupo = GrupoMuscular.Criar("Peito");
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
+        _exercicioRepository.Setup(r => r.ExisteComGrupoMuscularAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         await _handler.HandleAsync(new ExcluirGrupoMuscularCommand(grupo.Id));
 
         _repository.Verify(r => r.Excluir(grupo), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_GrupoEmUso_LancaDomainExceptionENaoExclui()
+    {
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
+        _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
+        _exercicioRepository.Setup(r => r.ExisteComGrupoMuscularAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var act = async () => await _handler.HandleAsync(new ExcluirGrupoMuscularCommand(grupo.Id));
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*em uso*");
+
+        _repository.Verify(r => r.Excluir(It.IsAny<GrupoMuscular>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

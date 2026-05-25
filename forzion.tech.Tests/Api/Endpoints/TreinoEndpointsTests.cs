@@ -354,7 +354,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IUserContext>(),
-            CriarValidator,
+            CriarValidator, TimeProvider.System,
             Mock.Of<ILogger<CriarTreinoHandler>>())
         { CallBase = true };
 
@@ -402,7 +402,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<ITreinoRepository>(),
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<DuplicarTreinoHandler>>());
 
         public Mock<VincularFichaAoAlunoHandler> VincularFichaHandlerMock { get; } = new(
@@ -410,7 +410,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<VincularFichaAoAlunoHandler>>());
 
         public Mock<ListarAlunosTreinoHandler> ListarAlunosTreinoHandlerMock { get; } = new(
@@ -425,7 +425,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

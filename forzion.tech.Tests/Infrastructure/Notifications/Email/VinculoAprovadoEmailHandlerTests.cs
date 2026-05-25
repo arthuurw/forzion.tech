@@ -59,7 +59,7 @@ public class VinculoAprovadoEmailHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemEmail_NaoEnvia()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
 
@@ -73,8 +73,8 @@ public class VinculoAprovadoEmailHandlerTests
     [Fact]
     public async Task HandleAsync_HappyPath_EnviaEmailComNomeTreinador()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", email: "joao@example.com");
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow, email: "joao@example.com");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow);
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
@@ -94,7 +94,7 @@ public class VinculoAprovadoEmailHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorNaoEncontrado_UsaFallback()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", email: "maria@example.com");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", DateTime.UtcNow, email: "maria@example.com");
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);

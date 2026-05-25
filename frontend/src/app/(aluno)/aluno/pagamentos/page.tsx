@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, CircularProgress, Alert,
@@ -41,6 +41,7 @@ function TabelaPagamentos({ pagamentos, loading, error, onAtualizar }: Props) {
 
   return (
     <>
+      <Box sx={{ overflowX: "auto" }}>
       <Table size="small">
         <TableHead>
           <TableRow>
@@ -75,11 +76,12 @@ function TabelaPagamentos({ pagamentos, loading, error, onAtualizar }: Props) {
           ))}
         </TableBody>
       </Table>
+      </Box>
 
-      <Dialog open={!!pagamentoAberto} onClose={() => setPagamentoAberto(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!pagamentoAberto} onClose={() => setPagamentoAberto(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>
           {pagamentoAberto?.metodoPagamento === "Cartao" ? "Pagamento com cartão" : "Pagamento via Pix"}
-          <IconButton onClick={() => setPagamentoAberto(null)} sx={{ position: "absolute", right: 8, top: 8 }}>
+          <IconButton onClick={() => setPagamentoAberto(null)} sx={{ position: "absolute", right: 8, top: 8 }} aria-label="Fechar">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -110,7 +112,7 @@ export default function PagamentosAlunoPage() {
     setLoading(true);
     try {
       const assRes = await pagamentoApi.obterMinhaAssinatura();
-      const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaId);
+      const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
       setPagamentos(pgRes.data);
     } catch {
       setError("Erro ao carregar pagamentos.");
@@ -122,7 +124,7 @@ export default function PagamentosAlunoPage() {
   useEffect(() => { void carregar(); }, []);
 
   return (
-    <Box sx={{ p: 4 }}>
+    <Box sx={{ p: { xs: 2, sm: 4 } }}>
       <Typography variant="h5" sx={{ fontWeight: "bold", mb: 3 }}>Histórico de Pagamentos</Typography>
       <TabelaPagamentos
         pagamentos={pagamentos}

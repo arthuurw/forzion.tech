@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { AssinaturaResponse, MetodoPagamento, OnboardingStatusResponse, PagamentoResponse } from "@/types";
+import type { AssinaturaAlunoResponse, MetodoPagamento, OnboardingStatusResponse, PagamentoResponse } from "@/types";
 
 export const pagamentoApi = {
   iniciarOnboarding(urlRetorno: string, urlCancelamento: string) {
@@ -18,9 +18,9 @@ export const pagamentoApi = {
     return apiClient.get<PagamentoResponse[]>(`/aluno/pagamentos/assinatura/${assinaturaId}`);
   },
   obterMinhaAssinatura() {
-    return apiClient.get<AssinaturaResponse>("/aluno/assinatura");
+    return apiClient.get<AssinaturaAlunoResponse>("/aluno/assinatura");
   },
   obterAssinatura(assinaturaId: string) {
-    return apiClient.get<AssinaturaResponse>(`/aluno/assinaturas/${assinaturaId}`);
+    return apiClient.get<AssinaturaAlunoResponse>(`/aluno/assinaturas/${assinaturaId}`);
   },
 };

@@ -1,0 +1,58 @@
+name: Smoke E2E (pós-deploy homolog)
+
+# Roda smokes Playwright contra a URL homolog após um deploy bem-sucedido,
+# ou manualmente. No-op quando a variável HOMOLOG_BASE_URL não está definida.
+on:
+  workflow_run:
+    workflows: ["CI / CD — Homolog"]
+    types: [completed]
+    branches: [homolog]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Smoke @smoke
+    runs-on: ubuntu-latest
+    # Só roda se o deploy passou (ou disparo manual) E há URL homolog configurada.
+    if: >
+      (github.event_name == 'workflow_dispatch' ||
+       github.event.workflow_run.conclusion == 'success') &&
+      vars.HOMOLOG_BASE_URL != ''
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npm run e2e:install
+
+      - name: Smoke
+        run: npm run e2e:smoke
+        env:
+          E2E_BASE_URL: ${{ vars.HOMOLOG_BASE_URL }}
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_ALUNO_EMAIL: ${{ secrets.E2E_ALUNO_EMAIL }}
+          E2E_ALUNO_PASSWORD: ${{ secrets.E2E_ALUNO_PASSWORD }}
+          E2E_TREINADOR_EMAIL: ${{ secrets.E2E_TREINADOR_EMAIL }}
+          E2E_TREINADOR_PASSWORD: ${{ secrets.E2E_TREINADOR_PASSWORD }}
+          E2E_TREINADOR_ID: ${{ vars.E2E_TREINADOR_ID }}
+          E2E_PACOTE_ID: ${{ vars.E2E_PACOTE_ID }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-report
+          path: frontend/playwright-report/
+          if-no-files-found: warn

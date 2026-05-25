@@ -12,6 +12,23 @@
 
 # testing
 /coverage
+/test-results.json
+/openapi.json
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/e2e/.auth/
+/.lighthouseci/
+/storybook-static/
+/.lighthouseci/
+/.stryker-tmp/
+/reports/
+/.stryker.json
+/sbom.cdx.json
+/zap-report/
+/pacts/
+/reports/
+count-tests.cjs
 
 # next.js
 /.next/
@@ -39,6 +56,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# sentry
+.sentryclirc
+.env.sentry-build-plugin
 
 # IA
 AGENTS.md

@@ -7,6 +7,7 @@ namespace forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
 
 public class AtualizarExercicioHandler(
     IExercicioRepository exercicioRepository,
+    IGrupoMuscularRepository grupoMuscularRepository,
     IUnitOfWork unitOfWork)
 {
     public virtual Task<Result<ExercicioResponse>> HandleAsync(
@@ -42,10 +43,19 @@ public class AtualizarExercicioHandler(
             return Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca."));
         }
 
-        exercicio.Atualizar(command.Nome, command.GrupoMuscular, command.Descricao);
+        if (command.GrupoMuscularId is not null
+            && await grupoMuscularRepository.ObterPorIdAsync(command.GrupoMuscularId.Value, cancellationToken).ConfigureAwait(false) is null)
+        {
+            throw new GrupoMuscularNaoEncontradoException();
+        }
+
+        exercicio.Atualizar(command.Nome, command.GrupoMuscularId, command.Descricao);
+
+        var grupoMuscular = await grupoMuscularRepository.ObterPorIdAsync(exercicio.GrupoMuscularId, cancellationToken).ConfigureAwait(false)
+            ?? throw new GrupoMuscularNaoEncontradoException();
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result.Success(ExercicioResponseExtensions.ToResponse(exercicio));
+        return Result.Success(ExercicioResponseExtensions.ToResponse(exercicio, grupoMuscular.Nome));
     }
 }

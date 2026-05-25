@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Grid, Button,
@@ -12,10 +12,10 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { treinadorApi } from "@/lib/api/treinador";
-import type { PacoteAlunoResponse } from "@/types";
+import type { PacoteResponse } from "@/types";
 
 export default function PacotesTreinadorPage() {
-  const [pacotes, setPacotes] = useState<PacoteAlunoResponse[]>([]);
+  const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -28,11 +28,11 @@ export default function PacotesTreinadorPage() {
   const [saving, setSaving] = useState(false);
 
   // excluir
-  const [deleteTarget, setDeleteTarget] = useState<PacoteAlunoResponse | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PacoteResponse | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // editar
-  const [editTarget, setEditTarget] = useState<PacoteAlunoResponse | null>(null);
+  const [editTarget, setEditTarget] = useState<PacoteResponse | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editDescricao, setEditDescricao] = useState("");
   const [editPreco, setEditPreco] = useState("");
@@ -74,7 +74,7 @@ export default function PacotesTreinadorPage() {
     }
   };
 
-  const openEdit = (p: PacoteAlunoResponse) => {
+  const openEdit = (p: PacoteResponse) => {
     setEditTarget(p);
     setEditNome(p.nome);
     setEditDescricao(p.descricao ?? "");
@@ -90,8 +90,10 @@ export default function PacotesTreinadorPage() {
       setDeleteTarget(null);
       load();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(msg ?? "Erro ao excluir pacote.");
+      const detail = err instanceof Object && "response" in err
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setError(detail ?? "Erro ao excluir pacote.");
     } finally {
       setDeleting(false);
     }
@@ -186,7 +188,7 @@ export default function PacotesTreinadorPage() {
       )}
 
       {/* Dialog: criar */}
-      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth>
+      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo pacote</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -235,7 +237,7 @@ export default function PacotesTreinadorPage() {
       </Dialog>
 
       {/* Dialog: excluir */}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Excluir pacote</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
@@ -257,7 +259,7 @@ export default function PacotesTreinadorPage() {
       </Dialog>
 
       {/* Dialog: editar */}
-      <Dialog open={!!editTarget} onClose={() => setEditTarget(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!editTarget} onClose={() => setEditTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar pacote</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>

@@ -15,6 +15,7 @@ public class RegistrarTreinadorHandler(
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
     IValidator<RegistrarTreinadorCommand> validator,
+    TimeProvider timeProvider,
     ILogger<RegistrarTreinadorHandler> logger)
 {
     public virtual Task<TreinadorResponse> HandleAsync(
@@ -35,8 +36,9 @@ public class RegistrarTreinadorHandler(
         if (emailExistente is not null)
             throw new EmailJaCadastradoException();
 
-        var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Treinador);
-        var treinador = Treinador.Criar(conta.Id, command.Nome, command.Telefone);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Treinador, agora);
+        var treinador = Treinador.Criar(conta.Id, command.Nome, agora, command.Telefone);
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
         await treinadorRepository.AdicionarAsync(treinador, cancellationToken).ConfigureAwait(false);
@@ -44,6 +46,6 @@ public class RegistrarTreinadorHandler(
 
         logger.LogInformation("Treinador {TreinadorId} registrado para conta {ContaId}.", treinador.Id, conta.Id);
 
-        return new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoTreinadorId, treinador.CreatedAt);
+        return new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoPlataformaId, treinador.CreatedAt);
     }
 }

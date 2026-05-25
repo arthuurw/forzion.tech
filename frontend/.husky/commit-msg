@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Valida mensagem do commit contra Conventional Commits.
+# Bloqueia commit se mensagem nao bate o padrao.
+
+cd "$(dirname "$0")/.." || exit 1
+npx --no-install commitlint --edit "$1"

@@ -12,6 +12,7 @@ public class AprovarTreinadorHandler(
     ITreinadorRepository treinadorRepository,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<AprovarTreinadorHandler> logger)
 {
     public virtual Task<Result<TreinadorResponse>> HandleAsync(
@@ -36,6 +37,7 @@ public class AprovarTreinadorHandler(
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
+            timeProvider.GetUtcNow().UtcDateTime,
             command.Observacao);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
@@ -43,6 +45,6 @@ public class AprovarTreinadorHandler(
 
         logger.LogInformation("Treinador {TreinadorId} aprovado por {AdminId}.", treinador.Id, command.AdminId);
 
-        return Result.Success(new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoTreinadorId, treinador.CreatedAt));
+        return Result.Success(new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoPlataformaId, treinador.CreatedAt));
     }
 }

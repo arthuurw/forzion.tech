@@ -49,7 +49,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     {
         _factory.ProcessarWebhookHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookStripeCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("Assinatura Stripe inválida.")));
+            .ReturnsAsync(Result.Failure(Error.Business("AssinaturaAluno Stripe inválida.")));
 
         var content = new StringContent("{}", Encoding.UTF8, "application/json");
         var request = new HttpRequestMessage(HttpMethod.Post, "/webhooks/stripe") { Content = content };
@@ -65,10 +65,10 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     {
         public Mock<ProcessarWebhookStripeHandler> ProcessarWebhookHandlerMock { get; } = new(
             Mock.Of<IPagamentoRepository>(),
-            Mock.Of<IAssinaturaRepository>(),
-            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IAssinaturaAlunoRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<ProcessarWebhookStripeHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

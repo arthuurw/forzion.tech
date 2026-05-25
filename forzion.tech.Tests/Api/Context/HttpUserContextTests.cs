@@ -37,11 +37,11 @@ public class HttpUserContextTests
     }
 
     [Fact]
-    public void ContaId_ClaimAusente_LancaInvalidOperationException()
+    public void ContaId_ClaimAusente_LancaAcessoNegadoException()
     {
         var ctx = new HttpUserContext(CriarAccessor());
         var act = () => ctx.ContaId;
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().Throw<AcessoNegadoException>();
     }
 
     // --- TipoConta ---
@@ -80,21 +80,21 @@ public class HttpUserContextTests
     }
 
     [Fact]
-    public void PerfilId_ClaimAusente_LancaInvalidOperationException()
+    public void PerfilId_ClaimAusente_LancaAcessoNegadoException()
     {
         var ctx = new HttpUserContext(CriarAccessor());
         var act = () => ctx.PerfilId;
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().Throw<AcessoNegadoException>();
     }
 
     // --- Jti ---
 
     [Fact]
-    public void Jti_ClaimAusente_LancaInvalidOperationException()
+    public void Jti_ClaimAusente_LancaAcessoNegadoException()
     {
         var ctx = new HttpUserContext(CriarAccessor());
         var act = () => ctx.Jti;
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().Throw<AcessoNegadoException>();
     }
 
     // --- TokenExpiraEm ---
@@ -124,10 +124,10 @@ public class HttpUserContextTests
     // --- Claim() com HttpContext nulo ---
 
     [Fact]
-    public void ContaId_HttpContextNulo_LancaInvalidOperationException()
+    public void ContaId_HttpContextNulo_LancaAcessoNegadoException()
     {
         var ctx = new HttpUserContext(CriarAccessorSemContexto());
         var act = () => ctx.ContaId;
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().Throw<AcessoNegadoException>();
     }
 }

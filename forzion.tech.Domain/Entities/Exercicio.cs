@@ -1,5 +1,4 @@
 using forzion.tech.Domain.Exceptions;
-using GrupoMuscularEnum = forzion.tech.Domain.Enums.TipoGrupoMuscular;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -8,7 +7,7 @@ public class Exercicio
     public Guid Id { get; private set; }
     public Guid? TreinadorId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
-    public GrupoMuscularEnum GrupoMuscular { get; private set; }
+    public Guid GrupoMuscularId { get; private set; }
     public string? Descricao { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -18,12 +17,14 @@ public class Exercicio
     private Exercicio() { }
 
     /// <param name="treinadorId">Null indica exercício da biblioteca global (gerenciado por admins).</param>
-    public static Exercicio Criar(string nome, GrupoMuscularEnum grupoMuscular, Guid? treinadorId = null, string? descricao = null)
+    public static Exercicio Criar(string nome, Guid grupoMuscularId, DateTime agora, Guid? treinadorId = null, string? descricao = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
         if (nome.Trim().Length > 100)
             throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+        if (grupoMuscularId == Guid.Empty)
+            throw new DomainException("O grupo muscular é obrigatório.");
         if (treinadorId.HasValue && treinadorId.Value == Guid.Empty)
             throw new DomainException("O identificador do treinador é inválido.");
         if (descricao is not null && descricao.Length > 500)
@@ -34,13 +35,13 @@ public class Exercicio
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
             Nome = nome.Trim(),
-            GrupoMuscular = grupoMuscular,
+            GrupoMuscularId = grupoMuscularId,
             Descricao = descricao,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 
-    public void Atualizar(string? nome, GrupoMuscularEnum? grupoMuscular, string? descricao)
+    public void Atualizar(string? nome, Guid? grupoMuscularId, string? descricao)
     {
         if (nome is not null)
         {
@@ -51,8 +52,12 @@ public class Exercicio
             Nome = nome.Trim();
         }
 
-        if (grupoMuscular is not null)
-            GrupoMuscular = grupoMuscular.Value;
+        if (grupoMuscularId is not null)
+        {
+            if (grupoMuscularId.Value == Guid.Empty)
+                throw new DomainException("O grupo muscular é obrigatório.");
+            GrupoMuscularId = grupoMuscularId.Value;
+        }
 
         if (descricao is not null)
         {

@@ -11,12 +11,13 @@ using Microsoft.Extensions.Logging;
 namespace forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 
 public class GerarCobrancaMensalHandler(
-    IAssinaturaRepository assinaturaRepository,
+    IAssinaturaAlunoRepository assinaturaRepository,
     IPagamentoRepository pagamentoRepository,
-    ITreinadorRepository treinadorRepository,
+    IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
     IOptions<PaymentSettings> paymentSettings,
+    TimeProvider timeProvider,
     ILogger<GerarCobrancaMensalHandler> logger)
 {
     private readonly decimal _taxaPlataformaPercent = paymentSettings.Value.TaxaPlataformaPercent;
@@ -27,33 +28,32 @@ public class GerarCobrancaMensalHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Assinatura não encontrada.");
+        var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false)
+            ?? throw new DomainException("AssinaturaAluno não encontrada.");
 
         if (assinatura.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
 
-        if (assinatura.Status == AssinaturaStatus.Cancelada)
-            return Result.Failure<PagamentoResponse>(Error.Business("Assinatura cancelada não pode ser cobrada."));
+        if (assinatura.Status == AssinaturaAlunoStatus.Cancelada)
+            return Result.Failure<PagamentoResponse>(Error.Business("AssinaturaAluno cancelada não pode ser cobrada."));
 
-        var pendente = await pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
+        var pendente = await pagamentoRepository.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
         if (pendente is not null)
         {
             if (pendente.StripePaymentIntentId is not null)
                 return Result.Success(PagamentoResponseExtensions.ToResponseTreinador(pendente));
 
-            logger.LogWarning("Pagamento zumbi {PagamentoId} detectado para assinatura {AssinaturaId}. Marcando como Falhou.", pendente.Id, assinatura.Id);
+            logger.LogWarning("Pagamento zumbi {PagamentoId} detectado para assinatura {AssinaturaAlunoId}. Marcando como Falhou.", pendente.Id, assinatura.Id);
             pendente.MarcarFalhou();
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(assinatura.TreinadorId, cancellationToken).ConfigureAwait(false)
-            ?? throw new TreinadorNaoEncontradoException();
+        var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(assinatura.TreinadorId, cancellationToken).ConfigureAwait(false);
 
-        if (!treinador.StripeOnboardingCompleto || string.IsNullOrEmpty(treinador.StripeConnectAccountId))
+        if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
             throw new DomainException("Treinador sem conta Stripe configurada.");
 
-        var pagamento = Pagamento.Criar(assinatura.Id, assinatura.Valor, command.Metodo);
+        var pagamento = Pagamento.Criar(assinatura.Id, assinatura.Valor, timeProvider.GetUtcNow().UtcDateTime, command.Metodo);
         await pagamentoRepository.AdicionarAsync(pagamento, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -63,7 +63,7 @@ public class GerarCobrancaMensalHandler(
             {
                 var cartaoResult = await stripeService.CriarCartaoPaymentIntentAsync(
                     assinatura.Valor,
-                    treinador.StripeConnectAccountId,
+                    contaRecebimento.StripeConnectAccountId,
                     pagamento.Id,
                     _taxaPlataformaPercent,
                     cancellationToken).ConfigureAwait(false);
@@ -74,7 +74,7 @@ public class GerarCobrancaMensalHandler(
             {
                 var pixResult = await stripeService.CriarPixPaymentIntentAsync(
                     assinatura.Valor,
-                    treinador.StripeConnectAccountId,
+                    contaRecebimento.StripeConnectAccountId,
                     pagamento.Id,
                     _taxaPlataformaPercent,
                     cancellationToken).ConfigureAwait(false);
@@ -91,7 +91,7 @@ public class GerarCobrancaMensalHandler(
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation("Cobrança {Metodo} gerada para assinatura {AssinaturaId}, pagamento {PagamentoId}.",
+        logger.LogInformation("Cobrança {Metodo} gerada para assinatura {AssinaturaAlunoId}, pagamento {PagamentoId}.",
             command.Metodo, assinatura.Id, pagamento.Id);
 
         return Result.Success(PagamentoResponseExtensions.ToResponseTreinador(pagamento));

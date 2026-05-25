@@ -22,10 +22,10 @@ using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 using forzion.tech.Application.UseCases.Treinos.ListarFichasDoAluno;
 using forzion.tech.Application.UseCases.Pacotes;
-using forzion.tech.Application.UseCases.Pacotes.AtualizarPacoteAluno;
-using forzion.tech.Application.UseCases.Pacotes.CriarPacoteAluno;
-using forzion.tech.Application.UseCases.Pacotes.ExcluirPacoteAluno;
-using forzion.tech.Application.UseCases.Pacotes.ListarPacotesAluno;
+using forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
+using forzion.tech.Application.UseCases.Pacotes.CriarPacote;
+using forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;
+using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
@@ -73,18 +73,18 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     private static readonly forzion.tech.Application.UseCases.Vinculos.ListarVinculos.VinculoDetalheResponse RespostaVinculoDetalhe = new(
         VinculoId, TreinadorId, AlunoId, PacoteId, VinculoStatus.Ativo, "João", null, DateTime.UtcNow, false);
 
-    private static readonly PacoteAlunoResponse RespostaPacote = new(
+    private static readonly PacoteResponse RespostaPacote = new(
         PacoteId, TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);
 
-    private static readonly Guid AssinaturaId = Guid.NewGuid();
+    private static readonly Guid AssinaturaAlunoId = Guid.NewGuid();
     private static readonly Guid PagamentoId = Guid.NewGuid();
 
     private static readonly PagamentoResponse RespostaPagamento = new(
-        PagamentoId, AssinaturaId, 99.90m, PagamentoStatus.Pendente, MetodoPagamento.Pix,
+        PagamentoId, AssinaturaAlunoId, 99.90m, PagamentoStatus.Pendente, MetodoPagamento.Pix,
         "qrcode", "https://example.com/qr", DateTime.UtcNow.AddHours(1), null, null, DateTime.UtcNow);
 
     private static readonly ExercicioResponse RespostaExercicio = new(
-        Guid.NewGuid(), "Supino", TipoGrupoMuscular.Peito, null, TreinadorId, false, DateTime.UtcNow, null);
+        Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null, TreinadorId, false, DateTime.UtcNow, null);
 
     private static readonly GrupoMuscularResponse RespostaGrupoMuscular = new(
         Guid.NewGuid(), "Peitoral", DateTime.UtcNow, null);
@@ -153,7 +153,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/vinculos/{VinculoId}/aprovar",
-            new { PacoteAlunoId = PacoteId, TrarFichas = false });
+            new { PacoteId = PacoteId, TrarFichas = false });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -167,7 +167,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/vinculos/{Guid.NewGuid()}/aprovar",
-            new { PacoteAlunoId = Guid.NewGuid(), TrarFichas = false });
+            new { PacoteId = Guid.NewGuid(), TrarFichas = false });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -255,7 +255,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     public async Task Post_CriarPacote_Treinador_Retorna201()
     {
         _factory.CriarPacoteHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<CriarPacoteAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<CriarPacoteCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RespostaPacote);
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/pacotes",
@@ -270,7 +270,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     public async Task Patch_AtualizarPacote_Treinador_Retorna200()
     {
         _factory.AtualizarPacoteHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPacoteAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPacoteCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RespostaPacote with { Nome = "Pacote Atualizado" });
 
         var response = await CriarClienteTreinador().PatchAsJsonAsync(
@@ -286,7 +286,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     public async Task Delete_ExcluirPacote_Treinador_Retorna204()
     {
         _factory.ExcluirPacoteHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPacoteAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPacoteCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteTreinador().DeleteAsync($"/treinador/pacotes/{PacoteId}");
@@ -298,7 +298,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     public async Task Delete_ExcluirPacote_NaoEncontrado_Retorna404()
     {
         _factory.ExcluirPacoteHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPacoteAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPacoteCommand>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new PacoteNaoEncontradoException());
 
         var response = await CriarClienteTreinador().DeleteAsync($"/treinador/pacotes/{Guid.NewGuid()}");
@@ -312,7 +312,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     public async Task Patch_AtualizarPacote_NaoEncontrado_Retorna404()
     {
         _factory.AtualizarPacoteHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPacoteAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarPacoteCommand>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new PacoteNaoEncontradoException());
 
         var response = await CriarClienteTreinador().PatchAsJsonAsync(
@@ -374,20 +374,20 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .ReturnsAsync(Result.Success(RespostaPagamento));
 
         var response = await CriarClienteTreinador()
-            .PostAsJsonAsync($"/treinador/pagamentos/cobrar/{AssinaturaId}?metodo=Pix", (object?)null);
+            .PostAsJsonAsync($"/treinador/pagamentos/cobrar/{AssinaturaAlunoId}?metodo=Pix", (object?)null);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task Post_Cobrar_AssinaturaCancelada_Retorna422()
+    public async Task Post_Cobrar_AssinaturaAlunoCancelada_Retorna422()
     {
         _factory.GerarCobrancaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<GerarCobrancaMensalCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<PagamentoResponse>(Error.Business("Assinatura cancelada não pode ser cobrada.")));
+            .ReturnsAsync(Result.Failure<PagamentoResponse>(Error.Business("AssinaturaAluno cancelada não pode ser cobrada.")));
 
         var response = await CriarClienteTreinador()
-            .PostAsJsonAsync($"/treinador/pagamentos/cobrar/{AssinaturaId}?metodo=Pix", (object?)null);
+            .PostAsJsonAsync($"/treinador/pagamentos/cobrar/{AssinaturaAlunoId}?metodo=Pix", (object?)null);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
@@ -403,7 +403,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/alunos/{AlunoId}/reativar",
-            new { PacoteAlunoId = PacoteId });
+            new { PacoteId = PacoteId });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -514,7 +514,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .ReturnsAsync(Result.Success(RespostaExercicio));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/exercicios",
-            new { nome = "Supino", grupoMuscular = 0 });
+            new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -527,7 +527,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/exercicios",
-            new { nome = "Supino", grupoMuscular = 0 });
+            new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
@@ -643,7 +643,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/alunos/{Guid.NewGuid()}/reativar",
-            new { PacoteAlunoId = Guid.NewGuid() });
+            new { PacoteId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -657,7 +657,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/alunos/{Guid.NewGuid()}/reativar",
-            new { PacoteAlunoId = Guid.NewGuid() });
+            new { PacoteId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
@@ -708,7 +708,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     public async Task Delete_ExcluirPacote_EmUso_Retorna422()
     {
         _factory.ExcluirPacoteHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPacoteAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .Setup(h => h.HandleAsync(It.IsAny<ExcluirPacoteCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(Error.Business("Pacote em uso por assinaturas ativas.")));
 
         var response = await CriarClienteTreinador().DeleteAsync($"/treinador/pacotes/{Guid.NewGuid()}");
@@ -733,7 +733,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IDbContextTransactionProvider>(),
-            Mock.Of<IWhatsAppNotifier>(),
+            Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         public Mock<DesvincularAlunoHandler> DesvincularAlunoHandlerMock { get; } = new(
@@ -741,7 +741,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<DesvincularAlunoHandler>>());
 
         public Mock<ListarVinculosHandler> ListarVinculosHandlerMock { get; } = new(
@@ -753,46 +753,49 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<ListarExerciciosHandler> ListarExerciciosHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<ILogger<ListarExerciciosHandler>>());
 
-        public Mock<ListarPacotesAlunoHandler> ListarPacotesHandlerMock { get; } = new(
-            Mock.Of<IPacoteAlunoRepository>());
+        public Mock<ListarPacotesHandler> ListarPacotesHandlerMock { get; } = new(
+            Mock.Of<IPacoteRepository>());
 
-        public Mock<CriarPacoteAlunoHandler> CriarPacoteHandlerMock { get; } = new(
-            Mock.Of<IPacoteAlunoRepository>(),
+        public Mock<CriarPacoteHandler> CriarPacoteHandlerMock { get; } = new(
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<CriarPacoteAlunoCommand>>(),
-            Mock.Of<ILogger<CriarPacoteAlunoHandler>>());
+            Mock.Of<IValidator<CriarPacoteCommand>>(), TimeProvider.System,
+            Mock.Of<ILogger<CriarPacoteHandler>>());
 
-        public Mock<AtualizarPacoteAlunoHandler> AtualizarPacoteHandlerMock { get; } = new(
-            Mock.Of<IPacoteAlunoRepository>(),
+        public Mock<AtualizarPacoteHandler> AtualizarPacoteHandlerMock { get; } = new(
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<AtualizarPacoteAlunoCommand>>());
+            Mock.Of<IValidator<AtualizarPacoteCommand>>());
 
-        public Mock<ExcluirPacoteAlunoHandler> ExcluirPacoteHandlerMock { get; } = new(
-            Mock.Of<IPacoteAlunoRepository>(),
+        public Mock<ExcluirPacoteHandler> ExcluirPacoteHandlerMock { get; } = new(
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<IUnitOfWork>());
 
         public Mock<IniciarOnboardingTreinadorHandler> IniciarOnboardingHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IContaRepository>(),
             Mock.Of<IStripeService>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<IniciarOnboardingTreinadorHandler>>());
 
         public Mock<VerificarOnboardingTreinadorHandler> VerificarOnboardingHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<VerificarOnboardingTreinadorHandler>>());
 
         public Mock<GerarCobrancaMensalHandler> GerarCobrancaHandlerMock { get; } = new(
-            Mock.Of<IAssinaturaRepository>(),
+            Mock.Of<IAssinaturaAlunoRepository>(),
             Mock.Of<IPagamentoRepository>(),
-            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(),
-            Microsoft.Extensions.Options.Options.Create(new PaymentSettings()),
+            Microsoft.Extensions.Options.Options.Create(new PaymentSettings()), TimeProvider.System,
             Mock.Of<ILogger<GerarCobrancaMensalHandler>>());
 
         public Mock<ReativarVinculoHandler> ReativarVinculoHandlerMock { get; } = new(
@@ -800,7 +803,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IAlunoRepository>(),
             Mock.Of<ILimiteTreinadorService>(),
             Mock.Of<ILogAprovacaoRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<ReativarVinculoHandler>>());
 
         public Mock<VincularFichaAoAlunoHandler> VincularFichaHandlerMock { get; } = new(
@@ -808,7 +811,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<VincularFichaAoAlunoHandler>>());
 
         public Mock<ObterAlunoHandler> ObterAlunoHandlerMock { get; } = new(
@@ -830,17 +833,20 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<CopiarExercicioGlobalHandler> CopiarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IGrupoMuscularRepository>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<CopiarExercicioGlobalHandler>>());
 
         public Mock<CriarExercicioHandler> CriarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<CriarExercicioCommand>>(),
+            Mock.Of<IValidator<CriarExercicioCommand>>(), TimeProvider.System,
             Mock.Of<ILogger<CriarExercicioHandler>>());
 
         public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>());
 
         public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(
@@ -862,10 +868,10 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<ListarVinculosHandler>();
                 services.RemoveAll<ListarTreinosDoTreinadorHandler>();
                 services.RemoveAll<ListarExerciciosHandler>();
-                services.RemoveAll<ListarPacotesAlunoHandler>();
-                services.RemoveAll<CriarPacoteAlunoHandler>();
-                services.RemoveAll<AtualizarPacoteAlunoHandler>();
-                services.RemoveAll<ExcluirPacoteAlunoHandler>();
+                services.RemoveAll<ListarPacotesHandler>();
+                services.RemoveAll<CriarPacoteHandler>();
+                services.RemoveAll<AtualizarPacoteHandler>();
+                services.RemoveAll<ExcluirPacoteHandler>();
                 services.RemoveAll<IniciarOnboardingTreinadorHandler>();
                 services.RemoveAll<VerificarOnboardingTreinadorHandler>();
                 services.RemoveAll<GerarCobrancaMensalHandler>();

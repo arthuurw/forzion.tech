@@ -1,5 +1,3 @@
-using forzion.tech.Domain.Enums;
-
 namespace forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
 
 public record ListarExerciciosQuery(
@@ -7,5 +5,5 @@ public record ListarExerciciosQuery(
     int Pagina,
     int TamanhoPagina,
     string? Nome = null,
-    TipoGrupoMuscular? GrupoMuscular = null,
+    Guid? GrupoMuscularId = null,
     string OrdenarPor = "nome");

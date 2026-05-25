@@ -6,7 +6,7 @@ namespace forzion.tech.Domain.Entities;
 public class Pagamento
 {
     public Guid Id { get; private set; }
-    public Guid AssinaturaId { get; private set; }
+    public Guid AssinaturaAlunoId { get; private set; }
     public decimal Valor { get; private set; }
     public PagamentoStatus Status { get; private set; }
     public MetodoPagamento MetodoPagamento { get; private set; }
@@ -21,7 +21,7 @@ public class Pagamento
 
     private Pagamento() { }
 
-    public static Pagamento Criar(Guid assinaturaId, decimal valor, MetodoPagamento metodo = MetodoPagamento.Pix)
+    public static Pagamento Criar(Guid assinaturaId, decimal valor, DateTime agora, MetodoPagamento metodo = MetodoPagamento.Pix)
     {
         if (assinaturaId == Guid.Empty)
             throw new DomainException("O identificador da assinatura é inválido.");
@@ -31,11 +31,11 @@ public class Pagamento
         return new Pagamento
         {
             Id = Guid.NewGuid(),
-            AssinaturaId = assinaturaId,
+            AssinaturaAlunoId = assinaturaId,
             Valor = valor,
             Status = PagamentoStatus.Pendente,
             MetodoPagamento = metodo,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

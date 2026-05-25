@@ -31,7 +31,7 @@ public static class RouteBuilderExtensions
 
     public static IApplicationBuilder UseApiConfiguration(this WebApplication app)
     {
-        app.UseSwaggerInNonProduction();
+        app.UseSwaggerInDevelopment();
         app.UseExceptionHandler();
 
         if (app.Environment.IsProduction())

@@ -19,7 +19,7 @@ public class ObterTreinadorHandler(ITreinadorRepository treinadorRepository)
             treinador.ContaId,
             treinador.Nome,
             treinador.Status,
-            treinador.PlanoTreinadorId,
+            treinador.PlanoPlataformaId,
             treinador.CreatedAt);
     }
 }

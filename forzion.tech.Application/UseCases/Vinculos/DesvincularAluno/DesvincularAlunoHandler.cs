@@ -13,6 +13,7 @@ public class DesvincularAlunoHandler(
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<DesvincularAlunoHandler> logger)
 {
     public virtual Task HandleAsync(
@@ -45,6 +46,7 @@ public class DesvincularAlunoHandler(
             userContext.PerfilId,
             vinculo.Id,
             nameof(VinculoTreinadorAluno),
+            timeProvider.GetUtcNow().UtcDateTime,
             command.Observacao);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);

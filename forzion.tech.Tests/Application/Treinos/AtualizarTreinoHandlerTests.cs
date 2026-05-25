@@ -34,7 +34,7 @@ public class AtualizarTreinoHandlerTests
     }
 
     private static Treino CriarTreino(Guid treinadorId) =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetornaResponse()
@@ -159,7 +159,7 @@ public class AtualizarTreinoHandlerTests
     public async Task HandleAsync_LimparDatas_RetornaSemDatas()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("T", ObjetivoTreino.Hipertrofia, treinadorId,
+        var treino = Treino.Criar("T", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow,
             dataInicio: new DateOnly(2025, 1, 1),
             dataFim: new DateOnly(2025, 12, 31));
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);

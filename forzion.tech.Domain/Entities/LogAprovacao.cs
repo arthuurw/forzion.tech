@@ -20,6 +20,7 @@ public class LogAprovacao
         Guid realizadoPorId,
         Guid entidadeId,
         string entidadeTipo,
+        DateTime agora,
         string? observacao = null)
     {
         if (realizadoPorId == Guid.Empty)
@@ -39,7 +40,7 @@ public class LogAprovacao
             EntidadeId = entidadeId,
             EntidadeTipo = entidadeTipo,
             Observacao = observacao,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 }

@@ -22,7 +22,7 @@ public class CriarGrupoMuscularHandlerTests
     {
         _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
-        _handler = new CriarGrupoMuscularHandler(_repository.Object, _unitOfWork.Object, _validator.Object);
+        _handler = new CriarGrupoMuscularHandler(_repository.Object, _unitOfWork.Object, _validator.Object, TimeProvider.System);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class CriarGrupoMuscularHandlerTests
         // Arrange
         var command = new CriarGrupoMuscularCommand("Peito");
         _repository.Setup(r => r.ObterPorNomeAsync("Peito", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GrupoMuscular.Criar("Peito"));
+            .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow));
 
         // Act
         var act = () => _handler.HandleAsync(command);

@@ -1,0 +1,37 @@
+# gitleaks config — detecta secrets em commits/diffs.
+# Roda via GH Action (Fase 17) ou CLI local: `gitleaks detect --config .gitleaks.toml`.
+# Padroes default da gitleaks aplicam; aqui customizamos so allowlist do projeto.
+
+title = "forzion.tech gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist do projeto — fixtures/test data/exemplos sem risco real"
+
+paths = [
+  '''(?i)\.example$''',
+  '''(?i)\.sample$''',
+  '''\.gitleaks\.toml$''',
+  '''package-lock\.json$''',
+  '''frontend/openapi\.json$''',
+  '''frontend/src/test/msw/types\.ts$''',
+  '''frontend/e2e/specs/.+\.spec\.ts$''',
+  '''frontend/src/.+\.test\.(ts|tsx)$''',
+]
+
+regexes = [
+  # Stripe test mode keys (pk_test_*, sk_test_*) — sao publicas por design
+  '''pk_test_[0-9a-zA-Z]{20,}''',
+  '''sk_test_[0-9a-zA-Z]{20,}''',
+  # JWT placeholders em testes
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9._-]+''',
+  # UUIDs determanisticos em tests
+  '''00000000-0000-0000-0000-000000000000''',
+  # .NET UserSecretsId — identificador de projeto (pasta de secrets locais),
+  # nao e segredo: aparece tambem no .csproj. Documentado no README.
+  '''049d65fb-2c12-483c-b56e-cb753632d11f''',
+]
+
+commits = []

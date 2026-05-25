@@ -34,6 +34,7 @@ public class Aluno : IHasDomainEvents
     public static Aluno Criar(
         Guid contaId,
         string nome,
+        DateTime agora,
         string? email = null,
         string? telefone = null,
         int? diasDisponiveis = null,
@@ -58,7 +59,7 @@ public class Aluno : IHasDomainEvents
             ContaId = contaId,
             Nome = nome.Trim(),
             Status = AlunoStatus.AguardandoAprovacao,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = agora,
             DiasDisponiveis = diasDisponiveis,
             TempoDisponivelMinutos = tempoDisponivelMinutos,
             Finalidade = finalidade,
@@ -74,6 +75,8 @@ public class Aluno : IHasDomainEvents
 
         if (telefone is not null)
             aluno.AlterarTelefone(telefone);
+
+        aluno._domainEvents.Add(new AlunoRegistradoEvent(aluno.Id, aluno.Nome, aluno.Email?.Value, agora));
 
         return aluno;
     }
@@ -96,6 +99,7 @@ public class Aluno : IHasDomainEvents
             AlterarTelefone(telefone);
 
         UpdatedAt = DateTime.UtcNow;
+        _domainEvents.Add(new AlunoAtualizadoEvent(Id, Nome, Email?.Value, DateTime.UtcNow));
     }
 
     public void Ativar()
