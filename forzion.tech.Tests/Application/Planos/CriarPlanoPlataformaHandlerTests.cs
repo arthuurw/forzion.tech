@@ -22,7 +22,7 @@ public class CriarPlanoPlataformaHandlerTests
     {
         _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
-        _handler = new CriarPlanoPlataformaHandler(_planoRepo.Object, _unitOfWork.Object, _validator.Object, Mock.Of<IUserContext>(), _logger.Object);
+        _handler = new CriarPlanoPlataformaHandler(_planoRepo.Object, _unitOfWork.Object, _validator.Object, Mock.Of<IUserContext>(), TimeProvider.System, _logger.Object);
     }
 
     [Fact]

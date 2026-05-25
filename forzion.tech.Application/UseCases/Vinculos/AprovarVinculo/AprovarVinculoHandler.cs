@@ -18,6 +18,7 @@ public class AprovarVinculoHandler(
     IUnitOfWork unitOfWork,
     IDbContextTransactionProvider transactionProvider,
     IWhatsAppNotifier whatsAppNotifier,
+    TimeProvider timeProvider,
     ILogger<AprovarVinculoHandler> logger)
 {
     public virtual Task<VinculoResponse> HandleAsync(
@@ -37,6 +38,8 @@ public class AprovarVinculoHandler(
 
         if (vinculo.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
 
         await using var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken).ConfigureAwait(false);
 
@@ -63,10 +66,10 @@ public class AprovarVinculoHandler(
                 var treinoOrigem = await treinoRepository.ObterPorIdAsync(ta.TreinoId, cancellationToken).ConfigureAwait(false);
                 if (treinoOrigem is null) continue;
 
-                var copia = treinoOrigem.DuplicarPara(command.TreinadorId);
+                var copia = treinoOrigem.DuplicarPara(command.TreinadorId, agora);
                 await treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
 
-                var novoVinculoFicha = TreinoAluno.Criar(copia.Id, vinculo.AlunoId);
+                var novoVinculoFicha = TreinoAluno.Criar(copia.Id, vinculo.AlunoId, agora);
                 await treinoAlunoRepository.AdicionarAsync(novoVinculoFicha, cancellationToken).ConfigureAwait(false);
             }
 
@@ -83,7 +86,8 @@ public class AprovarVinculoHandler(
             TipoAcaoAprovacao.AprovacaoVinculo,
             command.TreinadorId,
             vinculo.Id,
-            nameof(VinculoTreinadorAluno));
+            nameof(VinculoTreinadorAluno),
+            agora);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

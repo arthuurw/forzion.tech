@@ -15,7 +15,7 @@ public class Pacote
 
     private Pacote() { }
 
-    public static Pacote Criar(Guid treinadorId, string nome, decimal preco, string? descricao = null)
+    public static Pacote Criar(Guid treinadorId, string nome, decimal preco, DateTime agora, string? descricao = null)
     {
         if (treinadorId == Guid.Empty)
             throw new DomainException("O identificador do treinador é inválido.");
@@ -36,7 +36,7 @@ public class Pacote
             Descricao = descricao?.Trim(),
             Preco = preco,
             IsAtivo = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

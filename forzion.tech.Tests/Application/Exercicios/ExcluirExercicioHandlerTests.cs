@@ -22,10 +22,10 @@ public class ExcluirExercicioHandlerTests
     private static readonly Guid GrupoId = Guid.NewGuid();
 
     private static Exercicio CriarExercicioTreinador(Guid treinadorId) =>
-        Exercicio.Criar("Supino Reto", GrupoId, treinadorId);
+        Exercicio.Criar("Supino Reto", GrupoId, DateTime.UtcNow, treinadorId);
 
     private static Exercicio CriarExercicioGlobal() =>
-        Exercicio.Criar("Agachamento", GrupoId);
+        Exercicio.Criar("Agachamento", GrupoId, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_TreinadorExcluiProprio_RemoveEComita()

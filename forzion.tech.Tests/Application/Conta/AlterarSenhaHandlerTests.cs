@@ -35,7 +35,7 @@ public class AlterarSenhaHandlerTests
     }
 
     private static DomainConta CriarConta() =>
-        DomainConta.Criar(Email.Criar("user@test.com"), "hash-atual", TipoConta.Aluno);
+        DomainConta.Criar(Email.Criar("user@test.com"), "hash-atual", TipoConta.Aluno, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_SenhaCorreta_AtualizaEComita()

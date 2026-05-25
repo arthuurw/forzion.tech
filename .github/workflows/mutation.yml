@@ -10,7 +10,7 @@ on:
 
 jobs:
   stryker:
-    name: Stryker — lib + hooks
+    name: Stryker — lib + hooks (frontend)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,4 +36,53 @@ jobs:
         with:
           name: mutation-report
           path: frontend/reports/mutation/
+          if-no-files-found: warn
+
+  # Mutation .NET (Stryker). Caro: cada mutante reroda subset da suíte. Por isso
+  # NUNCA roda em PR — só schedule/manual (mesmo gatilho do job frontend acima).
+  # Matriz por projeto: Domain e Application. O `break` do stryker-config.json
+  # (40) faz o run falhar abaixo do piso; calibrado contra o score atual
+  # (Application ~46% é o piso, Domain ~82%).
+  stryker-backend:
+    name: Stryker — backend (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - forzion.tech.Domain/forzion.tech.Domain.csproj
+          - forzion.tech.Application/forzion.tech.Application.csproj
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore tools (dotnet-tools.json — stryker pinado)
+        run: dotnet tool restore
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      # `--project` sobrescreve o `project` default do stryker-config.json,
+      # permitindo cobrir Domain e Application com a mesma config (e o mesmo
+      # `break`). Sai != 0 se o score ficar abaixo do break.
+      - name: Stryker run (${{ matrix.project }})
+        run: dotnet stryker --solution forzion.tech.slnx --project ${{ matrix.project }}
+
+      - name: Slug do projeto (nome do artifact)
+        if: always()
+        id: slug
+        run: echo "value=$(echo '${{ matrix.project }}' | sed 's#/.*##')" >> "$GITHUB_OUTPUT"
+
+      - name: Upload mutation report (backend)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-backend-${{ steps.slug.outputs.value }}
+          path: StrykerOutput/**/reports/
           if-no-files-found: warn

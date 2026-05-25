@@ -13,6 +13,7 @@ public class CriarExercicioHandler(
     IGrupoMuscularRepository grupoMuscularRepository,
     IUnitOfWork unitOfWork,
     IValidator<CriarExercicioCommand> validator,
+    TimeProvider timeProvider,
     ILogger<CriarExercicioHandler> logger)
 {
     public virtual Task<Result<ExercicioResponse>> HandleAsync(
@@ -35,7 +36,7 @@ public class CriarExercicioHandler(
         if (await exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, cancellationToken: cancellationToken).ConfigureAwait(false))
             return Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca."));
 
-        var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscularId, command.TreinadorId, command.Descricao);
+        var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, command.Descricao);
 
         await exercicioRepository.AdicionarAsync(exercicio, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

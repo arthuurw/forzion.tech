@@ -33,7 +33,7 @@ public class RemoverExercicioHandlerTests
     public async Task HandleAsync_ExercicioExistente_RemoveERetorna()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
         treino.AdicionarExercicio(Guid.NewGuid());
         var treinoExercicioId = treino.Exercicios[0].Id;
 
@@ -52,8 +52,8 @@ public class RemoverExercicioHandlerTests
     {
         var treinadorLogadoId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, outroTreinadorId);
-        
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, outroTreinadorId, DateTime.UtcNow);
+
         _userContext.Setup(u => u.PerfilId).Returns(treinadorLogadoId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 
@@ -77,7 +77,7 @@ public class RemoverExercicioHandlerTests
     public async Task HandleAsync_TreinoJaExecutado_LancaTreinoExecutadoException()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);

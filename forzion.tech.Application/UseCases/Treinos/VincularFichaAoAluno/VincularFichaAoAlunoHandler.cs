@@ -13,6 +13,7 @@ public class VincularFichaAoAlunoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<VincularFichaAoAlunoHandler> logger)
 {
     public virtual Task<Result> HandleAsync(
@@ -52,7 +53,7 @@ public class VincularFichaAoAlunoHandler(
             return Result.Failure(Error.Business($"Esta ficha já está vinculada ao aluno {nomeExistente}."));
         }
 
-        var treinoAluno = TreinoAluno.Criar(command.TreinoId, command.AlunoId);
+        var treinoAluno = TreinoAluno.Criar(command.TreinoId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime);
 
         await treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

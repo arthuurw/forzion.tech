@@ -45,7 +45,7 @@ public class FluxoCompletoTests
     {
         var handler = new RegistrarTreinadorHandler(
             _contaRepo.Object, _treinadorRepo.Object, _passwordHasher.Object,
-            _unitOfWork.Object, new RegistrarTreinadorCommandValidator(),
+            _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarTreinadorHandler>>());
 
         var result = await handler.HandleAsync(
@@ -60,11 +60,11 @@ public class FluxoCompletoTests
     [Fact]
     public async Task AprovarTreinador_TreinadorPendente_AlteraStatusParaAtivo()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var handler = new AprovarTreinadorHandler(
-            _treinadorRepo.Object, _logRepo.Object, _unitOfWork.Object,
+            _treinadorRepo.Object, _logRepo.Object, _unitOfWork.Object, TimeProvider.System,
             Mock.Of<ILogger<AprovarTreinadorHandler>>());
 
         var result = await handler.HandleAsync(new AprovarTreinadorCommand(treinador.Id, Guid.NewGuid()));
@@ -78,9 +78,9 @@ public class FluxoCompletoTests
     [Fact]
     public async Task RegistrarAluno_TreinadorAtivo_CriaAlunoComVinculoPendente()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         treinador.Aprovar(Guid.NewGuid());
-        var pacote = Pacote.Criar(treinador.Id, "Pacote Basico", 0);
+        var pacote = Pacote.Criar(treinador.Id, "Pacote Basico", 0, DateTime.UtcNow);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
@@ -88,7 +88,7 @@ public class FluxoCompletoTests
         var handler = new RegistrarAlunoHandler(
             _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object, _treinadorRepo.Object,
             _pacoteRepo.Object, _passwordHasher.Object, _unitOfWork.Object,
-            new RegistrarAlunoCommandValidator(), Mock.Of<IWhatsAppNotifier>(),
+            new RegistrarAlunoCommandValidator(), Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         var result = await handler.HandleAsync(
@@ -103,12 +103,12 @@ public class FluxoCompletoTests
     [Fact]
     public async Task AprovarVinculo_DentroDoLimite_AprovaSemExcecao()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 0);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 0, DateTime.UtcNow);
         treinador.AtribuirPlano(plano.Id);
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
-        var pacote = Pacote.Criar(treinador.Id, "Pacote", 0);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow);
+        var pacote = Pacote.Criar(treinador.Id, "Pacote", 0, DateTime.UtcNow);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
@@ -129,7 +129,7 @@ public class FluxoCompletoTests
         var handler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
             _alunoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
-            mockTxProvider.Object, Mock.Of<IWhatsAppNotifier>(),
+            mockTxProvider.Object, Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         var resultado = await handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinador.Id, pacote.Id));
@@ -142,10 +142,10 @@ public class FluxoCompletoTests
     [Fact]
     public async Task VincularFicha_AlunoComVinculoAtivo_VinculaFicha()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id);
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow);
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinador.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -155,7 +155,7 @@ public class FluxoCompletoTests
 
         var handler = new VincularFichaAoAlunoHandler(
             _treinoRepo.Object, _treinoAlunoRepo.Object, _vinculoRepo.Object,
-            _unitOfWork.Object, _userContext.Object,
+            _unitOfWork.Object, _userContext.Object, TimeProvider.System,
             Mock.Of<ILogger<VincularFichaAoAlunoHandler>>());
 
         await handler.HandleAsync(new VincularFichaAoAlunoCommand(treino.Id, aluno.Id));
@@ -168,11 +168,11 @@ public class FluxoCompletoTests
     [Fact]
     public async Task RegistrarExecucao_FichaVinculada_PersisteDados()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao");
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id);
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id);
-        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow);
+        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id, DateTime.UtcNow);
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
@@ -183,7 +183,7 @@ public class FluxoCompletoTests
         var handler = new RegistrarExecucaoHandler(
             _treinoRepo.Object, _alunoRepo.Object, _treinoAlunoRepo.Object,
             _vinculoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object,
-            _userContext.Object, Mock.Of<ILogger<RegistrarExecucaoHandler>>());
+            _userContext.Object, TimeProvider.System, Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
         var execucao = await handler.HandleAsync(new RegistrarExecucaoCommand(
             treino.Id, aluno.Id, DateTime.UtcNow, null, []));

@@ -31,7 +31,7 @@ public class AtualizarObservacaoExercicioHandlerTests
 
     private static (Treino treino, TreinoExercicio exercicio) CriarTreinoComExercicio(Guid treinadorId)
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
         var ex = treino.AdicionarExercicio(Guid.NewGuid());
         ex.AdicionarSerie(3, 10, 12, null, null, null);
         return (treino, ex);

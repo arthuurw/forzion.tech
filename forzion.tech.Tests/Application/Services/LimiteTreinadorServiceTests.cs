@@ -24,12 +24,12 @@ public class LimiteTreinadorServiceTests
     {
         var planoId = Guid.NewGuid();
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow);
         treinador.AtribuirPlano(planoId);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99m));
+            .ReturnsAsync(PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99m, DateTime.UtcNow));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
         var act = async () => await _service.ValidarAsync(treinadorId);
@@ -41,12 +41,12 @@ public class LimiteTreinadorServiceTests
     {
         var planoId = Guid.NewGuid();
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow);
         treinador.AtribuirPlano(planoId);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 99m));
+            .ReturnsAsync(PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 5, 99m, DateTime.UtcNow));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
         var act = async () => await _service.ValidarAsync(treinadorId);
@@ -57,7 +57,7 @@ public class LimiteTreinadorServiceTests
     public async Task ValidarAsync_SemPlano_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
@@ -71,7 +71,7 @@ public class LimiteTreinadorServiceTests
     {
         var planoId = Guid.NewGuid();
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow);
         treinador.AtribuirPlano(planoId);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);

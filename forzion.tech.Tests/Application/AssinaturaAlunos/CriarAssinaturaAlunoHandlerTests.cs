@@ -20,7 +20,7 @@ public class CriarAssinaturaAlunoHandlerTests
     public CriarAssinaturaAlunoHandlerTests()
     {
         _handler = new CriarAssinaturaAlunoHandler(
-            _assinaturaRepo.Object, _contaRecebimentoRepo.Object, _unitOfWork.Object, _logger.Object);
+            _assinaturaRepo.Object, _contaRecebimentoRepo.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     private static CriarAssinaturaAlunoCommand BuildCommand(Guid treinadorId) => new(
@@ -28,7 +28,7 @@ public class CriarAssinaturaAlunoHandlerTests
 
     private static ContaRecebimento ContaOnboarded(Guid treinadorId)
     {
-        var conta = ContaRecebimento.Criar(treinadorId);
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
         conta.ConfigurarStripeConnect("acct_123");
         conta.ConfirmarOnboarding();
         return conta;
@@ -52,7 +52,7 @@ public class CriarAssinaturaAlunoHandlerTests
     public async Task HandleAsync_ContaRecebimentoSemOnboarding_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var conta = ContaRecebimento.Criar(treinadorId);
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
         conta.ConfigurarStripeConnect("acct_123");
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);

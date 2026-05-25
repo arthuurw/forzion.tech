@@ -11,6 +11,7 @@ public class CriarPlanoPlataformaHandler(
     IUnitOfWork unitOfWork,
     IValidator<CriarPlanoPlataformaCommand> validator,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<CriarPlanoPlataformaHandler> logger)
 {
     public virtual Task<PlanoPlataformaResponse> HandleAsync(
@@ -27,7 +28,7 @@ public class CriarPlanoPlataformaHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var plano = PlanoPlataforma.Criar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, command.Descricao);
+        var plano = PlanoPlataforma.Criar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
 
         await planoRepository.AdicionarAsync(plano, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

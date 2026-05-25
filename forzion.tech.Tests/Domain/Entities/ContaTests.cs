@@ -14,7 +14,7 @@ public class ContaTests
     [Fact]
     public void Criar_DadosValidos_RetornaContaCorreta()
     {
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador, DateTime.UtcNow);
 
         conta.Id.Should().NotBe(Guid.Empty);
         conta.Email.Should().Be(EmailValido);
@@ -30,14 +30,14 @@ public class ContaTests
     [InlineData(TipoConta.Aluno)]
     public void Criar_TodosOsTipos_CriaCorretamente(TipoConta tipo)
     {
-        var conta = Conta.Criar(EmailValido, HashValido, tipo);
+        var conta = Conta.Criar(EmailValido, HashValido, tipo, DateTime.UtcNow);
         conta.TipoConta.Should().Be(tipo);
     }
 
     [Fact]
     public void Criar_EmailNulo_LancaArgumentNullException()
     {
-        var act = () => Conta.Criar(null!, HashValido, TipoConta.Treinador);
+        var act = () => Conta.Criar(null!, HashValido, TipoConta.Treinador, DateTime.UtcNow);
         act.Should().Throw<ArgumentNullException>();
     }
 
@@ -46,14 +46,14 @@ public class ContaTests
     [InlineData("   ")]
     public void Criar_PasswordHashVazio_LancaDomainException(string hash)
     {
-        var act = () => Conta.Criar(EmailValido, hash, TipoConta.Treinador);
+        var act = () => Conta.Criar(EmailValido, hash, TipoConta.Treinador, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("*hash da senha*");
     }
 
     [Fact]
     public void AtualizarSenha_NovoHashValido_AtualizaEPreencheUpdatedAt()
     {
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, DateTime.UtcNow);
         var novoHash = "$2a$12$zyxwvutsrqponmlkjihgffeKLMNOPQRSTUVWXYZ0123456789abcd";
 
         conta.AtualizarSenha(novoHash);
@@ -68,7 +68,7 @@ public class ContaTests
     [InlineData("   ")]
     public void AtualizarSenha_HashVazio_LancaDomainException(string hash)
     {
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador, DateTime.UtcNow);
         var act = () => conta.AtualizarSenha(hash);
         act.Should().Throw<DomainException>().WithMessage("*hash da senha*");
     }

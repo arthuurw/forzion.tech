@@ -20,6 +20,7 @@ public class RegistrarAlunoHandler(
     IUnitOfWork unitOfWork,
     IValidator<RegistrarAlunoCommand> validator,
     IWhatsAppNotifier whatsAppNotifier,
+    TimeProvider timeProvider,
     ILogger<RegistrarAlunoHandler> logger)
 {
     public virtual Task<Result<AlunoResponse>> HandleAsync(
@@ -52,13 +53,15 @@ public class RegistrarAlunoHandler(
         if (pacote.TreinadorId != command.TreinadorId)
             return Result.Failure<AlunoResponse>(Error.Business("O pacote informado não pertence ao treinador selecionado."));
 
-        var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Aluno);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Aluno, agora);
         var tempoDisponivel = command.TempoDisponivelMinutos.HasValue
             ? (TempoDisponivel?)command.TempoDisponivelMinutos.Value
             : null;
         var aluno = Aluno.Criar(
             conta.Id,
             command.Nome,
+            agora,
             null,
             command.Telefone,
             command.DiasDisponiveis,
@@ -69,7 +72,7 @@ public class RegistrarAlunoHandler(
             command.LimitacoesFisicas,
             command.Doencas,
             command.ObservacoesAdicionais);
-        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, aluno.Id, command.PacoteId);
+        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, aluno.Id, agora, command.PacoteId);
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);

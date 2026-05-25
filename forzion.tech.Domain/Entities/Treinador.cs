@@ -23,7 +23,7 @@ public class Treinador : IHasDomainEvents
 
     private Treinador() { }
 
-    public static Treinador Criar(Guid contaId, string nome, string? telefone = null)
+    public static Treinador Criar(Guid contaId, string nome, DateTime agora, string? telefone = null)
     {
         if (contaId == Guid.Empty)
             throw new DomainException("O identificador da conta é inválido.");
@@ -39,7 +39,7 @@ public class Treinador : IHasDomainEvents
             Nome = nome.Trim(),
             Telefone = string.IsNullOrWhiteSpace(telefone) ? null : telefone.Trim(),
             Status = TreinadorStatus.AguardandoAprovacao,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

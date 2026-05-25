@@ -40,9 +40,15 @@
 /docker-compose.*.yml                   @arthuurw
 /Dockerfile                             @arthuurw
 
+# Backend — projetos .NET (gera review request via CODEOWNERS, nao bloqueio)
+/forzion.tech.Api/                      @arthuurw
+/forzion.tech.Application/              @arthuurw
+/forzion.tech.Domain/                   @arthuurw
+/forzion.tech.Infrastructure/           @arthuurw
+/forzion.tech.Tests/                    @arthuurw
+/forzion.tech.slnx                      @arthuurw
+/Directory.Build.props                  @arthuurw
+/.editorconfig                          @arthuurw
+
 # Backend ops criticos
 /forzion.tech.Api/appsettings.*.json    @arthuurw
-
-# Plano e documentos meta do harness
-/docs/frontend-harness-plan.md          @arthuurw
-/docs/frontend-harness-rationale.md     @arthuurw

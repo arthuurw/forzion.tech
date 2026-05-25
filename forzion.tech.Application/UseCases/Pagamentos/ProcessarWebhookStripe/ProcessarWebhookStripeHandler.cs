@@ -12,6 +12,7 @@ public class ProcessarWebhookStripeHandler(
     IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<ProcessarWebhookStripeHandler> logger)
 {
     public virtual async Task<Result> HandleAsync(
@@ -74,7 +75,8 @@ public class ProcessarWebhookStripeHandler(
         if (assinatura is not null)
         {
             assinatura.Ativar();
-            assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddMonths(1));
+            var agora = timeProvider.GetUtcNow().UtcDateTime;
+            assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
         }
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);

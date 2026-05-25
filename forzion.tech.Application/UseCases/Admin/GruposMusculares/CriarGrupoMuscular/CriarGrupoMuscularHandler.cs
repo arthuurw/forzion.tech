@@ -9,7 +9,8 @@ namespace forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMus
 public class CriarGrupoMuscularHandler(
     IGrupoMuscularRepository repository,
     IUnitOfWork unitOfWork,
-    IValidator<CriarGrupoMuscularCommand> validator)
+    IValidator<CriarGrupoMuscularCommand> validator,
+    TimeProvider timeProvider)
 {
     public virtual Task<GrupoMuscularResponse> HandleAsync(CriarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
     {
@@ -25,7 +26,7 @@ public class CriarGrupoMuscularHandler(
         if (existente != null)
             throw new DomainException("Já existe um grupo muscular com este nome.");
 
-        var grupo = GrupoMuscular.Criar(command.Nome);
+        var grupo = GrupoMuscular.Criar(command.Nome, timeProvider.GetUtcNow().UtcDateTime);
 
         await repository.AdicionarAsync(grupo, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);

@@ -8,6 +8,7 @@ using forzion.tech.Infrastructure.Persistence.Repositories;
 namespace forzion.tech.Tests.Infrastructure.Repositories;
 
 [Collection(InfrastructureTestCollection.Name)]
+[Trait("Category", "Integration")]
 public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
 {
     private static AssinaturaAlunoRepository Repo(AppDbContext ctx) => new(ctx);
@@ -17,8 +18,8 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
     private static async Task<SeedCtx> SeedContextAsync(AppDbContext ctx, Guid? existingAlunoId = null)
     {
         var emailT = Email.Criar($"t{Guid.NewGuid():N}@test.com");
-        var contaT = Conta.Criar(emailT, "hash", TipoConta.Treinador);
-        var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}");
+        var contaT = Conta.Criar(emailT, "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow);
         await ctx.Contas.AddAsync(contaT);
         await ctx.Treinadores.AddAsync(treinador);
 
@@ -26,8 +27,8 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         if (existingAlunoId is null)
         {
             var emailA = Email.Criar($"a{Guid.NewGuid():N}@test.com");
-            var contaA = Conta.Criar(emailA, "hash", TipoConta.Aluno);
-            var aluno = Aluno.Criar(contaA.Id, $"Al{Guid.NewGuid():N}");
+            var contaA = Conta.Criar(emailA, "hash", TipoConta.Aluno, DateTime.UtcNow);
+            var aluno = Aluno.Criar(contaA.Id, $"Al{Guid.NewGuid():N}", DateTime.UtcNow);
             await ctx.Contas.AddAsync(contaA);
             await ctx.Alunos.AddAsync(aluno);
             alunoId = aluno.Id;
@@ -37,10 +38,10 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
             alunoId = existingAlunoId.Value;
         }
 
-        var pacote = Pacote.Criar(treinador.Id, $"Pac{Guid.NewGuid():N}", 99.90m);
+        var pacote = Pacote.Criar(treinador.Id, $"Pac{Guid.NewGuid():N}", 99.90m, DateTime.UtcNow);
         await ctx.Pacotes.AddAsync(pacote);
 
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, alunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, alunoId, DateTime.UtcNow);
         vinculo.Aprovar(treinador.Id, pacote.Id);
         await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
 
@@ -54,7 +55,7 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         bool ativa = true,
         bool cancelada = false)
     {
-        var a = AssinaturaAluno.Criar(seed.VinculoId, seed.PacoteId, seed.TreinadorId, seed.AlunoId, 99.90m);
+        var a = AssinaturaAluno.Criar(seed.VinculoId, seed.PacoteId, seed.TreinadorId, seed.AlunoId, 99.90m, DateTime.UtcNow);
         if (ativa) a.Ativar();
         if (cancelada) a.Cancelar();
         await ctx.AssinaturaAlunos.AddAsync(a);
@@ -137,7 +138,7 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true);
 
         // Agendar cobrança para 1 mês no futuro
-        assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddMonths(1));
+        assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddMonths(1), DateTime.UtcNow);
         await ctx.SaveChangesAsync();
 
         var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow);

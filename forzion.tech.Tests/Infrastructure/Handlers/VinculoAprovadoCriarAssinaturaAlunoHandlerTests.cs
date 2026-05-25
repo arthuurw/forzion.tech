@@ -31,7 +31,7 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
 
     private static ContaRecebimento ContaOnboarded(Guid treinadorId)
     {
-        var conta = ContaRecebimento.Criar(treinadorId);
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
         conta.ConfigurarStripeConnect("acct_123");
         conta.ConfirmarOnboarding();
         return conta;
@@ -40,7 +40,7 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_VinculoSemPacote_NaoCriaAssinaturaAluno()
     {
-        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);
 
@@ -53,9 +53,9 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
     public async Task HandleAsync_TreinadorSemOnboarding_NaoCriaAssinaturaAluno()
     {
         var pacoteId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
         vinculo.Aprovar(Evento.TreinadorId, pacoteId);
-        var contaRecebimento = ContaRecebimento.Criar(Evento.TreinadorId);
+        var contaRecebimento = ContaRecebimento.Criar(Evento.TreinadorId, DateTime.UtcNow);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);
@@ -82,12 +82,12 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
     public async Task HandleAsync_HappyPath_CriaAssinaturaAlunoECommita()
     {
         var pacoteId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId);
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
         vinculo.Aprovar(Evento.TreinadorId, pacoteId);
 
         var contaRecebimento = ContaOnboarded(Evento.TreinadorId);
 
-        var pacote = Pacote.Criar(Evento.TreinadorId, "Plano mensal", 150m);
+        var pacote = Pacote.Criar(Evento.TreinadorId, "Plano mensal", 150m, DateTime.UtcNow);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);

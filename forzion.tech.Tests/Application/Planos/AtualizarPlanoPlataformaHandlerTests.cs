@@ -27,7 +27,7 @@ public class AtualizarPlanoPlataformaHandlerTests
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetornaResponse()
     {
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow);
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
         var result = await _handler.HandleAsync(new AtualizarPlanoPlataformaCommand(plano.Id, "Pro", null, 20, 199.90m));
@@ -41,7 +41,7 @@ public class AtualizarPlanoPlataformaHandlerTests
     [Fact]
     public async Task HandleAsync_ApenasNome_AtualizaSoNome()
     {
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow);
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
         var result = await _handler.HandleAsync(new AtualizarPlanoPlataformaCommand(plano.Id, "Pro", null, null, null));

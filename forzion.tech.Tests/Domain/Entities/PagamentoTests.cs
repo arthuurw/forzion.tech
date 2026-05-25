@@ -10,7 +10,7 @@ public class PagamentoTests
     private static readonly Guid AssinaturaAlunoId = Guid.NewGuid();
     private const decimal Valor = 150m;
 
-    private static Pagamento CriarValido() => Pagamento.Criar(AssinaturaAlunoId, Valor);
+    private static Pagamento CriarValido() => Pagamento.Criar(AssinaturaAlunoId, Valor, DateTime.UtcNow);
 
     // --- Criar ---
 
@@ -31,7 +31,7 @@ public class PagamentoTests
     [Fact]
     public void Criar_AssinaturaAlunoIdVazio_LancaDomainException()
     {
-        var act = () => Pagamento.Criar(Guid.Empty, Valor);
+        var act = () => Pagamento.Criar(Guid.Empty, Valor, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O identificador da assinatura é inválido.");
     }
 
@@ -40,7 +40,7 @@ public class PagamentoTests
     [InlineData(-1)]
     public void Criar_ValorInvalido_LancaDomainException(decimal valor)
     {
-        var act = () => Pagamento.Criar(AssinaturaAlunoId, valor);
+        var act = () => Pagamento.Criar(AssinaturaAlunoId, valor, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O valor do pagamento deve ser maior que zero.");
     }
 

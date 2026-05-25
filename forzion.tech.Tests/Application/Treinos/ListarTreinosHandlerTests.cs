@@ -38,13 +38,13 @@ public class ListarTreinosHandlerTests
         var alunoId = Guid.NewGuid();
         var treinos = new List<Treino>
         {
-            Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId),
-            Treino.Criar("Treino B", ObjetivoTreino.Forca, treinadorId)
+            Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow),
+            Treino.Criar("Treino B", ObjetivoTreino.Forca, treinadorId, DateTime.UtcNow)
         };
 
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId));
+            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow));
         _treinoRepo.Setup(r => r.ListarPorAlunoAsync(alunoId, 1, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(((IReadOnlyList<Treino>)treinos, 2));
 
@@ -123,7 +123,7 @@ public class ListarTreinosHandlerTests
 
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId));
+            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow));
         _treinoRepo.Setup(r => r.ListarPorAlunoAsync(alunoId, 1, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(((IReadOnlyList<Treino>)[], 0));
 

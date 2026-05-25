@@ -1,14 +1,19 @@
 {
   "stryker-config": {
+    "solution": "forzion.tech.slnx",
     "project": "forzion.tech.Domain/forzion.tech.Domain.csproj",
     "test-projects": [
       "forzion.tech.Tests/forzion.tech.Tests.csproj"
     ],
     "mutation-level": "Standard",
+    "mutate": [
+      "!**/Migrations/*.cs",
+      "!**/obj/**/*.cs"
+    ],
     "thresholds": {
       "high": 80,
       "low": 60,
-      "break": 0
+      "break": 40
     },
     "reporters": [
       "progress",

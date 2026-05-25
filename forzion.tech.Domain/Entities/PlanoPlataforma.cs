@@ -18,7 +18,7 @@ public class PlanoPlataforma : ICapacidadePlano
 
     private PlanoPlataforma() { }
 
-    public static PlanoPlataforma Criar(string nome, TierPlano tier, int maxAlunos, decimal preco, string? descricao = null)
+    public static PlanoPlataforma Criar(string nome, TierPlano tier, int maxAlunos, decimal preco, DateTime agora, string? descricao = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
@@ -38,7 +38,7 @@ public class PlanoPlataforma : ICapacidadePlano
             MaxAlunos = maxAlunos,
             Preco = preco,
             IsAtivo = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

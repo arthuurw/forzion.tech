@@ -1,0 +1,92 @@
+﻿[
+  {
+    Exception: CredenciaisInvalidasException,
+    StatusCode: 401,
+    Title: Não autorizado,
+    Detail: E-mail ou senha inválidos.
+  },
+  {
+    Exception: AlunoNaoEncontradoException,
+    StatusCode: 404,
+    Title: Não encontrado,
+    Detail: Aluno não encontrado.
+  },
+  {
+    Exception: TreinadorNaoEncontradoException,
+    StatusCode: 404,
+    Title: Não encontrado,
+    Detail: Treinador não encontrado.
+  },
+  {
+    Exception: TreinoNaoEncontradoException,
+    StatusCode: 404,
+    Title: Não encontrado,
+    Detail: Treino não encontrado.
+  },
+  {
+    Exception: VinculoNaoEncontradoException,
+    StatusCode: 404,
+    Title: Não encontrado,
+    Detail: Vínculo não encontrado.
+  },
+  {
+    Exception: ExercicioNaoEncontradoException,
+    StatusCode: 404,
+    Title: Não encontrado,
+    Detail: Exercício não encontrado.
+  },
+  {
+    Exception: PacoteNaoEncontradoException,
+    StatusCode: 404,
+    Title: Não encontrado,
+    Detail: Pacote não encontrado.
+  },
+  {
+    Exception: GrupoMuscularNaoEncontradoException,
+    StatusCode: 404,
+    Title: Não encontrado,
+    Detail: Grupo muscular não encontrado.
+  },
+  {
+    Exception: PlanoPlataformaNaoEncontradoException,
+    StatusCode: 404,
+    Title: Não encontrado,
+    Detail: Plano não encontrado.
+  },
+  {
+    Exception: AlunoInativoException,
+    StatusCode: 403,
+    Title: Inativo,
+    Detail: Aluno inativo.
+  },
+  {
+    Exception: AcessoNegadoException,
+    StatusCode: 403,
+    Title: Acesso negado,
+    Detail: Acesso negado.
+  },
+  {
+    Exception: EmailJaCadastradoException,
+    StatusCode: 409,
+    Title: Conflito,
+    Detail: Este e-mail já está cadastrado.
+  },
+  {
+    Exception: AlunoJaVinculadoException,
+    StatusCode: 409,
+    Title: Conflito,
+    Detail: O aluno já possui um vínculo ativo com outro treinador.
+  },
+  {
+    Exception: DomainException,
+    StatusCode: 422,
+    Title: Erro de domínio,
+    Detail: Regra de dominio violada.
+  },
+  {
+    Exception: InvalidOperationException,
+    StatusCode: 500,
+    Title: Erro interno,
+    Detail: Ocorreu um erro inesperado. Tente novamente mais tarde.
+  }
+]

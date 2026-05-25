@@ -14,7 +14,7 @@ public class TreinoAluno
 
     private TreinoAluno() { }
 
-    public static TreinoAluno Criar(Guid treinoId, Guid alunoId)
+    public static TreinoAluno Criar(Guid treinoId, Guid alunoId, DateTime agora)
     {
         if (treinoId == Guid.Empty)
             throw new DomainException("O treino é inválido.");
@@ -27,7 +27,7 @@ public class TreinoAluno
             TreinoId = treinoId,
             AlunoId = alunoId,
             Status = TreinoAlunoStatus.Ativo,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 
