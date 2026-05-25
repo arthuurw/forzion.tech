@@ -1,7 +1,7 @@
 # Backend Test Harness — Quebra de Tasks
 
 **Spec**: `docs/backend-harness-plan.md` (roadmap 13 fases, full parity)
-**Status**: ✅ F0 (#39) · F1 (#42) · F3–F6 (#44) · F8–F9–F12 (#43) · F10 (#40) · F11 (#41) — mergeadas em `backend`. **Pendentes: F2 (split unit/integration) + F7 (E2E real, depende de F2).**
+**Status**: ✅ F0 (#39) · F1 (#42) · F2 (split unit/integration) · F3–F6 (#44) · F8–F9–F12 (#43) · F10 (#40) · F11 (#41) — mergeadas em `backend`. **Pendente: F7 (E2E real, depende de F2).**
 
 Quebra atômica e executável da spec aprovada. Cada task tem entregável único,
 dependências explícitas, critério de pronto verificável e **guard rails**.
@@ -20,8 +20,8 @@ dependências explícitas, critério de pronto verificável e **guard rails**.
 | Gate | Comando | Critério |
 |------|---------|----------|
 | **build** | `dotnet build forzion.tech.slnx -c Release` + `dotnet format forzion.tech.slnx --verify-no-changes` | 0 warning / 0 error / format limpo |
-| **quick** | build + `dotnet test forzion.tech.Tests --filter "FullyQualifiedName!~Infrastructure.Repositories&FullyQualifiedName!~Tests.Integration&FullyQualifiedName!~Infrastructure.Notifications"` | ≥ 912 testes verdes |
-| **full** | quick + `dotnet test forzion.tech.Tests --filter "FullyQualifiedName~Infrastructure.Repositories\|FullyQualifiedName~Tests.Integration\|FullyQualifiedName~Infrastructure.Notifications"` (exige Docker) | 1003 testes verdes |
+| **quick** | build + `dotnet test forzion.tech.Tests --filter "Category!=Integration"` (sem Docker) | 999 testes verdes |
+| **full** | build + `dotnet test forzion.tech.Tests` (suíte inteira, exige Docker) | 1061 testes verdes (999 unit + 62 integração) |
 
 ## Guard rails globais (valem para TODA task)
 
@@ -40,12 +40,12 @@ dependências explícitas, critério de pronto verificável e **guard rails**.
 ```
 F0 ✅
   └→ F1 ✅ (determinismo, fundacional)
-        ├→ F2 ⬜ (split unit/integration)  ← PENDENTE
+        ├→ F2 ✅ (split unit/integration)
         ├→ F3 ✅ (arch tests)
         ├→ F4 ✅ (test builders)
         ├→ F5 ✅ (property-based)
         └→ F8 ✅ (mutation CI)
-  F2 └→ F7 ⬜ (E2E real)               ← PENDENTE (depende de F2)
+  F2 └→ F7 ⬜ (E2E real)               ← PENDENTE (depende de F2 ✅)
   F0 └→ F6 ✅ (snapshot/Verify)
   F0 └→ F9 ✅ (cobertura)
   F0 └→ F10 ✅ (supply-chain NuGet)
@@ -53,7 +53,7 @@ F0 ✅
   F0 └→ F12 ✅ (openapi drift)
 ```
 
-> **Restam só F2 e F7.** Todas as outras fases estão mergeadas em `backend`.
+> **Resta só F7.** Todas as outras fases estão mergeadas em `backend`.
 
 Fases independentes de F1 (F6, F9, F10, F11, F12) podem ser feitas em qualquer ordem após F0.
 F5 e F8 **exigem** F1. F7 exige F2.
@@ -153,30 +153,31 @@ F1.1 → F1.2 → F1.3 → F1.4 → F1.6
 
 ---
 
-## Fase 2 — Split unit vs integration ⬜ PENDENTE
+## Fase 2 — Split unit vs integration ✅
 
 **Branch**: `chore/backend-harness-fase2-split-tests`
 
-### F2.1 — Marcar testes de integração com Trait
-**What**: Anotar testes que usam `InfrastructureTestFixture`/Testcontainers e o E2E com `[Trait("Category","Integration")]`.
-**Where**: `forzion.tech.Tests/Infrastructure/Repositories/*`, `/Integration/*`, `/Infrastructure/Notifications/*`.
+### F2.1 — Marcar testes de integração com Trait ✅
+**What**: Anotar testes que usam `InfrastructureTestFixture`/Testcontainers com `[Trait("Category","Integration")]`.
+**Where**: `forzion.tech.Tests/Infrastructure/Repositories/*` (os 5 que usam `[Collection(InfrastructureTestCollection.Name)]`).
 **Depends on**: F0
 **Done when**:
-- [ ] Todos os testes Docker marcados.
-- [ ] `dotnet test --filter "Category!=Integration"` roda só os rápidos (sem Docker).
-- [ ] Gate **quick** verde via novo filtro.
-**Guard rails**: filtro por Trait substitui o filtro por nome ad-hoc; manter os dois funcionando até o CI migrar.
+- [x] Todos os testes Docker marcados (só os 5 RepositoryTests usam Testcontainers; Notifications/Integration são mock-based e ficam no conjunto rápido).
+- [x] `dotnet test --filter "Category!=Integration"` roda só os rápidos (999 verdes, ~3s, sem Docker).
+- [x] `dotnet test --filter "Category=Integration"` seleciona exatamente os 5 RepositoryTests (62 testes).
+**Guard rails**: filtro por Trait; o filtro por nome antigo continua funcionando (nomes inalterados). Split disjunto e completo: 999 unit + 62 integração.
 **Tests**: none (anotação) · **Gate**: quick
 
-### F2.2 — Jobs CI separados (unit rápido + integration)
-**What**: Quebrar o job `test-backend` em `unit` (sem Docker, todo PR) e `integration` (com serviço Postgres/Docker).
+### F2.2 — Jobs CI separados (unit rápido + integration) ✅
+**What**: Quebrar o job `test-backend` em `test-backend-unit` (sem Docker, todo PR) e `test-backend-integration` (Testcontainers).
 **Where**: `.github/workflows/ci.yml`.
 **Depends on**: F2.1
 **Done when**:
-- [ ] Job unit usa `--filter "Category!=Integration"`; gate < ~15s.
-- [ ] Job integration roda `Category=Integration` com Docker; cobertura mantida.
-- [ ] Ambos verdes no CI do PR.
-**Guard rails**: manter os 3 gates de cobertura (50/75/75) distribuídos corretamente entre os jobs; não perder cobertura de Infra.
+- [x] Job unit usa `--filter "Category!=Integration"`; gates Domain/App (branch 75 + line/method 85) e Api (line 85 + method 70) — todos sustentados só por unit (verificado local).
+- [x] Job integration roda a suíte COMPLETA com Docker; gates global (50 branch) + Infra (35 branch) + summary/report HTML.
+- [x] `gate.needs` atualizado pros dois jobs; required check (`gate`) inalterado.
+**Decisão de design**: o job de integração roda a suíte inteira (não só `Category=Integration`) porque os gates global/Infra só fecham com a cobertura da UNIÃO unit+integração — medir só os 62 derrubaria ambos. Os 3 gates de cobertura (50/75/75) ficam distribuídos: 75/75 no unit, 50 no integration; Infra 35 no integration.
+**Guard rails**: 3 gates de cobertura intactos e distribuídos corretamente; cobertura de Infra preservada.
 **Tests**: none (CI) · **Gate**: full
 
 ---

@@ -8,6 +8,7 @@ using forzion.tech.Infrastructure.Persistence.Repositories;
 namespace forzion.tech.Tests.Infrastructure.Repositories;
 
 [Collection(InfrastructureTestCollection.Name)]
+[Trait("Category", "Integration")]
 public class AlunoRepositoryTests(InfrastructureTestFixture fixture)
 {
     private static AlunoRepository Repo(AppDbContext ctx) => new(ctx);
