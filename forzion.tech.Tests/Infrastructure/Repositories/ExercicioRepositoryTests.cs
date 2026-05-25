@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace forzion.tech.Tests.Infrastructure.Repositories;
 
 [Collection(InfrastructureTestCollection.Name)]
+[Trait("Category", "Integration")]
 public class ExercicioRepositoryTests(InfrastructureTestFixture fixture)
 {
     private static ExercicioRepository Repo(AppDbContext ctx) => new(ctx);

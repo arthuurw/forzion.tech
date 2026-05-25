@@ -36,9 +36,13 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: npx commitlint --from "origin/$BASE_REF" --to HEAD --verbose
 
-  # ─── TESTES ──────────────────────────────────────────────────────────────────
-  test-backend:
-    name: Backend — testes
+  # ─── TESTES BACKEND — unit (rápido, sem Docker, todo PR) ─────────────────────
+  # F2: roda só os testes sem dependência de Docker (--filter Category!=Integration).
+  # Os gates aqui (Domain/Application branch 75 + line/method 85; Api line 85 +
+  # method 70) são 100% sustentados por testes unit — medido localmente, não caem
+  # ao excluir os de integração. Os 5 RepositoryTests (Testcontainers) ficam fora.
+  test-backend-unit:
+    name: Backend — testes unit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,21 +60,11 @@ jobs:
       - name: Format — verifica estilo (.editorconfig)
         run: dotnet format forzion.tech.slnx --verify-no-changes --no-restore
 
-      - name: Test (global — 50% branch)
-        run: >
-          dotnet test forzion.tech.Tests --no-build -c Release
-          --logger "console;verbosity=minimal"
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:CoverletOutput=./coverage/
-          /p:Threshold=50
-          /p:ThresholdType=branch
-          /p:ThresholdStat=Total
-          "/p:Exclude=[forzion.tech.Tests]*%2C[*]*.Migrations.*%2C[*]Program"
-
       - name: Coverage — Domain (75% branch)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
+          --logger "console;verbosity=minimal"
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:Include=[forzion.tech.Domain]*
@@ -81,6 +75,7 @@ jobs:
       - name: Coverage — Application (75% branch)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:Include=[forzion.tech.Application]*
@@ -88,17 +83,17 @@ jobs:
           /p:ThresholdType=branch
           /p:ThresholdStat=Total
 
-      # ─── F9: endurecimento de cobertura — thresholds de line/method + Infra/Api ──
-      # Os gates de branch acima (50/75/75) ficam INTACTOS. Abaixo só ADICIONAMOS
-      # eixos novos (line/method) e dois gates dedicados (Api/Infra). Valores
-      # iniciais ficam abaixo do baseline medido (sem nunca abaixar nada):
+      # ─── F9: endurecimento de cobertura — thresholds de line/method + Api ────────
+      # Os gates de branch acima (75/75) ficam INTACTOS. Abaixo só ADICIONAMOS
+      # eixos novos (line/method) e gates dedicados de Api. Valores iniciais ficam
+      # abaixo do baseline medido (sem nunca abaixar nada):
       #   Domain  line 95.6% branch 94.2% method 92.7%
       #   Applic. line 93.0% branch 96.4% method 93.1%
       #   Api     line 96.8% branch 91.0% method 77.6%
-      #   Infra   line 50.2% branch 51.9% method 34.5% (excluindo Migrations EF)
       - name: Coverage — Domain (line/method 85%)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:Include=[forzion.tech.Domain]*
@@ -109,6 +104,7 @@ jobs:
       - name: Coverage — Application (line/method 85%)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:Include=[forzion.tech.Application]*
@@ -118,10 +114,11 @@ jobs:
 
       # Api: gateamos line (base 96.8%) e method (base 77.6%). Branch fica fora do
       # gate dedicado porque depende dos testes de integração (Docker) — o branch
-      # do Api já é coberto pelo gate global de branch acima.
+      # do Api já é coberto pelo gate global de branch no job de integração.
       - name: Coverage — Api (line 85)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:Include=[forzion.tech.Api]*
@@ -133,6 +130,7 @@ jobs:
       - name: Coverage — Api (method 70)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
+          --filter "Category!=Integration"
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:Include=[forzion.tech.Api]*
@@ -140,6 +138,41 @@ jobs:
           /p:Threshold=70
           /p:ThresholdType=method
           /p:ThresholdStat=Total
+
+  # ─── TESTES BACKEND — integração (Docker / Testcontainers) ───────────────────
+  # F2: roda a suíte COMPLETA (sem filtro). Os RepositoryTests sobem um Postgres
+  # via Testcontainers — ubuntu-latest já traz Docker, sem precisar de `services:`.
+  # A suíte inteira roda aqui porque os gates global (50 branch) e Infra (35 branch)
+  # só fecham com a cobertura da UNIÃO unit + integração; medir só Category=Integration
+  # derrubaria ambos. O gate Infra 35 também guarda contra os testes de integração
+  # pararem de rodar em silêncio (cairia abaixo de 35 e falharia — sinal desejado).
+  test-backend-integration:
+    name: Backend — testes integração
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test (global — 50% branch)
+        run: >
+          dotnet test forzion.tech.Tests --no-build -c Release
+          --logger "console;verbosity=minimal"
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:CoverletOutput=./coverage/
+          /p:Threshold=50
+          /p:ThresholdType=branch
+          /p:ThresholdStat=Total
+          "/p:Exclude=[forzion.tech.Tests]*%2C[*]*.Migrations.*%2C[*]Program"
 
       # Infra é coberta pelos testes de integração (Testcontainers / Docker).
       # Excluindo Migrations/Snapshot do EF Core (que diluem a métrica), o baseline
@@ -364,7 +397,7 @@ jobs:
   # ─── GATE (required check) ─────────────────────────────────────────────────────
   gate:
     name: Gate
-    needs: [test-backend, test-frontend, build-frontend, security, security-backend]
+    needs: [test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend]
     runs-on: ubuntu-latest
     steps:
       - run: echo "Todos os checks obrigatórios passaram."
