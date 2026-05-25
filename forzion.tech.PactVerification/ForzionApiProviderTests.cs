@@ -47,9 +47,10 @@ public class ForzionApiProviderTests : IClassFixture<ForzionApiProviderFactory>
         var providerVersion = Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "local-dev";
         var publish = string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase);
 
-        // WebApplicationFactory e lazy: forca o boot do host (CreateHost sobe o
-        // Kestrel e popula ServerUri) antes de ler a URL.
-        _ = _factory.CreateClient();
+        // WebApplicationFactory e lazy: acessar Services forca CreateHost (sobe o
+        // Kestrel e popula ServerUri). NAO usamos CreateClient — ele passa pelo
+        // TestServer in-memory, que nao existe nesta factory (so Kestrel real).
+        _ = _factory.Services;
 
         var config = new PactVerifierConfig();
         using var verifier = new PactVerifier(config);
@@ -116,22 +117,32 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
         });
     }
 
-    // Truque dos 2 hosts: base.CreateHost sobe o TestServer (exigido pelo WAF);
-    // depois reusamos o mesmo builder (com os overrides acima) pra subir um
-    // Kestrel real numa porta livre, que o verifier do Pact consome via HTTP.
+    // Padrao "2 hosts" (Andrew Lock): o WAF EXIGE um TestServer (faz cast de IServer
+    // -> TestServer no EnsureServer), mas o verifier do Pact faz HTTP real e precisa
+    // de um Kestrel numa porta livre. Entao subimos os dois: retornamos o testHost
+    // (TestServer) pro WAF e mantemos um Kestrel separado, cujo endereco o Pact usa.
+    //
+    // IMPORTANTE: a flakiness anterior ("The server has not been started") NAO vinha
+    // daqui, e sim de chamar _factory.CreateClient() no teste — isso materializa o
+    // pipeline do TestServer e corre com o setup. O teste agora forca o boot via
+    // _factory.Services (so resolve o IServer, sem materializar o handler).
     protected override IHost CreateHost(IHostBuilder builder)
     {
-        // Host do TestServer (o WAF ja configurou UseTestServer no builder).
+        // TestServer host (o WAF ja configurou UseTestServer no builder) — exigido
+        // pelo WAF. Construido ANTES de reconfigurar pra Kestrel.
         var testHost = builder.Build();
 
-        // Reconfigura o mesmo builder pra Kestrel real e sobe um 2o host.
-        builder.ConfigureWebHost(b => b.UseKestrel());
+        // Mesmo builder reconfigurado pra Kestrel real numa porta livre; 2o host.
+        builder.ConfigureWebHost(webBuilder => webBuilder
+            .UseKestrel()
+            .UseUrls("http://127.0.0.1:0"));
         _kestrelHost = builder.Build();
         _kestrelHost.Start();
 
         var addresses = _kestrelHost.Services.GetRequiredService<IServer>()
-            .Features.Get<IServerAddressesFeature>();
-        ServerUri = addresses!.Addresses.Last();
+            .Features.Get<IServerAddressesFeature>()
+            ?? throw new InvalidOperationException("IServerAddressesFeature indisponivel apos start do Kestrel.");
+        ServerUri = addresses.Addresses.Last();
 
         testHost.Start();
         return testHost;

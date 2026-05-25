@@ -61,7 +61,7 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 | Performance | Lighthouse CI + bundle-analyzer + linkinator | — |
 | Dead code | knip + madge | 5 / 8 |
 
-> Detalhes completos do harness: [`../docs/frontend-harness-plan.md`](../docs/frontend-harness-plan.md) (plano + status por fase) e [`../docs/frontend-harness-rationale.md`](../docs/frontend-harness-rationale.md) (decisões e trade-offs por fase).
+> Os planos de harness (`docs/frontend-harness-plan.md`, `docs/frontend-harness-rationale.md`) ficam fora do controle de versão — `docs/` é gitignored (ver `.gitignore` na raiz). Consulte-os localmente se presentes.
 
 ---
 
@@ -298,7 +298,7 @@ frontend/
 │   └── types/
 │       └── index.ts                    # Types e interfaces compartilhados
 │                                       # TierPlano: "Free" | "Basic" | "Pro" | "ProPlus" | "Elite"
-│                                       # PlanoTreinadorResponse: inclui tier e descricao (nullable)
+│                                       # PlanoPlataformaResponse: inclui tier e descricao (nullable)
 │
 ├── vitest.config.mts                   # Config Vitest
 ├── next.config.ts                      # Headers de segurança, output standalone
@@ -534,7 +534,7 @@ const {
   openDelete,   // (item: T) => void
   closeDelete,
   deleting, setDeleting,
-} = useCRUDDialog<PlanoTreinadorResponse>();
+} = useCRUDDialog<PlanoPlataformaResponse>();
 ```
 
 ### `useInactivity`
@@ -675,8 +675,8 @@ const handleStatus = (v: string) => { setFiltroStatus(v); setPage(0); };
 ### CRUD completo (criar + editar + excluir)
 
 ```tsx
-const dialog = useCRUDDialog<PlanoTreinadorResponse>();
-const { reload } = usePaginatedList<PlanoTreinadorResponse>({ fetcher });
+const dialog = useCRUDDialog<PlanoPlataformaResponse>();
+const { reload } = usePaginatedList<PlanoPlataformaResponse>({ fetcher });
 
 // Criar
 const handleCriar = async (data: CriarPlanoForm) => {
@@ -876,7 +876,7 @@ Build configurado como `output: "standalone"` para deploy em container.
 
 ## Testes
 
-Harness completo em camadas. Detalhe por fase: [`../docs/frontend-harness-plan.md`](../docs/frontend-harness-plan.md) (plano + status) e [`../docs/frontend-harness-rationale.md`](../docs/frontend-harness-rationale.md) (decisões/trade-offs).
+Harness completo em camadas. Os documentos de plano/rationale por fase ficam em `docs/` (gitignored — ver `.gitignore` na raiz); consulte-os localmente se presentes.
 
 ### Vitest — 3 projects
 
@@ -908,7 +908,7 @@ Harness completo em camadas. Detalhe por fase: [`../docs/frontend-harness-plan.m
 
 - **Storybook 10** (`.storybook/`) com `addon-a11y` + `msw-storybook-addon`; `storybook:test` roda interações via test-runner.
 - **Stryker** (`test:mutation`): mutation score em `src/lib` + `src/hooks` (thresholds 85/75, break 75). Semanal no CI.
-- **Pact** (`test:contract`): contratos consumer-driven publicados num broker self-hosted; `can-i-deploy` antes do deploy. Setup: [`../docs/pact-broker-homolog.md`](../docs/pact-broker-homolog.md).
+- **Pact** (`test:contract`): contratos consumer-driven publicados num broker self-hosted; `can-i-deploy` antes do deploy. A verificação do provider (backend) roda no workflow `pact-provider.yml`.
 
 ### Observabilidade
 
