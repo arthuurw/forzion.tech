@@ -22,7 +22,7 @@ public class AppDbContextDomainEventReentrancyTests(InfrastructureTestFixture fi
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
             .Options;
-        return new AppDbContext(options, schema: "public", dispatcher);
+        return new AppDbContext(options, schema: "homolog", dispatcher);
     }
 
     [Fact]
