@@ -10,6 +10,7 @@ public class CriarAssinaturaAlunoHandler(
     IAssinaturaAlunoRepository assinaturaRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<CriarAssinaturaAlunoHandler> logger)
 {
     public virtual async Task<AssinaturaAlunoResponse> HandleAsync(
@@ -28,7 +29,8 @@ public class CriarAssinaturaAlunoHandler(
             command.PacoteId,
             command.TreinadorId,
             command.AlunoId,
-            command.Valor);
+            command.Valor,
+            timeProvider.GetUtcNow().UtcDateTime);
 
         await assinaturaRepository.AdicionarAsync(assinatura, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

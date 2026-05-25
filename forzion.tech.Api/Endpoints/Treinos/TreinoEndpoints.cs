@@ -254,7 +254,7 @@ public static class TreinoEndpoints
                 request.DataExecucao,
                 request.Observacao,
                 request.Exercicios.Select(e => new RegistrarExecucaoItemCommand(e.TreinoExercicioId, e.SeriesExecutadas, e.RepeticoesExecutadas, e.CargaExecutada, e.Observacao)).ToList());
-            
+
             var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             return Results.Created($"/treinos/{id}/execucoes/{response.ExecucaoId}", response);
         })

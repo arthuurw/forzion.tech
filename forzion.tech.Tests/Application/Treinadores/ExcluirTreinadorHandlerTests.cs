@@ -21,7 +21,7 @@ public class ExcluirTreinadorHandlerTests
 
     private static Treinador CriarTreinadorInativo(Guid adminId)
     {
-        var t = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var t = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         t.Inativar(adminId);
         return t;
     }
@@ -42,7 +42,7 @@ public class ExcluirTreinadorHandlerTests
     public async Task HandleAsync_TreinadorAtivo_LancaDomainException()
     {
         var adminId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         treinador.Aprovar(adminId);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
@@ -54,7 +54,7 @@ public class ExcluirTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorAguardando_LancaDomainException()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var act = async () => await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, Guid.NewGuid()));

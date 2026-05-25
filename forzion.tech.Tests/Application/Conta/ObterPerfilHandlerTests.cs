@@ -31,14 +31,14 @@ public class ObterPerfilHandlerTests
     }
 
     private static DomainConta CriarConta(TipoConta tipo) =>
-        DomainConta.Criar(Email.Criar("user@test.com"), "hash", tipo);
+        DomainConta.Criar(Email.Criar("user@test.com"), "hash", tipo, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_Aluno_RetornaPerfilComNome()
     {
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.Aluno);
-        var aluno = Aluno.Criar(contaId, "João");
+        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow);
 
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
@@ -56,7 +56,7 @@ public class ObterPerfilHandlerTests
     {
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.Treinador);
-        var treinador = Treinador.Criar(contaId, "Carlos");
+        var treinador = Treinador.Criar(contaId, "Carlos", DateTime.UtcNow);
 
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Treinador);
@@ -74,7 +74,7 @@ public class ObterPerfilHandlerTests
     {
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.SystemAdmin);
-        var admin = SystemUser.Criar(conta.Id, "Admin");
+        var admin = SystemUser.Criar(conta.Id, "Admin", DateTime.UtcNow);
 
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.SystemAdmin);

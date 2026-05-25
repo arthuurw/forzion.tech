@@ -62,6 +62,50 @@
       "description": "Aguarda 7 dias antes de subir majors (estabilidade)",
       "matchUpdateTypes": ["major"],
       "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "NuGet — agrupa EF Core + Npgsql (camada de dados)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^Microsoft\\.EntityFrameworkCore", "^Npgsql", "^EFCore\\."],
+      "groupName": "nuget efcore"
+    },
+    {
+      "description": "NuGet — agrupa runtime Microsoft.Extensions / ASP.NET Core",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^Microsoft\\.Extensions\\.", "^Microsoft\\.AspNetCore\\."],
+      "groupName": "nuget microsoft"
+    },
+    {
+      "description": "NuGet — agrupa stack de testes (xunit, coverlet, moq, fluentassertions, testcontainers)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": [
+        "^xunit",
+        "^coverlet\\.",
+        "^Moq$",
+        "^FluentAssertions$",
+        "^Testcontainers",
+        "^Microsoft\\.NET\\.Test\\.Sdk$"
+      ],
+      "groupName": "nuget testing"
+    },
+    {
+      "description": "NuGet — agrupa Stripe (billing)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^Stripe\\."],
+      "groupName": "nuget stripe"
+    },
+    {
+      "description": "NuGet — agrupa Pact (contract testing)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^PactNet"],
+      "groupName": "nuget pact"
+    },
+    {
+      "description": "NuGet — analyzers: nao automergear, revisao manual (podem quebrar build)",
+      "matchManagers": ["nuget"],
+      "matchPackagePatterns": ["^SonarAnalyzer\\."],
+      "groupName": "nuget analyzers",
+      "automerge": false
     }
   ],
   "lockFileMaintenance": {

@@ -39,10 +39,10 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
 
         q = ordenarPor switch
         {
-            "objetivo"   => q.OrderBy(x => x.Objetivo).ThenBy(x => x.Nome),
-            "createdAt"  => q.OrderByDescending(x => x.CreatedAt),
-            "nomeAluno"  => q.OrderBy(x => x.NomeAluno).ThenBy(x => x.Nome),
-            _            => q.OrderBy(x => x.Nome),
+            "objetivo" => q.OrderBy(x => x.Objetivo).ThenBy(x => x.Nome),
+            "createdAt" => q.OrderByDescending(x => x.CreatedAt),
+            "nomeAluno" => q.OrderBy(x => x.NomeAluno).ThenBy(x => x.Nome),
+            _ => q.OrderBy(x => x.Nome),
         };
 
         var paginated = await q

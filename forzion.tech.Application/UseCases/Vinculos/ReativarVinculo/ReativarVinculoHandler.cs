@@ -13,6 +13,7 @@ public class ReativarVinculoHandler(
     ILimiteTreinadorService limiteTreinadorService,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<ReativarVinculoHandler> logger)
 {
     public virtual Task<VinculoResponse> HandleAsync(
@@ -39,7 +40,8 @@ public class ReativarVinculoHandler(
 
         await limiteTreinadorService.ValidarAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
-        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, command.AlunoId);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, command.AlunoId, agora);
         vinculo.Aprovar(command.TreinadorId, command.PacoteId);
 
         await vinculoRepository.AdicionarAsync(vinculo, cancellationToken).ConfigureAwait(false);
@@ -48,7 +50,8 @@ public class ReativarVinculoHandler(
             TipoAcaoAprovacao.AprovacaoVinculo,
             command.TreinadorId,
             vinculo.Id,
-            nameof(VinculoTreinadorAluno));
+            nameof(VinculoTreinadorAluno),
+            agora);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

@@ -1091,13 +1091,13 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<AprovarTreinadorHandler> AprovarTreinadorHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<AprovarTreinadorHandler>>());
 
         public Mock<ReprovarTreinadorHandler> ReprovarTreinadorHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<ReprovarTreinadorHandler>>());
 
         public Mock<InativarTreinadorHandler> InativarTreinadorHandlerMock { get; } = new(
@@ -1106,7 +1106,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<IPacoteRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<InativarTreinadorHandler>>());
 
         public Mock<ExcluirTreinadorHandler> ExcluirTreinadorHandlerMock { get; } = new(
@@ -1117,7 +1117,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IPlanoPlataformaRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<AtribuirPlanoHandler>>());
 
         public Mock<ListarPlanosPlataformaHandler> ListarPlanosHandlerMock { get; } = new(
@@ -1127,7 +1127,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<IPlanoPlataformaRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<CriarPlanoPlataformaCommand>>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<CriarPlanoPlataformaHandler>>());
 
         public Mock<ListarGruposMuscularesHandler> ListarGruposHandlerMock { get; } = new(
@@ -1136,7 +1136,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<CriarGrupoMuscularHandler> CriarGrupoHandlerMock { get; } = new(
             Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<CriarGrupoMuscularCommand>>());
+            Mock.Of<IValidator<CriarGrupoMuscularCommand>>(), TimeProvider.System);
 
         public Mock<ListarAlunosAdminHandler> ListarAlunosAdminHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>());
@@ -1221,7 +1221,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<CriarExercicioCommand>>(),
+            Mock.Of<IValidator<CriarExercicioCommand>>(), TimeProvider.System,
             Mock.Of<ILogger<CriarExercicioHandler>>());
 
         public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(

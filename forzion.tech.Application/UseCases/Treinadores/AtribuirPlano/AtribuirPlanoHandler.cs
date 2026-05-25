@@ -12,6 +12,7 @@ public class AtribuirPlanoHandler(
     IPlanoPlataformaRepository planoRepository,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<AtribuirPlanoHandler> logger)
 {
     public virtual Task<TreinadorResponse> HandleAsync(
@@ -39,6 +40,7 @@ public class AtribuirPlanoHandler(
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
+            timeProvider.GetUtcNow().UtcDateTime,
             $"Plano {command.PlanoId} atribuído.");
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);

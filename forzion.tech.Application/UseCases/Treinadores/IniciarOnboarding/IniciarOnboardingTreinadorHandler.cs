@@ -13,6 +13,7 @@ public class IniciarOnboardingTreinadorHandler(
     IContaRepository contaRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<IniciarOnboardingTreinadorHandler> logger)
 {
     public virtual async Task<Result<string>> HandleAsync(
@@ -27,7 +28,7 @@ public class IniciarOnboardingTreinadorHandler(
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
         if (contaRecebimento is null)
         {
-            contaRecebimento = ContaRecebimento.Criar(treinador.Id);
+            contaRecebimento = ContaRecebimento.Criar(treinador.Id, timeProvider.GetUtcNow().UtcDateTime);
             await contaRecebimentoRepository.AdicionarAsync(contaRecebimento, cancellationToken).ConfigureAwait(false);
         }
 

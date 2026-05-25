@@ -45,5 +45,5 @@ public class ListarTreinadoresPublicosHandlerTests
     }
 
     private static Treinador CriarTreinador(string nome) =>
-        Treinador.Criar(Guid.NewGuid(), nome);
+        Treinador.Criar(Guid.NewGuid(), nome, DateTime.UtcNow);
 }

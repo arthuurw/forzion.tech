@@ -17,7 +17,7 @@ public class Exercicio
     private Exercicio() { }
 
     /// <param name="treinadorId">Null indica exercício da biblioteca global (gerenciado por admins).</param>
-    public static Exercicio Criar(string nome, Guid grupoMuscularId, Guid? treinadorId = null, string? descricao = null)
+    public static Exercicio Criar(string nome, Guid grupoMuscularId, DateTime agora, Guid? treinadorId = null, string? descricao = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
             throw new DomainException("O nome é obrigatório.");
@@ -37,7 +37,7 @@ public class Exercicio
             Nome = nome.Trim(),
             GrupoMuscularId = grupoMuscularId,
             Descricao = descricao,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

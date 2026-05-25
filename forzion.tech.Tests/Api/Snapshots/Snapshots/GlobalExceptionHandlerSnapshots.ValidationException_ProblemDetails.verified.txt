@@ -1,0 +1,6 @@
+﻿{
+  StatusCode: 400,
+  Title: Erro de validação,
+  Detail: Um ou mais erros de validação ocorreram.,
+  Errors: {"nome":["O nome e obrigatorio."],"email":["O e-mail e invalido."]}
+}

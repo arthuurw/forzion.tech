@@ -12,7 +12,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Criar_DadosValidos_RetornaPlano()
     {
-        var plano = PlanoPlataforma.Criar("Plano Gold", TierPlano.Basic, 10, 99.90m);
+        var plano = PlanoPlataforma.Criar("Plano Gold", TierPlano.Basic, 10, 99.90m, DateTime.UtcNow);
 
         plano.Id.Should().NotBeEmpty();
         plano.Nome.Should().Be("Plano Gold");
@@ -27,7 +27,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Criar_NomeComEspacos_Remove()
     {
-        var plano = PlanoPlataforma.Criar("  Gold  ", TierPlano.Basic, 5, 50m);
+        var plano = PlanoPlataforma.Criar("  Gold  ", TierPlano.Basic, 5, 50m, DateTime.UtcNow);
         plano.Nome.Should().Be("Gold");
     }
 
@@ -36,42 +36,42 @@ public class PlanoPlataformaTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => PlanoPlataforma.Criar(nome, TierPlano.Basic, 10, 99m);
+        var act = () => PlanoPlataforma.Criar(nome, TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O nome é obrigatório.");
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => PlanoPlataforma.Criar(new string('a', 101), TierPlano.Basic, 10, 99m);
+        var act = () => PlanoPlataforma.Criar(new string('a', 101), TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
     }
 
     [Fact]
     public void Criar_MaxAlunosZero_LancaDomainException()
     {
-        var act = () => PlanoPlataforma.Criar("Gold", TierPlano.Basic, 0, 99m);
+        var act = () => PlanoPlataforma.Criar("Gold", TierPlano.Basic, 0, 99m, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O limite de alunos deve ser maior que zero.");
     }
 
     [Fact]
     public void Criar_MaxAlunosNegativo_LancaDomainException()
     {
-        var act = () => PlanoPlataforma.Criar("Gold", TierPlano.Basic, -1, 99m);
+        var act = () => PlanoPlataforma.Criar("Gold", TierPlano.Basic, -1, 99m, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O limite de alunos deve ser maior que zero.");
     }
 
     [Fact]
     public void Criar_PrecoNegativo_LancaDomainException()
     {
-        var act = () => PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, -0.01m);
+        var act = () => PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, -0.01m, DateTime.UtcNow);
         act.Should().Throw<DomainException>().WithMessage("O preço não pode ser negativo.");
     }
 
     [Fact]
     public void Criar_PrecoZero_Permitido()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Free, 10, 0m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Free, 10, 0m, DateTime.UtcNow);
         plano.Preco.Should().Be(0m);
     }
 
@@ -80,7 +80,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Atualizar_SoNome_AtualizaNomeESetaUpdatedAt()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         plano.Atualizar("Silver", null, null, null);
 
         plano.Nome.Should().Be("Silver");
@@ -94,7 +94,7 @@ public class PlanoPlataformaTests
     [InlineData("   ")]
     public void Atualizar_NomeVazio_LancaDomainException(string nome)
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         var act = () => plano.Atualizar(nome, null, null, null);
         act.Should().Throw<DomainException>().WithMessage("O nome não pode ser vazio.");
     }
@@ -102,7 +102,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Atualizar_NomeMuitoLongo_LancaDomainException()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         var act = () => plano.Atualizar(new string('a', 101), null, null, null);
         act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
     }
@@ -110,7 +110,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Atualizar_SoMaxAlunos_AtualizaMaxAlunos()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         plano.Atualizar(null, null, 20, null);
 
         plano.MaxAlunos.Should().Be(20);
@@ -120,7 +120,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Atualizar_MaxAlunosInvalido_LancaDomainException()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         var act = () => plano.Atualizar(null, null, 0, null);
         act.Should().Throw<DomainException>().WithMessage("O limite de alunos deve ser maior que zero.");
     }
@@ -128,7 +128,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Atualizar_SoPreco_AtualizaPreco()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         plano.Atualizar(null, null, null, 150m);
 
         plano.Preco.Should().Be(150m);
@@ -137,7 +137,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Atualizar_PrecoNegativo_LancaDomainException()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         var act = () => plano.Atualizar(null, null, null, -1m);
         act.Should().Throw<DomainException>().WithMessage("O preço não pode ser negativo.");
     }
@@ -145,7 +145,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Atualizar_TudoNull_SetaUpdatedAt()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         plano.Atualizar(null, null, null, null);
 
         plano.Nome.Should().Be("Gold");
@@ -159,7 +159,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Inativar_MudaIsAtivoParaFalse()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         plano.Inativar();
 
         plano.IsAtivo.Should().BeFalse();
@@ -169,7 +169,7 @@ public class PlanoPlataformaTests
     [Fact]
     public void Ativar_MudaIsAtivoParaTrue()
     {
-        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m);
+        var plano = PlanoPlataforma.Criar("Gold", TierPlano.Basic, 10, 99m, DateTime.UtcNow);
         plano.Inativar();
         plano.Ativar();
 

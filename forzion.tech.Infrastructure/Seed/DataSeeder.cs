@@ -15,6 +15,7 @@ public class DataSeeder(
     AppDbContext context,
     IPasswordHasher passwordHasher,
     IConfiguration configuration,
+    TimeProvider timeProvider,
     ILogger<DataSeeder> logger)
 {
     private static readonly string[] GruposMuscularesPadrao =
@@ -157,9 +158,10 @@ public class DataSeeder(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = PlanosPadrao
             .Where(p => !existentes.Contains(p.Tier))
-            .Select(p => PlanoPlataforma.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, p.Descricao))
+            .Select(p => PlanoPlataforma.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, agora, p.Descricao))
             .ToList();
 
         if (novos.Count == 0)
@@ -178,9 +180,10 @@ public class DataSeeder(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = GruposMuscularesPadrao
             .Where(n => !existentes.Contains(n))
-            .Select(Domain.Entities.GrupoMuscular.Criar)
+            .Select(n => Domain.Entities.GrupoMuscular.Criar(n, agora))
             .ToList();
 
         if (novos.Count == 0)
@@ -204,9 +207,10 @@ public class DataSeeder(
             .ToDictionaryAsync(g => g.Nome, g => g.Id, cancellationToken)
             .ConfigureAwait(false);
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = ExerciciosGlobais
             .Where(e => !existentes.Contains(e.Nome))
-            .Select(e => Exercicio.Criar(e.Nome, gruposPorNome[e.Grupo.ToString()], treinadorId: null, descricao: e.Descricao))
+            .Select(e => Exercicio.Criar(e.Nome, gruposPorNome[e.Grupo.ToString()], agora, treinadorId: null, descricao: e.Descricao))
             .ToList();
 
         if (novos.Count == 0)
@@ -231,8 +235,9 @@ public class DataSeeder(
         var senha = configuration["Seed:AdminPassword"]
             ?? throw new InvalidOperationException("Seed:AdminPassword não configurado.");
 
-        var conta = Conta.Criar(Email.Criar(email), passwordHasher.Hash(senha), TipoConta.SystemAdmin);
-        var systemUser = SystemUser.Criar(conta.Id, "Super Admin");
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var conta = Conta.Criar(Email.Criar(email), passwordHasher.Hash(senha), TipoConta.SystemAdmin, agora);
+        var systemUser = SystemUser.Criar(conta.Id, "Super Admin", agora);
 
         context.Contas.Add(conta);
         context.SystemUsers.Add(systemUser);

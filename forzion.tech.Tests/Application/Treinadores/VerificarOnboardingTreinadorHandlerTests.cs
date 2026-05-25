@@ -27,7 +27,7 @@ public class VerificarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_SemContaStripe_RetornaFalse()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ContaRecebimento?)null);
@@ -41,8 +41,8 @@ public class VerificarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_OnboardingJaCompleto_RetornaTrueSemChamarStripe()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var contaRecebimento = ContaRecebimento.Criar(treinador.Id);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow);
         contaRecebimento.ConfigurarStripeConnect("acct_123");
         contaRecebimento.ConfirmarOnboarding();
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -59,8 +59,8 @@ public class VerificarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_ContaConfiguradaMasNaoAtivada_NaoConfirmaOnboarding()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var contaRecebimento = ContaRecebimento.Criar(treinador.Id);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow);
         contaRecebimento.ConfigurarStripeConnect("acct_123");
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
@@ -77,8 +77,8 @@ public class VerificarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_ContaAtivada_ConfirmaOnboarding()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos");
-        var contaRecebimento = ContaRecebimento.Criar(treinador.Id);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow);
         contaRecebimento.ConfigurarStripeConnect("acct_123");
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))

@@ -733,7 +733,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IDbContextTransactionProvider>(),
-            Mock.Of<IWhatsAppNotifier>(),
+            Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         public Mock<DesvincularAlunoHandler> DesvincularAlunoHandlerMock { get; } = new(
@@ -741,7 +741,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<DesvincularAlunoHandler>>());
 
         public Mock<ListarVinculosHandler> ListarVinculosHandlerMock { get; } = new(
@@ -762,7 +762,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<CriarPacoteHandler> CriarPacoteHandlerMock { get; } = new(
             Mock.Of<IPacoteRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<CriarPacoteCommand>>(),
+            Mock.Of<IValidator<CriarPacoteCommand>>(), TimeProvider.System,
             Mock.Of<ILogger<CriarPacoteHandler>>());
 
         public Mock<AtualizarPacoteHandler> AtualizarPacoteHandlerMock { get; } = new(
@@ -779,7 +779,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IContaRepository>(),
             Mock.Of<IStripeService>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<IniciarOnboardingTreinadorHandler>>());
 
         public Mock<VerificarOnboardingTreinadorHandler> VerificarOnboardingHandlerMock { get; } = new(
@@ -795,7 +795,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(),
-            Microsoft.Extensions.Options.Options.Create(new PaymentSettings()),
+            Microsoft.Extensions.Options.Options.Create(new PaymentSettings()), TimeProvider.System,
             Mock.Of<ILogger<GerarCobrancaMensalHandler>>());
 
         public Mock<ReativarVinculoHandler> ReativarVinculoHandlerMock { get; } = new(
@@ -803,7 +803,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IAlunoRepository>(),
             Mock.Of<ILimiteTreinadorService>(),
             Mock.Of<ILogAprovacaoRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<ReativarVinculoHandler>>());
 
         public Mock<VincularFichaAoAlunoHandler> VincularFichaHandlerMock { get; } = new(
@@ -811,7 +811,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<VincularFichaAoAlunoHandler>>());
 
         public Mock<ObterAlunoHandler> ObterAlunoHandlerMock { get; } = new(
@@ -834,14 +834,14 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<CopiarExercicioGlobalHandler> CopiarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IGrupoMuscularRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<CopiarExercicioGlobalHandler>>());
 
         public Mock<CriarExercicioHandler> CriarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<CriarExercicioCommand>>(),
+            Mock.Of<IValidator<CriarExercicioCommand>>(), TimeProvider.System,
             Mock.Of<ILogger<CriarExercicioHandler>>());
 
         public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(

@@ -8,9 +8,12 @@ end_of_line = crlf
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-# Migrations são geradas automaticamente — suprimir análise
+# Migrations são geradas automaticamente — suprimir análise.
+# generated_code marca como gerado; analyzer_diagnostic=none silencia analyzers
+# (ex.: S1135 dispara falso-positivo na palavra PT "todo" dentro de comentários).
 [**/Migrations/**.cs]
 generated_code = true
+dotnet_analyzer_diagnostic.severity = none
 
 # EF Core: Configure(EntityTypeBuilder) e OnModelCreating(ModelBuilder) são overrides de framework.
 # O framework garante que o parâmetro nunca é nulo — CA1062 é falso positivo aqui.

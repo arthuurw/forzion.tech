@@ -15,6 +15,7 @@ public class RegistrarExecucaoHandler(
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<RegistrarExecucaoHandler> logger)
 {
     public virtual Task<RegistrarExecucaoResponse> HandleAsync(
@@ -57,7 +58,7 @@ public class RegistrarExecucaoHandler(
             throw new AlunoInativoException();
 
         var execucao = ExecucaoTreino.Criar(
-            command.TreinoId, command.AlunoId, command.DataExecucao, command.Observacao);
+            command.TreinoId, command.AlunoId, command.DataExecucao, timeProvider.GetUtcNow().UtcDateTime, command.Observacao);
 
         foreach (var item in command.Exercicios)
             execucao.AdicionarExercicio(

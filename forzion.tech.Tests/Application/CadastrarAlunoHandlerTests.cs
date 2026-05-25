@@ -22,7 +22,7 @@ public class CadastrarAlunoHandlerTests
         _handler = new CadastrarAlunoHandler(
             _alunoRepo.Object,
             _unitOfWork.Object,
-            _validator,
+            _validator, TimeProvider.System,
             _logger.Object);
     }
 

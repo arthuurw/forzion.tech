@@ -30,6 +30,9 @@ public static class InfrastructureExtensions
         var connectionString = configuration.GetConnectionString("AppConnection");
         var schema = configuration["Database:Schema"] ?? "public";
 
+        // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.
+        services.AddSingleton(TimeProvider.System);
+
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
         services.AddScoped<AppDbContext>(sp =>

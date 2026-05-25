@@ -15,7 +15,7 @@ public class SystemUser
 
     private SystemUser() { }
 
-    public static SystemUser Criar(Guid contaId, string nome, SystemRole role = SystemRole.SuperAdmin)
+    public static SystemUser Criar(Guid contaId, string nome, DateTime agora, SystemRole role = SystemRole.SuperAdmin)
     {
         if (contaId == Guid.Empty)
             throw new DomainException("O identificador da conta é inválido.");
@@ -31,7 +31,7 @@ public class SystemUser
             Nome = nome.Trim(),
             Role = role,
             Status = UsuarioStatus.Ativo,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = agora
         };
     }
 

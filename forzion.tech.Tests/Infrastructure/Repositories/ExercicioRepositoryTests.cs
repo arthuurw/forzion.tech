@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace forzion.tech.Tests.Infrastructure.Repositories;
 
 [Collection(InfrastructureTestCollection.Name)]
+[Trait("Category", "Integration")]
 public class ExercicioRepositoryTests(InfrastructureTestFixture fixture)
 {
     private static ExercicioRepository Repo(AppDbContext ctx) => new(ctx);
@@ -16,8 +17,8 @@ public class ExercicioRepositoryTests(InfrastructureTestFixture fixture)
     private static async Task<Guid> SeedTreinadorIdAsync(AppDbContext ctx)
     {
         var email = Email.Criar($"t{Guid.NewGuid():N}@test.com");
-        var conta = Conta.Criar(email, "hash", TipoConta.Treinador);
-        var treinador = Treinador.Criar(conta.Id, "Treinador");
+        var conta = Conta.Criar(email, "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var treinador = Treinador.Criar(conta.Id, "Treinador", DateTime.UtcNow);
         await ctx.Contas.AddAsync(conta);
         await ctx.Treinadores.AddAsync(treinador);
         await ctx.SaveChangesAsync();
@@ -26,7 +27,7 @@ public class ExercicioRepositoryTests(InfrastructureTestFixture fixture)
 
     private static async Task<Guid> SeedGrupoAsync(AppDbContext ctx, string? nome = null)
     {
-        var grupo = GrupoMuscular.Criar(nome ?? $"G-{Guid.NewGuid():N}");
+        var grupo = GrupoMuscular.Criar(nome ?? $"G-{Guid.NewGuid():N}", DateTime.UtcNow);
         await ctx.GruposMusculares.AddAsync(grupo);
         await ctx.SaveChangesAsync();
         return grupo.Id;
@@ -35,7 +36,7 @@ public class ExercicioRepositoryTests(InfrastructureTestFixture fixture)
     private static async Task<Exercicio> SeedAsync(
         AppDbContext ctx, string nome, Guid grupoMuscularId, Guid? treinadorId = null)
     {
-        var ex = Exercicio.Criar(nome, grupoMuscularId, treinadorId);
+        var ex = Exercicio.Criar(nome, grupoMuscularId, DateTime.UtcNow, treinadorId);
         await ctx.Exercicios.AddAsync(ex);
         await ctx.SaveChangesAsync();
         return ex;
@@ -249,7 +250,7 @@ public class ExercicioRepositoryTests(InfrastructureTestFixture fixture)
         var tid = await SeedTreinadorIdAsync(ctx);
         var ex = await SeedAsync(ctx, $"Usado-{Guid.NewGuid():N}", await SeedGrupoAsync(ctx), tid);
 
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, tid);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, tid, DateTime.UtcNow);
         treino.AdicionarExercicio(ex.Id);
         await ctx.Treinos.AddAsync(treino);
         await ctx.SaveChangesAsync();
