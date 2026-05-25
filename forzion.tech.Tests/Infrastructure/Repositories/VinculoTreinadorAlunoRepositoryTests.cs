@@ -9,6 +9,7 @@ using forzion.tech.Infrastructure.Persistence.Repositories;
 namespace forzion.tech.Tests.Infrastructure.Repositories;
 
 [Collection(InfrastructureTestCollection.Name)]
+[Trait("Category", "Integration")]
 public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixture)
 {
     private static VinculoTreinadorAlunoRepository Repo(AppDbContext ctx) => new(ctx);
