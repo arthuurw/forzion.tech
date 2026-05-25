@@ -1,6 +1,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
+# Directory.Build.props centraliza TargetFramework/Nullable/LangVersion (harness F0).
+# Precisa estar presente ANTES do restore, senão o TFM resolve vazio (NETSDK1013).
+COPY Directory.Build.props ./
+
 COPY forzion.tech.Domain/forzion.tech.Domain.csproj           forzion.tech.Domain/
 COPY forzion.tech.Application/forzion.tech.Application.csproj forzion.tech.Application/
 COPY forzion.tech.Infrastructure/forzion.tech.Infrastructure.csproj forzion.tech.Infrastructure/
