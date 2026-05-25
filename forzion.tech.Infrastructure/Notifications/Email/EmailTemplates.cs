@@ -80,6 +80,32 @@ internal static class EmailTemplates
             </a>
             """);
 
+    public static string BemVindoAluno(string nome) =>
+        Layout(
+            "Bem-vindo à forzion.tech!",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Seu cadastro foi realizado com sucesso. Aguarde a aprovação do seu treinador
+              para acessar suas fichas de treino.
+            </p>
+            <a href="https://forzion.tech/login"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Acessar plataforma
+            </a>
+            """);
+
+    public static string AlunoInativado(string nome) =>
+        Layout(
+            "Conta inativada",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Sua conta foi <strong style="color:#c62828">inativada</strong>.
+              Caso acredite que isso foi um engano, entre em contato com seu treinador.
+            </p>
+            """);
+
     public static string AssinaturaAlunoCriada(string nomeAluno, string nomeTreinador, string nomePacote, decimal valor) =>
         Layout(
             "AssinaturaAluno criada!",
