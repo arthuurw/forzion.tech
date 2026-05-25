@@ -28,6 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     internal DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
     public DbSet<TokenRevogado> TokensRevogados => Set<TokenRevogado>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<EmailDeliveryLog> EmailDeliveryLogs => Set<EmailDeliveryLog>();
     public DbSet<AssinaturaAluno> AssinaturaAlunos => Set<AssinaturaAluno>();
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
     public DbSet<Assinante> Assinantes => Set<Assinante>();

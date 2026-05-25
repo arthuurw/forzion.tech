@@ -1,4 +1,7 @@
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
+using forzion.tech.Infrastructure.Notifications.Email;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace forzion.tech.Api.Endpoints.Pagamentos;
 
@@ -36,6 +39,44 @@ public static class WebhookEndpoints
         })
         .WithTags("Webhooks")
         .WithSummary("Recebe eventos do Stripe via webhook")
+        .AllowAnonymous()
+        .RequireRateLimiting("webhook")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        endpoints.MapPost("/webhooks/resend", async (
+            HttpContext httpContext,
+            [FromServices] ProcessarWebhookResendHandler handler,
+            [FromServices] IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            httpContext.Request.Body = new LimitedStream(httpContext.Request.Body, MaxWebhookBodyBytes);
+
+            using var reader = new StreamReader(httpContext.Request.Body);
+            string payload;
+            try
+            {
+                payload = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (InvalidDataException)
+            {
+                return Results.BadRequest("Payload excede o tamanho máximo permitido.");
+            }
+
+            var svixId = httpContext.Request.Headers["svix-id"].FirstOrDefault() ?? string.Empty;
+            var svixTimestamp = httpContext.Request.Headers["svix-timestamp"].FirstOrDefault() ?? string.Empty;
+            var svixSignature = httpContext.Request.Headers["svix-signature"].FirstOrDefault() ?? string.Empty;
+            var webhookSecret = configuration["Resend:WebhookSecret"] ?? string.Empty;
+
+            var result = await handler.HandleAsync(
+                new ProcessarWebhookResendCommand(payload, svixId, svixTimestamp, svixSignature),
+                webhookSecret,
+                cancellationToken).ConfigureAwait(false);
+
+            return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error?.Message ?? "Webhook inválido.");
+        })
+        .WithTags("Webhooks")
+        .WithSummary("Recebe eventos de entrega de e-mail via Resend/Svix webhook")
         .AllowAnonymous()
         .RequireRateLimiting("webhook")
         .Produces(StatusCodes.Status200OK)
