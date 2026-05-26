@@ -191,7 +191,7 @@ export default function ExerciciosAdminPage() {
           if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{ex.nome}</Typography>;
           if (i === 1) return ex.grupoMuscular ? (GRUPO_MUSCULAR_LABEL[ex.grupoMuscular] ?? ex.grupoMuscular) : "—";
           if (i === 2) return (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: { md: 320 } }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: { xs: "100%", md: 320 } }}>
               {ex.descricao ?? "—"}
             </Typography>
           );

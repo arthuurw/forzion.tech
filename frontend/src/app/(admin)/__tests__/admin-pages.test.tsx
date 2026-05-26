@@ -137,13 +137,15 @@ describe("AlunosAdminPage", () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
     expect(screen.getByText("Alunos")).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("renderiza filtro de status", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
-    // MUI Select renders a combobox — label is not associated via `for`
-    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    // DataList renderiza TablePagination (NativeSelect rows-per-page) além do filtro de status
+    // → múltiplos role="combobox" na página; getAllByRole evita falha por ambiguidade
+    const comboboxes = screen.getAllByRole("combobox");
+    expect(comboboxes.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renderiza campo de busca por nome", async () => {

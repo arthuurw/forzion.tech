@@ -314,7 +314,7 @@ export default function ExerciciosTreinadorPage() {
                 <Typography
                   variant="caption"
                   color="text.secondary"
-                  sx={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: { md: 280 } }}
+                  sx={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: { xs: "100%", md: 280 } }}
                 >
                   {ex.descricao ?? "—"}
                 </Typography>

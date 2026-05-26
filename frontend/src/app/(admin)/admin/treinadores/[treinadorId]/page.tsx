@@ -259,7 +259,7 @@ export default function DetalheTreinadorAdminPage() {
                 </Typography>
               );
               return (
-                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: { md: 300 }, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {p.descricao ?? "—"}
                 </Typography>
               );
