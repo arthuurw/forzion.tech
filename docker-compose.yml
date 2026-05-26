@@ -24,7 +24,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__AppConnection: "Host=postgres;Port=5432;Database=forzion;Username=forzion;Password=forzion_local;Search Path=homolog;"
-      Database__Schema: homolog
       Auth__JwtSecret: "${JWT_SECRET}"
       Auth__JwtIssuer: "${JWT_ISSUER:-forzion.tech}"
       Auth__JwtAudience: "${JWT_AUDIENCE:-forzion.tech}"
@@ -35,6 +34,8 @@ services:
       Stripe__TaxaPlataformaPercent: "${STRIPE_TAXA_PLATAFORMA:-5}"
       Stripe__UrlBase: "${STRIPE_URL_BASE:-http://localhost:3000}"
       Resend__ApiKey: "${RESEND_API_KEY:-}"
+      Email__RedirecionarDestinatariosPara: "${EMAIL_REDIRECT_TO:-}"
+      Email__AllowlistDominios: "${EMAIL_ALLOWLIST_DOMAINS:-}"
       Internal__ApiKey: "${INTERNAL_API_KEY:-}"
       Seed__AdminEmail: "${SEED_ADMIN_EMAIL:-admin@forzion.tech}"
       Seed__AdminPassword: "${SEED_ADMIN_PASSWORD}"
