@@ -2,68 +2,63 @@
 
 **A plataforma que conecta personal trainers e alunos — do primeiro treino à cobrança recorrente, num só lugar.**
 
-Treinar bem é método. Gerir alunos, montar fichas, acompanhar evolução e receber em dia não deveria virar uma colcha de retalhos de planilhas, prints no WhatsApp e cobranças manuais. A forzion.tech reúne tudo isso num produto único, simples para o aluno e profissional para o treinador.
+Treinar bem é método. Mas o método do treinador costuma se perder entre planilhas, prints e cobranças manuais — e o aluno raramente enxerga a própria evolução. A forzion.tech organiza esse trabalho num produto: profissional para quem entrega, claro para quem treina.
 
 ---
 
 ## O problema
 
-Personal trainers vivem espalhados entre ferramentas que não conversam: a ficha está numa planilha, o histórico do aluno na memória, a cobrança no app do banco e a comunicação no WhatsApp. O aluno, por sua vez, raramente tem clareza do próprio progresso. O resultado é tempo perdido, receita que escapa e uma experiência aquém do trabalho técnico que o treinador entrega.
+As ferramentas do dia a dia não conversam entre si: a ficha numa planilha, o histórico na memória, a cobrança no app do banco, a conversa no WhatsApp. O custo é silencioso — tempo perdido, receita que escapa e uma experiência que não reflete a qualidade técnica do treinador.
 
 ## A proposta
 
-Um espaço onde o treinador **monta, acompanha e cobra** — e o aluno **treina, registra e evolui** — com pagamento recorrente integrado e a evolução visível em gráficos. Profissional para quem entrega, claro para quem treina.
+O treinador **monta, acompanha e cobra**; o aluno **treina, registra e evolui** — com cada etapa conectada à seguinte. Uma ponta alimenta a outra: a ficha vira execução, a execução vira progresso, o vínculo vira assinatura.
 
 ---
 
-## Como funciona (visão geral)
+## Como funciona
 
 ```
-1. Treinador se cadastra        →  curadoria da plataforma aprova
-2. Treinador cria pacotes e fichas (exercícios + séries)
-3. Aluno se cadastra            →  escolhe o treinador e o pacote
-4. Treinador aprova o vínculo   →  assinatura recorrente é criada
-5. Aluno recebe as fichas, treina e registra cada execução
-6. Progresso vira gráfico       │  cobrança acontece automaticamente
-                                 └─ treinador recebe direto, todo mês
+1. Treinador se cadastra      →  a curadoria da plataforma aprova
+2. Cria pacotes e fichas (exercícios + séries)
+3. Aluno se cadastra          →  escolhe o treinador e o pacote
+4. Treinador aprova o vínculo →  assinatura recorrente é criada
+5. Aluno treina e registra cada execução
+6. Progresso vira gráfico     →  cobrança automática, treinador recebe direto
 ```
 
-Cada papel tem sua área dedicada — **admin** (curadoria e visão geral), **treinador** (alunos, fichas, pacotes, recebimentos) e **aluno** (fichas, execução, histórico, assinatura) — e notificações por e-mail e WhatsApp mantêm todos no mesmo ritmo.
+Cada papel tem sua área — **admin** (curadoria), **treinador** (gestão) e **aluno** (treino) — e notificações por e-mail e WhatsApp mantêm todos no mesmo ritmo.
 
 ---
 
 ## Diferenciais
 
-**Tudo num lugar.** Fichas estruturadas de verdade — exercícios, séries, cargas, ordem e observações — com registro de execução e progressão em gráficos. Não é planilha solta: é o método do treinador organizado e o avanço do aluno à vista.
-
-**Pagamento que funciona sozinho.** Cobrança recorrente via Pix ou cartão, integrada ao Stripe Connect: o treinador faz um onboarding self-service e passa a **receber direto**, todo mês, sem cobrança manual. A plataforma cuida do fluxo e retém apenas sua taxa.
-
-**Curadoria e papéis bem definidos.** A plataforma aprova treinadores; o treinador aprova seus alunos. Isso protege a qualidade do ecossistema e dá a cada perfil exatamente o que ele precisa — nada de telas genéricas servindo a todos.
-
-**Confiança de base sólida.** Autenticação própria, isolamento de dados por treinador, práticas de segurança alinhadas ao OWASP e uma suíte de testes extensa cobrindo regra de negócio, integração e ponta a ponta. Construída para rodar bem no celular e crescer sem sustos.
+- **Fluxo conectado** — ficha, execução, progressão e cobrança no mesmo lugar, não em ferramentas soltas.
+- **Recebimento automático** — via Stripe Connect, o treinador recebe direto todo mês; a plataforma intermedeia e retém apenas sua taxa.
+- **Ecossistema curado** — treinadores passam por aprovação e cada papel tem sua própria área.
+- **Base confiável** — segurança, isolamento de dados e engenharia testada para escalar com tranquilidade.
 
 ---
 
-## Para o negócio
+## O que cada um ganha
 
-- **Modelo claro de receita:** assinaturas recorrentes dos alunos, com a plataforma retendo um percentual de cada cobrança — receita que cresce junto com a base de treinadores ativos.
-- **Pagamentos sem fricção e sem risco de manuseio:** dados de cartão nunca passam pelo nosso servidor (tokenização no Stripe); o repasse ao treinador é automático via Connect.
-- **Ecossistema curado:** a aprovação de treinadores preserva a qualidade e a marca.
-- **Pronta para escalar:** arquitetura limpa, ambientes separados (homologação e produção) e pipeline de qualidade automatizado reduzem o custo de evoluir o produto com segurança.
+### Para o negócio
+- **Receita recorrente:** um percentual de cada assinatura, que cresce com a base de treinadores ativos.
+- **Sem manuseio de dados sensíveis:** cartão tokenizado no Stripe e repasse automático via Connect.
+- **Catálogo protegido:** a curadoria de treinadores preserva marca e qualidade.
+- **Custo de evolução baixo:** arquitetura limpa, ambientes separados e pipeline de qualidade automatizado.
 
-## Para treinadores
+### Para treinadores
+- Biblioteca de exercícios (globais + seus) e fichas que se duplicam em segundos.
+- Aprovação de vínculos e gestão dos alunos num painel.
+- Leitura da progressão de cada aluno para ajustar o treino com base em dados.
+- Recebimentos e assinaturas no mesmo lugar — sem planilha paralela.
 
-- Centralize alunos, fichas e cobranças num só painel.
-- Monte fichas reutilizáveis e duplique treinos em segundos.
-- Acompanhe a evolução de cada aluno com gráficos — e mostre resultado.
-- Receba automaticamente, todo mês, sem perseguir pagamento.
-
-## Para alunos
-
-- Acesse suas fichas no celular, com instruções claras de cada exercício.
-- Registre a execução e veja seu progresso ao longo do tempo.
-- Pague de forma simples (Pix ou cartão), sem combinar transferência.
-- Troque de treinador quando quiser, mantendo seu histórico.
+### Para alunos
+- Treino guiado passo a passo, com instrução de cada exercício.
+- Registro de séries e cargas, com a ficha exportável quando precisar.
+- Pagamento em segundos, por Pix ou cartão.
+- Liberdade para trocar de treinador sem perder o histórico de evolução.
 
 ---
 
