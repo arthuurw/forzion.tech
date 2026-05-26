@@ -10,6 +10,7 @@ using forzion.tech.Application.Results;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
+using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.UseCases.Pacotes;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
@@ -19,6 +20,7 @@ using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -185,6 +187,65 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    // --- POST /auth/verify-email ---
+
+    [Fact]
+    public async Task Post_VerifyEmail_TokenValido_Retorna200()
+    {
+        _factory.VerificarEmailHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<VerificarEmailCommand>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _factory.CreateClient().PostAsJsonAsync("/auth/verify-email",
+            new { Token = new string('a', 64) });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_VerifyEmail_TokenInvalidoOuExpirado_Retorna422()
+    {
+        _factory.VerificarEmailHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<VerificarEmailCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DomainException("Token inválido ou já utilizado."));
+
+        var response = await _factory.CreateClient().PostAsJsonAsync("/auth/verify-email",
+            new { Token = new string('a', 64) });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task Post_VerifyEmail_FormatoInvalido_Retorna400()
+    {
+        _factory.VerificarEmailHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<VerificarEmailCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ValidationException(new[]
+            {
+                new ValidationFailure("Token", "Token inválido.")
+            }));
+
+        var response = await _factory.CreateClient().PostAsJsonAsync("/auth/verify-email",
+            new { Token = "curto" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // --- POST /auth/resend-verification ---
+
+    [Fact]
+    public async Task Post_ResendVerification_SempreRetorna200()
+    {
+        _factory.ReenviarVerificacaoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ReenviarVerificacaoCommand>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _factory.CreateClient().PostAsJsonAsync("/auth/resend-verification",
+            new { Email = "qualquer@test.com" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     // --- WebApplicationFactory ---
 
     public class AuthWebFactory : WebApplicationFactory<Program>
@@ -219,6 +280,15 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
+        public Mock<VerificarEmailHandler> VerificarEmailHandlerMock { get; } = new(
+            Mock.Of<IEmailVerificationTokenRepository>(),
+            Mock.Of<IContaRepository>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<IValidator<VerificarEmailCommand>>());
+
+        public Mock<ReenviarVerificacaoHandler> ReenviarVerificacaoHandlerMock { get; } = new(
+            Mock.Of<IContaRepository>(), null!, Mock.Of<ILogger<ReenviarVerificacaoHandler>>());
+
         public Mock<ListarTreinadoresPublicosHandler> ListarTreinadoresPublicosHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>());
 
@@ -239,6 +309,8 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
                 services.RemoveAll<LoginHandler>();
                 services.RemoveAll<RegistrarTreinadorHandler>();
                 services.RemoveAll<RegistrarAlunoHandler>();
+                services.RemoveAll<VerificarEmailHandler>();
+                services.RemoveAll<ReenviarVerificacaoHandler>();
                 services.RemoveAll<ListarTreinadoresPublicosHandler>();
                 services.RemoveAll<ListarPlanosPlataformaHandler>();
                 services.RemoveAll<ListarPacotesHandler>();
@@ -246,6 +318,8 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
                 services.AddScoped(_ => LoginHandlerMock.Object);
                 services.AddScoped(_ => RegistrarTreinadorHandlerMock.Object);
                 services.AddScoped(_ => RegistrarAlunoHandlerMock.Object);
+                services.AddScoped(_ => VerificarEmailHandlerMock.Object);
+                services.AddScoped(_ => ReenviarVerificacaoHandlerMock.Object);
                 services.AddScoped(_ => ListarTreinadoresPublicosHandlerMock.Object);
                 services.AddScoped(_ => ListarPlanosHandlerMock.Object);
                 services.AddScoped(_ => ListarPacotesHandlerMock.Object);
