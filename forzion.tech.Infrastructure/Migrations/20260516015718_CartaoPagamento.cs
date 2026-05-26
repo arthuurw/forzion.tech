@@ -12,7 +12,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.AddColumn<string>(
                 name: "client_secret",
-                schema: "homolog",
                 table: "pagamentos",
                 type: "character varying(500)",
                 maxLength: 500,
@@ -20,7 +19,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.AddColumn<string>(
                 name: "metodo_pagamento",
-                schema: "homolog",
                 table: "pagamentos",
                 type: "text",
                 nullable: false,
@@ -32,12 +30,10 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "client_secret",
-                schema: "homolog",
                 table: "pagamentos");
 
             migrationBuilder.DropColumn(
                 name: "metodo_pagamento",
-                schema: "homolog",
                 table: "pagamentos");
         }
     }

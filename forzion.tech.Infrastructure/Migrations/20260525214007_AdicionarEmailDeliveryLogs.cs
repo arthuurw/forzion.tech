@@ -13,7 +13,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.CreateTable(
                 name: "email_delivery_logs",
-                schema: "homolog",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -31,13 +30,11 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_email_delivery_logs_event_type",
-                schema: "homolog",
                 table: "email_delivery_logs",
                 column: "event_type");
 
             migrationBuilder.CreateIndex(
                 name: "ix_email_delivery_logs_resend_message_id",
-                schema: "homolog",
                 table: "email_delivery_logs",
                 column: "resend_message_id");
         }
@@ -46,8 +43,7 @@ namespace forzion.tech.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "email_delivery_logs",
-                schema: "homolog");
+                name: "email_delivery_logs");
         }
     }
 }

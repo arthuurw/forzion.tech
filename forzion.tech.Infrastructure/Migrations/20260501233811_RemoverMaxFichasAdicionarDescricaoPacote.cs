@@ -12,17 +12,14 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropIndex(
                 name: "ix_treino_alunos_treino_id",
-                schema: "homolog",
                 table: "treino_alunos");
 
             migrationBuilder.DropColumn(
                 name: "max_fichas",
-                schema: "homolog",
                 table: "pacotes_aluno");
 
             migrationBuilder.AddColumn<string>(
                 name: "descricao",
-                schema: "homolog",
                 table: "pacotes_aluno",
                 type: "character varying(500)",
                 maxLength: 500,
@@ -30,7 +27,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_treino_alunos_treino_id",
-                schema: "homolog",
                 table: "treino_alunos",
                 column: "treino_id",
                 unique: true,
@@ -42,17 +38,14 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropIndex(
                 name: "ix_treino_alunos_treino_id",
-                schema: "homolog",
                 table: "treino_alunos");
 
             migrationBuilder.DropColumn(
                 name: "descricao",
-                schema: "homolog",
                 table: "pacotes_aluno");
 
             migrationBuilder.AddColumn<int>(
                 name: "max_fichas",
-                schema: "homolog",
                 table: "pacotes_aluno",
                 type: "integer",
                 nullable: false,
@@ -60,7 +53,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_treino_alunos_treino_id",
-                schema: "homolog",
                 table: "treino_alunos",
                 column: "treino_id");
         }

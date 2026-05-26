@@ -28,7 +28,6 @@ public static class InfrastructureExtensions
         IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("AppConnection");
-        var schema = configuration["Database:Schema"] ?? "public";
 
         // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.
         services.AddSingleton(TimeProvider.System);
@@ -38,12 +37,12 @@ public static class InfrastructureExtensions
         services.AddScoped<AppDbContext>(sp =>
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", schema))
+                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory"))
                 .UseSnakeCaseNamingConvention()
                 .Options;
 
             var dispatcher = sp.GetRequiredService<IDomainEventDispatcher>();
-            return new AppDbContext(options, schema, dispatcher);
+            return new AppDbContext(options, dispatcher);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
@@ -67,6 +66,7 @@ public static class InfrastructureExtensions
         services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
         services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
@@ -121,6 +121,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoCriadaEvent>, AssinaturaAlunoCriadaEmailHandler>();
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoEmailHandler>();
         services.AddScoped<IDomainEventHandler<AlunoInativadoEvent>, AlunoInativadoEmailHandler>();
+        services.AddScoped<IDomainEventHandler<ContaRegistradaEvent>, ContaRegistradaEmailHandler>();
 
         // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();

@@ -3,6 +3,7 @@ using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
 using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
+using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.UseCases.Pacotes;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
@@ -37,6 +38,7 @@ public static class AuthEndpoints
         .Produces<LoginResponse>()
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/register/treinador", async (
@@ -107,6 +109,35 @@ public static class AuthEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
+        group.MapPost("/verify-email", async (
+            VerifyEmailRequest request,
+            [FromServices] VerificarEmailHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            await handler.HandleAsync(new VerificarEmailCommand(request.Token), cancellationToken);
+            return Results.Ok();
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("auth")
+        .WithSummary("Verifica o e-mail usando token enviado por e-mail")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/resend-verification", async (
+            ResendVerificationRequest request,
+            [FromServices] ReenviarVerificacaoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            await handler.HandleAsync(new ReenviarVerificacaoCommand(request.Email), cancellationToken);
+            return Results.Ok();
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("auth")
+        .WithSummary("Reenvia o e-mail de verificação (sempre retorna 200)")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
         // --- Endpoints Públicos (para Cadastro) ---
 
         group.MapGet("/planos", async (
@@ -156,3 +187,5 @@ public record RegistrarTreinadorRequest(string Email, string Senha, string Nome,
 public record RegistrarAlunoRequest(string Email, string Senha, string Nome, Guid TreinadorId, Guid PacoteId, string? Telefone = null);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NovaSenha);
+public record VerifyEmailRequest(string Token);
+public record ResendVerificationRequest(string Email);

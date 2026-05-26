@@ -127,6 +127,26 @@ internal static class EmailTemplates
             </p>
             """);
 
+    public static string VerificarEmail(string email, string verifyLink) =>
+        Layout(
+            "Confirme seu e-mail",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá!</p>
+            <p style="color:#444;line-height:1.6">
+              Falta pouco para ativar sua conta associada ao e-mail <strong>{email}</strong>.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Clique no botão abaixo para confirmar seu e-mail. O link é válido por <strong>24 horas</strong>.
+            </p>
+            <a href="{verifyLink}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Verificar e-mail
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Se você não criou esta conta, ignore este e-mail.
+            </p>
+            """);
+
     public static string AssinaturaAlunoCriada(string nomeAluno, string nomeTreinador, string nomePacote, decimal valor) =>
         Layout(
             "AssinaturaAluno criada!",
