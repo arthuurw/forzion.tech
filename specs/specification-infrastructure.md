@@ -63,6 +63,15 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 - Supabase (PostgreSQL gerenciado) → [specification-db].
 - Pact Broker (contract testing self-hosted na VM, subdomínio `pact.`).
 
+## ACESSO EXTERNO / WARP
+- **Sintoma**: `connection refused` ao abrir `homologacao.forzion.tech` **só via Cloudflare WARP**; acesso direto (sem WARP) OK.
+- **Path WARP**: client → CF edge (WireGuard/MASQUE) → egress CF (IP **compartilhado**, faixa Cloudflare) → origem. DNS resolvido via 1.1.1.1.
+- **JÁ DESCARTADO (não reinvestigar)**: IPv6/AAAA (domínio **não tem** AAAA → SOA); nginx (IPv4-only, irrelevante sem AAAA); DNS (A=`2.24.104.224`, PTR `srv1678885.hstgr.cloud`, **AS47583 Hostinger** `2.24.64.0/18` LT — consistente em 1.1.1.1/8.8.8.8/local); origem (TCP 443/80 abertos fora WARP, TLS 1.3 cert LE `CN=homologacao.forzion.tech`); ufw do VM (sem firewall-as-code no repo). Falha isolada ao **egress WARP→AS47583**, não ao código.
+- **Causas (ranqueadas)**: A) client WARP local (registro/MASQUE stale) → RST. B) proteção de rede **Hostinger upstream** (FORA do VM) dá RST nos egress WARP compartilhados → VM/log nginx limpos. C) roteamento/blackhole CF→prefixo Hostinger a partir do colo. D) MTU/MASQUE — **só se for timeout, não "refused"** (SYN é pequeno).
+- **Decision-tree (WARP ligado)**: (1) `curl -v https://homologacao.forzion.tech` + `nc -vz 2.24.104.224 443` → fork **refused/RST** (A/B) vs **timed out** (C/D). (2) WARP modo **DNS-only**: funciona → problema é túnel/egress (DNS descartado). (3) egress em `https://www.cloudflare.com/cdn-cgi/trace/` (campo `ip`) → `docker compose logs nginx | grep <egress>`; **sem entrada = bloqueio upstream (B/C), fora do VM**. (4) 2º device no WARP funciona → causa A (local).
+- **Remediação**: A → WARP *Reset registration* / toggle off-on / reinstalar. B → ticket Hostinger liberar faixas Cloudflare **ou** fronting CF. C → trocar colo (reconnect) / reportar à Cloudflare. D → baixar MTU do WARP.
+- **Fix durável (NÃO feito — gate)**: fronting Cloudflare (orange cloud) — migra NS `forzion.tech`, trava firewall do VM às faixas CF, nginx `real_ip`/`CF-Connecting-IP`. Não adotado: homolog=staging, causa não confirmada, blast radius da **zona inteira** (Resend SPF/DKIM/MX, pact, prod-prep). Avaliar só se WARP-access virar requisito amplo/recorrente. ⚠️ NÃO adicionar `real_ip`/ufw-allowlist CF **antes** da migração (inerte ou quebra acesso direto; `CF-Connecting-IP` confiado sem CF na frente = spoof de IP).
+
 ## DICAS / GOTCHAS
 - nginx.conf alterado → exige `restart nginx` (bind-mount; `up` não recria por arquivo).
 - Env var nova/alterada no container → `up -d <svc>` (recreate); `restart` simples não recarrega env.
