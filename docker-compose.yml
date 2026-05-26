@@ -35,6 +35,7 @@ services:
       Stripe__TaxaPlataformaPercent: "${STRIPE_TAXA_PLATAFORMA:-5}"
       Stripe__UrlBase: "${STRIPE_URL_BASE:-http://localhost:3000}"
       Resend__ApiKey: "${RESEND_API_KEY:-}"
+      Internal__ApiKey: "${INTERNAL_API_KEY:-}"
       Seed__AdminEmail: "${SEED_ADMIN_EMAIL:-admin@forzion.tech}"
       Seed__AdminPassword: "${SEED_ADMIN_PASSWORD}"
       # WhatsApp via Meta Cloud API (opcional — NullWhatsAppNotifier se vazio)
