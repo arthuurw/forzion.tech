@@ -11,10 +11,11 @@ DOC PARA AGENTES. Fonte de verdade do processo de e-mail transacional (Resend). 
 - Provedor: Resend (HTTP API). Verificação de webhook: Svix (NuGet no Infrastructure).
 - `IEmailService` (Application/Interfaces): `Task EnviarAsync(para, assunto, htmlBody, ct)` + `bool Habilitado`.
 - Impls (Infrastructure/Services):
-  - `ResendEmailService` — `Habilitado=true`; POST p/ `Resend:ApiUrl`, Bearer `Resend:ApiKey`, payload `{from,to,subject,html}`. Falha HTTP/exceção = LOG only, SEM rethrow (não quebra fluxo de negócio).
+  - `ResendEmailService` — `Habilitado=true`; POST p/ `Resend:ApiUrl`, Bearer `Resend:ApiKey`, payload `{from,to,subject,html}`. `from` montado de `EmailSettings.FromName/FromAddress` (fallback `forzion.tech <noreply@forzion.tech>` se vazio). Falha HTTP/exceção = LOG only, SEM rethrow (não quebra fluxo de negócio).
   - `NullEmailService` — `Habilitado=false`; no-op; loga warning no ctor.
-- GATE (DI, `InfrastructureExtensions`): `Resend:ApiKey` não-vazio → `ResendEmailService` (+ HttpClient "resend", timeout 15s); senão → `NullEmailService`.
-- Remetente FIXO no código: `forzion.tech <noreply@forzion.tech>` (`ResendEmailService`). Exige domínio `forzion.tech` verificado no painel Resend (DKIM `resend._domainkey`, SPF+MX em `send.forzion.tech`, DMARC).
+  - `EnvironmentEmailDecorator` (Notifications/Email) — decora o `IEmailService` real; `Habilitado` delega ao inner. Ver SEPARAÇÃO POR AMBIENTE.
+- GATE (DI, `InfrastructureExtensions`): `Resend:ApiKey` não-vazio → `ResendEmailService` (+ HttpClient "resend", timeout 15s); senão → `NullEmailService`. O `IEmailService` resolvido é SEMPRE o inner embrulhado no `EnvironmentEmailDecorator`.
+- Remetente: `EmailSettings.FromName/FromAddress` (config `Email`), não mais hardcoded. Default/prod = `forzion.tech <noreply@forzion.tech>`. Exige domínio `forzion.tech` verificado no painel Resend (DKIM `resend._domainkey`, SPF+MX em `send.forzion.tech`, DMARC).
 - Handlers de domain event checam `if(!emailService.Habilitado) return;` antes de enviar.
 
 ## CONFIG (chaves)
@@ -24,10 +25,22 @@ DOC PARA AGENTES. Fonte de verdade do processo de e-mail transacional (Resend). 
 | `Resend:ApiUrl` | idem | override endpoint | default `https://api.resend.com/emails` |
 | `Resend:WebhookSecret` | `WebhookEndpoints`/`ProcessarWebhookResendHandler` | verificação Svix | webhook → 400 "Webhook não configurado" |
 | `App:FrontendBaseUrl` | `AppSettings` (bound DI) | base dos links verify/reset | default vazio (links quebram) |
+| `Email:FromName` / `Email:FromAddress` | `EmailSettings` (bound DI) → `ResendEmailService` | remetente | default `forzion.tech` / `noreply@forzion.tech` |
+| `Email:MarcarComoTeste` | `EmailSettings` → `EnvironmentEmailDecorator` | liga marcação+redirect (não-prod) | default `false` (prod passthrough) |
+| `Email:PrefixoAssuntoTeste` | idem | prefixo do assunto em não-prod | default vazio (sem prefixo) |
+| `Email:RedirecionarDestinatariosPara` | idem | CSV; redireciona destinatário (1º alvo) | vazio → sem redirect (mantém destinatário) |
+| `Email:AllowlistDominios` | idem | CSV de domínios isentos de redirect | vazio → ninguém isento |
 
 - Local (dev): User Secrets `forzion-prod` (`dotnet user-secrets set "Resend:ApiKey" ...`). `App:FrontendBaseUrl` em appsettings = `http://localhost:3000`.
 - Deploy: env vars no compose → `Resend__ApiKey`/`Resend__WebhookSecret`/`App__FrontendBaseUrl` ← `${RESEND_API_KEY}`/`${RESEND_WEBHOOK_SECRET}`/`${APP_FRONTEND_BASE_URL:-https://homologacao.forzion.tech}` (vêm do `/opt/forzion/.env` na VM). Default vazio = Null roda mesmo em homolog se .env não setado.
 - Chaves separadas por ambiente: WebhookSecret é por-endpoint (homolog≠prod obrigatório); ApiKey recomendável uma por ambiente. Resend NÃO tem test/live mode — chave de hmg envia e-mail real.
+
+## SEPARAÇÃO POR AMBIENTE
+Resend não tem sandbox → e-mail de não-prod é real. `EnvironmentEmailDecorator` (Infrastructure/Notifications/Email) decora o `IEmailService` real e, em não-prod, deixa claro que é teste + impede atingir usuários reais.
+- Discriminador: `EmailSettings.MarcarComoTeste` (flag, não `IWebHostEnvironment`). `false` (default/prod) → **passthrough puro** (assunto/destinatário/html intactos). `true` (Homolog/Development via `appsettings.{Env}.json`) → aplica transformações abaixo.
+- Transformações (não-prod): (1) **assunto** ← `"{PrefixoAssuntoTeste} {assunto}"` (prefixo vazio = sem alteração); (2) **banner** HTML de aviso prepended ao `htmlBody`; (3) **destinatário** → `ResolverDestinatario`: se `RedirecionarDestinatariosPara` vazio OU domínio do destinatário ∈ `AllowlistDominios` → mantém; senão redireciona p/ 1º alvo do CSV e loga `Information` com destinatário original.
+- DI: `InfrastructureExtensions.EnvolverComDecorator` embrulha Resend (configurado) ou Null (não configurado). Gate Resend/Null preservado por baixo.
+- Defaults por ambiente: base `appsettings.json` = prod-safe (remetente real, `MarcarComoTeste=false`, prefixo/redirect/allowlist vazios); `appsettings.Production.json` herda (sem override); `Homolog`/`Development` = `MarcarComoTeste=true` + prefixo `[HOMOLOG - TESTE]`/`[DEV - TESTE]`. Alvo de redirect/allowlist vazios em appsettings → setar via env no deploy p/ ativar o guardrail (sem alvo, não-prod marca mas ainda envia ao destinatário real).
 
 ## COMPONENTES
 - `EmailTemplates` (Infrastructure) — HTML estático via `Layout(...)`. Métodos: `TreinadorAprovado`, `TreinadorReprovado`, `TreinadorInativado`, `VinculoAprovado`, `BemVindoAluno`, `AlunoInativado`, `RedefinirSenha(email,resetLink)`, `VerificarEmail(email,verifyLink)`, `AssinaturaAlunoCriada`.
@@ -86,7 +99,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de e-mail transacional (Resend). 
 - Resend API key: backend-only (env/secret), nunca no frontend.
 
 ## TESTES
-- Unit (xUnit, sem Docker): Domain (`EmailVerificationTokenTests`, `ContaTests`: evento+MarcarEmailVerificado), Application (`VerificarEmailHandlerTests`, `LoginHandlerTests` 403), Infra (`ContaRegistradaEmailHandlerTests`, `ReenviarVerificacaoHandlerTests` silencioso, `EmailVerificationSenderTests`), Api (`AuthEndpointsTests` verify 200/422/400 + resend 200).
+- Unit (xUnit, sem Docker): Domain (`EmailVerificationTokenTests`, `ContaTests`: evento+MarcarEmailVerificado), Application (`VerificarEmailHandlerTests`, `LoginHandlerTests` 403, `EmailSettingsTests` binding), Infra (`ContaRegistradaEmailHandlerTests`, `ReenviarVerificacaoHandlerTests` silencioso, `EmailVerificationSenderTests`, `ResendEmailServiceTests` from, `EnvironmentEmailDecoratorTests` prefixo/banner/redirect/passthrough), Api (`AuthEndpointsTests` verify 200/422/400 + resend 200).
 - E2E/Infra-repo (Testcontainers) exigem Docker → rodam só no CI.
 
 ## DICAS / GOTCHAS
