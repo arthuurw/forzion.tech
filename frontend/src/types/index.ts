@@ -284,4 +284,5 @@ export interface ProblemDetails {
   detail?: string;
   status: number;
   errors?: Record<string, string[]>;
+  code?: string;
 }
