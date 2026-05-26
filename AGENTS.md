@@ -26,11 +26,10 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - Commits: Conventional Commits. Scopes válidos: `frontend|backend|infra|ci|deps|tests|docs`.
 
 ## REGRAS (só alteráveis mediante aprovação do usuário)
-1. CONTEXTO MACRO: carregar APENAS este `AGENTS.md`.
-2. Todo arquivo `specification-*` (em `specs/`) contém informação relevante do projeto; carregar em memória/contexto (principal OU subagentes) QUANDO a tarefa exigir.
-3. Antes de QUALQUER alteração relevante numa área coberta por um `specification-*`, é OBRIGATÓRIO ler o respectivo arquivo ANTES de planejar ou alterar. Ex.: alteração relevante de banco → ler `specs/specification-db.md` antes de qualquer planejamento ou alteração efetiva.
-4. Alterar qualquer `specification-*` exige REVISÃO (não editar às cegas) e mantê-lo AGENT-ORIENTED (denso, notação compacta), como este `AGENTS.md`. Manter atualizado na mesma tarefa em que a estrutura/área correspondente mudar.
-5. `specs/` e todos os arquivos dentro dele DEVEM ser commitados (para consultas futuras). `specs/` não é gitignorado (apenas `.specs/` é). Todo novo arquivo `specification-*` DEVE ser criado em `specs/` (NUNCA em `.specs/`, que não é commitada).
-6. Criar/alterar qualquer `specification-*` DEVE usar a skill `technical-design-doc-creator` (como framework de cobertura/discovery). Se a skill não estiver instalada no projeto, procurar, baixar e instalar antes de usar. O output deve permanecer AGENT-ORIENTED (denso, notação compacta) conforme regra 4 — a skill guia a cobertura, não o estilo verboso de TDD.
-7. OBRIGATÓRIO: toda nova tarefa que envolva ALTERAÇÃO DE ESCOPO (nova feature, mudança de comportamento, expansão de funcionalidade) DEVE ser planejada via skill `tlc-spec-driven` — quebrar em tasks atômicas + manter arquivo de state temporário (e demais fluxos/fases que a própria skill exigir). Se a skill não estiver instalada, procurar, baixar e instalar antes. Não é opcional: garante qualidade no uso da IA (planejamento, rastreabilidade, verificação). Não se aplica a ajustes triviais (typo, config pontual, bugfix isolado).
-8. Estas regras só mudam mediante aprovação do usuário.
+1. CONTEXTO MACRO: carregar APENAS este `AGENTS.md`. Cada `specification-*` (em `specs/`) carregar SOB DEMANDA quando a tarefa tocar a área.
+2. Antes de alteração relevante numa área coberta por `specification-*`, LER o arquivo antes de planejar/alterar (ex.: banco → `specs/specification-db.md`).
+3. `specification-*` é AGENT-ORIENTED (denso, notação compacta). Criar/alterar: exige revisão (não às cegas), manter atualizado na mesma tarefa, criar SEMPRE em `specs/` (commitado; NUNCA `.specs/`), usar a skill `technical-design-doc-creator` como framework de cobertura (output denso, não TDD verboso).
+4. Tarefa com ALTERAÇÃO DE ESCOPO (feature, mudança de comportamento) DEVE usar a skill `tlc-spec-driven` (tasks atômicas + state file). Não se aplica a ajustes triviais.
+5. README segue os princípios do `docs-writer` (precisão no código, voz ativa, consistência, verificação de links).
+6. Skill citada ausente no projeto: procurar, baixar e instalar antes de usar.
+7. Estas regras só mudam mediante aprovação do usuário.

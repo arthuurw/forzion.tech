@@ -1,5 +1,5 @@
 #!/bin/bash
-# Executar UMA VEZ na VM OCI após criação.
+# Executar UMA VEZ na VPS (Hostinger, Ubuntu) após criação.
 # ssh ubuntu@<IP> 'bash -s' < scripts/setup-vm.sh
 
 set -euo pipefail

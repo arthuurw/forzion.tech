@@ -30,8 +30,8 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 - [Frontend](#frontend)
 - [Deploy](#deploy)
   - [Docker local](#docker-local)
-  - [Produção — OCI VM + Supabase](#produção--oci-vm--supabase)
-  - [DNS e E-mail — Cloudflare + Resend](#dns-e-e-mail--cloudflare--resend)
+  - [Produção — VPS Hostinger + Supabase](#produção--vps-hostinger--supabase)
+  - [DNS e E-mail — Hostinger + Resend](#dns-e-e-mail--hostinger--resend)
 
 ---
 
@@ -871,108 +871,85 @@ docker compose up --build
 # Swagger:  http://localhost:8080/swagger  (modo Development)
 ```
 
-### Produção — OCI VM + Supabase
+### Produção — VPS Hostinger + Supabase
 
-A stack de produção usa:
+A hospedagem usa:
 
-- **OCI VM** (Ubuntu) com Docker Compose
-- **Supabase** como banco (PostgreSQL managed) — schema `public`
+- **VPS Hostinger** (Ubuntu) com Docker Compose
+- **Supabase** como banco (PostgreSQL managed) — schema `homolog` (homologação) / `public` (produção)
 - **Nginx** como reverse proxy com TLS (Let's Encrypt via Certbot)
-- **OCIR** como container registry
 
-#### 1. Preparar a VM (executar uma vez)
+> **Homologação** (`homologacao.forzion.tech`) está **ativa** e tem deploy automatizado pelo CI. **Produção** (`forzion.tech`/`app.forzion.tech`, schema `public`) está **preparada mas não-ativa**. Referência completa de infraestrutura: [`specs/specification-infrastructure.md`](specs/specification-infrastructure.md).
+
+#### Deploy de homologação (automatizado)
+
+Push em `homolog` dispara o workflow `CI / CD — Homolog`. Após os gates passarem, o job `Deploy → homolog` conecta na VPS via SSH e:
 
 ```bash
+cd /opt/forzion/app
+git pull origin homolog
+docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env build
+docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env up -d --remove-orphans
+docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env restart nginx
+```
+
+As imagens são **buildadas na própria VPS** (não há registry no fluxo ativo).
+
+#### Provisionar a VPS (executar uma vez)
+
+```bash
+# Instala Docker, cria /opt/forzion/{app,nginx,certbot} e gera .env template
 ssh ubuntu@<IP> 'bash -s' < scripts/setup-vm.sh
+
+# Após DNS propagado, obter o certificado SSL inicial
+bash scripts/init-ssl.sh homologacao.forzion.tech seu@email.com
 ```
 
-Instala Docker, cria estrutura de diretórios em `/opt/forzion/` e gera `.env` template.
+Em seguida, preencher `/opt/forzion/.env` (não versionado) com os secrets reais
+(`DB_CONNECTION`, `JWT_SECRET`, `STRIPE_*`, `RESEND_*`, etc.). Lista completa em
+[`specs/specification-infrastructure.md`](specs/specification-infrastructure.md).
 
-#### 2. Preencher `/opt/forzion/.env` na VM
+#### Migrations
 
-```bash
-REGISTRY=<regiao>.ocir.io/<namespace>
-TAG=latest
-APP_ENV=Homolog                  # ou Production
-DB_CONNECTION=Host=...           # Supabase connection string
-DB_SCHEMA=homolog                # ou public
-JWT_SECRET=<minimo-32-chars>
-JWT_ISSUER=forzion.tech
-JWT_AUDIENCE=forzion.tech
-CORS_ORIGINS=https://homolog.forzion.tech
-```
+Em Development/Homolog as migrations rodam automaticamente no startup do backend
+(`MigrateAsync` + `SeedAsync`). Para aplicação manual num schema específico, ver
+[`specs/specification-db.md`](specs/specification-db.md).
 
-#### 3. Configurar DNS
+#### Produção (preparada, não-ativa)
 
-Apontar `homolog.forzion.tech` (ou `forzion.tech`) para o IP da VM.
+`appsettings.Production.json` (schema `public`, hosts `forzion.tech`/`www`/`app`)
+e `docker-compose.server.yml` (deploy por imagem de registry) existem como caminho
+previsto, mas **não há deploy automatizado nem pipeline de imagem hoje**. Produção
+seguirá o mesmo modelo (VPS Hostinger).
 
-#### 4. Obter certificado SSL (executar uma vez após DNS propagado)
-
-```bash
-bash scripts/init-ssl.sh homolog.forzion.tech seu@email.com
-```
-
-#### 5. Build e push das imagens
-
-```bash
-# Backend
-docker build -t $REGISTRY/forzion/backend:$TAG -f forzion.tech.Api/Dockerfile .
-docker push $REGISTRY/forzion/backend:$TAG
-
-# Frontend
-docker build -t $REGISTRY/forzion/frontend:$TAG -f frontend/Dockerfile ./frontend
-docker push $REGISTRY/forzion/frontend:$TAG
-```
-
-#### 6. Deploy
-
-```bash
-# Na VM
-cd /opt/forzion
-docker compose -f docker-compose.server.yml pull
-docker compose -f docker-compose.server.yml up -d
-```
-
-#### 7. Migrations em produção
-
-```bash
-# Gerar script idempotente (localmente)
-ASPNETCORE_ENVIRONMENT=Homolog dotnet ef migrations script --idempotent \
-  --project forzion.tech.Infrastructure \
-  --startup-project forzion.tech.Api \
-  --output migration_public_schema.sql
-
-# Substituir schema: sed 's/"homolog"/"public"/g'
-# Aplicar via Supabase SQL Editor (conta com permissão de DDL)
-```
-
-#### Arquitetura de produção
+#### Arquitetura (runtime)
 
 ```
 Cliente
   └── Nginx (80/443, TLS Let's Encrypt)
-        ├── /api/backend/* → backend:8080
-        └── /* → frontend:3000
-              └── /api/backend/* → backend:8080  (proxy server-side Next.js)
-                    └── PostgreSQL Supabase (schema public)
+        ├── /webhooks/*  → backend:8080            (webhooks Stripe/Resend — headers crus)
+        └── /*           → frontend:3000           (Next.js)
+              └── /api/backend/*, /api/auth/*       → backend:8080  (proxy server-side Next.js)
+                    └── PostgreSQL Supabase (schema do ambiente)
 ```
 
 ---
 
-### DNS e E-mail — Cloudflare + Resend
+### DNS e E-mail — Hostinger + Resend
 
-Ver [`docs/infra-dns-cloudflare.md`](docs/infra-dns-cloudflare.md) para o guia completo.
+DNS gerenciado no **Hostinger** (hPanel). E-mail transacional via **Resend**
+(domínio `forzion.tech` verificado). Detalhes do subsistema de e-mail em
+[`specs/specification-email.md`](specs/specification-email.md).
 
 **Resumo:**
 
 ```
-forzion.tech (registrador)
-  └── nameservers → Cloudflare (gratuito)
-        ├── A → IP VM OCI
-        ├── TXT SPF → Resend
-        └── TXT DKIM x2 → Resend
+forzion.tech (DNS no Hostinger)
+  ├── A     homologacao → IP da VPS Hostinger
+  ├── (send.forzion.tech)  MX + TXT SPF → Resend (Amazon SES)
+  └── TXT   resend._domainkey → DKIM Resend
 ```
 
-- DNS: **Cloudflare** — gratuito, sem limitação de records
-- E-mail transacional: **Resend** — 3k emails/mês grátis, requer domínio verificado
-- Custo adicional: $0 (exceto o domínio, ~$10–15/ano)
+- DNS: **Hostinger** (registros no hPanel)
+- E-mail transacional: **Resend** — requer domínio verificado (DKIM + SPF no subdomínio `send.`)
+- Webhook de entrega do Resend: `POST /webhooks/resend` (roteado pelo Nginx direto ao backend)
