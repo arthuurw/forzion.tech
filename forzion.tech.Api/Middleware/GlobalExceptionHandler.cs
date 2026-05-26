@@ -37,6 +37,9 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             Instance = httpContext.Request.Path
         };
 
+        if (exception is EmailNaoVerificadoException)
+            problem.Extensions["code"] = EmailNaoVerificadoException.Codigo;
+
         httpContext.Response.StatusCode = statusCode;
 
         await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken).ConfigureAwait(false);
@@ -86,6 +89,7 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
 
             AlunoInativoException ex => (StatusCodes.Status403Forbidden, "Inativo", ex.Message),
             AcessoNegadoException ex => (StatusCodes.Status403Forbidden, "Acesso negado", ex.Message),
+            EmailNaoVerificadoException ex => (StatusCodes.Status403Forbidden, "E-mail não verificado", ex.Message),
 
             EmailJaCadastradoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
             AlunoJaVinculadoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),

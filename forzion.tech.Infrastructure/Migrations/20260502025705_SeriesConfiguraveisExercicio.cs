@@ -13,27 +13,22 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "carga",
-                schema: "homolog",
                 table: "treino_exercicios");
 
             migrationBuilder.DropColumn(
                 name: "descanso",
-                schema: "homolog",
                 table: "treino_exercicios");
 
             migrationBuilder.DropColumn(
                 name: "repeticoes",
-                schema: "homolog",
                 table: "treino_exercicios");
 
             migrationBuilder.DropColumn(
                 name: "series",
-                schema: "homolog",
                 table: "treino_exercicios");
 
             migrationBuilder.CreateTable(
                 name: "treino_exercicio_series",
-                schema: "homolog",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -52,7 +47,6 @@ namespace forzion.tech.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_treino_exercicio_series_treino_exercicios_treino_exercicio_",
                         column: x => x.treino_exercicio_id,
-                        principalSchema: "homolog",
                         principalTable: "treino_exercicios",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -60,7 +54,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_treino_exercicio_series_treino_exercicio_id",
-                schema: "homolog",
                 table: "treino_exercicio_series",
                 column: "treino_exercicio_id");
         }
@@ -69,26 +62,22 @@ namespace forzion.tech.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "treino_exercicio_series",
-                schema: "homolog");
+                name: "treino_exercicio_series");
 
             migrationBuilder.AddColumn<decimal>(
                 name: "carga",
-                schema: "homolog",
                 table: "treino_exercicios",
                 type: "numeric(10,2)",
                 nullable: true);
 
             migrationBuilder.AddColumn<int>(
                 name: "descanso",
-                schema: "homolog",
                 table: "treino_exercicios",
                 type: "integer",
                 nullable: true);
 
             migrationBuilder.AddColumn<int>(
                 name: "repeticoes",
-                schema: "homolog",
                 table: "treino_exercicios",
                 type: "integer",
                 nullable: false,
@@ -96,7 +85,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.AddColumn<int>(
                 name: "series",
-                schema: "homolog",
                 table: "treino_exercicios",
                 type: "integer",
                 nullable: false,

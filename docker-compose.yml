@@ -37,10 +37,10 @@ services:
       Resend__ApiKey: "${RESEND_API_KEY:-}"
       Seed__AdminEmail: "${SEED_ADMIN_EMAIL:-admin@forzion.tech}"
       Seed__AdminPassword: "${SEED_ADMIN_PASSWORD}"
-      # WhatsApp (opcional — NullWhatsAppNotifier se vazio)
-      # WhatsApp__BaseUrl: "${WHATSAPP_BASE_URL}"
-      # WhatsApp__Instance: "${WHATSAPP_INSTANCE}"
-      # WhatsApp__ApiKey: "${WHATSAPP_API_KEY}"
+      # WhatsApp via Meta Cloud API (opcional — NullWhatsAppNotifier se vazio)
+      # WhatsApp__PhoneNumberId: "${WHATSAPP_PHONE_NUMBER_ID}"
+      # WhatsApp__AccessToken: "${WHATSAPP_ACCESS_TOKEN}"
+      # WhatsApp__ApiVersion: "${WHATSAPP_API_VERSION:-v21.0}"
     depends_on:
       postgres:
         condition: service_healthy

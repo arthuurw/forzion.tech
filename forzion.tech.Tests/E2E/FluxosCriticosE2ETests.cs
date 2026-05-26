@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -117,7 +119,19 @@ public class FluxosCriticosE2ETests(RealPipelineFixture fixture)
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         var treinadorId = body.GetProperty("treinadorId").GetGuid();
         _emailPorTreinador[treinadorId] = email;
+        // Resend usa NullEmailService nos testes: o token de verificação só existiria
+        // no e-mail. Marca a conta como verificada direto no banco para liberar o login.
+        await VerificarEmailDiretoAsync(email);
         return (treinadorId, email);
+    }
+
+    private async Task VerificarEmailDiretoAsync(string email)
+    {
+        using var scope = fixture.Services.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<IContaRepository>();
+        var conta = await repo.ObterPorEmailAsync(email.Trim().ToLowerInvariant());
+        conta!.MarcarEmailVerificado(DateTime.UtcNow);
+        await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().CommitAsync();
     }
 
     private async Task<(Guid treinadorId, string email)> TreinadorAprovadoComPlanoAsync()

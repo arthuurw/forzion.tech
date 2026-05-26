@@ -28,7 +28,6 @@ public static class InfrastructureExtensions
         IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("AppConnection");
-        var schema = configuration["Database:Schema"] ?? "public";
 
         // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.
         services.AddSingleton(TimeProvider.System);
@@ -38,12 +37,12 @@ public static class InfrastructureExtensions
         services.AddScoped<AppDbContext>(sp =>
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", schema))
+                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory"))
                 .UseSnakeCaseNamingConvention()
                 .Options;
 
             var dispatcher = sp.GetRequiredService<IDomainEventDispatcher>();
-            return new AppDbContext(options, schema, dispatcher);
+            return new AppDbContext(options, dispatcher);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
@@ -66,6 +65,9 @@ public static class InfrastructureExtensions
         services.AddScoped<IVinculoTreinadorAlunoRepository, VinculoTreinadorAlunoRepository>();
         services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
         services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
+        services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
+        services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
@@ -117,6 +119,9 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoCriadaEvent>, AssinaturaAlunoCriadaEmailHandler>();
+        services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoEmailHandler>();
+        services.AddScoped<IDomainEventHandler<AlunoInativadoEvent>, AlunoInativadoEmailHandler>();
+        services.AddScoped<IDomainEventHandler<ContaRegistradaEvent>, ContaRegistradaEmailHandler>();
 
         // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
@@ -125,20 +130,20 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();
         services.AddScoped<IDomainEventHandler<AlunoAtualizadoEvent>, AlunoAtualizadoSincronizarAssinanteHandler>();
 
-        // WhatsApp notifier — Evolution API when configured, no-op otherwise
-        var whatsAppBase = configuration["WhatsApp:BaseUrl"];
-        var whatsAppInstance = configuration["WhatsApp:Instance"];
-        var whatsAppApiKey = configuration["WhatsApp:ApiKey"];
-        if (!string.IsNullOrWhiteSpace(whatsAppBase) && !string.IsNullOrWhiteSpace(whatsAppInstance))
+        // WhatsApp notifier — Meta Cloud API when configured, no-op otherwise
+        var whatsAppPhoneNumberId = configuration["WhatsApp:PhoneNumberId"];
+        var whatsAppAccessToken = configuration["WhatsApp:AccessToken"];
+        var whatsAppApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v21.0";
+        if (!string.IsNullOrWhiteSpace(whatsAppPhoneNumberId) && !string.IsNullOrWhiteSpace(whatsAppAccessToken))
         {
-            services.AddHttpClient<EvolutionApiWhatsAppNotifier>(client =>
+            services.AddHttpClient<MetaWhatsAppCloudNotifier>(client =>
             {
-                client.BaseAddress = new Uri($"{whatsAppBase.TrimEnd('/')}/message/");
-                if (!string.IsNullOrWhiteSpace(whatsAppApiKey))
-                    client.DefaultRequestHeaders.Add("apikey", whatsAppApiKey);
-                client.DefaultRequestHeaders.Add("instanceName", whatsAppInstance);
+                client.BaseAddress = new Uri($"https://graph.facebook.com/{whatsAppApiVersion}/{whatsAppPhoneNumberId}/");
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", whatsAppAccessToken);
+                client.Timeout = TimeSpan.FromSeconds(15);
             });
-            services.AddScoped<IWhatsAppNotifier, EvolutionApiWhatsAppNotifier>();
+            services.AddScoped<IWhatsAppNotifier, MetaWhatsAppCloudNotifier>();
         }
         else
         {

@@ -22,7 +22,7 @@ public class AppDbContextDomainEventReentrancyTests(InfrastructureTestFixture fi
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
             .Options;
-        return new AppDbContext(options, schema: "homolog", dispatcher);
+        return new AppDbContext(options, dispatcher);
     }
 
     [Fact]
@@ -35,8 +35,8 @@ public class AppDbContextDomainEventReentrancyTests(InfrastructureTestFixture fi
 
         var conta = Conta.Criar(Email.Criar($"reentr{Guid.NewGuid():N}@test.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
         var aluno = Aluno.Criar(conta.Id, "Reentrancia", DateTime.UtcNow);
-        var eventosEsperados = aluno.DomainEvents.Count;
-        eventosEsperados.Should().BeGreaterThan(0, "Aluno.Criar precisa levantar ao menos um evento para o cenário ser válido");
+        var eventosEsperados = conta.DomainEvents.Count + aluno.DomainEvents.Count;
+        eventosEsperados.Should().BeGreaterThan(0, "Conta.Criar/Aluno.Criar precisam levantar ao menos um evento para o cenário ser válido");
 
         await ctx.Contas.AddAsync(conta);
         await ctx.Alunos.AddAsync(aluno);

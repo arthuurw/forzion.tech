@@ -237,6 +237,8 @@ public class DataSeeder(
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var conta = Conta.Criar(Email.Criar(email), passwordHasher.Hash(senha), TipoConta.SystemAdmin, agora);
+        conta.MarcarEmailVerificado(agora);
+        conta.ClearDomainEvents();
         var systemUser = SystemUser.Criar(conta.Id, "Super Admin", agora);
 
         context.Contas.Add(conta);

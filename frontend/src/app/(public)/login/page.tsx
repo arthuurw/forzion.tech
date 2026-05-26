@@ -18,6 +18,9 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailNaoVerificado, setEmailNaoVerificado] = useState<string | null>(null);
+  const [reenviando, setReenviando] = useState(false);
+  const [reenviado, setReenviado] = useState(false);
   const methods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -33,6 +36,8 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setError("");
+    setEmailNaoVerificado(null);
+    setReenviado(false);
     setLoading(true);
     try {
       const res = await fetch("/api/auth", {
@@ -48,7 +53,11 @@ export default function LoginPage() {
           setError("Erro interno. Tente novamente.");
         } else {
           const problem: ProblemDetails = await res.json();
-          setError(problem.title ?? "Erro ao fazer login.");
+          if (res.status === 403 && problem.code === "EMAIL_NAO_VERIFICADO") {
+            setEmailNaoVerificado(data.email);
+          } else {
+            setError(problem.title ?? "Erro ao fazer login.");
+          }
         }
         return;
       }
@@ -63,6 +72,23 @@ export default function LoginPage() {
     }
   };
 
+  const handleReenviar = async () => {
+    if (!emailNaoVerificado) return;
+    setReenviando(true);
+    try {
+      await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailNaoVerificado }),
+      });
+      setReenviado(true);
+    } catch {
+      setError("Não foi possível reenviar o e-mail de verificação.");
+    } finally {
+      setReenviando(false);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -73,6 +99,39 @@ export default function LoginPage() {
       </Typography>
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+
+      {emailNaoVerificado && (
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: 1,
+            bgcolor: "warning.light",
+            border: "1px solid",
+            borderColor: "warning.main",
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+            E-mail ainda não verificado
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            {reenviado
+              ? "E-mail de verificação reenviado. Confira sua caixa de entrada."
+              : "Confirme seu e-mail antes de entrar. Não recebeu o link?"}
+          </Typography>
+          {!reenviado && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleReenviar}
+              disabled={reenviando}
+              startIcon={reenviando ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              Reenviar verificação
+            </Button>
+          )}
+        </Box>
+      )}
 
       <FormProvider {...methods}>
         <Box component="form" onSubmit={methods.handleSubmit(onSubmit)} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
