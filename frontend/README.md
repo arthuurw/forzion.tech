@@ -208,6 +208,10 @@ frontend/
 │   │   ├── (public)/                   # Route group — sem auth
 │   │   │   ├── layout.tsx              # PublicLayout
 │   │   │   ├── login/
+│   │   │   ├── verify-email/           # Verifica e-mail via token (?token=); erro → botão reenviar
+│   │   │   ├── resend-verification/    # Reenvia link de verificação (e-mail; sucesso silencioso)
+│   │   │   ├── forgot-password/        # Solicita link de reset (e-mail; sucesso silencioso)
+│   │   │   ├── reset-password/         # Define nova senha via token (?token=)
 │   │   │   └── cadastro/
 │   │   │       ├── treinador/
 │   │   │       └── aluno/              # Seleciona treinador + pacote
@@ -220,6 +224,10 @@ frontend/
 │   │   │   │   ├── register/
 │   │   │   │   │   ├── treinador/route.ts
 │   │   │   │   │   └── aluno/route.ts
+│   │   │   │   ├── verify-email/route.ts       # POST — verifica e-mail (repassa ProblemDetails)
+│   │   │   │   ├── resend-verification/route.ts # POST — reenvia verificação (sempre 200)
+│   │   │   │   ├── forgot-password/route.ts     # POST — solicita reset (sempre 200)
+│   │   │   │   ├── reset-password/route.ts      # POST — redefine senha via token
 │   │   │   │   └── treinadores/
 │   │   │   │       ├── route.ts        # GET — lista treinadores ativos (público)
 │   │   │   │       └── [treinadorId]/pacotes/route.ts
@@ -312,9 +320,13 @@ frontend/
 | Path | Perfil | Descrição |
 |------|--------|-----------|
 | `/` | público | Landing page — hero, planos (com tier, preço e `descricao` vindos da API), como funciona, CTA de cadastro |
-| `/login` | público | Formulário de login |
+| `/login` | público | Formulário de login (403 `EMAIL_NAO_VERIFICADO` → orienta verificar e-mail) |
 | `/cadastro/treinador` | público | Cadastro de treinador (seleciona plano) |
 | `/cadastro/aluno` | público | Cadastro de aluno (seleciona treinador + pacote) |
+| `/verify-email` | público | Verifica e-mail via `?token=`; em erro/expirado, botão "Reenviar verificação" |
+| `/resend-verification` | público | Reenvia link de verificação (informa e-mail; sucesso silencioso) |
+| `/forgot-password` | público | Solicita link de reset de senha (sucesso silencioso) |
+| `/reset-password` | público | Define nova senha via `?token=` |
 | `/admin` | SystemAdmin | Dashboard — stat cards, gráfico donut por status, vínculos pendentes inline |
 | `/admin/treinadores` | SystemAdmin | Lista com filtro por status, aprovação, reprovação, inativação, atribuição de plano; ícone Info → detalhe |
 | `/admin/treinadores/[treinadorId]` | SystemAdmin | Detalhe do treinador — tabs: Alunos, Vínculos, Treinos, Pacotes |
@@ -454,6 +466,7 @@ Check a cada 20 segundos. Reinicia ao detectar qualquer interação. Ativo apena
 | Status | Comportamento |
 |--------|--------------|
 | `401` | Axios response interceptor → `window.location.href = "/login"` |
+| `403` | Acesso negado ou, no login, e-mail não verificado (`code = EMAIL_NAO_VERIFICADO`) → orienta verificar/reenviar |
 | `400` | FluentValidation → campos específicos via `error.response.data.errors` |
 | `422` | Regra de negócio → `error.response.data.detail` exibido via `AlertBanner` |
 | `404` | Mensagem genérica ou `error.response.data.title` |
