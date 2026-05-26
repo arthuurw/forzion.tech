@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 1067 testes backend (999 unit + 68 integração) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | JWT próprio | Isolamento por TreinadorId | Stripe Connect | WhatsApp Meta Cloud API | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
+**Status**: ✅ 1000+ testes backend (unit + integração com Docker) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | JWT próprio | Isolamento por TreinadorId | Stripe Connect | WhatsApp Meta Cloud API | E-mail transacional Resend (verificação de conta, reset de senha, webhook de entrega via Svix) | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
 
 ---
 
@@ -58,11 +58,16 @@ forzion.tech/
 ├── forzion.tech.Tests/        # xUnit + Moq + FluentAssertions + WebApplicationFactory
 ├── frontend/                  # Next.js 16 — ver frontend/README.md
 ├── nginx/                     # nginx.conf + nginx-init.conf (HTTPS + proxy)
-├── scripts/                   # setup-vm.sh, init-ssl.sh
-├── docker-compose.yml         # Stack completa para desenvolvimento local
-├── docker-compose.server.yml  # Stack de servidor (sem banco — usa Supabase)
-├── .dockerignore              # Exclui bin/, obj/, node_modules/ do build Docker
+├── scripts/                   # setup-vm.sh, init-ssl.sh, gen-swagger.sh
+├── docker-compose.yml         # Stack local (Postgres local + backend + frontend)
+├── docker-compose.homolog.yml # Stack de homologação (build-on-VM; deploy ativo)
+├── docker-compose.server.yml  # Stack por imagem de registry (preparada, não-ativa)
+├── AGENTS.md                  # Guia macro para agentes (referenciado por CLAUDE.md)
 ├── .env.example               # Variáveis necessárias para docker-compose
+├── specs/                     # Docs de referência agent-oriented (versionados)
+│   ├── specification-db.md             # Estrutura de banco (tabelas/FKs/enums)
+│   ├── specification-email.md          # Subsistema de e-mail (Resend/webhook)
+│   └── specification-infrastructure.md # Hosting, deploy, CI/CD, ambientes
 └── docs/                      # Documentação (gitignored, exceto docs/api/)
     └── api/swagger.v1.json    # Contrato OpenAPI versionado (baseline do gate openapi-drift)
 ```
@@ -162,14 +167,14 @@ ASPNETCORE_ENVIRONMENT=Homolog dotnet ef database update \
   --project forzion.tech.Infrastructure \
   --startup-project forzion.tech.Api
 
-# Gerar script SQL para produção (schema public)
-ASPNETCORE_ENVIRONMENT=Homolog dotnet ef migrations script --idempotent \
+# Gerar script SQL idempotente (offline, schema-agnostic — aplicável a qualquer schema)
+dotnet ef migrations script --idempotent \
   --project forzion.tech.Infrastructure \
   --startup-project forzion.tech.Api \
-  --output migration_public_schema.sql
+  --output migration.sql
 ```
 
-> **Migrations**: sempre geradas com `Homolog`. Produção não suporta `database update` direto — gere o script, substitua `"homolog"` por `"public"` e aplique via Supabase SQL Editor.
+> **Migrations são schema-agnostic** (`AppDbContext` sem `HasDefaultSchema`; schema vem do `search_path` da connection — ex.: `Search Path=homolog`). As MESMAS migrations aplicam em qualquer schema (`homolog`/`develop`/`public`). Para produção, aplique com `Search Path=public` (sem substituir schema manualmente). Detalhes em [`specs/specification-db.md`](specs/specification-db.md).
 >
 > **Atenção**: `InicioDominio.Up()` contém `DROP TABLE` — nunca reaplicar em ambiente com dados.
 
@@ -233,12 +238,14 @@ forzion.tech.Domain/
 │                         # Treino, TreinoExercicio, SerieConfig, TreinoAluno, Exercicio,
 │                         # ExecucaoTreino, ExecucaoExercicio, LogAprovacao,
 │                         # PlanoPlataforma, Pacote, GrupoMuscular, ContaRecebimento,
-│                         # AssinaturaAluno, Assinante, Pagamento, SystemUser, TokenRevogado
+│                         # AssinaturaAluno, Assinante, Pagamento, SystemUser, TokenRevogado,
+│                         # EmailVerificationToken, PasswordResetToken, EmailDeliveryLog
 ├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus,
 │                         # VinculoStatus, ObjetivoTreino, DificuldadeTreino,
 │                         # TipoGrupoMuscular, status de assinatura/pagamento, MetodoPagamento,
 │                         # TierPlano (Free, Basic, Pro, ProPlus, Elite)
 ├── Events/               # IDomainEvent, IHasDomainEvents,
+│                         # ContaRegistrada (verificação de e-mail),
 │                         # TreinadorAprovado/Reprovado/Inativado, VinculoAprovado,
 │                         # AlunoRegistrado, AlunoAtualizado, AlunoInativado,
 │                         # AssinaturaAlunoCriada
@@ -248,11 +255,14 @@ forzion.tech.Domain/
 forzion.tech.Infrastructure/
 ├── DependencyInjection/
 │   └── InfrastructureExtensions.cs
-├── Migrations/           # EF Core migrations (21 total, schema homolog)
+├── Migrations/           # EF Core migrations (schema-agnostic; ver specs/specification-db.md)
 ├── Handlers/             # Handlers de domain events em Infra: cria AssinaturaAluno no
 │                         # VinculoAprovado; sincroniza projeção Assinante (billing)
 ├── Notifications/
-│   ├── Email/            # EmailTemplates + 5 handlers de eventos de domínio (Resend)
+│   ├── Email/            # EmailTemplates + handlers de eventos (Resend); verificação de
+│   │                     # e-mail (EmailVerificationSender/ReenviarVerificacaoHandler),
+│   │                     # reset de senha (EsqueceuSenhaHandler), webhook de entrega
+│   │                     # (ProcessarWebhookResendHandler — Svix → email_delivery_logs)
 │   └── WhatsApp/         # MetaWhatsAppCloudNotifier + NullWhatsAppNotifier
 ├── Persistence/
 │   ├── AppDbContext.cs   # DbContext + IUnitOfWork
@@ -276,9 +286,10 @@ forzion.tech.Tests/
 ├── Infrastructure/
 │   ├── JwtServiceTests.cs
 │   ├── Notifications/
-│   │   ├── Email/        # TreinadorAprovado, Reprovado, Inativado, VinculoAprovado, AssinaturaCriada
+│   │   ├── Email/        # TreinadorAprovado/Reprovado/Inativado, VinculoAprovado, AssinaturaCriada,
+│   │   │                 # ContaRegistrada, EmailVerificationSender, ReenviarVerificacao
 │   │   └── WhatsApp/     # MetaWhatsAppCloudNotifierTests, NullWhatsAppNotifierTests
-│   ├── Repositories/     # 62 testes com Testcontainers.PostgreSql (banco real)
+│   ├── Repositories/     # testes de repositório com Testcontainers.PostgreSql (banco real)
 │   └── Services/         # NullEmailServiceTests
 └── Integration/          # FluxoCompletoTests
 ```
@@ -289,7 +300,7 @@ forzion.tech.Tests/
 
 | Entidade | Descrição |
 |----------|-----------|
-| `Conta` | Auth unificada. E-mail + PasswordHash (BCrypt). `TipoConta`: `SystemAdmin`, `Treinador`, `Aluno`. |
+| `Conta` | Auth unificada. E-mail + PasswordHash (BCrypt). `TipoConta`: `SystemAdmin`, `Treinador`, `Aluno`. `EmailVerificado` + `VerificadoEm` (verificação de e-mail no cadastro). Emite `ContaRegistradaEvent` ao criar. |
 | `SystemUser` | Perfil de admin vinculado a uma `Conta` do tipo `SystemAdmin`. |
 | `Treinador` | Perfil de treinador. Possui `PlanoPlataformaId`. Status: `AguardandoAprovacao → Ativo → Inativo`. Dados de Stripe Connect foram extraídos para `ContaRecebimento` (contexto Billing). |
 | `Aluno` | Perfil de aluno vinculado a uma `Conta`. Email armazenado como `Email` VO. Máquina de estados: `AguardandoAprovacao → Ativo ⇌ Inativo` via `Ativar()`/`Inativar()`. |
@@ -309,21 +320,25 @@ forzion.tech.Tests/
 | `AssinaturaAluno` | Cobrança recorrente mensal de um aluno (ex-`Assinatura`). Vinculada ao `VinculoTreinadorAluno` e ao `Pacote`. Status: `Pendente → Ativa → Inadimplente → Cancelada`. |
 | `Assinante` | Projeção de billing read-side do aluno (nome/email/alunoId). Sincronizada por eventos de domínio (`AlunoRegistrado`/`AlunoAtualizado`). Unique por `AlunoId`. |
 | `Pagamento` | Tentativa de cobrança individual. Armazena `StripePaymentIntentId`, QR Code Pix ou `ClientSecret` para cartão. Status: `Pendente → Pago / Expirado / Falhou`. |
+| `EmailVerificationToken` | Token de verificação de e-mail no cadastro. SHA-256 hex(64) armazenado; cru só no e-mail. Expiração 24h. `conta_id` sem FK física. |
+| `PasswordResetToken` | Token de reset de senha. Mesmo padrão (SHA-256 hex armazenado). Expiração 1h. |
+| `EmailDeliveryLog` | Auditoria de entrega de e-mail (webhook Resend/Svix): `resend_message_id`, `event_type`, `recipient_email`, payload cru. |
 
 ---
 
 ### Domain Events
 
-`Treinador`, `VinculoTreinadorAluno` e `Aluno` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada):
+`Conta`, `Treinador`, `VinculoTreinadorAluno` e `Aluno` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada):
 
 | Evento | Levantado em | Consumido por |
 |--------|-------------|---------------|
+| `ContaRegistradaEvent` | `Conta.Criar()` | e-mail de verificação (`EmailVerificationSender` — cobre Treinador + Aluno) |
 | `TreinadorAprovadoEvent` | `Treinador.Aprovar()` | e-mail (Resend) |
 | `TreinadorReprovadoEvent` | `Treinador.Reprovar()` | e-mail |
 | `TreinadorInativadoEvent` | `Treinador.Inativar()` | e-mail |
 | `VinculoAprovadoEvent` | `VinculoTreinadorAluno.Aprovar()` | e-mail + cria `AssinaturaAluno` (se treinador com onboarding Stripe completo) |
-| `AlunoInativadoEvent` | `Aluno.Inativar()` | — |
-| `AlunoRegistradoEvent` | `Aluno.Criar()` | sincroniza projeção `Assinante` (billing) |
+| `AlunoInativadoEvent` | `Aluno.Inativar()` | e-mail |
+| `AlunoRegistradoEvent` | `Aluno.Criar()` | sincroniza projeção `Assinante` (billing) + e-mail de boas-vindas |
 | `AlunoAtualizadoEvent` | `Aluno` (atualização de perfil) | sincroniza projeção `Assinante` |
 | `AssinaturaAlunoCriadaEvent` | `AssinaturaAluno.Criar()` | e-mail |
 
@@ -413,10 +428,18 @@ Notificações disparadas por domain events:
 
 | Evento | Destinatário | Assunto |
 |--------|-------------|---------|
+| `ContaRegistradaEvent` | conta nova (treinador/aluno) | "Confirme seu e-mail" (link de verificação, 24h) |
 | `TreinadorAprovadoEvent` | treinador | "Sua conta foi aprovada" |
 | `TreinadorReprovadoEvent` | treinador | "Cadastro não aprovado" |
 | `TreinadorInativadoEvent` | treinador | "Conta inativada" |
 | `VinculoAprovadoEvent` | treinador | "Novo aluno vinculado" |
+| `AlunoRegistradoEvent` | aluno | "Bem-vindo(a)" |
+| `AlunoInativadoEvent` | aluno | "Conta inativada" |
+| `AssinaturaAlunoCriadaEvent` | aluno | "Assinatura criada" |
+
+Fluxos sob demanda (não-evento): **verificação de e-mail** (`/auth/verify-email` + `/auth/resend-verification`) e **reset de senha** (`/auth/forgot-password` → e-mail com link 1h → `/auth/reset-password`). Login bloqueia com **403 `EMAIL_NAO_VERIFICADO`** até a conta verificar.
+
+**Rastreamento de entrega**: webhook `POST /webhooks/resend` (assinatura Svix) grava eventos `email.delivered/bounced/complained/spam_complaint` em `email_delivery_logs`. Em não-produção o Resend não alcança `localhost` — o webhook só fecha ponta-a-ponta em ambiente público (homolog). Ver [`specs/specification-email.md`](specs/specification-email.md).
 
 #### WhatsApp — Meta Cloud API
 
@@ -458,6 +481,10 @@ Antes da revisão do app pela Meta, só é possível enviar para até **5 númer
 | `POST` | `/auth/login` | `{ email, senha }` | `{ token, tipoConta, contaId, perfilId }` |
 | `POST` | `/auth/register/treinador` | `{ nome, email, senha, telefone? }` | `201 TreinadorResponse` |
 | `POST` | `/auth/register/aluno` | `{ nome, email, senha, treinadorId, pacoteId, telefone?, ... }` | `201 AlunoResponse` |
+| `POST` | `/auth/verify-email` | `{ token }` | `200` · 422 token inválido/expirado · 400 formato |
+| `POST` | `/auth/resend-verification` | `{ email }` | `200` (sempre — não vaza existência) |
+| `POST` | `/auth/forgot-password` | `{ email }` | `200` (sempre — não vaza existência) |
+| `POST` | `/auth/reset-password` | `{ token, novaSenha }` | `200` · 422 token inválido/expirado · 400 |
 | `GET` | `/auth/planos` | — | `[PlanoPlataformaResponse]` · rate: `auth` |
 | `GET` | `/auth/treinadores` | — | `[TreinadorPublicoResponse]` (apenas ativos) · rate: `auth` |
 | `GET` | `/auth/treinadores/{id}/pacotes` | — | `[PacoteResponse]` · rate: `auth` |
@@ -533,11 +560,12 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `GET` | `/aluno/pagamentos/{pagamentoId}` | — | `PagamentoResponse` (inclui `clientSecret` para cartão) · rate: `read` |
 | `GET` | `/aluno/pagamentos/assinatura/{assinaturaId}` | — | `PagamentoResponse[]` · rate: `read` |
 
-#### Webhooks (público — verificação por assinatura Stripe)
+#### Webhooks (público — verificação por assinatura)
 
 | Método | Rota | Body | Resposta |
 |--------|------|------|----------|
-| `POST` | `/webhooks/stripe` | Evento Stripe | `200` · body limitado a 64 KB · rate: `webhook` |
+| `POST` | `/webhooks/stripe` | Evento Stripe (assinatura `Stripe-Signature`) | `200` · body limitado a 64 KB · rate: `webhook` |
+| `POST` | `/webhooks/resend` | Evento Resend (assinatura Svix `svix-*`) | `200` · 400 sem secret/assinatura inválida · grava `email_delivery_logs` |
 
 #### Internal (autenticação por `X-Internal-Key`)
 
@@ -679,6 +707,7 @@ O `GlobalExceptionHandler` implementa **RFC 7807** (`ProblemDetails`):
 | `*NaoEncontradoException` | 404 | Recurso não existe ou não pertence ao usuário |
 | `AcessoNegadoException` | 403 | Tentativa de acesso a recurso de outro treinador |
 | `*InativoException` | 403 | Operação em entidade inativa |
+| `EmailNaoVerificadoException` | 403 | Login com e-mail não verificado (`code = EMAIL_NAO_VERIFICADO`; checado após validar a senha) |
 | `DomainException` (e subclasses) | 422 | Violação de regra de negócio |
 | `ValidationException` (FluentValidation) | 400 | Payload inválido — inclui erros por campo |
 | `Qualquer outra` | 500 | Mensagem interna nunca exposta |
@@ -735,6 +764,8 @@ dotnet user-secrets set "Seed:AdminPassword"          "<senha>"              --p
 
 # Opcional — e-mail transacional via Resend (omitir = NullEmailService)
 dotnet user-secrets set "Resend:ApiKey"               "re_..."               --project forzion.tech.Api
+dotnet user-secrets set "Resend:WebhookSecret"        "whsec_..."            --project forzion.tech.Api  # webhook de entrega (Svix)
+dotnet user-secrets set "App:FrontendBaseUrl"         "http://localhost:3000" --project forzion.tech.Api # base dos links de verificação/reset
 
 # Opcional — notificações WhatsApp via Meta Cloud API (omitir = NullWhatsAppNotifier)
 # Credenciais obtidas em: Meta for Developers → seu app → WhatsApp → API Setup
@@ -787,15 +818,18 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 | `MoverStripeParaContaRecebimento` | Extrai dados de Stripe Connect de `treinadores` para a nova tabela `contas_recebimento` (contexto Billing) |
 | `ExercicioGrupoMuscularFk` | FK `grupo_muscular_id` em `exercicios` + backfill a partir do nome do enum (data-preserving) |
 | `RenomearPlanoPacoteAssinatura` | Rename data-preserving: `planos_treinador → planos_plataforma`, `pacotes_aluno → pacotes`, `assinaturas → assinaturas_aluno` (linguagem plataforma/aluno) |
+| `AdicionarPasswordResetToken` | Tabela `password_reset_tokens` (reset de senha; SHA-256 hex, expiry 1h) |
+| `AdicionarEmailDeliveryLogs` | Tabela `email_delivery_logs` (auditoria de entrega — webhook Resend/Svix) |
+| `AdicionarVerificacaoEmail` | Tabela `email_verification_tokens` + colunas `email_verificado`/`verificado_em` em `contas` (backfill `true` p/ contas existentes) |
 
-> **Migrations fixam o schema `homolog`** (ToTable/SQL com schema hardcoded). Rodar `MigrateAsync` exige o mesmo schema no `DbContext` (`Database:Schema=homolog`); a 1ª migration é schema-agnostic e usa `current_schema()`, então o schema precisa existir no `search_path` antes.
+> **Migrations são SCHEMA-AGNOSTIC** — `AppDbContext` sem `HasDefaultSchema`; o schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). As MESMAS migrations aplicam em `homolog`/`develop`/`public`. `MigrationsHistoryTable` sem schema (segue o search_path). Total: 24 migrations. Ver [`specs/specification-db.md`](specs/specification-db.md).
 
 ---
 
 ### Testes
 
 ```
-1067 testes | 0 falhas  (999 unit/rápidos + 68 integração com Docker)
+~1000 testes unit (rápidos, sem Docker) + integração (Testcontainers) | 0 falhas
 
 Domain/                  → entidades, value objects, domain events, exceções, máquina de estados
 Domain/Properties/       → property-based (CsCheck): Email VO, Result<T>, invariantes de entidade
@@ -807,7 +841,7 @@ Builders/                → test data builders determinísticos
 Infrastructure/          → JwtService, email handlers, WhatsApp notifiers
                            (MetaWhatsAppCloudNotifier, NullWhatsAppNotifier),
                            dispatch de domain events (regressão de re-entrância)
-Infrastructure/Repositories/ → 62 testes de repositório com Testcontainers.PostgreSql (banco real)  [Integration]
+Infrastructure/Repositories/ → testes de repositório com Testcontainers.PostgreSql (banco real)  [Integration]
 E2E/                     → pipeline real: WebApplicationFactory + Postgres real + migrations + seed,
                            handlers reais, só Stripe fake  [Integration]
 ```
@@ -821,8 +855,8 @@ E2E/                     → pipeline real: WebApplicationFactory + Postgres rea
 Comandos úteis:
 
 ```bash
-dotnet test forzion.tech.Tests --filter "Category!=Integration"   # rápido, sem Docker (999)
-dotnet test forzion.tech.Tests                                    # suíte inteira, exige Docker (1067)
+dotnet test forzion.tech.Tests --filter "Category!=Integration"   # rápido, sem Docker (~1000 unit)
+dotnet test forzion.tech.Tests                                    # suíte inteira, exige Docker (unit + integração)
 ```
 
 Padrões adotados:
