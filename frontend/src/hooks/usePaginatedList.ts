@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { PaginatedResponse } from "@/types";
 
 interface Options<T> {
-  fetcher: (page: number, pageSize: number) => Promise<PaginatedResponse<T>>;
+  fetcher: (page: number, pageSize: number, signal: AbortSignal) => Promise<PaginatedResponse<T>>;
   errorMessage?: string;
   initialPageSize?: number;
 }
@@ -19,23 +19,39 @@ export function usePaginatedList<T>({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
     setError("");
     setSuccess("");
     try {
-      const data = await fetcher(page, pageSize);
-      setItems(data.items as T[]);
-      setTotal(data.total);
-    } catch {
-      setError(errorMessage);
+      const data = await fetcher(page, pageSize, signal);
+      if (!signal.aborted) {
+        setItems(data.items as T[]);
+        setTotal(data.total);
+      }
+    } catch (err) {
+      if (!signal.aborted) setError(errorMessage);
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   }, [fetcher, page, pageSize, errorMessage]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    load(controller.signal);
+    return () => { controller.abort(); };
+  }, [load]);
+
+  const reload = useCallback(() => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    load(controller.signal);
+  }, [load]);
 
   const handlePageChange = useCallback((newPage: number) => setPage(newPage), []);
   const handlePageSizeChange = useCallback((newSize: number) => { setPageSize(newSize); setPage(0); }, []);
@@ -52,6 +68,6 @@ export function usePaginatedList<T>({
     setPageSize: handlePageSizeChange,
     setError,
     setSuccess,
-    reload: load,
+    reload,
   };
 }
