@@ -318,26 +318,32 @@ export default function DetalheFichaPage() {
           <Typography variant="h5" sx={{ fontWeight: 700 }}>{ficha.nome}</Typography>
           <Chip label={OBJETIVO_LABEL[ficha.objetivo] ?? ficha.objetivo} size="small" sx={{ mt: 0.5 }} />
         </Box>
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} disabled={loadingDuplicar} onClick={handleDuplicar}>
-            Duplicar
+        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+          <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} disabled={loadingDuplicar} onClick={handleDuplicar}
+            sx={{ minWidth: { xs: 36, sm: "auto" }, px: { xs: 1, sm: 1.5 }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } } }}
+            aria-label="Duplicar">
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Duplicar</Box>
           </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<FileDownloadIcon />}
+          <Button variant="outlined" size="small" startIcon={<FileDownloadIcon />}
             onClick={() => void exportarFichaParaExcel({ nome: ficha.nome, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
-          >
-            Exportar
+            sx={{ minWidth: { xs: 36, sm: "auto" }, px: { xs: 1, sm: 1.5 }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } } }}
+            aria-label="Exportar">
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Exportar</Box>
           </Button>
-          <Button variant="outlined" size="small" startIcon={<LinkIcon />} onClick={openVincular}>
-            Vincular aluno
+          <Button variant="outlined" size="small" startIcon={<LinkIcon />} onClick={openVincular}
+            sx={{ minWidth: { xs: 36, sm: "auto" }, px: { xs: 1, sm: 1.5 }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } } }}
+            aria-label="Vincular aluno">
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Vincular aluno</Box>
           </Button>
-          <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={openEdit}>
-            Editar
+          <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={openEdit}
+            sx={{ minWidth: { xs: 36, sm: "auto" }, px: { xs: 1, sm: 1.5 }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } } }}
+            aria-label="Editar">
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Editar</Box>
           </Button>
-          <Button variant="outlined" size="small" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteOpen(true)}>
-            Excluir
+          <Button variant="outlined" size="small" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteOpen(true)}
+            sx={{ minWidth: { xs: 36, sm: "auto" }, px: { xs: 1, sm: 1.5 }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } } }}
+            aria-label="Excluir">
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Excluir</Box>
           </Button>
         </Stack>
       </Box>
@@ -427,7 +433,7 @@ export default function DetalheFichaPage() {
                         value={row.quantidade}
                         onChange={(e) => updateSerieRow(idx, "quantidade", e.target.value)}
                         size="small"
-                        sx={{ width: 90 }}
+                        sx={{ width: { xs: 80, sm: 90 } }}
                         slotProps={{ htmlInput: { min: 1 } }}
                       />
                       <TextField
@@ -436,7 +442,7 @@ export default function DetalheFichaPage() {
                         value={row.repeticoesMin}
                         onChange={(e) => updateSerieRow(idx, "repeticoesMin", e.target.value)}
                         size="small"
-                        sx={{ width: 90 }}
+                        sx={{ width: { xs: 80, sm: 90 } }}
                         slotProps={{ htmlInput: { min: 1 } }}
                       />
                       <TextField
@@ -445,7 +451,7 @@ export default function DetalheFichaPage() {
                         value={row.repeticoesMax}
                         onChange={(e) => updateSerieRow(idx, "repeticoesMax", e.target.value)}
                         size="small"
-                        sx={{ width: 90 }}
+                        sx={{ width: { xs: 80, sm: 90 } }}
                         slotProps={{ htmlInput: { min: 1 } }}
                       />
                       <TextField
@@ -453,7 +459,7 @@ export default function DetalheFichaPage() {
                         value={row.descricao}
                         onChange={(e) => updateSerieRow(idx, "descricao", e.target.value)}
                         size="small"
-                        sx={{ flex: 1, minWidth: 120 }}
+                        sx={{ width: { xs: "100%", sm: "auto" }, flex: { xs: "none", sm: 1 }, minWidth: { xs: 0, sm: 120 } }}
                         placeholder="Ex.: Aquecimento"
                         slotProps={{ htmlInput: { maxLength: 100 } }}
                       />
@@ -463,7 +469,7 @@ export default function DetalheFichaPage() {
                         value={row.carga}
                         onChange={(e) => updateSerieRow(idx, "carga", e.target.value)}
                         size="small"
-                        sx={{ width: 90 }}
+                        sx={{ width: { xs: 80, sm: 90 } }}
                         slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
                       />
                       <TextField
@@ -472,7 +478,7 @@ export default function DetalheFichaPage() {
                         value={row.descanso}
                         onChange={(e) => updateSerieRow(idx, "descanso", e.target.value)}
                         size="small"
-                        sx={{ width: 100 }}
+                        sx={{ width: { xs: 80, sm: 100 } }}
                         slotProps={{ htmlInput: { min: 0 } }}
                       />
                       {seriesRows.length > 1 && (
@@ -576,7 +582,7 @@ export default function DetalheFichaPage() {
                       value={row.quantidade}
                       onChange={(e) => updateEditSerieRow(idx, "quantidade", e.target.value)}
                       size="small"
-                      sx={{ width: 90 }}
+                      sx={{ width: { xs: 80, sm: 90 } }}
                       slotProps={{ htmlInput: { min: 1 } }}
                     />
                     <TextField
@@ -585,7 +591,7 @@ export default function DetalheFichaPage() {
                       value={row.repeticoesMin}
                       onChange={(e) => updateEditSerieRow(idx, "repeticoesMin", e.target.value)}
                       size="small"
-                      sx={{ width: 90 }}
+                      sx={{ width: { xs: 80, sm: 90 } }}
                       slotProps={{ htmlInput: { min: 1 } }}
                     />
                     <TextField
@@ -594,7 +600,7 @@ export default function DetalheFichaPage() {
                       value={row.repeticoesMax}
                       onChange={(e) => updateEditSerieRow(idx, "repeticoesMax", e.target.value)}
                       size="small"
-                      sx={{ width: 90 }}
+                      sx={{ width: { xs: 80, sm: 90 } }}
                       slotProps={{ htmlInput: { min: 1 } }}
                     />
                     <TextField
@@ -602,7 +608,7 @@ export default function DetalheFichaPage() {
                       value={row.descricao}
                       onChange={(e) => updateEditSerieRow(idx, "descricao", e.target.value)}
                       size="small"
-                      sx={{ flex: 1, minWidth: 120 }}
+                      sx={{ width: { xs: "100%", sm: "auto" }, flex: { xs: "none", sm: 1 }, minWidth: { xs: 0, sm: 120 } }}
                       placeholder="Ex.: Aquecimento"
                       slotProps={{ htmlInput: { maxLength: 100 } }}
                     />
@@ -612,7 +618,7 @@ export default function DetalheFichaPage() {
                       value={row.carga}
                       onChange={(e) => updateEditSerieRow(idx, "carga", e.target.value)}
                       size="small"
-                      sx={{ width: 90 }}
+                      sx={{ width: { xs: 80, sm: 90 } }}
                       slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
                     />
                     <TextField
@@ -621,7 +627,7 @@ export default function DetalheFichaPage() {
                       value={row.descanso}
                       onChange={(e) => updateEditSerieRow(idx, "descanso", e.target.value)}
                       size="small"
-                      sx={{ width: 100 }}
+                      sx={{ width: { xs: 80, sm: 100 } }}
                       slotProps={{ htmlInput: { min: 0 } }}
                     />
                     {editSeriesRows.length > 1 && (

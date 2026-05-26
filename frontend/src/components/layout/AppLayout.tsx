@@ -197,11 +197,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BottomNavigation
             value={navItems.findIndex(({ href }) => pathname.startsWith(href))}
             onChange={(_, i) => router.push(navItems[i].href)}
-            showLabels
+            showLabels={navItems.length <= 4}
             sx={{ "& .Mui-selected": { color: "secondary.main" } }}
           >
             {navItems.map(({ label, Icon }) => (
-              <BottomNavigationAction key={label} label={label} icon={<Icon />} />
+              <BottomNavigationAction key={label} label={label} icon={<Icon />} aria-label={label} />
             ))}
           </BottomNavigation>
         </Paper>
