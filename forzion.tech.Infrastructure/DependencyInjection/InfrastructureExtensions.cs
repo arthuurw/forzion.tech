@@ -23,6 +23,12 @@ public static class InfrastructureExtensions
     private const string ResendDefaultApiUrl = "https://api.resend.com/emails";
 #pragma warning restore S1075
 
+    private static IEmailService EnvolverComDecorator(IServiceProvider sp, IEmailService inner) =>
+        new EnvironmentEmailDecorator(
+            inner,
+            sp.GetRequiredService<IOptions<EmailSettings>>().Value,
+            sp.GetRequiredService<ILogger<EnvironmentEmailDecorator>>());
+
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -95,7 +101,8 @@ public static class InfrastructureExtensions
         // EmailSettings — remetente + marcação/redirect por ambiente (defaults prod-safe)
         services.AddOptions<EmailSettings>().BindConfiguration("Email");
 
-        // E-mail — Resend when configured, no-op otherwise
+        // E-mail — Resend when configured, no-op otherwise. Sempre embrulhado no
+        // EnvironmentEmailDecorator: passthrough em prod, marcação/redirect em não-prod.
         var resendApiKey = configuration["Resend:ApiKey"];
         if (!string.IsNullOrWhiteSpace(resendApiKey))
         {
@@ -105,16 +112,19 @@ public static class InfrastructureExtensions
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
             services.AddScoped<IEmailService>(sp =>
-                new ResendEmailService(
-                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("resend"),
-                    resendApiKey,
-                    resendApiUrl,
-                    sp.GetRequiredService<IOptions<EmailSettings>>().Value,
-                    sp.GetRequiredService<ILogger<ResendEmailService>>()));
+                EnvolverComDecorator(sp,
+                    new ResendEmailService(
+                        sp.GetRequiredService<IHttpClientFactory>().CreateClient("resend"),
+                        resendApiKey,
+                        resendApiUrl,
+                        sp.GetRequiredService<IOptions<EmailSettings>>().Value,
+                        sp.GetRequiredService<ILogger<ResendEmailService>>())));
         }
         else
         {
-            services.AddScoped<IEmailService, NullEmailService>();
+            services.AddScoped<IEmailService>(sp =>
+                EnvolverComDecorator(sp,
+                    new NullEmailService(sp.GetRequiredService<ILogger<NullEmailService>>())));
         }
 
         // Domain event handlers — e-mail
