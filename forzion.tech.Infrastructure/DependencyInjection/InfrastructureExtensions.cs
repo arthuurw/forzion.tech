@@ -109,6 +109,7 @@ public static class InfrastructureExtensions
                     sp.GetRequiredService<IHttpClientFactory>().CreateClient("resend"),
                     resendApiKey,
                     resendApiUrl,
+                    sp.GetRequiredService<IOptions<EmailSettings>>().Value,
                     sp.GetRequiredService<ILogger<ResendEmailService>>()));
         }
         else
