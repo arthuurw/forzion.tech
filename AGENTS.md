@@ -25,6 +25,9 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - DDD: entidades com factory `Criar`; domain events despachados no `UnitOfWork.CommitAsync` (re-entrância tratada). Result<T> pattern. FluentValidation auto-descoberto. Handlers registrados manualmente no DI.
 - Commits: Conventional Commits. Scopes válidos: `frontend|backend|infra|ci|deps|tests|docs`.
 
+## FLUXO DE ALTERAÇÃO DE CÓDIGO
+Toda alteração de código DEVE, antes do PR: (1) build completo (frontend + backend); (2) avaliar necessidade de novos testes e criá-los se faltarem; (3) rodar TODOS os testes — confirmar que nada quebrou e se algo precisa ser complementado (integração/E2E exigem Docker; sem Docker local, o CI os roda no PR); (4) confirmar PR → `homolog` (ou → `master` se a alteração foi feita direto na branch `homolog`).
+
 ## REGRAS (só alteráveis mediante aprovação do usuário)
 1. CONTEXTO MACRO: carregar APENAS este `AGENTS.md`. Cada `specification-*` (em `specs/`) carregar SOB DEMANDA quando a tarefa tocar a área.
 2. Antes de alteração relevante numa área coberta por `specification-*`, LER o arquivo antes de planejar/alterar (ex.: banco → `specs/specification-db.md`).
