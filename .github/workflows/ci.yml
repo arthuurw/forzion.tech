@@ -291,9 +291,10 @@ jobs:
       - name: Build (next)
         run: npm run build
         env:
-          # Guard de produção no next.config exige API_BASE_URL; valor dummy
-          # serve só para o build estático passar (sem chamadas reais).
+          # Guards de produção no next.config exigem API_BASE_URL e JWT_SECRET;
+          # valores dummy servem só para o build estático passar (sem chamadas reais).
           API_BASE_URL: http://backend.invalid
+          JWT_SECRET: ci-dummy-secret-not-used-at-build-time
 
       - name: Build Storybook
         run: npm run storybook:build
