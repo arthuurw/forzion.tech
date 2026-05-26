@@ -50,6 +50,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de e-mail transacional (Resend). 
 
 ### E-mails de notificação (domain events → handler → template)
 `AlunoRegistradoEvent`→BemVindoAluno · `AlunoInativadoEvent`→AlunoInativado · `TreinadorAprovadoEvent`→TreinadorAprovado · `TreinadorReprovadoEvent`→TreinadorReprovado · `TreinadorInativadoEvent`→TreinadorInativado · `VinculoAprovadoEvent`→VinculoAprovado · `AssinaturaAlunoCriadaEvent`→AssinaturaAlunoCriada.
+- **Destinatário (handlers de aluno)**: `aluno.Email ?? conta.Email` (fallback). `Aluno.Email` é OPCIONAL e nasce `null` no cadastro (`RegistrarAlunoHandler` passa email=null), então o fallback p/ `Conta.Email` (login, obrigatório) é o caminho normal — sem ele alunos não recebiam nenhuma notificação. Handlers (`VinculoAprovado`/`AlunoInativado`/`AssinaturaAlunoCriada`) injetam `IContaRepository` e buscam por `aluno.ContaId`; `AlunoRegistradoEmailHandler` usa `AlunoRegistradoEvent.ContaId` (evento carrega ContaId). Ambos null → log warning + no-op.
 
 ### Webhook de entrega (Módulo D)
 - `POST /webhooks/resend` → `ProcessarWebhookResendHandler` (Infrastructure, usa `Result`).
