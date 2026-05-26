@@ -1,13 +1,13 @@
 "use client";
 import { Box, Typography, Button, CircularProgress } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { ProblemDetails } from "@/types";
 
 type Status = "verifying" | "success" | "error";
 
-export default function VerifyEmailPage() {
+function VerifyEmailInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
@@ -81,5 +81,19 @@ export default function VerifyEmailPage() {
         Voltar para o login
       </Button>
     </Box>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+          <CircularProgress />
+        </Box>
+      }
+    >
+      <VerifyEmailInner />
+    </Suspense>
   );
 }

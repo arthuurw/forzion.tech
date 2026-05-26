@@ -3,7 +3,7 @@ import { Box, Typography, Button, CircularProgress } from "@mui/material";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PasswordField from "@/components/forms/PasswordField";
@@ -23,7 +23,7 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export default function ResetPasswordPage() {
+function ResetPasswordInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
@@ -136,5 +136,19 @@ export default function ResetPasswordPage() {
         </Box>
       </FormProvider>
     </Box>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+          <CircularProgress />
+        </Box>
+      }
+    >
+      <ResetPasswordInner />
+    </Suspense>
   );
 }
