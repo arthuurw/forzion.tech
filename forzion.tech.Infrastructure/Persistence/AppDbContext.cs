@@ -33,6 +33,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IDomainEventDi
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
     public DbSet<Assinante> Assinantes => Set<Assinante>();
     public DbSet<ContaRecebimento> ContasRecebimento => Set<ContaRecebimento>();
+    public DbSet<HealthReportConfig> HealthReportConfigs => Set<HealthReportConfig>();
+    public DbSet<HealthSnapshot> HealthSnapshots => Set<HealthSnapshot>();
+    public DbSet<ErrorLogEntry> ErrorLogs => Set<ErrorLogEntry>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
