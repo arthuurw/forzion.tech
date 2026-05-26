@@ -128,7 +128,7 @@
     "openapi-typescript": "^7.13.0",
     "seedrandom": "^3.0.5",
     "storybook": "^10.4.1",
-    "typescript": "^5",
+    "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.5",
     "vitest-axe": "^1.0.0-pre.5"
