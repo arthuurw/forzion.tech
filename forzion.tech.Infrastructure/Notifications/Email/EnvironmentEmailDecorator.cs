@@ -13,7 +13,7 @@ public sealed class EnvironmentEmailDecorator(
     ILogger<EnvironmentEmailDecorator> logger) : IEmailService
 {
     private const string Banner =
-        """<div style="background:#b91c1c;color:#ffffff;padding:12px 16px;font-family:Arial,sans-serif;font-size:14px;text-align:center;font-weight:bold">E-mail de teste - ambiente nao-produtivo. Nao e uma comunicacao oficial forzion.tech.</div>""";
+        """<div style="background:#b91c1c;color:#ffffff;padding:12px 16px;font-family:Arial,sans-serif;font-size:14px;text-align:center;font-weight:bold">E-mail de teste - ambiente não-produtivo. Não é uma comunicação oficial forzion.tech.</div>""";
 
     public bool Habilitado => inner.Habilitado;
 
@@ -45,7 +45,7 @@ public sealed class EnvironmentEmailDecorator(
             return para;
 
         logger.LogInformation(
-            "E-mail de teste redirecionado: destinatario original {Original} -> {Redirect}", para, alvos[0]);
+            "E-mail de teste redirecionado: destinatário original {Original} -> {Redirect}", para, alvos[0]);
         return alvos[0];
     }
 
