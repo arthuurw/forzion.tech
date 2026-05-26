@@ -739,6 +739,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<DesvincularAlunoHandler> DesvincularAlunoHandlerMock { get; } = new(
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<ITreinoAlunoRepository>(),
+            Mock.Of<IAssinaturaAlunoRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IUserContext>(), TimeProvider.System,

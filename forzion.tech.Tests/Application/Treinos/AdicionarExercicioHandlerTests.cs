@@ -53,7 +53,7 @@ public class AdicionarExercicioHandlerTests
 
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var command = new AdicionarExercicioCommand(treino.Id, exercicioId, SerieValida);
@@ -97,7 +97,7 @@ public class AdicionarExercicioHandlerTests
     {
         var treino = CriarTreino(Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var command = new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), SerieValida);
         var act = async () => await _handler.HandleAsync(command);
@@ -112,7 +112,7 @@ public class AdicionarExercicioHandlerTests
         var treino = CriarTreino(treinadorId);
         var exercicioId = Guid.NewGuid();
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var command = new AdicionarExercicioCommand(treino.Id, exercicioId, SerieValida);

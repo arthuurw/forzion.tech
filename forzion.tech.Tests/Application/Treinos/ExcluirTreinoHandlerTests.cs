@@ -42,7 +42,7 @@ public class ExcluirTreinoHandlerTests
         var treino = CriarTreino(treinadorId);
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var result = await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
 
@@ -70,7 +70,7 @@ public class ExcluirTreinoHandlerTests
         var treino = CriarTreino(Guid.NewGuid());
         _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var act = async () => await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
         await act.Should().NotThrowAsync();
@@ -83,7 +83,7 @@ public class ExcluirTreinoHandlerTests
         var treino = CriarTreino(treinadorId);
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var act = async () => await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
 
@@ -107,7 +107,7 @@ public class ExcluirTreinoHandlerTests
         var treino = CriarTreino(treinadorId);
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var act = async () => await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
 

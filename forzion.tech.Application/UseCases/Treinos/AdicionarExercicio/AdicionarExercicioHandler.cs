@@ -40,7 +40,7 @@ public class AdicionarExercicioHandler(
             throw new AcessoNegadoException();
 
         var executado = await execucaoTreinoRepository
-            .ExisteParaTreinoAsync(command.TreinoId, cancellationToken)
+            .ExisteParaTreinoComAlunoAtivoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
         Treino.ValidarMutabilidade(executado);

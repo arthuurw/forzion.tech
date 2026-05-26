@@ -48,7 +48,7 @@ public class EditarExercicioTreinoHandlerTests
         var (treino, ex) = CriarTreinoComExercicio(treinadorId);
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var command = new EditarExercicioTreinoCommand(treino.Id, ex.Id, SeriesValidas);
         var result = await _handler.HandleAsync(command);
@@ -68,7 +68,7 @@ public class EditarExercicioTreinoHandlerTests
         ex.AdicionarSerie(2, 15, null, null, null, null);
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         IReadOnlyList<SerieConfigEditCommand> novasSeries = [
             new SerieConfigEditCommand(3, 8, 10, null, null, null),
@@ -100,7 +100,7 @@ public class EditarExercicioTreinoHandlerTests
         var (treino, ex) = CriarTreinoComExercicio(Guid.NewGuid());
         _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var result = await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, SeriesValidas));
 
@@ -123,7 +123,7 @@ public class EditarExercicioTreinoHandlerTests
     {
         var (treino, ex) = CriarTreinoComExercicio(Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var act = async () => await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, SeriesValidas));
 
@@ -135,7 +135,7 @@ public class EditarExercicioTreinoHandlerTests
     {
         var (treino, _) = CriarTreinoComExercicio(Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var idInexistente = Guid.NewGuid();
         var act = async () => await _handler.HandleAsync(
@@ -149,7 +149,7 @@ public class EditarExercicioTreinoHandlerTests
     {
         var (treino, ex) = CriarTreinoComExercicio(Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
-        _execucaoRepo.Setup(r => r.ExisteParaTreinoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var act = async () => await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, []));
         await act.Should().ThrowAsync<DomainException>();
