@@ -20,19 +20,18 @@
 /e2e/.auth/
 /.lighthouseci/
 /storybook-static/
-/.lighthouseci/
 /.stryker-tmp/
 /reports/
 /.stryker.json
 /sbom.cdx.json
 /zap-report/
 /pacts/
-/reports/
 count-tests.cjs
 
 # next.js
 /.next/
 /out/
+next.config.compiled.js
 
 # production
 /build

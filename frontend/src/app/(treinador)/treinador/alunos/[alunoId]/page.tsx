@@ -3,10 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Stack, Button,
-  Table, TableHead, TableRow, TableCell, TableBody,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Autocomplete, TextField, IconButton, Chip,
 } from "@mui/material";
+import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import StatusChip from "@/components/ui/StatusChip";
@@ -21,6 +21,11 @@ import type {
 import ProgressaoAluno from "@/components/treinador/ProgressaoAluno";
 import InfoLine from "@/components/ui/InfoLine";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
+
+const FICHAS_COLS: Column[] = [
+  { label: "Ficha", mobileRole: "primary" },
+  { label: "Status", mobileRole: "secondary" },
+];
 
 function formatPhone(phone: string): string {
   const d = phone.replace(/\D/g, "");
@@ -200,24 +205,15 @@ export default function DetalheAlunoPage() {
                 onAction={openVincular}
               />
             ) : (
-              <Box sx={{ overflowX: "auto" }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Ficha</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {fichas.map((f) => (
-                    <TableRow key={f.treinoAlunoId} hover>
-                      <TableCell sx={{ fontWeight: 500 }}>{f.nomeTreino}</TableCell>
-                      <TableCell><StatusChip status={f.status} /></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              </Box>
+              <ResponsiveTable
+                columns={FICHAS_COLS}
+                rows={fichas}
+                rowKey={(f) => f.treinoAlunoId}
+                renderCell={(f, i) => {
+                  if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{f.nomeTreino}</Typography>;
+                  return <StatusChip status={f.status} />;
+                }}
+              />
             )}
           </Card>
 

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box, Typography, Grid, Card, CardContent, Skeleton,
-  ToggleButtonGroup, ToggleButton,
+  ToggleButtonGroup, ToggleButton, useMediaQuery, useTheme,
 } from "@mui/material";
 import {
   LineChart, Line, BarChart, Bar,
@@ -31,6 +31,8 @@ interface Props {
 }
 
 export default function ProgressaoAluno({ alunoId }: Props) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [exercicios, setExercicios] = useState<ExercicioProgressao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,19 +83,21 @@ export default function ProgressaoAluno({ alunoId }: Props) {
     <Box sx={{ mt: 4 }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 600 }}>Progressão</Typography>
-        <ToggleButtonGroup
-          value={periodo}
-          exclusive
-          onChange={(_, val) => { if (val) setPeriodo(val); }}
-          size="small"
-          sx={{ flexWrap: "wrap" }}
-        >
-          {PERIODOS.map((p) => (
-            <ToggleButton key={p.value} value={p.value} sx={{ fontSize: "0.75rem", px: 1.5 }}>
-              {p.label}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+        <Box sx={{ overflowX: "auto", maxWidth: "100%", pb: 0.5 }}>
+          <ToggleButtonGroup
+            value={periodo}
+            exclusive
+            onChange={(_, val) => { if (val) setPeriodo(val); }}
+            size="small"
+            sx={{ flexWrap: "nowrap" }}
+          >
+            {PERIODOS.map((p) => (
+              <ToggleButton key={p.value} value={p.value} sx={{ fontSize: "0.75rem", px: 1.5, whiteSpace: "nowrap" }}>
+                {p.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Box>
       </Box>
 
       {loading ? (
@@ -133,7 +137,7 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                       dataKey="grupo"
                       tick={{ fontSize: 11 }}
                       stroke="#555"
-                      width={110}
+                      width={isMobile ? 70 : 110}
                     />
                     <Tooltip
                       contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 4, fontSize: 11 }}

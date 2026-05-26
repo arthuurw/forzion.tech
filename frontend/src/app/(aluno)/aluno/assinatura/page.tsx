@@ -51,14 +51,14 @@ export default function AssinaturaAlunoPage() {
   }
 
   return (
-    <Box sx={{ p: 4, maxWidth: 500 }}>
+    <Box sx={{ maxWidth: { xs: "100%", md: 500 } }}>
       <Typography variant="h5" sx={{ fontWeight: "bold", mb: 3 }}>Minha Assinatura</Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={2}>
-          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: "medium" }}>Status</Typography>
             <Chip
               label={assinatura.status}
@@ -69,14 +69,14 @@ export default function AssinaturaAlunoPage() {
 
           <Divider />
 
-          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+          <Stack direction="row" sx={{ justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
             <Typography variant="body2" color="text.secondary">Valor mensal</Typography>
             <Typography variant="body2" sx={{ fontWeight: "medium" }}>
               {assinatura.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </Typography>
           </Stack>
 
-          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+          <Stack direction="row" sx={{ justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
             <Typography variant="body2" color="text.secondary">Próxima cobrança</Typography>
             <Typography variant="body2" sx={{ fontWeight: "medium" }}>
               {new Date(assinatura.dataProximaCobranca).toLocaleDateString("pt-BR")}
