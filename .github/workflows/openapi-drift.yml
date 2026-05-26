@@ -9,8 +9,10 @@ name: OpenAPI drift (backend)
 on:
   push:
     branches: [homolog, backend]
+    paths-ignore: ["**.md", "docs/**", "specs/**"]
   pull_request:
     branches: [homolog, backend]
+    paths-ignore: ["**.md", "docs/**", "specs/**"]
   workflow_dispatch:
 
 # Roda só quando muda algo que afeta o contrato (Api/Application/Domain) ou o

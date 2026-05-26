@@ -5,8 +5,10 @@ name: SAST — Semgrep
 on:
   push:
     branches: [homolog]
+    paths-ignore: ["**.md", "docs/**", "specs/**"]
   pull_request:
     branches: [homolog]
+    paths-ignore: ["**.md", "docs/**", "specs/**"]
   schedule:
     - cron: "0 5 * * 1"
 
