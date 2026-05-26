@@ -17,7 +17,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("homolog")
                 .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -110,7 +109,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_alunos_status");
 
-                    b.ToTable("alunos", "homolog");
+                    b.ToTable("alunos", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Assinante", b =>
@@ -150,7 +149,7 @@ namespace forzion.tech.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_assinantes_aluno_id");
 
-                    b.ToTable("assinantes", "homolog");
+                    b.ToTable("assinantes", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.AssinaturaAluno", b =>
@@ -224,7 +223,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("Status", "DataProximaCobranca")
                         .HasDatabaseName("ix_assinaturas_aluno_status_data_proxima_cobranca");
 
-                    b.ToTable("assinaturas_aluno", "homolog");
+                    b.ToTable("assinaturas_aluno", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Conta", b =>
@@ -244,6 +243,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("email");
 
+                    b.Property<bool>("EmailVerificado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_verificado");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
@@ -258,6 +261,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<DateTime?>("VerificadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verificado_em");
+
                     b.HasKey("Id")
                         .HasName("pk_contas");
 
@@ -265,7 +272,7 @@ namespace forzion.tech.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_contas_email");
 
-                    b.ToTable("contas", "homolog");
+                    b.ToTable("contas", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.ContaRecebimento", b =>
@@ -308,7 +315,99 @@ namespace forzion.tech.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_conta_recebimento_treinador_id");
 
-                    b.ToTable("conta_recebimento", "homolog");
+                    b.ToTable("conta_recebimento", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.EmailDeliveryLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("event_type");
+
+                    b.Property<DateTime>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrido_em");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("recipient_email");
+
+                    b.Property<string>("ResendMessageId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("resend_message_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_delivery_logs");
+
+                    b.HasIndex("EventType")
+                        .HasDatabaseName("ix_email_delivery_logs_event_type");
+
+                    b.HasIndex("ResendMessageId")
+                        .HasDatabaseName("ix_email_delivery_logs_resend_message_id");
+
+                    b.ToTable("email_delivery_logs", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.EmailVerificationToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_verification_tokens");
+
+                    b.HasIndex("ContaId")
+                        .HasDatabaseName("ix_email_verification_tokens_conta_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_email_verification_tokens_token_hash");
+
+                    b.ToTable("email_verification_tokens", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.ExecucaoExercicio", b =>
@@ -352,7 +451,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinoExercicioId")
                         .HasDatabaseName("ix_execucoes_exercicio_treino_exercicio_id");
 
-                    b.ToTable("execucoes_exercicio", "homolog");
+                    b.ToTable("execucoes_exercicio", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.ExecucaoTreino", b =>
@@ -392,7 +491,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinoId")
                         .HasDatabaseName("ix_execucoes_treino_treino_id");
 
-                    b.ToTable("execucoes_treino", "homolog");
+                    b.ToTable("execucoes_treino", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Exercicio", b =>
@@ -438,7 +537,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinadorId")
                         .HasDatabaseName("ix_exercicios_treinador_id");
 
-                    b.ToTable("exercicios", "homolog");
+                    b.ToTable("exercicios", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.GrupoMuscular", b =>
@@ -469,7 +568,7 @@ namespace forzion.tech.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_grupos_musculares_nome");
 
-                    b.ToTable("grupos_musculares", "homolog");
+                    b.ToTable("grupos_musculares", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.LogAprovacao", b =>
@@ -516,7 +615,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("RealizadoPorId")
                         .HasDatabaseName("ix_logs_aprovacao_realizado_por_id");
 
-                    b.ToTable("logs_aprovacao", "homolog");
+                    b.ToTable("logs_aprovacao", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Pacote", b =>
@@ -563,7 +662,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinadorId")
                         .HasDatabaseName("ix_pacotes_treinador_id");
 
-                    b.ToTable("pacotes", "homolog");
+                    b.ToTable("pacotes", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Pagamento", b =>
@@ -643,7 +742,49 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("AssinaturaAlunoId", "Status")
                         .HasDatabaseName("ix_pagamentos_assinatura_aluno_id_status");
 
-                    b.ToTable("pagamentos", "homolog");
+                    b.ToTable("pagamentos", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_reset_tokens");
+
+                    b.HasIndex("ContaId")
+                        .HasDatabaseName("ix_password_reset_tokens_conta_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_password_reset_tokens_token_hash");
+
+                    b.ToTable("password_reset_tokens", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.PlanoPlataforma", b =>
@@ -693,7 +834,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_planos_plataforma");
 
-                    b.ToTable("planos_plataforma", "homolog");
+                    b.ToTable("planos_plataforma", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.SerieConfig", b =>
@@ -742,7 +883,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinoExercicioId")
                         .HasDatabaseName("ix_treino_exercicio_series_treino_exercicio_id");
 
-                    b.ToTable("treino_exercicio_series", "homolog");
+                    b.ToTable("treino_exercicio_series", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.SystemUser", b =>
@@ -786,7 +927,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("ContaId")
                         .HasDatabaseName("ix_system_users_conta_id");
 
-                    b.ToTable("system_users", "homolog");
+                    b.ToTable("system_users", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.TokenRevogado", b =>
@@ -806,7 +947,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("ExpiraEm")
                         .HasDatabaseName("ix_tokens_revogados_expira_em");
 
-                    b.ToTable("tokens_revogados", "homolog");
+                    b.ToTable("tokens_revogados", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Treinador", b =>
@@ -869,7 +1010,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_treinadores_status");
 
-                    b.ToTable("treinadores", "homolog");
+                    b.ToTable("treinadores", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Treino", b =>
@@ -923,7 +1064,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinadorId")
                         .HasDatabaseName("ix_treinos_treinador_id");
 
-                    b.ToTable("treinos", "homolog");
+                    b.ToTable("treinos", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.TreinoAluno", b =>
@@ -965,7 +1106,7 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_treino_alunos_treino_id")
                         .HasFilter("status = 'Ativo'");
 
-                    b.ToTable("treino_alunos", "homolog");
+                    b.ToTable("treino_alunos", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.TreinoExercicio", b =>
@@ -1001,7 +1142,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinoId")
                         .HasDatabaseName("ix_treino_exercicios_treino_id");
 
-                    b.ToTable("treino_exercicios", "homolog");
+                    b.ToTable("treino_exercicios", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.VinculoTreinadorAluno", b =>
@@ -1063,7 +1204,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinadorId", "Status")
                         .HasDatabaseName("ix_vinculos_treinador_aluno_treinador_id_status");
 
-                    b.ToTable("vinculos_treinador_aluno", "homolog");
+                    b.ToTable("vinculos_treinador_aluno", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Aluno", b =>

@@ -12,7 +12,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.CreateIndex(
                 name: "ix_alunos_status",
-                schema: "homolog",
                 table: "alunos",
                 column: "status");
         }
@@ -22,7 +21,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropIndex(
                 name: "ix_alunos_status",
-                schema: "homolog",
                 table: "alunos");
         }
     }

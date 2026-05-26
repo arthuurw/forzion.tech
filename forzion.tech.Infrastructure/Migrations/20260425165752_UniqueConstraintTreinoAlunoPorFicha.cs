@@ -12,7 +12,7 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             // Deactivate duplicate active bindings — keep only the most recent per treino
             migrationBuilder.Sql(@"
-                UPDATE homolog.treino_alunos
+                UPDATE treino_alunos
                 SET status = 'Inativo',
                     updated_at = NOW()
                 WHERE id IN (
@@ -20,7 +20,7 @@ namespace forzion.tech.Infrastructure.Migrations
                     FROM (
                         SELECT id,
                                ROW_NUMBER() OVER (PARTITION BY treino_id ORDER BY created_at DESC) AS rn
-                        FROM homolog.treino_alunos
+                        FROM treino_alunos
                         WHERE status = 'Ativo'
                     ) sub
                     WHERE rn > 1

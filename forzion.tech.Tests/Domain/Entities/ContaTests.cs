@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
 
@@ -22,6 +23,32 @@ public class ContaTests
         conta.TipoConta.Should().Be(TipoConta.Treinador);
         conta.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
         conta.UpdatedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Criar_DadosValidos_EmailNaoVerificado()
+    {
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, DateTime.UtcNow);
+
+        conta.EmailVerificado.Should().BeFalse();
+        conta.VerificadoEm.Should().BeNull();
+    }
+
+    [Fact]
+    public void Criar_DadosValidos_DispararaContaRegistradaEvent()
+    {
+        var agora = new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc);
+
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, agora);
+
+        conta.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<ContaRegistradaEvent>()
+            .Which.Should().BeEquivalentTo(new
+            {
+                ContaId = conta.Id,
+                Email = EmailValido.Value,
+                OcorridoEm = agora,
+            });
     }
 
     [Theory]
@@ -71,5 +98,32 @@ public class ContaTests
         var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador, DateTime.UtcNow);
         var act = () => conta.AtualizarSenha(hash);
         act.Should().Throw<DomainException>().WithMessage("*hash da senha*");
+    }
+
+    [Fact]
+    public void MarcarEmailVerificado_ContaNaoVerificada_PreencheFlagEDatas()
+    {
+        var agora = new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, DateTime.UtcNow);
+
+        conta.MarcarEmailVerificado(agora);
+
+        conta.EmailVerificado.Should().BeTrue();
+        conta.VerificadoEm.Should().Be(agora);
+        conta.UpdatedAt.Should().Be(agora);
+    }
+
+    [Fact]
+    public void MarcarEmailVerificado_ContaJaVerificada_NaoAlteraDatas()
+    {
+        var primeiraVez = new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, DateTime.UtcNow);
+        conta.MarcarEmailVerificado(primeiraVez);
+
+        conta.MarcarEmailVerificado(primeiraVez.AddHours(1));
+
+        conta.EmailVerificado.Should().BeTrue();
+        conta.VerificadoEm.Should().Be(primeiraVez);
+        conta.UpdatedAt.Should().Be(primeiraVez);
     }
 }

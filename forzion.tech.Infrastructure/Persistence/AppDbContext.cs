@@ -7,9 +7,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace forzion.tech.Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options, string schema = "public", IDomainEventDispatcher? eventDispatcher = null) : DbContext(options), IUnitOfWork, IDbContextTransactionProvider
+public class AppDbContext(DbContextOptions<AppDbContext> options, IDomainEventDispatcher? eventDispatcher = null) : DbContext(options), IUnitOfWork, IDbContextTransactionProvider
 {
-    private readonly string _schema = schema;
 
     public DbSet<Conta> Contas => Set<Conta>();
     public DbSet<SystemUser> SystemUsers => Set<SystemUser>();
@@ -27,6 +26,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
     public DbSet<ExecucaoTreino> ExecucoesTreino => Set<ExecucaoTreino>();
     internal DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
     public DbSet<TokenRevogado> TokensRevogados => Set<TokenRevogado>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
+    public DbSet<EmailDeliveryLog> EmailDeliveryLogs => Set<EmailDeliveryLog>();
     public DbSet<AssinaturaAluno> AssinaturaAlunos => Set<AssinaturaAluno>();
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
     public DbSet<Assinante> Assinantes => Set<Assinante>();
@@ -74,7 +76,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, string schema 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema(_schema);
+        // Schema-agnostic: o schema-alvo vem do search_path da connection string
+        // (ex.: "Search Path=homolog"), não de HasDefaultSchema. Assim as mesmas
+        // migrations aplicam em qualquer schema (homolog, develop, public).
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

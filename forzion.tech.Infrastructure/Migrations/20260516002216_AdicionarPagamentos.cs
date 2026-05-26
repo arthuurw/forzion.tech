@@ -13,7 +13,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.AddColumn<string>(
                 name: "stripe_connect_account_id",
-                schema: "homolog",
                 table: "treinadores",
                 type: "character varying(100)",
                 maxLength: 100,
@@ -21,7 +20,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.AddColumn<bool>(
                 name: "stripe_onboarding_completo",
-                schema: "homolog",
                 table: "treinadores",
                 type: "boolean",
                 nullable: false,
@@ -29,7 +27,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "assinaturas",
-                schema: "homolog",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -51,28 +48,24 @@ namespace forzion.tech.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_assinaturas_alunos_aluno_id",
                         column: x => x.aluno_id,
-                        principalSchema: "homolog",
                         principalTable: "alunos",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_assinaturas_pacotes_aluno_pacote_aluno_id",
                         column: x => x.pacote_aluno_id,
-                        principalSchema: "homolog",
                         principalTable: "pacotes_aluno",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_assinaturas_treinadores_treinador_id",
                         column: x => x.treinador_id,
-                        principalSchema: "homolog",
                         principalTable: "treinadores",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_assinaturas_vinculos_treinador_aluno_vinculo_id",
                         column: x => x.vinculo_id,
-                        principalSchema: "homolog",
                         principalTable: "vinculos_treinador_aluno",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -80,7 +73,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "pagamentos",
-                schema: "homolog",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -101,7 +93,6 @@ namespace forzion.tech.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_pagamentos_assinaturas_assinatura_id",
                         column: x => x.assinatura_id,
-                        principalSchema: "homolog",
                         principalTable: "assinaturas",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -109,56 +100,47 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_treinadores_stripe_connect_account_id",
-                schema: "homolog",
                 table: "treinadores",
                 column: "stripe_connect_account_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_assinaturas_aluno_id",
-                schema: "homolog",
                 table: "assinaturas",
                 column: "aluno_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_assinaturas_pacote_aluno_id",
-                schema: "homolog",
                 table: "assinaturas",
                 column: "pacote_aluno_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_assinaturas_status_data_proxima_cobranca",
-                schema: "homolog",
                 table: "assinaturas",
                 columns: new[] { "status", "data_proxima_cobranca" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_assinaturas_treinador_id",
-                schema: "homolog",
                 table: "assinaturas",
                 column: "treinador_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_assinaturas_vinculo_id",
-                schema: "homolog",
                 table: "assinaturas",
                 column: "vinculo_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_pagamentos_assinatura_id",
-                schema: "homolog",
                 table: "pagamentos",
                 column: "assinatura_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_pagamentos_assinatura_id_status",
-                schema: "homolog",
                 table: "pagamentos",
                 columns: new[] { "assinatura_id", "status" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_pagamentos_stripe_payment_intent_id",
-                schema: "homolog",
                 table: "pagamentos",
                 column: "stripe_payment_intent_id");
         }
@@ -167,26 +149,21 @@ namespace forzion.tech.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "pagamentos",
-                schema: "homolog");
+                name: "pagamentos");
 
             migrationBuilder.DropTable(
-                name: "assinaturas",
-                schema: "homolog");
+                name: "assinaturas");
 
             migrationBuilder.DropIndex(
                 name: "ix_treinadores_stripe_connect_account_id",
-                schema: "homolog",
                 table: "treinadores");
 
             migrationBuilder.DropColumn(
                 name: "stripe_connect_account_id",
-                schema: "homolog",
                 table: "treinadores");
 
             migrationBuilder.DropColumn(
                 name: "stripe_onboarding_completo",
-                schema: "homolog",
                 table: "treinadores");
         }
     }

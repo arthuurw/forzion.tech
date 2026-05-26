@@ -12,13 +12,11 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.CreateIndex(
                 name: "ix_vinculos_treinador_aluno_treinador_id_status",
-                schema: "homolog",
                 table: "vinculos_treinador_aluno",
                 columns: new[] { "treinador_id", "status" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_treinadores_status",
-                schema: "homolog",
                 table: "treinadores",
                 column: "status");
         }
@@ -28,12 +26,10 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropIndex(
                 name: "ix_vinculos_treinador_aluno_treinador_id_status",
-                schema: "homolog",
                 table: "vinculos_treinador_aluno");
 
             migrationBuilder.DropIndex(
                 name: "ix_treinadores_status",
-                schema: "homolog",
                 table: "treinadores");
         }
     }

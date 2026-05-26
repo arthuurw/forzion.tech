@@ -13,7 +13,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.CreateTable(
                 name: "grupos_musculares",
-                schema: "homolog",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -28,7 +27,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_grupos_musculares_nome",
-                schema: "homolog",
                 table: "grupos_musculares",
                 column: "nome",
                 unique: true);
@@ -38,8 +36,7 @@ namespace forzion.tech.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "grupos_musculares",
-                schema: "homolog");
+                name: "grupos_musculares");
         }
     }
 }

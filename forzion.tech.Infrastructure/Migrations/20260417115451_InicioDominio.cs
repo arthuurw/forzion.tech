@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -47,7 +47,6 @@ namespace forzion.tech.Infrastructure.Migrations
             // Create the default schema if needed (will be public or homolog based on context)
             migrationBuilder.Sql($@"
                 CREATE SCHEMA IF NOT EXISTS public;
-                CREATE SCHEMA IF NOT EXISTS homolog;
             ");
 
             // All tables created via EF Core migration builder

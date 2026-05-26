@@ -81,6 +81,11 @@ using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
+using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
+using forzion.tech.Application.UseCases.Auth.VerificarEmail;
+using forzion.tech.Application.Settings;
+using forzion.tech.Infrastructure.Notifications.Email;
+using Microsoft.Extensions.Configuration;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -171,7 +176,15 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
 
+        services.AddOptions<AppSettings>().BindConfiguration("App");
+
         services.AddScoped<LoginHandler>();
+        services.AddScoped<EsqueceuSenhaHandler>();
+        services.AddScoped<RedefinirSenhaHandler>();
+        services.AddScoped<VerificarEmailHandler>();
+        services.AddScoped<ReenviarVerificacaoHandler>();
+        services.AddScoped<EmailVerificationSender>();
+        services.AddScoped<ProcessarWebhookResendHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();
@@ -275,8 +288,8 @@ public static class DependencyInjectionExtensions
             options.AddPolicy("AllowFrontend", builder =>
                 builder
                     .WithOrigins(allowedOrigins)
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
+                    .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                    .WithHeaders("Content-Type", "Authorization", "Accept", "X-Requested-With")
                     .AllowCredentials());
         });
 

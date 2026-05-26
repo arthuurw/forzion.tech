@@ -13,7 +13,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.CreateTable(
                 name: "assinantes",
-                schema: "homolog",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -30,7 +29,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_assinantes_aluno_id",
-                schema: "homolog",
                 table: "assinantes",
                 column: "aluno_id",
                 unique: true);
@@ -40,8 +38,7 @@ namespace forzion.tech.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "assinantes",
-                schema: "homolog");
+                name: "assinantes");
         }
     }
 }

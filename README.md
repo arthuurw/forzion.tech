@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 1067 testes backend (999 unit + 68 integração) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | JWT próprio | Isolamento por TreinadorId | Stripe Connect | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
+**Status**: ✅ 1067 testes backend (999 unit + 68 integração) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | JWT próprio | Isolamento por TreinadorId | Stripe Connect | WhatsApp Meta Cloud API | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
 
 ---
 
@@ -31,6 +31,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 - [Deploy](#deploy)
   - [Docker local](#docker-local)
   - [Produção — OCI VM + Supabase](#produção--oci-vm--supabase)
+  - [DNS e E-mail — Cloudflare + Resend](#dns-e-e-mail--cloudflare--resend)
 
 ---
 
@@ -252,7 +253,7 @@ forzion.tech.Infrastructure/
 │                         # VinculoAprovado; sincroniza projeção Assinante (billing)
 ├── Notifications/
 │   ├── Email/            # EmailTemplates + 5 handlers de eventos de domínio (Resend)
-│   └── WhatsApp/         # EvolutionApiWhatsAppNotifier + NullWhatsAppNotifier
+│   └── WhatsApp/         # MetaWhatsAppCloudNotifier + NullWhatsAppNotifier
 ├── Persistence/
 │   ├── AppDbContext.cs   # DbContext + IUnitOfWork
 │   ├── Configurations/   # Fluent API por entidade (18 arquivos)
@@ -272,7 +273,13 @@ forzion.tech.Tests/
 │   └── GlobalExceptionHandlerTests.cs
 ├── Application/          # Handlers (unit) por domínio
 ├── Domain/               # Entidades, value objects
-├── Infrastructure/       # JwtService + email handlers + Repositories/ (Testcontainers.PostgreSql)
+├── Infrastructure/
+│   ├── JwtServiceTests.cs
+│   ├── Notifications/
+│   │   ├── Email/        # TreinadorAprovado, Reprovado, Inativado, VinculoAprovado, AssinaturaCriada
+│   │   └── WhatsApp/     # MetaWhatsAppCloudNotifierTests, NullWhatsAppNotifierTests
+│   ├── Repositories/     # 62 testes com Testcontainers.PostgreSql (banco real)
+│   └── Services/         # NullEmailServiceTests
 └── Integration/          # FluxoCompletoTests
 ```
 
@@ -388,6 +395,57 @@ Exceder retorna **429 Too Many Requests**.
 | Idempotência | `stripe_payment_intent_id` UNIQUE em `pagamentos` — previne cobrança duplicada |
 | Pagamento pendente | Partial unique index `status='Pendente'` — só um pagamento pendente por assinatura |
 | Timing attack | Chave `X-Internal-Key` comparada com `CryptographicOperations.FixedTimeEquals` |
+
+---
+
+### Notificações
+
+O sistema envia notificações via dois canais. Ambos seguem o padrão **real/null**: se não configurado, usa implementação no-op sem falhar no startup.
+
+#### E-mail — Resend
+
+| Classe | Ativa quando |
+|--------|-------------|
+| `ResendEmailService` | `Resend:ApiKey` presente |
+| `NullEmailService` | chave ausente |
+
+Notificações disparadas por domain events:
+
+| Evento | Destinatário | Assunto |
+|--------|-------------|---------|
+| `TreinadorAprovadoEvent` | treinador | "Sua conta foi aprovada" |
+| `TreinadorReprovadoEvent` | treinador | "Cadastro não aprovado" |
+| `TreinadorInativadoEvent` | treinador | "Conta inativada" |
+| `VinculoAprovadoEvent` | treinador | "Novo aluno vinculado" |
+
+#### WhatsApp — Meta Cloud API
+
+| Classe | Ativa quando |
+|--------|-------------|
+| `MetaWhatsAppCloudNotifier` | `WhatsApp:PhoneNumberId` **e** `WhatsApp:AccessToken` presentes |
+| `NullWhatsAppNotifier` | qualquer uma ausente — loga warning no startup |
+
+Notificações disparadas diretamente pelos use cases:
+
+| Evento de negócio | Destinatário | Mensagem |
+|-------------------|-------------|---------|
+| Aluno registrado (`RegistrarAlunoHandler`) | treinador | "Novo aluno aguardando aprovação: {Nome}" |
+| Vínculo aprovado (`AprovarVinculoHandler`) | aluno | "Seu cadastro foi aprovado pelo seu treinador" |
+
+Endpoint chamado: `POST https://graph.facebook.com/{ApiVersion}/{PhoneNumberId}/messages`
+
+Telefones são normalizados antes do envio (remove `+`, `-`, espaços, `(`, `)`). O número deve incluir DDI (ex: `5511999999999`).
+
+**Pré-requisitos para ativar:**
+
+1. Conta [Meta Business Manager](https://business.facebook.com)
+2. Criar app no [Meta for Developers](https://developers.facebook.com) → produto **WhatsApp**
+3. Adicionar número de telefone → obter `PhoneNumberId`
+4. Gerar token de acesso **permanente** (System User Token) — **não usar o token de teste**, que expira em 24h e quebra em produção
+
+**Limitação free tier (sandbox):**
+
+Antes da revisão do app pela Meta, só é possível enviar para até **5 números de telefone verificados** cadastrados no painel. Para enviar a qualquer número, é necessário submeter o app para revisão na Meta.
 
 ---
 
@@ -678,10 +736,12 @@ dotnet user-secrets set "Seed:AdminPassword"          "<senha>"              --p
 # Opcional — e-mail transacional via Resend (omitir = NullEmailService)
 dotnet user-secrets set "Resend:ApiKey"               "re_..."               --project forzion.tech.Api
 
-# Opcional — notificações WhatsApp via Evolution API (omitir = NullWhatsAppNotifier)
-dotnet user-secrets set "WhatsApp:BaseUrl"            "https://..."          --project forzion.tech.Api
-dotnet user-secrets set "WhatsApp:Instance"           "<instance>"           --project forzion.tech.Api
-dotnet user-secrets set "WhatsApp:ApiKey"             "<apikey>"             --project forzion.tech.Api
+# Opcional — notificações WhatsApp via Meta Cloud API (omitir = NullWhatsAppNotifier)
+# Credenciais obtidas em: Meta for Developers → seu app → WhatsApp → API Setup
+dotnet user-secrets set "WhatsApp:PhoneNumberId"      "<phone-number-id>"    --project forzion.tech.Api
+dotnet user-secrets set "WhatsApp:AccessToken"        "<token-permanente>"   --project forzion.tech.Api
+dotnet user-secrets set "WhatsApp:ApiVersion"         "v21.0"                --project forzion.tech.Api
+# WhatsApp:ApiVersion é opcional; padrão "v21.0" aplicado em código se ausente
 
 # Stripe (necessário para módulo de pagamentos)
 dotnet user-secrets set "Stripe:SecretKey"            "sk_test_..."          --project forzion.tech.Api
@@ -744,7 +804,9 @@ Architecture/            → arch tests (NetArchTest): direção de dependência
 Api/Snapshots/           → snapshot/contract de saída (Verify.Xunit): response DTOs + mapa exceção→ProblemDetails
 Api/Endpoints/           → endpoints via WebApplicationFactory (auth, status codes, isolamento, paginação)
 Builders/                → test data builders determinísticos
-Infrastructure/          → JwtService, email handlers, dispatch de domain events (regressão de re-entrância)
+Infrastructure/          → JwtService, email handlers, WhatsApp notifiers
+                           (MetaWhatsAppCloudNotifier, NullWhatsAppNotifier),
+                           dispatch de domain events (regressão de re-entrância)
 Infrastructure/Repositories/ → 62 testes de repositório com Testcontainers.PostgreSql (banco real)  [Integration]
 E2E/                     → pipeline real: WebApplicationFactory + Postgres real + migrations + seed,
                            handlers reais, só Stripe fake  [Integration]
@@ -894,3 +956,23 @@ Cliente
               └── /api/backend/* → backend:8080  (proxy server-side Next.js)
                     └── PostgreSQL Supabase (schema public)
 ```
+
+---
+
+### DNS e E-mail — Cloudflare + Resend
+
+Ver [`docs/infra-dns-cloudflare.md`](docs/infra-dns-cloudflare.md) para o guia completo.
+
+**Resumo:**
+
+```
+forzion.tech (registrador)
+  └── nameservers → Cloudflare (gratuito)
+        ├── A → IP VM OCI
+        ├── TXT SPF → Resend
+        └── TXT DKIM x2 → Resend
+```
+
+- DNS: **Cloudflare** — gratuito, sem limitação de records
+- E-mail transacional: **Resend** — 3k emails/mês grátis, requer domínio verificado
+- Custo adicional: $0 (exceto o domínio, ~$10–15/ano)

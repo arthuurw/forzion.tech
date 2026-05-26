@@ -2,6 +2,8 @@ using forzion.tech.Api.Extensions;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
+using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
+using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.UseCases.Pacotes;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
@@ -9,6 +11,7 @@ using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
+using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.Mvc;
 
 namespace forzion.tech.Api.Endpoints.Auth;
@@ -35,6 +38,7 @@ public static class AuthEndpoints
         .Produces<LoginResponse>()
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/register/treinador", async (
@@ -74,6 +78,64 @@ public static class AuthEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/forgot-password", async (
+            ForgotPasswordRequest request,
+            [FromServices] EsqueceuSenhaHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            await handler.HandleAsync(new EsqueceuSenhaCommand(request.Email), cancellationToken);
+            return Results.Ok();
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("auth")
+        .WithSummary("Envia e-mail de redefinição de senha (sempre retorna 200)")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/reset-password", async (
+            ResetPasswordRequest request,
+            [FromServices] RedefinirSenhaHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            await handler.HandleAsync(new RedefinirSenhaCommand(request.Token, request.NovaSenha), cancellationToken);
+            return Results.Ok();
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("auth")
+        .WithSummary("Redefine a senha usando token enviado por e-mail")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/verify-email", async (
+            VerifyEmailRequest request,
+            [FromServices] VerificarEmailHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            await handler.HandleAsync(new VerificarEmailCommand(request.Token), cancellationToken);
+            return Results.Ok();
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("auth")
+        .WithSummary("Verifica o e-mail usando token enviado por e-mail")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/resend-verification", async (
+            ResendVerificationRequest request,
+            [FromServices] ReenviarVerificacaoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            await handler.HandleAsync(new ReenviarVerificacaoCommand(request.Email), cancellationToken);
+            return Results.Ok();
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("auth")
+        .WithSummary("Reenvia o e-mail de verificação (sempre retorna 200)")
+        .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         // --- Endpoints Públicos (para Cadastro) ---
@@ -123,3 +185,7 @@ public static class AuthEndpoints
 public record LoginRequest(string Email, string Senha);
 public record RegistrarTreinadorRequest(string Email, string Senha, string Nome, string? Telefone = null);
 public record RegistrarAlunoRequest(string Email, string Senha, string Nome, Guid TreinadorId, Guid PacoteId, string? Telefone = null);
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Token, string NovaSenha);
+public record VerifyEmailRequest(string Token);
+public record ResendVerificationRequest(string Email);

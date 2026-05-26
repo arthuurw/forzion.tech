@@ -21,18 +21,17 @@ public sealed class InfrastructureTestFixture : IAsyncLifetime
 
     public string ConnectionString => _container.GetConnectionString();
 
-    // Schema "homolog": o EF cacheia o IModel por tipo de DbContext (a chave de
-    // cache não inclui o schema). Todos os contexts de integração do assembly usam
-    // o MESMO schema (homolog, o real do deploy) pra o model cacheado ficar
-    // consistente entre estas fixtures e a E2E — senão um model de schema diferente
-    // vaza pro outro no mesmo processo.
+    // Modelo é schema-agnostic (sem HasDefaultSchema) — o schema vem do search_path
+    // da connection. Estes testes usam o schema default (public) do container; a E2E
+    // usa homolog via Search Path. O IModel cacheado não tem schema, então não há
+    // vazamento entre fixtures no mesmo processo.
     public AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(ConnectionString)
             .UseSnakeCaseNamingConvention()
             .Options;
-        return new AppDbContext(options, schema: "homolog");
+        return new AppDbContext(options);
     }
 
     public async Task InitializeAsync()
