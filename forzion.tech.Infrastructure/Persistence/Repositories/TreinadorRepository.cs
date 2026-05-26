@@ -84,12 +84,31 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
                 .Where(e => e.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
-            await _context.Pacotes
-                .Where(p => p.TreinadorId == treinador.Id)
-                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            // FK RESTRICT (ver specification-db): excluir dependentes antes dos pais.
+            // pagamentos → assinaturas_aluno → vínculos → pacotes.
+            var assinaturaIds = await _context.AssinaturaAlunos
+                .Where(a => a.TreinadorId == treinador.Id)
+                .Select(a => a.Id)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
+            if (assinaturaIds.Count > 0)
+            {
+                await _context.Pagamentos
+                    .Where(p => assinaturaIds.Contains(p.AssinaturaAlunoId))
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+                await _context.AssinaturaAlunos
+                    .Where(a => assinaturaIds.Contains(a.Id))
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            // Vínculos antes de Pacotes: vinculos.pacote_id → pacotes (RESTRICT).
             await _context.VinculosTreinadorAluno
                 .Where(v => v.TreinadorId == treinador.Id)
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+            await _context.Pacotes
+                .Where(p => p.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
             await _context.ContasRecebimento
