@@ -92,6 +92,9 @@ public static class InfrastructureExtensions
 
         services.AddScoped<DataSeeder>();
 
+        // EmailSettings — remetente + marcação/redirect por ambiente (defaults prod-safe)
+        services.AddOptions<EmailSettings>().BindConfiguration("Email");
+
         // E-mail — Resend when configured, no-op otherwise
         var resendApiKey = configuration["Resend:ApiKey"];
         if (!string.IsNullOrWhiteSpace(resendApiKey))
