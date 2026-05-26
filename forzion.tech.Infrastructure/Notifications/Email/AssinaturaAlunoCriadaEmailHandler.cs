@@ -7,6 +7,7 @@ namespace forzion.tech.Infrastructure.Notifications.Email;
 
 public sealed class AssinaturaAlunoCriadaEmailHandler(
     IAlunoRepository alunoRepository,
+    IContaRepository contaRepository,
     ITreinadorRepository treinadorRepository,
     IPacoteRepository pacoteRepository,
     IEmailService emailService,
@@ -26,9 +27,16 @@ public sealed class AssinaturaAlunoCriadaEmailHandler(
             return;
         }
 
-        if (aluno.Email is null)
+        string? emailDestino = aluno.Email?.Value;
+        if (emailDestino is null)
         {
-            logger.LogDebug("AssinaturaAlunoCriadaEmailHandler: aluno {Id} sem e-mail cadastrado — ignorado.", domainEvent.AlunoId);
+            var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, cancellationToken).ConfigureAwait(false);
+            emailDestino = conta?.Email.Value;
+        }
+
+        if (emailDestino is null)
+        {
+            logger.LogWarning("AssinaturaAlunoCriadaEmailHandler: aluno {Id} sem e-mail — ignorado.", domainEvent.AlunoId);
             return;
         }
 
@@ -44,7 +52,7 @@ public sealed class AssinaturaAlunoCriadaEmailHandler(
         var nomePacote = pacote?.Nome ?? "Padrão";
 
         await emailService.EnviarAsync(
-            aluno.Email.Value,
+            emailDestino,
             "AssinaturaAluno criada — forzion.tech",
             EmailTemplates.AssinaturaAlunoCriada(aluno.Nome, nomeTreinador, nomePacote, domainEvent.Valor),
             cancellationToken).ConfigureAwait(false);

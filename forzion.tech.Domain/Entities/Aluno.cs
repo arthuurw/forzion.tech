@@ -76,7 +76,7 @@ public class Aluno : IHasDomainEvents
         if (telefone is not null)
             aluno.AlterarTelefone(telefone);
 
-        aluno._domainEvents.Add(new AlunoRegistradoEvent(aluno.Id, aluno.Nome, aluno.Email?.Value, agora));
+        aluno._domainEvents.Add(new AlunoRegistradoEvent(aluno.Id, aluno.ContaId, aluno.Nome, aluno.Email?.Value, agora));
 
         return aluno;
     }

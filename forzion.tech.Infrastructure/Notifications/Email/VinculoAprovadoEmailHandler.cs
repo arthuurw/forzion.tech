@@ -7,6 +7,7 @@ namespace forzion.tech.Infrastructure.Notifications.Email;
 
 public sealed class VinculoAprovadoEmailHandler(
     IAlunoRepository alunoRepository,
+    IContaRepository contaRepository,
     ITreinadorRepository treinadorRepository,
     IEmailService emailService,
     ILogger<VinculoAprovadoEmailHandler> logger) : IDomainEventHandler<VinculoAprovadoEvent>
@@ -25,9 +26,16 @@ public sealed class VinculoAprovadoEmailHandler(
             return;
         }
 
-        if (aluno.Email is null)
+        string? emailDestino = aluno.Email?.Value;
+        if (emailDestino is null)
         {
-            logger.LogDebug("VinculoAprovadoEmailHandler: aluno {Id} sem e-mail cadastrado — ignorado.", domainEvent.AlunoId);
+            var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, cancellationToken).ConfigureAwait(false);
+            emailDestino = conta?.Email.Value;
+        }
+
+        if (emailDestino is null)
+        {
+            logger.LogWarning("VinculoAprovadoEmailHandler: aluno {Id} sem e-mail — ignorado.", domainEvent.AlunoId);
             return;
         }
 
@@ -38,7 +46,7 @@ public sealed class VinculoAprovadoEmailHandler(
         var nomeTreinador = treinador?.Nome ?? "seu treinador";
 
         await emailService.EnviarAsync(
-            aluno.Email.Value,
+            emailDestino,
             "Vínculo aprovado — forzion.tech",
             EmailTemplates.VinculoAprovado(aluno.Nome, nomeTreinador),
             cancellationToken).ConfigureAwait(false);

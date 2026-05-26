@@ -72,6 +72,15 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
             .AnyAsync(e => e.TreinoId == treinoId, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<bool> ExisteParaTreinoComAlunoAtivoAsync(Guid treinoId, CancellationToken cancellationToken = default) =>
+        await _context.ExecucoesTreino
+            .AnyAsync(e => e.TreinoId == treinoId &&
+                _context.TreinoAlunos.Any(ta => ta.TreinoId == treinoId &&
+                    ta.AlunoId == e.AlunoId &&
+                    ta.Status == Domain.Enums.TreinoAlunoStatus.Ativo),
+                cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<ExecucaoTreino>> ListarPorAlunoAsync(Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default) =>
         await _context.ExecucoesTreino
             .Where(e => e.AlunoId == alunoId)
