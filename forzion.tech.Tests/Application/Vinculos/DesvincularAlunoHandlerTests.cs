@@ -14,6 +14,7 @@ public class DesvincularAlunoHandlerTests
 {
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
+    private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
@@ -22,8 +23,12 @@ public class DesvincularAlunoHandlerTests
 
     public DesvincularAlunoHandlerTests()
     {
+        _assinaturaRepo.Setup(r => r.ObterPorVinculoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AssinaturaAluno?)null);
+
         _handler = new DesvincularAlunoHandler(
-            _vinculoRepo.Object, _treinoAlunoRepo.Object, _logRepo.Object, _unitOfWork.Object, _userContext.Object, TimeProvider.System, _logger.Object);
+            _vinculoRepo.Object, _treinoAlunoRepo.Object, _assinaturaRepo.Object,
+            _logRepo.Object, _unitOfWork.Object, _userContext.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
@@ -90,5 +95,25 @@ public class DesvincularAlunoHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ComAssinaturaAtiva_CancelaAssinatura()
+    {
+        var treinadorId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
+        var assinatura = AssinaturaAluno.Criar(vinculo.Id, Guid.NewGuid(), treinadorId, vinculo.AlunoId, 100m, DateTime.UtcNow);
+
+        _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _treinoAlunoRepo.Setup(r => r.ListarAtivosPorParAsync(treinadorId, vinculo.AlunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<TreinoAluno>)Array.Empty<TreinoAluno>());
+        _assinaturaRepo.Setup(r => r.ObterPorVinculoIdAsync(vinculo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+
+        await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
+
+        assinatura.Status.Should().Be(AssinaturaAlunoStatus.Cancelada);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
