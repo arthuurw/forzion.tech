@@ -140,7 +140,7 @@ export default function PerfilPage() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <Box sx={{ maxWidth: 580 }}>
+    <Box sx={{ maxWidth: { xs: "100%", md: 580 } }}>
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>Meu Perfil</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -161,7 +161,7 @@ export default function PerfilPage() {
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Dados da conta</Typography>
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3, p: 2, bgcolor: "background.default", borderRadius: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3, p: 2, bgcolor: "background.default", borderRadius: 2, flexWrap: "wrap" }}>
             <Avatar sx={{ width: 44, height: 44, bgcolor: "secondary.main", fontWeight: 700, fontSize: 16 }}>
               {perfil?.nome?.[0]?.toUpperCase() ?? "?"}
             </Avatar>
@@ -214,7 +214,7 @@ export default function PerfilPage() {
             </Box>
 
             {meuVinculo?.vinculoAtivo ? (
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2, bgcolor: "background.default", borderRadius: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2, bgcolor: "background.default", borderRadius: 2, flexWrap: "wrap", gap: 1 }}>
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{meuVinculo.vinculoAtivo.nomeTreinador}</Typography>
                   {meuVinculo.vinculoAtivo.dataInicio && (
