@@ -10,6 +10,7 @@ namespace forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
 public class DesvincularAlunoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinoAlunoRepository treinoAlunoRepository,
+    IAssinaturaAlunoRepository assinaturaRepository,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
@@ -36,6 +37,10 @@ public class DesvincularAlunoHandler(
             throw new AcessoNegadoException();
 
         vinculo.Inativar();
+
+        var assinatura = await assinaturaRepository.ObterPorVinculoIdAsync(vinculo.Id, cancellationToken).ConfigureAwait(false);
+        if (assinatura is not null && assinatura.Status != Domain.Enums.AssinaturaAlunoStatus.Cancelada)
+            assinatura.Cancelar();
 
         var treinoAlunos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculo.TreinadorId, vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         foreach (var ta in treinoAlunos)

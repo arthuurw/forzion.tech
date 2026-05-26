@@ -7,6 +7,7 @@ namespace forzion.tech.Infrastructure.Notifications.Email;
 
 public sealed class AlunoInativadoEmailHandler(
     IAlunoRepository alunoRepository,
+    IContaRepository contaRepository,
     IEmailService emailService,
     ILogger<AlunoInativadoEmailHandler> logger) : IDomainEventHandler<AlunoInativadoEvent>
 {
@@ -24,14 +25,21 @@ public sealed class AlunoInativadoEmailHandler(
             return;
         }
 
-        if (aluno.Email is null)
+        string? emailDestino = aluno.Email?.Value;
+        if (emailDestino is null)
         {
-            logger.LogDebug("AlunoInativadoEmailHandler: aluno {Id} sem e-mail cadastrado — ignorado.", domainEvent.AlunoId);
+            var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, cancellationToken).ConfigureAwait(false);
+            emailDestino = conta?.Email.Value;
+        }
+
+        if (emailDestino is null)
+        {
+            logger.LogWarning("AlunoInativadoEmailHandler: aluno {Id} sem e-mail — ignorado.", domainEvent.AlunoId);
             return;
         }
 
         await emailService.EnviarAsync(
-            aluno.Email.Value,
+            emailDestino,
             "Conta inativada — forzion.tech",
             EmailTemplates.AlunoInativado(aluno.Nome),
             cancellationToken).ConfigureAwait(false);
