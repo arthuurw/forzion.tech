@@ -30,5 +30,5 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 2. Todo arquivo `specification-*` (em `specs/`) contém informação relevante do projeto; carregar em memória/contexto (principal OU subagentes) QUANDO a tarefa exigir.
 3. Antes de QUALQUER alteração relevante numa área coberta por um `specification-*`, é OBRIGATÓRIO ler o respectivo arquivo ANTES de planejar ou alterar. Ex.: alteração relevante de banco → ler `specs/specification-db.md` antes de qualquer planejamento ou alteração efetiva.
 4. Alterar qualquer `specification-*` exige REVISÃO (não editar às cegas) e mantê-lo AGENT-ORIENTED (denso, notação compacta), como este `AGENTS.md`. Manter atualizado na mesma tarefa em que a estrutura/área correspondente mudar.
-5. `specs/` e todos os arquivos dentro dele DEVEM ser commitados (para consultas futuras). `specs/` não é gitignorado (apenas `.specs/` é).
+5. `specs/` e todos os arquivos dentro dele DEVEM ser commitados (para consultas futuras). `specs/` não é gitignorado (apenas `.specs/` é). Todo novo arquivo `specification-*` DEVE ser criado em `specs/` (NUNCA em `.specs/`, que não é commitada).
 6. Estas regras só mudam mediante aprovação do usuário.
