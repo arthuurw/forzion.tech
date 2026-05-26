@@ -11,6 +11,9 @@ const withBundleAnalyzer = bundleAnalyzerImport({
 if (process.env.NODE_ENV === "production" && !process.env.API_BASE_URL) {
   throw new Error("API_BASE_URL is required in production.");
 }
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is required in production.");
+}
 
 const isDev = process.env.NODE_ENV === "development";
 
