@@ -17,6 +17,7 @@ services:
       Resend__ApiKey: ${RESEND_API_KEY:-}
       Resend__WebhookSecret: ${RESEND_WEBHOOK_SECRET:-}
       App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-https://homologacao.forzion.tech}
+      Internal__ApiKey: ${INTERNAL_API_KEY:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
