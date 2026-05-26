@@ -6,7 +6,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Homolog
       ConnectionStrings__AppConnection: ${DB_CONNECTION}
-      Database__Schema: ${DB_SCHEMA:-homolog}
       Auth__JwtSecret: ${JWT_SECRET}
       Auth__JwtIssuer: ${JWT_ISSUER:-homologacao.forzion.tech}
       Auth__JwtAudience: ${JWT_AUDIENCE:-homologacao.forzion.tech}
@@ -16,6 +15,8 @@ services:
       Stripe__UrlBase: ${STRIPE_URL_BASE:-https://homologacao.forzion.tech}
       Resend__ApiKey: ${RESEND_API_KEY:-}
       Resend__WebhookSecret: ${RESEND_WEBHOOK_SECRET:-}
+      Email__RedirecionarDestinatariosPara: ${EMAIL_REDIRECT_TO:-}
+      Email__AllowlistDominios: ${EMAIL_ALLOWLIST_DOMAINS:-}
       App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-https://homologacao.forzion.tech}
       Internal__ApiKey: ${INTERNAL_API_KEY:-}
     restart: unless-stopped
