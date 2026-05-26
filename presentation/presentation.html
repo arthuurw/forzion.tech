@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>forzion.tech — Apresentação</title>
+
+  <!-- reveal.js (CDN — requer internet no 1º carregamento) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css" />
+
+  <style>
+    :root {
+      --amarelo: #F5C400;
+      --preto: #1A1A1A;
+      --vermelho: #D32F2F;
+      --cinza: #B8B8B8;
+    }
+    .reveal { font-family: "Segoe UI", Roboto, system-ui, sans-serif; font-size: 30px; }
+    .reveal .slides { text-align: left; }
+    .reveal section { color: #F2F2F2; }
+    .reveal-viewport { background: var(--preto); }
+
+    .reveal h1, .reveal h2, .reveal h3 { color: #FFFFFF; font-weight: 800; letter-spacing: -0.01em; text-transform: none; }
+    .reveal h1 { font-size: 2.1em; }
+    .reveal h2 { font-size: 1.5em; }
+    .reveal .accent { color: var(--amarelo); }
+    .reveal strong { color: var(--amarelo); }
+    .reveal em { color: var(--cinza); font-style: normal; }
+
+    .reveal .kicker { color: var(--amarelo); font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.5em; margin-bottom: .4em; }
+    .reveal .lead { color: var(--cinza); font-size: 0.9em; }
+    .reveal ul { margin-left: 1em; }
+    .reveal li { margin: .35em 0; }
+    .reveal li::marker { color: var(--amarelo); }
+
+    .reveal .barra { width: 64px; height: 6px; background: var(--amarelo); border: 0; margin: .2em 0 .6em; }
+
+    .reveal pre.flow {
+      background: #111; border: 1px solid #333; border-left: 5px solid var(--amarelo);
+      border-radius: 8px; padding: 18px 22px; font-size: 0.52em; line-height: 1.5; color: #EDEDED; box-shadow: none;
+    }
+    .reveal .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: .4em; }
+    .reveal .card { background: #222; border: 1px solid #383838; border-top: 4px solid var(--amarelo); border-radius: 10px; padding: 14px 18px; }
+    .reveal .card h3 { font-size: 0.7em; margin: 0 0 .25em; color: var(--amarelo); }
+    .reveal .card p { font-size: 0.5em; margin: 0; color: var(--cinza); line-height: 1.4; }
+
+    .reveal .audience { color: var(--amarelo); font-weight: 700; }
+    .reveal .controls { color: var(--amarelo); }
+    .reveal .progress { color: var(--amarelo); }
+    .reveal .footer { position: absolute; bottom: 12px; right: 18px; font-size: 0.4em; color: #555; }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- 1. Capa -->
+      <section data-background-color="#1A1A1A">
+        <p class="kicker">Plataforma de gestão fitness</p>
+        <h1><span class="accent">forzion</span>.tech</h1>
+        <hr class="barra" />
+        <p class="lead">Conecta personal trainers e alunos — do primeiro treino à cobrança recorrente, <strong>num só lugar</strong>.</p>
+      </section>
+
+      <!-- 2. O problema -->
+      <section data-background-color="#1A1A1A">
+        <p class="kicker">O problema</p>
+        <h2>Ferramentas que não conversam</h2>
+        <hr class="barra" />
+        <ul>
+          <li class="fragment">Ficha na planilha, histórico na memória</li>
+          <li class="fragment">Cobrança no app do banco, conversa no WhatsApp</li>
+          <li class="fragment">Aluno sem clareza do próprio progresso</li>
+        </ul>
+        <p class="lead fragment">Tempo perdido, receita que escapa, experiência aquém do trabalho técnico.</p>
+      </section>
+
+      <!-- 3. A proposta -->
+      <section data-background-color="#1A1A1A">
+        <p class="kicker">A proposta</p>
+        <h2>Um produto, dois lados</h2>
+        <hr class="barra" />
+        <p>O treinador <strong>monta, acompanha e cobra</strong>.</p>
+        <p>O aluno <strong>treina, registra e evolui</strong>.</p>
+        <p class="lead">Pagamento recorrente integrado. Evolução visível em gráficos.</p>
+      </section>
+
+      <!-- 4. Como funciona -->
+      <section data-background-color="#1A1A1A">
+        <p class="kicker">Como funciona</p>
+        <h2>Do cadastro à cobrança automática</h2>
+        <pre class="flow"><code>1. Treinador se cadastra      → curadoria aprova
+2. Cria pacotes e fichas (exercícios + séries)
+3. Aluno se cadastra          → escolhe treinador + pacote
+4. Treinador aprova o vínculo → assinatura recorrente
+5. Aluno treina e registra cada execução
+6. Progresso vira gráfico  │  cobrança automática
+                            └─ treinador recebe direto</code></pre>
+        <p class="lead">Áreas dedicadas por papel — admin · treinador · aluno.</p>
+      </section>
+
+      <!-- 5. Diferenciais (overview) -->
+      <section data-background-color="#1A1A1A">
+        <p class="kicker">Diferenciais</p>
+        <h2>Por que forzion.tech</h2>
+        <div class="cards">
+          <div class="card fragment"><h3>Tudo num lugar</h3><p>Fichas estruturadas (exercícios, séries, cargas) + execução e progressão em gráficos. Não é planilha solta.</p></div>
+          <div class="card fragment"><h3>Pagamento que funciona sozinho</h3><p>Recorrência Pix/cartão via Stripe Connect. Treinador recebe direto, todo mês. Onboarding self-service.</p></div>
+          <div class="card fragment"><h3>Curadoria + papéis</h3><p>Plataforma aprova treinadores; treinador aprova alunos. Cada perfil com sua área. Notificações e-mail/WhatsApp.</p></div>
+          <div class="card fragment"><h3>Confiança de base</h3><p>Auth própria, isolamento de dados, práticas OWASP, suíte de testes extensa. Mobile-first e pronta pra escalar.</p></div>
+        </div>
+      </section>
+
+      <!-- 6. Para o negócio -->
+      <section data-background-color="#1A1A1A">
+        <p class="kicker">Para o negócio</p>
+        <h2>Modelo claro e escalável</h2>
+        <hr class="barra" />
+        <ul>
+          <li class="fragment"><strong>Receita recorrente:</strong> assinaturas dos alunos; plataforma retém % de cada cobrança</li>
+          <li class="fragment"><strong>Sem risco de manuseio:</strong> cartão tokenizado no Stripe; repasse automático via Connect</li>
+          <li class="fragment"><strong>Ecossistema curado:</strong> aprovação de treinadores preserva qualidade e marca</li>
+          <li class="fragment"><strong>Pronta pra escalar:</strong> arquitetura limpa, ambientes separados, pipeline de qualidade</li>
+        </ul>
+      </section>
+
+      <!-- 7. Para treinadores -->
+      <section data-background-color="#1A1A1A">
+        <p class="kicker">Para treinadores</p>
+        <h2>Seu trabalho vira produto</h2>
+        <hr class="barra" />
+        <ul>
+          <li class="fragment">Alunos, fichas e cobranças num só painel</li>
+          <li class="fragment">Fichas reutilizáveis — duplique treinos em segundos</li>
+          <li class="fragment">Evolução de cada aluno em gráficos — mostre resultado</li>
+          <li class="fragment">Receba automaticamente, sem perseguir pagamento</li>
+        </ul>
+      </section>
+
+      <!-- 8. Para alunos -->
+      <section data-background-color="#1A1A1A">
+        <p class="kicker">Para alunos</p>
+        <h2>Treine com clareza</h2>
+        <hr class="barra" />
+        <ul>
+          <li class="fragment">Fichas no celular, com instruções de cada exercício</li>
+          <li class="fragment">Registre a execução e veja seu progresso no tempo</li>
+          <li class="fragment">Pague simples — Pix ou cartão, sem combinar transferência</li>
+          <li class="fragment">Troque de treinador quando quiser, mantendo o histórico</li>
+        </ul>
+      </section>
+
+      <!-- 9. Fecho -->
+      <section data-background-color="#F5C400">
+        <h2 style="color:#1A1A1A; font-size:1.7em;">forzion.tech transforma o trabalho do personal trainer num <em style="color:#1A1A1A; font-weight:800;">produto</em>.</h2>
+        <p style="color:#1A1A1A; font-size:0.8em; margin-top:.5em;">Organizado para ele · claro para o aluno · sustentável para o negócio.</p>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: "c/t",
+      transition: "slide",
+      controls: true,
+      progress: true,
+      center: false,
+      width: 1280,
+      height: 720,
+      margin: 0.08,
+    });
+  </script>
+</body>
+</html>
