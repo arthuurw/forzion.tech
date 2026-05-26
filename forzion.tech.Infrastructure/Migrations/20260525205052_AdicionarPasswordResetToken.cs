@@ -13,7 +13,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.CreateTable(
                 name: "password_reset_tokens",
-                schema: "homolog",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -30,13 +29,11 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_password_reset_tokens_conta_id",
-                schema: "homolog",
                 table: "password_reset_tokens",
                 column: "conta_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_password_reset_tokens_token_hash",
-                schema: "homolog",
                 table: "password_reset_tokens",
                 column: "token_hash",
                 unique: true);
@@ -46,8 +43,7 @@ namespace forzion.tech.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "password_reset_tokens",
-                schema: "homolog");
+                name: "password_reset_tokens");
         }
     }
 }

@@ -12,17 +12,14 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropIndex(
                 name: "ix_pagamentos_assinatura_id",
-                schema: "homolog",
                 table: "pagamentos");
 
             migrationBuilder.DropIndex(
                 name: "ix_pagamentos_stripe_payment_intent_id",
-                schema: "homolog",
                 table: "pagamentos");
 
             migrationBuilder.CreateIndex(
                 name: "ix_pagamentos_assinatura_id_pendente_unique",
-                schema: "homolog",
                 table: "pagamentos",
                 column: "assinatura_id",
                 unique: true,
@@ -30,7 +27,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_pagamentos_stripe_payment_intent_id",
-                schema: "homolog",
                 table: "pagamentos",
                 column: "stripe_payment_intent_id",
                 unique: true);
@@ -41,23 +37,19 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropIndex(
                 name: "ix_pagamentos_assinatura_id_pendente_unique",
-                schema: "homolog",
                 table: "pagamentos");
 
             migrationBuilder.DropIndex(
                 name: "ix_pagamentos_stripe_payment_intent_id",
-                schema: "homolog",
                 table: "pagamentos");
 
             migrationBuilder.CreateIndex(
                 name: "ix_pagamentos_assinatura_id",
-                schema: "homolog",
                 table: "pagamentos",
                 column: "assinatura_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_pagamentos_stripe_payment_intent_id",
-                schema: "homolog",
                 table: "pagamentos",
                 column: "stripe_payment_intent_id");
         }

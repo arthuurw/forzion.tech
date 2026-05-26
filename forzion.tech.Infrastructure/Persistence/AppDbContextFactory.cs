@@ -26,13 +26,11 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         var connectionString = configuration.GetConnectionString("AppConnection")
             ?? throw new InvalidOperationException("Connection string 'AppConnection' não encontrada.");
 
-        var schema = configuration["Database:Schema"] ?? "public";
-
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", schema))
+            .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory"))
             .UseSnakeCaseNamingConvention()
             .Options;
 
-        return new AppDbContext(options, schema);
+        return new AppDbContext(options);
     }
 }

@@ -82,6 +82,7 @@ using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
+using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.Settings;
 using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.Extensions.Configuration;
@@ -180,6 +181,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<LoginHandler>();
         services.AddScoped<EsqueceuSenhaHandler>();
         services.AddScoped<RedefinirSenhaHandler>();
+        services.AddScoped<VerificarEmailHandler>();
+        services.AddScoped<ReenviarVerificacaoHandler>();
+        services.AddScoped<EmailVerificationSender>();
         services.AddScoped<ProcessarWebhookResendHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();

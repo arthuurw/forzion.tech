@@ -38,6 +38,9 @@ public class LoginHandler(
         if (conta is null || !passwordHasher.Verify(command.Senha, conta.PasswordHash))
             throw new CredenciaisInvalidasException();
 
+        if (!conta.EmailVerificado)
+            throw new EmailNaoVerificadoException();
+
         var perfilId = conta.TipoConta switch
         {
             Domain.Enums.TipoConta.Aluno =>

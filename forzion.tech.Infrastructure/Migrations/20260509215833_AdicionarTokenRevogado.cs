@@ -13,7 +13,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.CreateTable(
                 name: "tokens_revogados",
-                schema: "homolog",
                 columns: table => new
                 {
                     jti = table.Column<Guid>(type: "uuid", nullable: false),
@@ -26,7 +25,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_tokens_revogados_expira_em",
-                schema: "homolog",
                 table: "tokens_revogados",
                 column: "expira_em");
         }
@@ -35,8 +33,7 @@ namespace forzion.tech.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "tokens_revogados",
-                schema: "homolog");
+                name: "tokens_revogados");
         }
     }
 }

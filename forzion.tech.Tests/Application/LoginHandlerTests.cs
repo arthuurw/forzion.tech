@@ -41,6 +41,7 @@ public class LoginHandlerTests
     public async Task HandleAsync_CredenciaisValidas_RetornaToken()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
         var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow);
         _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
@@ -115,6 +116,7 @@ public class LoginHandlerTests
     public async Task HandleAsync_LoginAluno_PerfilIdEhIdDoAluno()
     {
         var conta = Conta.Criar(Email.Criar("aluno@test.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
         var aluno = Aluno.Criar(conta.Id, "João Aluno", DateTime.UtcNow);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync("aluno@test.com", It.IsAny<CancellationToken>()))
@@ -135,6 +137,7 @@ public class LoginHandlerTests
     public async Task HandleAsync_LoginSystemAdmin_PerfilIdEhIdDoSystemUser()
     {
         var conta = Conta.Criar(Email.Criar("admin@test.com"), "hash", TipoConta.SystemAdmin, DateTime.UtcNow);
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
         var systemUser = SystemUser.Criar(conta.Id, "Admin", DateTime.UtcNow);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync("admin@test.com", It.IsAny<CancellationToken>()))
@@ -155,6 +158,7 @@ public class LoginHandlerTests
     public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaDomainException()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
@@ -165,6 +169,19 @@ public class LoginHandlerTests
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
         await act.Should().ThrowAsync<DomainException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_EmailNaoVerificado_LancaEmailNaoVerificadoException()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+
+        var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
+
+        await act.Should().ThrowAsync<EmailNaoVerificadoException>();
     }
 
     [Fact]

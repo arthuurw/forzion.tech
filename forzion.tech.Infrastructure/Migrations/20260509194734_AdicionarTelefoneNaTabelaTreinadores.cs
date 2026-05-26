@@ -12,7 +12,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.AddColumn<string>(
                 name: "telefone",
-                schema: "homolog",
                 table: "treinadores",
                 type: "character varying(20)",
                 maxLength: 20,
@@ -24,7 +23,6 @@ namespace forzion.tech.Infrastructure.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "telefone",
-                schema: "homolog",
                 table: "treinadores");
         }
     }
