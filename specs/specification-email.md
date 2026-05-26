@@ -33,6 +33,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de e-mail transacional (Resend). 
 
 - Local (dev): User Secrets `forzion-prod` (`dotnet user-secrets set "Resend:ApiKey" ...`). `App:FrontendBaseUrl` em appsettings = `http://localhost:3000`.
 - Deploy: env vars no compose → `Resend__ApiKey`/`Resend__WebhookSecret`/`App__FrontendBaseUrl` ← `${RESEND_API_KEY}`/`${RESEND_WEBHOOK_SECRET}`/`${APP_FRONTEND_BASE_URL:-https://homologacao.forzion.tech}` (vêm do `/opt/forzion/.env` na VM). Default vazio = Null roda mesmo em homolog se .env não setado.
+- Guardrail (homolog/dev): `Email__RedirecionarDestinatariosPara` ← `${EMAIL_REDIRECT_TO:-}` e `Email__AllowlistDominios` ← `${EMAIL_ALLOWLIST_DOMAINS:-}` (compose homolog+local; setar `EMAIL_REDIRECT_TO` no `/opt/forzion/.env` da VM p/ ativar). `MarcarComoTeste`/prefixo já vêm de `appsettings.Homolog.json` (não precisam de env).
 - Chaves separadas por ambiente: WebhookSecret é por-endpoint (homolog≠prod obrigatório); ApiKey recomendável uma por ambiente. Resend NÃO tem test/live mode — chave de hmg envia e-mail real.
 
 ## SEPARAÇÃO POR AMBIENTE
