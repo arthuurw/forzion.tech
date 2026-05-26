@@ -77,9 +77,20 @@ function VerifyEmailInner() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         {error}
       </Typography>
-      <Button component={Link} href="/login" variant="outlined" fullWidth>
-        Voltar para o login
-      </Button>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+        <Button
+          component={Link}
+          href="/resend-verification"
+          variant="contained"
+          color="primary"
+          fullWidth
+        >
+          Reenviar verificação
+        </Button>
+        <Button component={Link} href="/login" variant="outlined" fullWidth>
+          Voltar para o login
+        </Button>
+      </Box>
     </Box>
   );
 }
