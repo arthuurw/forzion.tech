@@ -36,7 +36,9 @@ public sealed record KpisSecao
 
 public sealed record EntregabilidadeSecao
 {
-    public required int Enviados { get; init; }
+    // Total de eventos de entrega rastreados na janela. Resend não emite "sent",
+    // então só há feedback de entregues/bounce/spam (ver ProcessarWebhookResendHandler).
+    public required int Total { get; init; }
     public required int Entregues { get; init; }
     public required int Bounces { get; init; }
     public required int Spam { get; init; }
