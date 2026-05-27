@@ -65,6 +65,7 @@ using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
 using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
 using forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
+using forzion.tech.Application.UseCases.Admin.HealthReport;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
@@ -167,6 +168,7 @@ public static class DependencyInjectionExtensions
         {
             services.AddInfrastructure(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
+            services.AddHostedService<RelatorioSaudeDiarioService>();
             services.AddSingleton<ILoggerProvider, ErrorLogDbSinkProvider>();
         }
 
@@ -193,6 +195,11 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ListarTreinadoresPublicosHandler>();
 
         services.AddScoped<ListarAlunosAdminHandler>();
+
+        services.AddScoped<ObterHealthReportConfigHandler>();
+        services.AddScoped<AtualizarHealthReportConfigHandler>();
+        services.AddScoped<ListarHealthSnapshotsHandler>();
+        services.AddScoped<ExecutarRelatorioSaudeHandler>();
 
         services.AddScoped<ObterTreinadorHandler>();
         services.AddScoped<ListarTreinadoresHandler>();

@@ -17,6 +17,7 @@ public static class RouteBuilderExtensions
     {
         endpoints.MapAuthEndpoints();
         endpoints.MapAdminEndpoints();
+        endpoints.MapHealthReportEndpoints();
         endpoints.MapTreinadorEndpoints();
         endpoints.MapAlunoAreaEndpoints();
         endpoints.MapAlunoEndpoints();
