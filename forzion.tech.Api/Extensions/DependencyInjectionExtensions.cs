@@ -85,7 +85,9 @@ using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.Settings;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -165,6 +167,7 @@ public static class DependencyInjectionExtensions
         {
             services.AddInfrastructure(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
+            services.AddSingleton<ILoggerProvider, ErrorLogDbSinkProvider>();
         }
 
         return services;
