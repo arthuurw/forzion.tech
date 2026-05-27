@@ -24,4 +24,9 @@ public class ContaRepository(AppDbContext context) : IContaRepository
 
     public async Task AdicionarAsync(Conta conta, CancellationToken cancellationToken = default) =>
         await _context.Contas.AddAsync(conta, cancellationToken).ConfigureAwait(false);
+
+    public async Task<int> ContarCriadasDesdeAsync(DateTime desde, CancellationToken cancellationToken = default) =>
+        await _context.Contas
+            .CountAsync(c => c.CreatedAt >= desde, cancellationToken)
+            .ConfigureAwait(false);
 }

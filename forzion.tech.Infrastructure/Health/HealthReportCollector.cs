@@ -1,5 +1,6 @@
 using System.Reflection;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.HealthReport;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -13,7 +14,12 @@ public class HealthReportCollector(
     AppDbContext context,
     IEmailService emailService,
     IConfiguration configuration,
-    TimeProvider timeProvider) : IHealthReportCollector
+    TimeProvider timeProvider,
+    ITreinadorRepository treinadorRepository,
+    IAlunoRepository alunoRepository,
+    IContaRepository contaRepository,
+    IPagamentoRepository pagamentoRepository,
+    IAssinaturaAlunoRepository assinaturaRepository) : IHealthReportCollector
 {
     public async Task<HealthReport> ColetarAsync(HealthReportConfig config, CancellationToken cancellationToken = default)
     {
@@ -21,13 +27,30 @@ public class HealthReportCollector(
         var bancoAcessivel = await PingBancoAsync(cancellationToken).ConfigureAwait(false);
 
         var liveness = config.IncluirLiveness ? MontarLiveness(bancoAcessivel) : null;
+        var kpis = config.IncluirKpis ? await MontarKpisAsync(agora, cancellationToken).ConfigureAwait(false) : null;
 
         return new HealthReport
         {
             Ambiente = ObterAmbiente(),
             CapturadoEm = agora,
             StatusGeral = DerivarStatus(bancoAcessivel),
-            Liveness = liveness
+            Liveness = liveness,
+            Kpis = kpis
+        };
+    }
+
+    private async Task<KpisSecao> MontarKpisAsync(DateTime agora, CancellationToken cancellationToken)
+    {
+        var desde24h = agora.AddHours(-24);
+
+        return new KpisSecao
+        {
+            TreinadoresAtivos = await treinadorRepository.ContarPorStatusAsync(TreinadorStatus.Ativo, cancellationToken).ConfigureAwait(false),
+            AlunosAtivos = await alunoRepository.ContarPorStatusAsync(AlunoStatus.Ativo, cancellationToken).ConfigureAwait(false),
+            NovasContas24h = await contaRepository.ContarCriadasDesdeAsync(desde24h, cancellationToken).ConfigureAwait(false),
+            PagamentosPendentes = await pagamentoRepository.ContarPorStatusAsync(PagamentoStatus.Pendente, cancellationToken).ConfigureAwait(false),
+            PagamentosFalhos = await pagamentoRepository.ContarPorStatusAsync(PagamentoStatus.Falhou, cancellationToken).ConfigureAwait(false),
+            AssinaturasAtivas = await assinaturaRepository.ContarPorStatusAsync(AssinaturaAlunoStatus.Ativa, cancellationToken).ConfigureAwait(false)
         };
     }
 
