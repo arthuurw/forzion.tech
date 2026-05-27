@@ -286,3 +286,36 @@ export interface ProblemDetails {
   errors?: Record<string, string[]>;
   code?: string;
 }
+
+// Relatório de saúde
+export type StatusSaude = "Ok" | "Degradado" | "Falha";
+
+export interface HealthReportConfigResponse {
+  id: string;
+  ativo: boolean;
+  horaEnvioUtc: string;
+  destinatarios: string[];
+  incluirLiveness: boolean;
+  incluirKpis: boolean;
+  incluirEntregabilidade: boolean;
+  incluirErros: boolean;
+  ultimoEnvioEm: string | null;
+}
+
+export interface AtualizarHealthReportConfigRequest {
+  ativo: boolean;
+  horaEnvioUtc: string;
+  destinatarios: string[];
+  incluirLiveness: boolean;
+  incluirKpis: boolean;
+  incluirEntregabilidade: boolean;
+  incluirErros: boolean;
+}
+
+export interface HealthSnapshotResponse {
+  id: string;
+  capturadoEm: string;
+  ambiente: string;
+  statusGeral: StatusSaude;
+  payloadJson: string;
+}

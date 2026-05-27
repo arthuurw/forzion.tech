@@ -17,6 +17,9 @@ import type {
   VinculoStatus,
   TreinoResponse,
   PacoteResponse,
+  HealthReportConfigResponse,
+  AtualizarHealthReportConfigRequest,
+  HealthSnapshotResponse,
 } from "@/types";
 
 export interface ListarExerciciosGlobaisResponse {
@@ -162,5 +165,22 @@ export const adminApi = {
 
   getTreinadorPacotes(treinadorId: string) {
     return apiClient.get<PacoteResponse[]>(`/admin/treinadores/${treinadorId}/pacotes`);
+  },
+
+  // Relatório de saúde
+  getHealthReportConfig() {
+    return apiClient.get<HealthReportConfigResponse>("/admin/health-report/config");
+  },
+
+  updateHealthReportConfig(data: AtualizarHealthReportConfigRequest) {
+    return apiClient.put<HealthReportConfigResponse>("/admin/health-report/config", data);
+  },
+
+  listHealthSnapshots(params?: { limite?: number }) {
+    return apiClient.get<HealthSnapshotResponse[]>("/admin/health-report/snapshots", { params });
+  },
+
+  runHealthReport() {
+    return apiClient.post<HealthSnapshotResponse>("/admin/health-report/run");
   },
 };
