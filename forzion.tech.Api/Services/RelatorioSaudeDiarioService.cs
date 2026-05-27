@@ -1,7 +1,6 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Admin.HealthReport;
 using forzion.tech.Domain.Entities;
 
 namespace forzion.tech.Api.Services;
@@ -12,11 +11,6 @@ public class RelatorioSaudeDiarioService(
     ILogger<RelatorioSaudeDiarioService> logger) : BackgroundService
 {
     private static readonly TimeSpan Intervalo = TimeSpan.FromMinutes(15);
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     public static bool DeveEnviar(HealthReportConfig config, DateTime agoraUtc)
     {
@@ -68,8 +62,7 @@ public class RelatorioSaudeDiarioService(
         var unitOfWork = sp.GetRequiredService<IUnitOfWork>();
 
         var report = await collector.ColetarAsync(config, cancellationToken).ConfigureAwait(false);
-        var payload = JsonSerializer.Serialize(report, JsonOptions);
-        var snapshot = HealthSnapshot.Criar(report.Ambiente, report.StatusGeral, payload, agora);
+        var snapshot = HealthSnapshot.Criar(report.Ambiente, report.StatusGeral, HealthReportPayload.Serializar(report), agora);
         await snapshotRepo.AdicionarAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
         await sender.EnviarAsync(report, config.ObterDestinatarios(), cancellationToken).ConfigureAwait(false);
