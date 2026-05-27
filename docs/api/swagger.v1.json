@@ -1171,6 +1171,120 @@
         }
       }
     },
+    "/admin/health-report/config": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Obtém a configuração do relatório de saúde",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReportConfigResponse"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Cria ou atualiza a configuração do relatório de saúde",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizarHealthReportConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReportConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/health-report/snapshots": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Lista os snapshots de saúde mais recentes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HealthSnapshotResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/health-report/run": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Executa o relatório de saúde imediatamente",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthSnapshotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/aluno/assinatura": {
       "get": {
         "tags": [
@@ -4668,6 +4782,38 @@
         },
         "additionalProperties": false
       },
+      "AtualizarHealthReportConfigRequest": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "horaEnvioUtc": {
+            "type": "string",
+            "format": "time"
+          },
+          "destinatarios": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "incluirLiveness": {
+            "type": "boolean"
+          },
+          "incluirKpis": {
+            "type": "boolean"
+          },
+          "incluirEntregabilidade": {
+            "type": "boolean"
+          },
+          "incluirErros": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "AtualizarObservacaoExercicioRequest": {
         "type": "object",
         "properties": {
@@ -5146,6 +5292,72 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "HealthReportConfigResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ativo": {
+            "type": "boolean"
+          },
+          "horaEnvioUtc": {
+            "type": "string",
+            "format": "time"
+          },
+          "destinatarios": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "incluirLiveness": {
+            "type": "boolean"
+          },
+          "incluirKpis": {
+            "type": "boolean"
+          },
+          "incluirEntregabilidade": {
+            "type": "boolean"
+          },
+          "incluirErros": {
+            "type": "boolean"
+          },
+          "ultimoEnvioEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "HealthSnapshotResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "capturadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ambiente": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusGeral": {
+            "$ref": "#/components/schemas/StatusSaude"
+          },
+          "payloadJson": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -5975,6 +6187,15 @@
           }
         },
         "additionalProperties": false
+      },
+      "StatusSaude": {
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
       },
       "TempoDisponivel": {
         "enum": [
