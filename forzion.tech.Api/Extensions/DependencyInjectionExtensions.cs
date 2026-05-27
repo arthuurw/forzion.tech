@@ -198,6 +198,8 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<ObterHealthReportConfigHandler>();
         services.AddScoped<AtualizarHealthReportConfigHandler>();
+        services.AddScoped<ListarHealthSnapshotsHandler>();
+        services.AddScoped<ExecutarRelatorioSaudeHandler>();
 
         services.AddScoped<ObterTreinadorHandler>();
         services.AddScoped<ListarTreinadoresHandler>();
