@@ -20,8 +20,11 @@ public class HealthReportCollector(
     IContaRepository contaRepository,
     IPagamentoRepository pagamentoRepository,
     IAssinaturaAlunoRepository assinaturaRepository,
-    IEmailDeliveryLogRepository emailDeliveryLogRepository) : IHealthReportCollector
+    IEmailDeliveryLogRepository emailDeliveryLogRepository,
+    IErrorLogRepository errorLogRepository) : IHealthReportCollector
 {
+    private const int MaxAmostrasErro = 10;
+
     public async Task<HealthReport> ColetarAsync(HealthReportConfig config, CancellationToken cancellationToken = default)
     {
         var agora = timeProvider.GetUtcNow().UtcDateTime;
@@ -32,15 +35,38 @@ public class HealthReportCollector(
         var entregabilidade = config.IncluirEntregabilidade
             ? await MontarEntregabilidadeAsync(agora, cancellationToken).ConfigureAwait(false)
             : null;
+        var erros = config.IncluirErros ? await MontarErrosAsync(agora, cancellationToken).ConfigureAwait(false) : null;
 
         return new HealthReport
         {
             Ambiente = ObterAmbiente(),
             CapturadoEm = agora,
-            StatusGeral = DerivarStatus(bancoAcessivel),
+            StatusGeral = DerivarStatus(bancoAcessivel, erros),
             Liveness = liveness,
             Kpis = kpis,
-            Entregabilidade = entregabilidade
+            Entregabilidade = entregabilidade,
+            Erros = erros
+        };
+    }
+
+    private async Task<ErrosSecao> MontarErrosAsync(DateTime agora, CancellationToken cancellationToken)
+    {
+        var desde = agora.AddHours(-24);
+        var total = await errorLogRepository.ContarDesdeAsync(desde, cancellationToken).ConfigureAwait(false);
+        var amostras = await errorLogRepository.ListarDesdeAsync(desde, MaxAmostrasErro, cancellationToken).ConfigureAwait(false);
+
+        return new ErrosSecao
+        {
+            Total = total,
+            Amostras = amostras
+                .Select(e => new ErroAmostra
+                {
+                    OcorridoEm = e.OcorridoEm,
+                    Nivel = e.Nivel,
+                    Origem = e.Origem,
+                    Mensagem = e.Mensagem
+                })
+                .ToList()
         };
     }
 
@@ -112,8 +138,13 @@ public class HealthReportCollector(
     private string ObterAmbiente() =>
         configuration["ASPNETCORE_ENVIRONMENT"] ?? "Unknown";
 
-    private static StatusSaude DerivarStatus(bool bancoAcessivel) =>
-        bancoAcessivel ? StatusSaude.Ok : StatusSaude.Falha;
+    private static StatusSaude DerivarStatus(bool bancoAcessivel, ErrosSecao? erros)
+    {
+        if (!bancoAcessivel)
+            return StatusSaude.Falha;
+
+        return erros is { Total: > 0 } ? StatusSaude.Degradado : StatusSaude.Ok;
+    }
 
     private static string? ExtrairCommit(Assembly asm)
     {
