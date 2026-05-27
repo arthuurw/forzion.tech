@@ -1,3 +1,9 @@
+using System.Globalization;
+using System.Net;
+using System.Text;
+using forzion.tech.Application.UseCases.Admin.HealthReport;
+using forzion.tech.Domain.Enums;
+
 namespace forzion.tech.Infrastructure.Notifications.Email;
 
 internal static class EmailTemplates
@@ -174,4 +180,116 @@ internal static class EmailTemplates
               Ver assinatura
             </a>
             """);
+
+    public static string RelatorioSaude(HealthReport report)
+    {
+        var ambiente = WebUtility.HtmlEncode(report.Ambiente);
+        var capturado = report.CapturadoEm.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
+
+        var corpo = new StringBuilder();
+        corpo.Append($"""
+            <p style="color:#444;line-height:1.6">
+              Ambiente <strong>{ambiente}</strong> — situação geral:
+              <strong style="color:{CorStatus(report.StatusGeral)}">{report.StatusGeral}</strong>.
+            </p>
+            <p style="color:#999;font-size:12px;margin:0 0 16px">Capturado em {capturado}.</p>
+            """);
+
+        if (report.Liveness is { } liveness)
+            corpo.Append(SecaoLiveness(liveness));
+        if (report.Kpis is { } kpis)
+            corpo.Append(SecaoKpis(kpis));
+        if (report.Entregabilidade is { } entrega)
+            corpo.Append(SecaoEntregabilidade(entrega));
+        if (report.Erros is { } erros)
+            corpo.Append(SecaoErros(erros));
+
+        return Layout($"Relatório de saúde — {ambiente}", corpo.ToString());
+    }
+
+    private static string CorStatus(StatusSaude status) => status switch
+    {
+        StatusSaude.Ok => "#2e7d32",
+        StatusSaude.Degradado => "#ef6c00",
+        _ => "#c62828"
+    };
+
+    private static string Secao(string titulo, string conteudo) => $"""
+        <h3 style="margin:24px 0 8px;color:#1A1A1A;font-size:15px">{titulo}</h3>
+        {conteudo}
+        """;
+
+    private static string Linha(string rotulo, string valor) => $"""
+        <tr>
+          <td style="padding:6px 16px 6px 0;color:#666;font-size:14px">{rotulo}</td>
+          <td style="padding:6px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{valor}</td>
+        </tr>
+        """;
+
+    private static string Tabela(string linhas) =>
+        $"""<table cellpadding="0" cellspacing="0" style="border-collapse:collapse">{linhas}</table>""";
+
+    private static string SimNao(bool valor) => valor ? "Sim" : "Não";
+
+    private static string SecaoLiveness(LivenessSecao s)
+    {
+        var linhas = new StringBuilder();
+        linhas.Append(Linha("Banco acessível", SimNao(s.BancoAcessivel)));
+        linhas.Append(Linha("E-mail habilitado", SimNao(s.EmailHabilitado)));
+        linhas.Append(Linha("Stripe configurado", SimNao(s.StripeConfigurado)));
+        linhas.Append(Linha("WhatsApp configurado", SimNao(s.WhatsAppConfigurado)));
+        if (!string.IsNullOrEmpty(s.Versao))
+            linhas.Append(Linha("Versão", WebUtility.HtmlEncode(s.Versao)));
+        if (!string.IsNullOrEmpty(s.Commit))
+            linhas.Append(Linha("Commit", WebUtility.HtmlEncode(s.Commit)));
+        return Secao("Infraestrutura", Tabela(linhas.ToString()));
+    }
+
+    private static string SecaoKpis(KpisSecao s)
+    {
+        var linhas = new StringBuilder();
+        linhas.Append(Linha("Treinadores ativos", s.TreinadoresAtivos.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Alunos ativos", s.AlunosAtivos.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Novas contas (24h)", s.NovasContas24h.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Pagamentos pendentes", s.PagamentosPendentes.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Pagamentos falhos", s.PagamentosFalhos.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Assinaturas ativas", s.AssinaturasAtivas.ToString(CultureInfo.InvariantCulture)));
+        return Secao("Indicadores", Tabela(linhas.ToString()));
+    }
+
+    private static string SecaoEntregabilidade(EntregabilidadeSecao s)
+    {
+        var linhas = new StringBuilder();
+        linhas.Append(Linha("Eventos (24h)", s.Total.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Entregues", s.Entregues.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Bounces", s.Bounces.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Spam", s.Spam.ToString(CultureInfo.InvariantCulture)));
+        return Secao("Entregabilidade de e-mail", Tabela(linhas.ToString()));
+    }
+
+    private static string SecaoErros(ErrosSecao s)
+    {
+        if (s.Total == 0)
+            return Secao("Erros (24h)", """<p style="color:#2e7d32;line-height:1.6;margin:0">Nenhum erro registrado.</p>""");
+
+        var itens = new StringBuilder();
+        foreach (var amostra in s.Amostras)
+        {
+            var quando = amostra.OcorridoEm.ToString("HH:mm", CultureInfo.InvariantCulture);
+            var nivel = WebUtility.HtmlEncode(amostra.Nivel);
+            var origem = WebUtility.HtmlEncode(amostra.Origem);
+            var mensagem = WebUtility.HtmlEncode(amostra.Mensagem);
+            itens.Append($"""
+                <li style="margin:0 0 8px;color:#444;font-size:13px;line-height:1.5">
+                  <strong style="color:#c62828">{nivel}</strong> {quando} — {origem}<br>{mensagem}
+                </li>
+                """);
+        }
+
+        var conteudo = $"""
+            <p style="color:#444;line-height:1.6;margin:0 0 8px">Total: <strong>{s.Total}</strong> (amostras abaixo).</p>
+            <ul style="margin:0;padding-left:18px">{itens}</ul>
+            """;
+        return Secao("Erros (24h)", conteudo);
+    }
 }
