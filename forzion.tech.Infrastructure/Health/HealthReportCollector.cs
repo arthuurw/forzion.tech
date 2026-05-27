@@ -19,7 +19,8 @@ public class HealthReportCollector(
     IAlunoRepository alunoRepository,
     IContaRepository contaRepository,
     IPagamentoRepository pagamentoRepository,
-    IAssinaturaAlunoRepository assinaturaRepository) : IHealthReportCollector
+    IAssinaturaAlunoRepository assinaturaRepository,
+    IEmailDeliveryLogRepository emailDeliveryLogRepository) : IHealthReportCollector
 {
     public async Task<HealthReport> ColetarAsync(HealthReportConfig config, CancellationToken cancellationToken = default)
     {
@@ -28,6 +29,9 @@ public class HealthReportCollector(
 
         var liveness = config.IncluirLiveness ? MontarLiveness(bancoAcessivel) : null;
         var kpis = config.IncluirKpis ? await MontarKpisAsync(agora, cancellationToken).ConfigureAwait(false) : null;
+        var entregabilidade = config.IncluirEntregabilidade
+            ? await MontarEntregabilidadeAsync(agora, cancellationToken).ConfigureAwait(false)
+            : null;
 
         return new HealthReport
         {
@@ -35,7 +39,28 @@ public class HealthReportCollector(
             CapturadoEm = agora,
             StatusGeral = DerivarStatus(bancoAcessivel),
             Liveness = liveness,
-            Kpis = kpis
+            Kpis = kpis,
+            Entregabilidade = entregabilidade
+        };
+    }
+
+    private async Task<EntregabilidadeSecao> MontarEntregabilidadeAsync(DateTime agora, CancellationToken cancellationToken)
+    {
+        var porEvento = await emailDeliveryLogRepository
+            .ContarPorEventoDesdeAsync(agora.AddHours(-24), cancellationToken)
+            .ConfigureAwait(false);
+
+        int Contar(params string[] eventos) =>
+            porEvento
+                .Where(kv => eventos.Any(e => string.Equals(kv.Key, e, StringComparison.OrdinalIgnoreCase)))
+                .Sum(kv => kv.Value);
+
+        return new EntregabilidadeSecao
+        {
+            Total = porEvento.Values.Sum(),
+            Entregues = Contar("email.delivered"),
+            Bounces = Contar("email.bounced"),
+            Spam = Contar("email.complained", "email.spam_complaint")
         };
     }
 
