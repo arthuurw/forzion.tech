@@ -12,9 +12,9 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 ## STACK & SCHEMAS
 - PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. App = ASP.NET Core 8, DDD.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema. `MigrationsHistoryTable("__EFMigrationsHistory")` sem schema (segue search_path).
-- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 26 tabelas cada (25 EF + ai_token_usage).
+- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 29 tabelas cada (28 EF + ai_token_usage).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 24 migrations EF aplicadas. Tabela de controle `__EFMigrationsHistory` por schema.
+- 25 migrations EF aplicadas. Tabela de controle `__EFMigrationsHistory` por schema.
 
 ## CONVENÇÕES
 - PK: `id` uuid gerado na app (Guid.NewGuid), não pelo banco. Exceção: `tokens_revogados` PK=`jti`.
@@ -43,6 +43,7 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - PagamentoStatus (pagamentos.status): Pendente|Pago|Expirado|Falhou
 - MetodoPagamento (pagamentos.metodo_pagamento, default Pix): Pix|Cartao
 - TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador
+- StatusSaude (health_snapshots.status_geral): Ok|Degradado|Falha
 - GrupoMuscular (seed de grupos_musculares; não é coluna): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
 
 ## TABELAS
@@ -103,6 +104,13 @@ pagamentos — cobranças da assinatura. id(uuid,NN); assinatura_aluno_id(uuid,N
 assinantes — read model derivado de Aluno (sync via domain events). id(uuid,NN); aluno_id(uuid,NN); nome(varchar,NN); email(varchar,null); created_at(NN); updated_at(null). PK(id) UQ(aluno_id) [sem FK física].
 
 ai_token_usage — consumo de tokens IA por user/agente/dia. NON-EF. id(uuid,NN); user_id(uuid,NN); agent_type(varchar,NN); date(date,NN); token_count(int,NN). PK(id) UQ(user_id,agent_type,date).
+
+### Observabilidade / Saúde (relatório diário)
+health_report_config — config runtime do relatório diário de saúde (1 linha por schema). id(uuid,NN); ativo(bool,NN); hora_envio_utc(time,NN); destinatarios(text,NN,csv emails normalizados); incluir_liveness(bool,NN); incluir_kpis(bool,NN); incluir_entregabilidade(bool,NN); incluir_erros(bool,NN); ultimo_envio_em(tstz,null); created_at(NN); updated_at(null). PK(id).
+
+health_snapshots — snapshot diário da saúde do ambiente. id(uuid,NN); capturado_em(tstz,NN); ambiente(varchar100,NN); status_geral(text,NN,StatusSaude); payload_json(text,NN,JSON das seções); created_at(NN). PK(id) idx(capturado_em).
+
+error_logs — log de ERROR/Critical (sink custom, best-effort) p/ a seção de erros. id(uuid,NN); ocorrido_em(tstz,NN); nivel(varchar20,NN); origem(varchar256,NN); mensagem(varchar4000,NN,truncada); created_at(NN). PK(id) idx(ocorrido_em).
 
 ## ACESSOS / ROLES (Supabase)
 - forzion_api: usado em `ConnectionStrings:AppConnection` (runtime do app + `dotnet ef`). Dono dos objetos em homolog/develop. Em public: NÃO é dono (objetos do postgres) → precisa `GRANT ALL ON ALL TABLES IN SCHEMA public TO forzion_api` + USAGE/CREATE. Search Path da connection define o schema ativo.
