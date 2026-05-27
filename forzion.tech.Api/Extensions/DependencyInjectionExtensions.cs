@@ -167,6 +167,7 @@ public static class DependencyInjectionExtensions
         {
             services.AddInfrastructure(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
+            services.AddHostedService<RelatorioSaudeDiarioService>();
             services.AddSingleton<ILoggerProvider, ErrorLogDbSinkProvider>();
         }
 
