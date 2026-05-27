@@ -81,6 +81,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IHealthReportConfigRepository, HealthReportConfigRepository>();
         services.AddScoped<IHealthSnapshotRepository, HealthSnapshotRepository>();
         services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+        services.AddScoped<IHealthReportCollector, Health.HealthReportCollector>();
 
         // Stripe — valida no startup que SecretKey e WebhookSecret estão configurados
         services.AddOptions<StripeSettings>()
