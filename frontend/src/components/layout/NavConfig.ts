@@ -5,6 +5,7 @@ import ListAltIcon from "@mui/icons-material/ListAlt";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import HistoryIcon from "@mui/icons-material/History";
+import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import type { ElementType } from "react";
 import type { TipoConta } from "@/types";
 
@@ -20,6 +21,7 @@ const adminNav: NavItem[] = [
   { label: "Planos", href: "/admin/planos", Icon: CardMembershipIcon },
   { label: "Exercícios", href: "/admin/exercicios", Icon: FitnessCenterIcon },
   { label: "Grupos Musculares", href: "/admin/grupos-musculares", Icon: ListAltIcon },
+  { label: "Saúde", href: "/admin/saude", Icon: MonitorHeartIcon },
 ];
 
 const treinadorNav: NavItem[] = [
