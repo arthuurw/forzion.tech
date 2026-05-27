@@ -78,6 +78,9 @@ public static class InfrastructureExtensions
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
         services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
+        services.AddScoped<IHealthReportConfigRepository, HealthReportConfigRepository>();
+        services.AddScoped<IHealthSnapshotRepository, HealthSnapshotRepository>();
+        services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
 
         // Stripe — valida no startup que SecretKey e WebhookSecret estão configurados
         services.AddOptions<StripeSettings>()
