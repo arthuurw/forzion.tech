@@ -1,4 +1,5 @@
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.Interfaces.Repositories;
 
@@ -9,4 +10,5 @@ public interface IPagamentoRepository
     Task<IReadOnlyList<Pagamento>> ListarPorAssinaturaAlunoAsync(Guid assinaturaId, CancellationToken cancellationToken = default);
     Task<Pagamento?> ObterPendentePorAssinaturaAlunoAsync(Guid assinaturaId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(Pagamento pagamento, CancellationToken cancellationToken = default);
+    Task<int> ContarPorStatusAsync(PagamentoStatus status, CancellationToken cancellationToken = default);
 }

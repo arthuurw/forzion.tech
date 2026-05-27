@@ -33,4 +33,9 @@ public class AssinaturaAlunoRepository(AppDbContext context) : IAssinaturaAlunoR
 
     public async Task AdicionarAsync(AssinaturaAluno assinatura, CancellationToken cancellationToken = default) =>
         await context.AssinaturaAlunos.AddAsync(assinatura, cancellationToken).ConfigureAwait(false);
+
+    public async Task<int> ContarPorStatusAsync(AssinaturaAlunoStatus status, CancellationToken cancellationToken = default) =>
+        await context.AssinaturaAlunos
+            .CountAsync(a => a.Status == status, cancellationToken)
+            .ConfigureAwait(false);
 }

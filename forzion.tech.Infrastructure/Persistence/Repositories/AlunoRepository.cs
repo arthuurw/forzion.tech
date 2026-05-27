@@ -71,4 +71,9 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
         await _context.VinculosTreinadorAluno
             .CountAsync(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<int> ContarPorStatusAsync(AlunoStatus status, CancellationToken cancellationToken = default) =>
+        await _context.Alunos
+            .CountAsync(a => a.Status == status, cancellationToken)
+            .ConfigureAwait(false);
 }

@@ -32,4 +32,9 @@ public class PagamentoRepository(AppDbContext context) : IPagamentoRepository
 
     public async Task AdicionarAsync(Pagamento pagamento, CancellationToken cancellationToken = default) =>
         await context.Pagamentos.AddAsync(pagamento, cancellationToken).ConfigureAwait(false);
+
+    public async Task<int> ContarPorStatusAsync(PagamentoStatus status, CancellationToken cancellationToken = default) =>
+        await context.Pagamentos
+            .CountAsync(p => p.Status == status, cancellationToken)
+            .ConfigureAwait(false);
 }
