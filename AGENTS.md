@@ -21,6 +21,14 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - `frontend/` — Next.js.
 - `specs/` — docs de referência `specification-*` (versionados/commitados).
 
+## AREAS COBERTAS POR SPECIFICATION-*
+Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
+- `specs/specification-db.md` — estrutura de banco (29 tabelas, migrations, enums, FKs).
+- `specs/specification-email.md` — fluxo de envio Resend + templates + webhook.
+- `specs/specification-frontend.md` — Next.js App Router, MUI, formulários, validação.
+- `specs/specification-infrastructure.md` — Hostinger VM, docker-compose, nginx, certbot.
+- `specs/specification-git.md` — workflow git, configs recomendadas, worktree, conventional commits.
+
 ## CONVENÇÕES-CHAVE
 - DDD: entidades com factory `Criar`; domain events despachados no `UnitOfWork.CommitAsync` (re-entrância tratada). Result<T> pattern. FluentValidation auto-descoberto. Handlers registrados manualmente no DI.
 - Commits: Conventional Commits. Scopes válidos: `frontend|backend|infra|ci|deps|tests|docs`.
