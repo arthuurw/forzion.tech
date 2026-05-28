@@ -953,7 +953,6 @@ Rode `npm run test:coverage` para o panorama atual.
 | `NextRequest.cookies` não parseia header em testes | API interna do Next.js não disponível em unit tests | Mock direto do objeto `{ cookies: { get: vi.fn() } }` |
 | `jwtVerify` falha em testes de `/api/auth/me` | Necessita JWT assinado com HMAC real | Usar `jose.SignJWT` com `TEST_SECRET` + `beforeAll(() => { process.env.JWT_SECRET = TEST_SECRET })` |
 | Formatação de moeda com non-breaking space | `toLocaleString("pt-BR")` produz `R$ 99,90` — `getByText("R$ 99,90")` falha | Usar `getByText((c) => c.includes("99,90"))` |
-| `extractTipoConta` não exportada | Era função local | Exportar explicitamente com `export function` |
 | Base64 padding em JWT de teste | `btoa(payload).replace(/=/g, "")` → `atob` falha silenciosamente | Usar `btoa` sem strip dos `=` |
 | `onTimeout` chamado múltiplas vezes | `setInterval` continua após `TIMEOUT_MS` | Usar `toHaveBeenCalled()`, não `toHaveBeenCalledOnce()` |
 | Mock de módulo com constructor (`new ExcelJS.Workbook()`) | `vi.fn(() => instance)` com arrow function não é construtível | Usar `vi.hoisted` + `class WorkbookMock { addWorksheet = fn; xlsx = { writeBuffer: fn }; }` e referenciar em `vi.mock("exceljs", () => ({ default: { Workbook: excelMocks.WorkbookMock } }))` |
