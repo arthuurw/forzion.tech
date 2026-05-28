@@ -34,6 +34,9 @@ public class ProcessarWebhookStripeHandlerTests
     private static string PaymentIntentPayload(string type, string paymentIntentId) =>
         "{\"type\":\"" + type + "\",\"data\":{\"object\":{\"id\":\"" + paymentIntentId + "\"}}}";
 
+    private static string PaymentIntentPayloadComConnectAccount(string type, string paymentIntentId, string accountId) =>
+        "{\"type\":\"" + type + "\",\"account\":\"" + accountId + "\",\"data\":{\"object\":{\"id\":\"" + paymentIntentId + "\"}}}";
+
     private static string AccountPayload(string accountId, bool chargesEnabled) =>
         "{\"type\":\"account.updated\",\"account\":\"" + accountId + "\",\"data\":{\"object\":{\"charges_enabled\":" + (chargesEnabled ? "true" : "false") + "}}}";
 
@@ -229,5 +232,59 @@ public class ProcessarWebhookStripeHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntent_ConnectAccountBate_ProcessaNormal()
+    {
+        var treinadorId = Guid.NewGuid();
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
+        pagamento.DefinirDadosPix("pi_ok_acct", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, DateTime.UtcNow);
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
+        conta.ConfigurarStripeConnect("acct_correct");
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_ok_acct", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(new ProcessarWebhookStripeCommand(
+            PaymentIntentPayloadComConnectAccount("payment_intent.succeeded", "pi_ok_acct", "acct_correct"),
+            ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntent_ConnectAccountDivergente_RejeitaSemMutar()
+    {
+        // Cross-account replay: PaymentIntent existe mas pertence a outro Connect account
+        var treinadorId = Guid.NewGuid();
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
+        pagamento.DefinirDadosPix("pi_spoofed", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, DateTime.UtcNow);
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
+        conta.ConfigurarStripeConnect("acct_correct");
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_spoofed", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(new ProcessarWebhookStripeCommand(
+            PaymentIntentPayloadComConnectAccount("payment_intent.succeeded", "pi_spoofed", "acct_attacker"),
+            ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pendente);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
