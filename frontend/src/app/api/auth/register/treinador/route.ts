@@ -9,7 +9,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { title: "Corpo da requisição inválido.", status: 400 },
+      { status: 400 },
+    );
+  }
 
   const res = await fetch(`${API_BASE}/auth/register/treinador`, {
     method: "POST",

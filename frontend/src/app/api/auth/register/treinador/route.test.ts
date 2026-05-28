@@ -40,6 +40,31 @@ describe("POST /api/auth/register/treinador", () => {
     expect(receivedBody).toEqual(payload);
   });
 
+  it("JSON malformado → 400 sem chamar backend", async () => {
+    let backendCalled = false;
+    server.use(
+      http.post("*/auth/register/treinador", () => {
+        backendCalled = true;
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+
+    const req = createMockRequest({ method: "POST", body: {} });
+    Object.defineProperty(req, "json", {
+      value: async () => {
+        throw new SyntaxError("Unexpected token");
+      },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(backendCalled).toBe(false);
+    expect(await res.json()).toEqual({
+      title: "Corpo da requisição inválido.",
+      status: 400,
+    });
+  });
+
   it("backend 422 → propaga status e mensagem", async () => {
     server.use(
       http.post("*/auth/register/treinador", () =>
