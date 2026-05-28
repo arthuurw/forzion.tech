@@ -112,44 +112,57 @@ public static class DependencyInjectionExtensions
         }
         else
         {
+            // Particionar por chave (IP anônimo ou sub claim autenticado) — sem isso
+            // os limiters tinham um único bucket global e um IP malicioso conseguia
+            // exaurir o cap pra plataforma inteira (10 logins/min totais).
             services.AddRateLimiter(opt =>
             {
                 opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                opt.AddFixedWindowLimiter("auth", c =>
+
+                static string KeyFromIpOrSub(HttpContext ctx)
                 {
-                    c.PermitLimit = 10;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
-                opt.AddFixedWindowLimiter("write", c =>
+                    var sub = ctx.User?.FindFirst("sub")?.Value
+                              ?? ctx.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrEmpty(sub))
+                        return $"u:{sub}";
+                    return $"ip:{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+                }
+
+                static string KeyFromIp(HttpContext ctx) =>
+                    $"ip:{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+                static FixedWindowRateLimiterOptions Fixed(int permit, TimeSpan window) => new()
                 {
-                    c.PermitLimit = 60;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
-                opt.AddFixedWindowLimiter("read", c =>
-                {
-                    c.PermitLimit = 120;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
-                opt.AddFixedWindowLimiter("internal", c =>
-                {
-                    c.PermitLimit = 5;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
-                opt.AddFixedWindowLimiter("webhook", c =>
-                {
-                    c.PermitLimit = 300;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
+                    PermitLimit = permit,
+                    Window = window,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                };
+
+                // auth: pré-autenticação — chave por IP (não há sub ainda)
+                opt.AddPolicy("auth", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                        _ => Fixed(10, TimeSpan.FromMinutes(1))));
+
+                // write: por usuário se autenticado, IP caso contrário
+                opt.AddPolicy("write", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                        _ => Fixed(60, TimeSpan.FromMinutes(1))));
+
+                // read: idem
+                opt.AddPolicy("read", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                        _ => Fixed(120, TimeSpan.FromMinutes(1))));
+
+                // internal: server-to-server (billing-renewal) — por IP origem
+                opt.AddPolicy("internal", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                        _ => Fixed(5, TimeSpan.FromMinutes(1))));
+
+                // webhook: Stripe/Resend — por IP (provedores têm faixas conhecidas)
+                opt.AddPolicy("webhook", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                        _ => Fixed(300, TimeSpan.FromMinutes(1))));
             });
         }
 
