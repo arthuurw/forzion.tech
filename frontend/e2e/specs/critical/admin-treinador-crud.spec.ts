@@ -60,8 +60,7 @@ test.describe("admin treinador destructive actions", () => {
     const row = page.locator("tbody tr").filter({ hasText: PENDING_EMAIL! });
     await expect(row).toBeVisible({ timeout: 10_000 });
 
-    // Captura o id antes de mutar (data-testid esperado na row — ajustar se
-    // o atributo for diferente; fallback: extrair de um botão "Aprovar" href).
+    // Captura o id antes de mutar (espera `data-treinador-id` na row).
     const treinadorId = row;
     await expect(treinadorId, "row precisa expor data-treinador-id").toHaveAttribute("data-treinador-id", );
 
@@ -72,16 +71,17 @@ test.describe("admin treinador destructive actions", () => {
     // Verifica que sumiu da lista filtrada por AguardandoAprovacao
     await expect(row).toHaveCount(0, { timeout: 10_000 });
 
-    // Cleanup: reverte para AguardandoAprovacao via endpoint admin (volta
-    // ao estado anterior pra não poluir o seed do homolog).
+    // Cleanup: reverte pra AguardandoAprovacao via endpoint admin (mantém
+    // seed homolog limpo). Se o endpoint de revert não existe, falha alto
+    // com mensagem actionable.
     const revertResponse = await request.post(
       `/api/backend/admin/treinadores/${treinadorId}/aguardando`,
-      { failOnStatusCode: false }
+      { failOnStatusCode: false },
     );
-    // Se endpoint de revert não existe ainda, marcar como TODO mas falhar
-    // explicitamente — a ausência de revert é o que mata o E2E destrutivo
-    // sustentado.
-    expect(revertResponse.status(), "cleanup revert falhou — implementar endpoint").toBeLessThan(500);
+    expect(
+      revertResponse.status(),
+      "cleanup revert falhou — implementar endpoint admin/treinadores/{id}/aguardando",
+    ).toBeLessThan(500);
   });
 
   test("reprovar treinador AguardandoAprovacao → status muda + revert ok", async ({
@@ -103,10 +103,9 @@ test.describe("admin treinador destructive actions", () => {
 
     await expect(row).toHaveCount(0, { timeout: 10_000 });
 
-    // Cleanup
     const revertResponse = await request.post(
       `/api/backend/admin/treinadores/${treinadorId}/aguardando`,
-      { failOnStatusCode: false }
+      { failOnStatusCode: false },
     );
     expect(revertResponse.status()).toBeLessThan(500);
   });
