@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { extractTipoConta } from "@/middleware";
+import { extractTipoConta } from "@/lib/auth/jwt";
 import { homeRouteFor } from "@/lib/auth/context";
 
 // Build a minimal unsigned JWT for testing (signature is not verified by these functions)
