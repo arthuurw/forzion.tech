@@ -8,20 +8,20 @@
 ## Critical (F1-F12)
 
 ### F1 — CSRF spec is no-op assertion
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 1
 - **Arquivo:** `frontend/e2e/specs/security/csrf.spec.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Assertion `expect(status).toBeOneOf([401, 403])` passa em qualquer erro. Fix: positive control (Bearer válido sucede) + negative explícito + sem-Bearer estrito.
+- **Commit:** `46184d1`
+- **Data fechado:** 2026-05-28
+- **Notas:** Refeito com 4 asserts negativos estritos (status === 401) + positive control via `useAuthRole("admin")`. Cobre vetores: sem creds, Cookie forjado, Authorization forjado, POST cross-origin. Positive control valida que defesa não é só "endpoint sempre nega".
 
 ### F2 — Offline spec sem assertion de UI
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 1
-- **Arquivo:** `frontend/e2e/specs/network/offline.spec.ts:13-34`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Vai offline, `.catch(() => null)`, restaura sem `expect()`. Adicionar `expect(page.getByRole("alert")).toBeVisible()` ou seletor real.
+- **Arquivo:** `frontend/e2e/specs/network/offline.spec.ts`
+- **Commit:** `9c74d35`
+- **Data fechado:** 2026-05-28
+- **Notas:** Refeito: online → offline+reload → asserta AlertBanner com "Erro ao carregar alunos." (mensagem exata do `usePaginatedList`) via `getByRole("alert")` → online+reload → banner some. 3 expects estritos no fluxo.
 
 ### F3 — Checkout Stripe spec skippa silenciosamente
 - **Status:** `pending`
@@ -117,12 +117,12 @@
 ## Important (F13-F30)
 
 ### F13 — `Task.Delay(10)` flaky em TreinoRepositoryTests
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 1
 - **Arquivo:** `forzion.tech.Tests/Infrastructure/Repositories/TreinoRepositoryTests.cs:122`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Substituir delay por seed explícito de CreatedAt via builder.
+- **Commit:** `0b2f982`
+- **Data fechado:** 2026-05-28
+- **Notas:** `SeedTreinoAsync` ganhou parâmetro opcional `createdAt`. Teste agora seeda dois treinos com timestamps explícitos 1s apart — ordenação determinística sem delay. Categoria Integration (rodado em CI com Docker).
 
 ### F14 — Treinador signup E2E ausente
 - **Status:** `pending`
@@ -321,9 +321,9 @@
 - **Notas:** Drop OU documentar quando usar.
 
 ### F38 — MSW webhook handlers default 401 silencioso
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 1
 - **Arquivo:** `frontend/src/test/msw/handlers/pagamento.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Documentar webhooks fora de scope OU adicionar assertion helper `expect(server.requests()).toContain(...)`.
+- **Commit:** `c6e8def`
+- **Data fechado:** 2026-05-28
+- **Notas:** Defaults dos `/webhooks/stripe` e `/webhooks/resend` removidos — webhooks são server-to-server (Stripe/Resend → backend) e não devem ser hitados por frontend tests. `onUnhandledRequest: "error"` agora falha loud em qualquer chamada acidental. Comment explica a omissão.
