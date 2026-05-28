@@ -61,6 +61,7 @@ test.describe("admin treinador destructive actions", () => {
     await expect(row).toBeVisible({ timeout: 10_000 });
 
     // Captura o id antes de mutar (espera `data-treinador-id` na row).
+     
     const treinadorId = row;
     await expect(treinadorId, "row precisa expor data-treinador-id").toHaveAttribute("data-treinador-id", );
 
@@ -95,6 +96,7 @@ test.describe("admin treinador destructive actions", () => {
     const row = page.locator("tbody tr").filter({ hasText: PENDING_EMAIL! });
     await expect(row).toBeVisible({ timeout: 10_000 });
 
+     
     const treinadorId = row;
     await expect(treinadorId).toHaveAttribute("data-treinador-id", );
 
