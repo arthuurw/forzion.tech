@@ -4,6 +4,56 @@
 
 ---
 
+## 2026-05-28 — Fase 3 implementada e fechada parcialmente
+
+**Sessão:** Continuação direta após Fase 2 (mesmo dia, retomada via /loop após /compact).
+
+**Feito (1 commit + 1 pendente em `fix/frontend-dockerfile-npmrc`):**
+
+1. **F4 + F5 + F8 + F27** (`90040c0`) `test(backend,frontend): close F4 F5 F8 F27 in Fase 3 gate-hardening`
+   - **F4 Pact provider repo-level**: convertidos Fichas/Vinculo/Perfil (era handler-level mock). Adicionados 6 mocks de repo: `BuildContaRepositoryMock`, `BuildAlunoRepositoryMock` (unificado: cobre `ListarTodosAsync` admin + `ObterPorContaIdAsync` perfil), `BuildTreinadorRepositoryMock`, `BuildVinculoRepositoryMock`, `BuildTreinoAlunoRepositoryMock`, `BuildExercicioRepositoryMock`. Handlers reais executam — mudança de DTO/conversão quebra Pact.
+   - **F5 Pact error contracts (consumer-side)**: novo `frontend/src/test/pact/consumer-errors.test.ts` com 12 contratos (401/404/500 × 4 endpoints). Wrapper `captureError()` falha duro se chamada não throw (defesa contra regression). Output em `pacts-errors/` (gitignored, separado do `pacts/` publicado) até state handlers do provider serem implementados.
+   - **F8 Stryker scope**: backend matrix `Domain + Application` já existia em `mutation.yml` via `--project` override — documentado no config. Frontend: `src/components/**` incluído no `mutate`; break threshold 75 → 60 (runway para components até baseline). Mutation continua weekly via cron.
+   - **F27 Coverage enforcement**: vitest 4 `coverage.thresholds.<glob>` per-path enforce automaticamente quando `--coverage` roda — CI job `test-frontend` já chama `npm run test:coverage` (= `vitest run --coverage`) e falha se exit ≠ 0. Documentado em comment do `vitest.config.mts`.
+
+2. **F17** (TBD commit) `test(backend): cover 7 core FluentValidation validators`
+   - Novo `forzion.tech.Tests/Application/Validators/CoreValidatorsTests.cs` (45 tests).
+   - Cobertos 7 validators: CadastrarAluno, RegistrarAluno, Login, RegistrarTreinador, CriarTreino, CriarPacote, AtualizarPerfil.
+   - Pattern: por rule, happy + boundary + violação. Boundary específico do email-256 corrigido (250 + "@x.com" = 256 estava no limite, ajustado pra 251 = 257).
+   - Diferidos para Fase 4: 8 admin-side validators (GruposMusculares, HealthReport-extra, Exercicios/Criar, Pacotes/Atualizar, Planos/*, Treinos/AdicionarExercicio).
+
+**Não feito (reabrir em Fase 4):**
+- **F6 MSW migration** — 5 arquivos / 1551 LOC. Pattern `admin.msw.test.ts` já existe como exemplar. Plano: 1 arquivo por sessão, começar pelo menor (`saude/page.client.test.tsx`, 91 LOC).
+- **F12 Concurrent billing race** — BLOCKED: Docker offline neste host. Testcontainers exige Docker para Postgres. Reabrir quando Docker Desktop estiver up.
+- **F5 provider-side** — Implementar `WithProviderStateUrl` em `ForzionApiProviderTests.cs` + middleware state-aware. Promover `pacts-errors/` → `pacts/` no fim. ~30 min.
+
+**Métricas:**
+- Backend: 1160 pass (`Category!=Integration`), era 1115 + 45 novos validator tests.
+- Frontend vitest: 380 pass (sem mudança — sem novos vitest tests).
+- Frontend Pact: 16 contratos (4 happy + 12 error). 12 error rodam mas não publicam (dir separado).
+- PactVerification build: clean. Compilou sem warnings/errors.
+
+**Decisões:**
+- F5 provider-side adiado: implementar state handlers no Pact provider exigiria `/_pact/provider-states` endpoint + middleware que detecta state e retorna ProblemDetails. Não-trivial (~30 min de trabalho dedicado). Consumer-side já entrega ~80% do valor (prova que consumer trata 4xx/5xx; documenta shape esperado).
+- F8 backend matrix descoberto já implementado em `mutation.yml` (linha 52-54 — matriz hardcoded Domain + Application via `--project`). Static config também atualizado pra documentar.
+- F17 cobertura partial é o pragmatic call — os 7 core validators são os críticos (auth + signup + treino + perfil). Admin-side (GruposMusculares etc) menos exposto, segue padrão idêntico, pode ser batch-adicionado em Fase 4 com pouco esforço.
+- F6 deferred: scope (1551 LOC) requer ~3 sessões dedicadas. Fase 3 fecha mesmo sem ele.
+
+**Métricas pós-sessão:** Total findings 38 — done 15, deferred 2, blocked 1, pending 20.
+
+**Próximos passos sugeridos (Fase 4):**
+- F6 começar pelo menor: `saude/page.client.test.tsx` (mocka `@/lib/api/admin` whole, não client) — migrar pra `server.use(http.get/post("*/admin/health/*"))` interceptors.
+- F3 Stripe checkout seed: estratégia de seeded user com pagamento garantido (remove `test.skip()`).
+- F7 Stripe partial mock: useStripe/useElements retornam objetos realistas.
+- F16 Money rounding CsCheck property test: (amount, tax%, rounding) → banker's rounding + sum preservation.
+- F25 Rate limit MAX_ENTRIES eviction.
+- F26 PagamentoPix unmount mid-poll.
+- F29 Stripe Connect onboarding E2E.
+- F30 Cross-aggregate App-level integration.
+- F12 reabrir quando Docker Desktop up.
+
+---
+
 ## 2026-05-28 — Fase 2 implementada e fechada
 
 **Sessão:** Mesma do dia, continuação após Fase 1.
