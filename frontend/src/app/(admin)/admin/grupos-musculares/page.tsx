@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useCallback, useEffect, useState } from "react";
 import {
   Box, Typography, Card, Button, Dialog, DialogTitle, DialogContent, DialogActions,
