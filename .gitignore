@@ -65,6 +65,7 @@ nunit-*.xml
 /.specs/
 /docs/*
 !/docs/api/
+!/docs/test-remediation/
 
 # Arquivos locais do Visual Studio (preferências por-usuário, não versionar)
 *.user
