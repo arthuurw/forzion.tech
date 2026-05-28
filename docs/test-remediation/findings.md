@@ -32,34 +32,33 @@
 - **Notas:** `test.skip()` se aluno sem pagamento pendente. CI pode skip todos os runs sem detecção. Seed dedicated user com pagamento garantido + stripe-cli stub pra webhook.
 
 ### F4 — Pact provider mocka handlers (3 de 4)
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 3
 - **Arquivo:** `forzion.tech.PactVerification/ForzionApiProviderTests.cs`
-- **Commit (partial):** `d7e395e` (ListarAlunosAdmin já convertido)
-- **Data fechado:** —
-- **Notas:** Faltam Fichas/Vinculo/Perfil. Aplicar pattern repo-level do ListarAlunos.
+- **Commit:** `90040c0`
+- **Data fechado:** 2026-05-28
+- **Notas:** Fichas, Vinculo e Perfil convertidos pra repo-level mocks (handlers reais executam e materializam DTOs). Pattern: `BuildContaRepositoryMock`, `BuildAlunoRepositoryMock` (cobre admin+perfil), `BuildTreinadorRepositoryMock`, `BuildVinculoRepositoryMock`, `BuildTreinoAlunoRepositoryMock`, `BuildExercicioRepositoryMock` — mudança de shape no handler ou na conversão DTO agora quebra Pact.
 
 ### F5 — Pact zero error contracts
-- **Status:** `pending`
+- **Status:** `done` (consumer-side; provider-side state handlers diferidos pra Fase 4)
 - **Fase:** 3
-- **Arquivo:** `frontend/src/test/pact/consumer.test.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** 4 contratos, todos 200. Adicionar 401/404/500 por endpoint.
+- **Novo arquivo:** `frontend/src/test/pact/consumer-errors.test.ts`
+- **Commit:** `90040c0`
+- **Data fechado:** 2026-05-28
+- **Notas:** 12 contratos consumer (401/404/500 × 4 endpoints) provam que o consumer trata AxiosError corretamente e que o backend deve manter shape estável de ProblemDetails (status/title/detail/instance). Output em `pacts-errors/` (separado de `pacts/` publicado) até provider state handlers serem implementados — sem isso, verifier do .NET retornaria 200 dos mocks e quebraria todos os 12.
 
 ### F6 — `vi.mock("@/lib/api/*")` ainda ativo em 6 arquivos
-- **Status:** `pending`
-- **Fase:** 3
-- **Arquivos:**
-  - `frontend/src/lib/api/admin.test.ts`
-  - `frontend/src/components/pagamento/PagamentoCartao.test.tsx`
-  - `frontend/src/app/(aluno)/__tests__/pagamento.test.tsx`
-  - `frontend/src/app/(admin)/__tests__/admin-pages.test.tsx`
-  - `frontend/src/app/(admin)/admin/saude/page.client.test.tsx`
-  - (PagamentoCartao listado 2x no review original — confirmar 5 ou 6 únicos)
+- **Status:** `pending` (DEFERRED Fase 4 — scope ~1551 linhas)
+- **Fase:** 3 → 4
+- **Arquivos (5 únicos confirmados):**
+  - `frontend/src/lib/api/admin.test.ts` (368 LOC)
+  - `frontend/src/components/pagamento/PagamentoCartao.test.tsx` (148 LOC)
+  - `frontend/src/app/(aluno)/__tests__/pagamento.test.tsx` (356 LOC)
+  - `frontend/src/app/(admin)/__tests__/admin-pages.test.tsx` (588 LOC)
+  - `frontend/src/app/(admin)/admin/saude/page.client.test.tsx` (91 LOC)
 - **Commit:** —
 - **Data fechado:** —
-- **Notas:** Migrar pro pattern `admin.msw.test.ts` (axios real + `server.use(...)` override). Bypassa interceptors/retries/error normalization atualmente.
+- **Notas:** Pattern já estabelecido em `admin.msw.test.ts`. Plano Fase 4: migrar 1 arquivo por sessão, começar pelo menor (saude page.client, 91 LOC). admin.test.ts é redundante com admin.msw.test.ts — pode ser deletado APÓS expansão do msw test pra cobrir os ~30 endpoints da admin API.
 
 ### F7 — `@stripe/react-stripe-js` mockado wholesale
 - **Status:** `pending`
@@ -70,12 +69,12 @@
 - **Notas:** Manter Elements/PaymentElement mocked (DOM), mas `useStripe`/`useElements` retornarem objetos realistas. Testar error path (card declined → setState).
 
 ### F8 — Stryker scope estreito + threshold lax
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 3
 - **Arquivos:** `stryker-config.json` (backend), `frontend/stryker.conf.json`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Incluir `forzion.tech.Application` no backend (start threshold 60, ratchet). Incluir `src/components/**` no frontend. Rodar mutation em workflow noturno/weekly, não PR gate inicial.
+- **Commit:** `90040c0`
+- **Data fechado:** 2026-05-28
+- **Notas:** Backend: matriz `Domain + Application` já roda em `.github/workflows/mutation.yml` via `--project` override; documentado no config. Frontend: `src/components/**` incluído no `mutate`; break threshold ajustado 75 → 60 pra dar runway até baseline ser medido (ratchet de volta após 2-3 runs estabilizarem). Mutation continua weekly via cron, não PR gate.
 
 ### F9 — Token revocation E2E ausente
 - **Status:** `done`
@@ -109,7 +108,7 @@
 - **Notas:** Idempotência por `(ResendMessageId, EventType)` — re-entregas no-op. Tests usam `Svix.Webhook.Sign` real pra gerar assinaturas, espelhando pattern Stripe. Cobre signature invalid, secret missing, payload malformado, todos 4 event types relevantes, replay silencioso.
 
 ### F12 — Concurrent billing race não testado
-- **Status:** `pending`
+- **Status:** `blocked` (Docker offline neste host)
 - **Fase:** 3
 - **Novo arquivo:** `forzion.tech.Tests/E2E/ConcurrentBillingRaceTests.cs`
 - **Commit:** —
@@ -155,12 +154,12 @@
 - **Notas:** CsCheck pra (amount, tax%, rounding). Invariants: banker's rounding + sum preservation.
 
 ### F17 — FluentValidation rules não testados direto
-- **Status:** `pending`
+- **Status:** `done` (7 core validators; 8 admin-side validators diferidos pra Fase 4)
 - **Fase:** 3
-- **Novos arquivos:** `forzion.tech.Tests/Validators/**/*ValidatorTests.cs` (uma por validator)
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Só 2 validator test classes hoje. Pattern: pra cada rule, teste boundary.
+- **Novo arquivo:** `forzion.tech.Tests/Application/Validators/CoreValidatorsTests.cs` (45 tests)
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Cobertos: CadastrarAluno, RegistrarAluno, Login, RegistrarTreinador, CriarTreino, CriarPacote, AtualizarPerfil. Pattern: boundary + happy + violação por rule. Diferidos pra Fase 4: Admin/GruposMusculares (Criar+Atualizar), Admin/HealthReport (já tem 3 tests pré-existentes), Exercicios/Criar, Pacotes/Atualizar, Planos/Criar+Atualizar, Treinos/AdicionarExercicio.
 
 ### F18 — a11y `color-contrast` rule disabled
 - **Status:** `pending`
@@ -235,12 +234,12 @@
 - **Notas:** Render → fetch starts → unmount → assert no dangling interval.
 
 ### F27 — Coverage thresholds não enforced em CI
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 3
-- **Arquivos:** `frontend/vitest.config.mts`, CI workflow
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Confirmar `--check-coverage` no CI. Ratchet onde possível.
+- **Arquivos:** `frontend/vitest.config.mts` (comment), `.github/workflows/ci.yml` (já chamava `npm run test:coverage`)
+- **Commit:** `90040c0`
+- **Data fechado:** 2026-05-28
+- **Notas:** Vitest 4: `coverage.thresholds.<glob>` por-path enforce automaticamente quando `--coverage` roda — CI job `test-frontend` falha se exit ≠ 0 por threshold breach. Não precisa de flag `--check-coverage` (esse é nyc, não vitest). Documentado em comment do vitest.config.mts.
 
 ### F28 — Role revoked mid-request E2E
 - **Status:** `pending`
