@@ -16,4 +16,9 @@ public class EmailDeliveryLogRepository(AppDbContext context) : IEmailDeliveryLo
             .Select(g => new { EventType = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.EventType, x => x.Count, cancellationToken)
             .ConfigureAwait(false);
+
+    public Task<bool> ExisteAsync(string resendMessageId, string eventType, CancellationToken cancellationToken = default) =>
+        context.EmailDeliveryLogs
+            .AsNoTracking()
+            .AnyAsync(e => e.ResendMessageId == resendMessageId && e.EventType == eventType, cancellationToken);
 }

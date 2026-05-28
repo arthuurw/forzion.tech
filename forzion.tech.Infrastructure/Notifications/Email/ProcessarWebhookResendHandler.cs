@@ -57,6 +57,15 @@ public class ProcessarWebhookResendHandler(
             return Result.Success();
         }
 
+        // Idempotência: Resend entrega at-least-once. (ResendMessageId, EventType)
+        // identifica unicamente um evento; se já existe, é re-entrega → no-op silencioso.
+        if (await logRepository.ExisteAsync(parsed.EmailId, parsed.EventType, cancellationToken).ConfigureAwait(false))
+        {
+            logger.LogDebug("Evento Resend já processado (messageId: {MessageId}, type: {EventType}). Ignorando re-entrega.",
+                parsed.EmailId, parsed.EventType);
+            return Result.Success();
+        }
+
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var log = EmailDeliveryLog.Criar(
             parsed.EmailId,
