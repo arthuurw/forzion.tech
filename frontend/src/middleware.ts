@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import type { TipoConta } from "@/types";
 import { extractTipoConta } from "@/lib/auth/jwt";
 
-export { extractTipoConta };
-
 const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/forgot-password", "/reset-password", "/verify-email"];
 
 const AREA_BY_TIPO: Record<TipoConta, string> = {
