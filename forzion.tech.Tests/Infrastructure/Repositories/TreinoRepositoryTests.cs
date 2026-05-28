@@ -36,9 +36,9 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
     }
 
     private static async Task<Treino> SeedTreinoAsync(AppDbContext ctx, Guid treinadorId,
-        string nome, ObjetivoTreino objetivo = ObjetivoTreino.Hipertrofia)
+        string nome, ObjetivoTreino objetivo = ObjetivoTreino.Hipertrofia, DateTime? createdAt = null)
     {
-        var treino = Treino.Criar(nome, objetivo, treinadorId, DateTime.UtcNow);
+        var treino = Treino.Criar(nome, objetivo, treinadorId, createdAt ?? DateTime.UtcNow);
         await ctx.Treinos.AddAsync(treino);
         await ctx.SaveChangesAsync();
         return treino;
@@ -118,9 +118,11 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
     {
         await using var ctx = fixture.CreateContext();
         var tid = await SeedTreinadorAsync(ctx);
-        var t1 = await SeedTreinoAsync(ctx, tid, $"Antigo-{Guid.NewGuid():N}");
-        await Task.Delay(10);
-        await SeedTreinoAsync(ctx, tid, $"Novo-{Guid.NewGuid():N}");
+        // Timestamps explícitos eliminam `Task.Delay(10)` (flaky em CI lento) — a
+        // ordenação por CreatedAt é determinística desde o seed.
+        var baseTime = DateTime.UtcNow;
+        var t1 = await SeedTreinoAsync(ctx, tid, $"Antigo-{Guid.NewGuid():N}", createdAt: baseTime);
+        await SeedTreinoAsync(ctx, tid, $"Novo-{Guid.NewGuid():N}", createdAt: baseTime.AddSeconds(1));
 
         var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(tid, 1, 50, ordenarPor: "createdAt");
 
