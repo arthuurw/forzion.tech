@@ -95,16 +95,25 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            // ListarAlunosAdminHandler: mock no repo (não no handler) — o handler
+            // real executa e materializa o response DTO via CadastrarAlunoHandler.ToResponse.
+            // Com isso o contrato passa pela serialização real; mudança de shape no
+            // handler quebra o Pact, ao invés de passar silenciosamente.
+            services.RemoveAll<IAlunoRepository>();
+            services.AddScoped(_ => BuildAlunoRepositoryMock());
+
+            // Os 3 handlers abaixo ainda são mockados em si — TODO converter pra
+            // repo-level mocking conforme C13 (ver review). Limita autenticidade
+            // do contrato a respostas com shape estável; mudança de DTO passa pelo
+            // mock sem detecção.
             services.RemoveAll<ListarFichasAlunoHandler>();
             services.RemoveAll<ObterVinculoAlunoHandler>();
             services.RemoveAll<ObterPerfilHandler>();
-            services.RemoveAll<ListarAlunosAdminHandler>();
             services.RemoveAll<IUserContext>();
 
             services.AddScoped(_ => BuildFichasHandler());
             services.AddScoped(_ => BuildVinculoHandler());
             services.AddScoped(_ => BuildPerfilHandler());
-            services.AddScoped(_ => BuildListarAlunosHandler());
 
             var userContext = new Mock<IUserContext>();
             userContext.Setup(u => u.ContaId).Returns(Guid.NewGuid());
@@ -204,22 +213,27 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
         return mock.Object;
     }
 
-    private static ListarAlunosAdminHandler BuildListarAlunosHandler()
+    /// <summary>
+    /// Repo-level mock para `ListarAlunosAdminHandler`. O handler REAL roda e
+    /// converte o aluno do domínio em <c>AlunoResponse</c> via
+    /// <c>CadastrarAlunoHandler.ToResponse</c>. Se essa conversão mudar, o Pact
+    /// quebra — fluxo correto de contract verification. Compare com os outros
+    /// mocks abaixo, onde o handler em si é mockado.
+    /// </summary>
+    private static IAlunoRepository BuildAlunoRepositoryMock()
     {
-        var mock = new Mock<ListarAlunosAdminHandler>(Mock.Of<IAlunoRepository>());
+        var aluno = forzion.tech.Domain.Entities.Aluno.Criar(
+            Guid.NewGuid(),
+            "Joao Silva",
+            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc),
+            email: "joao@exemplo.com");
 
-        var resposta = new ListarAlunosResponse(
-            new[]
-            {
-                new AlunoResponse(
-                    Guid.NewGuid(), "Joao Silva", "joao@exemplo.com", null,
-                    AlunoStatus.Ativo, Guid.NewGuid(),
-                    new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc), null),
-            },
-            Total: 1, Pagina: 1, TamanhoPagina: 20);
-
-        mock.Setup(h => h.HandleAsync(It.IsAny<ListarAlunosAdminQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(resposta);
+        var mock = new Mock<IAlunoRepository>();
+        IReadOnlyList<forzion.tech.Domain.Entities.Aluno> lista = new[] { aluno };
+        mock.Setup(r => r.ListarTodosAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(),
+                It.IsAny<AlunoStatus?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((lista, 1));
         return mock.Object;
     }
 }
