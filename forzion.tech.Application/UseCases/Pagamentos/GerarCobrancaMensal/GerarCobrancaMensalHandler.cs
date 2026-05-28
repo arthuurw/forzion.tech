@@ -1,3 +1,4 @@
+using System.Data;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Results;
@@ -16,6 +17,7 @@ public class GerarCobrancaMensalHandler(
     IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
+    IDbContextTransactionProvider transactionProvider,
     IOptions<PaymentSettings> paymentSettings,
     TimeProvider timeProvider,
     ILogger<GerarCobrancaMensalHandler> logger)
@@ -37,25 +39,38 @@ public class GerarCobrancaMensalHandler(
         if (assinatura.Status == AssinaturaAlunoStatus.Cancelada)
             return Result.Failure<PagamentoResponse>(Error.Business("AssinaturaAluno cancelada não pode ser cobrada."));
 
-        var pendente = await pagamentoRepository.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
-        if (pendente is not null)
-        {
-            if (pendente.StripePaymentIntentId is not null)
-                return Result.Success(PagamentoResponseExtensions.ToResponseTreinador(pendente));
+        Pagamento pagamento;
 
-            logger.LogWarning("Pagamento zumbi {PagamentoId} detectado para assinatura {AssinaturaAlunoId}. Marcando como Falhou.", pendente.Id, assinatura.Id);
-            pendente.MarcarFalhou();
+        // Wrap "select pendente → mark falhou → create novo" em transação serializable.
+        // Sem isso, dois callers concorrentes podiam ambos não ver pendente, ambos
+        // criarem pagamento novo — o índice parcial único pega o segundo, mas erra
+        // tarde (com EF tracking polluído). Com a transação, o segundo bloqueia até
+        // o primeiro commit/rollback e enxerga o estado consistente.
+        await using (var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken).ConfigureAwait(false))
+        {
+            var pendente = await pagamentoRepository.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
+            if (pendente is not null)
+            {
+                if (pendente.StripePaymentIntentId is not null)
+                {
+                    await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    return Result.Success(PagamentoResponseExtensions.ToResponseTreinador(pendente));
+                }
+
+                logger.LogWarning("Pagamento zumbi {PagamentoId} detectado para assinatura {AssinaturaAlunoId}. Marcando como Falhou.", pendente.Id, assinatura.Id);
+                pendente.MarcarFalhou();
+            }
+
+            pagamento = Pagamento.Criar(assinatura.Id, assinatura.Valor, timeProvider.GetUtcNow().UtcDateTime, command.Metodo);
+            await pagamentoRepository.AdicionarAsync(pagamento, cancellationToken).ConfigureAwait(false);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(assinatura.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
             throw new DomainException("Treinador sem conta Stripe configurada.");
-
-        var pagamento = Pagamento.Criar(assinatura.Id, assinatura.Valor, timeProvider.GetUtcNow().UtcDateTime, command.Metodo);
-        await pagamentoRepository.AdicionarAsync(pagamento, cancellationToken).ConfigureAwait(false);
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {

@@ -19,8 +19,15 @@ public class GerarCobrancaMensalHandlerTests
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
     private readonly Mock<ILogger<GerarCobrancaMensalHandler>> _logger = new();
     private readonly GerarCobrancaMensalHandler _handler;
+
+    private sealed class NoopTransaction : ITransaction
+    {
+        public Task CommitAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
 
     private static readonly PixPaymentResult PixResult = new("pi_123", "qrcode", "https://img", DateTime.UtcNow.AddHours(1));
 
@@ -28,9 +35,13 @@ public class GerarCobrancaMensalHandlerTests
     {
         var paymentSettings = Options.Create(new PaymentSettings { TaxaPlataformaPercent = 5m });
 
+        _transactionProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NoopTransaction());
+
         _handler = new GerarCobrancaMensalHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, _contaRecebimentoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, paymentSettings, TimeProvider.System, _logger.Object);
+            _stripeService.Object, _unitOfWork.Object, _transactionProvider.Object,
+            paymentSettings, TimeProvider.System, _logger.Object);
 
         _stripeService.Setup(s => s.CriarPixPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<Guid>(),
