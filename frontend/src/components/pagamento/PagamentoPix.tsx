@@ -15,6 +15,12 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // onPago via ref: callers passam callback inline (não memoizado). Mantê-lo nas
+  // deps do effect reiniciaria o polling a cada render do pai (fetch imediato +
+  // novo interval). A ref deixa o effect depender só de pagamentoId.
+  const onPagoRef = useRef(onPago);
+  useEffect(() => { onPagoRef.current = onPago; }, [onPago]);
+
   useEffect(() => {
     let active = true;
 
@@ -25,7 +31,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
         setPagamento(res.data);
         if (res.data.status === "Pago") {
           if (intervalRef.current) clearInterval(intervalRef.current);
-          onPago?.();
+          onPagoRef.current?.();
         }
       } catch {
         // silencia erros transitórios de polling
@@ -42,7 +48,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
     };
-  }, [pagamentoId, onPago]);
+  }, [pagamentoId]);
 
   if (loading) return <CircularProgress />;
   if (!pagamento) return null;

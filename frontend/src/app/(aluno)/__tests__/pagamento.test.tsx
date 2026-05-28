@@ -140,6 +140,23 @@ describe("PagamentoPix", () => {
     expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 30_000);
     setIntervalSpy.mockRestore();
   });
+
+  it("re-render do pai com novo onPago não reinicia o polling", async () => {
+    vi.mocked(pagamentoApi.obterPagamento).mockResolvedValue({
+      data: makePagamento(),
+    } as never);
+
+    // callers passam onPago inline (novo ref a cada render). O polling depende
+    // só de pagamentoId, então re-render não deve disparar novo fetch.
+    const { rerender } = render(<PagamentoPix pagamentoId="pay-1" onPago={() => {}} />);
+    expect(await screen.findByText("Pague via Pix")).toBeInTheDocument();
+    expect(pagamentoApi.obterPagamento).toHaveBeenCalledTimes(1);
+
+    rerender(<PagamentoPix pagamentoId="pay-1" onPago={() => {}} />);
+    rerender(<PagamentoPix pagamentoId="pay-1" onPago={() => {}} />);
+
+    expect(pagamentoApi.obterPagamento).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ─── PagamentosTreinadorPage ──────────────────────────────────────────────────
