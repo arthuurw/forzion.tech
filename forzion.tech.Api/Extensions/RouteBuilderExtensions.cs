@@ -50,9 +50,12 @@ public static class RouteBuilderExtensions
         });
 
         app.UseCors("AllowFrontend");
-        app.UseRateLimiter();
+        // Ordem: Authentication antes do RateLimiter para que policies particionadas
+        // por sub claim consigam identificar o usuário; sem isso a chave caía sempre
+        // no fallback de IP, inutilizando a partição por usuário.
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseRateLimiter();
 
         app.MapHealthCheck();
 
