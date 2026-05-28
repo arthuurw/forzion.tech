@@ -78,31 +78,35 @@
 - **Notas:** Incluir `forzion.tech.Application` no backend (start threshold 60, ratchet). Incluir `src/components/**` no frontend. Rodar mutation em workflow noturno/weekly, não PR gate inicial.
 
 ### F9 — Token revocation E2E ausente
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 2
 - **Novo arquivo:** `frontend/e2e/specs/critical/logout-revokes-jwt.spec.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Login → logout (revoke JTI) → re-tentar JWT antigo → 401. Prova middleware consulta lista de revogados.
+- **Commit:** `28d6cad`
+- **Data fechado:** 2026-05-28
+- **Notas:** Login via UI → captura cookie `token` → sanity check perfil OK → POST /api/auth/logout → tenta replay do mesmo cookie em contexto novo → 401 estrito. Prova JwtMiddleware consulta lista revogados.
 
 ### F10 — Password reset flow zero cobertura
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 2
 - **Novos arquivos:**
-  - `forzion.tech.Tests/Application/Auth/SolicitarResetSenha/SolicitarResetSenhaHandlerTests.cs`
-  - `forzion.tech.Tests/Application/Auth/RedefinirSenha/RedefinirSenhaHandlerTests.cs`
+  - `forzion.tech.Tests/Infrastructure/Notifications/Email/EsqueceuSenhaHandlerTests.cs`
+  - `forzion.tech.Tests/Application/Auth/RedefinirSenhaHandlerTests.cs`
   - `frontend/e2e/specs/critical/password-reset.spec.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Token gen, expiry, hash storage, replay rejection, password strength. E2E end-to-end.
+- **Commit:** `9c878ab`
+- **Data fechado:** 2026-05-28
+- **Notas:** 19 testes backend cobrem token hash SHA-256, expiração 1h, anti-enumeração, modo dev sem envio, replay (mesmo raw token 2x → 2ª falha), validação senha forte. E2E cobre forgot/reset com mensagens, replay marcado `test.fixme()` aguardando `E2E_RESET_TOKEN_HOOK`.
 
 ### F11 — Resend webhook idempotência ausente
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 2
-- **Novo arquivo:** `forzion.tech.Tests/Application/Pagamentos/ProcessarWebhookResend/ProcessarWebhookResendHandlerTests.cs`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Mirror do Stripe. Event_id dedup, retry-safe, malformed payload.
+- **Arquivos:**
+  - `forzion.tech.Tests/Infrastructure/Notifications/Email/ProcessarWebhookResendHandlerTests.cs` (novo, 11 tests)
+  - `forzion.tech.Application/Interfaces/Repositories/IEmailDeliveryLogRepository.cs` (+`ExisteAsync`)
+  - `forzion.tech.Infrastructure/Persistence/Repositories/EmailDeliveryLogRepository.cs` (impl)
+  - `forzion.tech.Infrastructure/Notifications/Email/ProcessarWebhookResendHandler.cs` (gate)
+- **Commit:** `552aa3d`
+- **Data fechado:** 2026-05-28
+- **Notas:** Idempotência por `(ResendMessageId, EventType)` — re-entregas no-op. Tests usam `Svix.Webhook.Sign` real pra gerar assinaturas, espelhando pattern Stripe. Cobre signature invalid, secret missing, payload malformado, todos 4 event types relevantes, replay silencioso.
 
 ### F12 — Concurrent billing race não testado
 - **Status:** `pending`
@@ -125,20 +129,22 @@
 - **Notas:** `SeedTreinoAsync` ganhou parâmetro opcional `createdAt`. Teste agora seeda dois treinos com timestamps explícitos 1s apart — ordenação determinística sem delay. Categoria Integration (rodado em CI com Docker).
 
 ### F14 — Treinador signup E2E ausente
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 2
 - **Novo arquivo:** `frontend/e2e/specs/critical/treinador-signup.spec.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Form `/cadastro/treinador` + email verification.
+- **Commit:** `e721448`
+- **Data fechado:** 2026-05-28
+- **Notas:** 4 specs cobrem senha fraca / senhas diferentes (validação client-side bloqueia), payload válido → "Solicitação enviada", e-mail já cadastrado → 4xx propagado. Verify-email separado em F15.
 
 ### F15 — Email verification E2E ausente
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 2
-- **Novo arquivo:** `frontend/e2e/specs/critical/email-verification.spec.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Cobre verify-email + resend-verification + F23 replay test.
+- **Novos arquivos:**
+  - `forzion.tech.Tests/Application/Auth/VerificarEmailHandlerTests.cs` (9 tests, inclui F23)
+  - `frontend/e2e/specs/critical/email-verification.spec.ts`
+- **Commit:** `afed78d`
+- **Data fechado:** 2026-05-28
+- **Notas:** Handler tests cobrem token inexistente/expirado/usado/replay/conta-ausente/validação. E2E cobre verify-email com token inválido + sem token + resend-verification anti-enumeração. Replay E2E marcado `test.fixme()` aguardando `E2E_VERIFY_TOKEN_HOOK`.
 
 ### F16 — Decimal/currency rounding sem property test
 - **Status:** `pending`
@@ -165,12 +171,12 @@
 - **Notas:** Disabled por MUI chips/secondary text. Auditar tema; re-ativar; ou tracker explícito de débito.
 
 ### F19 — Admin treinador write actions sem E2E
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 2
 - **Arquivo:** `frontend/e2e/specs/critical/admin-treinador-crud.spec.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Opta-out de aprovar/reprovar/inativar. Seeded fixture user + admin path + rollback via API hook.
+- **Commits:** `3a4bac6` (specs), `293ff77` (fix lint), `fa7e9c9` (workaround `playwright/prefer-web-first-assertions`)
+- **Data fechado:** 2026-05-28
+- **Notas:** Aprovar + reprovar com cleanup via POST `/admin/treinadores/{id}/aguardando`. Skip por env `E2E_PENDING_TREINADOR_EMAIL`. Captura id via `row.evaluate(getAttribute)` pra contornar lint rule.
 
 ### F20 — Visual snapshots tolerantes + sem baseline platform-specific
 - **Status:** `pending`
@@ -197,12 +203,12 @@
 - **Notas:** Sem active rules (SQLi/XSS/path traversal). Upgrade pra Automation Framework.
 
 ### F23 — Email verify replay (mesmo token 2x) não testado
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 2 (junto com F15)
-- **Arquivo:** `forzion.tech.Tests/Application/VerificarEmailHandlerTests.cs`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Token already-used coberto via flag, mas não 2 chamadas com mesmo raw token.
+- **Arquivo:** `forzion.tech.Tests/Application/Auth/VerificarEmailHandlerTests.cs`
+- **Commit:** `afed78d`
+- **Data fechado:** 2026-05-28
+- **Notas:** Test `HandleAsync_Replay_MesmoTokenDuasVezes_SegundaFalha_F23` chama handler 2x com mesmo raw token; 2ª falha com "inválido ou já utilizado".
 
 ### F24 — Storybook stateful components missing
 - **Status:** `pending`
