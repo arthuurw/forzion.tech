@@ -50,8 +50,11 @@ if [ "$BACKEND_CHANGED" -eq 1 ]; then
     || { echo "Pre-commit FAILED: dotnet build"; exit 1; }
 
   echo "Pre-commit [backend]: testes unit rapidos..."
+  # Filtro por trait Category=Integration (cobre E2E/Repositories/Notifications/AppDbContextDomainEventReentrancy).
+  # Sem isso, hook tentava rodar Testcontainers e quebrava localmente quando Docker
+  # nao estava up — CI continua rodando integration via job dedicado.
   dotnet test forzion.tech.Tests \
-    --filter "FullyQualifiedName!~Infrastructure.Repositories&FullyQualifiedName!~Tests.Integration&FullyQualifiedName!~Infrastructure.Notifications" \
+    --filter "Category!=Integration" \
     || { echo "Pre-commit FAILED: dotnet test (unit rapidos)"; exit 1; }
 fi
 

@@ -5,10 +5,12 @@ namespace forzion.tech.Domain.ValueObjects;
 
 public sealed record Email
 {
+    // NonBacktracking elimina catastrophic backtracking; timeout largo evita falsos
+    // RegexMatchTimeoutException em ambientes lentos (CI cold start, Release JIT).
     private static readonly Regex FormatoValido = new(
         @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase,
-        TimeSpan.FromMilliseconds(100));
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.NonBacktracking,
+        TimeSpan.FromSeconds(1));
 
     public string Value { get; }
 
