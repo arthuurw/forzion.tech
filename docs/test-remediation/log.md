@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-05-28 — F12 fechado após Docker up (Fase 3 100% das tasks com Docker)
+
+**Sessão:** Continuação. Usuário trouxe Docker Desktop online.
+
+**Feito (1 commit em `fix/frontend-dockerfile-npmrc`):**
+
+1. **F12 Concurrent billing race** (TBD commit) `test(backend): cover GerarCobrancaMensal race via Testcontainers (F12)`
+   - Novo `forzion.tech.Tests/E2E/ConcurrentBillingRaceTests.cs` (categoria Integration).
+   - Setup ponta-a-ponta via API pública: register treinador → verify email → admin aprova → atribui plano Free → onboarding Stripe (fake) → criar pacote → register aluno → admin obtém vinculoId → treinador aprova vinculo (gera AssinaturaAluno via domain event).
+   - Race spawnada por `Barrier(2)` sincronizando 2 Tasks. Cada Task cria DI scope próprio (DbContext isolado), resolve GerarCobrancaMensalHandler, chama HandleAsync com MESMO command.
+   - Assertions: (a) ≥1 success; (b) qualquer failure deve ter PostgresException com SqlState "40001" (serialization failure aceitável, propagada via tx serializable); (c) DB tem ≤1 pagamento pendente para a assinatura; (d) se 2 successes, mesmo PagamentoId (idempotência via re-uso de pendente).
+   - Run real (Testcontainers + Docker Desktop): 1 pagamento gerado, log mostra uma única "Cobrança Pix gerada". A 2a chamada entrou na transação serializable e (com base no log) ou hit a idempotent path ou foi rejeitada por race — invariantes mantidos. Duração ~10s.
+
+**Decisões:**
+- Não usei `[Trait("Category", "Quarantine")]` apesar do plano sugerir começar quarantined — primeiro run foi estável, sem flake. Reabrir como quarantined SE notar flake em CI.
+- Helpers replicados de `FluxosCriticosE2ETests` (não extraí pra base class) — overhead de refactor maior que o ganho com 1 reuse. Se uma 3ª classe E2E precisar dos mesmos helpers, extrair base class então.
+- Test categoria `Integration` — fora do pre-commit local (gate `Category!=Integration`); CI roda full suite com Docker no `test-backend-integration` job.
+
+**Métricas:**
+- Backend tests total: 1200 pass (+1 F12).
+- F12 build: clean.
+- F12 run: PASS em 10s.
+
+**Métricas pós-sessão:** Total findings 38 — done 16, deferred 2, pending 20.
+
+**Próximos passos (Fase 4):**
+- F6 começar pelo menor (saude page.client.test.tsx 91 LOC).
+- F3, F7, F16, F25, F26, F28, F29, F30 — vide state.md.
+- F5 provider-side completar (~30 min).
+- F17 admin-side 8 restantes.
+
+---
+
 ## 2026-05-28 — Fase 3 implementada e fechada parcialmente
 
 **Sessão:** Continuação direta após Fase 2 (mesmo dia, retomada via /loop após /compact).

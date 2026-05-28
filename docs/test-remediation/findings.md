@@ -108,12 +108,12 @@
 - **Notas:** Idempotência por `(ResendMessageId, EventType)` — re-entregas no-op. Tests usam `Svix.Webhook.Sign` real pra gerar assinaturas, espelhando pattern Stripe. Cobre signature invalid, secret missing, payload malformado, todos 4 event types relevantes, replay silencioso.
 
 ### F12 — Concurrent billing race não testado
-- **Status:** `blocked` (Docker offline neste host)
+- **Status:** `done`
 - **Fase:** 3
 - **Novo arquivo:** `forzion.tech.Tests/E2E/ConcurrentBillingRaceTests.cs`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Sessão anterior (commit `18c3adc`) wrap GerarCobrancaMensal em serializable tx, mas `NoopTransaction` no unit test não prova isolation. Spawning 2 tasks paralelas via Testcontainers, asserting exactly 1 success. Começar quarantined (potencial flaky).
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Testcontainers Postgres + Barrier sync de 2 Tasks paralelas chamando GerarCobrancaMensalHandler com o MESMO assinaturaId. Asserts: (1) ≥1 sucesso; (2) ≤1 pendente persistido; (3) falhas só com PostgresException 40001 (serialization failure aceitável); (4) se 2 sucessos, mesmo PagamentoId (idempotência). Confirmado em run real (Testcontainers + Docker Desktop): única "Cobrança Pix gerada" no log → uma chamada criou, outra hit idempotent path. Duração ~10s. Categoria Integration, fora do pre-commit local sem Docker.
 
 ---
 
