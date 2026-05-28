@@ -14,6 +14,8 @@ ARG CSP_REPORT_ONLY=false
 ENV CSP_REPORT_ONLY=$CSP_REPORT_ONLY
 # Guard de produção no next.config exige JWT_SECRET; placeholder só satisfaz o build
 # (este stage é descartado — runtime recebe o valor real via env do container).
+# Literal abaixo DEVE ser igual a JWT_SECRET_BUILD_PLACEHOLDER em
+# src/lib/auth/buildPlaceholder.ts — buildPlaceholder.test.ts trava drift.
 ARG JWT_SECRET=build-placeholder-not-used-at-runtime
 ENV JWT_SECRET=$JWT_SECRET
 RUN npm run build

@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { JWT_SECRET_BUILD_PLACEHOLDER } from "./src/lib/auth/buildPlaceholder";
 
 /**
  * Hook de instrumentacao do Next (server). Carrega o init do Sentry conforme
@@ -14,7 +15,7 @@ export async function register() {
     // (modo standalone), então a checagem de runtime precisa morar aqui.
     if (process.env.NODE_ENV === "production") {
       const secret = process.env.JWT_SECRET;
-      if (!secret || secret === "build-placeholder-not-used-at-runtime") {
+      if (!secret || secret === JWT_SECRET_BUILD_PLACEHOLDER) {
         throw new Error(
           "JWT_SECRET ausente ou igual ao placeholder de build em runtime de produção. " +
             "Defina JWT_SECRET (mesmo valor de Auth__JwtSecret do backend) no ambiente do serviço frontend.",
