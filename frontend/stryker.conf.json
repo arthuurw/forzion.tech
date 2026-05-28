@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "_comment": "Mutation testing — src/lib + src/hooks (logica pura/funcional). Roda semanal via GH Actions (Fase 17), nao em PR. Determinismo (Fase 1) eh pre-requisito.",
+  "_comment": "Mutation testing — src/lib + src/hooks + src/components (F8 expansao Fase 3). Roda semanal via GH Actions, nao em PR. break baixou de 75 -> 60 pra dar runway aos componentes ate baseline ser medido; ratchet de volta apos 2-3 runs estabilizarem.",
   "packageManager": "npm",
   "testRunner": "vitest",
   "vitest": {
@@ -11,8 +11,11 @@
   "mutate": [
     "src/lib/**/*.ts",
     "src/hooks/**/*.ts",
+    "src/components/**/*.tsx",
+    "src/components/**/*.ts",
     "!src/**/*.test.*",
     "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
     "!src/**/*.property.test.ts",
     "!src/**/*.stories.*",
     "!src/**/*.d.ts",
@@ -34,7 +37,7 @@
   "thresholds": {
     "high": 85,
     "low": 75,
-    "break": 75
+    "break": 60
   },
   "reporters": ["html", "clear-text", "progress"],
   "htmlReporter": {

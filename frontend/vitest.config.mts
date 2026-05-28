@@ -19,6 +19,11 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: "v8",
+      // Thresholds abaixo sao ENFORCED automaticamente quando `vitest run --coverage`
+      // executa: vitest v4 falha com exit code != 0 se qualquer threshold por glob
+      // nao for atingido. `npm run test:coverage` (= `vitest run --coverage`) e
+      // chamado em CI no job `test-frontend`, entao o gate e bloqueante. Nao precisa
+      // de flag `--check-coverage` (esse e linguajar de nyc, nao vitest).
       reporter: ["text", "json", "json-summary", "html", "lcov", "text-summary"],
       exclude: [
         "node_modules/",
