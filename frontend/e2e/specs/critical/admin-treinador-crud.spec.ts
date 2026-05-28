@@ -60,10 +60,11 @@ test.describe("admin treinador destructive actions", () => {
     const row = page.locator("tbody tr").filter({ hasText: PENDING_EMAIL! });
     await expect(row).toBeVisible({ timeout: 10_000 });
 
-    // Captura o id antes de mutar (espera `data-treinador-id` na row).
-     
-    const treinadorId = row;
-    await expect(treinadorId, "row precisa expor data-treinador-id").toHaveAttribute("data-treinador-id", );
+    // Captura o id antes de mutar — usa `evaluate` em vez de `getAttribute`
+    // porque o lint rule `playwright/prefer-web-first-assertions` reescreve
+    // `await x.getAttribute(...)` pra um expect malformado.
+    const treinadorId = await row.evaluate((el) => el.getAttribute("data-treinador-id"));
+    expect(treinadorId, "row precisa expor data-treinador-id").toBeTruthy();
 
     // Action: aprovar
     await row.getByRole("button", { name: /aprovar/i }).click();
@@ -96,9 +97,8 @@ test.describe("admin treinador destructive actions", () => {
     const row = page.locator("tbody tr").filter({ hasText: PENDING_EMAIL! });
     await expect(row).toBeVisible({ timeout: 10_000 });
 
-     
-    const treinadorId = row;
-    await expect(treinadorId).toHaveAttribute("data-treinador-id", );
+    const treinadorId = await row.evaluate((el) => el.getAttribute("data-treinador-id"));
+    expect(treinadorId).toBeTruthy();
 
     await row.getByRole("button", { name: /reprovar/i }).click();
     await page.getByRole("button", { name: /confirmar/i }).click();
