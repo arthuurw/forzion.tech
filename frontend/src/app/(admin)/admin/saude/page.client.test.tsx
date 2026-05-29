@@ -1,20 +1,14 @@
+// F6a (Fase 3 test remediation) — migrado de vi.mock("@/lib/api/admin")
+// pra MSW. apiClient real envia requests; MSW intercepta e responde com
+// fixtures. Pega bugs de URL/params/serializacao que o mock antigo escondia.
+//
+// Stripe mock continua via vi.mock — out of scope F6 (cobre F7 depois).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { server } from "@/test/msw/server";
 import type { HealthReportConfigResponse, HealthSnapshotResponse } from "@/types";
-
-vi.mock("@/lib/api/admin", () => ({
-  adminApi: {
-    getHealthReportConfig: vi.fn(),
-    updateHealthReportConfig: vi.fn(),
-    listHealthSnapshots: vi.fn(),
-    runHealthReport: vi.fn(),
-  },
-}));
-
-import { adminApi } from "@/lib/api/admin";
 import SaudeAdminPage from "./page";
-
-const mockApi = vi.mocked(adminApi);
 
 const config: HealthReportConfigResponse = {
   id: "cfg-1",
@@ -37,11 +31,12 @@ const snapshot: HealthSnapshotResponse = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockApi.getHealthReportConfig.mockResolvedValue({ status: 200, data: config } as never);
-  mockApi.listHealthSnapshots.mockResolvedValue({ data: [snapshot] } as never);
-  mockApi.updateHealthReportConfig.mockResolvedValue({ data: config } as never);
-  mockApi.runHealthReport.mockResolvedValue({ data: snapshot } as never);
+  // Handlers padrao: GET config + listar snapshots respondem 200. Tests
+  // que precisam de variacoes (PUT body capture, run, errors) sobrepoem.
+  server.use(
+    http.get("*/admin/health-report/config", () => HttpResponse.json(config)),
+    http.get("*/admin/health-report/snapshots", () => HttpResponse.json([snapshot])),
+  );
 });
 
 describe("SaudeAdminPage", () => {
@@ -60,32 +55,45 @@ describe("SaudeAdminPage", () => {
     expect(screen.getByText("Homolog")).toBeInTheDocument();
   });
 
-  it("salva a configuração ao clicar em Salvar", async () => {
+  it("salva a configuração ao clicar em Salvar (PUT recebe body correto)", async () => {
+    let capturedBody: unknown = null;
+    server.use(
+      http.put("*/admin/health-report/config", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(config);
+      }),
+    );
+
     render(<SaudeAdminPage />);
     await screen.findByText("Relatório de saúde");
 
     fireEvent.click(screen.getByRole("button", { name: /salvar/i }));
 
     await waitFor(() => {
-      expect(mockApi.updateHealthReportConfig).toHaveBeenCalledTimes(1);
-    });
-    expect(mockApi.updateHealthReportConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
+      expect(capturedBody).toMatchObject({
         ativo: true,
         horaEnvioUtc: "08:30:00",
         destinatarios: ["ops@forzion.tech"],
-      }),
-    );
+      });
+    });
   });
 
   it("executa o relatório ao clicar em Enviar agora", async () => {
+    const runCalled = vi.fn();
+    server.use(
+      http.post("*/admin/health-report/run", () => {
+        runCalled();
+        return HttpResponse.json(snapshot);
+      }),
+    );
+
     render(<SaudeAdminPage />);
     await screen.findByText("Relatório de saúde");
 
     fireEvent.click(screen.getByRole("button", { name: /enviar agora/i }));
 
     await waitFor(() => {
-      expect(mockApi.runHealthReport).toHaveBeenCalledTimes(1);
+      expect(runCalled).toHaveBeenCalledTimes(1);
     });
   });
 });
