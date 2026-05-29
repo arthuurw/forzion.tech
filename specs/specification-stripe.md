@@ -93,7 +93,54 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 - nginx (`nginx/nginx.conf:55`): `location /webhooks/ { proxy_pass http://backend:8080; }` ANTES do `location /` (frontend). Necessário pra header `Stripe-Signature` cru no backend.
 - ⚠ NÃO usar `/api/backend/[...path]` (proxy SPA) pra webhook — esse só repassa `content-type`/`accept` e injeta Bearer. Webhook Stripe deve apontar pra `https://<host>/webhooks/stripe`.
 - compose homolog (`docker-compose.homolog.yml`) + local (`docker-compose.yml`/`.env.example`) mapeiam `Stripe__*` + `Internal__ApiKey`. NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY no container do frontend.
-- Painel Stripe: webhook endpoint = `https://homologacao.forzion.tech/webhooks/stripe`, eventos `payment_intent.succeeded`/`payment_intent.payment_failed`/`payment_intent.canceled`/`account.updated`; signing secret = `STRIPE_WEBHOOK_SECRET`. Connect Express ativado.
+
+### Stripe Test Mode vs Live Mode (chaves por ambiente)
+Stripe não tem sandbox compartilhada — diferencia por chave. Cada ambiente usa um par próprio:
+
+| Ambiente | Mode | SecretKey prefix | PublishableKey prefix | Webhook endpoint | Webhook signing secret |
+|----------|------|------------------|------------------------|------------------|------------------------|
+| **Local dev** | Test | `sk_test_*` | `pk_test_*` | `stripe listen --forward-to localhost:8080/webhooks/stripe` (CLI) | gerado pelo `stripe listen` |
+| **Homolog** | Test | `sk_test_*` | `pk_test_*` | `https://homologacao.forzion.tech/webhooks/stripe` | painel Stripe → Test → Webhooks → endpoint hmg |
+| **Prod** | Live | `sk_live_*` | `pk_live_*` | `https://app.forzion.tech/webhooks/stripe` | painel Stripe → Live → Webhooks → endpoint prod |
+
+**Test mode em hmg cobra ZERO** — cartões `4242 4242 4242 4242` funcionam end-to-end, PaymentIntent + webhook fluem, Connect Express test accounts liberam sem KYC real. Refunds não necessários.
+
+**⚠ NUNCA usar `sk_live_*` em hmg** — pagamentos viram cobrança real, onboarding exige KYC real, reverter requer refund manual.
+
+### Setup webhook (per ambiente, hmg e prod)
+1. Login Stripe → toggle **Test mode** (hmg) ou **Live mode** (prod) no canto superior direito do painel.
+2. Developers → Webhooks → Add endpoint.
+3. URL: `https://<host>/webhooks/stripe` (hmg=homologacao, prod=app).
+4. Events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `account.updated`.
+5. Copy signing secret → `STRIPE_WEBHOOK_SECRET` no `/opt/forzion/.env` da VM correspondente.
+6. `docker compose -f docker-compose.<env>.yml restart` na VM pra pegar novo env.
+
+### Connect Express por ambiente
+- Hmg (Test): test accounts liberam instant, sem KYC. Usar pra E2E checkout-stripe.spec.ts.
+- Prod (Live): Stripe exige Connect Express **profile review** (1-3 dias, aprovação humana) antes do primeiro account real. Iniciar antes do go-live.
+
+### Variáveis do `/opt/forzion/.env` por ambiente
+**Hmg** (Test):
+```
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...        # signing secret do endpoint hmg em Test mode
+STRIPE_URL_BASE=https://homologacao.forzion.tech
+STRIPE_TAXA_PLATAFORMA=5
+INTERNAL_API_KEY=<openssl rand -hex 32>
+```
+
+**Prod** (Live):
+```
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...        # signing secret do endpoint prod em Live mode
+STRIPE_URL_BASE=https://app.forzion.tech
+STRIPE_TAXA_PLATAFORMA=5
+INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
+```
+
+⚠ `INTERNAL_API_KEY` POR-ambiente (não compartilhar). Sincronizar com GitHub secret `INTERNAL_API_KEY` do environment correspondente pro workflow `billing-renewal.yml`.
 
 ## CRON DE RENOVAÇÃO
 - Workflow `.github/workflows/billing-renewal.yml` — cron `0 8 * * *` UTC (Daily 08:00 UTC); `workflow_dispatch` pra trigger manual.
