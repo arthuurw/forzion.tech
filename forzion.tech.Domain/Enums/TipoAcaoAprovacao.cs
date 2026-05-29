@@ -9,5 +9,7 @@ public enum TipoAcaoAprovacao
     ReprovacaoVinculo = 4,
     InativacaoVinculo = 5,
     AtribuicaoPlanTreinador = 6,
-    ExclusaoTreinador = 7
+    ExclusaoTreinador = 7,
+    ExportacaoDados = 8,
+    AnonimizacaoConta = 9
 }

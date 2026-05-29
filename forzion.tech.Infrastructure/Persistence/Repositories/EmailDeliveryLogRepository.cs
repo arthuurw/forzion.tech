@@ -21,4 +21,20 @@ public class EmailDeliveryLogRepository(AppDbContext context) : IEmailDeliveryLo
         context.EmailDeliveryLogs
             .AsNoTracking()
             .AnyAsync(e => e.ResendMessageId == resendMessageId && e.EventType == eventType, cancellationToken);
+
+    public async Task<IReadOnlyList<EmailDeliveryLog>> ListarPorEmailAsync(string email, CancellationToken cancellationToken = default) =>
+        await context.EmailDeliveryLogs
+            .AsNoTracking()
+            .Where(e => e.RecipientEmail == email)
+            .OrderByDescending(e => e.OcorridoEm)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task AnonimizarPorEmailAsync(string email, CancellationToken cancellationToken = default) =>
+        await context.EmailDeliveryLogs
+            .Where(e => e.RecipientEmail == email)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(e => e.RecipientEmail, "anonimizado@anonimizado.local"),
+                cancellationToken)
+            .ConfigureAwait(false);
 }

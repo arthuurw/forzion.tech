@@ -14,7 +14,7 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema. `MigrationsHistoryTable("__EFMigrationsHistory")` sem schema (segue search_path).
 - Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 30 tabelas cada (29 EF + ai_token_usage).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 27 migrations EF aplicadas. Tabela de controle `__EFMigrationsHistory` por schema.
+- 28 migrations EF aplicadas. Tabela de controle `__EFMigrationsHistory` por schema.
 
 ## CONVENÇÕES
 - PK: `id` uuid gerado na app (Guid.NewGuid), não pelo banco. Exceção: `tokens_revogados` PK=`jti`.
@@ -42,14 +42,14 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - AssinaturaAlunoStatus (assinaturas_aluno.status): Pendente|Ativa|Inadimplente|Cancelada
 - PagamentoStatus (pagamentos.status): Pendente|Pago|Expirado|Falhou|Estornado|EmDisputa
 - MetodoPagamento (pagamentos.metodo_pagamento, default Pix): Pix|Cartao
-- TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador|ExclusaoTreinador
+- TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador|ExclusaoTreinador|ExportacaoDados|AnonimizacaoConta
 - StatusSaude (health_snapshots.status_geral): Ok|Degradado|Falha
 - TipoGrupoMuscular (enum; seed de grupos_musculares; não é coluna — entidade `GrupoMuscular` é distinta): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
 
 ## TABELAS
 
 ### Identidade & Auth
-contas — credenciais + tipo. id(uuid,NN); email(varchar256,NN); password_hash(text,NN,bcrypt); tipo_conta(text,NN,TipoConta); email_verificado(bool,NN,default false); verificado_em(tstz,null); created_at(NN); updated_at(null). PK(id) UQ(email).
+contas — credenciais + tipo. id(uuid,NN); email(varchar256,NN); password_hash(text,NN,bcrypt); tipo_conta(text,NN,TipoConta); email_verificado(bool,NN,default false); verificado_em(tstz,null); anonimizada_em(tstz,null,LGPD); created_at(NN); updated_at(null). PK(id) UQ(email).
 
 system_users — perfil admin plataforma. id(uuid,NN); conta_id(uuid,NN); nome(varchar,NN); role(text,NN,SystemRole); status(text,NN,UsuarioStatus); created_at(NN); updated_at(null). PK(id) FK(conta_id→contas,RESTRICT).
 

@@ -13,4 +13,20 @@ public class WhatsAppDeliveryLogRepository(AppDbContext context) : IWhatsAppDeli
         context.WhatsAppDeliveryLogs
             .AsNoTracking()
             .AnyAsync(e => e.MetaMessageId == metaMessageId && e.EventType == eventType, cancellationToken);
+
+    public async Task<IReadOnlyList<WhatsAppDeliveryLog>> ListarPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default) =>
+        await context.WhatsAppDeliveryLogs
+            .AsNoTracking()
+            .Where(w => w.RecipientPhone == telefone)
+            .OrderByDescending(w => w.OcorridoEm)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task AnonimizarPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default) =>
+        await context.WhatsAppDeliveryLogs
+            .Where(w => w.RecipientPhone == telefone)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(w => w.RecipientPhone, "anonimizado"),
+                cancellationToken)
+            .ConfigureAwait(false);
 }

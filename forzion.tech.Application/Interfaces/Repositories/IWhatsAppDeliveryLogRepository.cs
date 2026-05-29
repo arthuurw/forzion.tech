@@ -13,4 +13,15 @@ public interface IWhatsAppDeliveryLogRepository
     /// evitar logs duplicados.
     /// </summary>
     Task<bool> ExisteAsync(string metaMessageId, string eventType, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists all delivery logs for the given recipient phone (LGPD export).
+    /// </summary>
+    Task<IReadOnlyList<WhatsAppDeliveryLog>> ListarPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Scrubs the recipient phone on all logs matching <paramref name="telefone"/>
+    /// (LGPD anonymization). Replaces RecipientPhone with an anonymized placeholder.
+    /// </summary>
+    Task AnonimizarPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default);
 }

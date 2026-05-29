@@ -6,6 +6,7 @@ import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import ThemeRegistry from "@/lib/theme/ThemeRegistry";
 import { WebVitals } from "@/components/observability/WebVitals";
+import ConsentProvider from "@/components/ui/ConsentProvider";
 import "@/styles/globals.css";
 
 const inter = Inter({
@@ -38,7 +39,10 @@ export default function RootLayout({
           <ThemeRegistry>
             <ErrorBoundary>
               <AuthProvider>
-                <SnackbarProvider>{children}</SnackbarProvider>
+                <SnackbarProvider>
+                  <ConsentProvider />
+                  {children}
+                </SnackbarProvider>
               </AuthProvider>
             </ErrorBoundary>
           </ThemeRegistry>
