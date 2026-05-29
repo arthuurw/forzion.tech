@@ -15,6 +15,7 @@ public class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandlerTests
 {
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IWhatsAppNotifier> _notifier = new();
+    private readonly Mock<IPlanoNotificationPolicy> _planoPolicy = new();
     private readonly Mock<ILogger<AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler>> _logger = new();
     private readonly IOptions<AppSettings> _appSettings;
     private readonly AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler _handler;
@@ -31,11 +32,13 @@ public class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandlerTests
         _notifier.Setup(n => n.Habilitado).Returns(true);
         _notifier.Setup(n => n.SendTemplateAsync(It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _planoPolicy.Setup(p => p.ResolverPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, true));
 
         _appSettings = Options.Create(new AppSettings { FrontendBaseUrl = "https://app.forzion.tech" });
 
         _handler = new AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler(
-            _alunoRepo.Object, _notifier.Object, _appSettings, _logger.Object);
+            _alunoRepo.Object, _notifier.Object, _planoPolicy.Object, _appSettings, _logger.Object);
     }
 
     [Fact]
@@ -94,5 +97,21 @@ public class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandlerTests
                 m.BodyParameters.Any(p => p.Contains("https://app.forzion.tech/aluno/pagamentos"))),
             It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PlanoSemWhatsApp_NaoEnvia()
+    {
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(aluno);
+        _planoPolicy.Setup(p => p.ResolverPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, false));
+
+        await _handler.HandleAsync(Evento);
+
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

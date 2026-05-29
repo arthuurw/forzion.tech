@@ -15,12 +15,12 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { adminApi } from "@/lib/api/admin";
 import type { PlanoPlataformaResponse, TierPlano } from "@/types";
 
-const TIER_OPTIONS: { value: TierPlano; label: string }[] = [
+const TIER_OPTIONS: { value: TierPlano; label: string; disabled?: boolean }[] = [
   { value: "Free",    label: "Free" },
   { value: "Basic",   label: "Basic" },
   { value: "Pro",     label: "Pro" },
   { value: "ProPlus", label: "Pro Plus" },
-  { value: "Elite",   label: "Elite" },
+  { value: "Elite",   label: "Elite (em breve)", disabled: true },
 ];
 
 export default function PlanosAdminPage() {
@@ -200,7 +200,7 @@ export default function PlanosAdminPage() {
               select label="Tier" value={tier} onChange={(e) => setTier(e.target.value as TierPlano)}
               size="small" fullWidth required
             >
-              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value} disabled={o.disabled}>{o.label}</MenuItem>)}
             </TextField>
             <TextField label="Máximo de alunos" type="number" value={maxAlunos} onChange={(e) => setMaxAlunos(e.target.value)} size="small" fullWidth required slotProps={{ htmlInput: { min: 1 } }} />
             <TextField label="Preço (R$)" type="number" value={preco} onChange={(e) => setPreco(e.target.value)} size="small" fullWidth required slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />
@@ -225,7 +225,7 @@ export default function PlanosAdminPage() {
               select label="Tier" value={editTier} onChange={(e) => setEditTier(e.target.value as TierPlano)}
               size="small" fullWidth
             >
-              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value} disabled={o.disabled}>{o.label}</MenuItem>)}
             </TextField>
             <TextField label="Máximo de alunos" type="number" value={editMaxAlunos} onChange={(e) => setEditMaxAlunos(e.target.value)} size="small" fullWidth slotProps={{ htmlInput: { min: 1 } }} />
             <TextField label="Preço (R$)" type="number" value={editPreco} onChange={(e) => setEditPreco(e.target.value)} size="small" fullWidth slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />

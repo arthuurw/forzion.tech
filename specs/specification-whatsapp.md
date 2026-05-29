@@ -72,6 +72,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 - **Arquitetura padronizada**: TODAS as notificações são event-handlers (chamadas diretas em `AprovarVinculo`/`RegistrarAluno` removidas). `VinculoPendenteCriadoEvent` (novo) é emitido em `VinculoTreinadorAluno.Criar` (status AguardandoAprovacao) → ver [specification-model].
 - `VinculoPendenteCriadoEvent` tem TAMBÉM handler de e-mail p/ treinador (`VinculoPendenteCriadoEmailTreinadorHandler`) → fecha o gap reverso. Ver [specification-email].
 - Destinatário: `aluno.Telefone` / `treinador.Telefone`. **Sem fallback** (`contas` não tem telefone) → telefone null = skip silencioso.
+- **Gating por tier** (`IPlanoNotificationPolicy`): handlers **OPERACIONAIS** (pagamento criado/falhou/estornado/disputa, assinatura criada/cancelada×2, vínculo aprovado/pendente, inadimplência, aluno-inativado) checam `canais.WhatsApp` antes de enviar — WhatsApp só enviado se treinador tem tier≥ProPlus. **UNGATED** (sempre enviam, sem consulta a plano): `TreinadorAprovadoWhatsAppHandler`, `TreinadorReprovadoWhatsAppHandler`, `TreinadorInativadoWhatsAppHandler`, `AlunoRegistradoWhatsAppHandler` (bem-vindo). Cross-ref `TierPlanoExtensions` [specification-model], `IPlanoNotificationPolicy` [specification-backend].
 
 ### Webhook de status (Meta → app)
 - GET `/webhooks/whatsapp`: handshake. `hub.mode=subscribe` + `hub.verify_token == WhatsApp:WebhookVerifyToken` → retorna `hub.challenge` (200). Senão 403.

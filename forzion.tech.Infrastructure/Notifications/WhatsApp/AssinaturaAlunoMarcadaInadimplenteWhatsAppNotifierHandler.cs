@@ -15,6 +15,7 @@ namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 public sealed class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler(
     IAlunoRepository alunoRepository,
     IWhatsAppNotifier whatsAppNotifier,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     IOptions<AppSettings> appSettings,
     ILogger<AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler> logger) : IDomainEventHandler<AssinaturaAlunoMarcadaInadimplenteEvent>
 {
@@ -38,6 +39,11 @@ public sealed class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler(
             logger.LogDebug("AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler: aluno {Id} sem telefone — ignorado.", aluno.Id);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorAlunoAsync(domainEvent.AlunoId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.WhatsApp) return;
 
         var linkPortal = $"{appSettings.Value.FrontendBaseUrl}/aluno/pagamentos";
 

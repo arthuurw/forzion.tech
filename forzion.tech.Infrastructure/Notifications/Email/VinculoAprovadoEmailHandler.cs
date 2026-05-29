@@ -10,11 +10,17 @@ public sealed class VinculoAprovadoEmailHandler(
     IContaRepository contaRepository,
     ITreinadorRepository treinadorRepository,
     IEmailService emailService,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<VinculoAprovadoEmailHandler> logger) : IDomainEventHandler<VinculoAprovadoEvent>
 {
     public async Task HandleAsync(VinculoAprovadoEvent domainEvent, CancellationToken cancellationToken = default)
     {
         if (!emailService.Habilitado) return;
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(domainEvent.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.Email) return;
 
         var aluno = await alunoRepository
             .ObterPorIdAsync(domainEvent.AlunoId, cancellationToken)

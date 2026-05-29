@@ -62,4 +62,20 @@ public class AtribuirPlanoHandlerTests
         var act = async () => await _handler.HandleAsync(new AtribuirPlanoCommand(treinador.Id, Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<DomainException>().WithMessage("Plano não encontrado.");
     }
+
+    [Fact]
+    public async Task HandleAsync_PlanoElite_RetornaFailureEliteIndisponivel_ECommitNuncaChamado()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var planoElite = PlanoPlataforma.Criar("Elite", forzion.tech.Domain.Enums.TierPlano.Elite, 100, 999m, DateTime.UtcNow).Value;
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoElite.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoElite);
+
+        var result = await _handler.HandleAsync(new AtribuirPlanoCommand(treinador.Id, planoElite.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("plano_plataforma.elite_indisponivel");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

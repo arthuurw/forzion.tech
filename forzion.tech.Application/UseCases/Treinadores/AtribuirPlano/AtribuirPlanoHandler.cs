@@ -4,6 +4,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
@@ -31,8 +32,11 @@ public class AtribuirPlanoHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        _ = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
+        var plano = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoPlataformaNaoEncontradoException();
+
+        if (plano.Tier == TierPlano.Elite)
+            return Result.Failure<TreinadorResponse>(PlanoPlataformaErrors.EliteIndisponivel);
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 

@@ -13,6 +13,7 @@ public sealed class VinculoPendenteCriadoWhatsAppHandler(
     ITreinadorRepository treinadorRepository,
     IAlunoRepository alunoRepository,
     IWhatsAppNotifier whatsAppNotifier,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<VinculoPendenteCriadoWhatsAppHandler> logger) : IDomainEventHandler<VinculoPendenteCriadoEvent>
 {
     public async Task HandleAsync(VinculoPendenteCriadoEvent domainEvent, CancellationToken cancellationToken = default)
@@ -35,6 +36,11 @@ public sealed class VinculoPendenteCriadoWhatsAppHandler(
             logger.LogDebug("VinculoPendenteCriadoWhatsAppHandler: treinador {Id} sem telefone — ignorado.", treinador.Id);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(domainEvent.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.WhatsApp) return;
 
         var aluno = await alunoRepository
             .ObterPorIdAsync(domainEvent.AlunoId, cancellationToken)

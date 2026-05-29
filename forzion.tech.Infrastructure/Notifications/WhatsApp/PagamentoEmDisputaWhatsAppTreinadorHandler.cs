@@ -15,6 +15,7 @@ public sealed class PagamentoEmDisputaWhatsAppTreinadorHandler(
     ITreinadorRepository treinadorRepository,
     IAlunoRepository alunoRepository,
     IWhatsAppNotifier whatsAppNotifier,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<PagamentoEmDisputaWhatsAppTreinadorHandler> logger) : IDomainEventHandler<PagamentoEmDisputaEvent>
 {
     public async Task HandleAsync(PagamentoEmDisputaEvent domainEvent, CancellationToken cancellationToken = default)
@@ -46,6 +47,11 @@ public sealed class PagamentoEmDisputaWhatsAppTreinadorHandler(
             logger.LogDebug("PagamentoEmDisputaWhatsAppTreinadorHandler: treinador {Id} sem telefone — ignorado.", treinador.Id);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(assinatura.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.WhatsApp) return;
 
         var aluno = await alunoRepository
             .ObterPorIdAsync(assinatura.AlunoId, cancellationToken)

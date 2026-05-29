@@ -78,7 +78,7 @@ Significado/transições de domínio (mapeamento de coluna em [specification-db]
 - **TreinadorStatus** {AguardandoAprovacao, Ativo, Inativo} — §6.
 - **AlunoStatus** {AguardandoAprovacao, Ativo, Inativo} — §6.
 - **VinculoStatus** {AguardandoAprovacao, Ativo, Inativo} — §6.
-- **TierPlano** {Free, Basic, Pro, ProPlus, Elite} — faixa do plano de plataforma.
+- **TierPlano** {Free, Basic, Pro, ProPlus, Elite} — faixa do plano de plataforma. **`TierPlanoExtensions`** (Domain/Enums): `PermiteEmail()` → tier≥Pro; `PermiteWhatsApp()` → tier≥ProPlus. Free/Basic/sem-plano = só notificação na plataforma. Elite **indisponível**: `AtribuirPlanoHandler` rejeita tier=Elite com `PlanoPlataformaErrors.EliteIndisponivel`.
 - **TreinoAlunoStatus** {Ativo, Inativo} — §6 (1 atribuição Ativa por treino, ver [specification-db]).
 - **ObjetivoTreino** {Hipertrofia, Forca, Resistencia, Emagrecimento, Reabilitacao} — objetivo da ficha.
 - **DificuldadeTreino** {Iniciante, Intermediario, Avancado} — nível da ficha (default Iniciante).

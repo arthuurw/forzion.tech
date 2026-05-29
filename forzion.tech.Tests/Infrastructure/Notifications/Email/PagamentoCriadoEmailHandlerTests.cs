@@ -20,6 +20,7 @@ public class PagamentoCriadoEmailHandlerTests
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IEmailService> _emailService = new();
+    private readonly Mock<IPlanoNotificationPolicy> _planoPolicy = new();
     private readonly Mock<ILogger<PagamentoCriadoEmailHandler>> _logger = new();
     private readonly IOptions<AppSettings> _appSettings;
     private readonly PagamentoCriadoEmailHandler _handler;
@@ -42,12 +43,14 @@ public class PagamentoCriadoEmailHandlerTests
             .Returns(Task.CompletedTask);
         _contaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conta?)null);
+        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, true));
 
         _appSettings = Options.Create(new AppSettings { FrontendBaseUrl = "https://app.forzion.tech" });
 
         _handler = new PagamentoCriadoEmailHandler(
             _assinaturaRepo.Object, _alunoRepo.Object, _contaRepo.Object,
-            _emailService.Object, _appSettings, _logger.Object);
+            _emailService.Object, _appSettings, _planoPolicy.Object, _logger.Object);
     }
 
     private AssinaturaAluno AssinaturaValida()
@@ -194,5 +197,20 @@ public class PagamentoCriadoEmailHandlerTests
             It.Is<string>(html => html.Contains("cartão")),
             It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PlanoSemPermissaoEmail_NaoEnvia()
+    {
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AssinaturaValida());
+        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(false, false));
+
+        await _handler.HandleAsync(Evento);
+
+        _emailService.Verify(e => e.EnviarAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

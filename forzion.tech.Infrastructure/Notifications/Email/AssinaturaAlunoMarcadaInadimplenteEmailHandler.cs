@@ -20,12 +20,18 @@ public sealed class AssinaturaAlunoMarcadaInadimplenteEmailHandler(
     IContaRepository contaRepository,
     IEmailService emailService,
     IOptions<AppSettings> appSettings,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<AssinaturaAlunoMarcadaInadimplenteEmailHandler> logger) : IDomainEventHandler<AssinaturaAlunoMarcadaInadimplenteEvent>
 {
     public async Task HandleAsync(AssinaturaAlunoMarcadaInadimplenteEvent domainEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
         if (!emailService.Habilitado) return;
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorAlunoAsync(domainEvent.AlunoId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.Email) return;
 
         var aluno = await alunoRepository
             .ObterPorIdAsync(domainEvent.AlunoId, cancellationToken)

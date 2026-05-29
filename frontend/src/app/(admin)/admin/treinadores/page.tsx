@@ -330,7 +330,7 @@ export default function TreinadoresAdminPage() {
             </Typography>
           )}
           <Autocomplete
-            options={planos}
+            options={planos.filter((p) => p.tier !== "Elite")}
             getOptionLabel={(p) => `${p.nome} (até ${p.maxAlunos} alunos)`}
             value={selectedPlano}
             onChange={(_, v) => setSelectedPlano(v)}
