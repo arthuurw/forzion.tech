@@ -28,6 +28,7 @@ Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
 - `specs/specification-frontend.md` — Next.js App Router, MUI, formulários, validação.
 - `specs/specification-infrastructure.md` — Hostinger VM, docker-compose, nginx, certbot.
 - `specs/specification-git.md` — workflow git, configs recomendadas, worktree, conventional commits.
+- `specs/specification-stripe.md` — pagamento Stripe Connect + PaymentIntent Pix/Cartão + webhook + billing mensal + CLI.
 
 ## CONVENÇÕES-CHAVE
 - DDD: entidades com factory `Criar`; domain events despachados no `UnitOfWork.CommitAsync` (re-entrância tratada). Result<T> pattern. FluentValidation auto-descoberto. Handlers registrados manualmente no DI.
