@@ -31,6 +31,7 @@ public class AtualizarPerfilHandlerTests
             _treinadorRepo.Object,
             _systemUserRepo.Object,
             _unitOfWork.Object,
+            TimeProvider.System,
             _validator.Object);
     }
 
@@ -38,7 +39,7 @@ public class AtualizarPerfilHandlerTests
     public async Task HandleAsync_AtualizaAluno_Comita()
     {
         var contaId = Guid.NewGuid();
-        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
@@ -54,7 +55,7 @@ public class AtualizarPerfilHandlerTests
     public async Task HandleAsync_AtualizaTreinador_Comita()
     {
         var contaId = Guid.NewGuid();
-        var treinador = Treinador.Criar(contaId, "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(contaId, "Carlos", DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Treinador);

@@ -12,21 +12,20 @@ public class ErrorLogEntryTests
     {
         var ocorrido = new DateTime(2026, 5, 26, 10, 0, 0, DateTimeKind.Utc);
 
-        var entry = ErrorLogEntry.Criar(ocorrido, "Error", "PaymentService", "Falha ao processar pagamento");
+        var entry = ErrorLogEntry.Criar(ocorrido, "Error", "PaymentService", "Falha ao processar pagamento", TestData.Agora).Value;
 
         entry.Id.Should().NotBeEmpty();
         entry.OcorridoEm.Should().Be(ocorrido);
         entry.Nivel.Should().Be("Error");
         entry.Origem.Should().Be("PaymentService");
         entry.Mensagem.Should().Be("Falha ao processar pagamento");
-        // ErrorLogEntry.Criar usa DateTime.UtcNow pra CreatedAt — assertion real.
-        entry.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+        entry.CreatedAt.Should().BeCloseTo(TestData.Agora, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
     public void Criar_NivelEOrigemComEspacos_Remove()
     {
-        var entry = ErrorLogEntry.Criar(TestData.Agora, "  Critical  ", "  Worker  ", "boom");
+        var entry = ErrorLogEntry.Criar(TestData.Agora, "  Critical  ", "  Worker  ", "boom", TestData.Agora).Value;
         entry.Nivel.Should().Be("Critical");
         entry.Origem.Should().Be("Worker");
     }
@@ -36,8 +35,9 @@ public class ErrorLogEntryTests
     [InlineData("   ")]
     public void Criar_NivelVazio_LancaDomainException(string nivel)
     {
-        var act = () => ErrorLogEntry.Criar(TestData.Agora, nivel, "Worker", "boom");
-        act.Should().Throw<DomainException>().WithMessage("O nível é obrigatório.");
+        var r = ErrorLogEntry.Criar(TestData.Agora, nivel, "Worker", "boom", TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O nível é obrigatório.");
     }
 
     [Theory]
@@ -45,8 +45,9 @@ public class ErrorLogEntryTests
     [InlineData("   ")]
     public void Criar_OrigemVazia_LancaDomainException(string origem)
     {
-        var act = () => ErrorLogEntry.Criar(TestData.Agora, "Error", origem, "boom");
-        act.Should().Throw<DomainException>().WithMessage("A origem é obrigatória.");
+        var r = ErrorLogEntry.Criar(TestData.Agora, "Error", origem, "boom", TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("A origem é obrigatória.");
     }
 
     [Fact]
@@ -54,7 +55,7 @@ public class ErrorLogEntryTests
     {
         var longa = new string('x', ErrorLogEntry.MensagemMaxLength + 500);
 
-        var entry = ErrorLogEntry.Criar(TestData.Agora, "Error", "Worker", longa);
+        var entry = ErrorLogEntry.Criar(TestData.Agora, "Error", "Worker", longa, TestData.Agora).Value;
 
         entry.Mensagem.Length.Should().Be(ErrorLogEntry.MensagemMaxLength);
     }
@@ -62,7 +63,7 @@ public class ErrorLogEntryTests
     [Fact]
     public void Criar_MensagemNula_ViraVazia()
     {
-        var entry = ErrorLogEntry.Criar(TestData.Agora, "Error", "Worker", null!);
+        var entry = ErrorLogEntry.Criar(TestData.Agora, "Error", "Worker", null!, TestData.Agora).Value;
         entry.Mensagem.Should().BeEmpty();
     }
 }

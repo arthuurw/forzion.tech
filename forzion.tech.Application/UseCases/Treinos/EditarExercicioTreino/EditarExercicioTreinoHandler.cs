@@ -39,14 +39,18 @@ public class EditarExercicioTreinoHandler(
             .ExisteParaTreinoComAlunoAtivoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        Treino.ValidarMutabilidade(executado);
+        var mutabilidadeResult = Treino.ValidarMutabilidade(executado);
+        if (mutabilidadeResult.IsFailure)
+            return Result.Failure<TreinoResponse>(mutabilidadeResult.Error!);
 
         var exercicio = treino.Exercicios.FirstOrDefault(e => e.Id == command.TreinoExercicioId)
             ?? throw new TreinoNaoEncontradoException();
 
-        exercicio.AtualizarSeries(command.Series
+        var atualizarSeriesResult = exercicio.AtualizarSeries(command.Series
             .Select(s => (s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso))
             .ToList());
+        if (atualizarSeriesResult.IsFailure)
+            return Result.Failure<TreinoResponse>(atualizarSeriesResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

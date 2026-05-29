@@ -64,8 +64,13 @@ public class RedefinirSenhaHandler(
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
             ?? throw new DomainException("Conta não encontrada.");
 
-        conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha));
-        token.MarcarComoUsado(agora);
+        var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), agora);
+        if (atualizarResult.IsFailure)
+            throw new DomainException(atualizarResult.Error!.Message);
+
+        var marcarResult = token.MarcarComoUsado(agora);
+        if (marcarResult.IsFailure)
+            throw new DomainException(marcarResult.Error!.Message);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
     }

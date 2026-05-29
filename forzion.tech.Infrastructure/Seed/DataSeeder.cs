@@ -161,7 +161,7 @@ public class DataSeeder(
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = PlanosPadrao
             .Where(p => !existentes.Contains(p.Tier))
-            .Select(p => PlanoPlataforma.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, agora, p.Descricao))
+            .Select(p => PlanoPlataforma.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, agora, p.Descricao).Value)
             .ToList();
 
         if (novos.Count == 0)
@@ -183,7 +183,7 @@ public class DataSeeder(
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = GruposMuscularesPadrao
             .Where(n => !existentes.Contains(n))
-            .Select(n => Domain.Entities.GrupoMuscular.Criar(n, agora))
+            .Select(n => Domain.Entities.GrupoMuscular.Criar(n, agora).Value)
             .ToList();
 
         if (novos.Count == 0)
@@ -210,7 +210,7 @@ public class DataSeeder(
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = ExerciciosGlobais
             .Where(e => !existentes.Contains(e.Nome))
-            .Select(e => Exercicio.Criar(e.Nome, gruposPorNome[e.Grupo.ToString()], agora, treinadorId: null, descricao: e.Descricao))
+            .Select(e => Exercicio.Criar(e.Nome, gruposPorNome[e.Grupo.ToString()], agora, treinadorId: null, descricao: e.Descricao).Value)
             .ToList();
 
         if (novos.Count == 0)
@@ -236,10 +236,10 @@ public class DataSeeder(
             ?? throw new InvalidOperationException("Seed:AdminPassword não configurado.");
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var conta = Conta.Criar(Email.Criar(email), passwordHasher.Hash(senha), TipoConta.SystemAdmin, agora);
+        var conta = Conta.Criar(Email.Criar(email).Value, passwordHasher.Hash(senha), TipoConta.SystemAdmin, agora).Value;
         conta.MarcarEmailVerificado(agora);
         conta.ClearDomainEvents();
-        var systemUser = SystemUser.Criar(conta.Id, "Super Admin", agora);
+        var systemUser = SystemUser.Criar(conta.Id, "Super Admin", agora).Value;
 
         context.Contas.Add(conta);
         context.SystemUsers.Add(systemUser);

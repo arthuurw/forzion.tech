@@ -33,7 +33,9 @@ public class SolicitarTrocaTreinadorHandler(
         var novoTreinador = await treinadorRepository.ObterPorIdAsync(command.NovoTreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        novoTreinador.ValidarDisponibilidade();
+        var disponibilidadeResult = novoTreinador.ValidarDisponibilidade();
+        if (disponibilidadeResult.IsFailure)
+            throw new DomainException(disponibilidadeResult.Error!.Message);
 
         var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoAtivo is null)
@@ -46,7 +48,10 @@ public class SolicitarTrocaTreinadorHandler(
         if (vinculoPendente is not null)
             throw new DomainException("Você já possui uma solicitação pendente com este treinador.");
 
-        var novoVinculo = VinculoTreinadorAluno.Criar(command.NovoTreinadorId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime, command.PacoteId);
+        var novoVinculoResult = VinculoTreinadorAluno.Criar(command.NovoTreinadorId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime, command.PacoteId);
+        if (novoVinculoResult.IsFailure)
+            throw new DomainException(novoVinculoResult.Error!.Message);
+        var novoVinculo = novoVinculoResult.Value;
 
         await vinculoRepository.AdicionarAsync(novoVinculo, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

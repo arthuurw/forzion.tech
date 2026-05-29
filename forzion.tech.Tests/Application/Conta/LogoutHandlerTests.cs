@@ -18,7 +18,7 @@ public class LogoutHandlerTests
 
     public LogoutHandlerTests()
     {
-        _handler = new LogoutHandler(_tokenRepo.Object, _userContext.Object, _unitOfWork.Object, _logger.Object);
+        _handler = new LogoutHandler(_tokenRepo.Object, _userContext.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]

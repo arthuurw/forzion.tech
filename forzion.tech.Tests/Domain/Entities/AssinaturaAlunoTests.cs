@@ -2,7 +2,6 @@ using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
 using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
@@ -53,29 +52,33 @@ public class AssinaturaAlunoTests
     [Fact]
     public void Criar_VinculoIdVazio_LancaDomainException()
     {
-        var act = () => AssinaturaAluno.Criar(Guid.Empty, PacoteId, TreinadorId, AlunoId, Valor, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O identificador do vínculo é inválido.");
+        var r = AssinaturaAluno.Criar(Guid.Empty, PacoteId, TreinadorId, AlunoId, Valor, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador do vínculo é inválido.");
     }
 
     [Fact]
     public void Criar_PacoteIdVazio_LancaDomainException()
     {
-        var act = () => AssinaturaAluno.Criar(VinculoId, Guid.Empty, TreinadorId, AlunoId, Valor, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O identificador do pacote é inválido.");
+        var r = AssinaturaAluno.Criar(VinculoId, Guid.Empty, TreinadorId, AlunoId, Valor, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador do pacote é inválido.");
     }
 
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, Guid.Empty, AlunoId, Valor, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O identificador do treinador é inválido.");
+        var r = AssinaturaAluno.Criar(VinculoId, PacoteId, Guid.Empty, AlunoId, Valor, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador do treinador é inválido.");
     }
 
     [Fact]
     public void Criar_AlunoIdVazio_LancaDomainException()
     {
-        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, Guid.Empty, Valor, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O identificador do aluno é inválido.");
+        var r = AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, Guid.Empty, Valor, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador do aluno é inválido.");
     }
 
     [Theory]
@@ -83,8 +86,9 @@ public class AssinaturaAlunoTests
     [InlineData(-1)]
     public void Criar_ValorInvalido_LancaDomainException(decimal valor)
     {
-        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, AlunoId, valor, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O valor da assinatura deve ser maior que zero.");
+        var r = AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, AlunoId, valor, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O valor da assinatura deve ser maior que zero.");
     }
 
     // --- Ativar ---
@@ -93,7 +97,7 @@ public class AssinaturaAlunoTests
     public void Ativar_StatusPendente_MudaParaAtiva()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
         a.UpdatedAt.Should().NotBeNull();
     }
@@ -103,8 +107,9 @@ public class AssinaturaAlunoTests
     {
         var a = CriarValida();
         a.Cancelar(TestData.Agora);
-        var act = () => a.Ativar();
-        act.Should().Throw<DomainException>().WithMessage("AssinaturaAluno cancelada não pode ser ativada.");
+        var r = a.Ativar(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("AssinaturaAluno cancelada não pode ser ativada.");
     }
 
     // --- MarcarInadimplente ---
@@ -113,8 +118,8 @@ public class AssinaturaAlunoTests
     public void MarcarInadimplente_StatusAtiva_MudaParaInadimplente()
     {
         var a = CriarValida();
-        a.Ativar();
-        a.MarcarInadimplente();
+        a.Ativar(TestData.Agora);
+        a.MarcarInadimplente(TestData.Agora);
         a.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
         a.UpdatedAt.Should().NotBeNull();
     }
@@ -123,8 +128,9 @@ public class AssinaturaAlunoTests
     public void MarcarInadimplente_StatusPendente_LancaDomainException()
     {
         var a = CriarValida();
-        var act = () => a.MarcarInadimplente();
-        act.Should().Throw<DomainException>().WithMessage("Apenas assinaturas ativas podem ser marcadas como inadimplentes.");
+        var r = a.MarcarInadimplente(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas assinaturas ativas podem ser marcadas como inadimplentes.");
     }
 
     // --- Cancelar ---
@@ -133,7 +139,7 @@ public class AssinaturaAlunoTests
     public void Cancelar_StatusAtiva_MudaParaCancelada()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.Cancelar(TestData.Agora);
         a.Status.Should().Be(AssinaturaAlunoStatus.Cancelada);
         a.DataCancelamento.Should().NotBeNull();
@@ -144,15 +150,16 @@ public class AssinaturaAlunoTests
     {
         var a = CriarValida();
         a.Cancelar(TestData.Agora);
-        var act = () => a.Cancelar(TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("A assinatura já está cancelada.");
+        var r = a.Cancelar(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("A assinatura já está cancelada.");
     }
 
     [Fact]
     public void Cancelar_StatusAtiva_DispatchaAssinaturaAlunoCanceladaEvent()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.ClearDomainEvents();
 
         a.Cancelar(TestData.Agora);
@@ -166,7 +173,7 @@ public class AssinaturaAlunoTests
     public void Cancelar_UsaParametroAgoraNasDatas()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         var quando = new DateTime(2026, 7, 15, 10, 30, 0, DateTimeKind.Utc);
 
         a.Cancelar(quando);
@@ -193,8 +200,9 @@ public class AssinaturaAlunoTests
     public void AgendarProximaCobranca_DataPassada_LancaDomainException()
     {
         var a = CriarValida();
-        var act = () => a.AgendarProximaCobranca(TestData.Agora.AddDays(-1), TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("A data da próxima cobrança deve ser futura.");
+        var r = a.AgendarProximaCobranca(TestData.Agora.AddDays(-1), TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("A data da próxima cobrança deve ser futura.");
     }
 
     // --- RegistrarPagamentoFalho (IH.1) ---
@@ -203,7 +211,7 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoFalho_PrimeiraTentativa_IncrementaContadorEDispatchEvento()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.ClearDomainEvents();
 
         a.RegistrarPagamentoFalho(TestData.Agora);
@@ -219,7 +227,7 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoFalho_TerceiraTentativaConsecutiva_MarcaInadimplenteEDispatcha2Eventos()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
 
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
@@ -238,7 +246,7 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoFalho_QuartaTentativaJaInadimplente_NaoRedispatchInadimplenteEvento()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora); // marca inadimplente
@@ -257,7 +265,7 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoFalho_AssinaturaCancelada_NoOp()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.Cancelar(TestData.Agora);
         a.ClearDomainEvents();
 
@@ -289,7 +297,7 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoRegularizado_ZeraContadorEReativaSeInadimplente()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
@@ -305,7 +313,7 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoRegularizado_AssinaturaAtivaComFalhasParciais_SoZeraContador()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.TentativasFalhasConsecutivas.Should().Be(2);
@@ -321,7 +329,7 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoRegularizado_AssinaturaCancelada_NoOp()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.Cancelar(TestData.Agora);
 
@@ -335,7 +343,7 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoRegularizado_Idempotente_ChamadasMultiplasSemDano()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
 
         a.RegistrarPagamentoRegularizado(TestData.Agora);
         a.RegistrarPagamentoRegularizado(TestData.Agora);
@@ -350,7 +358,7 @@ public class AssinaturaAlunoTests
     public void MarcarInadimplentePorDisputa_AssinaturaAtiva_ForcaTransicaoEEquiparaContadorAoLimite()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.ClearDomainEvents();
 
         a.MarcarInadimplentePorDisputa(TestData.Agora);
@@ -369,7 +377,7 @@ public class AssinaturaAlunoTests
     {
         // Diferença chave em relação a RegistrarPagamentoFalho: 1ª disputa já tranca.
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.TentativasFalhasConsecutivas.Should().Be(0);
 
         a.MarcarInadimplentePorDisputa(TestData.Agora);
@@ -381,7 +389,7 @@ public class AssinaturaAlunoTests
     public void MarcarInadimplentePorDisputa_AssinaturaCancelada_NoOp()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.Cancelar(TestData.Agora);
         a.ClearDomainEvents();
 
@@ -395,7 +403,7 @@ public class AssinaturaAlunoTests
     public void MarcarInadimplentePorDisputa_JaInadimplente_NoOpIdempotente()
     {
         var a = CriarValida();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora); // → Inadimplente

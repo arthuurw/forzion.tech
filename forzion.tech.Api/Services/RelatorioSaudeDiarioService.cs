@@ -62,7 +62,7 @@ public class RelatorioSaudeDiarioService(
         var unitOfWork = sp.GetRequiredService<IUnitOfWork>();
 
         var report = await collector.ColetarAsync(config, cancellationToken).ConfigureAwait(false);
-        var snapshot = HealthSnapshot.Criar(report.Ambiente, report.StatusGeral, HealthReportPayload.Serializar(report), agora);
+        var snapshot = HealthSnapshot.Criar(report.Ambiente, report.StatusGeral, HealthReportPayload.Serializar(report), agora).Value;
         await snapshotRepo.AdicionarAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
         await sender.EnviarAsync(report, config.ObterDestinatarios(), cancellationToken).ConfigureAwait(false);

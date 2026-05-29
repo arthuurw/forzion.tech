@@ -72,8 +72,8 @@ public class AssinaturaAlunoCanceladaEmailAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoComEmail_EnviaConfirmacaoCancelamento()
     {
-        var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "maria@aluno.com");
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Coach Joana", TestData.Agora);
+        var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "maria@aluno.com").Value;
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Coach Joana", TestData.Agora).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
@@ -93,8 +93,8 @@ public class AssinaturaAlunoCanceladaEmailAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemEmail_FallbackContaEmail()
     {
-        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora);
-        var conta = Conta.Criar(DomainEmail.Criar("joao@conta.com"), "hash-test-123", TipoConta.Aluno, TestData.Agora);
+        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora).Value;
+        var conta = Conta.Criar(DomainEmail.Criar("joao@conta.com").Value, "hash-test-123", TipoConta.Aluno, TestData.Agora).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
@@ -114,7 +114,7 @@ public class AssinaturaAlunoCanceladaEmailAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorNaoEncontrado_UsaPlaceholder()
     {
-        var aluno = Aluno.Criar(ContaId, "Ana", TestData.Agora, email: "ana@x.com");
+        var aluno = Aluno.Criar(ContaId, "Ana", TestData.Agora, email: "ana@x.com").Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);

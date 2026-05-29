@@ -8,6 +8,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Treinadores;
 
@@ -31,8 +32,8 @@ public class IniciarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorSemConta_CriaContaERetornaLink()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var conta = Conta.Criar(Email.Criar("carlos@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var conta = Conta.Criar(Email.Criar("carlos@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ContaRecebimento?)null);
@@ -58,9 +59,9 @@ public class IniciarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorComContaExistente_NaoCriaNovaConta()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow);
-        contaRecebimento.ConfigurarStripeConnect("acct_existing");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_existing", TestData.Agora);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(contaRecebimento);

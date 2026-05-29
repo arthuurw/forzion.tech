@@ -35,8 +35,8 @@ public class EditarExercicioTreinoHandlerTests
 
     private static (Treino treino, TreinoExercicio exercicio) CriarTreinoComExercicio(Guid treinadorId)
     {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
-        var ex = treino.AdicionarExercicio(Guid.NewGuid());
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        var ex = treino.AdicionarExercicio(Guid.NewGuid(), DateTime.UtcNow).Value;
         ex.AdicionarSerie(3, 10, 12, null, null, null);
         return (treino, ex);
     }
@@ -125,9 +125,10 @@ public class EditarExercicioTreinoHandlerTests
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var act = async () => await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, SeriesValidas));
+        var result = await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, SeriesValidas));
 
-        await act.Should().ThrowAsync<TreinoExecutadoException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treino.ja_executado");
     }
 
     [Fact]
@@ -151,8 +152,8 @@ public class EditarExercicioTreinoHandlerTests
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var act = async () => await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, []));
-        await act.Should().ThrowAsync<DomainException>();
+        var result = await _handler.HandleAsync(new EditarExercicioTreinoCommand(treino.Id, ex.Id, []));
+        result.IsFailure.Should().BeTrue();
     }
 
     [Fact]

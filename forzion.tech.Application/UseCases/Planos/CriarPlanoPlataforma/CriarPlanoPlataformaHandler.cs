@@ -2,6 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Planos.CriarPlanoPlataforma;
@@ -28,7 +29,10 @@ public class CriarPlanoPlataformaHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var plano = PlanoPlataforma.Criar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
+        var planoResult = PlanoPlataforma.Criar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
+        if (planoResult.IsFailure)
+            throw new DomainException(planoResult.Error!.Message);
+        var plano = planoResult.Value;
 
         await planoRepository.AdicionarAsync(plano, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

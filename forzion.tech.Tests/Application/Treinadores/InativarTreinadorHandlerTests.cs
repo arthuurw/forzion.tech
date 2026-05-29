@@ -7,6 +7,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Treinadores;
 
@@ -34,9 +35,9 @@ public class InativarTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_InativaCascade()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, Guid.NewGuid(), DateTime.UtcNow);
-        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, Guid.NewGuid(), DateTime.UtcNow).Value;
+        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId, DateTime.UtcNow).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _vinculoRepo.Setup(r => r.ListarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
@@ -64,14 +65,15 @@ public class InativarTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorJaInativo_LancaDomainException()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        treinador.Aprovar(Guid.NewGuid());
-        treinador.Inativar();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), TestData.Agora);
+        treinador.Inativar(TestData.Agora);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new InativarTreinadorCommand(treinador.Id, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*já está inativo*");
+        var result = await _handler.HandleAsync(new InativarTreinadorCommand(treinador.Id, Guid.NewGuid()));
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("já está inativo");
     }
 
     [Fact]

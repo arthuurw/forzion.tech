@@ -10,13 +10,13 @@ namespace forzion.tech.Tests.Domain.Entities;
 
 public class ContaTests
 {
-    private static readonly Email EmailValido = Email.Criar("treinador@email.com");
+    private static readonly Email EmailValido = Email.Criar("treinador@email.com").Value;
     private const string HashValido = "$2a$12$abcdefghijklmnopqrstuuVGrfHSMr6yp6vQI1234567890abcdef";
 
     [Fact]
     public void Criar_DadosValidos_RetornaContaCorreta()
     {
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador, TestData.Agora);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador, TestData.Agora).Value;
 
         conta.Id.Should().NotBe(Guid.Empty);
         conta.Email.Should().Be(EmailValido);
@@ -29,7 +29,7 @@ public class ContaTests
     [Fact]
     public void Criar_DadosValidos_EmailNaoVerificado()
     {
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora).Value;
 
         conta.EmailVerificado.Should().BeFalse();
         conta.VerificadoEm.Should().BeNull();
@@ -40,7 +40,7 @@ public class ContaTests
     {
         var agora = new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc);
 
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, agora);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, agora).Value;
 
         conta.DomainEvents.Should().ContainSingle()
             .Which.Should().BeOfType<ContaRegistradaEvent>()
@@ -58,7 +58,7 @@ public class ContaTests
     [InlineData(TipoConta.Aluno)]
     public void Criar_TodosOsTipos_CriaCorretamente(TipoConta tipo)
     {
-        var conta = Conta.Criar(EmailValido, HashValido, tipo, TestData.Agora);
+        var conta = Conta.Criar(EmailValido, HashValido, tipo, TestData.Agora).Value;
         conta.TipoConta.Should().Be(tipo);
     }
 
@@ -74,22 +74,22 @@ public class ContaTests
     [InlineData("   ")]
     public void Criar_PasswordHashVazio_LancaDomainException(string hash)
     {
-        var act = () => Conta.Criar(EmailValido, hash, TipoConta.Treinador, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("*hash da senha*");
+        var r = Conta.Criar(EmailValido, hash, TipoConta.Treinador, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Contain("hash da senha");
     }
 
     [Fact]
     public void AtualizarSenha_NovoHashValido_AtualizaEPreencheUpdatedAt()
     {
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora).Value;
         var novoHash = "$2a$12$zyxwvutsrqponmlkjihgffeKLMNOPQRSTUVWXYZ0123456789abcd";
 
-        conta.AtualizarSenha(novoHash);
+        var r = conta.AtualizarSenha(novoHash, TestData.Agora);
 
+        r.IsSuccess.Should().BeTrue();
         conta.PasswordHash.Should().Be(novoHash);
-        conta.UpdatedAt.Should().NotBeNull();
-        // AtualizarSenha usa DateTime.UtcNow internamente — assertion contra UtcNow real.
-        conta.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+        conta.UpdatedAt.Should().Be(TestData.Agora);
     }
 
     [Theory]
@@ -97,16 +97,17 @@ public class ContaTests
     [InlineData("   ")]
     public void AtualizarSenha_HashVazio_LancaDomainException(string hash)
     {
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador, TestData.Agora);
-        var act = () => conta.AtualizarSenha(hash);
-        act.Should().Throw<DomainException>().WithMessage("*hash da senha*");
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Treinador, TestData.Agora).Value;
+        var r = conta.AtualizarSenha(hash, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Contain("hash da senha");
     }
 
     [Fact]
     public void MarcarEmailVerificado_ContaNaoVerificada_PreencheFlagEDatas()
     {
         var agora = new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc);
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora).Value;
 
         conta.MarcarEmailVerificado(agora);
 
@@ -119,7 +120,7 @@ public class ContaTests
     public void MarcarEmailVerificado_ContaJaVerificada_NaoAlteraDatas()
     {
         var primeiraVez = new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc);
-        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora).Value;
         conta.MarcarEmailVerificado(primeiraVez);
 
         conta.MarcarEmailVerificado(primeiraVez.AddHours(1));

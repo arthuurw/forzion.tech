@@ -43,7 +43,7 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
     }
 
     private AssinaturaAluno AssinaturaValida() =>
-        AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora);
+        AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora).Value;
 
     [Fact]
     public async Task HandleAsync_AssinaturaNaoEncontrada_NaoEnvia()
@@ -76,7 +76,7 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemTelefone_NaoEnvia()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora); // sem telefone
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora).Value; // sem telefone
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -92,7 +92,7 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoComTelefone_EnviaMensagemComLinkPortal()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -114,7 +114,7 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
     [Fact]
     public async Task HandleAsync_MetodoCartao_MensagemUsaCartaoDeCredito()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", TestData.Agora, telefone: "11888887777");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", TestData.Agora, telefone: "11888887777").Value;
         var eventoCartao = Evento with { MetodoPagamento = MetodoPagamento.Cartao };
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());

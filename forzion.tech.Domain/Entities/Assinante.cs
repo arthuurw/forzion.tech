@@ -23,10 +23,10 @@ public class Assinante
         };
     }
 
-    public void Sincronizar(string nome, string? email)
+    public void Sincronizar(string nome, string? email, DateTime agora)
     {
         Nome = nome;
         Email = email;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 }

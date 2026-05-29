@@ -36,14 +36,20 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
             return;
         }
 
-        var assinatura = Domain.Entities.AssinaturaAluno.Criar(
+        var assinaturaResult = Domain.Entities.AssinaturaAluno.Criar(
             vinculo.Id,
             pacote.Id,
             domainEvent.TreinadorId,
             domainEvent.AlunoId,
             pacote.Preco,
             domainEvent.OcorridoEm);
+        if (assinaturaResult.IsFailure)
+        {
+            logger.LogWarning("AssinaturaAluno não criada para vínculo {VinculoId}: {Erro}", vinculo.Id, assinaturaResult.Error!.Message);
+            return;
+        }
 
+        var assinatura = assinaturaResult.Value;
         await assinaturaRepository.AdicionarAsync(assinatura, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

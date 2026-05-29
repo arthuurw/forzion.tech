@@ -28,7 +28,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     private static AssinaturaAluno CriarAtiva()
     {
         var a = new AssinaturaAlunoBuilder().ComAlunoId(AlunoId).Build();
-        a.Ativar();
+        a.Ativar(TestData.Agora);
         a.ClearDomainEvents();
         return a;
     }
@@ -66,7 +66,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     public async Task HandleAsync_AssinaturaJaCancelada_RetornaFailureSemCommit()
     {
         var assinatura = new AssinaturaAlunoBuilder().ComAlunoId(AlunoId).Build();
-        assinatura.Ativar();
+        assinatura.Ativar(TestData.Agora);
         assinatura.Cancelar(TestData.Agora);
         _assinaturaRepo.Setup(r => r.ObterAtualPorAlunoAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);
@@ -82,8 +82,8 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     public async Task HandleAsync_AssinaturaInadimplente_PermiteCancelar()
     {
         var assinatura = new AssinaturaAlunoBuilder().ComAlunoId(AlunoId).Build();
-        assinatura.Ativar();
-        assinatura.MarcarInadimplente();
+        assinatura.Ativar(TestData.Agora);
+        assinatura.MarcarInadimplente(TestData.Agora);
         assinatura.ClearDomainEvents();
         _assinaturaRepo.Setup(r => r.ObterAtualPorAlunoAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);

@@ -19,8 +19,8 @@ public class ListarHealthSnapshotsHandlerTests
     {
         var snapshots = new[]
         {
-            HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{}", DateTime.UtcNow),
-            HealthSnapshot.Criar("homolog", StatusSaude.Degradado, "{}", DateTime.UtcNow.AddMinutes(-1))
+            HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{}", DateTime.UtcNow).Value,
+            HealthSnapshot.Criar("homolog", StatusSaude.Degradado, "{}", DateTime.UtcNow.AddMinutes(-1)).Value
         };
         _repo.Setup(r => r.ListarRecentesAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(snapshots);
 

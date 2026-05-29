@@ -7,6 +7,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Vinculos;
 
@@ -35,8 +36,8 @@ public class DesvincularAlunoHandlerTests
     public async Task HandleAsync_InativaVinculoECascadeTreinoAluno()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
-        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId, DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -55,7 +56,7 @@ public class DesvincularAlunoHandlerTests
     {
         var treinadorLogadoId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(outroTreinadorId, Guid.NewGuid(), DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(outroTreinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorLogadoId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -77,8 +78,8 @@ public class DesvincularAlunoHandlerTests
     public async Task HandleAsync_VinculoJaInativo_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
-        vinculo.Inativar();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        vinculo.Inativar(TestData.Agora);
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -101,8 +102,8 @@ public class DesvincularAlunoHandlerTests
     public async Task HandleAsync_ComAssinaturaAtiva_CancelaAssinatura()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
-        var assinatura = AssinaturaAluno.Criar(vinculo.Id, Guid.NewGuid(), treinadorId, vinculo.AlunoId, 100m, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        var assinatura = AssinaturaAluno.Criar(vinculo.Id, Guid.NewGuid(), treinadorId, vinculo.AlunoId, 100m, DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);

@@ -8,7 +8,8 @@ namespace forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
 public class AtualizarPacoteHandler(
     IPacoteRepository pacoteRepository,
     IUnitOfWork unitOfWork,
-    IValidator<AtualizarPacoteCommand> validator)
+    IValidator<AtualizarPacoteCommand> validator,
+    TimeProvider timeProvider)
 {
     public virtual Task<PacoteResponse> HandleAsync(
         AtualizarPacoteCommand command,
@@ -30,7 +31,9 @@ public class AtualizarPacoteHandler(
         if (pacote.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
 
-        pacote.Atualizar(command.Nome, command.Preco, command.Descricao);
+        var atualizarResult = pacote.Atualizar(command.Nome, command.Preco, command.Descricao, timeProvider.GetUtcNow().UtcDateTime);
+        if (atualizarResult.IsFailure)
+            throw new DomainException(atualizarResult.Error!.Message);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

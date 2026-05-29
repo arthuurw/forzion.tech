@@ -28,6 +28,7 @@ public class AtualizarAlunoHandlerTests
             _vinculoRepo.Object,
             _unitOfWork.Object,
             _userContext.Object,
+            TimeProvider.System,
             _logger.Object);
     }
 
@@ -81,8 +82,8 @@ public class AtualizarAlunoHandlerTests
     public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
     {
         var aluno = new AlunoBuilder().ComNome("João").Build();
-        aluno.Ativar();
-        aluno.Inativar();
+        aluno.Ativar(TestData.Agora);
+        aluno.Inativar(TestData.Agora);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var act = async () => await _handler.HandleAsync(

@@ -55,7 +55,7 @@ public sealed class ErrorLogDbSinkProvider(IServiceScopeFactory scopeFactory, Ti
             {
                 using var scope = scopeFactory.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                var entry = ErrorLogEntry.Criar(ocorridoEm, nivel, origem, mensagem);
+                var entry = ErrorLogEntry.Criar(ocorridoEm, nivel, origem, mensagem, ocorridoEm).Value;
                 context.ErrorLogs.Add(entry);
                 await context.SaveChangesAsync().ConfigureAwait(false);
             }

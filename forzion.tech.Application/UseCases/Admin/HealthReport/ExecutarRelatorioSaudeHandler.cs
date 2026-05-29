@@ -21,7 +21,11 @@ public class ExecutarRelatorioSaudeHandler(
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var report = await collector.ColetarAsync(config, cancellationToken).ConfigureAwait(false);
 
-        var snapshot = HealthSnapshot.Criar(report.Ambiente, report.StatusGeral, HealthReportPayload.Serializar(report), agora);
+        var snapshotResult = HealthSnapshot.Criar(report.Ambiente, report.StatusGeral, HealthReportPayload.Serializar(report), agora);
+        if (snapshotResult.IsFailure)
+            throw new DomainException(snapshotResult.Error!.Message);
+        var snapshot = snapshotResult.Value;
+
         await snapshotRepository.AdicionarAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
         await sender.EnviarAsync(report, config.ObterDestinatarios(), cancellationToken).ConfigureAwait(false);

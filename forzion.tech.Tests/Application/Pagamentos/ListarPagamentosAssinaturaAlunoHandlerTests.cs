@@ -22,11 +22,11 @@ public class ListarPagamentosAssinaturaAlunoHandlerTests
     public async Task HandleAsync_DonoDaAssinaturaAluno_RetornaLista()
     {
         var alunoId = Guid.NewGuid();
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 100m, DateTime.UtcNow);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 100m, DateTime.UtcNow).Value;
         var pagamentos = new List<Pagamento>
         {
-            Pagamento.Criar(assinatura.Id, 100m, DateTime.UtcNow),
-            Pagamento.Criar(assinatura.Id, 200m, DateTime.UtcNow),
+            Pagamento.Criar(assinatura.Id, 100m, DateTime.UtcNow).Value,
+            Pagamento.Criar(assinatura.Id, 200m, DateTime.UtcNow).Value,
         };
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
@@ -40,7 +40,7 @@ public class ListarPagamentosAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoErrado_LancaAcessoNegado()
     {
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 100m, DateTime.UtcNow);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 100m, DateTime.UtcNow).Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 
         var act = async () => await _handler.HandleAsync(new ListarPagamentosAssinaturaAlunoQuery(assinatura.Id, Guid.NewGuid()));

@@ -53,7 +53,10 @@ public class VincularFichaAoAlunoHandler(
             return Result.Failure(Error.Business($"Esta ficha já está vinculada ao aluno {nomeExistente}."));
         }
 
-        var treinoAluno = TreinoAluno.Criar(command.TreinoId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime);
+        var treinoAlunoResult = TreinoAluno.Criar(command.TreinoId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime);
+        if (treinoAlunoResult.IsFailure)
+            return Result.Failure(treinoAlunoResult.Error!);
+        var treinoAluno = treinoAlunoResult.Value;
 
         await treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

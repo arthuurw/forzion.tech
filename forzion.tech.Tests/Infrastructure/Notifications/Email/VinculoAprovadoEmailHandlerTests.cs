@@ -63,7 +63,7 @@ public class VinculoAprovadoEmailHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemEmailEContaNaoEncontrada_NaoEnvia()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow).Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
         // _contaRepo retorna null por padrão (setup no construtor)
@@ -79,9 +79,9 @@ public class VinculoAprovadoEmailHandlerTests
     public async Task HandleAsync_AlunoSemEmail_UsaEmailDaConta()
     {
         var contaId = Guid.NewGuid();
-        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow).Value;
         var conta = new ContaBuilder().ComEmail("joao@conta.com").Build();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
@@ -103,8 +103,8 @@ public class VinculoAprovadoEmailHandlerTests
     [Fact]
     public async Task HandleAsync_HappyPath_EnviaEmailComNomeTreinador()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow, email: "joao@example.com");
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow, email: "joao@example.com").Value;
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
@@ -124,7 +124,7 @@ public class VinculoAprovadoEmailHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorNaoEncontrado_UsaFallback()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", DateTime.UtcNow, email: "maria@example.com");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", DateTime.UtcNow, email: "maria@example.com").Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);

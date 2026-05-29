@@ -69,18 +69,18 @@ public class RequireAssinaturaAtivaFilterTests
             treinadorId: Guid.NewGuid(),
             alunoId: alunoId,
             valor: 100m,
-            agora: Agora);
+            agora: Agora).Value;
 
         switch (status)
         {
             case AssinaturaAlunoStatus.Pendente:
                 break;
             case AssinaturaAlunoStatus.Ativa:
-                assinatura.Ativar();
+                assinatura.Ativar(Agora);
                 break;
             case AssinaturaAlunoStatus.Inadimplente:
-                assinatura.Ativar();
-                assinatura.MarcarInadimplente();
+                assinatura.Ativar(Agora);
+                assinatura.MarcarInadimplente(Agora);
                 break;
             case AssinaturaAlunoStatus.Cancelada:
                 assinatura.Cancelar(Agora);
@@ -91,7 +91,7 @@ public class RequireAssinaturaAtivaFilterTests
     }
 
     private static Aluno CriarAluno() =>
-        Aluno.Criar(Guid.NewGuid(), "Aluno Teste", Agora);
+        Aluno.Criar(Guid.NewGuid(), "Aluno Teste", Agora).Value;
 
     [Fact]
     public async Task Aluno_ComAssinaturaAtiva_ChamaNext()

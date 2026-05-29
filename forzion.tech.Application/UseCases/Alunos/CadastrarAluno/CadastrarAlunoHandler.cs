@@ -2,6 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
@@ -27,7 +28,10 @@ public class CadastrarAlunoHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var aluno = Aluno.Criar(command.ContaId, command.Nome, timeProvider.GetUtcNow().UtcDateTime, command.Email, command.Telefone);
+        var alunoResult = Aluno.Criar(command.ContaId, command.Nome, timeProvider.GetUtcNow().UtcDateTime, command.Email, command.Telefone);
+        if (alunoResult.IsFailure)
+            throw new DomainException(alunoResult.Error!.Message);
+        var aluno = alunoResult.Value;
 
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

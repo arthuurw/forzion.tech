@@ -30,15 +30,22 @@ public class ReprovarTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        treinador.Reprovar(command.AdminId);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        var log = LogAprovacao.Registrar(
+        var reprovarResult = treinador.Reprovar(command.AdminId, agora);
+        if (reprovarResult.IsFailure)
+            return Result.Failure(reprovarResult.Error!);
+
+        var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.ReprovacaoTreinador,
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
-            timeProvider.GetUtcNow().UtcDateTime,
+            agora,
             command.Observacao);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+        var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

@@ -1,6 +1,5 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Time.Testing;
 
 namespace forzion.tech.Tests.Domain.Entities;
@@ -14,7 +13,7 @@ public class LogicaTemporalTests
     private static readonly DateTimeOffset Instante = new(2026, 3, 1, 8, 0, 0, TimeSpan.Zero);
 
     private static AssinaturaAluno CriarAssinatura(DateTime agora) =>
-        AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 199m, agora);
+        AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 199m, agora).Value;
 
     [Fact]
     public void AssinaturaAluno_Criar_DefineDataProximaCobranca_NoInstanteControlado()
@@ -56,10 +55,10 @@ public class LogicaTemporalTests
         time.Advance(TimeSpan.FromDays(30));
         var agoraDepois = time.GetUtcNow().UtcDateTime;
 
-        var act = () => assinatura.AgendarProximaCobranca(dataAgendada, agoraDepois);
+        var r = assinatura.AgendarProximaCobranca(dataAgendada, agoraDepois);
 
-        act.Should().Throw<DomainException>()
-            .WithMessage("A data da próxima cobrança deve ser futura.");
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("A data da próxima cobrança deve ser futura.");
     }
 
     [Fact]
@@ -68,10 +67,10 @@ public class LogicaTemporalTests
         var time = new FakeTimeProvider(Instante);
         var agora = time.GetUtcNow().UtcDateTime;
 
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 99m, agora);
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 99m, agora).Value;
         // Expiração do Pix: 1 hora a partir do instante controlado.
         var expiracao = agora.AddHours(1);
-        pagamento.DefinirDadosPix("pi_pix", "qr", "url", expiracao);
+        pagamento.DefinirDadosPix("pi_pix", "qr", "url", expiracao, agora);
 
         pagamento.PixExpiracao.Should().Be(Instante.UtcDateTime.AddHours(1));
 

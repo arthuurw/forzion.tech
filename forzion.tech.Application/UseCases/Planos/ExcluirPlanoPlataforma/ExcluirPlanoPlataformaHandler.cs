@@ -6,7 +6,8 @@ namespace forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
 
 public class ExcluirPlanoPlataformaHandler(
     IPlanoPlataformaRepository planoRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider)
 {
     public virtual Task HandleAsync(
         ExcluirPlanoPlataformaCommand command,
@@ -23,7 +24,7 @@ public class ExcluirPlanoPlataformaHandler(
         var plano = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoPlataformaNaoEncontradoException();
 
-        plano.Inativar();
+        plano.Inativar(timeProvider.GetUtcNow().UtcDateTime);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
     }

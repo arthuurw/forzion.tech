@@ -53,7 +53,7 @@ public class AssinaturaAlunoCanceladaWhatsAppAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemTelefone_NaoEnvia()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora); // sem telefone
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora).Value; // sem telefone
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
 
@@ -67,7 +67,7 @@ public class AssinaturaAlunoCanceladaWhatsAppAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoComTelefone_EnviaConfirmacaoComLinkPortal()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
 

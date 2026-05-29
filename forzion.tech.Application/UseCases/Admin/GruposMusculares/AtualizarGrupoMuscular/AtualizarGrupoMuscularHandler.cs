@@ -8,6 +8,7 @@ namespace forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrup
 public class AtualizarGrupoMuscularHandler(
     IGrupoMuscularRepository repository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     IValidator<AtualizarGrupoMuscularCommand> validator)
 {
     public virtual Task<GrupoMuscularResponse> HandleAsync(AtualizarGrupoMuscularCommand command, CancellationToken cancellationToken = default)
@@ -27,7 +28,9 @@ public class AtualizarGrupoMuscularHandler(
         if (existente != null && existente.Id != command.Id)
             throw new DomainException("Já existe outro grupo muscular com este nome.");
 
-        grupo.Atualizar(command.Nome);
+        var atualizarResult = grupo.Atualizar(command.Nome, timeProvider.GetUtcNow().UtcDateTime);
+        if (atualizarResult.IsFailure)
+            throw new DomainException(atualizarResult.Error!.Message);
 
         await unitOfWork.CommitAsync(cancellationToken);
 

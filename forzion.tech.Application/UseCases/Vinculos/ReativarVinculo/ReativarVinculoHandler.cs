@@ -41,17 +41,26 @@ public class ReativarVinculoHandler(
         await limiteTreinadorService.ValidarAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, command.AlunoId, agora);
-        vinculo.Aprovar(command.TreinadorId, command.PacoteId);
+        var vinculoResult = VinculoTreinadorAluno.Criar(command.TreinadorId, command.AlunoId, agora);
+        if (vinculoResult.IsFailure)
+            throw new DomainException(vinculoResult.Error!.Message);
+        var vinculo = vinculoResult.Value;
+
+        var aprovarResult = vinculo.Aprovar(command.TreinadorId, command.PacoteId, agora);
+        if (aprovarResult.IsFailure)
+            throw new DomainException(aprovarResult.Error!.Message);
 
         await vinculoRepository.AdicionarAsync(vinculo, cancellationToken).ConfigureAwait(false);
 
-        var log = LogAprovacao.Registrar(
+        var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AprovacaoVinculo,
             command.TreinadorId,
             vinculo.Id,
             nameof(VinculoTreinadorAluno),
             agora);
+        if (logResult.IsFailure)
+            throw new DomainException(logResult.Error!.Message);
+        var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

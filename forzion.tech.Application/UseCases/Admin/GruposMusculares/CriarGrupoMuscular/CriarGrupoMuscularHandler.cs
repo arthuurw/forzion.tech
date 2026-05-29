@@ -26,7 +26,10 @@ public class CriarGrupoMuscularHandler(
         if (existente != null)
             throw new DomainException("Já existe um grupo muscular com este nome.");
 
-        var grupo = GrupoMuscular.Criar(command.Nome, timeProvider.GetUtcNow().UtcDateTime);
+        var grupoResult = GrupoMuscular.Criar(command.Nome, timeProvider.GetUtcNow().UtcDateTime);
+        if (grupoResult.IsFailure)
+            throw new DomainException(grupoResult.Error!.Message);
+        var grupo = grupoResult.Value;
 
         await repository.AdicionarAsync(grupo, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);

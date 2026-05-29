@@ -1,7 +1,6 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
 using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
@@ -15,7 +14,7 @@ public class TreinadorTests
     [Fact]
     public void Criar_DadosValidos_RetornaTreinador()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
 
         t.Id.Should().NotBeEmpty();
         t.ContaId.Should().Be(ContaId);
@@ -29,7 +28,7 @@ public class TreinadorTests
     [Fact]
     public void Criar_NomeComEspacos_Remove()
     {
-        var t = Treinador.Criar(ContaId, "  Carlos  ", TestData.Agora);
+        var t = Treinador.Criar(ContaId, "  Carlos  ", TestData.Agora).Value;
         t.Nome.Should().Be("Carlos");
     }
 
@@ -38,22 +37,25 @@ public class TreinadorTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => Treinador.Criar(ContaId, nome, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O nome é obrigatório.");
+        var r = Treinador.Criar(ContaId, nome, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O nome é obrigatório.");
     }
 
     [Fact]
     public void Criar_ContaIdVazio_LancaDomainException()
     {
-        var act = () => Treinador.Criar(Guid.Empty, "Carlos", TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O identificador da conta é inválido.");
+        var r = Treinador.Criar(Guid.Empty, "Carlos", TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador da conta é inválido.");
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => Treinador.Criar(ContaId, new string('a', 101), TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
+        var r = Treinador.Criar(ContaId, new string('a', 101), TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O nome deve ter no máximo 100 caracteres.");
     }
 
     // --- Aprovar ---
@@ -61,10 +63,10 @@ public class TreinadorTests
     [Fact]
     public void Aprovar_AguardandoAprovacao_MudaParaAtivo()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
         var adminId = Guid.NewGuid();
 
-        t.Aprovar(adminId);
+        t.Aprovar(adminId, TestData.Agora);
 
         t.Status.Should().Be(TreinadorStatus.Ativo);
         t.AprovadoPorId.Should().Be(adminId);
@@ -75,11 +77,12 @@ public class TreinadorTests
     [Fact]
     public void Aprovar_JaAtivo_LancaDomainException()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.Aprovar(Guid.NewGuid());
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
 
-        var act = () => t.Aprovar(Guid.NewGuid());
-        act.Should().Throw<DomainException>().WithMessage("Apenas treinadores aguardando aprovação podem ser aprovados.");
+        var r = t.Aprovar(Guid.NewGuid(), TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas treinadores aguardando aprovação podem ser aprovados.");
     }
 
     // --- Inativar ---
@@ -87,10 +90,10 @@ public class TreinadorTests
     [Fact]
     public void Inativar_Ativo_MudaParaInativo()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.Aprovar(Guid.NewGuid());
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
 
-        t.Inativar();
+        t.Inativar(TestData.Agora);
 
         t.Status.Should().Be(TreinadorStatus.Inativo);
         t.UpdatedAt.Should().NotBeNull();
@@ -99,12 +102,13 @@ public class TreinadorTests
     [Fact]
     public void Inativar_JaInativo_LancaDomainException()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.Aprovar(Guid.NewGuid());
-        t.Inativar();
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
+        t.Inativar(TestData.Agora);
 
-        var act = () => t.Inativar();
-        act.Should().Throw<DomainException>().WithMessage("O treinador já está inativo.");
+        var r = t.Inativar(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O treinador já está inativo.");
     }
 
     // --- AtribuirPlano ---
@@ -112,10 +116,10 @@ public class TreinadorTests
     [Fact]
     public void AtribuirPlano_PlanoValido_AtribuiId()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
         var planoId = Guid.NewGuid();
 
-        t.AtribuirPlano(planoId);
+        t.AtribuirPlano(planoId, TestData.Agora);
 
         t.PlanoPlataformaId.Should().Be(planoId);
         t.UpdatedAt.Should().NotBeNull();
@@ -124,9 +128,10 @@ public class TreinadorTests
     [Fact]
     public void AtribuirPlano_IdVazio_LancaDomainException()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        var act = () => t.AtribuirPlano(Guid.Empty);
-        act.Should().Throw<DomainException>().WithMessage("O identificador do plano é inválido.");
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        var r = t.AtribuirPlano(Guid.Empty, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador do plano é inválido.");
     }
 
     // --- Reprovar ---
@@ -134,10 +139,10 @@ public class TreinadorTests
     [Fact]
     public void Reprovar_AguardandoAprovacao_MudaParaInativo()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
         var adminId = Guid.NewGuid();
 
-        t.Reprovar(adminId);
+        t.Reprovar(adminId, TestData.Agora);
 
         t.Status.Should().Be(TreinadorStatus.Inativo);
         t.UpdatedAt.Should().NotBeNull();
@@ -146,11 +151,12 @@ public class TreinadorTests
     [Fact]
     public void Reprovar_JaAtivo_LancaDomainException()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.Aprovar(Guid.NewGuid());
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
 
-        var act = () => t.Reprovar(Guid.NewGuid());
-        act.Should().Throw<DomainException>().WithMessage("Apenas treinadores aguardando aprovação podem ser reprovados.");
+        var r = t.Reprovar(Guid.NewGuid(), TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas treinadores aguardando aprovação podem ser reprovados.");
     }
 
     // --- ValidarDisponibilidade ---
@@ -158,20 +164,21 @@ public class TreinadorTests
     [Fact]
     public void ValidarDisponibilidade_Ativo_NaoLancaExcecao()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.Aprovar(Guid.NewGuid());
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
 
-        var act = () => t.ValidarDisponibilidade();
-        act.Should().NotThrow();
+        var r = t.ValidarDisponibilidade();
+        r.IsSuccess.Should().BeTrue();
     }
 
     [Fact]
     public void ValidarDisponibilidade_AguardandoAprovacao_LancaDomainException()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
 
-        var act = () => t.ValidarDisponibilidade();
-        act.Should().Throw<DomainException>().WithMessage("O treinador selecionado não está disponível.");
+        var r = t.ValidarDisponibilidade();
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O treinador selecionado não está disponível.");
     }
 
     // --- ValidarParaExclusao ---
@@ -179,22 +186,23 @@ public class TreinadorTests
     [Fact]
     public void ValidarParaExclusao_Inativo_NaoLancaExcecao()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.Aprovar(Guid.NewGuid());
-        t.Inativar();
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
+        t.Inativar(TestData.Agora);
 
-        var act = () => t.ValidarParaExclusao();
-        act.Should().NotThrow();
+        var r = t.ValidarParaExclusao();
+        r.IsSuccess.Should().BeTrue();
     }
 
     [Fact]
     public void ValidarParaExclusao_Ativo_LancaDomainException()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.Aprovar(Guid.NewGuid());
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
 
-        var act = () => t.ValidarParaExclusao();
-        act.Should().Throw<DomainException>().WithMessage("Apenas treinadores inativos podem ser excluídos permanentemente.");
+        var r = t.ValidarParaExclusao();
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas treinadores inativos podem ser excluídos permanentemente.");
     }
 
     // --- AtualizarNome ---
@@ -202,8 +210,8 @@ public class TreinadorTests
     [Fact]
     public void AtualizarNome_DadosValidos_AtualizaNomeEUpdatedAt()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.AtualizarNome("  João  ");
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.AtualizarNome("  João  ", TestData.Agora);
         t.Nome.Should().Be("João");
         t.UpdatedAt.Should().NotBeNull();
     }
@@ -213,17 +221,19 @@ public class TreinadorTests
     [InlineData("   ")]
     public void AtualizarNome_NomeVazio_LancaDomainException(string nome)
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        var act = () => t.AtualizarNome(nome);
-        act.Should().Throw<DomainException>().WithMessage("O nome não pode ser vazio.");
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        var r = t.AtualizarNome(nome, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O nome não pode ser vazio.");
     }
 
     [Fact]
     public void AtualizarNome_NomeMuitoLongo_LancaDomainException()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        var act = () => t.AtualizarNome(new string('a', 101));
-        act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        var r = t.AtualizarNome(new string('a', 101), TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O nome deve ter no máximo 100 caracteres.");
     }
 
     // --- AtribuirPlano (guard inativo) ---
@@ -231,12 +241,13 @@ public class TreinadorTests
     [Fact]
     public void AtribuirPlano_TreinadorInativo_LancaDomainException()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora);
-        t.Aprovar(Guid.NewGuid());
-        t.Inativar();
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
+        t.Inativar(TestData.Agora);
 
-        var act = () => t.AtribuirPlano(Guid.NewGuid());
-        act.Should().Throw<DomainException>().WithMessage("Não é possível atribuir plano a um treinador inativo.");
+        var r = t.AtribuirPlano(Guid.NewGuid(), TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Não é possível atribuir plano a um treinador inativo.");
     }
 
     // --- Criar com telefone ---
@@ -244,14 +255,14 @@ public class TreinadorTests
     [Fact]
     public void Criar_ComTelefone_SalvaTelefone()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora, "  11999999999  ");
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora, "  11999999999  ").Value;
         t.Telefone.Should().Be("11999999999");
     }
 
     [Fact]
     public void Criar_TelefoneVazio_SalvaNull()
     {
-        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora, "   ");
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora, "   ").Value;
         t.Telefone.Should().BeNull();
     }
 }

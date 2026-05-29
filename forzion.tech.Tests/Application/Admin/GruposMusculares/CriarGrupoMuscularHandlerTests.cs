@@ -48,7 +48,7 @@ public class CriarGrupoMuscularHandlerTests
         // Arrange
         var command = new CriarGrupoMuscularCommand("Peito");
         _repository.Setup(r => r.ObterPorNomeAsync("Peito", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow));
+            .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value);
 
         // Act
         var act = () => _handler.HandleAsync(command);

@@ -16,13 +16,13 @@ public class ExcluirPlanoPlataformaHandlerTests
 
     public ExcluirPlanoPlataformaHandlerTests()
     {
-        _handler = new ExcluirPlanoPlataformaHandler(_planoRepo.Object, _unitOfWork.Object);
+        _handler = new ExcluirPlanoPlataformaHandler(_planoRepo.Object, _unitOfWork.Object, TimeProvider.System);
     }
 
     [Fact]
     public async Task HandleAsync_PlanoExiste_InativaEComita()
     {
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow).Value;
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
         await _handler.HandleAsync(new ExcluirPlanoPlataformaCommand(plano.Id));

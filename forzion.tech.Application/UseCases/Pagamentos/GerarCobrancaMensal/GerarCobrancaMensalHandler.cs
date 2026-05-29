@@ -58,10 +58,17 @@ public class GerarCobrancaMensalHandler(
                 }
 
                 logger.LogWarning("Pagamento zumbi {PagamentoId} detectado para assinatura {AssinaturaAlunoId}. Marcando como Falhou.", pendente.Id, assinatura.Id);
-                pendente.MarcarFalhou();
+                var marcarZumbiResult = pendente.MarcarFalhou(timeProvider.GetUtcNow().UtcDateTime);
+                if (marcarZumbiResult.IsFailure)
+                    // Sai do `await using` sem commit → rollback implícito da transação.
+                    return Result.Failure<PagamentoResponse>(marcarZumbiResult.Error!);
             }
 
-            pagamento = Pagamento.Criar(assinatura.Id, assinatura.Valor, timeProvider.GetUtcNow().UtcDateTime, command.Metodo);
+            var pagamentoResult = Pagamento.Criar(assinatura.Id, assinatura.Valor, timeProvider.GetUtcNow().UtcDateTime, command.Metodo);
+            if (pagamentoResult.IsFailure)
+                // Sai do `await using` sem commit → rollback implícito da transação.
+                return Result.Failure<PagamentoResponse>(pagamentoResult.Error!);
+            pagamento = pagamentoResult.Value;
             await pagamentoRepository.AdicionarAsync(pagamento, cancellationToken).ConfigureAwait(false);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -83,7 +90,9 @@ public class GerarCobrancaMensalHandler(
                     _taxaPlataformaPercent,
                     cancellationToken).ConfigureAwait(false);
 
-                pagamento.DefinirDadosCartao(cartaoResult.PaymentIntentId, cartaoResult.ClientSecret);
+                var definirCartaoResult = pagamento.DefinirDadosCartao(cartaoResult.PaymentIntentId, cartaoResult.ClientSecret, timeProvider.GetUtcNow().UtcDateTime);
+                if (definirCartaoResult.IsFailure)
+                    return Result.Failure<PagamentoResponse>(definirCartaoResult.Error!);
             }
             else
             {
@@ -94,12 +103,14 @@ public class GerarCobrancaMensalHandler(
                     _taxaPlataformaPercent,
                     cancellationToken).ConfigureAwait(false);
 
-                pagamento.DefinirDadosPix(pixResult.PaymentIntentId, pixResult.QrCode, pixResult.QrCodeUrl, pixResult.Expiracao);
+                var definirPixResult = pagamento.DefinirDadosPix(pixResult.PaymentIntentId, pixResult.QrCode, pixResult.QrCodeUrl, pixResult.Expiracao, timeProvider.GetUtcNow().UtcDateTime);
+                if (definirPixResult.IsFailure)
+                    return Result.Failure<PagamentoResponse>(definirPixResult.Error!);
             }
         }
         catch
         {
-            pagamento.MarcarFalhou();
+            pagamento.MarcarFalhou(timeProvider.GetUtcNow().UtcDateTime);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             throw;
         }

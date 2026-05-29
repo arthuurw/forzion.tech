@@ -32,7 +32,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaValida_RetornaStringNaoVazia()
     {
-        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
         var token = CriarServico().GerarToken(conta, perfilId);
@@ -43,7 +43,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaValida_TokenContemClaimsCorretos()
     {
-        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
         var token = CriarServico().GerarToken(conta, perfilId);
@@ -59,7 +59,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaSystemAdmin_TokenContemTipoCorreto()
     {
-        var conta = Conta.Criar(Email.Criar("admin@test.com"), "hash", TipoConta.SystemAdmin, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("admin@test.com").Value, "hash", TipoConta.SystemAdmin, DateTime.UtcNow).Value;
         var perfilId = conta.Id;
 
         var token = CriarServico().GerarToken(conta, perfilId);
@@ -73,7 +73,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaAluno_TokenContemTipoCorreto()
     {
-        var conta = Conta.Criar(Email.Criar("aluno@test.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("aluno@test.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
         var token = CriarServico().GerarToken(conta, perfilId);
@@ -94,7 +94,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_TokenPossuiIssuerEAudienceCorretos()
     {
-        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
 
         var token = CriarServico().GerarToken(conta, Guid.NewGuid());
 
@@ -108,7 +108,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_TokenPossuiExpiracao()
     {
-        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
 
         var token = CriarServico().GerarToken(conta, Guid.NewGuid());
 

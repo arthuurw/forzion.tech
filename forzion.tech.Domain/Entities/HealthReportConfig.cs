@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.ValueObjects;
 
 namespace forzion.tech.Domain.Entities;
@@ -19,7 +20,7 @@ public class HealthReportConfig
 
     private HealthReportConfig() { }
 
-    public static HealthReportConfig Criar(
+    public static Result<HealthReportConfig> Criar(
         bool ativo,
         TimeOnly horaEnvioUtc,
         IEnumerable<string> destinatarios,
@@ -29,47 +30,53 @@ public class HealthReportConfig
         bool incluirErros,
         DateTime agora)
     {
-        var csv = NormalizarEValidar(destinatarios, ativo);
+        var csvResult = NormalizarEValidar(destinatarios, ativo);
+        if (csvResult.IsFailure)
+            return Result.Failure<HealthReportConfig>(csvResult.Error!);
 
-        return new HealthReportConfig
+        return Result.Success(new HealthReportConfig
         {
             Id = Guid.NewGuid(),
             Ativo = ativo,
             HoraEnvioUtc = horaEnvioUtc,
-            Destinatarios = csv,
+            Destinatarios = csvResult.Value,
             IncluirLiveness = incluirLiveness,
             IncluirKpis = incluirKpis,
             IncluirEntregabilidade = incluirEntregabilidade,
             IncluirErros = incluirErros,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void Atualizar(
+    public Result Atualizar(
         bool ativo,
         TimeOnly horaEnvioUtc,
         IEnumerable<string> destinatarios,
         bool incluirLiveness,
         bool incluirKpis,
         bool incluirEntregabilidade,
-        bool incluirErros)
+        bool incluirErros,
+        DateTime agora)
     {
-        var csv = NormalizarEValidar(destinatarios, ativo);
+        var csvResult = NormalizarEValidar(destinatarios, ativo);
+        if (csvResult.IsFailure)
+            return Result.Failure(csvResult.Error!);
 
         Ativo = ativo;
         HoraEnvioUtc = horaEnvioUtc;
-        Destinatarios = csv;
+        Destinatarios = csvResult.Value;
         IncluirLiveness = incluirLiveness;
         IncluirKpis = incluirKpis;
         IncluirEntregabilidade = incluirEntregabilidade;
         IncluirErros = incluirErros;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
     public void MarcarEnviado(DateTime agora)
     {
         UltimoEnvioEm = agora;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 
     public IReadOnlyList<string> ObterDestinatarios() =>
@@ -77,17 +84,23 @@ public class HealthReportConfig
             ? Array.Empty<string>()
             : Destinatarios.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static string NormalizarEValidar(IEnumerable<string> destinatarios, bool ativo)
+    private static Result<string> NormalizarEValidar(IEnumerable<string> destinatarios, bool ativo)
     {
-        var normalizados = (destinatarios ?? Enumerable.Empty<string>())
-            .Where(d => !string.IsNullOrWhiteSpace(d))
-            .Select(d => Email.Criar(d).Value)
-            .Distinct()
-            .ToList();
+        var normalizados = new List<string>();
+        foreach (var destinatario in (destinatarios ?? Enumerable.Empty<string>())
+                     .Where(d => !string.IsNullOrWhiteSpace(d)))
+        {
+            var emailResult = Email.Criar(destinatario);
+            if (emailResult.IsFailure)
+                return Result.Failure<string>(emailResult.Error!);
+
+            if (!normalizados.Contains(emailResult.Value.Value))
+                normalizados.Add(emailResult.Value.Value);
+        }
 
         if (ativo && normalizados.Count == 0)
-            throw new DomainException("Uma configuração ativa exige ao menos um destinatário.");
+            return Result.Failure<string>(HealthErrors.DestinatarioObrigatorio);
 
-        return string.Join(',', normalizados);
+        return Result.Success(string.Join(',', normalizados));
     }
 }

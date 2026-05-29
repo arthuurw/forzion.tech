@@ -13,21 +13,21 @@ public class EmailTests
     public void Criar_ComEmailValido_RetornaEmail(string email)
     {
         var result = Email.Criar(email);
-        result.Value.Should().Be(email.Trim().ToLowerInvariant());
+        result.Value.Value.Should().Be(email.Trim().ToLowerInvariant());
     }
 
     [Fact]
     public void Criar_ComEmailEmMaiusculo_NormalizaParaMinusculo()
     {
         var result = Email.Criar("USER@EXAMPLE.COM");
-        result.Value.Should().Be("user@example.com");
+        result.Value.Value.Should().Be("user@example.com");
     }
 
     [Fact]
     public void Criar_ComEspacos_Remove()
     {
         var result = Email.Criar("  user@example.com  ");
-        result.Value.Should().Be("user@example.com");
+        result.Value.Value.Should().Be("user@example.com");
     }
 
     [Theory]
@@ -35,16 +35,18 @@ public class EmailTests
     [InlineData("   ")]
     public void Criar_ComEmailVazioOuEspacos_LancaDomainException(string email)
     {
-        var act = () => Email.Criar(email);
-        act.Should().Throw<DomainException>().WithMessage("O e-mail é obrigatório.");
+        var r = Email.Criar(email);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O e-mail é obrigatório.");
     }
 
     [Fact]
     public void Criar_ComEmailMuitoLongo_LancaDomainException()
     {
         var email = new string('a', 251) + "@b.com";
-        var act = () => Email.Criar(email);
-        act.Should().Throw<DomainException>().WithMessage("O e-mail deve ter no máximo 256 caracteres.");
+        var r = Email.Criar(email);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O e-mail deve ter no máximo 256 caracteres.");
     }
 
     [Theory]
@@ -54,8 +56,9 @@ public class EmailTests
     [InlineData("sem@ponto")]
     public void Criar_ComFormatoInvalido_LancaDomainException(string email)
     {
-        var act = () => Email.Criar(email);
-        act.Should().Throw<DomainException>().WithMessage("O e-mail informado é inválido.");
+        var r = Email.Criar(email);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O e-mail informado é inválido.");
     }
 
     [Fact]
@@ -68,7 +71,7 @@ public class EmailTests
     [Fact]
     public void ToString_RetornaValue()
     {
-        var email = Email.Criar("user@example.com");
+        var email = Email.Criar("user@example.com").Value;
         email.ToString().Should().Be("user@example.com");
     }
 }

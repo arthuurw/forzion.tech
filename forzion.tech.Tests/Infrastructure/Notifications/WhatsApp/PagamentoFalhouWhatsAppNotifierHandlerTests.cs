@@ -41,13 +41,13 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
     }
 
     private AssinaturaAluno AssinaturaValida() =>
-        AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora);
+        AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora).Value;
 
     [Fact]
     public async Task HandleAsync_PrimeiraTentativa_NaoEnvia()
     {
         // 1ª falha: e-mail cobre, WhatsApp pula pra não spammar.
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -91,7 +91,7 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemTelefone_NaoEnvia()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora).Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -107,7 +107,7 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
     [Fact]
     public async Task HandleAsync_SegundaTentativaComTelefone_EnviaMensagem()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -128,7 +128,7 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
     [Fact]
     public async Task HandleAsync_TerceiraTentativa_MensagemUrgente()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", TestData.Agora, telefone: "11888887777");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", TestData.Agora, telefone: "11888887777").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

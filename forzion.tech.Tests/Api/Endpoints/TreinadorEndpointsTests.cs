@@ -769,7 +769,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<AtualizarPacoteHandler> AtualizarPacoteHandlerMock { get; } = new(
             Mock.Of<IPacoteRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<AtualizarPacoteCommand>>());
+            Mock.Of<IValidator<AtualizarPacoteCommand>>(), TimeProvider.System);
 
         public Mock<ExcluirPacoteHandler> ExcluirPacoteHandlerMock { get; } = new(
             Mock.Of<IPacoteRepository>(),
@@ -787,7 +787,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<VerificarOnboardingTreinadorHandler>>());
 
         public Mock<GerarCobrancaMensalHandler> GerarCobrancaHandlerMock { get; } = new(
@@ -849,7 +849,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IGrupoMuscularRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
 
         public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),

@@ -2,7 +2,6 @@ using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
 using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
@@ -12,7 +11,7 @@ public class PagamentoTests
     private static readonly Guid AssinaturaAlunoId = Guid.NewGuid();
     private const decimal Valor = 150m;
 
-    private static Pagamento CriarValido() => Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora);
+    private static Pagamento CriarValido() => Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora).Value;
 
     // --- Criar ---
 
@@ -35,7 +34,7 @@ public class PagamentoTests
     {
         // P0 (M6 follow-up) — notifica aluno via email + WhatsApp (handlers
         // em Infrastructure) que cobranca esta disponivel.
-        var p = Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora, MetodoPagamento.Cartao);
+        var p = Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora, MetodoPagamento.Cartao).Value;
 
         p.DomainEvents.Should().ContainSingle();
         var evento = p.DomainEvents.OfType<PagamentoCriadoEvent>().Single();
@@ -49,8 +48,9 @@ public class PagamentoTests
     [Fact]
     public void Criar_AssinaturaAlunoIdVazio_LancaDomainException()
     {
-        var act = () => Pagamento.Criar(Guid.Empty, Valor, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O identificador da assinatura é inválido.");
+        var r = Pagamento.Criar(Guid.Empty, Valor, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador da assinatura é inválido.");
     }
 
     [Theory]
@@ -58,8 +58,9 @@ public class PagamentoTests
     [InlineData(-1)]
     public void Criar_ValorInvalido_LancaDomainException(decimal valor)
     {
-        var act = () => Pagamento.Criar(AssinaturaAlunoId, valor, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O valor do pagamento deve ser maior que zero.");
+        var r = Pagamento.Criar(AssinaturaAlunoId, valor, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O valor do pagamento deve ser maior que zero.");
     }
 
     // --- DefinirDadosPix ---
@@ -70,7 +71,7 @@ public class PagamentoTests
         var p = CriarValido();
         var expiracao = TestData.Agora.AddHours(1);
 
-        p.DefinirDadosPix("pi_123", "qrcode_data", "https://img.url", expiracao);
+        p.DefinirDadosPix("pi_123", "qrcode_data", "https://img.url", expiracao, TestData.Agora);
 
         p.StripePaymentIntentId.Should().Be("pi_123");
         p.PixQrCode.Should().Be("qrcode_data");
@@ -85,8 +86,9 @@ public class PagamentoTests
     public void DefinirDadosPix_PaymentIntentIdVazio_LancaDomainException(string paymentIntentId)
     {
         var p = CriarValido();
-        var act = () => p.DefinirDadosPix(paymentIntentId, "qr", "url", TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O identificador do PaymentIntent é inválido.");
+        var r = p.DefinirDadosPix(paymentIntentId, "qr", "url", TestData.Agora, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador do PaymentIntent é inválido.");
     }
 
     [Theory]
@@ -95,8 +97,9 @@ public class PagamentoTests
     public void DefinirDadosPix_QrCodeVazio_LancaDomainException(string qrCode)
     {
         var p = CriarValido();
-        var act = () => p.DefinirDadosPix("pi_123", qrCode, "url", TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O QR code Pix é inválido.");
+        var r = p.DefinirDadosPix("pi_123", qrCode, "url", TestData.Agora, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O QR code Pix é inválido.");
     }
 
     // --- MarcarPago ---
@@ -105,7 +108,7 @@ public class PagamentoTests
     public void MarcarPago_StatusPendente_MudaParaPago()
     {
         var p = CriarValido();
-        p.MarcarPago();
+        p.MarcarPago(TestData.Agora);
         p.Status.Should().Be(PagamentoStatus.Pago);
         p.DataPagamento.Should().NotBeNull();
         p.UpdatedAt.Should().NotBeNull();
@@ -115,9 +118,10 @@ public class PagamentoTests
     public void MarcarPago_StatusNaoPendente_LancaDomainException()
     {
         var p = CriarValido();
-        p.MarcarPago();
-        var act = () => p.MarcarPago();
-        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pendentes podem ser marcados como pagos.");
+        p.MarcarPago(TestData.Agora);
+        var r = p.MarcarPago(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas pagamentos pendentes podem ser marcados como pagos.");
     }
 
     // --- MarcarFalhou ---
@@ -126,7 +130,7 @@ public class PagamentoTests
     public void MarcarFalhou_StatusPendente_MudaParaFalhou()
     {
         var p = CriarValido();
-        p.MarcarFalhou();
+        p.MarcarFalhou(TestData.Agora);
         p.Status.Should().Be(PagamentoStatus.Falhou);
         p.UpdatedAt.Should().NotBeNull();
     }
@@ -135,9 +139,10 @@ public class PagamentoTests
     public void MarcarFalhou_StatusNaoPendente_LancaDomainException()
     {
         var p = CriarValido();
-        p.MarcarFalhou();
-        var act = () => p.MarcarFalhou();
-        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pendentes podem ser marcados como falhou.");
+        p.MarcarFalhou(TestData.Agora);
+        var r = p.MarcarFalhou(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas pagamentos pendentes podem ser marcados como falhou.");
     }
 
     // --- MarcarExpirado ---
@@ -146,7 +151,7 @@ public class PagamentoTests
     public void MarcarExpirado_StatusPendente_MudaParaExpirado()
     {
         var p = CriarValido();
-        p.MarcarExpirado();
+        p.MarcarExpirado(TestData.Agora);
         p.Status.Should().Be(PagamentoStatus.Expirado);
         p.UpdatedAt.Should().NotBeNull();
     }
@@ -155,9 +160,10 @@ public class PagamentoTests
     public void MarcarExpirado_StatusNaoPendente_LancaDomainException()
     {
         var p = CriarValido();
-        p.MarcarExpirado();
-        var act = () => p.MarcarExpirado();
-        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pendentes podem ser marcados como expirados.");
+        p.MarcarExpirado(TestData.Agora);
+        var r = p.MarcarExpirado(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas pagamentos pendentes podem ser marcados como expirados.");
     }
 
     // --- MarcarEstornado ---
@@ -166,10 +172,10 @@ public class PagamentoTests
     public void MarcarEstornado_StatusPago_MudaParaEstornado()
     {
         var p = CriarValido();
-        p.MarcarPago();
+        p.MarcarPago(TestData.Agora);
         p.ClearDomainEvents();
 
-        p.MarcarEstornado();
+        p.MarcarEstornado(TestData.Agora);
 
         p.Status.Should().Be(PagamentoStatus.Estornado);
         p.UpdatedAt.Should().NotBeNull();
@@ -181,10 +187,10 @@ public class PagamentoTests
     public void MarcarEstornado_DispatchaPagamentoEstornadoEvent()
     {
         var p = CriarValido();
-        p.MarcarPago();
+        p.MarcarPago(TestData.Agora);
         p.ClearDomainEvents();
 
-        p.MarcarEstornado();
+        p.MarcarEstornado(TestData.Agora);
 
         p.DomainEvents.Should().ContainSingle();
         var evento = p.DomainEvents.OfType<PagamentoEstornadoEvent>().Single();
@@ -205,26 +211,28 @@ public class PagamentoTests
             case PagamentoStatus.Pendente:
                 break;
             case PagamentoStatus.Falhou:
-                p.MarcarFalhou();
+                p.MarcarFalhou(TestData.Agora);
                 break;
             case PagamentoStatus.Expirado:
-                p.MarcarExpirado();
+                p.MarcarExpirado(TestData.Agora);
                 break;
         }
 
-        var act = () => p.MarcarEstornado();
-        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pagos podem ser estornados.");
+        var r = p.MarcarEstornado(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas pagamentos pagos podem ser estornados.");
     }
 
     [Fact]
     public void MarcarEstornado_JaEstornado_LancaDomainException()
     {
         var p = CriarValido();
-        p.MarcarPago();
-        p.MarcarEstornado();
+        p.MarcarPago(TestData.Agora);
+        p.MarcarEstornado(TestData.Agora);
 
-        var act = () => p.MarcarEstornado();
-        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pagos podem ser estornados.");
+        var r = p.MarcarEstornado(TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas pagamentos pagos podem ser estornados.");
     }
 
     // --- MarcarEmDisputa (chargeback) ---
@@ -233,10 +241,10 @@ public class PagamentoTests
     public void MarcarEmDisputa_StatusPago_TransicionaParaEmDisputa()
     {
         var p = CriarValido();
-        p.MarcarPago();
+        p.MarcarPago(TestData.Agora);
         p.ClearDomainEvents();
 
-        p.MarcarEmDisputa("fraudulent");
+        p.MarcarEmDisputa("fraudulent", TestData.Agora);
 
         p.Status.Should().Be(PagamentoStatus.EmDisputa);
         p.UpdatedAt.Should().NotBeNull();
@@ -248,10 +256,10 @@ public class PagamentoTests
     public void MarcarEmDisputa_DispatchaPagamentoEmDisputaEventComMotivo()
     {
         var p = CriarValido();
-        p.MarcarPago();
+        p.MarcarPago(TestData.Agora);
         p.ClearDomainEvents();
 
-        p.MarcarEmDisputa("fraudulent");
+        p.MarcarEmDisputa("fraudulent", TestData.Agora);
 
         p.DomainEvents.Should().ContainSingle();
         var evento = p.DomainEvents.OfType<PagamentoEmDisputaEvent>().Single();
@@ -268,10 +276,10 @@ public class PagamentoTests
     public void MarcarEmDisputa_MotivoVazio_NormalizaParaUnknown(string? motivo)
     {
         var p = CriarValido();
-        p.MarcarPago();
+        p.MarcarPago(TestData.Agora);
         p.ClearDomainEvents();
 
-        p.MarcarEmDisputa(motivo!);
+        p.MarcarEmDisputa(motivo!, TestData.Agora);
 
         p.DomainEvents.OfType<PagamentoEmDisputaEvent>().Single()
             .MotivoDisputa.Should().Be("unknown");
@@ -289,15 +297,16 @@ public class PagamentoTests
             case PagamentoStatus.Pendente:
                 break;
             case PagamentoStatus.Falhou:
-                p.MarcarFalhou();
+                p.MarcarFalhou(TestData.Agora);
                 break;
             case PagamentoStatus.Expirado:
-                p.MarcarExpirado();
+                p.MarcarExpirado(TestData.Agora);
                 break;
         }
 
-        var act = () => p.MarcarEmDisputa("fraudulent");
-        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pagos podem ser marcados em disputa.");
+        var r = p.MarcarEmDisputa("fraudulent", TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas pagamentos pagos podem ser marcados em disputa.");
     }
 
     [Fact]
@@ -305,10 +314,11 @@ public class PagamentoTests
     {
         // Idempotência ao nível do handler — domain enforce uma única transição.
         var p = CriarValido();
-        p.MarcarPago();
-        p.MarcarEmDisputa("fraudulent");
+        p.MarcarPago(TestData.Agora);
+        p.MarcarEmDisputa("fraudulent", TestData.Agora);
 
-        var act = () => p.MarcarEmDisputa("duplicate");
-        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pagos podem ser marcados em disputa.");
+        var r = p.MarcarEmDisputa("duplicate", TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Apenas pagamentos pagos podem ser marcados em disputa.");
     }
 }

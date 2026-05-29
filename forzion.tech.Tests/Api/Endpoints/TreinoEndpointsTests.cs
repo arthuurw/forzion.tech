@@ -369,7 +369,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<ITreinoRepository>(),
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<AtualizarTreinoHandler>>());
 
         public Mock<ExcluirTreinoHandler> ExcluirHandlerMock { get; } = new(
@@ -386,7 +386,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IUserContext>(),
-            AdicionarValidator,
+            AdicionarValidator, TimeProvider.System,
             Mock.Of<ILogger<AdicionarExercicioHandler>>())
         { CallBase = true };
 
@@ -395,7 +395,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<RemoverExercicioHandler>>());
 
         public Mock<DuplicarTreinoHandler> DuplicarHandlerMock { get; } = new(

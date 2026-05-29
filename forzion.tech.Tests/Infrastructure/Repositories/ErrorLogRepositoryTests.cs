@@ -19,7 +19,7 @@ public class ErrorLogRepositoryTests(InfrastructureTestFixture fixture)
     public async Task AdicionarAsync_Persiste()
     {
         await LimparAsync();
-        var entry = ErrorLogEntry.Criar(DateTime.UtcNow, "Error", "Worker", "boom");
+        var entry = ErrorLogEntry.Criar(DateTime.UtcNow, "Error", "Worker", "boom", DateTime.UtcNow).Value;
 
         await using (var ctx = fixture.CreateContext())
         {
@@ -42,9 +42,9 @@ public class ErrorLogRepositoryTests(InfrastructureTestFixture fixture)
 
         await using (var ctx = fixture.CreateContext())
         {
-            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-1), "Error", "A", "dentro"));
-            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-12), "Error", "B", "dentro"));
-            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-48), "Error", "C", "fora"));
+            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-1), "Error", "A", "dentro", agora).Value);
+            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-12), "Error", "B", "dentro", agora).Value);
+            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-48), "Error", "C", "fora", agora).Value);
             await ctx.SaveChangesAsync();
         }
 
@@ -64,10 +64,10 @@ public class ErrorLogRepositoryTests(InfrastructureTestFixture fixture)
 
         await using (var ctx = fixture.CreateContext())
         {
-            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-2), "Error", "A", "msg"));
-            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-1), "Error", "B", "msg"));
-            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-3), "Error", "C", "msg"));
-            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-48), "Error", "D", "fora"));
+            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-2), "Error", "A", "msg", agora).Value);
+            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-1), "Error", "B", "msg", agora).Value);
+            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-3), "Error", "C", "msg", agora).Value);
+            await ctx.ErrorLogs.AddAsync(ErrorLogEntry.Criar(agora.AddHours(-48), "Error", "D", "fora", agora).Value);
             await ctx.SaveChangesAsync();
         }
 

@@ -1,5 +1,6 @@
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -14,14 +15,14 @@ public class HealthSnapshot
 
     private HealthSnapshot() { }
 
-    public static HealthSnapshot Criar(string ambiente, StatusSaude status, string payloadJson, DateTime agora)
+    public static Result<HealthSnapshot> Criar(string ambiente, StatusSaude status, string payloadJson, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(ambiente))
-            throw new DomainException("O ambiente é obrigatório.");
+            return Result.Failure<HealthSnapshot>(HealthErrors.AmbienteObrigatorio);
         if (string.IsNullOrWhiteSpace(payloadJson))
-            throw new DomainException("O payload é obrigatório.");
+            return Result.Failure<HealthSnapshot>(HealthErrors.PayloadObrigatorio);
 
-        return new HealthSnapshot
+        return Result.Success(new HealthSnapshot
         {
             Id = Guid.NewGuid(),
             CapturadoEm = agora,
@@ -29,6 +30,6 @@ public class HealthSnapshot
             StatusGeral = status,
             PayloadJson = payloadJson,
             CreatedAt = agora
-        };
+        });
     }
 }

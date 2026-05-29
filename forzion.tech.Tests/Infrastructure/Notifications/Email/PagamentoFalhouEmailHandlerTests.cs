@@ -49,7 +49,7 @@ public class PagamentoFalhouEmailHandlerTests
     }
 
     private AssinaturaAluno AssinaturaValida() =>
-        AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora);
+        AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora).Value;
 
     [Fact]
     public async Task HandleAsync_EmailDesabilitado_NaoEnvia()
@@ -94,7 +94,7 @@ public class PagamentoFalhouEmailHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoComEmail_UsaEmailDoAluno()
     {
-        var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "maria@aluno.com");
+        var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "maria@aluno.com").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -113,8 +113,8 @@ public class PagamentoFalhouEmailHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemEmail_FallbackContaEmail()
     {
-        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora);
-        var conta = Conta.Criar(DomainEmail.Criar("joao@conta.com"), "hash-test-123", TipoConta.Aluno, TestData.Agora);
+        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora).Value;
+        var conta = Conta.Criar(DomainEmail.Criar("joao@conta.com").Value, "hash-test-123", TipoConta.Aluno, TestData.Agora).Value;
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
@@ -136,7 +136,7 @@ public class PagamentoFalhouEmailHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemEmailEContaNull_NaoEnvia()
     {
-        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora);
+        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora).Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -155,7 +155,7 @@ public class PagamentoFalhouEmailHandlerTests
     [InlineData(3)]
     public async Task HandleAsync_EnviaEmTodasAsTentativas(int tentativas)
     {
-        var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "m@x.com");
+        var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "m@x.com").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -174,7 +174,7 @@ public class PagamentoFalhouEmailHandlerTests
     [Fact]
     public async Task HandleAsync_LinkPortalApontaParaFrontendBaseUrl()
     {
-        var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "m@x.com");
+        var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "m@x.com").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

@@ -53,7 +53,7 @@ public class EsqueceuSenhaHandler(
             conta.Id,
             tokenHash,
             agora.AddHours(1),
-            agora);
+            agora).Value;
 
         await tokenRepository.AdicionarAsync(resetToken, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

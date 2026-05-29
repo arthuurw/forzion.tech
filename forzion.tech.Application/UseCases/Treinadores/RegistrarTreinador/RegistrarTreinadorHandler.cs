@@ -37,8 +37,20 @@ public class RegistrarTreinadorHandler(
             throw new EmailJaCadastradoException();
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Treinador, agora);
-        var treinador = Treinador.Criar(conta.Id, command.Nome, agora, command.Telefone);
+
+        var emailResult = Email.Criar(command.Email);
+        if (emailResult.IsFailure)
+            throw new DomainException(emailResult.Error!.Message);
+
+        var contaResult = Domain.Entities.Conta.Criar(emailResult.Value, passwordHasher.Hash(command.Senha), TipoConta.Treinador, agora);
+        if (contaResult.IsFailure)
+            throw new DomainException(contaResult.Error!.Message);
+        var conta = contaResult.Value;
+
+        var treinadorResult = Treinador.Criar(conta.Id, command.Nome, agora, command.Telefone);
+        if (treinadorResult.IsFailure)
+            throw new DomainException(treinadorResult.Error!.Message);
+        var treinador = treinadorResult.Value;
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
         await treinadorRepository.AdicionarAsync(treinador, cancellationToken).ConfigureAwait(false);

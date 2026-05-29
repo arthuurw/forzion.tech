@@ -23,7 +23,7 @@ public class ExcluirGrupoMuscularHandlerTests
     [Fact]
     public async Task HandleAsync_GrupoExiste_ExcluiEComita()
     {
-        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         _exercicioRepository.Setup(r => r.ExisteComGrupoMuscularAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
@@ -36,7 +36,7 @@ public class ExcluirGrupoMuscularHandlerTests
     [Fact]
     public async Task HandleAsync_GrupoEmUso_LancaDomainExceptionENaoExclui()
     {
-        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         _exercicioRepository.Setup(r => r.ExisteComGrupoMuscularAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 

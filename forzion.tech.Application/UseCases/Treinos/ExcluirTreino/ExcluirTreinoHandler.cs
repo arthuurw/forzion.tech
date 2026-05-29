@@ -39,7 +39,9 @@ public class ExcluirTreinoHandler(
             .ExisteParaTreinoComAlunoAtivoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        Treino.ValidarMutabilidade(executado);
+        var mutabilidadeResult = Treino.ValidarMutabilidade(executado);
+        if (mutabilidadeResult.IsFailure)
+            return mutabilidadeResult;
 
         await treinoAlunoRepository
             .RemoverPorTreinoIdAsync(command.TreinoId, cancellationToken)

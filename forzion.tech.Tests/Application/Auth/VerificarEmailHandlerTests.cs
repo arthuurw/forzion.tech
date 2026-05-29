@@ -55,14 +55,14 @@ public class VerificarEmailHandlerTests
             contaId ?? Guid.NewGuid(),
             ComputeHash(RawToken),
             agora.Add(ttl ?? TimeSpan.FromHours(24)),
-            agora);
+            agora).Value;
         if (verifiedAt.HasValue)
             token.MarcarComoVerificado(verifiedAt.Value);
         return token;
     }
 
     private static Conta BuildConta() =>
-        Conta.Criar(DomainEmail.Criar("user@example.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        Conta.Criar(DomainEmail.Criar("user@example.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_TokenInexistente_LancaDomainException()

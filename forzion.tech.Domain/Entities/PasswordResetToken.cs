@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -13,32 +14,33 @@ public class PasswordResetToken
 
     private PasswordResetToken() { }
 
-    public static PasswordResetToken Criar(Guid contaId, string tokenHash, DateTime expiresAt, DateTime agora)
+    public static Result<PasswordResetToken> Criar(Guid contaId, string tokenHash, DateTime expiresAt, DateTime agora)
     {
         if (contaId == Guid.Empty)
-            throw new DomainException("O identificador da conta é inválido.");
+            return Result.Failure<PasswordResetToken>(TokenErrors.ContaIdInvalido);
 
         if (string.IsNullOrWhiteSpace(tokenHash))
-            throw new DomainException("O hash do token é obrigatório.");
+            return Result.Failure<PasswordResetToken>(TokenErrors.TokenHashObrigatorio);
 
         if (expiresAt <= agora)
-            throw new DomainException("A data de expiração deve ser futura.");
+            return Result.Failure<PasswordResetToken>(TokenErrors.ExpiracaoNaoFutura);
 
-        return new PasswordResetToken
+        return Result.Success(new PasswordResetToken
         {
             Id = Guid.NewGuid(),
             ContaId = contaId,
             TokenHash = tokenHash,
             ExpiresAt = expiresAt,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void MarcarComoUsado(DateTime agora)
+    public Result MarcarComoUsado(DateTime agora)
     {
         if (UsedAt.HasValue)
-            throw new DomainException("O token já foi utilizado.");
+            return Result.Failure(TokenErrors.JaUtilizado);
 
         UsedAt = agora;
+        return Result.Success();
     }
 }

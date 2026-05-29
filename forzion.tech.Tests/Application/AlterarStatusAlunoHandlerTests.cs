@@ -22,7 +22,7 @@ public class AlterarStatusAlunoHandlerTests
     public AlterarStatusAlunoHandlerTests()
     {
         _handler = new AlterarStatusAlunoHandler(
-            _alunoRepo.Object, _userContext.Object, _unitOfWork.Object, _logger.Object);
+            _alunoRepo.Object, _userContext.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]

@@ -27,7 +27,7 @@ public class EmailProperties
     {
         GenEmailValido.Sample(raw =>
         {
-            var email = Email.Criar(raw);
+            var email = Email.Criar(raw).Value;
             email.Value.Should().Be(raw.Trim().ToLowerInvariant());
         });
     }
@@ -41,7 +41,7 @@ public class EmailProperties
          select (raw, padded: prefixo + raw + sufixo))
         .Sample(t =>
         {
-            var email = Email.Criar(t.padded);
+            var email = Email.Criar(t.padded).Value;
             email.Value.Should().Be(t.raw.ToLowerInvariant());
         });
     }
@@ -51,8 +51,8 @@ public class EmailProperties
     {
         GenEmailValido.Sample(raw =>
         {
-            var primeira = Email.Criar(raw);
-            var segunda = Email.Criar(primeira.Value);
+            var primeira = Email.Criar(raw).Value;
+            var segunda = Email.Criar(primeira.Value).Value;
             segunda.Value.Should().Be(primeira.Value);
         });
     }
@@ -62,7 +62,7 @@ public class EmailProperties
     {
         GenEmailValido.Sample(raw =>
         {
-            Email.Criar(raw).Should().Be(Email.Criar(raw));
+            Email.Criar(raw).Value.Should().Be(Email.Criar(raw).Value);
         });
     }
 
@@ -72,8 +72,7 @@ public class EmailProperties
         // Segmento alfanumerico sozinho nunca contem '@' nem '.' — sempre invalido.
         Gen.String[Gen.Char.AlphaNumeric, 1, 30].Sample(semArroba =>
         {
-            var act = () => Email.Criar(semArroba);
-            act.Should().Throw<DomainException>();
+            Email.Criar(semArroba).IsFailure.Should().BeTrue();
         });
     }
 
@@ -82,8 +81,7 @@ public class EmailProperties
     {
         Gen.String[Gen.Char[" \t"], 0, 5].Sample(vazio =>
         {
-            var act = () => Email.Criar(vazio);
-            act.Should().Throw<DomainException>();
+            Email.Criar(vazio).IsFailure.Should().BeTrue();
         });
     }
 
@@ -97,8 +95,9 @@ public class EmailProperties
          select $"{local}@{dominio}.{tld}")
         .Sample(longo =>
         {
-            var act = () => Email.Criar(longo);
-            act.Should().Throw<DomainException>().WithMessage("*256*");
+            var r = Email.Criar(longo);
+            r.IsFailure.Should().BeTrue();
+            r.Error!.Message.Should().Contain("256");
         });
     }
 }

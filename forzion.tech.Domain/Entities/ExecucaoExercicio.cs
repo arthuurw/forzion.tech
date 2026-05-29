@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -14,7 +15,7 @@ public class ExecucaoExercicio
 
     private ExecucaoExercicio() { }
 
-    internal static ExecucaoExercicio Criar(
+    internal static Result<ExecucaoExercicio> Criar(
         Guid execucaoTreinoId,
         Guid treinoExercicioId,
         int seriesExecutadas,
@@ -23,19 +24,19 @@ public class ExecucaoExercicio
         string? observacao)
     {
         if (execucaoTreinoId == Guid.Empty)
-            throw new DomainException("A execução é inválida.");
+            return Result.Failure<ExecucaoExercicio>(ExecucaoTreinoErrors.ExecucaoInvalida);
         if (treinoExercicioId == Guid.Empty)
-            throw new DomainException("O exercício do treino é inválido.");
+            return Result.Failure<ExecucaoExercicio>(ExecucaoTreinoErrors.ExercicioTreinoInvalido);
         if (seriesExecutadas < 1)
-            throw new DomainException("O número de séries deve ser maior que zero.");
+            return Result.Failure<ExecucaoExercicio>(ExecucaoTreinoErrors.SeriesInvalidas);
         if (repeticoesExecutadas < 1)
-            throw new DomainException("O número de repetições deve ser maior que zero.");
+            return Result.Failure<ExecucaoExercicio>(ExecucaoTreinoErrors.RepeticoesInvalidas);
         if (cargaExecutada is not null && cargaExecutada < 0)
-            throw new DomainException("A carga não pode ser negativa.");
+            return Result.Failure<ExecucaoExercicio>(ExecucaoTreinoErrors.CargaNegativa);
         if (observacao is not null && observacao.Length > 500)
-            throw new DomainException("A observação deve ter no máximo 500 caracteres.");
+            return Result.Failure<ExecucaoExercicio>(ExecucaoTreinoErrors.ExercicioObservacaoMuitoLonga);
 
-        return new ExecucaoExercicio
+        return Result.Success(new ExecucaoExercicio
         {
             Id = Guid.NewGuid(),
             ExecucaoTreinoId = execucaoTreinoId,
@@ -44,6 +45,6 @@ public class ExecucaoExercicio
             RepeticoesExecutadas = repeticoesExecutadas,
             CargaExecutada = cargaExecutada,
             Observacao = observacao
-        };
+        });
     }
 }

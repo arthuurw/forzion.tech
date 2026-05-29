@@ -6,6 +6,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Treinadores;
 
@@ -21,13 +22,13 @@ public class VerificarOnboardingTreinadorHandlerTests
     public VerificarOnboardingTreinadorHandlerTests()
     {
         _handler = new VerificarOnboardingTreinadorHandler(
-            _treinadorRepo.Object, _contaRecebimentoRepo.Object, _stripeService.Object, _unitOfWork.Object, _logger.Object);
+            _treinadorRepo.Object, _contaRecebimentoRepo.Object, _stripeService.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_SemContaStripe_RetornaFalse()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ContaRecebimento?)null);
@@ -41,10 +42,10 @@ public class VerificarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_OnboardingJaCompleto_RetornaTrueSemChamarStripe()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow);
-        contaRecebimento.ConfigurarStripeConnect("acct_123");
-        contaRecebimento.ConfirmarOnboarding();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_123", TestData.Agora);
+        contaRecebimento.ConfirmarOnboarding(TestData.Agora);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(contaRecebimento);
@@ -59,9 +60,9 @@ public class VerificarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_ContaConfiguradaMasNaoAtivada_NaoConfirmaOnboarding()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow);
-        contaRecebimento.ConfigurarStripeConnect("acct_123");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_123", TestData.Agora);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(contaRecebimento);
@@ -77,9 +78,9 @@ public class VerificarOnboardingTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_ContaAtivada_ConfirmaOnboarding()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow);
-        contaRecebimento.ConfigurarStripeConnect("acct_123");
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var contaRecebimento = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_123", TestData.Agora);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(contaRecebimento);

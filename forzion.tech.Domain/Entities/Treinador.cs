@@ -1,6 +1,7 @@
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -23,16 +24,16 @@ public class Treinador : IHasDomainEvents
 
     private Treinador() { }
 
-    public static Treinador Criar(Guid contaId, string nome, DateTime agora, string? telefone = null)
+    public static Result<Treinador> Criar(Guid contaId, string nome, DateTime agora, string? telefone = null)
     {
         if (contaId == Guid.Empty)
-            throw new DomainException("O identificador da conta é inválido.");
+            return Result.Failure<Treinador>(TreinadorErrors.ContaIdInvalido);
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome é obrigatório.");
+            return Result.Failure<Treinador>(TreinadorErrors.NomeObrigatorio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure<Treinador>(TreinadorErrors.NomeMuitoLongo);
 
-        return new Treinador
+        var treinador = new Treinador
         {
             Id = Guid.NewGuid(),
             ContaId = contaId,
@@ -41,71 +42,82 @@ public class Treinador : IHasDomainEvents
             Status = TreinadorStatus.AguardandoAprovacao,
             CreatedAt = agora
         };
+
+        return Result.Success(treinador);
     }
 
-    public void Aprovar(Guid aprovadoPorId)
+    public Result Aprovar(Guid aprovadoPorId, DateTime agora)
     {
         if (Status != TreinadorStatus.AguardandoAprovacao)
-            throw new DomainException("Apenas treinadores aguardando aprovação podem ser aprovados.");
+            return Result.Failure(TreinadorErrors.NaoAguardandoAprovacaoParaAprovar);
 
         Status = TreinadorStatus.Ativo;
         AprovadoPorId = aprovadoPorId;
-        AprovadoEm = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
-        _domainEvents.Add(new TreinadorAprovadoEvent(Id, aprovadoPorId, DateTime.UtcNow));
+        AprovadoEm = agora;
+        UpdatedAt = agora;
+        _domainEvents.Add(new TreinadorAprovadoEvent(Id, aprovadoPorId, agora));
+        return Result.Success();
     }
 
-    public void Reprovar(Guid reprovadoPorId)
+    public Result Reprovar(Guid reprovadoPorId, DateTime agora)
     {
         if (Status != TreinadorStatus.AguardandoAprovacao)
-            throw new DomainException("Apenas treinadores aguardando aprovação podem ser reprovados.");
+            return Result.Failure(TreinadorErrors.NaoAguardandoAprovacaoParaReprovar);
 
         Status = TreinadorStatus.Inativo;
-        UpdatedAt = DateTime.UtcNow;
-        _domainEvents.Add(new TreinadorReprovadoEvent(Id, reprovadoPorId, DateTime.UtcNow));
+        UpdatedAt = agora;
+        _domainEvents.Add(new TreinadorReprovadoEvent(Id, reprovadoPorId, agora));
+        return Result.Success();
     }
 
-    public void Inativar(Guid? inativadoPorId = null)
+    public Result Inativar(DateTime agora, Guid? inativadoPorId = null)
     {
         if (Status == TreinadorStatus.Inativo)
-            throw new DomainException("O treinador já está inativo.");
+            return Result.Failure(TreinadorErrors.JaInativo);
 
         Status = TreinadorStatus.Inativo;
-        UpdatedAt = DateTime.UtcNow;
-        _domainEvents.Add(new TreinadorInativadoEvent(Id, inativadoPorId ?? Guid.Empty, DateTime.UtcNow));
+        UpdatedAt = agora;
+        _domainEvents.Add(new TreinadorInativadoEvent(Id, inativadoPorId ?? Guid.Empty, agora));
+        return Result.Success();
     }
 
-    public void ValidarDisponibilidade()
+    public Result ValidarDisponibilidade()
     {
         if (Status != TreinadorStatus.Ativo)
-            throw new DomainException("O treinador selecionado não está disponível.");
+            return Result.Failure(TreinadorErrors.NaoDisponivel);
+
+        return Result.Success();
     }
 
-    public void AtribuirPlano(Guid planoPlataformaId)
+    public Result AtribuirPlano(Guid planoPlataformaId, DateTime agora)
     {
         if (planoPlataformaId == Guid.Empty)
-            throw new DomainException("O identificador do plano é inválido.");
+            return Result.Failure(TreinadorErrors.PlanoIdInvalido);
         if (Status == TreinadorStatus.Inativo)
-            throw new DomainException("Não é possível atribuir plano a um treinador inativo.");
+            return Result.Failure(TreinadorErrors.PlanoTreinadorInativo);
 
         PlanoPlataformaId = planoPlataformaId;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void ValidarParaExclusao()
+    public Result ValidarParaExclusao()
     {
         if (Status != TreinadorStatus.Inativo)
-            throw new DomainException("Apenas treinadores inativos podem ser excluídos permanentemente.");
+            return Result.Failure(TreinadorErrors.ExclusaoApenasInativos);
+
+        return Result.Success();
     }
 
-    public void AtualizarNome(string nome)
+    public Result AtualizarNome(string nome, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome não pode ser vazio.");
+            return Result.Failure(TreinadorErrors.NomeVazio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure(TreinadorErrors.NomeMuitoLongo);
 
         Nome = nome.Trim();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 }

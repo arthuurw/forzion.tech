@@ -27,6 +27,7 @@ public class AlterarSenhaHandler(
     IContaRepository contaRepository,
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     IValidator<AlterarSenhaCommand> validator)
 {
     public virtual Task HandleAsync(
@@ -49,7 +50,10 @@ public class AlterarSenhaHandler(
         if (!passwordHasher.Verify(command.SenhaAtual, conta.PasswordHash))
             throw new CredenciaisInvalidasException();
 
-        conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha));
+        var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), timeProvider.GetUtcNow().UtcDateTime);
+        if (atualizarResult.IsFailure)
+            throw new DomainException(atualizarResult.Error!.Message);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 }
