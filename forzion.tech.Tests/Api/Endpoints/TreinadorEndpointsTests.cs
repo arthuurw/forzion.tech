@@ -488,6 +488,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .GetAsync($"/treinador/alunos/{AlunoId}/progressao?de={hoje}&ate={ontem}");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
     // --- GET /treinador/grupos-musculares ---
@@ -687,6 +688,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             new { UrlRetorno = "http://malicious.com/retorno", UrlCancelamento = "http://localhost/cancelar" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
     [Fact]

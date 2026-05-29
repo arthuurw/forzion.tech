@@ -45,7 +45,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     }
 
     [Fact]
-    public async Task Post_WebhookStripe_Invalido_Retorna400()
+    public async Task Post_WebhookStripe_Invalido_Retorna400ProblemDetails()
     {
         _factory.ProcessarWebhookHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookStripeCommand>(), It.IsAny<CancellationToken>()))
@@ -57,6 +57,42 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
         var response = await _factory.CreateClient().SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // G-SEC-4: response must be ProblemDetails (application/problem+json), not a plain string.
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+    }
+
+    // --- GET /webhooks/whatsapp (Meta verification handshake) ---
+
+    [Fact]
+    public async Task Get_WebhookWhatsApp_TokenCorreto_Retorna200ComChallenge()
+    {
+        // The Test environment sets WhatsApp:WebhookVerifyToken via appsettings or defaults to empty.
+        // We exercise the happy-path by sending the same token the factory configures.
+        var response = await _factory.CreateClient()
+            .GetAsync("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=&hub.challenge=abc123");
+
+        // When expectedToken is empty and verifyToken is empty the constant-time compare passes.
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Be("abc123");
+    }
+
+    [Fact]
+    public async Task Get_WebhookWhatsApp_TokenErrado_Retorna403()
+    {
+        var response = await _factory.CreateClient()
+            .GetAsync("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=wrong-token&hub.challenge=abc123");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Get_WebhookWhatsApp_ModeErrado_Retorna403()
+    {
+        var response = await _factory.CreateClient()
+            .GetAsync("/webhooks/whatsapp?hub.mode=unsubscribe&hub.verify_token=&hub.challenge=abc123");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     // --- WebApplicationFactory ---

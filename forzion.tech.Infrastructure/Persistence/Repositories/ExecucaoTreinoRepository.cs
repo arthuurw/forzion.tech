@@ -137,4 +137,37 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
         await _context.ExecucoesTreino
             .CountAsync(e => e.AlunoId == alunoId, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<ProgressaoAggRow>> ProjetarProgressaoAsync(
+        Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default)
+    {
+        // Push GROUP BY to SQL: one row per (exercício, grupoMuscular, data).
+        // Mirrors ProgressaoProjection.Projetar but avoids hydrating every execution row.
+        // Npgsql exige Kind=Utc para comparar com colunas timestamptz (handlers passam
+        // DateTime.UtcNow.Date, que vem com Kind=Unspecified).
+        de = DateTime.SpecifyKind(de, DateTimeKind.Utc);
+        ate = DateTime.SpecifyKind(ate, DateTimeKind.Utc);
+
+        var rows = await (
+            from e in _context.ExecucoesTreino
+            join ee in _context.ExecucoesExercicio on e.Id equals ee.ExecucaoTreinoId
+            join te in _context.TreinoExercicios on ee.TreinoExercicioId equals te.Id
+            join ex in _context.Exercicios on te.ExercicioId equals ex.Id
+            join gm in _context.GruposMusculares on ex.GrupoMuscularId equals gm.Id
+            where e.AlunoId == alunoId && e.DataExecucao >= de && e.DataExecucao <= ate
+            group new { ee.CargaExecutada, ee.SeriesExecutadas, ee.RepeticoesExecutadas }
+                by new { NomeExercicio = ex.Nome, GrupoMuscular = gm.Nome, Data = e.DataExecucao.Date }
+            into g
+            orderby g.Key.GrupoMuscular, g.Key.NomeExercicio, g.Key.Data
+            select new ProgressaoAggRow(
+                g.Key.NomeExercicio,
+                g.Key.GrupoMuscular,
+                g.Key.Data,
+                g.Max(x => x.CargaExecutada),
+                g.Average(x => (double)x.SeriesExecutadas),
+                g.Average(x => (double)x.RepeticoesExecutadas))
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return rows;
+    }
 }

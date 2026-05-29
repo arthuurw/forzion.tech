@@ -39,9 +39,9 @@ public class ObterProgressaoAlunoHandlerTests
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);
-        _execucaoRepo.Setup(r => r.ListarPorAlunoComExerciciosAsync(
+        _execucaoRepo.Setup(r => r.ProjetarProgressaoAsync(
                 alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ExecucaoDetalheItem>());
+            .ReturnsAsync(new List<ProgressaoAggRow>());
 
         var result = await _handler.HandleAsync(new ObterProgressaoAlunoQuery(alunoId, de, ate));
 
@@ -80,23 +80,113 @@ public class ObterProgressaoAlunoHandlerTests
         var de = new DateTime(2025, 1, 1);
         var ate = new DateTime(2025, 1, 31);
         var vinculo = CriarVinculo(treinadorId, alunoId);
-        var exercicio = new ExecucaoExercicioDetalhe(Guid.NewGuid(), "Agachamento", "Pernas", 4, 12, 100m);
-        var execucao = new ExecucaoDetalheItem(Guid.NewGuid(), de, Guid.NewGuid(), null,
-            new List<ExecucaoExercicioDetalhe> { exercicio });
+
+        // SQL-aggregated row: one entry per (exercício, grupoMuscular, data)
+        var row = new ProgressaoAggRow("Agachamento", "Pernas", de.Date, 100m, 4.0, 12.0);
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);
-        _execucaoRepo.Setup(r => r.ListarPorAlunoComExerciciosAsync(
+        _execucaoRepo.Setup(r => r.ProjetarProgressaoAsync(
                 alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ExecucaoDetalheItem> { execucao });
+            .ReturnsAsync(new List<ProgressaoAggRow> { row });
 
         var result = await _handler.HandleAsync(new ObterProgressaoAlunoQuery(alunoId, de, ate));
 
         result.Exercicios.Should().HaveCount(1);
         result.Exercicios[0].NomeExercicio.Should().Be("Agachamento");
+        result.Exercicios[0].GrupoMuscular.Should().Be("Pernas");
         result.Exercicios[0].Historico.Should().HaveCount(1);
         result.Exercicios[0].Historico[0].CargaMaxima.Should().Be(100m);
+        result.Exercicios[0].Historico[0].SeriesExecutadas.Should().Be(4);
+        result.Exercicios[0].Historico[0].RepeticoesExecutadas.Should().Be(12);
+    }
+
+    [Fact]
+    public async Task HandleAsync_MultiplosDias_HistoricoOrdenadoPorData()
+    {
+        var treinadorId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+        var de = new DateTime(2025, 1, 1);
+        var ate = new DateTime(2025, 1, 31);
+        var vinculo = CriarVinculo(treinadorId, alunoId);
+
+        // Two days for the same exercise — SQL already returns them ordered by data
+        var rows = new List<ProgressaoAggRow>
+        {
+            new("Supino", "Peito", new DateTime(2025, 1, 5), 80m, 3.0, 10.0),
+            new("Supino", "Peito", new DateTime(2025, 1, 12), 85m, 4.0, 8.0),
+        };
+
+        _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(vinculo);
+        _execucaoRepo.Setup(r => r.ProjetarProgressaoAsync(
+                alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(rows);
+
+        var result = await _handler.HandleAsync(new ObterProgressaoAlunoQuery(alunoId, de, ate));
+
+        result.Exercicios.Should().HaveCount(1);
+        result.Exercicios[0].NomeExercicio.Should().Be("Supino");
+        result.Exercicios[0].Historico.Should().HaveCount(2);
+        result.Exercicios[0].Historico[0].CargaMaxima.Should().Be(80m);
+        result.Exercicios[0].Historico[1].CargaMaxima.Should().Be(85m);
+    }
+
+    [Fact]
+    public async Task HandleAsync_MultiplosExercicios_OrdenadoPorGrupoEExercicio()
+    {
+        var treinadorId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+        var de = new DateTime(2025, 1, 1);
+        var ate = new DateTime(2025, 1, 31);
+        var vinculo = CriarVinculo(treinadorId, alunoId);
+        var dia = new DateTime(2025, 1, 10);
+
+        // SQL returns them already ordered by grupo/exercicio/data
+        var rows = new List<ProgressaoAggRow>
+        {
+            new("Agachamento", "Pernas", dia, 100m, 4.0, 12.0),
+            new("Supino", "Peito", dia, 80m, 3.0, 10.0),
+        };
+
+        _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(vinculo);
+        _execucaoRepo.Setup(r => r.ProjetarProgressaoAsync(
+                alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(rows);
+
+        var result = await _handler.HandleAsync(new ObterProgressaoAlunoQuery(alunoId, de, ate));
+
+        result.Exercicios.Should().HaveCount(2);
+        // OrderBy grupoMuscular: Peito < Pernas
+        result.Exercicios[0].NomeExercicio.Should().Be("Supino");
+        result.Exercicios[1].NomeExercicio.Should().Be("Agachamento");
+    }
+
+    [Fact]
+    public async Task HandleAsync_CargaNula_CargaMaximaRetornaNula()
+    {
+        var treinadorId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+        var de = new DateTime(2025, 1, 1);
+        var ate = new DateTime(2025, 1, 31);
+        var vinculo = CriarVinculo(treinadorId, alunoId);
+
+        var row = new ProgressaoAggRow("Flexão", "Peito", de.Date, null, 3.0, 15.0);
+
+        _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(vinculo);
+        _execucaoRepo.Setup(r => r.ProjetarProgressaoAsync(
+                alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ProgressaoAggRow> { row });
+
+        var result = await _handler.HandleAsync(new ObterProgressaoAlunoQuery(alunoId, de, ate));
+
+        result.Exercicios[0].Historico[0].CargaMaxima.Should().BeNull();
     }
 
     [Fact]
@@ -108,9 +198,9 @@ public class ObterProgressaoAlunoHandlerTests
 
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.SystemAdmin);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
-        _execucaoRepo.Setup(r => r.ListarPorAlunoComExerciciosAsync(
+        _execucaoRepo.Setup(r => r.ProjetarProgressaoAsync(
                 alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ExecucaoDetalheItem>());
+            .ReturnsAsync(new List<ProgressaoAggRow>());
 
         var result = await _handler.HandleAsync(new ObterProgressaoAlunoQuery(alunoId, de, ate));
 

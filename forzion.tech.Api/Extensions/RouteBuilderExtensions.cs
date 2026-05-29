@@ -64,7 +64,9 @@ public static class RouteBuilderExtensions
 
     private static IEndpointRouteBuilder MapHealthCheck(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks("/health");
+        endpoints.MapHealthChecks("/health")
+            .AllowAnonymous()
+            .RequireRateLimiting("read");
         return endpoints;
     }
 }

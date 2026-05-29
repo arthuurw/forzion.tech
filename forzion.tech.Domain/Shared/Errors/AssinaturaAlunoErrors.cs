@@ -11,4 +11,5 @@ public static class AssinaturaAlunoErrors
     public static Error ApenasAtivasInadimplentes => new("assinatura_aluno.apenas_ativas_inadimplentes", "Apenas assinaturas ativas podem ser marcadas como inadimplentes.");
     public static Error JaCancelada => new("assinatura_aluno.ja_cancelada", "A assinatura já está cancelada.");
     public static Error ProximaCobrancaNaoFutura => new("assinatura_aluno.proxima_cobranca_nao_futura", "A data da próxima cobrança deve ser futura.");
+    public static Error InadimplenteDeveUsarRegularizacao => Error.Conflict("assinatura_aluno.inadimplente_deve_usar_regularizacao", "Assinatura inadimplente não pode ser ativada diretamente; use RegistrarPagamentoRegularizado.");
 }

@@ -14,6 +14,7 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
 
     public async Task<VinculoTreinadorAluno?> ObterAtivoAsync(Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno
+            .AsNoTracking()
             .FirstOrDefaultAsync(v => v.TreinadorId == treinadorId && v.AlunoId == alunoId && v.Status == VinculoStatus.Ativo, cancellationToken)
             .ConfigureAwait(false);
 
@@ -77,6 +78,7 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
 
     public async Task<VinculoTreinadorAluno?> ObterPendentePorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno
+            .AsNoTracking()
             .Where(v => v.AlunoId == alunoId && v.Status == VinculoStatus.AguardandoAprovacao)
             .OrderByDescending(v => v.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken)

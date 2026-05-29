@@ -53,6 +53,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 | `PagamentoFalhouEvent` | `PagamentoFalhouWhatsAppNotifierHandler` | `cobranca_falhou` — **toda tentativa** (paridade; skip `<2` removido) |
 | `PagamentoEstornadoEvent` | `PagamentoEstornadoWhatsAppNotifierHandler` | `pagamento_estornado` |
 | `AssinaturaAlunoMarcadaInadimplenteEvent` | `...InadimplenteWhatsAppNotifierHandler` | `assinatura_inadimplente` |
+| `AssinaturaAlunoReativadaEvent` | `AssinaturaAlunoReativadaWhatsAppHandler` | `assinatura_reativada` (regularização pós-inadimplência) |
 | `AssinaturaAlunoCanceladaEvent` | `AssinaturaAlunoCanceladaWhatsAppAlunoHandler` | `assinatura_cancelada` |
 | `AlunoRegistradoEvent` | `AlunoRegistradoWhatsAppHandler` | `bem_vindo_aluno` |
 | `AssinaturaAlunoCriadaEvent` | `AssinaturaAlunoCriadaWhatsAppHandler` | `assinatura_criada` |

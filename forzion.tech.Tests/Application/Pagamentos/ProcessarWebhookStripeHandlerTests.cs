@@ -170,7 +170,7 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_PaymentIntentFailed_AssinaturaAtivaTerceiraFalha_MarcaInadimplente()
     {
-        // Assinatura Ativa com 2 falhas anteriores; terceira falha cruza o threshold → Inadimplente.
+        // G-PAY-2: pagamento + assinatura mutados antes do único CommitAsync — sem janela de dessinc.
         var assinaturaId = Guid.NewGuid();
         var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
         pagamento.DefinirDadosPix("pi_3rd_fail", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
@@ -192,8 +192,8 @@ public class ProcessarWebhookStripeHandlerTests
         pagamento.Status.Should().Be(PagamentoStatus.Falhou);
         assinatura.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
         assinatura.TentativasFalhasConsecutivas.Should().Be(3);
-        // Dois commits: um pro pagamento, outro pra assinatura.
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        // G-PAY-2: single commit — pagamento + assinatura num único CommitAsync.
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -222,7 +222,8 @@ public class ProcessarWebhookStripeHandlerTests
         pagamento.Status.Should().Be(PagamentoStatus.Falhou);
         assinatura.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
         assinatura.TentativasFalhasConsecutivas.Should().Be(4);
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        // G-PAY-2: single commit.
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -465,6 +466,72 @@ public class ProcessarWebhookStripeHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChargeRefunded_RefundParcial_MantemStatusPagoENaoComita()
+    {
+        // G-PAY-5: refund parcial (5000 cents < 14990 cents) não deve alterar status do pagamento.
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_partial_refund", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
+        pagamento.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_partial_refund", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+
+        // Partial: 50,00 de 149,90 reembolsados
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeRefundedPayload("pi_partial_refund", 5000), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago, "refund parcial não deve alterar status");
+        pagamento.DomainEvents.OfType<forzion.tech.Domain.Events.PagamentoEstornadoEvent>().Should().BeEmpty();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChargeRefunded_RefundTotal_MarcaEstornado()
+    {
+        // G-PAY-5: refund total (amountRefundedCents == valor * 100) deve marcar Estornado.
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_full_refund", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
+        pagamento.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_full_refund", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+
+        // Full: 149,90 → 14990 centavos
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeRefundedPayload("pi_full_refund", 14990), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Estornado);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChargeRefunded_AmountRefundedAusente_MarcaEstornado()
+    {
+        // G-PAY-5: quando amountRefundedCents é null (campo ausente no payload), tratamos
+        // como refund total para não silenciar eventos legítimos (comportamento conservador).
+        const string payloadSemAmount =
+            "{\"type\":\"charge.refunded\",\"data\":{\"object\":{\"id\":\"ch_x\",\"payment_intent\":\"pi_no_amount\"}}}";
+
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_no_amount", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
+        pagamento.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_no_amount", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+
+        var result = await _handler.HandleAsync(new ProcessarWebhookStripeCommand(payloadSemAmount, ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Estornado, "sem amount_refunded tratamos como total");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static string ChargeDisputeCreatedPayload(string paymentIntentId, string motivo = "fraudulent") =>

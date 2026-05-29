@@ -445,6 +445,25 @@ internal static class EmailTemplates
             """);
     }
 
+    public static string AssinaturaReativada(string nomeAluno, string linkPortal) =>
+        Layout(
+            "Assinatura reativada!",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Seu pagamento foi processado com sucesso e sua assinatura está
+              <strong style="color:#2e7d32">reativada</strong>.
+              Você já tem acesso completo à plataforma novamente.
+            </p>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Acessar plataforma
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, fale com o seu treinador.
+            </p>
+            """);
+
     public static string RelatorioSaude(HealthReport report)
     {
         var ambiente = WebUtility.HtmlEncode(report.Ambiente);

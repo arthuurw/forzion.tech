@@ -132,4 +132,44 @@ public class JwtServiceTests
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Auth:JwtSecret*");
     }
+
+    [Fact]
+    public void Construtor_SecretCurto_LancaInvalidOperationException()
+    {
+        // Validates byte count (not char count) — a 31-byte ASCII secret must be rejected.
+        // "0123456789012345678901234567890" is exactly 31 ASCII characters = 31 UTF-8 bytes.
+        var secret = "0123456789012345678901234567890"; // 31 chars / 31 bytes
+        secret.Length.Should().Be(31); // guard: ensure the constant is correct
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:JwtSecret"] = secret,
+                ["Auth:JwtIssuer"] = Issuer,
+                ["Auth:JwtAudience"] = Audience,
+            })
+            .Build();
+
+        var act = () => new JwtService(config);
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*32 bytes*");
+    }
+
+    [Fact]
+    public void Construtor_SecretCom32Bytes_NaoLancaExcecao()
+    {
+        // Exactly 32 ASCII chars = 32 UTF-8 bytes — should be accepted.
+        var secret = "01234567890123456789012345678901"; // 32 chars / 32 bytes
+        secret.Length.Should().Be(32);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:JwtSecret"] = secret,
+                ["Auth:JwtIssuer"] = Issuer,
+                ["Auth:JwtAudience"] = Audience,
+            })
+            .Build();
+
+        var act = () => new JwtService(config);
+        act.Should().NotThrow();
+    }
 }

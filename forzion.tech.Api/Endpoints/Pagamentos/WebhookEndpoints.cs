@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
@@ -28,7 +30,7 @@ public static class WebhookEndpoints
             }
             catch (InvalidDataException)
             {
-                return Results.BadRequest("Payload excede o tamanho máximo permitido.");
+                return Results.Problem(detail: "Payload excede o tamanho máximo permitido.", statusCode: 400);
             }
 
             var assinatura = httpContext.Request.Headers["Stripe-Signature"].FirstOrDefault() ?? string.Empty;
@@ -36,7 +38,7 @@ public static class WebhookEndpoints
             var result = await handler.HandleAsync(
                 new ProcessarWebhookStripeCommand(payload, assinatura), cancellationToken).ConfigureAwait(false);
 
-            return result.IsSuccess ? Results.Ok() : Results.BadRequest("Webhook inválido.");
+            return result.IsSuccess ? Results.Ok() : Results.Problem(detail: "Webhook inválido.", statusCode: 400);
         })
         .WithTags("Webhooks")
         .WithSummary("Recebe eventos do Stripe via webhook")
@@ -61,7 +63,7 @@ public static class WebhookEndpoints
             }
             catch (InvalidDataException)
             {
-                return Results.BadRequest("Payload excede o tamanho máximo permitido.");
+                return Results.Problem(detail: "Payload excede o tamanho máximo permitido.", statusCode: 400);
             }
 
             var svixId = httpContext.Request.Headers["svix-id"].FirstOrDefault() ?? string.Empty;
@@ -74,7 +76,7 @@ public static class WebhookEndpoints
                 webhookSecret,
                 cancellationToken).ConfigureAwait(false);
 
-            return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error?.Message ?? "Webhook inválido.");
+            return result.IsSuccess ? Results.Ok() : Results.Problem(detail: result.Error?.Message ?? "Webhook inválido.", statusCode: 400);
         })
         .WithTags("Webhooks")
         .WithSummary("Recebe eventos de entrega de e-mail via Resend/Svix webhook")
@@ -89,12 +91,18 @@ public static class WebhookEndpoints
             [FromServices] IConfiguration configuration) =>
         {
             var mode = httpContext.Request.Query["hub.mode"].FirstOrDefault();
-            var verifyToken = httpContext.Request.Query["hub.verify_token"].FirstOrDefault();
+            var verifyToken = httpContext.Request.Query["hub.verify_token"].FirstOrDefault() ?? string.Empty;
             var challenge = httpContext.Request.Query["hub.challenge"].FirstOrDefault();
 
             var expectedToken = configuration["WhatsApp:WebhookVerifyToken"] ?? string.Empty;
 
-            if (mode == "subscribe" && verifyToken == expectedToken)
+            // Constant-time comparison to prevent timing-based token oracle attacks.
+            var verifyTokenBytes = Encoding.UTF8.GetBytes(verifyToken);
+            var expectedTokenBytes = Encoding.UTF8.GetBytes(expectedToken);
+            var tokensMatch = verifyTokenBytes.Length == expectedTokenBytes.Length
+                && CryptographicOperations.FixedTimeEquals(verifyTokenBytes, expectedTokenBytes);
+
+            if (mode == "subscribe" && tokensMatch)
                 return Results.Text(challenge ?? string.Empty);
 
             return Results.Forbid();
@@ -102,6 +110,7 @@ public static class WebhookEndpoints
         .WithTags("Webhooks")
         .WithSummary("Handshake de verificação do webhook WhatsApp (Meta)")
         .AllowAnonymous()
+        .RequireRateLimiting("webhook")
         .Produces<string>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status403Forbidden);
 
@@ -122,7 +131,7 @@ public static class WebhookEndpoints
             }
             catch (InvalidDataException)
             {
-                return Results.BadRequest("Payload excede o tamanho máximo permitido.");
+                return Results.Problem(detail: "Payload excede o tamanho máximo permitido.", statusCode: 400);
             }
 
             var signature = httpContext.Request.Headers["X-Hub-Signature-256"].FirstOrDefault() ?? string.Empty;
@@ -133,7 +142,7 @@ public static class WebhookEndpoints
                 appSecret,
                 cancellationToken).ConfigureAwait(false);
 
-            return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error?.Message ?? "Webhook inválido.");
+            return result.IsSuccess ? Results.Ok() : Results.Problem(detail: result.Error?.Message ?? "Webhook inválido.", statusCode: 400);
         })
         .WithTags("Webhooks")
         .WithSummary("Recebe eventos de entrega de WhatsApp via Meta Cloud API webhook")

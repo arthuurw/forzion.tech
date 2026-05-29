@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jwtVerify } from "jose";
 import type { TipoConta } from "@/types";
-import { extractTipoConta } from "@/lib/auth/jwt";
 
 const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/forgot-password", "/reset-password", "/verify-email"];
 
@@ -10,11 +10,25 @@ const AREA_BY_TIPO: Record<TipoConta, string> = {
   Aluno: "/aluno",
 };
 
-export default function middleware(request: NextRequest) {
+async function verifyTipoConta(token: string): Promise<TipoConta | null> {
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET ?? "");
+    const { payload } = await jwtVerify(token, secret, {
+      issuer: process.env.JWT_ISSUER,
+      audience: process.env.JWT_AUDIENCE,
+    });
+    const tipoConta = payload["tipo_conta"] as string | undefined;
+    return (tipoConta as TipoConta) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("token")?.value;
   const sessionGuard = request.cookies.get("session_guard")?.value;
-  const tipoConta = token && sessionGuard ? extractTipoConta(token) : null;
+  const tipoConta = token && sessionGuard ? await verifyTipoConta(token) : null;
 
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||

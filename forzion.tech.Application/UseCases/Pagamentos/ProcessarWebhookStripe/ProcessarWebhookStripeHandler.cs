@@ -186,16 +186,14 @@ public class ProcessarWebhookStripeHandler(
                 paymentIntentId, marcarFalhouResult.Error!.Message);
             return ProcessarEventoResultado.JaConsistente;
         }
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
 
-        // Carrega assinatura e incrementa contador de tentativas falhas.
-        // Pode disparar transição Ativa → Inadimplente (RegistrarPagamentoFalho aplica o threshold).
+        // G-PAY-2: carrega assinatura ANTES do commit e muta ambos (pagamento + assinatura)
+        // numa única transação. Evita dessincronismo se crash ocorrer entre os dois commits.
+        // RegistrarPagamentoFalho pode disparar transição Ativa → Inadimplente (threshold).
         var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
-        if (assinatura is not null)
-        {
-            assinatura.RegistrarPagamentoFalho(agoraFalhou);
-            await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
-        }
+        assinatura?.RegistrarPagamentoFalho(agoraFalhou);
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
 
         logger.LogInformation("Pagamento {PagamentoId} marcado como falhou.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
@@ -261,6 +259,19 @@ public class ProcessarWebhookStripeHandler(
             logger.LogWarning(
                 "charge.refunded para PaymentIntent {PaymentIntentId} em status inesperado {Status}. Ignorado.",
                 paymentIntentId, pagamento.Status);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        // G-PAY-5: só transiciona para Estornado em refund TOTAL.
+        // Refund parcial é operação rara (ajuste manual do treinador); não há status parcial
+        // no modelo — log + no-op é a opção de menor risco (não corrompe contabilidade).
+        var valorPagamentoCents = (long)Math.Round(pagamento.Valor * 100m, MidpointRounding.AwayFromZero);
+        if (amountRefundedCents.HasValue && amountRefundedCents.Value < valorPagamentoCents)
+        {
+            logger.LogInformation(
+                "charge.refunded parcial para PaymentIntent {PaymentIntentId}: " +
+                "refunded={RefundedCents} < total={TotalCents}. Status mantido como Pago.",
+                paymentIntentId, amountRefundedCents.Value, valorPagamentoCents);
             return ProcessarEventoResultado.JaConsistente;
         }
 
