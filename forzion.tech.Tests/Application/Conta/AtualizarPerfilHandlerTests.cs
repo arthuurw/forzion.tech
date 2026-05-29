@@ -45,8 +45,9 @@ public class AtualizarPerfilHandlerTests
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
-        await _handler.HandleAsync(new AtualizarPerfilCommand("João Silva"));
+        var result = await _handler.HandleAsync(new AtualizarPerfilCommand("João Silva"));
 
+        result.IsSuccess.Should().BeTrue();
         aluno.Nome.Should().Be("João Silva");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -61,8 +62,9 @@ public class AtualizarPerfilHandlerTests
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Treinador);
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        await _handler.HandleAsync(new AtualizarPerfilCommand("Carlos Novo"));
+        var result = await _handler.HandleAsync(new AtualizarPerfilCommand("Carlos Novo"));
 
+        result.IsSuccess.Should().BeTrue();
         treinador.Nome.Should().Be("Carlos Novo");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

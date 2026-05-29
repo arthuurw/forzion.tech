@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Treinos.AtualizarObservacaoExercicio;
@@ -12,7 +13,7 @@ public class AtualizarObservacaoExercicioHandler(
     IUserContext userContext,
     ILogger<AtualizarObservacaoExercicioHandler> logger)
 {
-    public virtual Task<TreinoResponse> HandleAsync(
+    public virtual Task<Result<TreinoResponse>> HandleAsync(
         AtualizarObservacaoExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -20,7 +21,7 @@ public class AtualizarObservacaoExercicioHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<TreinoResponse> HandleAsyncCore(
+    private async Task<Result<TreinoResponse>> HandleAsyncCore(
         AtualizarObservacaoExercicioCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -37,7 +38,7 @@ public class AtualizarObservacaoExercicioHandler(
 
         var observacaoResult = exercicio.AtualizarObservacao(command.Observacao);
         if (observacaoResult.IsFailure)
-            throw new DomainException(observacaoResult.Error!.Message);
+            return Result.Failure<TreinoResponse>(observacaoResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -48,6 +49,6 @@ public class AtualizarObservacaoExercicioHandler(
             .ObterNomesPorIdsAsync(treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
             .ConfigureAwait(false);
 
-        return TreinoResponseExtensions.ToResponse(treino, nomesExercicio: nomesExercicio);
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino, nomesExercicio: nomesExercicio));
     }
 }

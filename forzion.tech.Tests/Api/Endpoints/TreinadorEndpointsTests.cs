@@ -149,7 +149,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.AprovarVinculoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AprovarVinculoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaVinculo);
+            .ReturnsAsync(Result.Success(RespostaVinculo));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/vinculos/{VinculoId}/aprovar",
@@ -179,7 +179,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.DesvincularAlunoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<DesvincularAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/vinculos/{VinculoId}/desvincular",
@@ -256,7 +256,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.CriarPacoteHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarPacoteCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaPacote);
+            .ReturnsAsync(Result.Success(RespostaPacote));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/pacotes",
             new { Nome = "Pacote Premium", Preco = 199m });
@@ -271,7 +271,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.AtualizarPacoteHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarPacoteCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaPacote with { Nome = "Pacote Atualizado" });
+            .ReturnsAsync(Result.Success(RespostaPacote with { Nome = "Pacote Atualizado" }));
 
         var response = await CriarClienteTreinador().PatchAsJsonAsync(
             $"/treinador/pacotes/{PacoteId}",
@@ -357,7 +357,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.VerificarOnboardingHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<VerificarOnboardingTreinadorQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OnboardingStatusResponse(true, true));
+            .ReturnsAsync(Result.Success(new OnboardingStatusResponse(true, true)));
 
         var response = await CriarClienteTreinador().GetAsync("/treinador/onboarding/status");
 
@@ -399,7 +399,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.ReativarVinculoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ReativarVinculoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaVinculo);
+            .ReturnsAsync(Result.Success(RespostaVinculo));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/alunos/{AlunoId}/reativar",
@@ -539,7 +539,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.CopiarExercicioHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CopiarExercicioGlobalCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaExercicio);
+            .ReturnsAsync(Result.Success(RespostaExercicio));
 
         var response = await CriarClienteTreinador()
             .PostAsJsonAsync($"/treinador/exercicios/{Guid.NewGuid()}/copiar", (object?)null);

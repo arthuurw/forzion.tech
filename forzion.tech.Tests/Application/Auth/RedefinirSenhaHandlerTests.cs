@@ -70,8 +70,10 @@ public class RedefinirSenhaHandlerTests
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((PasswordResetToken?)null);
 
-        var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*inválido*");
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("inválido");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -82,8 +84,10 @@ public class RedefinirSenhaHandlerTests
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(token);
 
-        var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*inválido ou já utilizado*");
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("inválido ou já utilizado");
     }
 
     [Fact]
@@ -95,8 +99,10 @@ public class RedefinirSenhaHandlerTests
 
         _timeProvider.Advance(TimeSpan.FromMinutes(2)); // token agora expirado
 
-        var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*expirado*");
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("expirado");
     }
 
     [Fact]
@@ -109,8 +115,9 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
 
+        result.IsSuccess.Should().BeTrue();
         conta.PasswordHash.Should().Be("hash:NovaSenha1");
         token.UsedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -128,11 +135,14 @@ public class RedefinirSenhaHandlerTests
             .ReturnsAsync(conta);
 
         // 1ª chamada: sucesso
-        await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var primeira = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        primeira.IsSuccess.Should().BeTrue();
 
-        // 2ª chamada: token.UsedAt agora é não-nulo → DomainException
-        var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "OutraSenha1"));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*inválido ou já utilizado*");
+        // 2ª chamada: token.UsedAt agora é não-nulo → falha
+        var segunda = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "OutraSenha1"));
+
+        segunda.IsFailure.Should().BeTrue();
+        segunda.Error!.Message.Should().Contain("inválido ou já utilizado");
     }
 
     [Fact]

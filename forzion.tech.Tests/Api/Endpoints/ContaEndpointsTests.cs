@@ -11,6 +11,7 @@ using forzion.tech.Application.UseCases.Conta.AlterarSenha;
 using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
 using forzion.tech.Application.UseCases.Conta.Logout;
 using forzion.tech.Application.UseCases.Conta.ObterPerfil;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -74,7 +75,7 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
     {
         _factory.AtualizarPerfilHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarPerfilCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteAutenticado().PatchAsJsonAsync("/conta/perfil",
             new { Nome = "Carlos Atualizado" });
@@ -89,7 +90,7 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
     {
         _factory.AlterarSenhaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AlterarSenhaCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/conta/senha",
             new { SenhaAtual = "SenhaAtual@123", NovaSenha = "SenhaNova@456" });
@@ -104,7 +105,7 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
     {
         _factory.LogoutHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/conta/logout", new { });
 

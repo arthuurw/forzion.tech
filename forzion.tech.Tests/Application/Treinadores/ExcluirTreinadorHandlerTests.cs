@@ -34,32 +34,35 @@ public class ExcluirTreinadorHandlerTests
         var treinador = CriarTreinadorInativo(adminId);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, adminId));
+        var result = await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, adminId));
 
+        result.IsSuccess.Should().BeTrue();
         _treinadorRepo.Verify(r => r.ExcluirComDependenciasAsync(treinador, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorAtivo_LancaDomainException()
+    public async Task HandleAsync_TreinadorAtivo_RetornaFalha()
     {
         var adminId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         treinador.Aprovar(adminId, TestData.Agora);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, adminId));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*inativos*");
+        var result = await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, adminId));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("inativos");
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorAguardando_LancaDomainException()
+    public async Task HandleAsync_TreinadorAguardando_RetornaFalha()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>();
+        var result = await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
     }
 
     [Fact]

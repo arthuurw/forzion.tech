@@ -35,8 +35,9 @@ public class VerificarOnboardingTreinadorHandlerTests
 
         var result = await _handler.HandleAsync(new VerificarOnboardingTreinadorQuery(treinador.Id));
 
-        result.OnboardingCompleto.Should().BeFalse();
-        result.ContaConfigurada.Should().BeFalse();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.OnboardingCompleto.Should().BeFalse();
+        result.Value.ContaConfigurada.Should().BeFalse();
     }
 
     [Fact]
@@ -52,8 +53,9 @@ public class VerificarOnboardingTreinadorHandlerTests
 
         var result = await _handler.HandleAsync(new VerificarOnboardingTreinadorQuery(treinador.Id));
 
-        result.OnboardingCompleto.Should().BeTrue();
-        result.ContaConfigurada.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.OnboardingCompleto.Should().BeTrue();
+        result.Value.ContaConfigurada.Should().BeTrue();
         _stripeService.Verify(s => s.ContaEstaAtivadaAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -70,8 +72,9 @@ public class VerificarOnboardingTreinadorHandlerTests
 
         var result = await _handler.HandleAsync(new VerificarOnboardingTreinadorQuery(treinador.Id));
 
-        result.OnboardingCompleto.Should().BeFalse();
-        result.ContaConfigurada.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.OnboardingCompleto.Should().BeFalse();
+        result.Value.ContaConfigurada.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -88,8 +91,9 @@ public class VerificarOnboardingTreinadorHandlerTests
 
         var result = await _handler.HandleAsync(new VerificarOnboardingTreinadorQuery(treinador.Id));
 
-        result.OnboardingCompleto.Should().BeTrue();
-        result.ContaConfigurada.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.OnboardingCompleto.Should().BeTrue();
+        result.Value.ContaConfigurada.Should().BeTrue();
         contaRecebimento.OnboardingCompleto.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

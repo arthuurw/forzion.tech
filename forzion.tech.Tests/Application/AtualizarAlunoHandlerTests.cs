@@ -40,7 +40,8 @@ public class AtualizarAlunoHandlerTests
 
         var result = await _handler.HandleAsync(new AtualizarAlunoCommand(aluno.Id, "Maria", null, null));
 
-        result.Nome.Should().Be("Maria");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Maria");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

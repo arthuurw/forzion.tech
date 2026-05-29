@@ -2,7 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Planos.CriarPlanoPlataforma;
@@ -15,7 +15,7 @@ public class CriarPlanoPlataformaHandler(
     TimeProvider timeProvider,
     ILogger<CriarPlanoPlataformaHandler> logger)
 {
-    public virtual Task<PlanoPlataformaResponse> HandleAsync(
+    public virtual Task<Result<PlanoPlataformaResponse>> HandleAsync(
         CriarPlanoPlataformaCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -23,7 +23,7 @@ public class CriarPlanoPlataformaHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<PlanoPlataformaResponse> HandleAsyncCore(
+    private async Task<Result<PlanoPlataformaResponse>> HandleAsyncCore(
         CriarPlanoPlataformaCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -31,7 +31,7 @@ public class CriarPlanoPlataformaHandler(
 
         var planoResult = PlanoPlataforma.Criar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
         if (planoResult.IsFailure)
-            throw new DomainException(planoResult.Error!.Message);
+            return Result.Failure<PlanoPlataformaResponse>(planoResult.Error!);
         var plano = planoResult.Value;
 
         await planoRepository.AdicionarAsync(plano, cancellationToken).ConfigureAwait(false);
@@ -39,6 +39,6 @@ public class CriarPlanoPlataformaHandler(
 
         logger.LogInformation("Plano {PlanoId} '{Nome}' criado por admin {AdminId}.", plano.Id, plano.Nome, userContext.ContaId);
 
-        return PlanoPlataformaResponseExtensions.ToResponse(plano);
+        return Result.Success(PlanoPlataformaResponseExtensions.ToResponse(plano));
     }
 }

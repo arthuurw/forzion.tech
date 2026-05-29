@@ -39,8 +39,9 @@ public static class TreinoEndpoints
             var command = new CriarTreinoCommand(
                 userContext.PerfilId, request.AlunoId, request.Nome, request.Objetivo,
                 request.Dificuldade, request.DataInicio, request.DataFim);
-            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Created($"/treinos/{response.TreinoId}", response);
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinos/{result.Value.TreinoId}", result.Value);
         })
         .RequireAuthorization()
         .WithSummary("Cria um novo treino para um aluno")
@@ -195,8 +196,9 @@ public static class TreinoEndpoints
             CancellationToken cancellationToken) =>
         {
             var command = new AtualizarObservacaoExercicioCommand(id, treinoExercicioId, request.Observacao);
-            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .RequireAuthorization()
         .WithSummary("Atualiza a observação de um exercício na ficha")
@@ -232,8 +234,9 @@ public static class TreinoEndpoints
             CancellationToken cancellationToken) =>
         {
             var command = new DuplicarTreinoCommand(userContext.PerfilId, id);
-            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Created($"/treinos/{response.TreinoId}", response);
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinos/{result.Value.TreinoId}", result.Value);
         })
         .RequireAuthorization()
         .WithSummary("Duplica um treino (gera uma cópia)")
@@ -255,8 +258,9 @@ public static class TreinoEndpoints
                 request.Observacao,
                 request.Exercicios.Select(e => new RegistrarExecucaoItemCommand(e.TreinoExercicioId, e.SeriesExecutadas, e.RepeticoesExecutadas, e.CargaExecutada, e.Observacao)).ToList());
 
-            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Created($"/treinos/{id}/execucoes/{response.ExecucaoId}", response);
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinos/{id}/execucoes/{result.Value.ExecucaoId}", result.Value);
         })
         .RequireAuthorization()
         .WithSummary("Registra a execução de um treino")

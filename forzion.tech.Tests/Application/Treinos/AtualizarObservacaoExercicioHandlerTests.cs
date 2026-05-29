@@ -48,7 +48,8 @@ public class AtualizarObservacaoExercicioHandlerTests
         var command = new AtualizarObservacaoExercicioCommand(treino.Id, ex.Id, "Manter cotovelo fixo");
         var result = await _handler.HandleAsync(command);
 
-        result.Exercicios[0].Observacao.Should().Be("Manter cotovelo fixo");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Exercicios[0].Observacao.Should().Be("Manter cotovelo fixo");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -64,7 +65,8 @@ public class AtualizarObservacaoExercicioHandlerTests
         var command = new AtualizarObservacaoExercicioCommand(treino.Id, ex.Id, null);
         var result = await _handler.HandleAsync(command);
 
-        result.Exercicios[0].Observacao.Should().BeNull();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Exercicios[0].Observacao.Should().BeNull();
     }
 
     [Fact]
@@ -78,19 +80,20 @@ public class AtualizarObservacaoExercicioHandlerTests
         var command = new AtualizarObservacaoExercicioCommand(treino.Id, ex.Id, "   ");
         var result = await _handler.HandleAsync(command);
 
-        result.Exercicios[0].Observacao.Should().BeNull();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Exercicios[0].Observacao.Should().BeNull();
     }
 
     [Fact]
-    public async Task HandleAsync_ObservacaoMuitoLonga_LancaDomainException()
+    public async Task HandleAsync_ObservacaoMuitoLonga_RetornaFalha()
     {
         var (treino, ex) = CriarTreinoComExercicio(Guid.NewGuid());
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 
         var command = new AtualizarObservacaoExercicioCommand(treino.Id, ex.Id, new string('x', 501));
-        var act = async () => await _handler.HandleAsync(command);
+        var result = await _handler.HandleAsync(command);
 
-        await act.Should().ThrowAsync<DomainException>();
+        result.IsFailure.Should().BeTrue();
     }
 
     [Fact]
@@ -117,7 +120,8 @@ public class AtualizarObservacaoExercicioHandlerTests
         var result = await _handler.HandleAsync(
             new AtualizarObservacaoExercicioCommand(treino.Id, ex.Id, "foco na contração"));
 
-        result.Exercicios[0].Observacao.Should().Be("foco na contração");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Exercicios[0].Observacao.Should().Be("foco na contração");
     }
 
     [Fact]

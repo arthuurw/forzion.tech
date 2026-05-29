@@ -37,10 +37,11 @@ public class CopiarExercicioGlobalHandlerTests
 
         var result = await _handler.HandleAsync(new CopiarExercicioGlobalCommand(global.Id, treinadorId));
 
-        result.Nome.Should().Be("Supino");
-        result.TreinadorId.Should().Be(treinadorId);
-        result.IsGlobal.Should().BeFalse();
-        result.Descricao.Should().Be("desc");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Supino");
+        result.Value.TreinadorId.Should().Be(treinadorId);
+        result.Value.IsGlobal.Should().BeFalse();
+        result.Value.Descricao.Should().Be("desc");
         _exercicioRepo.Verify(r => r.AdicionarAsync(It.IsAny<Exercicio>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

@@ -105,7 +105,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
     {
         _factory.RegistrarTreinadorHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaTreinador);
+            .ReturnsAsync(Result.Success(RespostaTreinador));
 
         var response = await _factory.CreateClient().PostAsJsonAsync("/auth/register/treinador",
             new { Email = "novo@test.com", Senha = "Senha@123", Nome = "Carlos" });

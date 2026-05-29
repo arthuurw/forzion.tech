@@ -37,7 +37,8 @@ public class AtribuirPlanoHandlerTests
 
         var result = await _handler.HandleAsync(new AtribuirPlanoCommand(treinador.Id, plano.Id, adminId));
 
-        result.PlanoPlataformaId.Should().Be(plano.Id);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PlanoPlataformaId.Should().Be(plano.Id);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

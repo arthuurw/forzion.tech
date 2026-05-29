@@ -51,8 +51,9 @@ public class ExecutarRelatorioSaudeHandlerTests
 
         var result = await _handler.HandleAsync();
 
-        result.Ambiente.Should().Be("Homolog");
-        result.StatusGeral.Should().Be(StatusSaude.Degradado);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Ambiente.Should().Be("Homolog");
+        result.Value.StatusGeral.Should().Be(StatusSaude.Degradado);
         _snapshotRepo.Verify(r => r.AdicionarAsync(It.IsAny<HealthSnapshot>(), It.IsAny<CancellationToken>()), Times.Once);
         _sender.Verify(s => s.EnviarAsync(report, It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);

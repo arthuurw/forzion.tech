@@ -63,8 +63,9 @@ public class AprovarVinculoHandlerTests
 
         var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacoteId));
 
-        result.Status.Should().Be(VinculoStatus.Ativo);
-        result.PacoteId.Should().Be(pacoteId);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(VinculoStatus.Ativo);
+        result.Value.PacoteId.Should().Be(pacoteId);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -118,7 +119,7 @@ public class AprovarVinculoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_VinculoJaAtivo_LancaDomainException()
+    public async Task HandleAsync_VinculoJaAtivo_RetornaFalha()
     {
         var treinadorId = Guid.NewGuid();
         var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
@@ -128,13 +129,14 @@ public class AprovarVinculoHandlerTests
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(vinculo.AlunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _limiteService.Setup(s => s.ValidarAsync(treinadorId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var act = async () => await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*aguardando aprovação*");
+        var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("aguardando aprovação");
     }
 
     [Fact]
-    public async Task HandleAsync_VinculoInativo_LancaDomainException()
+    public async Task HandleAsync_VinculoInativo_RetornaFalha()
     {
         var treinadorId = Guid.NewGuid();
         var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
@@ -144,9 +146,10 @@ public class AprovarVinculoHandlerTests
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(vinculo.AlunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
         _limiteService.Setup(s => s.ValidarAsync(treinadorId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var act = async () => await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*aguardando aprovação*");
+        var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("aguardando aprovação");
     }
 
     [Fact]

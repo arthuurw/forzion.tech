@@ -21,6 +21,7 @@ using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
@@ -130,7 +131,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.SolicitarTrocaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<SolicitarTrocaTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaNovoVinculo);
+            .ReturnsAsync(Result.Success(RespostaNovoVinculo));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/troca-treinador",
             new { NovoTreinadorId, PacoteId = Guid.NewGuid() });
@@ -187,7 +188,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.RegistrarExecucaoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaExecucao);
+            .ReturnsAsync(Result.Success(RespostaExecucao));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/execucoes",
             new
@@ -301,7 +302,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.SolicitarTrocaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<SolicitarTrocaTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Aluno já possui vínculo ativo."));
+            .ReturnsAsync(Result.Failure<VinculoResponse>(Error.Business("Aluno já possui vínculo ativo.")));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/troca-treinador",
             new { NovoTreinadorId, PacoteId = Guid.NewGuid() });
@@ -358,7 +359,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.RegistrarExecucaoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Treino não disponível."));
+            .ReturnsAsync(Result.Failure<RegistrarExecucaoResponse>(Error.Business("Treino não disponível.")));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/execucoes",
             new

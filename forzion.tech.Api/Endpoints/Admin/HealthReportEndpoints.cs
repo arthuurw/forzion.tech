@@ -1,3 +1,4 @@
+using forzion.tech.Api.Extensions;
 using forzion.tech.Application.UseCases.Admin.HealthReport;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,7 +38,8 @@ public static class HealthReportEndpoints
                     request.IncluirEntregabilidade,
                     request.IncluirErros),
                 cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Cria ou atualiza a configuração do relatório de saúde")
         .Produces<HealthReportConfigResponse>()
@@ -60,7 +62,8 @@ public static class HealthReportEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Executa o relatório de saúde imediatamente")
         .Produces<HealthSnapshotResponse>()

@@ -51,8 +51,9 @@ public class RegistrarExecucaoHandlerTests
 
         var result = await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
 
-        result.TreinoId.Should().Be(treino.Id);
-        result.AlunoId.Should().Be(alunoId);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TreinoId.Should().Be(treino.Id);
+        result.Value.AlunoId.Should().Be(alunoId);
         _execucaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<ExecucaoTreino>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

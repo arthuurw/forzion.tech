@@ -2,6 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
 
@@ -11,7 +12,7 @@ public class AtualizarPacoteHandler(
     IValidator<AtualizarPacoteCommand> validator,
     TimeProvider timeProvider)
 {
-    public virtual Task<PacoteResponse> HandleAsync(
+    public virtual Task<Result<PacoteResponse>> HandleAsync(
         AtualizarPacoteCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -19,7 +20,7 @@ public class AtualizarPacoteHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<PacoteResponse> HandleAsyncCore(
+    private async Task<Result<PacoteResponse>> HandleAsyncCore(
         AtualizarPacoteCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -33,10 +34,10 @@ public class AtualizarPacoteHandler(
 
         var atualizarResult = pacote.Atualizar(command.Nome, command.Preco, command.Descricao, timeProvider.GetUtcNow().UtcDateTime);
         if (atualizarResult.IsFailure)
-            throw new DomainException(atualizarResult.Error!.Message);
+            return Result.Failure<PacoteResponse>(atualizarResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return PacoteResponseExtensions.ToResponse(pacote);
+        return Result.Success(PacoteResponseExtensions.ToResponse(pacote));
     }
 }

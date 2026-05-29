@@ -2,6 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
 
@@ -16,7 +17,7 @@ public class AtualizarPerfilHandler(
     TimeProvider timeProvider,
     IValidator<AtualizarPerfilCommand> validator)
 {
-    public virtual Task HandleAsync(
+    public virtual Task<Result> HandleAsync(
         AtualizarPerfilCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -24,7 +25,7 @@ public class AtualizarPerfilHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task HandleAsyncCore(
+    private async Task<Result> HandleAsyncCore(
         AtualizarPerfilCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -40,7 +41,7 @@ public class AtualizarPerfilHandler(
                         ?? throw new DomainException("Aluno autenticado não encontrado.");
                     var atualizarResult = aluno.Atualizar(command.Nome, null, null, agora);
                     if (atualizarResult.IsFailure)
-                        throw new DomainException(atualizarResult.Error!.Message);
+                        return Result.Failure(atualizarResult.Error!);
                     break;
                 }
             case Domain.Enums.TipoConta.Treinador:
@@ -49,7 +50,7 @@ public class AtualizarPerfilHandler(
                         ?? throw new DomainException("Treinador autenticado não encontrado.");
                     var atualizarResult = treinador.AtualizarNome(command.Nome, agora);
                     if (atualizarResult.IsFailure)
-                        throw new DomainException(atualizarResult.Error!.Message);
+                        return Result.Failure(atualizarResult.Error!);
                     break;
                 }
             case Domain.Enums.TipoConta.SystemAdmin:
@@ -58,13 +59,15 @@ public class AtualizarPerfilHandler(
                         ?? throw new DomainException("Administrador autenticado não encontrado.");
                     var atualizarResult = systemUser.AtualizarNome(command.Nome, agora);
                     if (atualizarResult.IsFailure)
-                        throw new DomainException(atualizarResult.Error!.Message);
+                        return Result.Failure(atualizarResult.Error!);
                     break;
                 }
             default:
-                throw new DomainException("Tipo de conta inválido.");
+                return Result.Failure(Error.Business("Tipo de conta inválido."));
         }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        return Result.Success();
     }
 }

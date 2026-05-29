@@ -144,7 +144,8 @@ public static class AdminEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirTreinadorCommand(id, userContext.ContaId), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirTreinadorCommand(id, userContext.ContaId), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Exclui permanentemente um treinador inativo e todas as suas dependências. LogAprovacao é preservado.")
@@ -162,7 +163,8 @@ public static class AdminEndpoints
             var result = await handler.HandleAsync(
                 new AtribuirPlanoCommand(id, request.PlanoId, userContext.ContaId), cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atribui um PlanoPlataforma a um treinador")
         .Produces<TreinadorResponse>()
@@ -186,7 +188,8 @@ public static class AdminEndpoints
             var result = await handler.HandleAsync(
                 new CriarPlanoPlataformaCommand(request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
 
-            return Results.Created($"/admin/planos/{result.PlanoId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/admin/planos/{result.Value.PlanoId}", result.Value);
         })
         .WithSummary("Cria um novo plano de treinador")
         .Produces<PlanoPlataformaResponse>(StatusCodes.Status201Created)
@@ -200,7 +203,8 @@ public static class AdminEndpoints
         {
             var result = await handler.HandleAsync(
                 new AtualizarPlanoPlataformaCommand(id, request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atualiza nome, maxAlunos e/ou preço de um plano")
         .Produces<PlanoPlataformaResponse>()
@@ -235,7 +239,8 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(new CriarGrupoMuscularCommand(request.Nome), cancellationToken);
-            return Results.Created($"/admin/grupos-musculares/{result.Id}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/admin/grupos-musculares/{result.Value.Id}", result.Value);
         })
         .WithSummary("Cria um novo grupo muscular")
         .Produces<GrupoMuscularResponse>(StatusCodes.Status201Created)
@@ -248,7 +253,8 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(new AtualizarGrupoMuscularCommand(id, request.Nome), cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atualiza um grupo muscular")
         .Produces<GrupoMuscularResponse>()

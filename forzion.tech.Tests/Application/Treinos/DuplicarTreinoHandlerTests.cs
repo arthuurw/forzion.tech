@@ -46,9 +46,10 @@ public class DuplicarTreinoHandlerTests
 
         var result = await _handler.HandleAsync(new DuplicarTreinoCommand(treinadorId, treino.Id));
 
-        result.TreinoId.Should().NotBe(treino.Id);
-        result.Nome.Should().Be("Treino A (cópia)");
-        result.Exercicios.Should().HaveCount(1);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TreinoId.Should().NotBe(treino.Id);
+        result.Value.Nome.Should().Be("Treino A (cópia)");
+        result.Value.Exercicios.Should().HaveCount(1);
         _treinoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treino>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

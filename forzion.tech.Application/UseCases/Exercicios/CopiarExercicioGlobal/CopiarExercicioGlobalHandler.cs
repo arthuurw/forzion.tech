@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Exercicios.CopiarExercicioGlobal;
@@ -13,7 +14,7 @@ public class CopiarExercicioGlobalHandler(
     TimeProvider timeProvider,
     ILogger<CopiarExercicioGlobalHandler> logger)
 {
-    public virtual Task<ExercicioResponse> HandleAsync(
+    public virtual Task<Result<ExercicioResponse>> HandleAsync(
         CopiarExercicioGlobalCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -21,7 +22,7 @@ public class CopiarExercicioGlobalHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<ExercicioResponse> HandleAsyncCore(
+    private async Task<Result<ExercicioResponse>> HandleAsyncCore(
         CopiarExercicioGlobalCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -33,7 +34,7 @@ public class CopiarExercicioGlobalHandler(
 
         var copiaResult = Exercicio.Criar(original.Nome, original.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, original.Descricao);
         if (copiaResult.IsFailure)
-            throw new DomainException(copiaResult.Error!.Message);
+            return Result.Failure<ExercicioResponse>(copiaResult.Error!);
         var copia = copiaResult.Value;
 
         await exercicioRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
@@ -45,6 +46,6 @@ public class CopiarExercicioGlobalHandler(
         var grupoMuscular = await grupoMuscularRepository.ObterPorIdAsync(copia.GrupoMuscularId, cancellationToken).ConfigureAwait(false)
             ?? throw new GrupoMuscularNaoEncontradoException();
 
-        return ExercicioResponseExtensions.ToResponse(copia, grupoMuscular.Nome);
+        return Result.Success(ExercicioResponseExtensions.ToResponse(copia, grupoMuscular.Nome));
     }
 }

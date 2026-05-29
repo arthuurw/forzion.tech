@@ -28,8 +28,9 @@ public class LogoutHandlerTests
         _userContext.Setup(u => u.Jti).Returns(jti);
         _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddHours(1));
 
-        await _handler.HandleAsync();
+        var result = await _handler.HandleAsync();
 
+        result.IsSuccess.Should().BeTrue();
         _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -40,8 +41,9 @@ public class LogoutHandlerTests
         _userContext.Setup(u => u.Jti).Returns(Guid.Empty);
         _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddHours(1));
 
-        await _handler.HandleAsync();
+        var result = await _handler.HandleAsync();
 
+        result.IsSuccess.Should().BeTrue();
         _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -52,8 +54,9 @@ public class LogoutHandlerTests
         _userContext.Setup(u => u.Jti).Returns(Guid.NewGuid());
         _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddHours(-1));
 
-        await _handler.HandleAsync();
+        var result = await _handler.HandleAsync();
 
+        result.IsSuccess.Should().BeTrue();
         _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

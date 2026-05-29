@@ -4,6 +4,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
@@ -21,7 +22,7 @@ public class AprovarVinculoHandler(
     TimeProvider timeProvider,
     ILogger<AprovarVinculoHandler> logger)
 {
-    public virtual Task<VinculoResponse> HandleAsync(
+    public virtual Task<Result<VinculoResponse>> HandleAsync(
         AprovarVinculoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -29,7 +30,7 @@ public class AprovarVinculoHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<VinculoResponse> HandleAsyncCore(
+    private async Task<Result<VinculoResponse>> HandleAsyncCore(
         AprovarVinculoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -53,7 +54,7 @@ public class AprovarVinculoHandler(
             // Troca de treinador: inativa vínculo anterior e cascateia fichas
             var inativarResult = vinculoAtivo.Inativar(agora);
             if (inativarResult.IsFailure)
-                throw new DomainException(inativarResult.Error!.Message);
+                return Result.Failure<VinculoResponse>(inativarResult.Error!);
             treinosAntigos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculoAtivo.TreinadorId, vinculoAtivo.AlunoId, cancellationToken).ConfigureAwait(false);
             foreach (var ta in treinosAntigos)
                 ta.AlterarStatus(TreinoAlunoStatus.Inativo, agora);
@@ -70,13 +71,13 @@ public class AprovarVinculoHandler(
 
                 var copiaResult = treinoOrigem.DuplicarPara(command.TreinadorId, agora);
                 if (copiaResult.IsFailure)
-                    throw new DomainException(copiaResult.Error!.Message);
+                    return Result.Failure<VinculoResponse>(copiaResult.Error!);
                 var copia = copiaResult.Value;
                 await treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
 
                 var novoVinculoFichaResult = TreinoAluno.Criar(copia.Id, vinculo.AlunoId, agora);
                 if (novoVinculoFichaResult.IsFailure)
-                    throw new DomainException(novoVinculoFichaResult.Error!.Message);
+                    return Result.Failure<VinculoResponse>(novoVinculoFichaResult.Error!);
                 var novoVinculoFicha = novoVinculoFichaResult.Value;
                 await treinoAlunoRepository.AdicionarAsync(novoVinculoFicha, cancellationToken).ConfigureAwait(false);
             }
@@ -86,14 +87,14 @@ public class AprovarVinculoHandler(
 
         var aprovarResult = vinculo.Aprovar(command.TreinadorId, command.PacoteId, agora);
         if (aprovarResult.IsFailure)
-            throw new DomainException(aprovarResult.Error!.Message);
+            return Result.Failure<VinculoResponse>(aprovarResult.Error!);
 
         var aluno = await alunoRepository.ObterPorIdAsync(vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         if (aluno is not null && aluno.Status != AlunoStatus.Ativo)
         {
             var ativarResult = aluno.Ativar(agora);
             if (ativarResult.IsFailure)
-                throw new DomainException(ativarResult.Error!.Message);
+                return Result.Failure<VinculoResponse>(ativarResult.Error!);
         }
 
         var logResult = LogAprovacao.Registrar(
@@ -103,7 +104,7 @@ public class AprovarVinculoHandler(
             nameof(VinculoTreinadorAluno),
             agora);
         if (logResult.IsFailure)
-            throw new DomainException(logResult.Error!.Message);
+            return Result.Failure<VinculoResponse>(logResult.Error!);
         var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
@@ -120,6 +121,6 @@ public class AprovarVinculoHandler(
                 cancellationToken).ConfigureAwait(false);
         }
 
-        return new VinculoResponse(vinculo.Id, vinculo.TreinadorId, vinculo.AlunoId, vinculo.PacoteId, vinculo.Status, vinculo.CreatedAt);
+        return Result.Success(new VinculoResponse(vinculo.Id, vinculo.TreinadorId, vinculo.AlunoId, vinculo.PacoteId, vinculo.Status, vinculo.CreatedAt));
     }
 }

@@ -51,9 +51,10 @@ public class ReativarVinculoHandlerTests
 
         var result = await _handler.HandleAsync(new ReativarVinculoCommand(treinadorId, aluno.Id, pacoteId));
 
-        result.Status.Should().Be(VinculoStatus.Ativo);
-        result.TreinadorId.Should().Be(treinadorId);
-        result.AlunoId.Should().Be(aluno.Id);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(VinculoStatus.Ativo);
+        result.Value.TreinadorId.Should().Be(treinadorId);
+        result.Value.AlunoId.Should().Be(aluno.Id);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
     }

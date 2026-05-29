@@ -1,7 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
@@ -14,25 +14,32 @@ public class CriarAssinaturaAlunoHandler(
     TimeProvider timeProvider,
     ILogger<CriarAssinaturaAlunoHandler> logger)
 {
-    public virtual async Task<AssinaturaAlunoResponse> HandleAsync(
+    public virtual Task<Result<AssinaturaAlunoResponse>> HandleAsync(
         CriarAssinaturaAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return HandleAsyncCore(command, cancellationToken);
+    }
 
+    private async Task<Result<AssinaturaAlunoResponse>> HandleAsyncCore(
+        CriarAssinaturaAlunoCommand command,
+        CancellationToken cancellationToken = default)
+    {
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
-            throw new DomainException("O treinador não concluiu a configuração de recebimentos.");
+            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("O treinador não concluiu a configuração de recebimentos."));
 
         // Valor é derivado de Pacote.Preco — nunca aceito do caller. Sem isso, qualquer
         // chamador autorizado conseguiria criar assinatura por R$ 0,01.
-        var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Pacote não encontrado.");
+        var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false);
+        if (pacote is null)
+            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("Pacote não encontrado."));
 
         // Defesa anti cross-tenant: pacote precisa pertencer ao mesmo treinador.
         if (pacote.TreinadorId != command.TreinadorId)
-            throw new DomainException("Pacote não pertence ao treinador informado.");
+            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("Pacote não pertence ao treinador informado."));
 
         var assinaturaResult = AssinaturaAluno.Criar(
             command.VinculoId,
@@ -42,7 +49,7 @@ public class CriarAssinaturaAlunoHandler(
             pacote.Preco,
             timeProvider.GetUtcNow().UtcDateTime);
         if (assinaturaResult.IsFailure)
-            throw new DomainException(assinaturaResult.Error!.Message);
+            return Result.Failure<AssinaturaAlunoResponse>(assinaturaResult.Error!);
         var assinatura = assinaturaResult.Value;
 
         await assinaturaRepository.AdicionarAsync(assinatura, cancellationToken).ConfigureAwait(false);
@@ -51,6 +58,6 @@ public class CriarAssinaturaAlunoHandler(
         logger.LogInformation("AssinaturaAluno {AssinaturaAlunoId} criada para vínculo {VinculoId}.",
             assinatura.Id, command.VinculoId);
 
-        return AssinaturaAlunoResponseExtensions.ToResponse(assinatura);
+        return Result.Success(AssinaturaAlunoResponseExtensions.ToResponse(assinatura));
     }
 }

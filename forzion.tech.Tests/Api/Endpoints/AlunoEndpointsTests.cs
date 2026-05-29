@@ -11,6 +11,7 @@ using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
 using forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
@@ -126,7 +127,7 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
     {
         _factory.AtualizarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaAluno);
+            .ReturnsAsync(Result.Success(RespostaAluno));
 
         var response = await CriarClienteAutenticado().PatchAsJsonAsync($"/alunos/{AlunoId}",
             new { nome = "Maria" });
@@ -174,7 +175,7 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
     {
         _factory.AlterarStatusHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AlterarStatusAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaAluno);
+            .ReturnsAsync(Result.Success(RespostaAluno));
 
         var response = await CriarClienteAutenticado().PatchAsJsonAsync($"/alunos/{AlunoId}/status",
             new { status = "Inativo" });

@@ -44,8 +44,9 @@ public class DesvincularAlunoHandlerTests
         _treinoAlunoRepo.Setup(r => r.ListarAtivosPorParAsync(treinadorId, vinculo.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<TreinoAluno>)new[] { treinoAluno });
 
-        await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
+        var result = await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
 
+        result.IsSuccess.Should().BeTrue();
         vinculo.Status.Should().Be(VinculoStatus.Inativo);
         treinoAluno.Status.Should().Be(TreinoAlunoStatus.Inativo);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -75,7 +76,7 @@ public class DesvincularAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_VinculoJaInativo_LancaDomainException()
+    public async Task HandleAsync_VinculoJaInativo_RetornaFalha()
     {
         var treinadorId = Guid.NewGuid();
         var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
@@ -84,10 +85,10 @@ public class DesvincularAlunoHandlerTests
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
 
-        var act = async () => await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
+        var result = await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
 
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*já está inativo*");
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("já está inativo");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

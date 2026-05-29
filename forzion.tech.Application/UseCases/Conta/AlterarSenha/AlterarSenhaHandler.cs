@@ -2,6 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Conta.AlterarSenha;
 
@@ -30,7 +31,7 @@ public class AlterarSenhaHandler(
     TimeProvider timeProvider,
     IValidator<AlterarSenhaCommand> validator)
 {
-    public virtual Task HandleAsync(
+    public virtual Task<Result> HandleAsync(
         AlterarSenhaCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -38,7 +39,7 @@ public class AlterarSenhaHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task HandleAsyncCore(
+    private async Task<Result> HandleAsyncCore(
         AlterarSenhaCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -52,8 +53,10 @@ public class AlterarSenhaHandler(
 
         var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), timeProvider.GetUtcNow().UtcDateTime);
         if (atualizarResult.IsFailure)
-            throw new DomainException(atualizarResult.Error!.Message);
+            return Result.Failure(atualizarResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        return Result.Success();
     }
 }

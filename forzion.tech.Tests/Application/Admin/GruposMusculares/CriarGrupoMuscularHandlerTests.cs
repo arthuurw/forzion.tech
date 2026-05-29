@@ -5,7 +5,6 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
 using Moq;
 using Xunit;
 
@@ -37,13 +36,14 @@ public class CriarGrupoMuscularHandlerTests
         var result = await _handler.HandleAsync(command);
 
         // Assert
-        result.Nome.Should().Be("Peito");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Peito");
         _repository.Verify(r => r.AdicionarAsync(It.Is<GrupoMuscular>(g => g.Nome == "Peito"), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_NomeDuplicado_LancaDomainException()
+    public async Task HandleAsync_NomeDuplicado_RetornaFalha()
     {
         // Arrange
         var command = new CriarGrupoMuscularCommand("Peito");
@@ -51,9 +51,10 @@ public class CriarGrupoMuscularHandlerTests
             .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value);
 
         // Act
-        var act = () => _handler.HandleAsync(command);
+        var result = await _handler.HandleAsync(command);
 
         // Assert
-        await act.Should().ThrowAsync<DomainException>().WithMessage("Já existe um grupo muscular com este nome.");
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("Já existe um grupo muscular com este nome.");
     }
 }

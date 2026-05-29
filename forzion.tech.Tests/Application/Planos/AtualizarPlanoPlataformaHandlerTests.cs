@@ -32,9 +32,10 @@ public class AtualizarPlanoPlataformaHandlerTests
 
         var result = await _handler.HandleAsync(new AtualizarPlanoPlataformaCommand(plano.Id, "Pro", null, 20, 199.90m));
 
-        result.Nome.Should().Be("Pro");
-        result.MaxAlunos.Should().Be(20);
-        result.Preco.Should().Be(199.90m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Pro");
+        result.Value.MaxAlunos.Should().Be(20);
+        result.Value.Preco.Should().Be(199.90m);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -46,9 +47,10 @@ public class AtualizarPlanoPlataformaHandlerTests
 
         var result = await _handler.HandleAsync(new AtualizarPlanoPlataformaCommand(plano.Id, "Pro", null, null, null));
 
-        result.Nome.Should().Be("Pro");
-        result.MaxAlunos.Should().Be(10);
-        result.Preco.Should().Be(99.90m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Pro");
+        result.Value.MaxAlunos.Should().Be(10);
+        result.Value.Preco.Should().Be(99.90m);
     }
 
     [Fact]
