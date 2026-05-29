@@ -21,15 +21,12 @@ public class RegistrarAlunoHandlerTests
     private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
-    private readonly Mock<IWhatsAppNotifier> _whatsAppNotifier = new();
     private readonly Mock<ILogger<RegistrarAlunoHandler>> _logger = new();
     private readonly RegistrarAlunoHandler _handler;
 
     public RegistrarAlunoHandlerTests()
     {
         _passwordHasher.Setup(p => p.Hash(It.IsAny<string>())).Returns("hash");
-        _whatsAppNotifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
         _handler = new RegistrarAlunoHandler(
             _contaRepo.Object,
             _alunoRepo.Object,
@@ -39,7 +36,7 @@ public class RegistrarAlunoHandlerTests
             _passwordHasher.Object,
             _unitOfWork.Object,
             new RegistrarAlunoCommandValidator(),
-            _whatsAppNotifier.Object, TimeProvider.System,
+            TimeProvider.System,
             _logger.Object);
     }
 

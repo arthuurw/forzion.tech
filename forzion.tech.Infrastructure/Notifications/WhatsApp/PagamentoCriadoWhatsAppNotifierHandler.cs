@@ -1,8 +1,6 @@
-using System.Globalization;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
-using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,7 +13,7 @@ namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 ///
 /// Resolução: assinatura → aluno; usa <c>aluno.Telefone</c>. Sem telefone, no-op
 /// (e-mail handler cobre fallback). NullWhatsAppNotifier absorve silenciosamente
-/// quando integração não configurada — handler não checa Habilitado.
+/// quando integração não configurada.
 /// Link sempre pro portal forzion (<c>App:FrontendBaseUrl</c>), nunca Stripe.
 /// </summary>
 public sealed class PagamentoCriadoWhatsAppNotifierHandler(
@@ -28,6 +26,8 @@ public sealed class PagamentoCriadoWhatsAppNotifierHandler(
     public async Task HandleAsync(PagamentoCriadoEvent domainEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
+
+        if (!whatsAppNotifier.Habilitado) return;
 
         var assinatura = await assinaturaRepository
             .ObterPorIdAsync(domainEvent.AssinaturaAlunoId, cancellationToken)
@@ -53,20 +53,13 @@ public sealed class PagamentoCriadoWhatsAppNotifierHandler(
             return;
         }
 
-        var metodoLabel = domainEvent.MetodoPagamento == MetodoPagamento.Cartao ? "cartão de crédito" : "Pix";
         var linkPortal = $"{appSettings.Value.FrontendBaseUrl}/aluno/pagamentos";
-        // Formatação pt-BR explícita (R$ 149,90) — independe de culture do processo.
-        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
-        var valorFormatado = domainEvent.Valor.ToString("N2", ptBr);
-
-        var mensagem =
-            $"Olá, {aluno.Nome}! Sua nova cobrança forzion.tech está disponível:\n" +
-            $"Valor: R$ {valorFormatado}\n" +
-            $"Método: {metodoLabel}\n\n" +
-            $"Acesse: {linkPortal}";
 
         await whatsAppNotifier
-            .SendAsync(aluno.Telefone, mensagem, cancellationToken)
+            .SendTemplateAsync(
+                aluno.Telefone,
+                WhatsAppTemplates.CobrancaDisponivel(aluno.Nome, domainEvent.Valor, domainEvent.MetodoPagamento, linkPortal),
+                cancellationToken)
             .ConfigureAwait(false);
     }
 }

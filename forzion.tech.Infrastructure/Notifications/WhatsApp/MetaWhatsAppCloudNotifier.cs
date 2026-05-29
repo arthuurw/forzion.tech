@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using forzion.tech.Application.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -9,14 +8,16 @@ public class MetaWhatsAppCloudNotifier(
     HttpClient httpClient,
     ILogger<MetaWhatsAppCloudNotifier> logger) : IWhatsAppNotifier
 {
-    public async Task SendAsync(string phoneNumber, string message, CancellationToken cancellationToken = default)
+    public bool Habilitado => true;
+
+    public Task SendAsync(string phoneNumber, string message, CancellationToken cancellationToken = default)
     {
-        var phone = phoneNumber
-            .Replace("+", "")
-            .Replace("-", "")
-            .Replace(" ", "")
-            .Replace("(", "")
-            .Replace(")", "");
+        var phone = PhoneNumberNormalizer.Normalizar(phoneNumber);
+        if (phone is null)
+        {
+            logger.LogWarning("WhatsApp: telefone inválido/ausente — mensagem de texto ignorada.");
+            return Task.CompletedTask;
+        }
 
         var payload = new
         {
@@ -27,6 +28,52 @@ public class MetaWhatsAppCloudNotifier(
             text = new { preview_url = false, body = message }
         };
 
+        return PostAsync(payload, phone, cancellationToken);
+    }
+
+    public Task SendTemplateAsync(string phoneNumber, WhatsAppTemplateMessage message, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        var phone = PhoneNumberNormalizer.Normalizar(phoneNumber);
+        if (phone is null)
+        {
+            logger.LogWarning("WhatsApp: telefone inválido/ausente — template {Template} ignorado.", message.Name);
+            return Task.CompletedTask;
+        }
+
+        object[] components = message.BodyParameters.Count == 0
+            ? []
+            :
+            [
+                new
+                {
+                    type = "body",
+                    parameters = message.BodyParameters
+                        .Select(p => new { type = "text", text = p })
+                        .ToArray()
+                }
+            ];
+
+        var payload = new
+        {
+            messaging_product = "whatsapp",
+            recipient_type = "individual",
+            to = phone,
+            type = "template",
+            template = new
+            {
+                name = message.Name,
+                language = new { code = message.LanguageCode },
+                components
+            }
+        };
+
+        return PostAsync(payload, phone, cancellationToken);
+    }
+
+    private async Task PostAsync(object payload, string phone, CancellationToken cancellationToken)
+    {
         try
         {
             var response = await httpClient

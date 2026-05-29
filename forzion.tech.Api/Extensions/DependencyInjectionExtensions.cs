@@ -208,6 +208,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ReenviarVerificacaoHandler>();
         services.AddScoped<EmailVerificationSender>();
         services.AddScoped<ProcessarWebhookResendHandler>();
+        services.AddScoped<forzion.tech.Infrastructure.Notifications.WhatsApp.ProcessarWebhookWhatsAppHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();

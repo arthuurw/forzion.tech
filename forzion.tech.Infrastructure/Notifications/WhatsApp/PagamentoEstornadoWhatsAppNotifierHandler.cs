@@ -1,4 +1,3 @@
-using System.Globalization;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
@@ -28,6 +27,8 @@ public sealed class PagamentoEstornadoWhatsAppNotifierHandler(
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
 
+        if (!whatsAppNotifier.Habilitado) return;
+
         var assinatura = await assinaturaRepository
             .ObterPorIdAsync(domainEvent.AssinaturaAlunoId, cancellationToken)
             .ConfigureAwait(false);
@@ -53,17 +54,12 @@ public sealed class PagamentoEstornadoWhatsAppNotifierHandler(
         }
 
         var linkPortal = $"{appSettings.Value.FrontendBaseUrl}/aluno/pagamentos";
-        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
-        var valorFormatado = domainEvent.Valor.ToString("N2", ptBr);
-
-        var mensagem =
-            $"Olá, {aluno.Nome}! Sua cobrança forzion.tech foi estornada.\n" +
-            $"Valor: R$ {valorFormatado}\n" +
-            $"Devolução em até 10 dias úteis pelo mesmo método de pagamento.\n\n" +
-            $"Acesse: {linkPortal}";
 
         await whatsAppNotifier
-            .SendAsync(aluno.Telefone, mensagem, cancellationToken)
+            .SendTemplateAsync(
+                aluno.Telefone,
+                WhatsAppTemplates.PagamentoEstornado(aluno.Nome, domainEvent.Valor, linkPortal),
+                cancellationToken)
             .ConfigureAwait(false);
     }
 }

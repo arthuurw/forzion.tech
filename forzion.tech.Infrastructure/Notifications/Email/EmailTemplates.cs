@@ -398,6 +398,24 @@ internal static class EmailTemplates
             """);
     }
 
+    public static string NovoAlunoPendente(string nomeTreinador, string nomeAluno) =>
+        Layout(
+            "Novo aluno aguardando aprovação",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              O aluno <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong> solicitou vínculo com você
+              e está <strong>aguardando aprovação</strong>.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Acesse o app para aceitar ou recusar o pedido.
+            </p>
+            <a href="https://forzion.tech/treinador/alunos"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver pedidos pendentes
+            </a>
+            """);
+
     public static string AlunoCancelouAssinatura(string nomeTreinador, string nomeAluno, decimal valor)
     {
         var ptBr = CultureInfo.GetCultureInfo("pt-BR");

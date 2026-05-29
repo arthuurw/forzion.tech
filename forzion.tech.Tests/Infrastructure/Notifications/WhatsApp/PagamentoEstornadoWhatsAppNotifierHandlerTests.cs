@@ -1,4 +1,3 @@
-using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
@@ -31,7 +30,8 @@ public class PagamentoEstornadoWhatsAppNotifierHandlerTests
 
     public PagamentoEstornadoWhatsAppNotifierHandlerTests()
     {
-        _notifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _notifier.Setup(n => n.Habilitado).Returns(true);
+        _notifier.Setup(n => n.SendTemplateAsync(It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _appSettings = Options.Create(new AppSettings { FrontendBaseUrl = "https://app.forzion.tech" });
@@ -45,6 +45,18 @@ public class PagamentoEstornadoWhatsAppNotifierHandlerTests
         AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora).Value;
 
     [Fact]
+    public async Task HandleAsync_HabilitadoFalso_NaoEnvia()
+    {
+        _notifier.Setup(n => n.Habilitado).Returns(false);
+
+        await _handler.HandleAsync(Evento);
+
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_AssinaturaNaoEncontrada_NaoEnvia()
     {
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
@@ -52,8 +64,8 @@ public class PagamentoEstornadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(Evento);
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -67,8 +79,8 @@ public class PagamentoEstornadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(Evento);
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -83,13 +95,13 @@ public class PagamentoEstornadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(Evento);
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_AlunoComTelefone_EnviaMensagemComLinkPortal()
+    public async Task HandleAsync_AlunoComTelefone_EnviaTemplatePagamentoEstornado()
     {
         var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
@@ -99,13 +111,13 @@ public class PagamentoEstornadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(Evento);
 
-        _notifier.Verify(n => n.SendAsync(
+        _notifier.Verify(n => n.SendTemplateAsync(
             "11999998888",
-            It.Is<string>(msg => msg.Contains("Maria")
-                && msg.Contains("149,90")
-                && msg.Contains("estornada", StringComparison.OrdinalIgnoreCase)
-                && msg.Contains("https://app.forzion.tech/aluno/pagamentos")
-                && !msg.Contains("stripe.com")),
+            It.Is<WhatsAppTemplateMessage>(m =>
+                m.Name == "pagamento_estornado" &&
+                m.BodyParameters.Contains("Maria") &&
+                m.BodyParameters.Contains("149,90") &&
+                m.BodyParameters.Any(p => p.Contains("https://app.forzion.tech/aluno/pagamentos"))),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

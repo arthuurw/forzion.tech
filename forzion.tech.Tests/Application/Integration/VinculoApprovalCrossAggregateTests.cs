@@ -41,7 +41,6 @@ public class VinculoApprovalCrossAggregateTests
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
-    private readonly Mock<IWhatsAppNotifier> _whatsAppNotifier = new();
 
     private readonly AprovarVinculoHandler _aprovarHandler;
     private readonly VinculoAprovadoCriarAssinaturaAlunoHandler _criarAssinaturaHandler;
@@ -59,9 +58,6 @@ public class VinculoApprovalCrossAggregateTests
             .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockTx.Object);
 
-        _whatsAppNotifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
         _assinaturaRepo
             .Setup(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()))
             .Callback<AssinaturaAluno, CancellationToken>((a, _) => _assinaturasCriadas.Add(a))
@@ -71,7 +67,7 @@ public class VinculoApprovalCrossAggregateTests
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
             _alunoRepo.Object, _limiteService.Object, _logRepo.Object,
             _unitOfWork.Object, _transactionProvider.Object,
-            _whatsAppNotifier.Object, TimeProvider.System,
+            TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         _criarAssinaturaHandler = new VinculoAprovadoCriarAssinaturaAlunoHandler(

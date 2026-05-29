@@ -733,7 +733,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IDbContextTransactionProvider>(),
-            Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
+            TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         public Mock<DesvincularAlunoHandler> DesvincularAlunoHandlerMock { get; } = new(

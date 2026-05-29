@@ -19,7 +19,6 @@ public class RegistrarAlunoHandler(
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
     IValidator<RegistrarAlunoCommand> validator,
-    IWhatsAppNotifier whatsAppNotifier,
     TimeProvider timeProvider,
     ILogger<RegistrarAlunoHandler> logger)
 {
@@ -95,14 +94,6 @@ public class RegistrarAlunoHandler(
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Aluno {AlunoId} registrado com vínculo pendente ao treinador {TreinadorId}.", aluno.Id, command.TreinadorId);
-
-        if (!string.IsNullOrWhiteSpace(treinador.Telefone))
-        {
-            await whatsAppNotifier.SendAsync(
-                treinador.Telefone,
-                $"Novo aluno aguardando aprovação: {command.Nome}. Acesse o app para aprovar o vínculo.",
-                cancellationToken).ConfigureAwait(false);
-        }
 
         return Result.Success(CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno));
     }

@@ -30,7 +30,8 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
 
     public PagamentoFalhouWhatsAppNotifierHandlerTests()
     {
-        _notifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _notifier.Setup(n => n.Habilitado).Returns(true);
+        _notifier.Setup(n => n.SendTemplateAsync(It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _appSettings = Options.Create(new AppSettings { FrontendBaseUrl = "https://app.forzion.tech" });
@@ -44,9 +45,21 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
         AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora).Value;
 
     [Fact]
-    public async Task HandleAsync_PrimeiraTentativa_NaoEnvia()
+    public async Task HandleAsync_HabilitadoFalso_NaoEnvia()
     {
-        // 1ª falha: e-mail cobre, WhatsApp pula pra não spammar.
+        _notifier.Setup(n => n.Habilitado).Returns(false);
+
+        await _handler.HandleAsync(EventoCom(1));
+
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PrimeiraTentativaComTelefone_EnviaTemplate()
+    {
+        // Parity com e-mail: WhatsApp agora dispara em TODAS as tentativas.
         var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
@@ -55,9 +68,11 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(EventoCom(1));
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        _notifier.Verify(n => n.SendTemplateAsync(
+            "11999998888",
+            It.Is<WhatsAppTemplateMessage>(m => m.Name == "cobranca_falhou"),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -68,8 +83,8 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(EventoCom(2));
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -83,8 +98,8 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(EventoCom(2));
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -99,13 +114,13 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(EventoCom(2));
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_SegundaTentativaComTelefone_EnviaMensagem()
+    public async Task HandleAsync_SegundaTentativaComTelefone_EnviaTemplateCobrancaFalhou()
     {
         var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
@@ -115,30 +130,14 @@ public class PagamentoFalhouWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(EventoCom(2));
 
-        _notifier.Verify(n => n.SendAsync(
+        _notifier.Verify(n => n.SendTemplateAsync(
             "11999998888",
-            It.Is<string>(msg => msg.Contains("Maria")
-                && msg.Contains("149,90")
-                && msg.Contains("https://app.forzion.tech/aluno/pagamentos")
-                && !msg.Contains("stripe.com")),
-            It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task HandleAsync_TerceiraTentativa_MensagemUrgente()
-    {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", TestData.Agora, telefone: "11888887777").Value;
-        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(AssinaturaValida());
-        _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(aluno);
-
-        await _handler.HandleAsync(EventoCom(3));
-
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(),
-            It.Is<string>(msg => msg.Contains("bloqueio") || msg.Contains("Última")),
+            It.Is<WhatsAppTemplateMessage>(m =>
+                m.Name == "cobranca_falhou" &&
+                m.BodyParameters.Contains("Maria") &&
+                m.BodyParameters.Contains("149,90") &&
+                m.BodyParameters.Contains("2") &&
+                m.BodyParameters.Any(p => p.Contains("https://app.forzion.tech/aluno/pagamentos"))),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

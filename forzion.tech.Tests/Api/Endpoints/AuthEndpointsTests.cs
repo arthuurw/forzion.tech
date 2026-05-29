@@ -277,7 +277,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<RegistrarAlunoCommand>>(),
-            Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
+            TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         public Mock<VerificarEmailHandler> VerificarEmailHandlerMock { get; } = new(
