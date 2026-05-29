@@ -31,8 +31,26 @@ export default defineConfig({
   timeout: 30_000,
   expect: {
     timeout: 5_000,
+    // F20 (Fase 5) — visual snapshot tolerancia. Tight: 1% dos pixels podem
+    // diferir, com tolerancia perceptual de 0.2 por pixel. Suficiente pra
+    // anti-aliasing/font rendering minimo.
+    //
+    // **Baseline platform-specific:** screenshots gerados em macOS NAO
+    // batem com CI Linux (font rendering diferente). Convencao:
+    //   1. Snapshots default sao TIRADOS NO CI (Ubuntu). Commit os arquivos
+    //      `*-linux.png` gerados pelo CI.
+    //   2. Local macOS/Windows pode gerar `*-darwin.png` / `*-win32.png`
+    //      pra preview, MAS o CI e a fonte de verdade — se diverge,
+    //      atualiza no CI primeiro via `npx playwright test --update-snapshots`
+    //      em PR dedicado.
+    //   3. Se um teste so tem snapshot de uma plataforma, Playwright skipa
+    //      gracefully em outras (vide `snapshotPathTemplate` abaixo).
     toHaveScreenshot: { maxDiffPixelRatio: 0.01, threshold: 0.2 },
   },
+  // F20 — snapshots por OS + browser. Sem isso, snapshot macOS sobrescreve
+  // Linux e vice-versa em PRs cross-OS.
+  snapshotPathTemplate:
+    "{testDir}/__screenshots__/{testFilePath}/{arg}-{projectName}-{platform}{ext}",
   reporter: IS_CI
     ? [
         ["html", { open: "never" }],

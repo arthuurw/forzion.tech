@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-05-28 — Fase 5 completa, TODAS as 5 fases fechadas
+
+**Sessão:** Continuação direta após Fase 4. Usuário pediu pra iniciar Fase 5.
+
+**Feito (1 commit):**
+
+- **F37** drop `advanceTime()` unused — função + re-export removidos. Tests já usavam `vi.advanceTimersByTime` direto.
+- **F31** standardize `DateTime.UtcNow` → `TestData.Agora` — mass replace em 20 Domain entity test files via Python script. 3 excecoes preservadas em DateTime.UtcNow (ContaTests.AtualizarSenha, ErrorLogEntryTests.CreatedAt, TokenRevogadoTests) pq prod code usa DateTime.UtcNow internamente.
+- **F32** `AlunoBuilder.BuildUnsafe()` static helper — usa private ctor + property setters via reflection pra burlar `Aluno.Criar` validation. Permite construir Aluno com Nome vazio etc pra negative tests de handler. +2 BuildersTests validating pattern.
+- **F36** consolidate frontend factories — PagamentoCartao + (aluno)/pagamento agora importam `buildPagamento` de `@/test/factories`. Defaults locais ficam como `Partial<PagamentoResponse>` const, spread no factory.
+- **F33** DTO snapshots — achados 6 preexistentes. Adicionados 8 novos: Pagamento_Treinador, Vinculo, VinculoAlunoItem, Perfil, PlanoPlataforma, OnboardingStatus, HealthSnapshot, HealthReportConfig. Total 14.
+- **F18** a11y color-contrast tracker — novo `runAxeStrict` em `utils/axe.ts` (inclui rule) + novo `e2e/specs/a11y/color-contrast-ratchet.spec.ts` com ceiling explicito por pagina (login=20, cadastro/treinador=30). Ratcheta pra baixo conforme tema for ajustado.
+- **F21** Lighthouse schedule — adicionado `cron: "0 6 * * 3"` (Quarta 06:00 UTC) ao workflow. Budgets ja existiam em `lighthouserc.json` (LCP/CLS/TBT).
+- **F22** ZAP active rules — input `mode` (baseline|full) no workflow. Modo `full` usa `zaproxy/action-full-scan` (SQLi/XSS/path-traversal/CMDi). Schedule Sexta 02:00 UTC.
+- **F24** Storybook stories — `ConfirmDialog.stories.tsx` (6 stories) + `ResponsiveTable.stories.tsx` (4 stories). PagamentoCartao + TreinoForm deferidos pra backlog futuro (complexidade alta, melhor servido por tests).
+- **F20** Visual snapshot baselines — `snapshotPathTemplate` agora inclui `{projectName}-{platform}`. Comment denso documenta protocolo CI Linux=fonte de verdade.
+
+**Decisões / observacoes:**
+- F31 mass replace via Python: 20 files × ~10 occurrencias cada. Mais seguro que sed regex. 3 falhas no run pos-replace (asserts BeCloseTo com TestData.Agora batiam contra DateTime.UtcNow real). Revertidas pra DateTime.UtcNow com comentario explicativo.
+- F32 reflection approach: documentei que `BuildUnsafe` e escape hatch SOMENTE pra negative tests de handler, NAO pra fixtures de happy path. Pattern aplicavel aos outros builders sob demanda.
+- F33 verified files novos commitados (8 .verified.txt). Verify.Xunit so falha em mudança breaking pos-aprovacao.
+- F18 ceiling 20+30 e provisorio — primeira run captura baseline; depois ratchet pra baixo.
+- F24 PagamentoCartao stories adiada: precisa MSW addon + Stripe mock + state. Cobertura ja existe via tests F6b+F7. TreinoForm idem.
+- F20: snapshotPathTemplate Playwright 1.49+ permite per-platform sem hack. Sem refazer existing snapshots por enquanto — proximo PR que update snapshots adota o novo template.
+
+**Métricas:**
+- Backend tests total: ~1255 pass (+8 F33 DTO + 2 F32 BuildUnsafe + 0 F31 net).
+- Frontend tests: 341 pass (F36 e refactor, F37 deleta export sem test, F18 e novo spec E2E).
+- DTO snapshots: 6 → 14.
+- Storybook stories: 4 → 8 (4 ui + 4 stateful).
+
+**Métricas pós-sessão:** Total findings 38 — done 36, deferred 2, pending 0. **TODAS as 5 fases 100% fechadas.**
+
+**Próximos passos:** Backlog futuro (sem deadline) documentado em state.md. Test remediation oficialmente concluído.
+
+---
+
 ## 2026-05-28 — Fase 4 completa em 2 commits
 
 **Sessão:** Continuação direta após Fase 3. Usuário pediu pra iniciar Fase 4.

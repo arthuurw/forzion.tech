@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -11,7 +12,7 @@ public class ContaRecebimentoTests
     [Fact]
     public void Criar_TreinadorIdValido_CriaPendente()
     {
-        var conta = ContaRecebimento.Criar(TreinadorId, DateTime.UtcNow);
+        var conta = ContaRecebimento.Criar(TreinadorId, TestData.Agora);
 
         conta.TreinadorId.Should().Be(TreinadorId);
         conta.StripeConnectAccountId.Should().BeNull();
@@ -22,7 +23,7 @@ public class ContaRecebimentoTests
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => ContaRecebimento.Criar(Guid.Empty, DateTime.UtcNow);
+        var act = () => ContaRecebimento.Criar(Guid.Empty, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador do treinador é inválido.");
     }
 
@@ -31,7 +32,7 @@ public class ContaRecebimentoTests
     [Fact]
     public void ConfigurarStripeConnect_AccountIdValido_Salva()
     {
-        var conta = ContaRecebimento.Criar(TreinadorId, DateTime.UtcNow);
+        var conta = ContaRecebimento.Criar(TreinadorId, TestData.Agora);
 
         conta.ConfigurarStripeConnect("acct_123");
 
@@ -45,7 +46,7 @@ public class ContaRecebimentoTests
     [InlineData("   ")]
     public void ConfigurarStripeConnect_AccountIdVazio_LancaDomainException(string accountId)
     {
-        var conta = ContaRecebimento.Criar(TreinadorId, DateTime.UtcNow);
+        var conta = ContaRecebimento.Criar(TreinadorId, TestData.Agora);
         var act = () => conta.ConfigurarStripeConnect(accountId);
         act.Should().Throw<DomainException>().WithMessage("O identificador da conta Stripe é inválido.");
     }
@@ -55,7 +56,7 @@ public class ContaRecebimentoTests
     [Fact]
     public void ConfirmarOnboarding_ComContaConfigurada_MarcaCompleto()
     {
-        var conta = ContaRecebimento.Criar(TreinadorId, DateTime.UtcNow);
+        var conta = ContaRecebimento.Criar(TreinadorId, TestData.Agora);
         conta.ConfigurarStripeConnect("acct_123");
 
         conta.ConfirmarOnboarding();
@@ -67,7 +68,7 @@ public class ContaRecebimentoTests
     [Fact]
     public void ConfirmarOnboarding_SemContaConfigurada_LancaDomainException()
     {
-        var conta = ContaRecebimento.Criar(TreinadorId, DateTime.UtcNow);
+        var conta = ContaRecebimento.Criar(TreinadorId, TestData.Agora);
         var act = () => conta.ConfirmarOnboarding();
         act.Should().Throw<DomainException>().WithMessage("O treinador não possui conta Stripe configurada.");
     }

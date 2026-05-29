@@ -2,6 +2,7 @@ using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -10,7 +11,7 @@ public class PagamentoTests
     private static readonly Guid AssinaturaAlunoId = Guid.NewGuid();
     private const decimal Valor = 150m;
 
-    private static Pagamento CriarValido() => Pagamento.Criar(AssinaturaAlunoId, Valor, DateTime.UtcNow);
+    private static Pagamento CriarValido() => Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora);
 
     // --- Criar ---
 
@@ -31,7 +32,7 @@ public class PagamentoTests
     [Fact]
     public void Criar_AssinaturaAlunoIdVazio_LancaDomainException()
     {
-        var act = () => Pagamento.Criar(Guid.Empty, Valor, DateTime.UtcNow);
+        var act = () => Pagamento.Criar(Guid.Empty, Valor, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador da assinatura é inválido.");
     }
 
@@ -40,7 +41,7 @@ public class PagamentoTests
     [InlineData(-1)]
     public void Criar_ValorInvalido_LancaDomainException(decimal valor)
     {
-        var act = () => Pagamento.Criar(AssinaturaAlunoId, valor, DateTime.UtcNow);
+        var act = () => Pagamento.Criar(AssinaturaAlunoId, valor, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O valor do pagamento deve ser maior que zero.");
     }
 
@@ -50,7 +51,7 @@ public class PagamentoTests
     public void DefinirDadosPix_DadosValidos_Salva()
     {
         var p = CriarValido();
-        var expiracao = DateTime.UtcNow.AddHours(1);
+        var expiracao = TestData.Agora.AddHours(1);
 
         p.DefinirDadosPix("pi_123", "qrcode_data", "https://img.url", expiracao);
 
@@ -67,7 +68,7 @@ public class PagamentoTests
     public void DefinirDadosPix_PaymentIntentIdVazio_LancaDomainException(string paymentIntentId)
     {
         var p = CriarValido();
-        var act = () => p.DefinirDadosPix(paymentIntentId, "qr", "url", DateTime.UtcNow);
+        var act = () => p.DefinirDadosPix(paymentIntentId, "qr", "url", TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador do PaymentIntent é inválido.");
     }
 
@@ -77,7 +78,7 @@ public class PagamentoTests
     public void DefinirDadosPix_QrCodeVazio_LancaDomainException(string qrCode)
     {
         var p = CriarValido();
-        var act = () => p.DefinirDadosPix("pi_123", qrCode, "url", DateTime.UtcNow);
+        var act = () => p.DefinirDadosPix("pi_123", qrCode, "url", TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O QR code Pix é inválido.");
     }
 

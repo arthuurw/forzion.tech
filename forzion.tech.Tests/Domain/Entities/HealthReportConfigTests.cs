@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -21,7 +22,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: DateTime.UtcNow);
+            agora: TestData.Agora);
 
         config.Id.Should().NotBeEmpty();
         config.Ativo.Should().BeTrue();
@@ -32,7 +33,7 @@ public class HealthReportConfigTests
         config.IncluirEntregabilidade.Should().BeTrue();
         config.IncluirErros.Should().BeTrue();
         config.UltimoEnvioEm.Should().BeNull();
-        config.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+        config.CreatedAt.Should().BeCloseTo(TestData.Agora, TimeSpan.FromSeconds(2));
         config.UpdatedAt.Should().BeNull();
     }
 
@@ -47,7 +48,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: false,
             incluirErros: false,
-            agora: DateTime.UtcNow);
+            agora: TestData.Agora);
 
         config.Ativo.Should().BeFalse();
         config.Destinatarios.Should().BeEmpty();
@@ -64,7 +65,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: DateTime.UtcNow);
+            agora: TestData.Agora);
 
         act.Should().Throw<DomainException>()
             .WithMessage("Uma configuração ativa exige ao menos um destinatário.");
@@ -81,7 +82,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: DateTime.UtcNow);
+            agora: TestData.Agora);
 
         act.Should().Throw<DomainException>().WithMessage("O e-mail informado é inválido.");
     }
@@ -97,7 +98,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: DateTime.UtcNow);
+            agora: TestData.Agora);
 
         config.Destinatarios.Should().Be("admin@forzion.tech,ops@forzion.tech");
         config.ObterDestinatarios().Should().Equal("admin@forzion.tech", "ops@forzion.tech");
@@ -116,7 +117,7 @@ public class HealthReportConfigTests
             incluirKpis: false,
             incluirEntregabilidade: false,
             incluirErros: false,
-            agora: DateTime.UtcNow);
+            agora: TestData.Agora);
 
         var novaHora = new TimeOnly(9, 30);
         config.Atualizar(
@@ -149,7 +150,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: DateTime.UtcNow);
+            agora: TestData.Agora);
 
         var act = () => config.Atualizar(
             ativo: true,
@@ -177,7 +178,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: DateTime.UtcNow);
+            agora: TestData.Agora);
 
         var envio = new DateTime(2026, 5, 26, 7, 0, 0, DateTimeKind.Utc);
         config.MarcarEnviado(envio);

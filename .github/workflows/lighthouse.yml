@@ -1,6 +1,8 @@
-name: Lighthouse CI (manual)
+name: Lighthouse CI (semanal + manual)
 
-# Performance/a11y/SEO contra a URL homolog. Manual (precisa de stack viva).
+# Performance/a11y/SEO contra a URL homolog. Schedule semanal (Quarta 06:00 UTC)
+# pra capturar regressao de performance — budgets em lighthouserc.json (LCP <
+# 2.5s, CLS < 0.1, TBT < 300ms). Manual via workflow_dispatch pra runs ad-hoc.
 on:
   workflow_dispatch:
     inputs:
@@ -8,6 +10,10 @@ on:
         description: "URL base (default: variável HOMOLOG_BASE_URL)"
         required: false
         default: ""
+  schedule:
+    # F21 (Fase 5): Quarta 06:00 UTC. Sem auto-deploy nesse horario, baseline
+    # representa o estado pos-deploys da terca (push homolog).
+    - cron: "0 6 * * 3"
 
 jobs:
   lighthouse:

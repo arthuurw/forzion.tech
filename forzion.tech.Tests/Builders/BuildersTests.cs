@@ -22,6 +22,26 @@ public class BuildersTests
     }
 
     [Fact]
+    public void AlunoBuilder_BuildUnsafe_PermiteEntidadeInvalida_F32()
+    {
+        // F32 — escape hatch: Aluno.Criar rejeita Nome vazio com DomainException.
+        // BuildUnsafe burla pra permitir simulacao de "legacy data" em handler tests.
+        var aluno = AlunoBuilder.BuildUnsafe(nome: "");
+
+        aluno.Nome.Should().Be("", "BuildUnsafe deve preservar Nome invalido");
+        aluno.Id.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void AlunoBuilder_BuildUnsafe_AceitaStatusOverride_F32()
+    {
+        var aluno = AlunoBuilder.BuildUnsafe(nome: "Legacy", status: AlunoStatus.Inativo);
+
+        aluno.Nome.Should().Be("Legacy");
+        aluno.Status.Should().Be(AlunoStatus.Inativo);
+    }
+
+    [Fact]
     public void AlunoBuilder_ComOverrides_AplicaValores()
     {
         var conta = TestData.NextGuid();

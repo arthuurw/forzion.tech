@@ -9,6 +9,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useStripe, useElements } from "@stripe/react-stripe-js";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { buildPagamento } from "@/test/factories";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 import type { PagamentoResponse } from "@/types";
 import type React from "react";
@@ -26,17 +27,15 @@ vi.mock("@stripe/react-stripe-js", () => ({
   useElements: vi.fn(),
 }));
 
-// ─── Fixtures ────────────────────────────────────────────────────────────────
+// ─── Fixtures (F36: consolidado via buildPagamento) ──────────────────────────
 
-const BASE: PagamentoResponse = {
+// Defaults pra este spec: Cartao Pendente com clientSecret valido.
+const CARTAO_DEFAULTS: Partial<PagamentoResponse> = {
   pagamentoId: "p1",
   assinaturaAlunoId: "a1",
   valor: 150,
   status: "Pendente",
   metodoPagamento: "Cartao",
-  pixQrCode: null,
-  pixQrCodeUrl: null,
-  pixExpiracao: null,
   clientSecret: "pi_test_secret_key",
   dataPagamento: null,
   createdAt: "2025-03-15T00:00:00Z",
@@ -45,7 +44,7 @@ const BASE: PagamentoResponse = {
 function respondPagamento(overrides: Partial<PagamentoResponse>) {
   server.use(
     http.get("*/aluno/pagamentos/:id", () =>
-      HttpResponse.json({ ...BASE, ...overrides }),
+      HttpResponse.json(buildPagamento({ ...CARTAO_DEFAULTS, ...overrides })),
     ),
   );
 }

@@ -169,12 +169,12 @@
 - **Notas:** F17 (Fase 3) cobre Cadastrar/RegistrarAluno, Login, RegistrarTreinador, CriarTreino, CriarPacote, AtualizarPerfil. F17b (Fase 4) cobre CriarGrupoMuscular, AtualizarGrupoMuscular, CriarExercicio, AtualizarPacote, Criar/AtualizarPlanoPlataforma, AdicionarExercicio. Total 87 validator tests. Pattern: boundary + happy + violacao por rule.
 
 ### F18 — a11y `color-contrast` rule disabled
-- **Status:** `pending`
+- **Status:** `done` (ratchet)
 - **Fase:** 5
-- **Arquivo:** `frontend/e2e/specs/a11y/all-pages-axe.spec.ts` (ou util `runAxe()`)
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Disabled por MUI chips/secondary text. Auditar tema; re-ativar; ou tracker explícito de débito.
+- **Arquivos:** `frontend/e2e/utils/axe.ts` (+runAxeStrict), `frontend/e2e/specs/a11y/color-contrast-ratchet.spec.ts` (novo)
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** runAxeStrict() variante inclui color-contrast. Novo spec com ceiling explicito por pagina (login=20, cadastro/treinador=30). Ratcheta pra baixo conforme tema MUI for ajustado; quando chegar a 0, mover rule pra runAxe default. Tracker visivel > rule silenciosamente disabled.
 
 ### F19 — Admin treinador write actions sem E2E
 - **Status:** `done`
@@ -185,28 +185,28 @@
 - **Notas:** Aprovar + reprovar com cleanup via POST `/admin/treinadores/{id}/aguardando`. Skip por env `E2E_PENDING_TREINADOR_EMAIL`. Captura id via `row.evaluate(getAttribute)` pra contornar lint rule.
 
 ### F20 — Visual snapshots tolerantes + sem baseline platform-specific
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 5
-- **Arquivo:** `frontend/playwright.config.ts:33-34`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** `maxDiffPixelRatio: 0.01, threshold: 0.2`. Baseline Linux CI vs macOS local diverge. Documentar protocolo de update.
+- **Arquivo:** `frontend/playwright.config.ts`
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** `snapshotPathTemplate` agora inclui `{projectName}-{platform}` — snapshots Linux/macOS/Windows ficam em arquivos separados, sem sobrescrever. Comment denso documenta protocolo: CI Linux e fonte de verdade; update via PR dedicado com `--update-snapshots`. Tolerancia mantida (0.01/0.2) — F20 finding era sobre baseline, nao threshold.
 
 ### F21 — Lighthouse workflow_dispatch sem schedule, sem budgets confirmados
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 5
-- **Arquivos:** `.github/workflows/lighthouse.yml`, novo `frontend/.lighthouserc.json`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** LCP < 2.5s, CLS < 0.1, FID < 100ms. Schedule semanal.
+- **Arquivos:** `.github/workflows/lighthouse.yml`, `frontend/lighthouserc.json` (preexistente, confirmado)
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** lighthouserc.json ja tinha budgets (LCP <= 2500ms, CLS <= 0.1, TBT <= 300ms, perf score >= 0.85). Adicionado schedule semanal (Quarta 06:00 UTC) ao workflow. Manual workflow_dispatch preservado.
 
 ### F22 — ZAP DAST passivo apenas
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 5
 - **Arquivo:** `.github/workflows/zap.yml`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Sem active rules (SQLi/XSS/path traversal). Upgrade pra Automation Framework.
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Workflow expandido com input `mode` (baseline|full). Modo `full` usa `zaproxy/action-full-scan` (active rules SQLi/XSS/path-traversal/CMDi). Schedule semanal Sexta 02:00 UTC (baseline por default; full requer dispatch manual ou troca de default).
 
 ### F23 — Email verify replay (mesmo token 2x) não testado
 - **Status:** `done`
@@ -217,12 +217,14 @@
 - **Notas:** Test `HandleAsync_Replay_MesmoTokenDuasVezes_SegundaFalha_F23` chama handler 2x com mesmo raw token; 2ª falha com "inválido ou já utilizado".
 
 ### F24 — Storybook stateful components missing
-- **Status:** `pending`
+- **Status:** `done` (2/4; PagamentoCartao + TreinoForm diferidos)
 - **Fase:** 5
-- **Novos arquivos:** `*.stories.tsx` pra ResponsiveTable, ConfirmDialog, PagamentoCartao, TreinoForm
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Loading/error/empty/populated por componente. Limitar a stateful com >3 estados.
+- **Novos arquivos:**
+  - `frontend/src/components/ui/ConfirmDialog.stories.tsx` (6 stories: Default, Destructive, Loading, ComChildrenForm, Fechado, Interativo)
+  - `frontend/src/components/ui/ResponsiveTable.stories.tsx` (4 stories: Populated, Empty, ComOnRowClick, ComPaginacao)
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** ConfirmDialog + ResponsiveTable cobertos. PagamentoCartao precisa de MSW handlers + Stripe mock + state — complexidade alta, melhor servido por testes (ja cobertos em F6b+F7). TreinoForm precisa de mock de fluxo TreinoExercicio — defer.
 
 ### F25 — Rate limit memory eviction sem teste
 - **Status:** `done`
@@ -277,28 +279,28 @@
 ## Minor (F31-F38)
 
 ### F31 — `DateTime.UtcNow` em factories de testes
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 5
-- **Arquivos:** `forzion.tech.Tests/Domain/Entities/AlunoTests.cs:17`, padrão pelo suite
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Padronizar `TestData.Agora`. Não bloqueia (handlers usam TimeProvider), só consistência.
+- **Arquivos:** 20 files em `forzion.tech.Tests/Domain/Entities/*.cs`
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Mass replace `DateTime.UtcNow` → `TestData.Agora` em 20 Domain entity tests. 3 excecoes mantidas em `DateTime.UtcNow` (ContaTests AtualizarSenha, ErrorLogEntryTests CreatedAt, TokenRevogadoTests) porque a prod code interna chama DateTime.UtcNow — assertion bate com tempo real.
 
 ### F32 — Builders sem opt-out de validation
-- **Status:** `pending`
+- **Status:** `done` (pattern + AlunoBuilder; outros builders sob demanda)
 - **Fase:** 5
-- **Arquivos:** `forzion.tech.Tests/Builders/AlunoBuilder.cs` + outros
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Add `.WithValidation(bool)` pra negative tests de handler.
+- **Arquivo:** `forzion.tech.Tests/Builders/AlunoBuilder.cs` (+BuildUnsafe), `forzion.tech.Tests/Builders/BuildersTests.cs` (+2 tests)
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** AlunoBuilder.BuildUnsafe() static helper usa private ctor + property setters via reflection pra burlar Aluno.Criar() validation. Permite criar Aluno com Nome vazio etc pra negative tests de handler ("se repositorio devolver legacy data com X invalido..."). Pattern documentado; outros builders adicionam BuildUnsafe sob demanda.
 
 ### F33 — DTO snapshot tests vazios
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 5
 - **Arquivo:** `forzion.tech.Tests/Api/Snapshots/ResponseDtoSnapshots.cs`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Verify.Xunit já configurado. Adicionar snapshot por response DTO; quebra mudança breaking.
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Achei 6 snapshots preexistentes (Aluno, Treinador, Pacote, AssinaturaAluno, Login, Pagamento_Aluno). Adicionados 8 novos: Pagamento_Treinador, Vinculo, VinculoAlunoItem, Perfil, PlanoPlataforma, OnboardingStatus, HealthSnapshot, HealthReportConfig. 14 total. Mudanca breaking de qualquer DTO falha aqui ate re-aprovacao explicita.
 
 ### F34 — Pact broker single-point-of-failure (Hostinger)
 - **Status:** `deferred`
@@ -317,20 +319,20 @@
 - **Notas:** `performance.memory` é Chromium-only por design da API. Documentado em runbook.
 
 ### F36 — Frontend factories inconsistentes
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 5
-- **Arquivos:** `frontend/src/components/pagamento/PagamentoCartao.test.tsx`, `frontend/src/app/(aluno)/__tests__/pagamento.test.tsx`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Consolidar via `buildPagamento(overrides)` no `frontend/src/test/factories/`.
+- **Arquivos:** `PagamentoCartao.test.tsx`, `(aluno)/pagamento.test.tsx`
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Ambos arquivos agora usam `buildPagamento` de `@/test/factories`. PagamentoCartao usa `CARTAO_DEFAULTS` const, pagamento.test usa `PIX_DEFAULTS` + `makePagamento` thin wrapper. Tudo passa pelo factory unico.
 
 ### F37 — `advanceTime()` export unused
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 5
-- **Arquivo:** `frontend/src/test/determinism/index.ts:48`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Drop OU documentar quando usar.
+- **Arquivos:** `frontend/src/test/determinism/time.ts`, `frontend/src/test/determinism/index.ts`
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Funcao + re-export removidos. Testes ja usavam `vi.advanceTimersByTime` direto (wrapper era redundante).
 
 ### F38 — MSW webhook handlers default 401 silencioso
 - **Status:** `done`

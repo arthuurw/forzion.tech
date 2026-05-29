@@ -53,28 +53,28 @@ public class AssinaturaAlunoTests
     [Fact]
     public void Criar_VinculoIdVazio_LancaDomainException()
     {
-        var act = () => AssinaturaAluno.Criar(Guid.Empty, PacoteId, TreinadorId, AlunoId, Valor, DateTime.UtcNow);
+        var act = () => AssinaturaAluno.Criar(Guid.Empty, PacoteId, TreinadorId, AlunoId, Valor, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador do vínculo é inválido.");
     }
 
     [Fact]
     public void Criar_PacoteIdVazio_LancaDomainException()
     {
-        var act = () => AssinaturaAluno.Criar(VinculoId, Guid.Empty, TreinadorId, AlunoId, Valor, DateTime.UtcNow);
+        var act = () => AssinaturaAluno.Criar(VinculoId, Guid.Empty, TreinadorId, AlunoId, Valor, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador do pacote é inválido.");
     }
 
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, Guid.Empty, AlunoId, Valor, DateTime.UtcNow);
+        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, Guid.Empty, AlunoId, Valor, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador do treinador é inválido.");
     }
 
     [Fact]
     public void Criar_AlunoIdVazio_LancaDomainException()
     {
-        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, Guid.Empty, Valor, DateTime.UtcNow);
+        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, Guid.Empty, Valor, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador do aluno é inválido.");
     }
 
@@ -83,7 +83,7 @@ public class AssinaturaAlunoTests
     [InlineData(-1)]
     public void Criar_ValorInvalido_LancaDomainException(decimal valor)
     {
-        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, AlunoId, valor, DateTime.UtcNow);
+        var act = () => AssinaturaAluno.Criar(VinculoId, PacoteId, TreinadorId, AlunoId, valor, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O valor da assinatura deve ser maior que zero.");
     }
 
@@ -154,9 +154,9 @@ public class AssinaturaAlunoTests
     public void AgendarProximaCobranca_DataFutura_Atualiza()
     {
         var a = CriarValida();
-        var futuro = DateTime.UtcNow.AddDays(30);
+        var futuro = TestData.Agora.AddDays(30);
 
-        a.AgendarProximaCobranca(futuro, DateTime.UtcNow);
+        a.AgendarProximaCobranca(futuro, TestData.Agora);
 
         a.DataProximaCobranca.Should().Be(futuro);
         a.UpdatedAt.Should().NotBeNull();
@@ -166,7 +166,7 @@ public class AssinaturaAlunoTests
     public void AgendarProximaCobranca_DataPassada_LancaDomainException()
     {
         var a = CriarValida();
-        var act = () => a.AgendarProximaCobranca(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
+        var act = () => a.AgendarProximaCobranca(TestData.Agora.AddDays(-1), TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("A data da próxima cobrança deve ser futura.");
     }
 }

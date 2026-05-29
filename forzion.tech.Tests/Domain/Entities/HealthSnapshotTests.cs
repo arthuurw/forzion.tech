@@ -2,6 +2,7 @@ using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -10,7 +11,7 @@ public class HealthSnapshotTests
     [Fact]
     public void Criar_DadosValidos_RetornaSnapshot()
     {
-        var agora = DateTime.UtcNow;
+        var agora = TestData.Agora;
 
         var snapshot = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{\"ok\":true}", agora);
 
@@ -19,13 +20,13 @@ public class HealthSnapshotTests
         snapshot.StatusGeral.Should().Be(StatusSaude.Ok);
         snapshot.PayloadJson.Should().Be("{\"ok\":true}");
         snapshot.CapturadoEm.Should().Be(agora);
-        snapshot.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+        snapshot.CreatedAt.Should().BeCloseTo(TestData.Agora, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
     public void Criar_AmbienteComEspacos_Remove()
     {
-        var snapshot = HealthSnapshot.Criar("  prod  ", StatusSaude.Degradado, "{}", DateTime.UtcNow);
+        var snapshot = HealthSnapshot.Criar("  prod  ", StatusSaude.Degradado, "{}", TestData.Agora);
         snapshot.Ambiente.Should().Be("prod");
     }
 
@@ -34,7 +35,7 @@ public class HealthSnapshotTests
     [InlineData("   ")]
     public void Criar_AmbienteVazio_LancaDomainException(string ambiente)
     {
-        var act = () => HealthSnapshot.Criar(ambiente, StatusSaude.Ok, "{}", DateTime.UtcNow);
+        var act = () => HealthSnapshot.Criar(ambiente, StatusSaude.Ok, "{}", TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O ambiente é obrigatório.");
     }
 
@@ -43,7 +44,7 @@ public class HealthSnapshotTests
     [InlineData("   ")]
     public void Criar_PayloadVazio_LancaDomainException(string payload)
     {
-        var act = () => HealthSnapshot.Criar("homolog", StatusSaude.Ok, payload, DateTime.UtcNow);
+        var act = () => HealthSnapshot.Criar("homolog", StatusSaude.Ok, payload, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O payload é obrigatório.");
     }
 
@@ -53,7 +54,7 @@ public class HealthSnapshotTests
     [InlineData(StatusSaude.Falha)]
     public void Criar_QualquerStatus_Persistido(StatusSaude status)
     {
-        var snapshot = HealthSnapshot.Criar("homolog", status, "{}", DateTime.UtcNow);
+        var snapshot = HealthSnapshot.Criar("homolog", status, "{}", TestData.Agora);
         snapshot.StatusGeral.Should().Be(status);
     }
 }

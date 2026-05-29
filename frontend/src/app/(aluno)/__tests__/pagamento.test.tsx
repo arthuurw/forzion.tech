@@ -14,6 +14,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { buildPagamento } from "@/test/factories";
 import type { PagamentoResponse, OnboardingStatusResponse } from "@/types";
 
 // ─── Mocks Next ──────────────────────────────────────────────────────────────
@@ -28,11 +29,9 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() })),
 }));
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers (F36: makePagamento consolidado via buildPagamento) ──────────────
 
-const makePagamento = (
-  overrides: Partial<PagamentoResponse> = {}
-): PagamentoResponse => ({
+const PIX_DEFAULTS: Partial<PagamentoResponse> = {
   pagamentoId: "pay-1",
   assinaturaAlunoId: "ass-1",
   valor: 150,
@@ -43,9 +42,10 @@ const makePagamento = (
   pixExpiracao: new Date(Date.now() + 3_600_000).toISOString(),
   clientSecret: null,
   dataPagamento: null,
-  createdAt: new Date().toISOString(),
-  ...overrides,
-});
+};
+
+const makePagamento = (overrides: Partial<PagamentoResponse> = {}): PagamentoResponse =>
+  buildPagamento({ ...PIX_DEFAULTS, ...overrides });
 
 function respondPagamento(overrides: Partial<PagamentoResponse> = {}) {
   server.use(

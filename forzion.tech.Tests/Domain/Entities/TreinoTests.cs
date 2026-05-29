@@ -2,6 +2,7 @@ using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -10,7 +11,7 @@ public class TreinoTests
     private static readonly Guid TreinadorId = Guid.NewGuid();
 
     private static Treino CriarTreino() =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora);
 
     private static TreinoExercicio AdicionarComSerie(Treino t, Guid? exercicioId = null)
     {
@@ -38,7 +39,7 @@ public class TreinoTests
         var inicio = new DateOnly(2025, 1, 1);
         var fim = new DateOnly(2025, 3, 31);
 
-        var t = Treino.Criar("Treino B", ObjetivoTreino.Forca, TreinadorId, DateTime.UtcNow,
+        var t = Treino.Criar("Treino B", ObjetivoTreino.Forca, TreinadorId, TestData.Agora,
             DificuldadeTreino.Avancado, inicio, fim);
 
         t.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
@@ -56,7 +57,7 @@ public class TreinoTests
     [Fact]
     public void Criar_DataFimAnteriorAoInicio_LancaDomainException()
     {
-        var act = () => Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow,
+        var act = () => Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora,
             dataInicio: new DateOnly(2025, 6, 1),
             dataFim: new DateOnly(2025, 5, 1));
 
@@ -66,7 +67,7 @@ public class TreinoTests
     [Fact]
     public void Criar_DataInicioSemFim_Permitido()
     {
-        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow,
+        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora,
             dataInicio: new DateOnly(2025, 1, 1));
         t.DataInicio.Should().NotBeNull();
         t.DataFim.Should().BeNull();
@@ -77,21 +78,21 @@ public class TreinoTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => Treino.Criar(nome, ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow);
+        var act = () => Treino.Criar(nome, ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => Treino.Criar(new string('a', 101), ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow);
+        var act = () => Treino.Criar(new string('a', 101), ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.Empty, DateTime.UtcNow);
+        var act = () => Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.Empty, TestData.Agora);
         act.Should().Throw<DomainException>();
     }
 
@@ -159,7 +160,7 @@ public class TreinoTests
     [Fact]
     public void Atualizar_LimparDatas_ZeraCampos()
     {
-        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow,
+        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora,
             dataInicio: new DateOnly(2025, 1, 1),
             dataFim: new DateOnly(2025, 12, 31));
 
@@ -243,7 +244,7 @@ public class TreinoTests
         var ex = t.AdicionarExercicio(Guid.NewGuid());
         ex.AdicionarSerie(3, 10, 12, "Trabalho", 10m, 60);
 
-        var copia = t.Duplicar(DateTime.UtcNow);
+        var copia = t.Duplicar(TestData.Agora);
 
         copia.Id.Should().NotBe(t.Id);
         copia.Nome.Should().Be("Treino A (cópia)");
@@ -259,7 +260,7 @@ public class TreinoTests
     public void Duplicar_SemExercicios_CriaCopiaSemExercicios()
     {
         var t = CriarTreino();
-        var copia = t.Duplicar(DateTime.UtcNow);
+        var copia = t.Duplicar(TestData.Agora);
         copia.Exercicios.Should().BeEmpty();
     }
 
@@ -273,7 +274,7 @@ public class TreinoTests
         ex.AdicionarSerie(3, 10, 12, null, null, null);
 
         var novoTreinadorId = Guid.NewGuid();
-        var copia = t.DuplicarPara(novoTreinadorId, DateTime.UtcNow);
+        var copia = t.DuplicarPara(novoTreinadorId, TestData.Agora);
 
         copia.Id.Should().NotBe(t.Id);
         copia.TreinadorId.Should().Be(novoTreinadorId);
@@ -285,7 +286,7 @@ public class TreinoTests
     public void DuplicarPara_TreinadorIdVazio_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.DuplicarPara(Guid.Empty, DateTime.UtcNow);
+        var act = () => t.DuplicarPara(Guid.Empty, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O treinador de destino é inválido.");
     }
 
