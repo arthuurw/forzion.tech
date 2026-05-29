@@ -28,15 +28,18 @@ public class VincularFichaAoAlunoHandler(
         VincularFichaAoAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
-        var treinadorId = userContext.PerfilId;
-
         var treino = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (treino.TreinadorId != treinadorId)
+        // SystemAdmin pode agir em nome de qualquer treinador (consistência com os
+        // demais handlers do grupo /treinos); treinador só na própria ficha.
+        if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
+
+        // Vínculo/ficha resolvidos pelo dono do treino (admin agindo em nome dele).
+        var treinadorId = treino.TreinadorId;
 
         _ = await vinculoRepository
             .ObterAtivoAsync(treinadorId, command.AlunoId, cancellationToken)

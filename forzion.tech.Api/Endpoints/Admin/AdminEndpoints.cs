@@ -86,13 +86,13 @@ public static class AdminEndpoints
 
         group.MapPost("/treinadores/{id:guid}/aprovar", async (
             Guid id,
-            [FromBody] AprovarTreinadorRequest request,
+            [FromBody] AprovarTreinadorRequest? request,
             [FromServices] AprovarTreinadorHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AprovarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
+                new AprovarTreinadorCommand(id, userContext.ContaId, request?.Observacao), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
@@ -104,13 +104,13 @@ public static class AdminEndpoints
 
         group.MapPost("/treinadores/{id:guid}/reprovar", async (
             Guid id,
-            [FromBody] ReprovarTreinadorRequest request,
+            [FromBody] ReprovarTreinadorRequest? request,
             [FromServices] ReprovarTreinadorHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new ReprovarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
+                new ReprovarTreinadorCommand(id, userContext.ContaId, request?.Observacao), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
@@ -122,13 +122,13 @@ public static class AdminEndpoints
 
         group.MapPost("/treinadores/{id:guid}/inativar", async (
             Guid id,
-            [FromBody] InativarTreinadorRequest request,
+            [FromBody] InativarTreinadorRequest? request,
             [FromServices] InativarTreinadorHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new InativarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
+                new InativarTreinadorCommand(id, userContext.ContaId, request?.Observacao), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
