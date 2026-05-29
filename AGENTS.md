@@ -27,6 +27,7 @@ Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
 - `specs/specification-backend.md` — backend .NET (camadas Clean Arch, Result, UnitOfWork+dispatch de eventos, validação, DI, middleware/filtros, endpoints, repos, auth/rate-limit).
 - `specs/specification-db.md` — estrutura de banco (29 tabelas, migrations, enums, FKs).
 - `specs/specification-email.md` — fluxo de envio Resend + templates + webhook.
+- `specs/specification-whatsapp.md` — notificações WhatsApp (Meta Cloud API), gate Null/real, handlers/templates, custo per-message, paridade/gaps email→WhatsApp.
 - `specs/specification-frontend.md` — Next.js App Router, MUI, formulários, validação.
 - `specs/specification-infrastructure.md` — Hostinger VM, docker-compose, nginx, certbot.
 - `specs/specification-git.md` — workflow git, configs recomendadas, worktree, conventional commits.
