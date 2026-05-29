@@ -10,6 +10,9 @@ public class AssinaturaAluno : IHasDomainEvents
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
 
+    /// <summary>Threshold pra transição Ativa → Inadimplente.</summary>
+    public const int LimiteTentativasFalhas = 3;
+
     public Guid Id { get; private set; }
     public Guid VinculoId { get; private set; }
     public Guid PacoteId { get; private set; }
@@ -20,6 +23,7 @@ public class AssinaturaAluno : IHasDomainEvents
     public DateTime DataInicio { get; private set; }
     public DateTime DataProximaCobranca { get; private set; }
     public DateTime? DataCancelamento { get; private set; }
+    public int TentativasFalhasConsecutivas { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -92,6 +96,54 @@ public class AssinaturaAluno : IHasDomainEvents
             throw new DomainException("A data da próxima cobrança deve ser futura.");
 
         DataProximaCobranca = dataProximaCobranca;
+        UpdatedAt = agora;
+    }
+
+    /// <summary>
+    /// Incrementa contador de tentativas falhas e, se atingir
+    /// <see cref="LimiteTentativasFalhas"/>, transiciona Ativa → Inadimplente
+    /// (atomicamente). Sempre dispara <see cref="PagamentoFalhouEvent"/>; quando
+    /// cruza o threshold, dispara também <see cref="AssinaturaAlunoMarcadaInadimplenteEvent"/>.
+    ///
+    /// Assinatura Cancelada → no-op (não conta tentativas).
+    /// Assinatura Pendente → conta tentativas mas não marca Inadimplente (só
+    /// Ativa transiciona; Pendente sai por outro caminho).
+    /// </summary>
+    public void RegistrarPagamentoFalho(DateTime agora)
+    {
+        if (Status == AssinaturaAlunoStatus.Cancelada)
+            return;
+
+        TentativasFalhasConsecutivas++;
+        UpdatedAt = agora;
+
+        _domainEvents.Add(new PagamentoFalhouEvent(
+            Id, AlunoId, TentativasFalhasConsecutivas, agora));
+
+        if (TentativasFalhasConsecutivas >= LimiteTentativasFalhas
+            && Status == AssinaturaAlunoStatus.Ativa)
+        {
+            Status = AssinaturaAlunoStatus.Inadimplente;
+            _domainEvents.Add(new AssinaturaAlunoMarcadaInadimplenteEvent(
+                Id, AlunoId, TreinadorId, TentativasFalhasConsecutivas, agora));
+        }
+    }
+
+    /// <summary>
+    /// Zera contador de tentativas falhas. Se assinatura estava Inadimplente,
+    /// volta pra Ativa (reativa). Idempotente — chamar 2x não causa dano.
+    /// Cancelada permanece Cancelada (não auto-reativa).
+    /// </summary>
+    public void RegistrarPagamentoRegularizado(DateTime agora)
+    {
+        if (Status == AssinaturaAlunoStatus.Cancelada)
+            return;
+
+        TentativasFalhasConsecutivas = 0;
+
+        if (Status == AssinaturaAlunoStatus.Inadimplente)
+            Status = AssinaturaAlunoStatus.Ativa;
+
         UpdatedAt = agora;
     }
 }

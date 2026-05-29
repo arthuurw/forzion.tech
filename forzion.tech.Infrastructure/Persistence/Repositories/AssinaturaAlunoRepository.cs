@@ -17,6 +17,14 @@ public class AssinaturaAlunoRepository(AppDbContext context) : IAssinaturaAlunoR
             .FirstOrDefaultAsync(a => a.VinculoId == vinculoId, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<AssinaturaAluno?> ObterAtualPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await context.AssinaturaAlunos
+            .AsNoTracking()
+            .Where(a => a.AlunoId == alunoId && a.Status != AssinaturaAlunoStatus.Cancelada)
+            .OrderByDescending(a => a.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<AssinaturaAluno>> ListarParaRenovarAsync(DateTime ate, CancellationToken cancellationToken = default) =>
         await context.AssinaturaAlunos
             .Where(a => a.Status == AssinaturaAlunoStatus.Ativa && a.DataProximaCobranca <= ate)

@@ -47,6 +47,11 @@ public class AssinaturaAlunoConfiguration : IEntityTypeConfiguration<AssinaturaA
         builder.Property(a => a.DataProximaCobranca).IsRequired();
         builder.Property(a => a.DataCancelamento);
 
+        builder.Property(a => a.TentativasFalhasConsecutivas)
+            .HasColumnName("tentativas_falhas_consecutivas")
+            .HasDefaultValue(0)
+            .IsRequired();
+
         builder.Property(a => a.CreatedAt).IsRequired();
         builder.Property(a => a.UpdatedAt);
 

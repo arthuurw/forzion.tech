@@ -188,6 +188,76 @@ internal static class EmailTemplates
             """);
     }
 
+    public static string CobrancaFalhou(string nomeAluno, decimal valor, int tentativasFalhas, string linkPortal)
+    {
+        // Formatação pt-BR explícita (R$ 149,90) — independe de culture do processo.
+        var valorFormatado = valor.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"));
+        var (titulo, mensagem, corEnfase) = tentativasFalhas switch
+        {
+            <= 1 => (
+                "Cobrança não processada",
+                "Não conseguimos processar sua cobrança. Tente outro método de pagamento ou atualize seus dados no portal.",
+                "#ef6c00"),
+            2 => (
+                "Segunda tentativa falhou",
+                "Segunda tentativa falhou. Atualize seu cartão antes da próxima tentativa para evitar a suspensão da sua assinatura.",
+                "#ef6c00"),
+            _ => (
+                "Última tentativa antes do bloqueio",
+                "Última tentativa antes do bloqueio da sua conta. Regularize seu pagamento agora para manter o acesso à plataforma.",
+                "#c62828")
+        };
+        return Layout(
+            titulo,
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              <strong style="color:{corEnfase}">{mensagem}</strong>
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valorFormatado}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Tentativas</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{tentativasFalhas}</td>
+              </tr>
+            </table>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Atualizar pagamento
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, fale com o seu treinador.
+            </p>
+            """);
+    }
+
+    public static string AssinaturaInadimplente(string nomeAluno, int tentativasFalhas, string linkPortal) =>
+        Layout(
+            "Conta restrita por inadimplência",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Sua conta forzion.tech está <strong style="color:#c62828">restrita por inadimplência</strong>.
+              Regularize seu pagamento para liberar acesso completo a fichas e execuções.
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Tentativas falhas</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{tentativasFalhas}</td>
+              </tr>
+            </table>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Regularizar agora
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, fale com o seu treinador.
+            </p>
+            """);
+
     public static string AssinaturaAlunoCriada(string nomeAluno, string nomeTreinador, string nomePacote, decimal valor) =>
         Layout(
             "AssinaturaAluno criada!",

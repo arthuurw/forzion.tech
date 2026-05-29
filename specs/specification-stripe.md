@@ -155,6 +155,31 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 - API client (`src/lib/api/pagamento.ts`): `iniciarOnboarding`, `verificarOnboarding`, `gerarCobranca`, `obterPagamento`, `listarPagamentosAssinatura`, `obterMinhaAssinatura`.
 - E2E (`frontend/e2e/specs/critical/`): `checkout-stripe.spec.ts` (F3 — seeded payment via `garantirPagamentoPendente()` helper), `treinador-onboarding-stripe.spec.ts` (F29 — onboarding flow + status check). Stripe test cards em `frontend/e2e/utils/stripe.ts`.
 
+## NOTIFICAÇÃO + INADIMPLÊNCIA
+- `Pagamento.Criar` dispara `PagamentoCriadoEvent(PagamentoId, AssinaturaAlunoId, Valor, MetodoPagamento, OcorridoEm)`. Handlers `PagamentoCriadoEmailHandler` + `PagamentoCriadoWhatsAppNotifierHandler` notificam aluno com link `/aluno/pagamentos`. Resolução de destinatário: assinatura → aluno; e-mail = `Aluno.Email` (preferência) ou `Conta.Email` (fallback); telefone = `Aluno.Telefone` (skip se null).
+- `AssinaturaAluno.RegistrarPagamentoFalho(agora)` chamado pelo webhook `payment_intent.payment_failed`. Incrementa `TentativasFalhasConsecutivas`, dispara `PagamentoFalhouEvent(AssinaturaAlunoId, AlunoId, TentativasFalhasConsecutivas, OcorridoEm)`. Quando contador atinge `LimiteTentativasFalhas` (= 3) e status era Ativa, transiciona pra **Inadimplente** e dispara `AssinaturaAlunoMarcadaInadimplenteEvent(AssinaturaAlunoId, AlunoId, TreinadorId, Tentativas, OcorridoEm)`. Assinatura Cancelada → no-op; Pendente → conta sem transicionar.
+- `AssinaturaAluno.RegistrarPagamentoRegularizado(agora)` chamado pelo webhook `payment_intent.succeeded`. Zera contador + reativa (Inadimplente → Ativa). Idempotente. Cancelada permanece Cancelada.
+- Notificação progressiva (handlers `PagamentoFalhouEmail` + `PagamentoFalhouWhatsAppNotifier`):
+  - 1ª falha: e-mail "tente outro método"; WhatsApp **skip** (não spammar).
+  - 2ª falha: e-mail "atualize seu cartão"; WhatsApp envia.
+  - 3ª falha: handler de `AssinaturaAlunoMarcadaInadimplenteEvent` envia e-mail "conta restrita" + WhatsApp emergência.
+- Templates: `EmailTemplates.CobrancaFalhou(nome, valor, tentativas, link)` (tom escala com `tentativas`) + `EmailTemplates.AssinaturaInadimplente(nome, tentativas, link)`.
+- Link sempre `AppSettings.FrontendBaseUrl + "/aluno/pagamentos"`. NUNCA Stripe direto (anti-phishing).
+
+### Enforcement backend
+- `RequireAssinaturaAtivaFilter` (`forzion.tech.Api/Filters/`) — `IEndpointFilter`. Lê `IUserContext`; bypass se `TipoConta != Aluno` ou sem assinatura. Resolve `IAssinaturaAlunoRepository.ObterAtualPorAlunoAsync(alunoId)` (última não-Cancelada). Se `Status == Inadimplente` → **403 ProblemDetails** com `code = "ASSINATURA_INADIMPLENTE"`, title `"Assinatura inadimplente"`, detail `"Regularize seu pagamento para continuar usando esta funcionalidade."`.
+- Aplicado em: `POST /aluno/execucoes` (registrar nova execução de treino). Expandir conforme necessidade — princípio: bloquear **consumo de feature paga**, NUNCA bloquear leitura (LGPD/CDC: histórico que já pagou deve continuar visível) nem `/aluno/pagamentos` (precisa pra regularizar).
+- Filter Transient em DI (`forzion.tech.Api/Extensions/DependencyInjectionExtensions.cs`).
+
+### UI bloqueio (frontend)
+- `AlunoInadimplenteBanner` (`frontend/src/components/aluno/`) — MUI Alert persistente top-anchored, com CTA `Regularizar agora` → `/aluno/pagamentos`. Variant `warning` default.
+- `AlunoInadimplenteGate` — client wrapper que faz fetch `pagamentoApi.obterMinhaAssinatura()` on mount, renderiza banner se `status === "Inadimplente"`. Silent-fail em erro.
+- Integrado em `(aluno)/layout.tsx`.
+- Axios interceptor em `frontend/src/lib/api/client.ts` detecta 403 + `code === "ASSINATURA_INADIMPLENTE"` e dispatch `CustomEvent("forzion:assinatura-inadimplente")` no `window`. `AppLayout` ouve + mostra `<Snackbar><Alert severity="error">` toast 8s. Bridge via CustomEvent mantém client.ts UI-free.
+
+### Recuperação (regularização)
+- Aluno acessa `/aluno/pagamentos` (sempre liberado), paga pendente. Webhook `payment_intent.succeeded` → handler chama `RegistrarPagamentoRegularizado` → zera contador + status volta pra Ativa → banner some no próximo load + endpoints liberam.
+
 ## SEGURANÇA
 - `Internal:ApiKey`: `CryptographicOperations.FixedTimeEquals` (constant-time) + length check antes (evita ArgumentException). Vazio → 401.
 - Webhook: assinatura HMAC-SHA256 obrigatória; payload raw 64KB max; rota `/webhooks/` direta no nginx (NÃO `/api/backend`).

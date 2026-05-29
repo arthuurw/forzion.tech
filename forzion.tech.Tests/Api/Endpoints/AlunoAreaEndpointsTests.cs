@@ -462,6 +462,14 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
                 userContextMock.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
                 services.AddScoped(_ => userContextMock.Object);
 
+                // Repositórios usados pelo RequireAssinaturaAtivaFilter — stubs sem
+                // aluno cadastrado fazem o filtro entrar em bypass, mantendo
+                // os testes existentes de POST /aluno/execucoes funcionando.
+                services.RemoveAll<IAlunoRepository>();
+                services.RemoveAll<IAssinaturaAlunoRepository>();
+                services.AddScoped(_ => Mock.Of<IAlunoRepository>());
+                services.AddScoped(_ => Mock.Of<IAssinaturaAlunoRepository>());
+
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, AlunoTestAuthHandler>("Test", _ => { });
             });
