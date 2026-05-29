@@ -160,7 +160,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.ObterFichaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaFichaDetalhe);
+            .ReturnsAsync(Result.Success(RespostaFichaDetalhe));
 
         var response = await CriarClienteAluno().GetAsync($"/aluno/fichas/{TreinoAlunoId}");
 
@@ -249,7 +249,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.ObterStatusPagamentoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ObterStatusPagamentoQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaPagamento);
+            .ReturnsAsync(Result.Success(RespostaPagamento));
 
         var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/{PagamentoId}");
 
@@ -346,7 +346,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.ObterFichaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new TreinoNaoEncontradoException());
+            .ReturnsAsync(Result.Failure<FichaAlunoDetalheResponse>(Error.NotFound("ficha_nao_encontrada", "Ficha não encontrada.")));
 
         var response = await CriarClienteAluno().GetAsync($"/aluno/fichas/{Guid.NewGuid()}");
 

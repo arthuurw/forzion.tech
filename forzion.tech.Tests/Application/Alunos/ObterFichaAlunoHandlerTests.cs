@@ -5,6 +5,7 @@ using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Alunos;
@@ -43,14 +44,15 @@ public class ObterFichaAlunoHandlerTests
 
         var result = await _handler.HandleAsync(detalhe.TreinoAluno.Id, alunoId);
 
-        result.TreinoAlunoId.Should().Be(detalhe.TreinoAluno.Id);
-        result.NomeTreino.Should().Be("Treino Força");
-        result.Objetivo.Should().Be(ObjetivoTreino.Forca);
-        result.Status.Should().Be(TreinoAlunoStatus.Ativo.ToString());
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TreinoAlunoId.Should().Be(detalhe.TreinoAluno.Id);
+        result.Value.NomeTreino.Should().Be("Treino Força");
+        result.Value.Objetivo.Should().Be(ObjetivoTreino.Forca);
+        result.Value.Status.Should().Be(TreinoAlunoStatus.Ativo.ToString());
     }
 
     [Fact]
-    public async Task HandleAsync_FichaNaoEncontrada_LancaTreinoNaoEncontradoException()
+    public async Task HandleAsync_FichaNaoEncontrada_RetornaFailureNotFound()
     {
         var alunoId = Guid.NewGuid();
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
@@ -58,8 +60,11 @@ public class ObterFichaAlunoHandlerTests
         _treinoAlunoRepo.Setup(r => r.ObterDetalheAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((TreinoAlunoDetalhe?)null);
 
-        var act = async () => await _handler.HandleAsync(Guid.NewGuid(), alunoId);
-        await act.Should().ThrowAsync<TreinoNaoEncontradoException>();
+        var result = await _handler.HandleAsync(Guid.NewGuid(), alunoId);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("ficha_nao_encontrada");
+        result.Error.Type.Should().Be(ErrorType.NotFound);
     }
 
     [Fact]

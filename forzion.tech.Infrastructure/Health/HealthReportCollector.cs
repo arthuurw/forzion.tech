@@ -92,6 +92,12 @@ public class HealthReportCollector(
 
     private async Task<KpisSecao> MontarKpisAsync(DateTime agora, CancellationToken cancellationToken)
     {
+        // NOTE (parallelization decision): all repositories here share the same injected
+        // AppDbContext, which is not thread-safe. Task.WhenAll on the same DbContext
+        // would race on the internal connection/command state and throw.
+        // Queries are kept sequential. To parallelize, each call would need its own
+        // DbContext scope (e.g., IDbContextFactory<AppDbContext>), which is a larger
+        // refactor not justified by the sub-millisecond savings for 6 COUNT queries.
         var desde24h = agora.AddHours(-24);
 
         return new KpisSecao

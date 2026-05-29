@@ -47,7 +47,7 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
         var query = _context.Alunos.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(nome))
-            query = query.Where(a => a.Nome.Contains(nome));
+            query = query.Where(a => EF.Functions.ILike(a.Nome, $"%{nome}%"));
 
         if (status.HasValue)
             query = query.Where(a => a.Status == status.Value);

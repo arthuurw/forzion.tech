@@ -99,7 +99,11 @@ public class ProcessarWebhookResendHandler(
             new Webhook(secret).Verify(command.Payload, headers);
             return true;
         }
-        catch (Exception ex) when (ex.GetType().Name.Contains("Verification") || ex.GetType().Name.Contains("Webhook"))
+        // Svix lança WebhookVerificationException; o tipo concreto não é público de forma
+        // estável entre versões do pacote, então casamos por nome (assinatura inválida/erro
+        // de verificação) — qualquer falha de Verify significa assinatura inválida → false.
+        catch (Exception ex) when (ex.GetType().Name.Contains("Verification", StringComparison.OrdinalIgnoreCase)
+                                   || ex.GetType().Name.Contains("Webhook", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }

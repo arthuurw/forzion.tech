@@ -47,6 +47,30 @@ function respondAssinatura(assinatura: AssinaturaAlunoResponse) {
   );
 }
 
+describe("AssinaturaAlunoPage — 204 / sem assinatura", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  // Bug 1 — 204 No Content: aluno sem assinatura → empty state, sem crash
+  it("204 No Content → exibe estado vazio sem crash", async () => {
+    server.use(
+      http.get("*/aluno/assinatura", () => new HttpResponse(null, { status: 204 })),
+    );
+
+    render(<AssinaturaAlunoPage />);
+    expect(await screen.findByText("Você não possui assinatura ativa no momento.")).toBeInTheDocument();
+    expect(screen.queryByText("Cancelar assinatura")).not.toBeInTheDocument();
+  });
+
+  it("200 com payload sem assinaturaAlunoId → empty state, sem crash", async () => {
+    server.use(
+      http.get("*/aluno/assinatura", () => HttpResponse.json({})),
+    );
+
+    render(<AssinaturaAlunoPage />);
+    expect(await screen.findByText("Você não possui assinatura ativa no momento.")).toBeInTheDocument();
+  });
+});
+
 describe("AssinaturaAlunoPage — cancelar assinatura", () => {
   afterEach(() => vi.clearAllMocks());
 

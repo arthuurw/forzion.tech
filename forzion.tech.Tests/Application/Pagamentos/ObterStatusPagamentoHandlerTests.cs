@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Pagamentos;
@@ -30,8 +31,9 @@ public class ObterStatusPagamentoHandlerTests
 
         var result = await _handler.HandleAsync(new ObterStatusPagamentoQuery(pagamento.Id, alunoId));
 
-        result.PagamentoId.Should().Be(pagamento.Id);
-        result.Valor.Should().Be(150m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PagamentoId.Should().Be(pagamento.Id);
+        result.Value.Valor.Should().Be(150m);
     }
 
     [Fact]
@@ -48,13 +50,16 @@ public class ObterStatusPagamentoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_PagamentoNaoEncontrado_LancaDomainException()
+    public async Task HandleAsync_PagamentoNaoEncontrado_RetornaFailureNotFound()
     {
         _pagamentoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Pagamento?)null);
 
-        var act = async () => await _handler.HandleAsync(new ObterStatusPagamentoQuery(Guid.NewGuid(), Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("Pagamento não encontrado.");
+        var result = await _handler.HandleAsync(new ObterStatusPagamentoQuery(Guid.NewGuid(), Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("pagamento_nao_encontrado");
+        result.Error.Type.Should().Be(ErrorType.NotFound);
     }
 
     [Fact]

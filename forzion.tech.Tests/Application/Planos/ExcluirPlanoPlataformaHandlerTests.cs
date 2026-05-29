@@ -3,7 +3,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Planos;
@@ -25,20 +25,23 @@ public class ExcluirPlanoPlataformaHandlerTests
         var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow).Value;
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
-        await _handler.HandleAsync(new ExcluirPlanoPlataformaCommand(plano.Id));
+        var result = await _handler.HandleAsync(new ExcluirPlanoPlataformaCommand(plano.Id));
 
+        result.IsSuccess.Should().BeTrue();
         plano.IsAtivo.Should().BeFalse();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_PlanoNaoEncontrado_LancaDomainException()
+    public async Task HandleAsync_PlanoNaoEncontrado_RetornaFailureNotFound()
     {
         _planoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((PlanoPlataforma?)null);
 
-        var act = async () => await _handler.HandleAsync(new ExcluirPlanoPlataformaCommand(Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*não encontrado*");
+        var result = await _handler.HandleAsync(new ExcluirPlanoPlataformaCommand(Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("plano_nao_encontrado");
+        result.Error.Type.Should().Be(ErrorType.NotFound);
     }
 
     [Fact]
@@ -46,7 +49,7 @@ public class ExcluirPlanoPlataformaHandlerTests
     {
         _planoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((PlanoPlataforma?)null);
 
-        try { await _handler.HandleAsync(new ExcluirPlanoPlataformaCommand(Guid.NewGuid())); } catch { }
+        await _handler.HandleAsync(new ExcluirPlanoPlataformaCommand(Guid.NewGuid()));
 
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

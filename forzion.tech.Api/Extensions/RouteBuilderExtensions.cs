@@ -1,5 +1,6 @@
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Endpoints.Admin;
+using Microsoft.Extensions.Logging;
 using forzion.tech.Api.Endpoints.AlunoArea;
 using forzion.tech.Api.Endpoints.Auth;
 using forzion.tech.Api.Endpoints.Alunos;
@@ -32,6 +33,28 @@ public static class RouteBuilderExtensions
 
     public static IApplicationBuilder UseApiConfiguration(this WebApplication app)
     {
+        // CORS startup check: emit a LogWarning when no valid origins are configured
+        // in non-Test environments so the deny-all state is visible in logs.
+        if (!app.Environment.IsEnvironment("Test"))
+        {
+            var raw = app.Configuration["Cors:AllowedOrigins"]?.Split(';') ?? Array.Empty<string>();
+            var hasValidOrigins = raw
+                .Select(o => o.Trim())
+                .Any(o => !string.IsNullOrWhiteSpace(o)
+                          && !o.Contains('*')
+                          && Uri.TryCreate(o, UriKind.Absolute, out _));
+
+            if (!hasValidOrigins)
+            {
+                var corsLogger = app.Services.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("CorsConfiguration");
+                corsLogger.LogWarning(
+                    "CORS: Cors:AllowedOrigins is empty or contains no valid origins. " +
+                    "All cross-origin browser requests will be denied. " +
+                    "Set 'Cors:AllowedOrigins' in configuration to allow frontend access.");
+            }
+        }
+
         app.UseSwaggerInDevelopment();
         app.UseExceptionHandler();
 

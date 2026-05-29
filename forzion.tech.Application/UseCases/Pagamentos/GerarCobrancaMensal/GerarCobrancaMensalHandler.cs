@@ -30,8 +30,9 @@ public class GerarCobrancaMensalHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("AssinaturaAluno não encontrada.");
+        var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false);
+        if (assinatura is null)
+            return Result.Failure<PagamentoResponse>(Error.NotFound("assinatura_aluno_nao_encontrada", "AssinaturaAluno não encontrada."));
 
         if (assinatura.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
@@ -44,7 +45,7 @@ public class GerarCobrancaMensalHandler(
         // vale a pena entrar na transação serializable para descobri-lo.
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(assinatura.TreinadorId, cancellationToken).ConfigureAwait(false);
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
-            throw new DomainException("Treinador sem conta Stripe configurada.");
+            return Result.Failure<PagamentoResponse>(Error.Business("treinador_sem_conta_stripe", "Treinador sem conta Stripe configurada."));
 
         Pagamento pagamento;
 

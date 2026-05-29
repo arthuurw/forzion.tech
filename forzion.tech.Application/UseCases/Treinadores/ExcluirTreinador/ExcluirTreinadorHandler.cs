@@ -28,7 +28,7 @@ public class ExcluirTreinadorHandler(
         if (validacaoResult.IsFailure)
             return Result.Failure(validacaoResult.Error!);
 
-        await treinadorRepository.ExcluirComDependenciasAsync(treinador, cancellationToken).ConfigureAwait(false);
+        await treinadorRepository.ExcluirComDependenciasAsync(treinador, command.AdminId, cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Treinador {TreinadorId} excluído permanentemente pelo admin {AdminId}.", treinador.Id, command.AdminId);
 

@@ -220,7 +220,7 @@ export default function DetalheTreinadorAdminPage() {
             );
             return (
               <Tooltip title="Ver detalhe">
-                <IconButton size="small" onClick={() => router.push(`/admin/treinos/${t.treinoId}`)}>
+                <IconButton size="small" aria-label="Ver detalhe do treino" onClick={() => router.push(`/admin/treinos/${t.treinoId}`)}>
                   <InfoIcon fontSize="small" />
                 </IconButton>
               </Tooltip>

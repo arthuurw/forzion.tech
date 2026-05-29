@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
@@ -54,11 +55,14 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
             .CountAsync(t => t.Status == status, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task ExcluirComDependenciasAsync(Treinador treinador, CancellationToken cancellationToken = default)
+    public async Task ExcluirComDependenciasAsync(Treinador treinador, Guid adminId, CancellationToken cancellationToken = default)
     {
         // All ExecuteDeleteAsync calls share one explicit transaction, so the entire
         // cascade is atomic: if any step fails the transaction is rolled back and no
         // partial deletes are persisted.
+        // The LogAprovacao (ExclusaoTreinador) is also written within this transaction
+        // to guarantee the audit trail is either fully committed or fully rolled back
+        // together with the cascade delete.
         await using var tx = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         try
@@ -128,6 +132,18 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
                 .Where(c => c.Id == treinador.ContaId)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
+            // Audit log: written atomically within this transaction so the record is
+            // either persisted together with all cascade deletes, or rolled back entirely.
+            var logResult = LogAprovacao.Registrar(
+                TipoAcaoAprovacao.ExclusaoTreinador,
+                adminId,
+                treinador.Id,
+                nameof(Treinador),
+                DateTime.UtcNow);
+            if (logResult.IsSuccess)
+                await _context.LogsAprovacao.AddAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
+
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception)
