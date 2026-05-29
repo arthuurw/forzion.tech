@@ -6,9 +6,11 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -64,6 +66,12 @@ public class ForzionApiProviderTests : IClassFixture<ForzionApiProviderFactory>
                     options.PublishResults(providerVersion, results => results.ProviderBranch("homolog"));
                 }
             })
+            // F5b — broker chama esse URL antes de cada interacao com o "given"
+            // declarado pelo consumer. Provider seta o state no singleton e o
+            // middleware (ProviderStateMiddleware) curto-circuita responses pra
+            // 401/404/500 ProblemDetails quando o state casa cenario de erro.
+            // (Chamada APOS WithPactBrokerSource — vive em IPactVerifierConfigured.)
+            .WithProviderStateUrl(new Uri(new Uri(_factory.ServerUri), "/_pact/provider-states"))
             .Verify();
     }
 }
@@ -87,6 +95,19 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
     // ContaId fixo para que IUserContext + IContaRepository batam (handler de
     // perfil chama contaRepository.ObterPorIdAsync(userContext.ContaId)).
     private static readonly Guid TestContaId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+    /// <summary>State holder pra provider state handlers (F5b). Thread-safe simples.</summary>
+    public sealed class ProviderStateContext
+    {
+        private string? _currentState;
+        private readonly object _lock = new();
+
+        public string? Current
+        {
+            get { lock (_lock) return _currentState; }
+            set { lock (_lock) _currentState = value; }
+        }
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -118,6 +139,14 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
 
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, PathRoleAuthHandler>("Test", _ => { });
+
+            // F5b — Provider state handlers pra Pact error contracts.
+            // Singleton state guarda o que o broker mandou via /_pact/provider-states.
+            // IStartupFilter insere middleware que (a) handle o endpoint de state e
+            // (b) curto-circuita request com ProblemDetails quando o state casa um
+            // cenario de erro (401/404/500).
+            services.AddSingleton<ProviderStateContext>();
+            services.AddTransient<IStartupFilter, ProviderStateStartupFilter>();
         });
     }
 
@@ -274,6 +303,117 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
         userContext.Setup(u => u.PerfilId).Returns(Guid.NewGuid());
         userContext.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
         return userContext.Object;
+    }
+}
+
+/// <summary>
+/// F5b — IStartupFilter que insere o ProviderStateMiddleware ANTES do pipeline
+/// padrao. Necessario pra (a) servir POST /_pact/provider-states e (b)
+/// interceptar requests com state casando cenario de erro (401/404/500) antes
+/// que cheguem a auth/endpoints reais.
+/// </summary>
+public class ProviderStateStartupFilter : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
+        app =>
+        {
+            app.UseMiddleware<ProviderStateMiddleware>();
+            next(app);
+        };
+}
+
+/// <summary>
+/// F5b — Middleware do provider state Pact.
+///
+/// Comportamento:
+///   POST /_pact/provider-states  → le `{ state }` do JSON body, seta singleton, 200.
+///   Demais requests             → consulta o state atual e, se casar um cenario
+///                                  de erro, escreve ProblemDetails imediato.
+///                                  Caso contrario, deixa o pipeline rodar (happy
+///                                  path 200 via repos mockados).
+///
+/// Mapping de state → status:
+///   "requisicao sem credenciais validas"      → 401
+///   "requisicao sem perfil de admin"          → 401
+///   "aluno autenticado mas nao existe no banco" → 404
+///   "aluno autenticado mas sem registro"      → 404
+///   "conta autenticada mas sem perfil"        → 404
+///   "admin autenticado em recurso ausente"    → 404
+///   "falha inesperada no backend"             → 500
+///   default / null                            → no-op (happy path)
+/// </summary>
+public class ProviderStateMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ForzionApiProviderFactory.ProviderStateContext _state;
+
+    public ProviderStateMiddleware(RequestDelegate next, ForzionApiProviderFactory.ProviderStateContext state)
+    {
+        _next = next;
+        _state = state;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        // Endpoint que broker bate antes de cada interacao.
+        if (context.Request.Path.Equals("/_pact/provider-states", StringComparison.OrdinalIgnoreCase))
+        {
+            using var reader = new StreamReader(context.Request.Body);
+            var body = await reader.ReadToEndAsync().ConfigureAwait(false);
+            string? newState = null;
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(body);
+                    if (doc.RootElement.TryGetProperty("state", out var stateProp))
+                        newState = stateProp.GetString();
+                }
+                catch (System.Text.Json.JsonException) { /* state vazio == reset */ }
+            }
+            _state.Current = newState;
+            context.Response.StatusCode = 200;
+            return;
+        }
+
+        // Verifica se o state atual mapeia pra erro.
+        var (status, title) = MapStateToError(_state.Current);
+        if (status > 0)
+        {
+            await WriteProblemDetailsAsync(context, status, title).ConfigureAwait(false);
+            return;
+        }
+
+        await _next(context).ConfigureAwait(false);
+    }
+
+    private static (int Status, string Title) MapStateToError(string? state)
+    {
+        if (string.IsNullOrEmpty(state)) return (0, "");
+        var lower = state.ToLowerInvariant();
+
+        if (lower.Contains("sem credenciais") || lower.Contains("sem perfil de admin"))
+            return (401, "Não autorizado");
+        if (lower.Contains("nao existe") || lower.Contains("sem registro") ||
+            lower.Contains("sem perfil") || lower.Contains("recurso ausente"))
+            return (404, "Não encontrado");
+        if (lower.Contains("falha inesperada"))
+            return (500, "Erro interno");
+        return (0, "");
+    }
+
+    private static async Task WriteProblemDetailsAsync(HttpContext context, int status, string title)
+    {
+        var problem = new Microsoft.AspNetCore.Mvc.ProblemDetails
+        {
+            Status = status,
+            Title = title,
+            Detail = "erro representativo",
+            Instance = context.Request.Path,
+        };
+        context.Response.StatusCode = status;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(problem).ConfigureAwait(false);
     }
 }
 

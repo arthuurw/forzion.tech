@@ -26,7 +26,6 @@
 /sbom.cdx.json
 /zap-report/
 /pacts/
-/pacts-errors/
 count-tests.cjs
 
 # next.js

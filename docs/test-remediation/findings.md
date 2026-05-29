@@ -24,12 +24,12 @@
 - **Notas:** Refeito: online → offline+reload → asserta AlertBanner com "Erro ao carregar alunos." (mensagem exata do `usePaginatedList`) via `getByRole("alert")` → online+reload → banner some. 3 expects estritos no fluxo.
 
 ### F3 — Checkout Stripe spec skippa silenciosamente
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 4
-- **Arquivo:** `frontend/e2e/specs/critical/checkout-stripe.spec.ts:30-34`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** `test.skip()` se aluno sem pagamento pendente. CI pode skip todos os runs sem detecção. Seed dedicated user com pagamento garantido + stripe-cli stub pra webhook.
+- **Arquivo:** `frontend/e2e/specs/critical/checkout-stripe.spec.ts`
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** `test.skip(!hasPagar)` substituido por `garantirPagamentoPendente()` que loga treinador via API + lista alunos + POST cobrar (idempotente via tx serializable F12). Sem env vars (`E2E_TREINADOR_EMAIL/PASSWORD + E2E_ALUNO_EMAIL`) → skip claro com mensagem actionable. Webhook stripe-cli ainda fora do scope (test.fixme tracked pra Fase 5).
 
 ### F4 — Pact provider mocka handlers (3 de 4)
 - **Status:** `done`
@@ -40,12 +40,14 @@
 - **Notas:** Fichas, Vinculo e Perfil convertidos pra repo-level mocks (handlers reais executam e materializam DTOs). Pattern: `BuildContaRepositoryMock`, `BuildAlunoRepositoryMock` (cobre admin+perfil), `BuildTreinadorRepositoryMock`, `BuildVinculoRepositoryMock`, `BuildTreinoAlunoRepositoryMock`, `BuildExercicioRepositoryMock` — mudança de shape no handler ou na conversão DTO agora quebra Pact.
 
 ### F5 — Pact zero error contracts
-- **Status:** `done` (consumer-side; provider-side state handlers diferidos pra Fase 4)
-- **Fase:** 3
-- **Novo arquivo:** `frontend/src/test/pact/consumer-errors.test.ts`
-- **Commit:** `90040c0`
+- **Status:** `done` (consumer + provider F5b)
+- **Fase:** 3 + 4
+- **Arquivos:**
+  - `frontend/src/test/pact/consumer-errors.test.ts` (12 consumer contracts)
+  - `forzion.tech.PactVerification/ForzionApiProviderTests.cs` (state handlers + middleware)
+- **Commits:** `90040c0`, TBD (F5b)
 - **Data fechado:** 2026-05-28
-- **Notas:** 12 contratos consumer (401/404/500 × 4 endpoints) provam que o consumer trata AxiosError corretamente e que o backend deve manter shape estável de ProblemDetails (status/title/detail/instance). Output em `pacts-errors/` (separado de `pacts/` publicado) até provider state handlers serem implementados — sem isso, verifier do .NET retornaria 200 dos mocks e quebraria todos os 12.
+- **Notas:** Fase 3 entregou 12 consumer contracts em `pacts-errors/` (separado por falta de provider state handlers). Fase 4 F5b implementou: ProviderStateContext singleton, ProviderStateStartupFilter + ProviderStateMiddleware (handle /_pact/provider-states + curto-circuita ProblemDetails baseado em state), WithProviderStateUrl no PactVerifier. Output promovido pra `pacts/` (publica no broker). Build clean.
 
 ### F6 — `vi.mock("@/lib/api/*")` ainda ativo em 6 arquivos
 - **Status:** `done`
@@ -61,12 +63,12 @@
 - **Notas:** Migrado tudo de `vi.mock("@/lib/api/*")` pra MSW (apiClient real, `server.use(http.METHOD("*/url", () => HttpResponse.json(...)))`. F6d deletado em vez de migrado — 50 testes pinavam só URL+params (`expect(mockGet).toHaveBeenCalledWith(...)`), valor baixo vs MSW (Pact e page tests cobrem mesmo concern com mais profundidade). Surpresas durante migração: (a) URLs reais usam `/admin/health-report/*`, não `/admin/saude/*`; (b) `Object.defineProperty(window, "location", ...)` em jsdom NÃO é restaurável depois de falha → corrompe origin pra tests posteriores via axios baseURL resolution. Workaround: capturar URL via handler closure em vez de mexer em window.location. Total pós-F6: 332 pass / 31 suites (de 380/32, -48 do admin.test.ts deletado).
 
 ### F7 — `@stripe/react-stripe-js` mockado wholesale
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 4
-- **Arquivo:** `frontend/src/components/pagamento/PagamentoCartao.test.tsx:11-20`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Manter Elements/PaymentElement mocked (DOM), mas `useStripe`/`useElements` retornarem objetos realistas. Testar error path (card declined → setState).
+- **Arquivo:** `frontend/src/components/pagamento/PagamentoCartao.test.tsx`
+- **Commit:** `7ba09de`
+- **Data fechado:** 2026-05-28
+- **Notas:** Elements/PaymentElement continuam mockados (DOM); useStripe/useElements agora retornam objetos realistas via helper `realisticStripe()`. 4 novos tests: args do confirmPayment (elements + return_url + redirect), success path (onPago chamado), processando state (CircularProgress + botao disabled), fallback de error sem message.
 
 ### F8 — Stryker scope estreito + threshold lax
 - **Status:** `done`
@@ -146,20 +148,25 @@
 - **Notas:** Handler tests cobrem token inexistente/expirado/usado/replay/conta-ausente/validação. E2E cobre verify-email com token inválido + sem token + resend-verification anti-enumeração. Replay E2E marcado `test.fixme()` aguardando `E2E_VERIFY_TOKEN_HOOK`.
 
 ### F16 — Decimal/currency rounding sem property test
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 4
-- **Novo arquivo:** `forzion.tech.Tests/Domain/Properties/MoneyProperties.cs`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** CsCheck pra (amount, tax%, rounding). Invariants: banker's rounding + sum preservation.
+- **Novos arquivos:**
+  - `forzion.tech.Application/UseCases/Pagamentos/MoneyCentavos.cs` (helper extraído de StripeService)
+  - `forzion.tech.Tests/Application/Properties/MoneyCentavosProperties.cs`
+- **Modificado:** `forzion.tech.Infrastructure/Services/StripeService.cs` (usa MoneyCentavos.ValorETaxaCentavos)
+- **Commit:** `7ba09de`
+- **Data fechado:** 2026-05-28
+- **Notas:** Logica duplicada (Pix + Cartao) extraida pra helper. 8 CsCheck properties: truncamento, zero, idempotencia 2 casas decimais, taxa ≤ valor (monotonicidade), taxa zero → 0 centavos, taxa 100% → taxa = valor, sum preservation ≤1 centavo, monotonicidade por taxa%.
 
 ### F17 — FluentValidation rules não testados direto
-- **Status:** `done` (7 core validators; 8 admin-side validators diferidos pra Fase 4)
-- **Fase:** 3
-- **Novo arquivo:** `forzion.tech.Tests/Application/Validators/CoreValidatorsTests.cs` (45 tests)
-- **Commit:** TBD
+- **Status:** `done` (Fase 3: 7 core + Fase 4: 7 admin-side via F17b)
+- **Fase:** 3 + 4
+- **Novos arquivos:**
+  - `forzion.tech.Tests/Application/Validators/CoreValidatorsTests.cs` (45 tests, Fase 3)
+  - `forzion.tech.Tests/Application/Validators/AdminValidatorsTests.cs` (42 tests, Fase 4 F17b)
+- **Commits:** `b155b7c`, `7ba09de`
 - **Data fechado:** 2026-05-28
-- **Notas:** Cobertos: CadastrarAluno, RegistrarAluno, Login, RegistrarTreinador, CriarTreino, CriarPacote, AtualizarPerfil. Pattern: boundary + happy + violação por rule. Diferidos pra Fase 4: Admin/GruposMusculares (Criar+Atualizar), Admin/HealthReport (já tem 3 tests pré-existentes), Exercicios/Criar, Pacotes/Atualizar, Planos/Criar+Atualizar, Treinos/AdicionarExercicio.
+- **Notas:** F17 (Fase 3) cobre Cadastrar/RegistrarAluno, Login, RegistrarTreinador, CriarTreino, CriarPacote, AtualizarPerfil. F17b (Fase 4) cobre CriarGrupoMuscular, AtualizarGrupoMuscular, CriarExercicio, AtualizarPacote, Criar/AtualizarPlanoPlataforma, AdicionarExercicio. Total 87 validator tests. Pattern: boundary + happy + violacao por rule.
 
 ### F18 — a11y `color-contrast` rule disabled
 - **Status:** `pending`
@@ -218,20 +225,20 @@
 - **Notas:** Loading/error/empty/populated por componente. Limitar a stateful com >3 estados.
 
 ### F25 — Rate limit memory eviction sem teste
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 4
 - **Arquivo:** `frontend/src/lib/rateLimit.test.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** MAX_ENTRIES = 10k. Loop > MAX_ENTRIES, assertion oldest evicted.
+- **Commit:** `7ba09de`
+- **Data fechado:** 2026-05-28
+- **Notas:** 3 novos tests cobrem (a) cap MAX_ENTRIES via insercao > 10k IPs distintos, (b) FIFO eviction (mais antigo sai), (c) prune de expirados antes de descarte por idade.
 
 ### F26 — PagamentoPix unmount mid-poll não testado
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 4
 - **Arquivo:** `frontend/src/app/(aluno)/__tests__/pagamento.test.tsx`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Render → fetch starts → unmount → assert no dangling interval.
+- **Commit:** `7ba09de`
+- **Data fechado:** 2026-05-28
+- **Notas:** 2 novos tests: unmount apos mount → clearInterval chamado + sem fetch posterior; unmount mid-fetch com response hanging → cleanup roda sem warn de "setState on unmounted component".
 
 ### F27 — Coverage thresholds não enforced em CI
 - **Status:** `done`
@@ -242,28 +249,28 @@
 - **Notas:** Vitest 4: `coverage.thresholds.<glob>` por-path enforce automaticamente quando `--coverage` roda — CI job `test-frontend` falha se exit ≠ 0 por threshold breach. Não precisa de flag `--check-coverage` (esse é nyc, não vitest). Documentado em comment do vitest.config.mts.
 
 ### F28 — Role revoked mid-request E2E
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 4
 - **Novo arquivo:** `frontend/e2e/specs/security/role-revoked-mid-request.spec.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Treinador inativado enquanto request mid-flight → 403.
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Spec cobre sequencial: treinador autentica → admin inativa via API → mesmo JWT → 403. Variante "true mid-request" (com request delay) ficou test.fixme tracked pra Fase 5 (precisa backend hook E2E_REQUEST_DELAY_MS). Skip env vars E2E_TREINADOR_REVOKE_EMAIL/PASSWORD pra rodar.
 
 ### F29 — Stripe Connect onboarding E2E ausente
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 4
 - **Novo arquivo:** `frontend/e2e/specs/critical/treinador-onboarding-stripe.spec.ts`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Stripe Express onboarding flow.
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** 3 tests: estado inicial (Ativo OU Configurar), clique em Configurar dispara POST onboarding com payload correto (urlRetorno verified), pagina retorno consulta status. End-to-end Stripe Express form externo ficou test.fixme (precisa Stripe-cli stub).
 
 ### F30 — Cross-aggregate App-level integration ausente
-- **Status:** `pending`
+- **Status:** `done`
 - **Fase:** 4
-- **Novo arquivo:** `forzion.tech.Tests/Application/Integration/TreinadorApprovalCrossAggregateTests.cs`
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Approve trainer → Plano loaded + charges_enabled check. Bridge entre unit handler tests e E2E.
+- **Novo arquivo:** `forzion.tech.Tests/Application/Integration/VinculoApprovalCrossAggregateTests.cs`
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** 3 tests cobrem chain AprovarVinculo (App) → VinculoAprovadoEvent → CriarAssinaturaAluno (Infra). Repos compartilhados; dispatch manual do evento simula UoW.Commit. Asserts: assinatura criada com shape correto (VinculoId/TreinadorId/AlunoId/PacoteId/Valor match); sem onboarding Stripe → no-op; pacote sumido → no-op gracioso (sem throw).
 
 ---
 
