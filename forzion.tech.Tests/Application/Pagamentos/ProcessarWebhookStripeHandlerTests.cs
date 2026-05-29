@@ -150,16 +150,136 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_PaymentIntentFailed_MarcaFalhou()
     {
+        // Sem assinatura encontrada — só commita o MarcarFalhou (não há contador a incrementar).
         var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow);
         pagamento.DefinirDadosPix("pi_fail", "qr", "url", DateTime.UtcNow.AddHours(1));
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_fail", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AssinaturaAluno?)null);
 
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.payment_failed", "pi_fail"), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.Falhou);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentFailed_AssinaturaAtivaTerceiraFalha_MarcaInadimplente()
+    {
+        // Assinatura Ativa com 2 falhas anteriores; terceira falha cruza o threshold → Inadimplente.
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
+        pagamento.DefinirDadosPix("pi_3rd_fail", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
+        assinatura.Ativar();
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_3rd_fail", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.payment_failed", "pi_3rd_fail"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Falhou);
+        assinatura.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
+        assinatura.TentativasFalhasConsecutivas.Should().Be(3);
+        // Dois commits: um pro pagamento, outro pra assinatura.
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentFailed_AssinaturaInadimplenteQuartaFalha_MantemInadimplente()
+    {
+        // Já Inadimplente; quarta falha apenas incrementa contador e dispara PagamentoFalhouEvent.
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
+        pagamento.DefinirDadosPix("pi_4th_fail", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
+        assinatura.Ativar();
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow); // → Inadimplente
+        assinatura.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_4th_fail", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.payment_failed", "pi_4th_fail"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Falhou);
+        assinatura.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
+        assinatura.TentativasFalhasConsecutivas.Should().Be(4);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_AssinaturaInadimplente_Regulariza_VoltaParaAtiva()
+    {
+        // Sucesso em assinatura Inadimplente → Regulariza (Ativa + contador 0).
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
+        pagamento.DefinirDadosPix("pi_regul", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
+        assinatura.Ativar();
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow); // → Inadimplente
+        assinatura.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_regul", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_regul"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        assinatura.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
+        assinatura.TentativasFalhasConsecutivas.Should().Be(0);
+        assinatura.DataProximaCobranca.Should().BeAfter(DateTime.UtcNow);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_AssinaturaAtivaComFalhasParciais_ZeraContador()
+    {
+        // Assinatura Ativa com 2 falhas (abaixo do threshold) e pagamento sucesso → contador zerado, permanece Ativa.
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
+        pagamento.DefinirDadosPix("pi_zero", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
+        assinatura.Ativar();
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.ClearDomainEvents();
+        assinatura.TentativasFalhasConsecutivas.Should().Be(2);
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_zero", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_zero"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        assinatura.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
+        assinatura.TentativasFalhasConsecutivas.Should().Be(0);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

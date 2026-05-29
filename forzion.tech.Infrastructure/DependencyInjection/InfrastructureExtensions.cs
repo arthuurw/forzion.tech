@@ -142,12 +142,16 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AlunoInativadoEvent>, AlunoInativadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<ContaRegistradaEvent>, ContaRegistradaEmailHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoEmailHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouEmailHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoMarcadaInadimplenteEvent>, AssinaturaAlunoMarcadaInadimplenteEmailHandler>();
 
         // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
 
         // Domain event handlers — WhatsApp
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoMarcadaInadimplenteEvent>, AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler>();
 
         // Domain event handlers — projeção billing
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();

@@ -169,4 +169,151 @@ public class AssinaturaAlunoTests
         var act = () => a.AgendarProximaCobranca(TestData.Agora.AddDays(-1), TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("A data da próxima cobrança deve ser futura.");
     }
+
+    // --- RegistrarPagamentoFalho (IH.1) ---
+
+    [Fact]
+    public void RegistrarPagamentoFalho_PrimeiraTentativa_IncrementaContadorEDispatchEvento()
+    {
+        var a = CriarValida();
+        a.Ativar();
+        a.ClearDomainEvents();
+
+        a.RegistrarPagamentoFalho(TestData.Agora);
+
+        a.TentativasFalhasConsecutivas.Should().Be(1);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Ativa, "1 tentativa < threshold 3");
+        a.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<PagamentoFalhouEvent>()
+            .Which.TentativasFalhasConsecutivas.Should().Be(1);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoFalho_TerceiraTentativaConsecutiva_MarcaInadimplenteEDispatcha2Eventos()
+    {
+        var a = CriarValida();
+        a.Ativar();
+
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.ClearDomainEvents();
+        a.RegistrarPagamentoFalho(TestData.Agora);
+
+        a.TentativasFalhasConsecutivas.Should().Be(3);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
+        a.DomainEvents.Should().HaveCount(2);
+        a.DomainEvents.OfType<PagamentoFalhouEvent>().Should().ContainSingle();
+        a.DomainEvents.OfType<AssinaturaAlunoMarcadaInadimplenteEvent>().Should().ContainSingle()
+            .Which.TentativasFalhasConsecutivas.Should().Be(3);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoFalho_QuartaTentativaJaInadimplente_NaoRedispatchInadimplenteEvento()
+    {
+        var a = CriarValida();
+        a.Ativar();
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora); // marca inadimplente
+        a.ClearDomainEvents();
+
+        a.RegistrarPagamentoFalho(TestData.Agora); // 4ª tentativa
+
+        a.TentativasFalhasConsecutivas.Should().Be(4);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
+        a.DomainEvents.OfType<PagamentoFalhouEvent>().Should().ContainSingle();
+        a.DomainEvents.OfType<AssinaturaAlunoMarcadaInadimplenteEvent>().Should().BeEmpty(
+            "evento Inadimplente já foi disparado na transição — não re-emitir");
+    }
+
+    [Fact]
+    public void RegistrarPagamentoFalho_AssinaturaCancelada_NoOp()
+    {
+        var a = CriarValida();
+        a.Ativar();
+        a.Cancelar();
+        a.ClearDomainEvents();
+
+        a.RegistrarPagamentoFalho(TestData.Agora);
+
+        a.TentativasFalhasConsecutivas.Should().Be(0);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Cancelada);
+        a.DomainEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RegistrarPagamentoFalho_AssinaturaPendente_ContaSemTransicionar()
+    {
+        var a = CriarValida();
+        // status = Pendente (sem Ativar)
+
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+
+        a.TentativasFalhasConsecutivas.Should().Be(3);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Pendente, "só Ativa transiciona pra Inadimplente");
+        a.DomainEvents.OfType<AssinaturaAlunoMarcadaInadimplenteEvent>().Should().BeEmpty();
+    }
+
+    // --- RegistrarPagamentoRegularizado (IH.1) ---
+
+    [Fact]
+    public void RegistrarPagamentoRegularizado_ZeraContadorEReativaSeInadimplente()
+    {
+        var a = CriarValida();
+        a.Ativar();
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
+
+        a.RegistrarPagamentoRegularizado(TestData.Agora);
+
+        a.TentativasFalhasConsecutivas.Should().Be(0);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoRegularizado_AssinaturaAtivaComFalhasParciais_SoZeraContador()
+    {
+        var a = CriarValida();
+        a.Ativar();
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.TentativasFalhasConsecutivas.Should().Be(2);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
+
+        a.RegistrarPagamentoRegularizado(TestData.Agora);
+
+        a.TentativasFalhasConsecutivas.Should().Be(0);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoRegularizado_AssinaturaCancelada_NoOp()
+    {
+        var a = CriarValida();
+        a.Ativar();
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.Cancelar();
+
+        a.RegistrarPagamentoRegularizado(TestData.Agora);
+
+        a.TentativasFalhasConsecutivas.Should().Be(1, "cancelada não permite mexer no estado");
+        a.Status.Should().Be(AssinaturaAlunoStatus.Cancelada);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoRegularizado_Idempotente_ChamadasMultiplasSemDano()
+    {
+        var a = CriarValida();
+        a.Ativar();
+
+        a.RegistrarPagamentoRegularizado(TestData.Agora);
+        a.RegistrarPagamentoRegularizado(TestData.Agora);
+
+        a.TentativasFalhasConsecutivas.Should().Be(0);
+        a.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
+    }
 }

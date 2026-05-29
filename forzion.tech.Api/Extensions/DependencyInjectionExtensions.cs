@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using FluentValidation;
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Context;
+using forzion.tech.Api.Filters;
 using forzion.tech.Api.Middleware;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
@@ -176,6 +177,8 @@ public static class DependencyInjectionExtensions
 
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, HttpUserContext>();
+
+        services.AddTransient<RequireAssinaturaAtivaFilter>();
 
         if (!environment.IsEnvironment("Test"))
         {

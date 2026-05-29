@@ -44,4 +44,5 @@ Toda alteração de código DEVE, antes do PR: (1) build completo (frontend + ba
 4. Tarefa com ALTERAÇÃO DE ESCOPO (feature, mudança de comportamento) DEVE usar a skill `tlc-spec-driven` (tasks atômicas + state file). Não se aplica a ajustes triviais.
 5. README segue os princípios do `docs-writer` (precisão no código, voz ativa, consistência, verificação de links).
 6. Skill citada ausente no projeto: procurar, baixar e instalar antes de usar.
-7. Estas regras só mudam mediante aprovação do usuário.
+7. PARALELISMO: SEMPRE que a tarefa permitir (análises independentes, implementações em áreas isoladas do código, refatorações que não conflitam, tests em arquivos distintos), delegar pra sub-agents em PARALELO via Agent tool — um sub-agent por escopo isolado, batch num único turno. Coordenação fica no agente principal: ele identifica dependências, lança em paralelo o que não conflita, agrega resultados, faz integração final (DI wiring, commit). Evita serialização desnecessária e mantém context do agente principal limpo (sub-agents devolvem só sumário). Regra subordinada à 4 (tlc-spec-driven define quando paralelizar; "Tasks" phase explicita `[P]` em tasks paralelas).
+8. Estas regras só mudam mediante aprovação do usuário.

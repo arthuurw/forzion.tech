@@ -109,8 +109,12 @@ public class ProcessarWebhookStripeHandler(
         var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         if (assinatura is not null)
         {
-            assinatura.Ativar();
             var agora = timeProvider.GetUtcNow().UtcDateTime;
+            // Zera contador de falhas e reativa se estava Inadimplente.
+            assinatura.RegistrarPagamentoRegularizado(agora);
+            // Só transiciona Pendente → Ativa via Ativar (Inadimplente já virou Ativa acima; Ativa permanece Ativa).
+            if (assinatura.Status == AssinaturaAlunoStatus.Pendente)
+                assinatura.Ativar();
             assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
         }
 
@@ -134,6 +138,17 @@ public class ProcessarWebhookStripeHandler(
 
         pagamento.MarcarFalhou();
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+
+        // Carrega assinatura e incrementa contador de tentativas falhas.
+        // Pode disparar transição Ativa → Inadimplente (RegistrarPagamentoFalho aplica o threshold).
+        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
+        if (assinatura is not null)
+        {
+            var agora = timeProvider.GetUtcNow().UtcDateTime;
+            assinatura.RegistrarPagamentoFalho(agora);
+            await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        }
+
         logger.LogInformation("Pagamento {PagamentoId} marcado como falhou.", pagamento.Id);
     }
 

@@ -151,6 +151,7 @@ public static class AlunoAreaEndpoints
             var result = await handler.HandleAsync(command, cancellationToken);
             return Results.Created($"/aluno/execucoes/{result.ExecucaoId}", result);
         })
+        .AddEndpointFilter<RequireAssinaturaAtivaFilter>()
         .WithSummary("Registra a execução de um treino pelo aluno")
         .Produces<RegistrarExecucaoResponse>(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status403Forbidden)
