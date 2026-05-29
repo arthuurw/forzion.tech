@@ -33,7 +33,7 @@ public class VinculoTreinadorAluno : IHasDomainEvents
         if (pacoteId.HasValue && pacoteId.Value == Guid.Empty)
             return Result.Failure<VinculoTreinadorAluno>(VinculoErrors.PacoteIdInvalido);
 
-        return Result.Success(new VinculoTreinadorAluno
+        var vinculo = new VinculoTreinadorAluno
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
@@ -41,7 +41,9 @@ public class VinculoTreinadorAluno : IHasDomainEvents
             PacoteId = pacoteId,
             Status = VinculoStatus.AguardandoAprovacao,
             CreatedAt = agora
-        });
+        };
+        vinculo._domainEvents.Add(new VinculoPendenteCriadoEvent(vinculo.Id, treinadorId, alunoId, agora));
+        return Result.Success(vinculo);
     }
 
     public Result Aprovar(Guid aprovadoPorId, Guid pacoteId, DateTime agora)

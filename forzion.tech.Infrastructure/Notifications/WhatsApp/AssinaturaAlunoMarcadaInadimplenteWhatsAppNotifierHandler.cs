@@ -22,6 +22,8 @@ public sealed class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler(
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
 
+        if (!whatsAppNotifier.Habilitado) return;
+
         var aluno = await alunoRepository
             .ObterPorIdAsync(domainEvent.AlunoId, cancellationToken)
             .ConfigureAwait(false);
@@ -39,12 +41,11 @@ public sealed class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler(
 
         var linkPortal = $"{appSettings.Value.FrontendBaseUrl}/aluno/pagamentos";
 
-        var mensagem =
-            $"Olá, {aluno.Nome}! Sua conta forzion.tech está restrita por inadimplência. " +
-            $"Regularize seu pagamento para liberar o acesso: {linkPortal}";
-
         await whatsAppNotifier
-            .SendAsync(aluno.Telefone, mensagem, cancellationToken)
+            .SendTemplateAsync(
+                aluno.Telefone,
+                WhatsAppTemplates.AssinaturaInadimplente(aluno.Nome, linkPortal),
+                cancellationToken)
             .ConfigureAwait(false);
     }
 }

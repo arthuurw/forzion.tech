@@ -1,4 +1,3 @@
-using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
@@ -32,7 +31,8 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
 
     public PagamentoCriadoWhatsAppNotifierHandlerTests()
     {
-        _notifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _notifier.Setup(n => n.Habilitado).Returns(true);
+        _notifier.Setup(n => n.SendTemplateAsync(It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _appSettings = Options.Create(new AppSettings { FrontendBaseUrl = "https://app.forzion.tech" });
@@ -46,6 +46,18 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
         AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora).Value;
 
     [Fact]
+    public async Task HandleAsync_HabilitadoFalso_NaoEnvia()
+    {
+        _notifier.Setup(n => n.Habilitado).Returns(false);
+
+        await _handler.HandleAsync(Evento);
+
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_AssinaturaNaoEncontrada_NaoEnvia()
     {
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
@@ -53,8 +65,8 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(Evento);
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -68,15 +80,15 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(Evento);
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
     public async Task HandleAsync_AlunoSemTelefone_NaoEnvia()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora).Value; // sem telefone
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora).Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _alunoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -84,13 +96,13 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(Evento);
 
-        _notifier.Verify(n => n.SendAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_AlunoComTelefone_EnviaMensagemComLinkPortal()
+    public async Task HandleAsync_AlunoComTelefone_EnviaTemplateCobrancaDisponivel()
     {
         var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
@@ -100,19 +112,20 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(Evento);
 
-        _notifier.Verify(n => n.SendAsync(
+        _notifier.Verify(n => n.SendTemplateAsync(
             "11999998888",
-            It.Is<string>(msg => msg.Contains("Maria")
-                && msg.Contains("149,90")
-                && msg.Contains("Pix")
-                && msg.Contains("https://app.forzion.tech/aluno/pagamentos")
-                && !msg.Contains("stripe.com")),
+            It.Is<WhatsAppTemplateMessage>(m =>
+                m.Name == "cobranca_disponivel" &&
+                m.BodyParameters.Contains("Maria") &&
+                m.BodyParameters.Contains("149,90") &&
+                m.BodyParameters.Any(p => p.Contains("Pix")) &&
+                m.BodyParameters.Any(p => p.Contains("https://app.forzion.tech/aluno/pagamentos"))),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_MetodoCartao_MensagemUsaCartaoDeCredito()
+    public async Task HandleAsync_MetodoCartao_TemplateContemCartao()
     {
         var aluno = Aluno.Criar(Guid.NewGuid(), "João", TestData.Agora, telefone: "11888887777").Value;
         var eventoCartao = Evento with { MetodoPagamento = MetodoPagamento.Cartao };
@@ -123,9 +136,11 @@ public class PagamentoCriadoWhatsAppNotifierHandlerTests
 
         await _handler.HandleAsync(eventoCartao);
 
-        _notifier.Verify(n => n.SendAsync(
+        _notifier.Verify(n => n.SendTemplateAsync(
             It.IsAny<string>(),
-            It.Is<string>(msg => msg.Contains("cartão")),
+            It.Is<WhatsAppTemplateMessage>(m =>
+                m.Name == "cobranca_disponivel" &&
+                m.BodyParameters.Any(p => p.Contains("cartão"))),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

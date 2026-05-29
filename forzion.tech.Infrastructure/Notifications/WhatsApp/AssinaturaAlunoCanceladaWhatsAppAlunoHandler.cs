@@ -12,8 +12,8 @@ namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 /// Disparado por <see cref="AssinaturaAlunoCanceladaEvent"/>. Sem telefone do
 /// aluno, no-op (e-mail handler cobre o canal de confirmação).
 ///
-/// Treinador não recebe WhatsApp aqui — comunicação com treinador segue por
-/// e-mail (canal preferido para perda de receita / decisões financeiras).
+/// Treinador recebe notificação separada via
+/// <see cref="AssinaturaAlunoCanceladaWhatsAppTreinadorHandler"/>.
 /// </summary>
 public sealed class AssinaturaAlunoCanceladaWhatsAppAlunoHandler(
     IAlunoRepository alunoRepository,
@@ -24,6 +24,8 @@ public sealed class AssinaturaAlunoCanceladaWhatsAppAlunoHandler(
     public async Task HandleAsync(AssinaturaAlunoCanceladaEvent domainEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
+
+        if (!whatsAppNotifier.Habilitado) return;
 
         var aluno = await alunoRepository
             .ObterPorIdAsync(domainEvent.AlunoId, cancellationToken)
@@ -42,13 +44,11 @@ public sealed class AssinaturaAlunoCanceladaWhatsAppAlunoHandler(
 
         var linkPortal = $"{appSettings.Value.FrontendBaseUrl}/aluno/pagamentos";
 
-        var mensagem =
-            $"Olá, {aluno.Nome}! Sua assinatura forzion.tech foi cancelada conforme solicitado.\n" +
-            $"Para reativar, fale com seu treinador.\n\n" +
-            $"Histórico: {linkPortal}";
-
         await whatsAppNotifier
-            .SendAsync(aluno.Telefone, mensagem, cancellationToken)
+            .SendTemplateAsync(
+                aluno.Telefone,
+                WhatsAppTemplates.AssinaturaCancelada(aluno.Nome, linkPortal),
+                cancellationToken)
             .ConfigureAwait(false);
     }
 }

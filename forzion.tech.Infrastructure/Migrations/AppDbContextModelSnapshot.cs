@@ -1350,6 +1350,56 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("vinculos_treinador_aluno", (string)null);
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.WhatsAppDeliveryLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("MetaMessageId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("meta_message_id");
+
+                    b.Property<DateTime>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrido_em");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("RecipientPhone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("recipient_phone");
+
+                    b.HasKey("Id")
+                        .HasName("pk_whatsapp_delivery_logs");
+
+                    b.HasIndex("EventType")
+                        .HasDatabaseName("ix_whatsapp_delivery_logs_event_type");
+
+                    b.HasIndex("MetaMessageId")
+                        .HasDatabaseName("ix_whatsapp_delivery_logs_meta_message_id");
+
+                    b.ToTable("whatsapp_delivery_logs", (string)null);
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.Aluno", b =>
                 {
                     b.HasOne("forzion.tech.Domain.Entities.Conta", null)

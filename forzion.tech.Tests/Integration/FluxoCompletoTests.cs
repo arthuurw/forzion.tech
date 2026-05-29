@@ -89,7 +89,7 @@ public class FluxoCompletoTests
         var handler = new RegistrarAlunoHandler(
             _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object, _treinadorRepo.Object,
             _pacoteRepo.Object, _passwordHasher.Object, _unitOfWork.Object,
-            new RegistrarAlunoCommandValidator(), Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
+            new RegistrarAlunoCommandValidator(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         var result = await handler.HandleAsync(
@@ -130,7 +130,7 @@ public class FluxoCompletoTests
         var handler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
             _alunoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
-            mockTxProvider.Object, Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
+            mockTxProvider.Object, TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         var resultado = await handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinador.Id, pacote.Id));

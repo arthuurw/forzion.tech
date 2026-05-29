@@ -29,6 +29,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IDomainEventDi
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
     public DbSet<EmailDeliveryLog> EmailDeliveryLogs => Set<EmailDeliveryLog>();
+    public DbSet<WhatsAppDeliveryLog> WhatsAppDeliveryLogs => Set<WhatsAppDeliveryLog>();
     public DbSet<AssinaturaAluno> AssinaturaAlunos => Set<AssinaturaAluno>();
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
     public DbSet<Assinante> Assinantes => Set<Assinante>();

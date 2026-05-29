@@ -1,5 +1,6 @@
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 
@@ -77,6 +78,65 @@ public static class WebhookEndpoints
         })
         .WithTags("Webhooks")
         .WithSummary("Recebe eventos de entrega de e-mail via Resend/Svix webhook")
+        .AllowAnonymous()
+        .RequireRateLimiting("webhook")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        // GET /webhooks/whatsapp — Meta verification handshake
+        endpoints.MapGet("/webhooks/whatsapp", (
+            HttpContext httpContext,
+            [FromServices] IConfiguration configuration) =>
+        {
+            var mode = httpContext.Request.Query["hub.mode"].FirstOrDefault();
+            var verifyToken = httpContext.Request.Query["hub.verify_token"].FirstOrDefault();
+            var challenge = httpContext.Request.Query["hub.challenge"].FirstOrDefault();
+
+            var expectedToken = configuration["WhatsApp:WebhookVerifyToken"] ?? string.Empty;
+
+            if (mode == "subscribe" && verifyToken == expectedToken)
+                return Results.Text(challenge ?? string.Empty);
+
+            return Results.Forbid();
+        })
+        .WithTags("Webhooks")
+        .WithSummary("Handshake de verificação do webhook WhatsApp (Meta)")
+        .AllowAnonymous()
+        .Produces<string>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status403Forbidden);
+
+        // POST /webhooks/whatsapp — delivery-status events
+        endpoints.MapPost("/webhooks/whatsapp", async (
+            HttpContext httpContext,
+            [FromServices] ProcessarWebhookWhatsAppHandler handler,
+            [FromServices] IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            httpContext.Request.Body = new LimitedStream(httpContext.Request.Body, MaxWebhookBodyBytes);
+
+            using var reader = new StreamReader(httpContext.Request.Body);
+            string payload;
+            try
+            {
+                payload = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (InvalidDataException)
+            {
+                return Results.BadRequest("Payload excede o tamanho máximo permitido.");
+            }
+
+            var signature = httpContext.Request.Headers["X-Hub-Signature-256"].FirstOrDefault() ?? string.Empty;
+            var appSecret = configuration["WhatsApp:AppSecret"] ?? string.Empty;
+
+            var result = await handler.HandleAsync(
+                new ProcessarWebhookWhatsAppCommand(payload, signature),
+                appSecret,
+                cancellationToken).ConfigureAwait(false);
+
+            return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error?.Message ?? "Webhook inválido.");
+        })
+        .WithTags("Webhooks")
+        .WithSummary("Recebe eventos de entrega de WhatsApp via Meta Cloud API webhook")
         .AllowAnonymous()
         .RequireRateLimiting("webhook")
         .Produces(StatusCodes.Status200OK)

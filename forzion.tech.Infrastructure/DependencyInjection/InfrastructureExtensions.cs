@@ -30,6 +30,12 @@ public static class InfrastructureExtensions
             sp.GetRequiredService<IOptions<EmailSettings>>().Value,
             sp.GetRequiredService<ILogger<EnvironmentEmailDecorator>>());
 
+    private static IWhatsAppNotifier EnvolverComWhatsAppDecorator(IServiceProvider sp, IWhatsAppNotifier inner) =>
+        new EnvironmentWhatsAppDecorator(
+            inner,
+            sp.GetRequiredService<IOptions<WhatsAppSettings>>().Value,
+            sp.GetRequiredService<ILogger<EnvironmentWhatsAppDecorator>>());
+
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -75,6 +81,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
+        services.AddScoped<IWhatsAppDeliveryLogRepository, WhatsAppDeliveryLogRepository>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
@@ -150,6 +157,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoMarcadaInadimplenteEvent>, AssinaturaAlunoMarcadaInadimplenteEmailHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaEmailAlunoHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaEmailTreinadorHandler>();
+        services.AddScoped<IDomainEventHandler<VinculoPendenteCriadoEvent>, VinculoPendenteCriadoEmailTreinadorHandler>();
 
         // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
@@ -160,12 +168,27 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<PagamentoEstornadoEvent>, PagamentoEstornadoWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoMarcadaInadimplenteEvent>, AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaWhatsAppAlunoHandler>();
+        services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoCriadaEvent>, AssinaturaAlunoCriadaWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<AlunoInativadoEvent>, AlunoInativadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<TreinadorAprovadoEvent>, TreinadorAprovadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<TreinadorReprovadoEvent>, TreinadorReprovadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaWhatsAppTreinadorHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoEmDisputaEvent>, PagamentoEmDisputaWhatsAppTreinadorHandler>();
+        services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<VinculoPendenteCriadoEvent>, VinculoPendenteCriadoWhatsAppHandler>();
 
         // Domain event handlers — projeção billing
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();
         services.AddScoped<IDomainEventHandler<AlunoAtualizadoEvent>, AlunoAtualizadoSincronizarAssinanteHandler>();
 
-        // WhatsApp notifier — Meta Cloud API when configured, no-op otherwise
+        // WhatsAppSettings — guardrail de ambiente (defaults prod-safe)
+        services.AddOptions<WhatsAppSettings>().BindConfiguration("WhatsApp");
+
+        // WhatsApp notifier — Meta Cloud API when configured, no-op otherwise. Sempre
+        // embrulhado no EnvironmentWhatsAppDecorator: passthrough em prod, redirect/allowlist
+        // de telefone em não-prod.
         var whatsAppPhoneNumberId = configuration["WhatsApp:PhoneNumberId"];
         var whatsAppAccessToken = configuration["WhatsApp:AccessToken"];
         var whatsAppApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v21.0";
@@ -178,11 +201,14 @@ public static class InfrastructureExtensions
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", whatsAppAccessToken);
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
-            services.AddScoped<IWhatsAppNotifier, MetaWhatsAppCloudNotifier>();
+            services.AddScoped<IWhatsAppNotifier>(sp =>
+                EnvolverComWhatsAppDecorator(sp, sp.GetRequiredService<MetaWhatsAppCloudNotifier>()));
         }
         else
         {
-            services.AddScoped<IWhatsAppNotifier, NullWhatsAppNotifier>();
+            services.AddScoped<IWhatsAppNotifier>(sp =>
+                EnvolverComWhatsAppDecorator(sp,
+                    new NullWhatsAppNotifier(sp.GetRequiredService<ILogger<NullWhatsAppNotifier>>())));
         }
 
         return services;
