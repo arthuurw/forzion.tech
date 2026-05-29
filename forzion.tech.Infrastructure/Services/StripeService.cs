@@ -179,6 +179,8 @@ public class StripeService(
         "payment_intent.payment_failed",
         "payment_intent.canceled",
         "account.updated",
+        "charge.refunded",
+        "charge.dispute.created",
     ];
 
     public async Task<IReadOnlyList<StripeEventSummary>> ListarEventosDesdeAsync(

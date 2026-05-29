@@ -80,14 +80,17 @@ public class AssinaturaAluno : IHasDomainEvents
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Cancelar()
+    public void Cancelar(DateTime agora)
     {
         if (Status == AssinaturaAlunoStatus.Cancelada)
             throw new DomainException("A assinatura já está cancelada.");
 
         Status = AssinaturaAlunoStatus.Cancelada;
-        DataCancelamento = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        DataCancelamento = agora;
+        UpdatedAt = agora;
+
+        _domainEvents.Add(new AssinaturaAlunoCanceladaEvent(
+            Id, AlunoId, TreinadorId, Valor, agora));
     }
 
     public void AgendarProximaCobranca(DateTime dataProximaCobranca, DateTime agora)
@@ -127,6 +130,34 @@ public class AssinaturaAluno : IHasDomainEvents
             _domainEvents.Add(new AssinaturaAlunoMarcadaInadimplenteEvent(
                 Id, AlunoId, TreinadorId, TentativasFalhasConsecutivas, agora));
         }
+    }
+
+    /// <summary>
+    /// Força transição Ativa → Inadimplente em caso de disputa (chargeback) Stripe.
+    /// Diferente de <see cref="RegistrarPagamentoFalho"/>, não incrementa contador
+    /// gradualmente: disputa é evento de alta gravidade (fraude ou desistência
+    /// drástica do aluno), então o acesso é congelado imediatamente — não vale a
+    /// pena esperar atingir <see cref="LimiteTentativasFalhas"/>.
+    ///
+    /// <para>
+    /// Cancelada → no-op (cancelada permanece cancelada).
+    /// Inadimplente → no-op idempotente (já está no estado correto).
+    /// Pendente → no-op (sai por outra via; disputa em assinatura nunca-ativada
+    /// é cenário improvável).
+    /// Ativa → transiciona, equipara contador a <see cref="LimiteTentativasFalhas"/>
+    /// e dispara <see cref="AssinaturaAlunoMarcadaInadimplenteEvent"/>.
+    /// </para>
+    /// </summary>
+    public void MarcarInadimplentePorDisputa(DateTime agora)
+    {
+        if (Status != AssinaturaAlunoStatus.Ativa) return;
+
+        Status = AssinaturaAlunoStatus.Inadimplente;
+        TentativasFalhasConsecutivas = LimiteTentativasFalhas;
+        UpdatedAt = agora;
+
+        _domainEvents.Add(new AssinaturaAlunoMarcadaInadimplenteEvent(
+            Id, AlunoId, TreinadorId, TentativasFalhasConsecutivas, agora));
     }
 
     /// <summary>

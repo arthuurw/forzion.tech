@@ -102,4 +102,44 @@ public class Pagamento : IHasDomainEvents
         Status = PagamentoStatus.Expirado;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    /// <summary>
+    /// Aplica refund Stripe (webhook <c>charge.refunded</c>). Guard: só transiciona
+    /// de Pago; outras origens lançam DomainException. <c>DataPagamento</c> preservada
+    /// como registro histórico do momento que o dinheiro chegou — auditoria/contabilidade
+    /// precisam dessa data. Dispara <see cref="PagamentoEstornadoEvent"/> pra notificar aluno.
+    /// </summary>
+    public void MarcarEstornado()
+    {
+        if (Status != PagamentoStatus.Pago)
+            throw new DomainException("Apenas pagamentos pagos podem ser estornados.");
+
+        Status = PagamentoStatus.Estornado;
+        UpdatedAt = DateTime.UtcNow;
+
+        _domainEvents.Add(new PagamentoEstornadoEvent(
+            Id, AssinaturaAlunoId, Valor, UpdatedAt.Value));
+    }
+
+    /// <summary>
+    /// Aplica chargeback Stripe (webhook <c>charge.dispute.created</c>). Guard:
+    /// só transiciona de <see cref="PagamentoStatus.Pago"/> — disputa sobre estado
+    /// diferente é incoerente (não há cobrança capturada pra disputar). <c>DataPagamento</c>
+    /// preservada (registro histórico do recebimento original; auditoria precisa).
+    /// O <see cref="PagamentoEmDisputaEvent"/> dispara handlers de notificação urgente
+    /// (treinador via e-mail + alert crítico em log).
+    /// </summary>
+    /// <param name="motivoDisputa">Motivo enviado pelo Stripe (ex.: "fraudulent", "duplicate").</param>
+    public void MarcarEmDisputa(string motivoDisputa)
+    {
+        if (Status != PagamentoStatus.Pago)
+            throw new DomainException("Apenas pagamentos pagos podem ser marcados em disputa.");
+
+        Status = PagamentoStatus.EmDisputa;
+        UpdatedAt = DateTime.UtcNow;
+
+        var motivo = string.IsNullOrWhiteSpace(motivoDisputa) ? "unknown" : motivoDisputa.Trim();
+        _domainEvents.Add(new PagamentoEmDisputaEvent(
+            Id, AssinaturaAlunoId, Valor, motivo, UpdatedAt.Value));
+    }
 }

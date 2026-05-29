@@ -242,7 +242,7 @@ export interface ProgressaoAlunoResponse {
 }
 
 export type AssinaturaAlunoStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
-export type PagamentoStatus = "Pendente" | "Pago" | "Expirado" | "Falhou";
+export type PagamentoStatus = "Pendente" | "Pago" | "Expirado" | "Falhou" | "Estornado" | "EmDisputa";
 export type MetodoPagamento = "Pix" | "Cartao";
 
 export interface AssinaturaAlunoResponse {

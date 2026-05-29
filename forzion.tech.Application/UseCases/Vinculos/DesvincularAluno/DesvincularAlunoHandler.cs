@@ -40,7 +40,7 @@ public class DesvincularAlunoHandler(
 
         var assinatura = await assinaturaRepository.ObterPorVinculoIdAsync(vinculo.Id, cancellationToken).ConfigureAwait(false);
         if (assinatura is not null && assinatura.Status != Domain.Enums.AssinaturaAlunoStatus.Cancelada)
-            assinatura.Cancelar();
+            assinatura.Cancelar(timeProvider.GetUtcNow().UtcDateTime);
 
         var treinoAlunos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculo.TreinadorId, vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         foreach (var ta in treinoAlunos)

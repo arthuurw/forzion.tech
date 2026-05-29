@@ -170,7 +170,7 @@ public class GerarCobrancaMensalHandlerTests
     {
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
-        assinatura.Cancelar();
+        assinatura.Cancelar(DateTime.UtcNow);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 
         var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));

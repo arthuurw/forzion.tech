@@ -9,6 +9,7 @@ namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaA
 public class CancelarAssinaturaAlunoHandler(
     IAssinaturaAlunoRepository assinaturaRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<CancelarAssinaturaAlunoHandler> logger)
 {
     public virtual async Task<Result> HandleAsync(
@@ -22,7 +23,7 @@ public class CancelarAssinaturaAlunoHandler(
 
         try
         {
-            assinatura.Cancelar();
+            assinatura.Cancelar(timeProvider.GetUtcNow().UtcDateTime);
         }
         catch (DomainException ex)
         {
