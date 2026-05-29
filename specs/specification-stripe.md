@@ -21,7 +21,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 - Métodos `Create*PaymentIntent`: usam `MoneyCentavos.ValorETaxaCentavos(valor, taxaPercent)` (Application/UseCases/Pagamentos) — extração de F16 (truncamento via `(long)`; sum preservation ≤1 centavo). NÃO usar Math.Round / banker's rounding.
 - Connect flow: `ApplicationFeeAmount=taxaCentavos` + `TransferData.Destination=stripeAccountId` (taxa fica na plataforma, restante vai pro treinador).
 - Metadata: `["pagamento_id"]=pagamento.Id.ToString()` — útil pra reconciliação.
-- ⚠ Sem `Stripe-Idempotency-Key` header nas Create requests. App layer mitiga via `GerarCobrancaMensalHandler` (serializable tx + idempotent re-uso de pendente, F12). Considerar adicionar IdempotencyKey se Stripe retry policy ficar mais agressiva.
+- `Stripe-Idempotency-Key` header passado em `CriarPix/CartaoPaymentIntentAsync` via `PaymentIntentRequestOptions(pagamentoId)` — key estável `pagamento-{guid_n}`. Belt-and-suspenders sobre F12 serializable tx: retry de network/transport NÃO cria 2º PaymentIntent (Stripe responde idêntico até 24h depois com mesma key). `CriarContaConnectAsync`/`GerarLinkOnboardingAsync` ficam sem key (idempotency menos crítico).
 
 ## CONFIG (chaves)
 | Chave | Onde lida | Função | Ausente |
@@ -146,7 +146,19 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 - Workflow `.github/workflows/billing-renewal.yml` — cron `0 8 * * *` UTC (Daily 08:00 UTC); `workflow_dispatch` pra trigger manual.
 - Single step: `curl -f -X POST -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" https://${{ secrets.HOMOLOG_HOST }}/internal/processar-renovacoes`.
 - `INTERNAL_API_KEY` deve casar exato com env `Internal:ApiKey` do backend.
-- Sem fallback interno (não há `IHostedService`/`BackgroundService` pra renovação) — se workflow morre, renovação para. Monitorar via Slack/email `actions failed` notifications.
+- Sem fallback interno (não há `IHostedService`/`BackgroundService` pra renovação) — se workflow morre, renovação para.
+- **Monitoring:** step `if: failure()` cria GitHub Issue automática com label `billing-renewal-failed` (via `actions/github-script@v7`). GitHub notifica Arthur por e-mail/Slack se inscrito.
+
+## RECONCILIAÇÃO PERIÓDICA (safety net webhook)
+- Workflow `.github/workflows/billing-reconciliation.yml` — cron `0 4 * * 1` UTC (Segunda 04:00 UTC, weekly); `workflow_dispatch` com input `desde_utc`.
+- Chama `POST /internal/reconciliar-pagamentos` com X-Internal-Key (same FixedTimeEquals pattern). Body `{}` = últimos 7 dias; override via `desdeUtc` ISO-8601.
+- Backend handler `ReconciliarPagamentosStripeHandler` (Application):
+  1. `IStripeService.ListarEventosDesdeAsync(desdeUtc)` — `EventService.ListAutoPagingAsync` filtrando por `payment_intent.{succeeded,payment_failed,canceled}` + `account.updated`, cap 1000 eventos.
+  2. Por evento: chama `ProcessarWebhookStripeHandler.ProcessarEventoAsync(evento, ct)` — método refatorado pra ser reutilizável sem signature verification (eventos vêm autenticados via nossa API key).
+  3. Resultado por evento: `Aplicado` | `JaConsistente` | `Ignorado`. Reconciliator agrega → `{ TotalEventos, Replayed, JaConsistentes, Erros }`.
+  4. Idempotência preservada: handler interno já checa `Pagamento.Status != Pendente`.
+- Pega webhooks perdidos (Stripe retry policy desistiu OU rede falhou OU backend estava down).
+- **Monitoring:** step `if: failure()` cria GitHub Issue com label `billing-reconciliation-failed` (mesmo pattern do billing-renewal).
 
 ## FRONTEND
 - Componentes (`src/components/pagamento/`): `PagamentoCartao.tsx` (carrega Stripe.js via `loadStripe(NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)`, wrap `<Elements options={{clientSecret}}>` + `<CartaoForm>` com `useStripe`/`useElements`/`confirmPayment`), `PagamentoPix.tsx` (QR code + polling 30s + clipboard copy).

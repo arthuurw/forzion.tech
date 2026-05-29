@@ -29,4 +29,7 @@ public sealed class FakeStripeService : IStripeService
 
     public Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe) =>
         Task.FromResult(true);
+
+    public Task<IReadOnlyList<StripeEventSummary>> ListarEventosDesdeAsync(DateTime desdeUtc, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<StripeEventSummary>>(Array.Empty<StripeEventSummary>());
 }
