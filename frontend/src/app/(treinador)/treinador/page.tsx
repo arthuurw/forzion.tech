@@ -5,6 +5,7 @@ import {
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
+import { useRouter } from "next/navigation";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Legend,
@@ -12,6 +13,7 @@ import {
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { treinadorApi } from "@/lib/api/treinador";
+import { extractApiError } from "@/lib/api/extractApiError";
 import type { VinculoDetalheResponse, PacoteResponse, TreinoResponse } from "@/types";
 import { OBJETIVO_LABEL, ALUNO_STATUS_COLORS } from "@/lib/constants/labels";
 
@@ -33,6 +35,7 @@ interface ReceitaPacoteItem {
 }
 
 export default function DashboardTreinadorPage() {
+  const router = useRouter();
   const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
   const [objetivoData, setObjetivoData] = useState<ObjetivoItem[]>([]);
   const [pendentes, setPendentes] = useState<VinculoDetalheResponse[]>([]);
@@ -96,8 +99,8 @@ export default function DashboardTreinadorPage() {
           .sort((a, b) => b[1] - a[1])
           .map(([name, total]) => ({ name, total }))
       );
-    } catch {
-      setError("Erro ao carregar dados do painel.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar dados do painel."));
     } finally {
       setLoading(false);
     }
@@ -107,15 +110,16 @@ export default function DashboardTreinadorPage() {
 
   const handleAprovar = async (vinculo: VinculoDetalheResponse) => {
     if (!vinculo.pacoteId) {
-      setError("Vínculo sem pacote associado. Contate o suporte.");
+      // Redirect to /treinador/alunos where the trainer can pick a package.
+      router.push("/treinador/alunos");
       return;
     }
     setActionLoading(`${vinculo.vinculoId}_aprovar`);
     try {
       await treinadorApi.aprovarVinculo(vinculo.vinculoId, vinculo.pacoteId);
       await load();
-    } catch {
-      setError("Erro ao aprovar vínculo.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao aprovar vínculo."));
     } finally {
       setActionLoading(null);
     }
@@ -126,8 +130,8 @@ export default function DashboardTreinadorPage() {
     try {
       await treinadorApi.desvincularAluno(vinculoId);
       await load();
-    } catch {
-      setError("Erro ao desvincular aluno.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao desvincular aluno."));
     } finally {
       setActionLoading(null);
     }

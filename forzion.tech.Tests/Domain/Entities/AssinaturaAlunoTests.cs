@@ -112,6 +112,26 @@ public class AssinaturaAlunoTests
         r.Error!.Message.Should().Be("AssinaturaAluno cancelada não pode ser ativada.");
     }
 
+    [Fact]
+    public void Ativar_StatusInadimplente_RetornaFalhaExigeRegularizacao()
+    {
+        // G-PAY-4: Inadimplente → Ativa via Ativar é proibido; contador não seria zerado.
+        var a = CriarValida();
+        a.Ativar(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora); // → Inadimplente
+        a.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
+        a.TentativasFalhasConsecutivas.Should().Be(3);
+
+        var r = a.Ativar(TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("assinatura_aluno.inadimplente_deve_usar_regularizacao");
+        a.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente, "status não deve ter sido alterado");
+        a.TentativasFalhasConsecutivas.Should().Be(3, "contador não deve ter sido zerado");
+    }
+
     // --- MarcarInadimplente ---
 
     [Fact]
@@ -307,6 +327,38 @@ public class AssinaturaAlunoTests
 
         a.TentativasFalhasConsecutivas.Should().Be(0);
         a.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoRegularizado_Inadimplente_DispatchaReativadaEvent()
+    {
+        // G-PAY-3: transição Inadimplente → Ativa deve disparar AssinaturaAlunoReativadaEvent.
+        var a = CriarValida();
+        a.Ativar(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora);
+        a.RegistrarPagamentoFalho(TestData.Agora); // → Inadimplente
+        a.ClearDomainEvents();
+
+        a.RegistrarPagamentoRegularizado(TestData.Agora);
+
+        a.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<AssinaturaAlunoReativadaEvent>()
+            .Which.OcorridoEm.Should().Be(TestData.Agora);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoRegularizado_JaAtiva_NaoDispatchaReativadaEvent()
+    {
+        // Idempotência: chamar Regularizado numa assinatura já Ativa não dispara evento.
+        var a = CriarValida();
+        a.Ativar(TestData.Agora);
+        a.ClearDomainEvents();
+
+        a.RegistrarPagamentoRegularizado(TestData.Agora);
+
+        a.DomainEvents.OfType<AssinaturaAlunoReativadaEvent>().Should().BeEmpty(
+            "assinatura já estava Ativa; sem transição de estado, não deve disparar evento");
     }
 
     [Fact]

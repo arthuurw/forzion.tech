@@ -632,6 +632,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .GetAsync($"/admin/alunos/{AlunoId}/progressao?de={hoje}&ate={ontem}");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
     // --- GET /admin/treinadores/{id}/alunos ---

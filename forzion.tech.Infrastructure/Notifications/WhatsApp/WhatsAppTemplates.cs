@@ -32,6 +32,9 @@ public static class WhatsAppTemplates
     public static WhatsAppTemplateMessage AssinaturaCancelada(string nomeAluno, string linkPortal)
         => new("assinatura_cancelada", [nomeAluno, linkPortal]);
 
+    public static WhatsAppTemplateMessage AssinaturaReativada(string nomeAluno, string linkPortal)
+        => new("assinatura_reativada", [nomeAluno, linkPortal]);
+
     public static WhatsAppTemplateMessage BemVindoAluno(string nomeAluno)
         => new("bem_vindo_aluno", [nomeAluno]);
 

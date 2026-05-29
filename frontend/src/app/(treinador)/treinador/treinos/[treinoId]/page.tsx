@@ -20,6 +20,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi, type AdicionarExercicioData, type SerieConfigData } from "@/lib/api/treinador";
+import { extractApiError } from "@/lib/api/extractApiError";
 import type { TreinoResponse, TreinoExercicioResponse, ExercicioResponse, AlunoResponse, ObjetivoTreino } from "@/types";
 import { OBJETIVO_LABEL, GRUPO_MUSCULAR_LABEL, OBJETIVOS } from "@/lib/constants/labels";
 import { formatarSeries } from "@/lib/utils/formatting";
@@ -88,8 +89,8 @@ export default function DetalheFichaPage() {
     try {
       const res = await treinadorApi.getFicha(treinoId);
       setFicha(res.data);
-    } catch {
-      setError("Erro ao carregar ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar ficha."));
     } finally {
       setLoading(false);
     }
@@ -105,8 +106,8 @@ export default function DetalheFichaPage() {
       try {
         const res = await treinadorApi.listExercicios({ global: false, tamanhoPagina: 200 });
         setBiblioteca(res.data.items);
-      } catch {
-        setError("Erro ao carregar biblioteca de exercícios.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar biblioteca de exercícios."));
       }
     }
   };
@@ -135,8 +136,8 @@ export default function DetalheFichaPage() {
       setSuccess("Exercício adicionado à ficha.");
       setAddOpen(false);
       load();
-    } catch {
-      setError("Erro ao adicionar exercício.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao adicionar exercício."));
     } finally {
       setLoadingAdd(false);
     }
@@ -150,8 +151,8 @@ export default function DetalheFichaPage() {
       setSuccess("Exercício removido.");
       setRemoveEx(null);
       load();
-    } catch {
-      setError("Erro ao remover exercício.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao remover exercício."));
     } finally {
       setLoadingRemove(false);
     }
@@ -162,8 +163,8 @@ export default function DetalheFichaPage() {
     try {
       const res = await treinadorApi.duplicarFicha(treinoId);
       router.push(`/treinador/treinos/${res.data.treinoId}`);
-    } catch {
-      setError("Erro ao duplicar ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao duplicar ficha."));
       setLoadingDuplicar(false);
     }
   };
@@ -176,8 +177,8 @@ export default function DetalheFichaPage() {
         setError(`Já existe o aluno ${nomes} vinculado a esta ficha.`);
         return;
       }
-    } catch {
-      setError("Erro ao verificar vínculos da ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao verificar vínculos da ficha."));
       return;
     }
     setSelectedAluno(null);
@@ -186,8 +187,8 @@ export default function DetalheFichaPage() {
       try {
         const res = await treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: 200 });
         setAlunos(res.data.items);
-      } catch {
-        setError("Erro ao carregar alunos ativos.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar alunos ativos."));
       }
     }
   };
@@ -199,8 +200,8 @@ export default function DetalheFichaPage() {
       await treinadorApi.vincularFichaAoAluno(selectedAluno.alunoId, treinoId);
       setSuccess(`Ficha vinculada a ${selectedAluno.nome}.`);
       setVincularOpen(false);
-    } catch {
-      setError("Erro ao vincular ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao vincular ficha."));
     } finally {
       setLoadingVincular(false);
     }
@@ -220,8 +221,8 @@ export default function DetalheFichaPage() {
       setEditOpen(false);
       setSuccess("Ficha atualizada.");
       load();
-    } catch {
-      setError("Erro ao atualizar ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar ficha."));
     } finally {
       setLoadingEdit(false);
     }
@@ -262,8 +263,8 @@ export default function DetalheFichaPage() {
       setSuccess("Exercício atualizado.");
       setEditExTarget(null);
       load();
-    } catch {
-      setError("Erro ao editar exercício.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao editar exercício."));
     } finally {
       setLoadingEditEx(false);
     }
@@ -282,8 +283,8 @@ export default function DetalheFichaPage() {
       setSuccess("Observação salva.");
       setObsTarget(null);
       load();
-    } catch {
-      setError("Erro ao salvar observação.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao salvar observação."));
     } finally {
       setLoadingObs(false);
     }
@@ -294,8 +295,8 @@ export default function DetalheFichaPage() {
     try {
       await treinadorApi.excluirFicha(treinoId);
       router.push("/treinador/treinos");
-    } catch {
-      setError("Erro ao excluir ficha. Fichas com execuções registradas não podem ser excluídas.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir ficha. Fichas com execuções registradas não podem ser excluídas."));
       setDeleteOpen(false);
       setLoadingDelete(false);
     }

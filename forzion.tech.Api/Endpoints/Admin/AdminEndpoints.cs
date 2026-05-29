@@ -439,7 +439,7 @@ public static class AdminEndpoints
                 : hoje;
 
             if (de > ate)
-                return Results.BadRequest("O parâmetro 'de' deve ser anterior a 'ate'.");
+                return Results.Problem(detail: "O parâmetro 'de' deve ser anterior a 'ate'.", statusCode: 400);
 
             var result = await handler.HandleAsync(new ObterProgressaoAlunoQuery(id, de, ate), cancellationToken);
             return Results.Ok(result);

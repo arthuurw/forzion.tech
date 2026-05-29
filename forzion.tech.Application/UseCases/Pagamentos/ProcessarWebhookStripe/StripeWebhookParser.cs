@@ -38,9 +38,8 @@ public static class StripeWebhookParser
         var chargesEnabled = type == "account.updated" &&
             (data?["charges_enabled"]?.GetValue<bool>() ?? false);
 
-        // amount_refunded em centavos, presente apenas em charge.refunded. Não usado
-        // pra mutar estado (refund parcial vs total não muda regra atual — marca Estornado),
-        // mas exposto pra log e futura extensão (refund parcial = manter Pago + nota).
+        // amount_refunded em centavos, presente em charge.refunded.
+        // G-PAY-5: usado para distinguir refund total vs parcial — só refund total muda status.
         var amountRefundedCents = type == "charge.refunded"
             ? data?["amount_refunded"]?.GetValue<long>()
             : null;

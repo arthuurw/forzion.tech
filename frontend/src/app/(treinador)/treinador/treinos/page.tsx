@@ -14,6 +14,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
+import { extractApiError } from "@/lib/api/extractApiError";
 import type { TreinoResponse, ObjetivoTreino, DificuldadeTreino, AlunoResponse } from "@/types";
 import { OBJETIVOS, OBJETIVOS_FILTRO, DIFICULDADES } from "@/lib/constants/labels";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
@@ -77,8 +78,8 @@ export default function TreinosTreinadorPage() {
       try {
         const res = await treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: 200 });
         setAlunos(res.data.items);
-      } catch {
-        setError("Erro ao carregar alunos ativos.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar alunos ativos."));
       }
     }
   };
@@ -98,8 +99,8 @@ export default function TreinosTreinadorPage() {
       closeCreate();
       resetForm();
       router.push(`/treinador/treinos/${res.data.treinoId}`);
-    } catch {
-      setError("Erro ao criar ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao criar ficha."));
       setCreating(false);
     }
   };
@@ -128,8 +129,8 @@ export default function TreinosTreinadorPage() {
       });
       closeEdit();
       reload();
-    } catch {
-      setError("Erro ao atualizar ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar ficha."));
     } finally {
       setEditing(false);
     }
@@ -142,8 +143,8 @@ export default function TreinosTreinadorPage() {
       await treinadorApi.excluirFicha(deleteTarget.treinoId);
       closeDelete();
       reload();
-    } catch {
-      setError("Erro ao excluir ficha. Fichas com execuções registradas não podem ser excluídas.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir ficha. Fichas com execuções registradas não podem ser excluídas."));
       closeDelete();
     } finally {
       setDeleting(false);

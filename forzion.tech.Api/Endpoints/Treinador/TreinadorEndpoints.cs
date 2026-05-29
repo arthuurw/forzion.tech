@@ -56,7 +56,7 @@ public static class TreinadorEndpoints
             if (string.IsNullOrEmpty(urlBase)
                 || !UrlValidator.IsUrlPermitida(request.UrlRetorno, urlBase)
                 || !UrlValidator.IsUrlPermitida(request.UrlCancelamento, urlBase))
-                return Results.BadRequest("URLs de retorno fora do domínio permitido.");
+                return Results.Problem(detail: "URLs de retorno fora do domínio permitido.", statusCode: 400);
 
             var result = await handler.HandleAsync(
                 new IniciarOnboardingTreinadorCommand(userContext.PerfilId, request.UrlRetorno, request.UrlCancelamento),
@@ -202,7 +202,7 @@ public static class TreinadorEndpoints
                 : hoje;
 
             if (de > ate)
-                return Results.BadRequest("O parâmetro 'de' deve ser anterior a 'ate'.");
+                return Results.Problem(detail: "O parâmetro 'de' deve ser anterior a 'ate'.", statusCode: 400);
 
             var query = new ObterProgressaoAlunoQuery(alunoId, de, ate);
             var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);

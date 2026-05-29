@@ -16,10 +16,26 @@ public class ObterMinhaProgressaoHandler(
         var alunoId = userContext.PerfilId;
         var ateInclusive = ate.Date.AddDays(1).AddTicks(-1);
 
-        var execucoes = await execucaoRepository
-            .ListarPorAlunoComExerciciosAsync(alunoId, de.Date, ateInclusive, cancellationToken)
+        var rows = await execucaoRepository
+            .ProjetarProgressaoAsync(alunoId, de.Date, ateInclusive, cancellationToken)
             .ConfigureAwait(false);
 
-        return new ProgressaoAlunoResponse(ProgressaoProjection.Projetar(execucoes));
+        var exercicios = rows
+            .GroupBy(r => (r.NomeExercicio, r.GrupoMuscular))
+            .Select(g => new ExercicioProgressao(
+                g.Key.NomeExercicio,
+                g.Key.GrupoMuscular,
+                g.OrderBy(r => r.Data)
+                    .Select(r => new PontoProgressao(
+                        r.Data,
+                        r.CargaMaxima,
+                        (int)Math.Round(r.MediaSeries),
+                        (int)Math.Round(r.MediaRepeticoes)))
+                    .ToList()))
+            .OrderBy(e => e.GrupoMuscular)
+            .ThenBy(e => e.NomeExercicio)
+            .ToList();
+
+        return new ProgressaoAlunoResponse(exercicios);
     }
 }

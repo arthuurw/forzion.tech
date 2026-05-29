@@ -22,6 +22,7 @@ public class GrupoMuscularRepository(AppDbContext context) : IGrupoMuscularRepos
     public async Task<IReadOnlyList<GrupoMuscular>> ListarTodosAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Set<GrupoMuscular>()
+            .AsNoTracking()
             .OrderBy(g => g.Nome)
             .ToListAsync(cancellationToken);
     }
