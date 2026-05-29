@@ -1,5 +1,5 @@
 using forzion.tech.Application.Interfaces;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 using Microsoft.Extensions.Logging;
 

@@ -1,4 +1,4 @@
-namespace forzion.tech.Application.Results;
+namespace forzion.tech.Domain.Shared;
 
 public sealed record Error(string Code, string Message)
 {
