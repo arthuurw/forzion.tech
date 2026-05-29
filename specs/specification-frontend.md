@@ -172,9 +172,15 @@ POST /api/auth/logout
 ## API CLIENT (`src/lib/api/client.ts`)
 ```
 apiClient = axios.create({ baseURL: NEXT_PUBLIC_API_BASE_URL ?? "/api/backend" })
-interceptor resposta: status 401 → window.location.href = "/login"
+interceptor resposta:
+  401 → window.location.href = "/login"
+  403 + data.code === "ASSINATURA_INADIMPLENTE" → dispatch CustomEvent
+        `forzion:assinatura-inadimplente` em window (NÃO redireciona; só notifica).
+        AppLayout escuta e renderiza toast (regularizar em Pagamentos).
 ```
-Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`.
+- `ASSINATURA_INADIMPLENTE_EVENT` + `ASSINATURA_INADIMPLENTE_MESSAGE` exportados do client.
+- Enforcement server-side: backend `RequireAssinaturaAtivaFilter` retorna 403 `ASSINATURA_INADIMPLENTE` em endpoints restritos (ex.: POST execuções). Cross-ref inadimplência: [specification-stripe].
+- Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`.
 
 ## APPLAYOUT (autenticado)
 - Verifica `!isLoading && !user` → chama `/api/auth/logout` (limpa cookies) → `router.replace("/login")`.
