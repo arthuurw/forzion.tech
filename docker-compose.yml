@@ -9,6 +9,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Cria o schema `develop` no primeiro init (migrations são schema-agnostic e usam
+      # Search Path=develop; sem o schema o backend falha com "no schema has been selected").
+      - ./scripts/init-develop-schema.sql:/docker-entrypoint-initdb.d/init-develop-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U forzion"]
       interval: 5s
@@ -23,7 +26,7 @@ services:
       - "8080:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__AppConnection: "Host=postgres;Port=5432;Database=forzion;Username=forzion;Password=forzion_local;Search Path=homolog;"
+      ConnectionStrings__AppConnection: "Host=postgres;Port=5432;Database=forzion;Username=forzion;Password=forzion_local;Search Path=develop;"
       Auth__JwtSecret: "${JWT_SECRET}"
       Auth__JwtIssuer: "${JWT_ISSUER:-forzion.tech}"
       Auth__JwtAudience: "${JWT_AUDIENCE:-forzion.tech}"
