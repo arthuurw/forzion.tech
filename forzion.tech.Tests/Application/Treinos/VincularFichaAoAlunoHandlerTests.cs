@@ -35,12 +35,12 @@ public class VincularFichaAoAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow));
+            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value);
         _treinoAlunoRepo.Setup(r => r.ListarAtivosPorTreinoIdAsync(treino.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TreinoAlunoVinculado>());
 
@@ -55,13 +55,13 @@ public class VincularFichaAoAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
         var vinculoExistente = new TreinoAlunoVinculado(Guid.NewGuid(), Guid.NewGuid(), "Aluno Existente", TreinoAlunoStatus.Ativo);
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow));
+            .ReturnsAsync(VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value);
         _treinoAlunoRepo.Setup(r => r.ListarAtivosPorTreinoIdAsync(treino.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { vinculoExistente });
 
@@ -91,7 +91,7 @@ public class VincularFichaAoAlunoHandlerTests
     public async Task HandleAsync_TreinoDeOutroTreinador_LancaAcessoNegadoException()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), DateTime.UtcNow);
+        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
@@ -107,7 +107,7 @@ public class VincularFichaAoAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        var treino = Treino.Criar("Treino Teste", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);

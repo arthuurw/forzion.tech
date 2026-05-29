@@ -38,7 +38,7 @@ public class ExecutarRelatorioSaudeHandlerTests
     public async Task HandleAsync_ComConfig_ColetaPersisteEnviaECommita()
     {
         var config = HealthReportConfig.Criar(true, new TimeOnly(7, 0), new[] { "ops@forzion.tech" },
-            true, true, true, true, DateTime.UtcNow);
+            true, true, true, true, DateTime.UtcNow).Value;
         _configRepo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>())).ReturnsAsync(config);
 
         var report = new forzion.tech.Application.UseCases.Admin.HealthReport.HealthReport

@@ -11,6 +11,7 @@ public class AtualizarTreinoHandler(
     IExercicioRepository exercicioRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<AtualizarTreinoHandler> logger)
 {
     public virtual Task<Result<TreinoResponse>> HandleAsync(
@@ -33,7 +34,10 @@ public class AtualizarTreinoHandler(
         if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        treino.Atualizar(command.Nome, command.Objetivo, command.Dificuldade, command.DataInicio, command.DataFim, command.LimparDataInicio, command.LimparDataFim);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var atualizarResult = treino.Atualizar(command.Nome, command.Objetivo, agora, command.Dificuldade, command.DataInicio, command.DataFim, command.LimparDataInicio, command.LimparDataFim);
+        if (atualizarResult.IsFailure)
+            return Result.Failure<TreinoResponse>(atualizarResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

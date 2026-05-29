@@ -127,20 +127,20 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
             Mock.Of<IAlunoRepository>(),
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<ISystemUserRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<IValidator<AtualizarPerfilCommand>>());
 
         public Mock<AlterarSenhaHandler> AlterarSenhaHandlerMock { get; } = new(
             Mock.Of<IUserContext>(),
             Mock.Of<IContaRepository>(),
             Mock.Of<IPasswordHasher>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<IValidator<AlterarSenhaCommand>>());
 
         public Mock<LogoutHandler> LogoutHandlerMock { get; } = new(
             Mock.Of<ITokenRevogadoRepository>(),
             Mock.Of<IUserContext>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<LogoutHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

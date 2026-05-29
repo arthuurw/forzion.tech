@@ -66,7 +66,7 @@ public class AssinaturaAlunoCriadaEmailHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemEmailEContaNaoEncontrada_NaoEnvia()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow).Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
         // _contaRepo retorna null por padrão (setup no construtor)
@@ -82,10 +82,10 @@ public class AssinaturaAlunoCriadaEmailHandlerTests
     public async Task HandleAsync_AlunoSemEmail_UsaEmailDaConta()
     {
         var contaId = Guid.NewGuid();
-        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow).Value;
         var conta = new ContaBuilder().ComEmail("joao@conta.com").Build();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow);
-        var pacote = Pacote.Criar(Guid.NewGuid(), "Premium", 250m, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(Guid.NewGuid(), "Premium", 250m, DateTime.UtcNow).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
@@ -109,9 +109,9 @@ public class AssinaturaAlunoCriadaEmailHandlerTests
     [Fact]
     public async Task HandleAsync_HappyPath_EnviaEmailComDadosDaAssinaturaAluno()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow, email: "joao@example.com");
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow);
-        var pacote = Pacote.Criar(Guid.NewGuid(), "Pacote Premium", 250.00m, DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow, email: "joao@example.com").Value;
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Lucas", DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(Guid.NewGuid(), "Pacote Premium", 250.00m, DateTime.UtcNow).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
@@ -137,8 +137,8 @@ public class AssinaturaAlunoCriadaEmailHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorNaoEncontrado_UsaFallback()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", DateTime.UtcNow, email: "maria@example.com");
-        var pacote = Pacote.Criar(Guid.NewGuid(), "Básico", 150.00m, DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", DateTime.UtcNow, email: "maria@example.com").Value;
+        var pacote = Pacote.Criar(Guid.NewGuid(), "Básico", 150.00m, DateTime.UtcNow).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
@@ -160,8 +160,8 @@ public class AssinaturaAlunoCriadaEmailHandlerTests
     [Fact]
     public async Task HandleAsync_PacoteNaoEncontrado_UsaFallback()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Pedro", DateTime.UtcNow, email: "pedro@example.com");
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Pedro", DateTime.UtcNow, email: "pedro@example.com").Value;
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(Evento.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);

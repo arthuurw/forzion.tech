@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -15,35 +16,39 @@ public class ContaRecebimento
 
     private ContaRecebimento() { }
 
-    public static ContaRecebimento Criar(Guid treinadorId, DateTime agora)
+    public static Result<ContaRecebimento> Criar(Guid treinadorId, DateTime agora)
     {
         if (treinadorId == Guid.Empty)
-            throw new DomainException("O identificador do treinador é inválido.");
+            return Result.Failure<ContaRecebimento>(ContaRecebimentoErrors.TreinadorIdInvalido);
 
-        return new ContaRecebimento
+        var conta = new ContaRecebimento
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
             OnboardingCompleto = false,
             CreatedAt = agora
         };
+
+        return Result.Success(conta);
     }
 
-    public void ConfigurarStripeConnect(string accountId)
+    public Result ConfigurarStripeConnect(string accountId, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(accountId))
-            throw new DomainException("O identificador da conta Stripe é inválido.");
+            return Result.Failure(ContaRecebimentoErrors.StripeAccountIdInvalido);
 
         StripeConnectAccountId = accountId;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void ConfirmarOnboarding()
+    public Result ConfirmarOnboarding(DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(StripeConnectAccountId))
-            throw new DomainException("O treinador não possui conta Stripe configurada.");
+            return Result.Failure(ContaRecebimentoErrors.SemContaStripe);
 
         OnboardingCompleto = true;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 }

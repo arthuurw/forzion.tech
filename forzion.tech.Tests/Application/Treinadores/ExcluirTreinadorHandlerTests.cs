@@ -5,6 +5,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Treinadores;
 
@@ -21,8 +22,8 @@ public class ExcluirTreinadorHandlerTests
 
     private static Treinador CriarTreinadorInativo(Guid adminId)
     {
-        var t = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        t.Inativar(adminId);
+        var t = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        t.Inativar(TestData.Agora, adminId);
         return t;
     }
 
@@ -42,8 +43,8 @@ public class ExcluirTreinadorHandlerTests
     public async Task HandleAsync_TreinadorAtivo_LancaDomainException()
     {
         var adminId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        treinador.Aprovar(adminId);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(adminId, TestData.Agora);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var act = async () => await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, adminId));
@@ -54,7 +55,7 @@ public class ExcluirTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorAguardando_LancaDomainException()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var act = async () => await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, Guid.NewGuid()));

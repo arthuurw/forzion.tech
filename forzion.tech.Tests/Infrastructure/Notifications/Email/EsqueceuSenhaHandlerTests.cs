@@ -43,7 +43,7 @@ public class EsqueceuSenhaHandlerTests
     }
 
     private static Conta BuildConta(string email = "user@example.com") =>
-        Conta.Criar(DomainEmail.Criar(email), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        Conta.Criar(DomainEmail.Criar(email).Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_ContaInexistente_RetornaSilenciosamenteSemEnviarEmail()

@@ -26,15 +26,15 @@ public class RemoverExercicioHandlerTests
             .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string>());
         _handler = new RemoverExercicioHandler(
-            _treinoRepo.Object, _exercicioRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, _logger.Object);
+            _treinoRepo.Object, _exercicioRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
     public async Task HandleAsync_ExercicioExistente_RemoveERetorna()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
-        treino.AdicionarExercicio(Guid.NewGuid());
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        treino.AdicionarExercicio(Guid.NewGuid(), DateTime.UtcNow);
         var treinoExercicioId = treino.Exercicios[0].Id;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
@@ -52,7 +52,7 @@ public class RemoverExercicioHandlerTests
     {
         var treinadorLogadoId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, outroTreinadorId, DateTime.UtcNow);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, outroTreinadorId, DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorLogadoId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
@@ -77,14 +77,15 @@ public class RemoverExercicioHandlerTests
     public async Task HandleAsync_TreinoJaExecutado_LancaTreinoExecutadoException()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var act = async () => await _handler.HandleAsync(new RemoverExercicioCommand(treino.Id, Guid.NewGuid()));
+        var result = await _handler.HandleAsync(new RemoverExercicioCommand(treino.Id, Guid.NewGuid()));
 
-        await act.Should().ThrowAsync<TreinoExecutadoException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treino.ja_executado");
     }
 
     [Fact]

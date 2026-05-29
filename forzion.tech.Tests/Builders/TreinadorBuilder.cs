@@ -36,7 +36,7 @@ public sealed class TreinadorBuilder
         return this;
     }
 
-    public Treinador Build() => Treinador.Criar(_contaId, _nome, _agora, _telefone);
+    public Treinador Build() => Treinador.Criar(_contaId, _nome, _agora, _telefone).Value;
 
     public static implicit operator Treinador(TreinadorBuilder builder) => builder.Build();
 }

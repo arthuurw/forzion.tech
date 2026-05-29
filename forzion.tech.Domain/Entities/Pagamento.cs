@@ -1,6 +1,7 @@
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -26,12 +27,12 @@ public class Pagamento : IHasDomainEvents
 
     private Pagamento() { }
 
-    public static Pagamento Criar(Guid assinaturaId, decimal valor, DateTime agora, MetodoPagamento metodo = MetodoPagamento.Pix)
+    public static Result<Pagamento> Criar(Guid assinaturaId, decimal valor, DateTime agora, MetodoPagamento metodo = MetodoPagamento.Pix)
     {
         if (assinaturaId == Guid.Empty)
-            throw new DomainException("O identificador da assinatura é inválido.");
+            return Result.Failure<Pagamento>(PagamentoErrors.AssinaturaIdInvalido);
         if (valor <= 0)
-            throw new DomainException("O valor do pagamento deve ser maior que zero.");
+            return Result.Failure<Pagamento>(PagamentoErrors.ValorInvalido);
 
         var pagamento = new Pagamento
         {
@@ -46,79 +47,85 @@ public class Pagamento : IHasDomainEvents
         pagamento._domainEvents.Add(new PagamentoCriadoEvent(
             pagamento.Id, assinaturaId, valor, metodo, agora));
 
-        return pagamento;
+        return Result.Success(pagamento);
     }
 
-    public void DefinirDadosPix(string paymentIntentId, string qrCode, string qrCodeUrl, DateTime expiracao)
+    public Result DefinirDadosPix(string paymentIntentId, string qrCode, string qrCodeUrl, DateTime expiracao, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(paymentIntentId))
-            throw new DomainException("O identificador do PaymentIntent é inválido.");
+            return Result.Failure(PagamentoErrors.PaymentIntentIdInvalido);
         if (string.IsNullOrWhiteSpace(qrCode))
-            throw new DomainException("O QR code Pix é inválido.");
+            return Result.Failure(PagamentoErrors.QrCodeInvalido);
 
         StripePaymentIntentId = paymentIntentId;
         PixQrCode = qrCode;
         PixQrCodeUrl = qrCodeUrl;
         PixExpiracao = expiracao;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void DefinirDadosCartao(string paymentIntentId, string clientSecret)
+    public Result DefinirDadosCartao(string paymentIntentId, string clientSecret, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(paymentIntentId))
-            throw new DomainException("O identificador do PaymentIntent é inválido.");
+            return Result.Failure(PagamentoErrors.PaymentIntentIdInvalido);
         if (string.IsNullOrWhiteSpace(clientSecret))
-            throw new DomainException("O client secret do cartão é inválido.");
+            return Result.Failure(PagamentoErrors.ClientSecretInvalido);
 
         StripePaymentIntentId = paymentIntentId;
         ClientSecret = clientSecret;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void MarcarPago()
+    public Result MarcarPago(DateTime agora)
     {
         if (Status != PagamentoStatus.Pendente)
-            throw new DomainException("Apenas pagamentos pendentes podem ser marcados como pagos.");
+            return Result.Failure(PagamentoErrors.ApenasPendentesPagos);
 
         Status = PagamentoStatus.Pago;
-        DataPagamento = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        DataPagamento = agora;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void MarcarFalhou()
+    public Result MarcarFalhou(DateTime agora)
     {
         if (Status != PagamentoStatus.Pendente)
-            throw new DomainException("Apenas pagamentos pendentes podem ser marcados como falhou.");
+            return Result.Failure(PagamentoErrors.ApenasPendentesFalhou);
 
         Status = PagamentoStatus.Falhou;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void MarcarExpirado()
+    public Result MarcarExpirado(DateTime agora)
     {
         if (Status != PagamentoStatus.Pendente)
-            throw new DomainException("Apenas pagamentos pendentes podem ser marcados como expirados.");
+            return Result.Failure(PagamentoErrors.ApenasPendentesExpirados);
 
         Status = PagamentoStatus.Expirado;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
     /// <summary>
     /// Aplica refund Stripe (webhook <c>charge.refunded</c>). Guard: só transiciona
-    /// de Pago; outras origens lançam DomainException. <c>DataPagamento</c> preservada
+    /// de Pago; outras origens retornam Failure. <c>DataPagamento</c> preservada
     /// como registro histórico do momento que o dinheiro chegou — auditoria/contabilidade
     /// precisam dessa data. Dispara <see cref="PagamentoEstornadoEvent"/> pra notificar aluno.
     /// </summary>
-    public void MarcarEstornado()
+    public Result MarcarEstornado(DateTime agora)
     {
         if (Status != PagamentoStatus.Pago)
-            throw new DomainException("Apenas pagamentos pagos podem ser estornados.");
+            return Result.Failure(PagamentoErrors.ApenasPagosEstornados);
 
         Status = PagamentoStatus.Estornado;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
 
         _domainEvents.Add(new PagamentoEstornadoEvent(
-            Id, AssinaturaAlunoId, Valor, UpdatedAt.Value));
+            Id, AssinaturaAlunoId, Valor, agora));
+        return Result.Success();
     }
 
     /// <summary>
@@ -130,16 +137,18 @@ public class Pagamento : IHasDomainEvents
     /// (treinador via e-mail + alert crítico em log).
     /// </summary>
     /// <param name="motivoDisputa">Motivo enviado pelo Stripe (ex.: "fraudulent", "duplicate").</param>
-    public void MarcarEmDisputa(string motivoDisputa)
+    /// <param name="agora">Instante da operação (UpdatedAt + OcorridoEm do evento).</param>
+    public Result MarcarEmDisputa(string motivoDisputa, DateTime agora)
     {
         if (Status != PagamentoStatus.Pago)
-            throw new DomainException("Apenas pagamentos pagos podem ser marcados em disputa.");
+            return Result.Failure(PagamentoErrors.ApenasPagosEmDisputa);
 
         Status = PagamentoStatus.EmDisputa;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
 
         var motivo = string.IsNullOrWhiteSpace(motivoDisputa) ? "unknown" : motivoDisputa.Trim();
         _domainEvents.Add(new PagamentoEmDisputaEvent(
-            Id, AssinaturaAlunoId, Valor, motivo, UpdatedAt.Value));
+            Id, AssinaturaAlunoId, Valor, motivo, agora));
+        return Result.Success();
     }
 }

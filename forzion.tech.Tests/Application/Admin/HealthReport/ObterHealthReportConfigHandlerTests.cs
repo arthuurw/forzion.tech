@@ -17,7 +17,7 @@ public class ObterHealthReportConfigHandlerTests
     public async Task HandleAsync_ComConfig_RetornaResponse()
     {
         var config = HealthReportConfig.Criar(true, new TimeOnly(7, 0), new[] { "admin@forzion.tech" },
-            true, true, true, true, DateTime.UtcNow);
+            true, true, true, true, DateTime.UtcNow).Value;
         _repo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>())).ReturnsAsync(config);
 
         var result = await _handler.HandleAsync();

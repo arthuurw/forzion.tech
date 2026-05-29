@@ -98,9 +98,9 @@ public class ReconciliarPagamentosStripeHandlerTests
     public async Task HandleAsync_PaymentIntentSucceeded_PagamentoPendente_Aplica()
     {
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, _time.GetUtcNow().UtcDateTime);
-        pagamento.DefinirDadosPix("pi_replay", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, _time.GetUtcNow().UtcDateTime);
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, _time.GetUtcNow().UtcDateTime).Value;
+        pagamento.DefinirDadosPix("pi_replay", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1), _time.GetUtcNow().UtcDateTime);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, _time.GetUtcNow().UtcDateTime).Value;
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_replay", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -123,9 +123,9 @@ public class ReconciliarPagamentosStripeHandlerTests
     public async Task HandleAsync_PaymentIntentSucceeded_PagamentoJaPago_Idempotente()
     {
         // Webhook já tinha sido processado; reconciliação encontra mesmo evento e não muta.
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, _time.GetUtcNow().UtcDateTime);
-        pagamento.DefinirDadosPix("pi_idem", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1));
-        pagamento.MarcarPago();
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, _time.GetUtcNow().UtcDateTime).Value;
+        pagamento.DefinirDadosPix("pi_idem", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1), _time.GetUtcNow().UtcDateTime);
+        pagamento.MarcarPago(_time.GetUtcNow().UtcDateTime);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_idem", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -142,8 +142,8 @@ public class ReconciliarPagamentosStripeHandlerTests
     [Fact]
     public async Task HandleAsync_PaymentIntentFailed_PagamentoPendente_Aplica()
     {
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, _time.GetUtcNow().UtcDateTime);
-        pagamento.DefinirDadosPix("pi_failure", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1));
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, _time.GetUtcNow().UtcDateTime).Value;
+        pagamento.DefinirDadosPix("pi_failure", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1), _time.GetUtcNow().UtcDateTime);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_failure", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -182,11 +182,11 @@ public class ReconciliarPagamentosStripeHandlerTests
         // → ProcessarEventoAsync devolve JaConsistente sem mutar nada.
         var treinadorId = Guid.NewGuid();
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, _time.GetUtcNow().UtcDateTime);
-        pagamento.DefinirDadosPix("pi_xacct", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, _time.GetUtcNow().UtcDateTime);
-        var conta = ContaRecebimento.Criar(treinadorId, _time.GetUtcNow().UtcDateTime);
-        conta.ConfigurarStripeConnect("acct_correct");
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, _time.GetUtcNow().UtcDateTime).Value;
+        pagamento.DefinirDadosPix("pi_xacct", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1), _time.GetUtcNow().UtcDateTime);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, _time.GetUtcNow().UtcDateTime).Value;
+        var conta = ContaRecebimento.Criar(treinadorId, _time.GetUtcNow().UtcDateTime).Value;
+        conta.ConfigurarStripeConnect("acct_correct", _time.GetUtcNow().UtcDateTime);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_xacct", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -225,11 +225,11 @@ public class ReconciliarPagamentosStripeHandlerTests
     public async Task HandleAsync_VariosEventos_ProcessaTodosEAgrega()
     {
         // 3 eventos: 1 replay, 1 idempotente, 1 ghost.
-        var pagPendente = Pagamento.Criar(Guid.NewGuid(), 100m, _time.GetUtcNow().UtcDateTime);
-        pagPendente.DefinirDadosPix("pi_a", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1));
-        var pagJaPago = Pagamento.Criar(Guid.NewGuid(), 100m, _time.GetUtcNow().UtcDateTime);
-        pagJaPago.DefinirDadosPix("pi_b", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1));
-        pagJaPago.MarcarPago();
+        var pagPendente = Pagamento.Criar(Guid.NewGuid(), 100m, _time.GetUtcNow().UtcDateTime).Value;
+        pagPendente.DefinirDadosPix("pi_a", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1), _time.GetUtcNow().UtcDateTime);
+        var pagJaPago = Pagamento.Criar(Guid.NewGuid(), 100m, _time.GetUtcNow().UtcDateTime).Value;
+        pagJaPago.DefinirDadosPix("pi_b", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1), _time.GetUtcNow().UtcDateTime);
+        pagJaPago.MarcarPago(_time.GetUtcNow().UtcDateTime);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_a", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagPendente);

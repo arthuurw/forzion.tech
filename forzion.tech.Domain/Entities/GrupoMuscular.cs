@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -11,31 +12,32 @@ public class GrupoMuscular
 
     private GrupoMuscular() { }
 
-    public static GrupoMuscular Criar(string nome, DateTime agora)
+    public static Result<GrupoMuscular> Criar(string nome, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome do grupo muscular é obrigatório.");
+            return Result.Failure<GrupoMuscular>(GrupoMuscularErrors.NomeObrigatorio);
 
         if (nome.Trim().Length > 50)
-            throw new DomainException("O nome do grupo muscular deve ter no máximo 50 caracteres.");
+            return Result.Failure<GrupoMuscular>(GrupoMuscularErrors.NomeMuitoLongo);
 
-        return new GrupoMuscular
+        return Result.Success(new GrupoMuscular
         {
             Id = Guid.NewGuid(),
             Nome = nome.Trim(),
             CreatedAt = agora
-        };
+        });
     }
 
-    public void Atualizar(string nome)
+    public Result Atualizar(string nome, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome do grupo muscular não pode ser vazio.");
+            return Result.Failure(GrupoMuscularErrors.NomeVazio);
 
         if (nome.Trim().Length > 50)
-            throw new DomainException("O nome do grupo muscular deve ter no máximo 50 caracteres.");
+            return Result.Failure(GrupoMuscularErrors.NomeMuitoLongo);
 
         Nome = nome.Trim();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 }

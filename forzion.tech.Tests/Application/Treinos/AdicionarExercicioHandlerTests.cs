@@ -38,11 +38,12 @@ public class AdicionarExercicioHandlerTests
             _unitOfWork.Object,
             _userContext.Object,
             _validator,
+            TimeProvider.System,
             _logger.Object);
     }
 
     private static Treino CriarTreino(Guid treinadorId) =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_DadosValidos_AdicionaExercicioERetorna()
@@ -100,9 +101,10 @@ public class AdicionarExercicioHandlerTests
         _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var command = new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), SerieValida);
-        var act = async () => await _handler.HandleAsync(command);
+        var result = await _handler.HandleAsync(command);
 
-        await act.Should().ThrowAsync<TreinoExecutadoException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treino.ja_executado");
     }
 
     [Fact]

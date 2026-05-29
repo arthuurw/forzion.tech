@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -15,25 +16,25 @@ public class ErrorLogEntry
 
     private ErrorLogEntry() { }
 
-    public static ErrorLogEntry Criar(DateTime ocorridoEm, string nivel, string origem, string mensagem)
+    public static Result<ErrorLogEntry> Criar(DateTime ocorridoEm, string nivel, string origem, string mensagem, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(nivel))
-            throw new DomainException("O nível é obrigatório.");
+            return Result.Failure<ErrorLogEntry>(LogAprovacaoErrors.NivelObrigatorio);
         if (string.IsNullOrWhiteSpace(origem))
-            throw new DomainException("A origem é obrigatória.");
+            return Result.Failure<ErrorLogEntry>(LogAprovacaoErrors.OrigemObrigatoria);
 
         var texto = mensagem ?? string.Empty;
         if (texto.Length > MensagemMaxLength)
             texto = texto[..MensagemMaxLength];
 
-        return new ErrorLogEntry
+        return Result.Success(new ErrorLogEntry
         {
             Id = Guid.NewGuid(),
             OcorridoEm = ocorridoEm,
             Nivel = nivel.Trim(),
             Origem = origem.Trim(),
             Mensagem = texto,
-            CreatedAt = DateTime.UtcNow
-        };
+            CreatedAt = agora
+        });
     }
 }

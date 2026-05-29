@@ -7,7 +7,7 @@ DOC PARA AGENTES. Fonte de verdade da arquitetura do backend (.NET 8, Clean Arch
 - Vive em `specs/` (versionado; commitar). NÃO duplicar domínio ([specification-model]) nem schema ([specification-db]).
 
 ## 1. ARQUITETURA / CAMADAS
-Clean Architecture + DDD. Projetos: `forzion.tech.Domain` (núcleo), `Application` (use cases/interfaces/Result), `Infrastructure` (EF/repos/integrações/handlers de evento), `Api` (endpoints/middleware/DI), `Tests`.
+Clean Architecture + DDD. Projetos: `forzion.tech.Domain` (núcleo + `Shared/` Result/Error), `Application` (use cases/interfaces), `Infrastructure` (EF/repos/integrações/handlers de evento), `Api` (endpoints/middleware/DI), `Tests`.
 - Direção de dependência (travada por NetArchTest em `Tests/Architecture/LayeringTests.cs`):
   - Domain → nada (nem Application, nem Infrastructure, nem Api, nem EF Core).
   - Application → só Domain (proibido depender de Infrastructure, Api, EF Core).
@@ -18,13 +18,15 @@ Clean Architecture + DDD. Projetos: `forzion.tech.Domain` (núcleo), `Applicatio
 
 ## 2. APPLICATION LAYER
 
-### Result pattern (`Application/Results/`)
-- `Result`: `IsSuccess`/`IsFailure`/`Error?`. Factories `Success()`, `Failure(Error)`, `Success<T>(v)`, `Failure<T>(Error)`. `Result<T>.Value` lança `InvalidOperationException` se acessado em falha.
-- `Error(string Code, string Message)` record; helper `Error.Business(msg)` → code `"business_error"`.
+### Result pattern (`forzion.tech.Domain/Shared/`)
+- `Result`/`Result<T>`/`Error` vivem em `forzion.tech.Domain.Shared` (movidos de Application — o DOMÍNIO usa Result para invariantes; Domain não pode depender de Application). `Result`: `IsSuccess`/`IsFailure`/`Error?`. Factories `Success()`, `Failure(Error)`, `Success<T>(v)`, `Failure<T>(Error)`. `Result<T>.Value` lança `InvalidOperationException` se acessado em falha.
+- `Error(string Code, string Message)` record; helper `Error.Business(msg)` → code `"business_error"`. Catálogos de domínio em `Domain/Shared/Errors/*.cs` (code `<agg>.<motivo>`).
 - Mapeamento HTTP no Api: `ResultExtensions.ToProblemResult()` → `Results.Problem(detail=Error.Message, status=422)`. Endpoints checam `result.IsFailure` e ou chamam `ToProblemResult()` ou tratam codes específicos (ex.: `CancelarMinhaAssinaturaAlunoHandler.AssinaturaNaoEncontradaErrorCode` → 404).
-- DUALIDADE DE ESTILO (intencional, não uniforme): há DUAS formas de sinalizar falha de negócio:
-  1. Handlers que LANÇAM `DomainException`/exceções tipadas (ex.: `LoginHandler`, `AprovarVinculoHandler`, `CriarAssinaturaAlunoHandler`) — tratadas no `GlobalExceptionHandler`.
-  2. Handlers que RETORNAM `Result`/`Result<T>` (ex.: `ProcessarWebhookStripeHandler`, `GerarCobrancaMensalHandler`, `CancelarMinhaAssinaturaAlunoHandler`, vários de Treinos/Exercicios) — usados onde a falha é esperada/fluxo de controle. Alguns handlers misturam (ex.: `GerarCobrancaMensal` lança `DomainException`/`AcessoNegadoException` para invariantes E retorna `Result.Failure` para "cancelada"). Ao alterar um handler, manter o estilo local.
+- POLÍTICA DE ERRO (domínio Result; exception só infra/control-flow):
+  1. DOMÍNIO retorna `Result`/`Result<T>` para toda invariante (nunca lança `DomainException`). Handlers propagam.
+  2. Handlers que RETORNAM `Result`/`Result<T>` propagam a falha do domínio direto (`return Result.Failure(...)`) — ex.: `ProcessarWebhookStripeHandler`, `GerarCobrancaMensalHandler`, `CancelarMinhaAssinaturaAlunoHandler`, `ExcluirTreinoHandler`, `InativarTreinadorHandler`, maioria de Treinos/Exercicios/Vinculos.
+  3. Handlers que RETORNAM tipo plano (`Task`/`Task<TResponse>`) traduzem a falha do domínio em `throw new DomainException(result.Error!.Message)` → 422 no `GlobalExceptionHandler` (preserva contrato HTTP) — ex.: `RegistrarTreinadorHandler`, `AtualizarPlanoPlataformaHandler`, `ExcluirTreinadorHandler`, `AtualizarObservacaoExercicioHandler`. (Migrar esses p/ `Result<T>` + endpoints é refactor futuro opcional.)
+  4. `*NaoEncontradoException` (lookup miss) + `AcessoNegadoException` (authz) continuam EXCEPTION (control-flow cross-cutting), lançadas no handler/contexto e mapeadas pelo `GlobalExceptionHandler` (404/403). `ArgumentNullException.ThrowIfNull` = erro de programação.
 
 ### Use cases / handlers (CQRS-like)
 Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`. Pasta típica: `<X>Command.cs`/`<X>Query.cs` + `<X>Handler.cs` (+ `<X>Validator.cs`, `<X>Response.cs` opcionais). Convenções:

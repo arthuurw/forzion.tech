@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -17,20 +18,20 @@ public class Exercicio
     private Exercicio() { }
 
     /// <param name="treinadorId">Null indica exercício da biblioteca global (gerenciado por admins).</param>
-    public static Exercicio Criar(string nome, Guid grupoMuscularId, DateTime agora, Guid? treinadorId = null, string? descricao = null)
+    public static Result<Exercicio> Criar(string nome, Guid grupoMuscularId, DateTime agora, Guid? treinadorId = null, string? descricao = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome é obrigatório.");
+            return Result.Failure<Exercicio>(ExercicioErrors.NomeObrigatorio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure<Exercicio>(ExercicioErrors.NomeMuitoLongo);
         if (grupoMuscularId == Guid.Empty)
-            throw new DomainException("O grupo muscular é obrigatório.");
+            return Result.Failure<Exercicio>(ExercicioErrors.GrupoMuscularObrigatorio);
         if (treinadorId.HasValue && treinadorId.Value == Guid.Empty)
-            throw new DomainException("O identificador do treinador é inválido.");
+            return Result.Failure<Exercicio>(ExercicioErrors.TreinadorIdInvalido);
         if (descricao is not null && descricao.Length > 500)
-            throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
+            return Result.Failure<Exercicio>(ExercicioErrors.DescricaoMuitoLonga);
 
-        return new Exercicio
+        return Result.Success(new Exercicio
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
@@ -38,34 +39,35 @@ public class Exercicio
             GrupoMuscularId = grupoMuscularId,
             Descricao = descricao,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void Atualizar(string? nome, Guid? grupoMuscularId, string? descricao)
+    public Result Atualizar(string? nome, Guid? grupoMuscularId, string? descricao, DateTime agora)
     {
         if (nome is not null)
         {
             if (string.IsNullOrWhiteSpace(nome))
-                throw new DomainException("O nome não pode ser vazio.");
+                return Result.Failure(ExercicioErrors.NomeVazio);
             if (nome.Trim().Length > 100)
-                throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+                return Result.Failure(ExercicioErrors.NomeMuitoLongo);
             Nome = nome.Trim();
         }
 
         if (grupoMuscularId is not null)
         {
             if (grupoMuscularId.Value == Guid.Empty)
-                throw new DomainException("O grupo muscular é obrigatório.");
+                return Result.Failure(ExercicioErrors.GrupoMuscularObrigatorio);
             GrupoMuscularId = grupoMuscularId.Value;
         }
 
         if (descricao is not null)
         {
             if (descricao.Length > 500)
-                throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
+                return Result.Failure(ExercicioErrors.DescricaoMuitoLonga);
             Descricao = descricao.Length == 0 ? null : descricao;
         }
 
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 }

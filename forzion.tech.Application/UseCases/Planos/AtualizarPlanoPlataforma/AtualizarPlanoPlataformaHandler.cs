@@ -8,7 +8,8 @@ namespace forzion.tech.Application.UseCases.Planos.AtualizarPlanoPlataforma;
 public class AtualizarPlanoPlataformaHandler(
     IPlanoPlataformaRepository planoRepository,
     IUnitOfWork unitOfWork,
-    IValidator<AtualizarPlanoPlataformaCommand> validator)
+    IValidator<AtualizarPlanoPlataformaCommand> validator,
+    TimeProvider timeProvider)
 {
     public virtual Task<PlanoPlataformaResponse> HandleAsync(
         AtualizarPlanoPlataformaCommand command,
@@ -27,7 +28,9 @@ public class AtualizarPlanoPlataformaHandler(
         var plano = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoPlataformaNaoEncontradoException();
 
-        plano.Atualizar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, command.Descricao);
+        var atualizarResult = plano.Atualizar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
+        if (atualizarResult.IsFailure)
+            throw new DomainException(atualizarResult.Error!.Message);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

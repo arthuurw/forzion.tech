@@ -51,12 +51,18 @@ public class CriarTreinoHandler(
         }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var treino = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId, agora, command.Dificuldade, command.DataInicio, command.DataFim);
+        var treinoResult = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId, agora, command.Dificuldade, command.DataInicio, command.DataFim);
+        if (treinoResult.IsFailure)
+            throw new DomainException(treinoResult.Error!.Message);
+        var treino = treinoResult.Value;
         await treinoRepository.AdicionarAsync(treino, cancellationToken).ConfigureAwait(false);
 
         if (command.AlunoId.HasValue)
         {
-            var treinoAluno = TreinoAluno.Criar(treino.Id, command.AlunoId.Value, agora);
+            var treinoAlunoResult = TreinoAluno.Criar(treino.Id, command.AlunoId.Value, agora);
+            if (treinoAlunoResult.IsFailure)
+                throw new DomainException(treinoAlunoResult.Error!.Message);
+            var treinoAluno = treinoAlunoResult.Value;
             await treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         }
 

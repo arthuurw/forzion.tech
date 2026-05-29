@@ -125,18 +125,38 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        pagamento.MarcarPago();
+        var agoraPago = timeProvider.GetUtcNow().UtcDateTime;
+        var marcarPagoResult = pagamento.MarcarPago(agoraPago);
+        if (marcarPagoResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PaymentIntent {PaymentIntentId} como pago: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarPagoResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
 
         var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         if (assinatura is not null)
         {
-            var agora = timeProvider.GetUtcNow().UtcDateTime;
             // Zera contador de falhas e reativa se estava Inadimplente.
-            assinatura.RegistrarPagamentoRegularizado(agora);
+            assinatura.RegistrarPagamentoRegularizado(agoraPago);
             // Só transiciona Pendente → Ativa via Ativar (Inadimplente já virou Ativa acima; Ativa permanece Ativa).
             if (assinatura.Status == AssinaturaAlunoStatus.Pendente)
-                assinatura.Ativar();
-            assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
+            {
+                var ativarResult = assinatura.Ativar(agoraPago);
+                if (ativarResult.IsFailure)
+                {
+                    logger.LogWarning("Falha ao ativar assinatura {AssinaturaAlunoId} após pagamento {PaymentIntentId}: {Erro}. Tratando como não aplicado.",
+                        assinatura.Id, paymentIntentId, ativarResult.Error!.Message);
+                    return ProcessarEventoResultado.JaConsistente;
+                }
+            }
+            var agendarResult = assinatura.AgendarProximaCobranca(agoraPago.AddMonths(1), agoraPago);
+            if (agendarResult.IsFailure)
+            {
+                logger.LogWarning("Falha ao agendar próxima cobrança da assinatura {AssinaturaAlunoId} após pagamento {PaymentIntentId}: {Erro}. Tratando como não aplicado.",
+                    assinatura.Id, paymentIntentId, agendarResult.Error!.Message);
+                return ProcessarEventoResultado.JaConsistente;
+            }
         }
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
@@ -158,7 +178,14 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        pagamento.MarcarFalhou();
+        var agoraFalhou = timeProvider.GetUtcNow().UtcDateTime;
+        var marcarFalhouResult = pagamento.MarcarFalhou(agoraFalhou);
+        if (marcarFalhouResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PaymentIntent {PaymentIntentId} como falhou: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarFalhouResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
 
         // Carrega assinatura e incrementa contador de tentativas falhas.
@@ -166,8 +193,7 @@ public class ProcessarWebhookStripeHandler(
         var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         if (assinatura is not null)
         {
-            var agora = timeProvider.GetUtcNow().UtcDateTime;
-            assinatura.RegistrarPagamentoFalho(agora);
+            assinatura.RegistrarPagamentoFalho(agoraFalhou);
             await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         }
 
@@ -189,7 +215,13 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        pagamento.MarcarExpirado();
+        var marcarExpiradoResult = pagamento.MarcarExpirado(timeProvider.GetUtcNow().UtcDateTime);
+        if (marcarExpiradoResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PaymentIntent {PaymentIntentId} como expirado: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarExpiradoResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("Pagamento {PagamentoId} marcado como expirado.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
@@ -232,7 +264,13 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        pagamento.MarcarEstornado();
+        var marcarEstornadoResult = pagamento.MarcarEstornado(timeProvider.GetUtcNow().UtcDateTime);
+        if (marcarEstornadoResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PaymentIntent {PaymentIntentId} como estornado: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarEstornadoResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
 
         logger.LogInformation(
@@ -278,7 +316,14 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        pagamento.MarcarEmDisputa(motivoDisputa ?? "unknown");
+        var agoraDisputa = timeProvider.GetUtcNow().UtcDateTime;
+        var marcarDisputaResult = pagamento.MarcarEmDisputa(motivoDisputa ?? "unknown", agoraDisputa);
+        if (marcarDisputaResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PaymentIntent {PaymentIntentId} em disputa: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarDisputaResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
 
         // Força transição da assinatura Ativa → Inadimplente (drástico) — disputa é
         // sinal forte de fraude ou desistência; congela acesso já. RegistrarPagamentoFalho
@@ -286,8 +331,7 @@ public class ProcessarWebhookStripeHandler(
         var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         if (assinatura is not null)
         {
-            var agora = timeProvider.GetUtcNow().UtcDateTime;
-            assinatura.MarcarInadimplentePorDisputa(agora);
+            assinatura.MarcarInadimplentePorDisputa(agoraDisputa);
         }
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
@@ -305,7 +349,13 @@ public class ProcessarWebhookStripeHandler(
         var contaRecebimento = await contaRecebimentoRepository.ObterPorStripeAccountIdAsync(accountId, ct).ConfigureAwait(false);
         if (contaRecebimento is null || contaRecebimento.OnboardingCompleto) return ProcessarEventoResultado.JaConsistente;
 
-        contaRecebimento.ConfirmarOnboarding();
+        var confirmarResult = contaRecebimento.ConfirmarOnboarding(timeProvider.GetUtcNow().UtcDateTime);
+        if (confirmarResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao confirmar onboarding do treinador {TreinadorId} via webhook: {Erro}. Tratando como não aplicado.",
+                contaRecebimento.TreinadorId, confirmarResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("Onboarding confirmado via webhook para treinador {TreinadorId}.", contaRecebimento.TreinadorId);
         return ProcessarEventoResultado.Aplicado;

@@ -226,13 +226,13 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<AtualizarAlunoHandler>>());
 
         public Mock<AlterarStatusAlunoHandler> AlterarStatusHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IUserContext>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<AlterarStatusAlunoHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

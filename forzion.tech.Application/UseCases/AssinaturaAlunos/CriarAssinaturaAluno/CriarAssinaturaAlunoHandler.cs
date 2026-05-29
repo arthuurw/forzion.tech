@@ -34,13 +34,16 @@ public class CriarAssinaturaAlunoHandler(
         if (pacote.TreinadorId != command.TreinadorId)
             throw new DomainException("Pacote não pertence ao treinador informado.");
 
-        var assinatura = AssinaturaAluno.Criar(
+        var assinaturaResult = AssinaturaAluno.Criar(
             command.VinculoId,
             command.PacoteId,
             command.TreinadorId,
             command.AlunoId,
             pacote.Preco,
             timeProvider.GetUtcNow().UtcDateTime);
+        if (assinaturaResult.IsFailure)
+            throw new DomainException(assinaturaResult.Error!.Message);
+        var assinatura = assinaturaResult.Value;
 
         await assinaturaRepository.AdicionarAsync(assinatura, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

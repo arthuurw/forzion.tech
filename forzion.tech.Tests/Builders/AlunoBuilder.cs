@@ -44,7 +44,7 @@ public sealed class AlunoBuilder
         return this;
     }
 
-    public Aluno Build() => Aluno.Criar(_contaId, _nome, _agora, _email, _telefone);
+    public Aluno Build() => Aluno.Criar(_contaId, _nome, _agora, _email, _telefone).Value;
 
     public static implicit operator Aluno(AlunoBuilder builder) => builder.Build();
 
@@ -78,7 +78,7 @@ public sealed class AlunoBuilder
         SetPrivate(aluno, "CreatedAt", createdAt ?? TestData.Agora);
         SetPrivate(aluno, "Status", status);
         if (email is not null)
-            SetPrivate(aluno, "Email", forzion.tech.Domain.ValueObjects.Email.Criar(email));
+            SetPrivate(aluno, "Email", forzion.tech.Domain.ValueObjects.Email.Criar(email).Value);
 
         return aluno;
     }

@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Shared;
 using NetArchTest.Rules;
 
 namespace forzion.tech.Tests.Architecture;
@@ -80,7 +81,7 @@ public class ConventionTests
         var violacoes = EntidadesDeDominio()
             .Where(t => !t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
                 .Any(m => (m.Name == "Criar" || FactoriesAlternativas.Contains(m.Name))
-                    && m.ReturnType == t))
+                    && (m.ReturnType == t || m.ReturnType == typeof(Result<>).MakeGenericType(t))))
             .Select(t => t.Name)
             .ToList();
 

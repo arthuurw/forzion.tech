@@ -47,9 +47,9 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_DadosValidos_CriaContaAlunoEVinculo()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        treinador.Aprovar(Guid.NewGuid());
-        var pacote = Pacote.Criar(treinadorId, "Basic", 10, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        var pacote = Pacote.Criar(treinadorId, "Basic", 10, DateTime.UtcNow).Value;
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -69,9 +69,9 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_TreinadorInativo_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        treinador.Aprovar(Guid.NewGuid());
-        treinador.Inativar();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        treinador.Inativar(DateTime.UtcNow);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -85,7 +85,7 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_TreinadorAguardandoAprovacao_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         // Status padrão = AguardandoAprovacao
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
@@ -99,7 +99,7 @@ public class RegistrarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_EmailJaCadastrado_LancaException()
     {
-        var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));

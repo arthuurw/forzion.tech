@@ -11,9 +11,10 @@ public class TokenRevogadoTests
     public void Criar_DadosValidos_RetornaTokenRevogado()
     {
         var jti = Guid.NewGuid();
-        var expiraEm = DateTime.UtcNow.AddHours(1);
+        var agora = DateTime.UtcNow;
+        var expiraEm = agora.AddHours(1);
 
-        var token = TokenRevogado.Criar(jti, expiraEm);
+        var token = TokenRevogado.Criar(jti, expiraEm, agora).Value;
 
         token.Jti.Should().Be(jti);
         token.ExpiraEm.Should().Be(expiraEm);
@@ -22,15 +23,19 @@ public class TokenRevogadoTests
     [Fact]
     public void Criar_JtiVazio_LancaDomainException()
     {
-        var act = () => TokenRevogado.Criar(Guid.Empty, DateTime.UtcNow.AddHours(1));
-        act.Should().Throw<DomainException>().WithMessage("O identificador do token é inválido.");
+        var agora = DateTime.UtcNow;
+        var r = TokenRevogado.Criar(Guid.Empty, agora.AddHours(1), agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador do token é inválido.");
     }
 
     [Fact]
     public void Criar_DataExpiracaoPassada_LancaDomainException()
     {
-        var act = () => TokenRevogado.Criar(Guid.NewGuid(), DateTime.UtcNow.AddMinutes(-1));
-        act.Should().Throw<DomainException>().WithMessage("A data de expiração do token deve ser futura.");
+        var agora = DateTime.UtcNow;
+        var r = TokenRevogado.Criar(Guid.NewGuid(), agora.AddMinutes(-1), agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("A data de expiração do token deve ser futura.");
     }
 
     [Fact]
@@ -38,7 +43,8 @@ public class TokenRevogadoTests
     {
         // guard usa <=, então DateTime.UtcNow exato também deve lançar
         var agora = DateTime.UtcNow;
-        var act = () => TokenRevogado.Criar(Guid.NewGuid(), agora);
-        act.Should().Throw<DomainException>().WithMessage("A data de expiração do token deve ser futura.");
+        var r = TokenRevogado.Criar(Guid.NewGuid(), agora, agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("A data de expiração do token deve ser futura.");
     }
 }

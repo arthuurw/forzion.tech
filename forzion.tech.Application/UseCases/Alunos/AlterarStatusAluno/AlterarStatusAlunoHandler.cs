@@ -11,6 +11,7 @@ public class AlterarStatusAlunoHandler(
     IAlunoRepository alunoRepository,
     IUserContext userContext,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<AlterarStatusAlunoHandler> logger)
 {
     public virtual Task<AlunoResponse> HandleAsync(
@@ -34,12 +35,17 @@ public class AlterarStatusAlunoHandler(
         if (!userContext.IsSystemAdmin)
             throw new AcessoNegadoException();
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        Domain.Shared.Result statusResult;
         if (command.NovoStatus == AlunoStatus.Ativo)
-            aluno.Ativar();
+            statusResult = aluno.Ativar(agora);
         else if (command.NovoStatus == AlunoStatus.Inativo)
-            aluno.Inativar();
+            statusResult = aluno.Inativar(agora);
         else
             throw new DomainException($"Transição de status '{command.NovoStatus}' não permitida.");
+
+        if (statusResult.IsFailure)
+            throw new DomainException(statusResult.Error!.Message);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

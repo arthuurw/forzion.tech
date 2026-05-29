@@ -37,8 +37,8 @@ public class DuplicarTreinoHandlerTests
     public async Task HandleAsync_TreinoExistente_DuplicaERetornaCopia()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
-        var ex = treino.AdicionarExercicio(Guid.NewGuid());
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        var ex = treino.AdicionarExercicio(Guid.NewGuid(), DateTime.UtcNow).Value;
         ex.AdicionarSerie(3, 12, null, null, 50m, 60);
 
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
@@ -58,7 +58,7 @@ public class DuplicarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.PerfilId).Returns(outroTreinadorId);

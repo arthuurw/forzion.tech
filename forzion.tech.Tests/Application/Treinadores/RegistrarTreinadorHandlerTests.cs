@@ -9,6 +9,7 @@ using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Treinadores;
 
@@ -46,7 +47,7 @@ public class RegistrarTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_EmailJaCadastrado_LancaException()
     {
-        var conta = Conta.Criar(Email.Criar("ana@teste.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("ana@teste.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var act = async () => await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "Senha123", "Ana"));

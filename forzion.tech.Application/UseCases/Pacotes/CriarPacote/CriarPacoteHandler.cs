@@ -2,6 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Pacotes.CriarPacote;
@@ -27,7 +28,10 @@ public class CriarPacoteHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var pacote = Pacote.Criar(command.TreinadorId, command.Nome, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
+        var pacoteResult = Pacote.Criar(command.TreinadorId, command.Nome, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
+        if (pacoteResult.IsFailure)
+            throw new DomainException(pacoteResult.Error!.Message);
+        var pacote = pacoteResult.Value;
 
         await pacoteRepository.AdicionarAsync(pacote, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

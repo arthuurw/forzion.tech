@@ -36,23 +36,33 @@ public class DesvincularAlunoHandler(
         if (!userContext.IsSystemAdmin && vinculo.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        vinculo.Inativar();
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var inativarResult = vinculo.Inativar(agora);
+        if (inativarResult.IsFailure)
+            throw new DomainException(inativarResult.Error!.Message);
 
         var assinatura = await assinaturaRepository.ObterPorVinculoIdAsync(vinculo.Id, cancellationToken).ConfigureAwait(false);
         if (assinatura is not null && assinatura.Status != Domain.Enums.AssinaturaAlunoStatus.Cancelada)
-            assinatura.Cancelar(timeProvider.GetUtcNow().UtcDateTime);
+        {
+            var cancelarResult = assinatura.Cancelar(agora);
+            if (cancelarResult.IsFailure)
+                throw new DomainException(cancelarResult.Error!.Message);
+        }
 
         var treinoAlunos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculo.TreinadorId, vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         foreach (var ta in treinoAlunos)
-            ta.AlterarStatus(TreinoAlunoStatus.Inativo);
+            ta.AlterarStatus(TreinoAlunoStatus.Inativo, agora);
 
-        var log = LogAprovacao.Registrar(
+        var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.InativacaoVinculo,
             userContext.PerfilId,
             vinculo.Id,
             nameof(VinculoTreinadorAluno),
-            timeProvider.GetUtcNow().UtcDateTime,
+            agora,
             command.Observacao);
+        if (logResult.IsFailure)
+            throw new DomainException(logResult.Error!.Message);
+        var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

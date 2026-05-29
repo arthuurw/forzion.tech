@@ -57,16 +57,23 @@ public class RegistrarExecucaoHandler(
         if (aluno.Status == Domain.Enums.AlunoStatus.Inativo)
             throw new AlunoInativoException();
 
-        var execucao = ExecucaoTreino.Criar(
+        var execucaoResult = ExecucaoTreino.Criar(
             command.TreinoId, command.AlunoId, command.DataExecucao, timeProvider.GetUtcNow().UtcDateTime, command.Observacao);
+        if (execucaoResult.IsFailure)
+            throw new DomainException(execucaoResult.Error!.Message);
+        var execucao = execucaoResult.Value;
 
         foreach (var item in command.Exercicios)
-            execucao.AdicionarExercicio(
+        {
+            var exercicioResult = execucao.AdicionarExercicio(
                 item.TreinoExercicioId,
                 item.SeriesExecutadas,
                 item.RepeticoesExecutadas,
                 item.CargaExecutada,
                 item.Observacao);
+            if (exercicioResult.IsFailure)
+                throw new DomainException(exercicioResult.Error!.Message);
+        }
 
         await execucaoTreinoRepository.AdicionarAsync(execucao, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

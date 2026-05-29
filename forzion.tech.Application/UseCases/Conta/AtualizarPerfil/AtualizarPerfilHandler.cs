@@ -13,6 +13,7 @@ public class AtualizarPerfilHandler(
     ITreinadorRepository treinadorRepository,
     ISystemUserRepository systemUserRepository,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     IValidator<AtualizarPerfilCommand> validator)
 {
     public virtual Task HandleAsync(
@@ -29,27 +30,35 @@ public class AtualizarPerfilHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
         switch (userContext.TipoConta)
         {
             case Domain.Enums.TipoConta.Aluno:
                 {
                     var aluno = await alunoRepository.ObterPorContaIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
                         ?? throw new DomainException("Aluno autenticado não encontrado.");
-                    aluno.Atualizar(command.Nome, null, null);
+                    var atualizarResult = aluno.Atualizar(command.Nome, null, null, agora);
+                    if (atualizarResult.IsFailure)
+                        throw new DomainException(atualizarResult.Error!.Message);
                     break;
                 }
             case Domain.Enums.TipoConta.Treinador:
                 {
                     var treinador = await treinadorRepository.ObterPorContaIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
                         ?? throw new DomainException("Treinador autenticado não encontrado.");
-                    treinador.AtualizarNome(command.Nome);
+                    var atualizarResult = treinador.AtualizarNome(command.Nome, agora);
+                    if (atualizarResult.IsFailure)
+                        throw new DomainException(atualizarResult.Error!.Message);
                     break;
                 }
             case Domain.Enums.TipoConta.SystemAdmin:
                 {
                     var systemUser = await systemUserRepository.ObterPorContaIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
                         ?? throw new DomainException("Administrador autenticado não encontrado.");
-                    systemUser.AtualizarNome(command.Nome);
+                    var atualizarResult = systemUser.AtualizarNome(command.Nome, agora);
+                    if (atualizarResult.IsFailure)
+                        throw new DomainException(atualizarResult.Error!.Message);
                     break;
                 }
             default:

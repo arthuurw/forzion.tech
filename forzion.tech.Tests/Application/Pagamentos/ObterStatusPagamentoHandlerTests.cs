@@ -22,8 +22,8 @@ public class ObterStatusPagamentoHandlerTests
     public async Task HandleAsync_DonoPagamento_RetornaResponse()
     {
         var alunoId = Guid.NewGuid();
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 150m, DateTime.UtcNow);
-        var pagamento = Pagamento.Criar(assinatura.Id, 150m, DateTime.UtcNow);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 150m, DateTime.UtcNow).Value;
+        var pagamento = Pagamento.Criar(assinatura.Id, 150m, DateTime.UtcNow).Value;
 
         _pagamentoRepo.Setup(r => r.ObterPorIdAsync(pagamento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
@@ -37,8 +37,8 @@ public class ObterStatusPagamentoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoErrado_LancaAcessoNegado()
     {
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
-        var pagamento = Pagamento.Criar(assinatura.Id, 150m, DateTime.UtcNow);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        var pagamento = Pagamento.Criar(assinatura.Id, 150m, DateTime.UtcNow).Value;
 
         _pagamentoRepo.Setup(r => r.ObterPorIdAsync(pagamento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);

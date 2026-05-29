@@ -1196,15 +1196,15 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<AtualizarPlanoPlataformaHandler> AtualizarPlanoHandlerMock { get; } = new(
             Mock.Of<IPlanoPlataformaRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<AtualizarPlanoPlataformaCommand>>());
+            Mock.Of<IValidator<AtualizarPlanoPlataformaCommand>>(), TimeProvider.System);
 
         public Mock<ExcluirPlanoPlataformaHandler> ExcluirPlanoHandlerMock { get; } = new(
             Mock.Of<IPlanoPlataformaRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
 
         public Mock<AtualizarGrupoMuscularHandler> AtualizarGrupoHandlerMock { get; } = new(
             Mock.Of<IGrupoMuscularRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<IValidator<AtualizarGrupoMuscularCommand>>());
 
         public Mock<ExcluirGrupoMuscularHandler> ExcluirGrupoHandlerMock { get; } = new(
@@ -1227,7 +1227,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IGrupoMuscularRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
 
         public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),

@@ -68,7 +68,7 @@ public class AssinaturaAlunoCanceladaEmailTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorSemConta_NaoEnvia()
     {
-        var treinador = Treinador.Criar(ContaTreinadorId, "Joana", TestData.Agora);
+        var treinador = Treinador.Criar(ContaTreinadorId, "Joana", TestData.Agora).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(TreinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);
         _contaRepo.Setup(r => r.ObterPorIdAsync(ContaTreinadorId, It.IsAny<CancellationToken>()))
@@ -84,9 +84,9 @@ public class AssinaturaAlunoCanceladaEmailTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorComConta_EnviaNotificacaoComNomeAlunoEValor()
     {
-        var treinador = Treinador.Criar(ContaTreinadorId, "Coach Joana", TestData.Agora);
-        var conta = Conta.Criar(DomainEmail.Criar("joana@coach.com"), "hash-test-123", TipoConta.Treinador, TestData.Agora);
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora);
+        var treinador = Treinador.Criar(ContaTreinadorId, "Coach Joana", TestData.Agora).Value;
+        var conta = Conta.Criar(DomainEmail.Criar("joana@coach.com").Value, "hash-test-123", TipoConta.Treinador, TestData.Agora).Value;
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(TreinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);
@@ -111,8 +111,8 @@ public class AssinaturaAlunoCanceladaEmailTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoNaoEncontrado_UsaPlaceholder()
     {
-        var treinador = Treinador.Criar(ContaTreinadorId, "Coach", TestData.Agora);
-        var conta = Conta.Criar(DomainEmail.Criar("c@x.com"), "hash-test-123", TipoConta.Treinador, TestData.Agora);
+        var treinador = Treinador.Criar(ContaTreinadorId, "Coach", TestData.Agora).Value;
+        var conta = Conta.Criar(DomainEmail.Criar("c@x.com").Value, "hash-test-123", TipoConta.Treinador, TestData.Agora).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(TreinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);

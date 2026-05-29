@@ -8,7 +8,8 @@ namespace forzion.tech.Application.UseCases.Exercicios.AtualizarExercicio;
 public class AtualizarExercicioHandler(
     IExercicioRepository exercicioRepository,
     IGrupoMuscularRepository grupoMuscularRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider)
 {
     public virtual Task<Result<ExercicioResponse>> HandleAsync(
         AtualizarExercicioCommand command,
@@ -49,7 +50,9 @@ public class AtualizarExercicioHandler(
             throw new GrupoMuscularNaoEncontradoException();
         }
 
-        exercicio.Atualizar(command.Nome, command.GrupoMuscularId, command.Descricao);
+        var atualizarResult = exercicio.Atualizar(command.Nome, command.GrupoMuscularId, command.Descricao, timeProvider.GetUtcNow().UtcDateTime);
+        if (atualizarResult.IsFailure)
+            return Result.Failure<ExercicioResponse>(atualizarResult.Error!);
 
         var grupoMuscular = await grupoMuscularRepository.ObterPorIdAsync(exercicio.GrupoMuscularId, cancellationToken).ConfigureAwait(false)
             ?? throw new GrupoMuscularNaoEncontradoException();

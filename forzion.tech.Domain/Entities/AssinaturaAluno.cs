@@ -1,6 +1,7 @@
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -29,18 +30,18 @@ public class AssinaturaAluno : IHasDomainEvents
 
     private AssinaturaAluno() { }
 
-    public static AssinaturaAluno Criar(Guid vinculoId, Guid pacoteId, Guid treinadorId, Guid alunoId, decimal valor, DateTime agora)
+    public static Result<AssinaturaAluno> Criar(Guid vinculoId, Guid pacoteId, Guid treinadorId, Guid alunoId, decimal valor, DateTime agora)
     {
         if (vinculoId == Guid.Empty)
-            throw new DomainException("O identificador do vínculo é inválido.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.VinculoIdInvalido);
         if (pacoteId == Guid.Empty)
-            throw new DomainException("O identificador do pacote é inválido.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.PacoteIdInvalido);
         if (treinadorId == Guid.Empty)
-            throw new DomainException("O identificador do treinador é inválido.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.TreinadorIdInvalido);
         if (alunoId == Guid.Empty)
-            throw new DomainException("O identificador do aluno é inválido.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.AlunoIdInvalido);
         if (valor <= 0)
-            throw new DomainException("O valor da assinatura deve ser maior que zero.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.ValorInvalido);
 
         var assinatura = new AssinaturaAluno
         {
@@ -59,31 +60,33 @@ public class AssinaturaAluno : IHasDomainEvents
         assinatura._domainEvents.Add(new AssinaturaAlunoCriadaEvent(
             assinatura.Id, treinadorId, alunoId, pacoteId, valor, agora));
 
-        return assinatura;
+        return Result.Success(assinatura);
     }
 
-    public void Ativar()
+    public Result Ativar(DateTime agora)
     {
         if (Status == AssinaturaAlunoStatus.Cancelada)
-            throw new DomainException("AssinaturaAluno cancelada não pode ser ativada.");
+            return Result.Failure(AssinaturaAlunoErrors.CanceladaNaoAtivavel);
 
         Status = AssinaturaAlunoStatus.Ativa;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void MarcarInadimplente()
+    public Result MarcarInadimplente(DateTime agora)
     {
         if (Status != AssinaturaAlunoStatus.Ativa)
-            throw new DomainException("Apenas assinaturas ativas podem ser marcadas como inadimplentes.");
+            return Result.Failure(AssinaturaAlunoErrors.ApenasAtivasInadimplentes);
 
         Status = AssinaturaAlunoStatus.Inadimplente;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void Cancelar(DateTime agora)
+    public Result Cancelar(DateTime agora)
     {
         if (Status == AssinaturaAlunoStatus.Cancelada)
-            throw new DomainException("A assinatura já está cancelada.");
+            return Result.Failure(AssinaturaAlunoErrors.JaCancelada);
 
         Status = AssinaturaAlunoStatus.Cancelada;
         DataCancelamento = agora;
@@ -91,15 +94,17 @@ public class AssinaturaAluno : IHasDomainEvents
 
         _domainEvents.Add(new AssinaturaAlunoCanceladaEvent(
             Id, AlunoId, TreinadorId, Valor, agora));
+        return Result.Success();
     }
 
-    public void AgendarProximaCobranca(DateTime dataProximaCobranca, DateTime agora)
+    public Result AgendarProximaCobranca(DateTime dataProximaCobranca, DateTime agora)
     {
         if (dataProximaCobranca <= agora)
-            throw new DomainException("A data da próxima cobrança deve ser futura.");
+            return Result.Failure(AssinaturaAlunoErrors.ProximaCobrancaNaoFutura);
 
         DataProximaCobranca = dataProximaCobranca;
         UpdatedAt = agora;
+        return Result.Success();
     }
 
     /// <summary>

@@ -23,6 +23,7 @@ using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Handlers;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Integration;
 
@@ -81,9 +82,9 @@ public class VinculoApprovalCrossAggregateTests
 
     private static ContaRecebimento ContaOnboarded(Guid treinadorId)
     {
-        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
-        conta.ConfigurarStripeConnect("acct_test");
-        conta.ConfirmarOnboarding();
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow).Value;
+        conta.ConfigurarStripeConnect("acct_test", TestData.Agora);
+        conta.ConfirmarOnboarding(TestData.Agora);
         return conta;
     }
 
@@ -95,8 +96,8 @@ public class VinculoApprovalCrossAggregateTests
         var pacoteId = Guid.NewGuid();
         var precoEsperado = 199.90m;
 
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
-        var pacote = Pacote.Criar(treinadorId, "Premium", precoEsperado, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(treinadorId, "Premium", precoEsperado, DateTime.UtcNow).Value;
         // Forca o pacoteId esperado via reflection (factory gera Guid.NewGuid).
         // Em vez disso: usar pacote.Id como referencia e setar vinculo.PacoteId apos Aprovar.
         var conta = ContaOnboarded(treinadorId);
@@ -139,8 +140,8 @@ public class VinculoApprovalCrossAggregateTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
-        var pacote = Pacote.Criar(treinadorId, "Basic", 99m, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(treinadorId, "Basic", 99m, DateTime.UtcNow).Value;
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
@@ -167,8 +168,8 @@ public class VinculoApprovalCrossAggregateTests
         // Handler deve degradar gracioso (log + return), nao throw.
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
-        var pacote = Pacote.Criar(treinadorId, "Pro", 299m, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(treinadorId, "Pro", 299m, DateTime.UtcNow).Value;
         var conta = ContaOnboarded(treinadorId);
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);

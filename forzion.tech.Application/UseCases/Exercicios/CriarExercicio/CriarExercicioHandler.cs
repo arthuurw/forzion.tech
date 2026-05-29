@@ -36,7 +36,10 @@ public class CriarExercicioHandler(
         if (await exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, cancellationToken: cancellationToken).ConfigureAwait(false))
             return Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca."));
 
-        var exercicio = Exercicio.Criar(command.Nome, command.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, command.Descricao);
+        var exercicioResult = Exercicio.Criar(command.Nome, command.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, command.Descricao);
+        if (exercicioResult.IsFailure)
+            return Result.Failure<ExercicioResponse>(exercicioResult.Error!);
+        var exercicio = exercicioResult.Value;
 
         await exercicioRepository.AdicionarAsync(exercicio, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

@@ -23,7 +23,9 @@ public class ExcluirTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        treinador.ValidarParaExclusao();
+        var validacaoResult = treinador.ValidarParaExclusao();
+        if (validacaoResult.IsFailure)
+            throw new DomainException(validacaoResult.Error!.Message);
 
         await treinadorRepository.ExcluirComDependenciasAsync(treinador, cancellationToken).ConfigureAwait(false);
 

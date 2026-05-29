@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Conta.Logout;
@@ -9,14 +10,16 @@ public class LogoutHandler(
     ITokenRevogadoRepository tokenRevogadoRepository,
     IUserContext userContext,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<LogoutHandler> logger)
 {
     public virtual async Task HandleAsync(CancellationToken cancellationToken = default)
     {
         var jti = userContext.Jti;
         var expiraEm = userContext.TokenExpiraEm;
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        if (jti == Guid.Empty || expiraEm <= DateTime.UtcNow)
+        if (jti == Guid.Empty || expiraEm <= agora)
         {
             logger.LogWarning("Logout com token sem jti válido ou já expirado.");
             return;
@@ -24,8 +27,12 @@ public class LogoutHandler(
 
         try
         {
+            var tokenResult = TokenRevogado.Criar(jti, expiraEm, agora);
+            if (tokenResult.IsFailure)
+                throw new DomainException(tokenResult.Error!.Message);
+
             await tokenRevogadoRepository
-                .AdicionarAsync(TokenRevogado.Criar(jti, expiraEm), cancellationToken)
+                .AdicionarAsync(tokenResult.Value, cancellationToken)
                 .ConfigureAwait(false);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

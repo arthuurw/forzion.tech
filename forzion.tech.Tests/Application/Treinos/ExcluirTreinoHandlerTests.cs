@@ -33,7 +33,7 @@ public class ExcluirTreinoHandlerTests
     }
 
     private static Treino CriarTreino(Guid treinadorId) =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_TreinoValido_RemoveFichasEComita()
@@ -85,9 +85,10 @@ public class ExcluirTreinoHandlerTests
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var act = async () => await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
+        var result = await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
 
-        await act.Should().ThrowAsync<TreinoExecutadoException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treino.ja_executado");
     }
 
     [Fact]
@@ -109,9 +110,10 @@ public class ExcluirTreinoHandlerTests
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var act = async () => await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
+        var result = await _handler.HandleAsync(new ExcluirTreinoCommand(treino.Id));
 
-        await act.Should().ThrowAsync<TreinoExecutadoException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treino.ja_executado");
         _treinoAlunoRepo.Verify(r => r.RemoverPorTreinoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

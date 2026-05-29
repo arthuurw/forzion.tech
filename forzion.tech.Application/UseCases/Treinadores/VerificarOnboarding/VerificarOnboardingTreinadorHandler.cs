@@ -12,6 +12,7 @@ public class VerificarOnboardingTreinadorHandler(
     IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<VerificarOnboardingTreinadorHandler> logger)
 {
     public virtual async Task<OnboardingStatusResponse> HandleAsync(
@@ -36,7 +37,9 @@ public class VerificarOnboardingTreinadorHandler(
 
         if (ativa)
         {
-            contaRecebimento.ConfirmarOnboarding();
+            var confirmarResult = contaRecebimento.ConfirmarOnboarding(timeProvider.GetUtcNow().UtcDateTime);
+            if (confirmarResult.IsFailure)
+                throw new DomainException(confirmarResult.Error!.Message);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             logger.LogInformation("Onboarding Stripe confirmado para treinador {TreinadorId}.", query.TreinadorId);
         }

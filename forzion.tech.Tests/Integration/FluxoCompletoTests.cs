@@ -60,7 +60,7 @@ public class FluxoCompletoTests
     [Fact]
     public async Task AprovarTreinador_TreinadorPendente_AlteraStatusParaAtivo()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var handler = new AprovarTreinadorHandler(
@@ -78,9 +78,9 @@ public class FluxoCompletoTests
     [Fact]
     public async Task RegistrarAluno_TreinadorAtivo_CriaAlunoComVinculoPendente()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        treinador.Aprovar(Guid.NewGuid());
-        var pacote = Pacote.Criar(treinador.Id, "Pacote Basico", 0, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        var pacote = Pacote.Criar(treinador.Id, "Pacote Basico", 0, DateTime.UtcNow).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
@@ -103,12 +103,12 @@ public class FluxoCompletoTests
     [Fact]
     public async Task AprovarVinculo_DentroDoLimite_AprovaSemExcecao()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 0, DateTime.UtcNow);
-        treinador.AtribuirPlano(plano.Id);
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow);
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow);
-        var pacote = Pacote.Criar(treinador.Id, "Pacote", 0, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 0, DateTime.UtcNow).Value;
+        treinador.AtribuirPlano(plano.Id, DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(treinador.Id, "Pacote", 0, DateTime.UtcNow).Value;
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
@@ -142,10 +142,10 @@ public class FluxoCompletoTests
     [Fact]
     public async Task VincularFicha_AlunoComVinculoAtivo_VinculaFicha()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow);
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id, DateTime.UtcNow);
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow).Value;
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id, DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow).Value;
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinador.Id, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -168,11 +168,11 @@ public class FluxoCompletoTests
     [Fact]
     public async Task RegistrarExecucao_FichaVinculada_PersisteDados()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow);
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id, DateTime.UtcNow);
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow);
-        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Joao", DateTime.UtcNow).Value;
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinador.Id, DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow).Value;
+        var treinoAluno = TreinoAluno.Criar(treino.Id, aluno.Id, DateTime.UtcNow).Value;
 
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);

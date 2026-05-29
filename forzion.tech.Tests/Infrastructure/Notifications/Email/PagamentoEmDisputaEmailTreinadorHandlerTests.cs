@@ -44,7 +44,7 @@ public class PagamentoEmDisputaEmailTreinadorHandlerTests
     }
 
     private AssinaturaAluno AssinaturaValida() =>
-        AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora);
+        AssinaturaAluno.Criar(Guid.NewGuid(), PacoteId, TreinadorId, AlunoId, 149.90m, TestData.Agora).Value;
 
     [Fact]
     public async Task HandleAsync_EmailDesabilitado_NaoEnvia()
@@ -89,7 +89,7 @@ public class PagamentoEmDisputaEmailTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_ContaTreinadorNaoEncontrada_NaoEnvia()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", TestData.Agora);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", TestData.Agora).Value;
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(TreinadorId, It.IsAny<CancellationToken>()))
@@ -107,9 +107,9 @@ public class PagamentoEmDisputaEmailTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_HappyPath_EnviaEmailUrgenteAoTreinadorComMotivoEValor()
     {
-        var conta = Conta.Criar(EmailVO.FromDatabase("carlos@treinador.com"), "hash", TipoConta.Treinador, TestData.Agora);
-        var treinador = Treinador.Criar(conta.Id, "Carlos", TestData.Agora);
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora);
+        var conta = Conta.Criar(EmailVO.FromDatabase("carlos@treinador.com"), "hash", TipoConta.Treinador, TestData.Agora).Value;
+        var treinador = Treinador.Criar(conta.Id, "Carlos", TestData.Agora).Value;
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora).Value;
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());
@@ -139,8 +139,8 @@ public class PagamentoEmDisputaEmailTreinadorHandlerTests
     public async Task HandleAsync_AlunoNaoEncontrado_UsaPlaceholderEContinuaEnviando()
     {
         // Aluno deletado/inativo não impede notificar o treinador — disputa é urgente.
-        var conta = Conta.Criar(EmailVO.FromDatabase("carlos@x.com"), "hash", TipoConta.Treinador, TestData.Agora);
-        var treinador = Treinador.Criar(conta.Id, "Carlos", TestData.Agora);
+        var conta = Conta.Criar(EmailVO.FromDatabase("carlos@x.com"), "hash", TipoConta.Treinador, TestData.Agora).Value;
+        var treinador = Treinador.Criar(conta.Id, "Carlos", TestData.Agora).Value;
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(AssinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssinaturaValida());

@@ -57,7 +57,7 @@ public class HealthReportCollectorTests
             .Build();
 
     private static HealthReportConfig Toggles(bool liveness = true, bool kpis = true, bool entrega = true, bool erros = true) =>
-        HealthReportConfig.Criar(true, new TimeOnly(7, 0), new[] { "a@b.com" }, liveness, kpis, entrega, erros, Agora);
+        HealthReportConfig.Criar(true, new TimeOnly(7, 0), new[] { "a@b.com" }, liveness, kpis, entrega, erros, Agora).Value;
 
     private static AppDbContext BancoInacessivel()
     {
@@ -103,8 +103,8 @@ public class HealthReportCollectorTests
         _errorLog.Setup(r => r.ListarDesdeAsync(It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {
-                ErrorLogEntry.Criar(Agora.AddHours(-1), "Error", "Worker", "boom"),
-                ErrorLogEntry.Criar(Agora.AddHours(-2), "Critical", "Api", "fail")
+                ErrorLogEntry.Criar(Agora.AddHours(-1), "Error", "Worker", "boom", Agora).Value,
+                ErrorLogEntry.Criar(Agora.AddHours(-2), "Critical", "Api", "fail", Agora).Value
             });
 
         var report = await Criar(ctx, Config()).ColetarAsync(Toggles());

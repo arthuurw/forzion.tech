@@ -47,7 +47,7 @@ public class AtualizarHealthReportConfigHandlerTests
     public async Task HandleAsync_ConfigExistente_AtualizaSemAdicionar()
     {
         var existente = HealthReportConfig.Criar(false, new TimeOnly(6, 0), Array.Empty<string>(),
-            false, false, false, false, DateTime.UtcNow);
+            false, false, false, false, DateTime.UtcNow).Value;
         _repo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>())).ReturnsAsync(existente);
 
         var result = await _handler.HandleAsync(Command());

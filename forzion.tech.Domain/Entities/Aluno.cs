@@ -1,6 +1,7 @@
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.ValueObjects;
 
 namespace forzion.tech.Domain.Entities;
@@ -31,7 +32,7 @@ public class Aluno : IHasDomainEvents
 
     private Aluno() { }
 
-    public static Aluno Criar(
+    public static Result<Aluno> Criar(
         Guid contaId,
         string nome,
         DateTime agora,
@@ -47,11 +48,11 @@ public class Aluno : IHasDomainEvents
         string? observacoesAdicionais = null)
     {
         if (contaId == Guid.Empty)
-            throw new DomainException("O identificador da conta é inválido.");
+            return Result.Failure<Aluno>(AlunoErrors.ContaIdInvalido);
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome é obrigatório.");
+            return Result.Failure<Aluno>(AlunoErrors.NomeObrigatorio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure<Aluno>(AlunoErrors.NomeMuitoLongo);
 
         var aluno = new Aluno
         {
@@ -71,75 +72,99 @@ public class Aluno : IHasDomainEvents
         };
 
         if (email is not null)
-            aluno.AlterarEmail(email);
+        {
+            var emailResult = aluno.AlterarEmail(email);
+            if (emailResult.IsFailure)
+                return Result.Failure<Aluno>(emailResult.Error!);
+        }
 
         if (telefone is not null)
-            aluno.AlterarTelefone(telefone);
+        {
+            var telefoneResult = aluno.AlterarTelefone(telefone);
+            if (telefoneResult.IsFailure)
+                return Result.Failure<Aluno>(telefoneResult.Error!);
+        }
 
         aluno._domainEvents.Add(new AlunoRegistradoEvent(aluno.Id, aluno.ContaId, aluno.Nome, aluno.Email?.Value, agora));
 
-        return aluno;
+        return Result.Success(aluno);
     }
 
-    public void Atualizar(string? nome, string? email, string? telefone)
+    public Result Atualizar(string? nome, string? email, string? telefone, DateTime agora)
     {
         if (nome is not null)
         {
             if (string.IsNullOrWhiteSpace(nome))
-                throw new DomainException("O nome não pode ser vazio.");
+                return Result.Failure(AlunoErrors.NomeVazio);
             if (nome.Trim().Length > 100)
-                throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+                return Result.Failure(AlunoErrors.NomeMuitoLongo);
             Nome = nome.Trim();
         }
 
         if (email is not null)
-            AlterarEmail(email);
+        {
+            var emailResult = AlterarEmail(email);
+            if (emailResult.IsFailure)
+                return emailResult;
+        }
 
         if (telefone is not null)
-            AlterarTelefone(telefone);
+        {
+            var telefoneResult = AlterarTelefone(telefone);
+            if (telefoneResult.IsFailure)
+                return telefoneResult;
+        }
 
-        UpdatedAt = DateTime.UtcNow;
-        _domainEvents.Add(new AlunoAtualizadoEvent(Id, Nome, Email?.Value, DateTime.UtcNow));
+        UpdatedAt = agora;
+        _domainEvents.Add(new AlunoAtualizadoEvent(Id, Nome, Email?.Value, agora));
+        return Result.Success();
     }
 
-    public void Ativar()
+    public Result Ativar(DateTime agora)
     {
         if (Status == AlunoStatus.Ativo)
-            throw new DomainException("O aluno já está ativo.");
+            return Result.Failure(AlunoErrors.JaAtivo);
 
         Status = AlunoStatus.Ativo;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void Inativar()
+    public Result Inativar(DateTime agora)
     {
         if (Status == AlunoStatus.Inativo)
-            throw new DomainException("O aluno já está inativo.");
+            return Result.Failure(AlunoErrors.JaInativo);
 
         Status = AlunoStatus.Inativo;
-        UpdatedAt = DateTime.UtcNow;
-        _domainEvents.Add(new AlunoInativadoEvent(Id, DateTime.UtcNow));
+        UpdatedAt = agora;
+        _domainEvents.Add(new AlunoInativadoEvent(Id, agora));
+        return Result.Success();
     }
 
-    private void AlterarEmail(string email)
+    private Result AlterarEmail(string email)
     {
         if (email.Length == 0)
         {
             Email = null;
-            return;
+            return Result.Success();
         }
-        Email = ValueObjects.Email.Criar(email);
+        var emailResult = ValueObjects.Email.Criar(email);
+        if (emailResult.IsFailure)
+            return Result.Failure(emailResult.Error!);
+        Email = emailResult.Value;
+        return Result.Success();
     }
 
-    private void AlterarTelefone(string telefone)
+    private Result AlterarTelefone(string telefone)
     {
         if (telefone.Length == 0)
         {
             Telefone = null;
-            return;
+            return Result.Success();
         }
         if (telefone.Length > 20)
-            throw new DomainException("O telefone deve ter no máximo 20 caracteres.");
+            return Result.Failure(AlunoErrors.TelefoneMuitoLongo);
         Telefone = telefone.Trim();
+        return Result.Success();
     }
 }

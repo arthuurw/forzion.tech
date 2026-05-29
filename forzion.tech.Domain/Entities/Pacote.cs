@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -15,20 +16,20 @@ public class Pacote
 
     private Pacote() { }
 
-    public static Pacote Criar(Guid treinadorId, string nome, decimal preco, DateTime agora, string? descricao = null)
+    public static Result<Pacote> Criar(Guid treinadorId, string nome, decimal preco, DateTime agora, string? descricao = null)
     {
         if (treinadorId == Guid.Empty)
-            throw new DomainException("O identificador do treinador é inválido.");
+            return Result.Failure<Pacote>(PacoteErrors.TreinadorIdInvalido);
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome é obrigatório.");
+            return Result.Failure<Pacote>(PacoteErrors.NomeObrigatorio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure<Pacote>(PacoteErrors.NomeMuitoLongo);
         if (preco < 0)
-            throw new DomainException("O preço não pode ser negativo.");
+            return Result.Failure<Pacote>(PacoteErrors.PrecoNegativo);
         if (descricao?.Trim().Length > 500)
-            throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
+            return Result.Failure<Pacote>(PacoteErrors.DescricaoMuitoLonga);
 
-        return new Pacote
+        return Result.Success(new Pacote
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
@@ -37,40 +38,41 @@ public class Pacote
             Preco = preco,
             IsAtivo = true,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void Atualizar(string? nome, decimal? preco, string? descricao)
+    public Result Atualizar(string? nome, decimal? preco, string? descricao, DateTime agora)
     {
         if (nome is not null)
         {
             if (string.IsNullOrWhiteSpace(nome))
-                throw new DomainException("O nome não pode ser vazio.");
+                return Result.Failure(PacoteErrors.NomeVazio);
             if (nome.Trim().Length > 100)
-                throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+                return Result.Failure(PacoteErrors.NomeMuitoLongo);
             Nome = nome.Trim();
         }
 
         if (preco is not null)
         {
             if (preco < 0)
-                throw new DomainException("O preço não pode ser negativo.");
+                return Result.Failure(PacoteErrors.PrecoNegativo);
             Preco = preco.Value;
         }
 
         if (descricao is not null)
         {
             if (descricao.Trim().Length > 500)
-                throw new DomainException("A descrição deve ter no máximo 500 caracteres.");
+                return Result.Failure(PacoteErrors.DescricaoMuitoLonga);
             Descricao = descricao.Trim();
         }
 
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void Inativar()
+    public void Inativar(DateTime agora)
     {
         IsAtivo = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 }

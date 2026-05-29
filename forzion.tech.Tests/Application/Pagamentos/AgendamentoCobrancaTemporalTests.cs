@@ -47,9 +47,9 @@ public class AgendamentoCobrancaTemporalTests
     {
         var agora = _time.GetUtcNow().UtcDateTime;
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, agora);
-        pagamento.DefinirDadosPix("pi_t1", "qr", "url", agora.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, agora);
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, agora).Value;
+        pagamento.DefinirDadosPix("pi_t1", "qr", "url", agora.AddHours(1), agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, agora).Value;
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -71,9 +71,9 @@ public class AgendamentoCobrancaTemporalTests
         var agora = _time.GetUtcNow().UtcDateTime;
 
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, agora);
-        pagamento.DefinirDadosPix("pi_t2", "qr", "url", agora.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, agora);
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, agora).Value;
+        pagamento.DefinirDadosPix("pi_t2", "qr", "url", agora.AddHours(1), agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, agora).Value;
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t2", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);

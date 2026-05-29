@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -16,7 +17,7 @@ public class SerieConfig
 
     private SerieConfig() { }
 
-    internal static SerieConfig Criar(
+    internal static Result<SerieConfig> Criar(
         Guid treinoExercicioId,
         int quantidade,
         int repeticoesMin,
@@ -27,17 +28,17 @@ public class SerieConfig
         int ordem)
     {
         if (quantidade < 1)
-            throw new DomainException("A quantidade de séries deve ser maior que zero.");
+            return Result.Failure<SerieConfig>(TreinoErrors.QuantidadeInvalida);
         if (repeticoesMin < 1)
-            throw new DomainException("O número mínimo de repetições deve ser maior que zero.");
+            return Result.Failure<SerieConfig>(TreinoErrors.RepeticoesMinInvalida);
         if (repeticoesMax.HasValue && repeticoesMax.Value < repeticoesMin)
-            throw new DomainException("O máximo de repetições não pode ser menor que o mínimo.");
+            return Result.Failure<SerieConfig>(TreinoErrors.RepeticoesMaxMenorQueMin);
         if (carga is not null && carga < 0)
-            throw new DomainException("A carga não pode ser negativa.");
+            return Result.Failure<SerieConfig>(TreinoErrors.CargaNegativa);
         if (descanso is not null && descanso < 0)
-            throw new DomainException("O descanso não pode ser negativo.");
+            return Result.Failure<SerieConfig>(TreinoErrors.DescansoNegativo);
 
-        return new SerieConfig
+        return Result.Success(new SerieConfig
         {
             Id = Guid.NewGuid(),
             TreinoExercicioId = treinoExercicioId,
@@ -48,6 +49,6 @@ public class SerieConfig
             Carga = carga,
             Descanso = descanso,
             Ordem = ordem
-        };
+        });
     }
 }

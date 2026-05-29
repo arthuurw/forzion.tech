@@ -38,7 +38,7 @@ public sealed class VinculoTreinadorAlunoBuilder
     }
 
     public VinculoTreinadorAluno Build() =>
-        VinculoTreinadorAluno.Criar(_treinadorId, _alunoId, _agora, _pacoteId);
+        VinculoTreinadorAluno.Criar(_treinadorId, _alunoId, _agora, _pacoteId).Value;
 
     public static implicit operator VinculoTreinadorAluno(VinculoTreinadorAlunoBuilder builder) => builder.Build();
 }

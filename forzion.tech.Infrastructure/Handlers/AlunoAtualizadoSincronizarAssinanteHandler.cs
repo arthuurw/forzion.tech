@@ -19,7 +19,7 @@ public sealed class AlunoAtualizadoSincronizarAssinanteHandler(
             return;
         }
 
-        assinante.Sincronizar(domainEvent.Nome, domainEvent.Email);
+        assinante.Sincronizar(domainEvent.Nome, domainEvent.Email, domainEvent.OcorridoEm);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Assinante {AlunoId} sincronizado na projeção billing.", domainEvent.AlunoId);

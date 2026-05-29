@@ -1,7 +1,6 @@
 using CsCheck;
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Tests.Domain.Properties;
 
@@ -44,7 +43,7 @@ public class EntityInvariantProperties
          select (contaId, nome))
         .Sample(t =>
         {
-            var aluno = Aluno.Criar(t.contaId, t.nome, Agora);
+            var aluno = Aluno.Criar(t.contaId, t.nome, Agora).Value;
             aluno.ContaId.Should().Be(t.contaId);
             aluno.Nome.Should().Be(t.nome.Trim());
             aluno.CreatedAt.Should().Be(Agora);
@@ -56,8 +55,8 @@ public class EntityInvariantProperties
     {
         GenNomeValido.Sample(nome =>
         {
-            var act = () => Aluno.Criar(Guid.Empty, nome, Agora);
-            act.Should().Throw<DomainException>();
+            var r = Aluno.Criar(Guid.Empty, nome, Agora);
+            r.IsFailure.Should().BeTrue();
         });
     }
 
@@ -69,8 +68,9 @@ public class EntityInvariantProperties
          select (contaId, nome))
         .Sample(t =>
         {
-            var act = () => Aluno.Criar(t.contaId, t.nome, Agora);
-            act.Should().Throw<DomainException>().WithMessage("*100*");
+            var r = Aluno.Criar(t.contaId, t.nome, Agora);
+            r.IsFailure.Should().BeTrue();
+            r.Error!.Message.Should().Contain("100");
         });
     }
 
@@ -84,7 +84,7 @@ public class EntityInvariantProperties
          select (contaId, nome))
         .Sample(t =>
         {
-            var treinador = Treinador.Criar(t.contaId, t.nome, Agora);
+            var treinador = Treinador.Criar(t.contaId, t.nome, Agora).Value;
             treinador.ContaId.Should().Be(t.contaId);
         });
     }
@@ -94,8 +94,8 @@ public class EntityInvariantProperties
     {
         GenNomeValido.Sample(nome =>
         {
-            var act = () => Treinador.Criar(Guid.Empty, nome, Agora);
-            act.Should().Throw<DomainException>();
+            var r = Treinador.Criar(Guid.Empty, nome, Agora);
+            r.IsFailure.Should().BeTrue();
         });
     }
 
@@ -110,7 +110,7 @@ public class EntityInvariantProperties
          select (treinadorId, nome, preco))
         .Sample(t =>
         {
-            var pacote = Pacote.Criar(t.treinadorId, t.nome, t.preco, Agora);
+            var pacote = Pacote.Criar(t.treinadorId, t.nome, t.preco, Agora).Value;
             pacote.Preco.Should().Be(t.preco);
         });
     }
@@ -124,8 +124,9 @@ public class EntityInvariantProperties
          select (treinadorId, nome, preco))
         .Sample(t =>
         {
-            var act = () => Pacote.Criar(t.treinadorId, t.nome, t.preco, Agora);
-            act.Should().Throw<DomainException>().WithMessage("*negativo*");
+            var r = Pacote.Criar(t.treinadorId, t.nome, t.preco, Agora);
+            r.IsFailure.Should().BeTrue();
+            r.Error!.Message.Should().Contain("negativo");
         });
     }
 
@@ -142,7 +143,7 @@ public class EntityInvariantProperties
          select (vinculo, pacote, treinador, aluno, valor))
         .Sample(t =>
         {
-            var assinatura = AssinaturaAluno.Criar(t.vinculo, t.pacote, t.treinador, t.aluno, t.valor, Agora);
+            var assinatura = AssinaturaAluno.Criar(t.vinculo, t.pacote, t.treinador, t.aluno, t.valor, Agora).Value;
             assinatura.Valor.Should().Be(t.valor);
         });
     }
@@ -158,8 +159,9 @@ public class EntityInvariantProperties
          select (vinculo, pacote, treinador, aluno, valor))
         .Sample(t =>
         {
-            var act = () => AssinaturaAluno.Criar(t.vinculo, t.pacote, t.treinador, t.aluno, t.valor, Agora);
-            act.Should().Throw<DomainException>().WithMessage("*maior que zero*");
+            var r = AssinaturaAluno.Criar(t.vinculo, t.pacote, t.treinador, t.aluno, t.valor, Agora);
+            r.IsFailure.Should().BeTrue();
+            r.Error!.Message.Should().Contain("maior que zero");
         });
     }
 
@@ -176,8 +178,8 @@ public class EntityInvariantProperties
             var ids = (Guid[])t.ids.Clone();
             ids[t.posicaoVazia] = Guid.Empty;
 
-            var act = () => AssinaturaAluno.Criar(ids[0], ids[1], ids[2], ids[3], t.valor, Agora);
-            act.Should().Throw<DomainException>();
+            var r = AssinaturaAluno.Criar(ids[0], ids[1], ids[2], ids[3], t.valor, Agora);
+            r.IsFailure.Should().BeTrue();
         });
     }
 }

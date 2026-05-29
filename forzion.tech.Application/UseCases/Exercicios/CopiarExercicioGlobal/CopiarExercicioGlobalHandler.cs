@@ -31,7 +31,10 @@ public class CopiarExercicioGlobalHandler(
         if (!original.IsGlobal)
             throw new AcessoNegadoException();
 
-        var copia = Exercicio.Criar(original.Nome, original.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, original.Descricao);
+        var copiaResult = Exercicio.Criar(original.Nome, original.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, original.Descricao);
+        if (copiaResult.IsFailure)
+            throw new DomainException(copiaResult.Error!.Message);
+        var copia = copiaResult.Value;
 
         await exercicioRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

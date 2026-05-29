@@ -35,7 +35,10 @@ public class AtualizarObservacaoExercicioHandler(
         var exercicio = treino.Exercicios.FirstOrDefault(e => e.Id == command.TreinoExercicioId)
             ?? throw new TreinoNaoEncontradoException();
 
-        exercicio.AtualizarObservacao(command.Observacao);
+        var observacaoResult = exercicio.AtualizarObservacao(command.Observacao);
+        if (observacaoResult.IsFailure)
+            throw new DomainException(observacaoResult.Error!.Message);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Observação atualizada no exercício {ExercicioId} do treino {TreinoId}.",

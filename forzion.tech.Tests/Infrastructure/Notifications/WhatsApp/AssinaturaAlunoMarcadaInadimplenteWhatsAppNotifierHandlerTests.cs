@@ -53,7 +53,7 @@ public class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoSemTelefone_NaoEnvia()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora).Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
 
@@ -67,7 +67,7 @@ public class AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoComTelefone_EnviaMensagemUrgente()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
 

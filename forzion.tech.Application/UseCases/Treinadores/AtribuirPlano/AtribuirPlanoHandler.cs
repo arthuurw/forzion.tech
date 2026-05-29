@@ -33,15 +33,22 @@ public class AtribuirPlanoHandler(
         _ = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoPlataformaNaoEncontradoException();
 
-        treinador.AtribuirPlano(command.PlanoId);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        var log = LogAprovacao.Registrar(
+        var atribuirResult = treinador.AtribuirPlano(command.PlanoId, agora);
+        if (atribuirResult.IsFailure)
+            throw new DomainException(atribuirResult.Error!.Message);
+
+        var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AtribuicaoPlanTreinador,
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
-            timeProvider.GetUtcNow().UtcDateTime,
+            agora,
             $"Plano {command.PlanoId} atribuído.");
+        if (logResult.IsFailure)
+            throw new DomainException(logResult.Error!.Message);
+        var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

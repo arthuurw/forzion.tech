@@ -21,14 +21,9 @@ public class CancelarAssinaturaAlunoHandler(
         var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false)
             ?? throw new DomainException("AssinaturaAluno não encontrada.");
 
-        try
-        {
-            assinatura.Cancelar(timeProvider.GetUtcNow().UtcDateTime);
-        }
-        catch (DomainException ex)
-        {
-            return Result.Failure(Error.Business(ex.Message));
-        }
+        var cancelarResult = assinatura.Cancelar(timeProvider.GetUtcNow().UtcDateTime);
+        if (cancelarResult.IsFailure)
+            return cancelarResult;
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

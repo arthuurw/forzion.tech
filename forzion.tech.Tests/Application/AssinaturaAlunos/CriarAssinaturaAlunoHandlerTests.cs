@@ -4,6 +4,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -34,15 +35,15 @@ public class CriarAssinaturaAlunoHandlerTests
 
     private static ContaRecebimento ContaOnboarded(Guid treinadorId)
     {
-        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
-        conta.ConfigurarStripeConnect("acct_123");
-        conta.ConfirmarOnboarding();
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow).Value;
+        conta.ConfigurarStripeConnect("acct_123", TestData.Agora);
+        conta.ConfirmarOnboarding(TestData.Agora);
         return conta;
     }
 
     private Pacote SetupPacote(Guid treinadorId, decimal preco = 150m)
     {
-        var pacote = Pacote.Criar(treinadorId, "Mensal", preco, DateTime.UtcNow);
+        var pacote = Pacote.Criar(treinadorId, "Mensal", preco, DateTime.UtcNow).Value;
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pacote);
         return pacote;
@@ -100,8 +101,8 @@ public class CriarAssinaturaAlunoHandlerTests
     public async Task HandleAsync_ContaRecebimentoSemOnboarding_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
-        conta.ConfigurarStripeConnect("acct_123");
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow).Value;
+        conta.ConfigurarStripeConnect("acct_123", TestData.Agora);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 

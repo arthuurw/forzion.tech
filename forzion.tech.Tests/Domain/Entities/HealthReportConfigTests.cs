@@ -22,7 +22,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: TestData.Agora);
+            agora: TestData.Agora).Value;
 
         config.Id.Should().NotBeEmpty();
         config.Ativo.Should().BeTrue();
@@ -48,7 +48,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: false,
             incluirErros: false,
-            agora: TestData.Agora);
+            agora: TestData.Agora).Value;
 
         config.Ativo.Should().BeFalse();
         config.Destinatarios.Should().BeEmpty();
@@ -57,7 +57,7 @@ public class HealthReportConfigTests
     [Fact]
     public void Criar_AtivoSemDestinatarios_LancaDomainException()
     {
-        var act = () => HealthReportConfig.Criar(
+        var r = HealthReportConfig.Criar(
             ativo: true,
             horaEnvioUtc: Hora,
             destinatarios: Array.Empty<string>(),
@@ -67,14 +67,14 @@ public class HealthReportConfigTests
             incluirErros: true,
             agora: TestData.Agora);
 
-        act.Should().Throw<DomainException>()
-            .WithMessage("Uma configuração ativa exige ao menos um destinatário.");
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Uma configuração ativa exige ao menos um destinatário.");
     }
 
     [Fact]
     public void Criar_EmailInvalido_LancaDomainException()
     {
-        var act = () => HealthReportConfig.Criar(
+        var r = HealthReportConfig.Criar(
             ativo: true,
             horaEnvioUtc: Hora,
             destinatarios: new[] { "nao-eh-email" },
@@ -84,7 +84,8 @@ public class HealthReportConfigTests
             incluirErros: true,
             agora: TestData.Agora);
 
-        act.Should().Throw<DomainException>().WithMessage("O e-mail informado é inválido.");
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O e-mail informado é inválido.");
     }
 
     [Fact]
@@ -98,7 +99,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: TestData.Agora);
+            agora: TestData.Agora).Value;
 
         config.Destinatarios.Should().Be("admin@forzion.tech,ops@forzion.tech");
         config.ObterDestinatarios().Should().Equal("admin@forzion.tech", "ops@forzion.tech");
@@ -117,7 +118,7 @@ public class HealthReportConfigTests
             incluirKpis: false,
             incluirEntregabilidade: false,
             incluirErros: false,
-            agora: TestData.Agora);
+            agora: TestData.Agora).Value;
 
         var novaHora = new TimeOnly(9, 30);
         config.Atualizar(
@@ -127,7 +128,8 @@ public class HealthReportConfigTests
             incluirLiveness: true,
             incluirKpis: true,
             incluirEntregabilidade: true,
-            incluirErros: true);
+            incluirErros: true,
+            agora: TestData.Agora);
 
         config.Ativo.Should().BeTrue();
         config.HoraEnvioUtc.Should().Be(novaHora);
@@ -150,19 +152,20 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: TestData.Agora);
+            agora: TestData.Agora).Value;
 
-        var act = () => config.Atualizar(
+        var r = config.Atualizar(
             ativo: true,
             horaEnvioUtc: Hora,
             destinatarios: Array.Empty<string>(),
             incluirLiveness: true,
             incluirKpis: true,
             incluirEntregabilidade: true,
-            incluirErros: true);
+            incluirErros: true,
+            agora: TestData.Agora);
 
-        act.Should().Throw<DomainException>()
-            .WithMessage("Uma configuração ativa exige ao menos um destinatário.");
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Uma configuração ativa exige ao menos um destinatário.");
     }
 
     // --- MarcarEnviado ---
@@ -178,7 +181,7 @@ public class HealthReportConfigTests
             incluirKpis: true,
             incluirEntregabilidade: true,
             incluirErros: true,
-            agora: TestData.Agora);
+            agora: TestData.Agora).Value;
 
         var envio = new DateTime(2026, 5, 26, 7, 0, 0, DateTimeKind.Utc);
         config.MarcarEnviado(envio);

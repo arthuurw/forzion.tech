@@ -34,7 +34,10 @@ public class DuplicarTreinoHandler(
         if (!userContext.IsSystemAdmin && original.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        var copia = original.Duplicar(timeProvider.GetUtcNow().UtcDateTime);
+        var copiaResult = original.Duplicar(timeProvider.GetUtcNow().UtcDateTime);
+        if (copiaResult.IsFailure)
+            throw new DomainException(copiaResult.Error!.Message);
+        var copia = copiaResult.Value;
 
         await treinoRepository.AdicionarAsync(copia, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

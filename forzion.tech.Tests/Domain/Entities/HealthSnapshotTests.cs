@@ -13,7 +13,7 @@ public class HealthSnapshotTests
     {
         var agora = TestData.Agora;
 
-        var snapshot = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{\"ok\":true}", agora);
+        var snapshot = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{\"ok\":true}", agora).Value;
 
         snapshot.Id.Should().NotBeEmpty();
         snapshot.Ambiente.Should().Be("homolog");
@@ -26,7 +26,7 @@ public class HealthSnapshotTests
     [Fact]
     public void Criar_AmbienteComEspacos_Remove()
     {
-        var snapshot = HealthSnapshot.Criar("  prod  ", StatusSaude.Degradado, "{}", TestData.Agora);
+        var snapshot = HealthSnapshot.Criar("  prod  ", StatusSaude.Degradado, "{}", TestData.Agora).Value;
         snapshot.Ambiente.Should().Be("prod");
     }
 
@@ -35,8 +35,9 @@ public class HealthSnapshotTests
     [InlineData("   ")]
     public void Criar_AmbienteVazio_LancaDomainException(string ambiente)
     {
-        var act = () => HealthSnapshot.Criar(ambiente, StatusSaude.Ok, "{}", TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O ambiente é obrigatório.");
+        var r = HealthSnapshot.Criar(ambiente, StatusSaude.Ok, "{}", TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O ambiente é obrigatório.");
     }
 
     [Theory]
@@ -44,8 +45,9 @@ public class HealthSnapshotTests
     [InlineData("   ")]
     public void Criar_PayloadVazio_LancaDomainException(string payload)
     {
-        var act = () => HealthSnapshot.Criar("homolog", StatusSaude.Ok, payload, TestData.Agora);
-        act.Should().Throw<DomainException>().WithMessage("O payload é obrigatório.");
+        var r = HealthSnapshot.Criar("homolog", StatusSaude.Ok, payload, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O payload é obrigatório.");
     }
 
     [Theory]
@@ -54,7 +56,7 @@ public class HealthSnapshotTests
     [InlineData(StatusSaude.Falha)]
     public void Criar_QualquerStatus_Persistido(StatusSaude status)
     {
-        var snapshot = HealthSnapshot.Criar("homolog", status, "{}", TestData.Agora);
+        var snapshot = HealthSnapshot.Criar("homolog", status, "{}", TestData.Agora).Value;
         snapshot.StatusGeral.Should().Be(status);
     }
 }

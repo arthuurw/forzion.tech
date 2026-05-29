@@ -30,7 +30,7 @@ public class ObterAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoEncontrado_RetornaResponse()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow).Value;
         _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
@@ -45,7 +45,7 @@ public class ObterAlunoHandlerTests
     {
         var alunoId = Guid.NewGuid();
         var treinadorId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.IsTreinador).Returns(true);
@@ -74,7 +74,7 @@ public class ObterAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_AlunoAcessandoProprioPerfil_RetornaAluno()
     {
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow).Value;
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.PerfilId).Returns(aluno.Id);
@@ -89,7 +89,7 @@ public class ObterAlunoHandlerTests
     public async Task HandleAsync_AlunoAcessandoOutroAluno_LancaAcessoNegadoException()
     {
         var alunoLogadoId = Guid.NewGuid();
-        var outroAluno = Aluno.Criar(Guid.NewGuid(), "Outro", DateTime.UtcNow);
+        var outroAluno = Aluno.Criar(Guid.NewGuid(), "Outro", DateTime.UtcNow).Value;
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.IsTreinador).Returns(false);
@@ -105,8 +105,8 @@ public class ObterAlunoHandlerTests
     public async Task HandleAsync_TreinadorComVinculoAtivo_RetornaAluno()
     {
         var treinadorId = Guid.NewGuid();
-        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow);
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, DateTime.UtcNow);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "João", DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, DateTime.UtcNow).Value;
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.IsTreinador).Returns(true);

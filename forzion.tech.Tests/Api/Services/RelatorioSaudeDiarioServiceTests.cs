@@ -14,7 +14,7 @@ public class RelatorioSaudeDiarioServiceTests
             Hora,
             ativo ? new[] { "admin@forzion.tech" } : Array.Empty<string>(),
             true, true, true, true,
-            DateTime.UtcNow);
+            DateTime.UtcNow).Value;
 
     [Fact]
     public void DeveEnviar_Inativo_RetornaFalse()

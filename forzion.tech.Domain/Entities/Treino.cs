@@ -1,5 +1,6 @@
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -21,7 +22,7 @@ public class Treino
 
     private Treino() { }
 
-    public static Treino Criar(
+    public static Result<Treino> Criar(
         string nome,
         ObjetivoTreino objetivo,
         Guid treinadorId,
@@ -31,15 +32,15 @@ public class Treino
         DateOnly? dataFim = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome é obrigatório.");
+            return Result.Failure<Treino>(TreinoErrors.NomeObrigatorio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure<Treino>(TreinoErrors.NomeMuitoLongo);
         if (treinadorId == Guid.Empty)
-            throw new DomainException("O treinador é inválido.");
+            return Result.Failure<Treino>(TreinoErrors.TreinadorInvalido);
         if (dataInicio.HasValue && dataFim.HasValue && dataFim < dataInicio)
-            throw new DomainException("A data de fim deve ser posterior à data de início.");
+            return Result.Failure<Treino>(TreinoErrors.DataFimAnteriorInicio);
 
-        return new Treino
+        return Result.Success(new Treino
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
@@ -49,12 +50,13 @@ public class Treino
             DataInicio = dataInicio,
             DataFim = dataFim,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void Atualizar(
+    public Result Atualizar(
         string? nome,
         ObjetivoTreino? objetivo,
+        DateTime agora,
         DificuldadeTreino? dificuldade = null,
         DateOnly? dataInicio = null,
         DateOnly? dataFim = null,
@@ -64,9 +66,9 @@ public class Treino
         if (nome is not null)
         {
             if (string.IsNullOrWhiteSpace(nome))
-                throw new DomainException("O nome não pode ser vazio.");
+                return Result.Failure(TreinoErrors.NomeVazio);
             if (nome.Trim().Length > 100)
-                throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+                return Result.Failure(TreinoErrors.NomeMuitoLongo);
             Nome = nome.Trim();
         }
 
@@ -82,37 +84,44 @@ public class Treino
         var inicio = DataInicio;
         var fim = DataFim;
         if (inicio.HasValue && fim.HasValue && fim < inicio)
-            throw new DomainException("A data de fim deve ser posterior à data de início.");
+            return Result.Failure(TreinoErrors.DataFimAnteriorInicio);
 
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public static void ValidarMutabilidade(bool foiExecutado)
+    public static Result ValidarMutabilidade(bool foiExecutado)
     {
         if (foiExecutado)
-            throw new TreinoExecutadoException();
+            return Result.Failure(TreinoErrors.TreinoJaExecutado);
+        return Result.Success();
     }
 
-    public TreinoExercicio AdicionarExercicio(Guid exercicioId)
+    public Result<TreinoExercicio> AdicionarExercicio(Guid exercicioId, DateTime agora)
     {
         var ordem = _exercicios.Count + 1;
-        var item = TreinoExercicio.Criar(Id, exercicioId, ordem);
+        var itemRes = TreinoExercicio.Criar(Id, exercicioId, ordem);
+        if (itemRes.IsFailure)
+            return Result.Failure<TreinoExercicio>(itemRes.Error!);
+        var item = itemRes.Value;
         _exercicios.Add(item);
-        UpdatedAt = DateTime.UtcNow;
-        return item;
+        UpdatedAt = agora;
+        return Result.Success(item);
     }
 
-    public void RemoverExercicio(Guid treinoExercicioId)
+    public Result RemoverExercicio(Guid treinoExercicioId, DateTime agora)
     {
-        var item = _exercicios.FirstOrDefault(e => e.Id == treinoExercicioId)
-            ?? throw new DomainException("Exercício não encontrado no treino.");
+        var item = _exercicios.FirstOrDefault(e => e.Id == treinoExercicioId);
+        if (item is null)
+            return Result.Failure(TreinoErrors.ExercicioNaoEncontrado);
 
         _exercicios.Remove(item);
         ReordenarExercicios();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public Treino Duplicar(DateTime agora)
+    public Result<Treino> Duplicar(DateTime agora)
     {
         var copia = new Treino
         {
@@ -124,21 +133,17 @@ public class Treino
             CreatedAt = agora
         };
 
-        foreach (var e in _exercicios)
-        {
-            var novoEx = TreinoExercicio.Criar(copia.Id, e.ExercicioId, e.Ordem);
-            foreach (var s in e.Series)
-                novoEx.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
-            copia._exercicios.Add(novoEx);
-        }
+        var copiarRes = CopiarExerciciosPara(copia);
+        if (copiarRes.IsFailure)
+            return Result.Failure<Treino>(copiarRes.Error!);
 
-        return copia;
+        return Result.Success(copia);
     }
 
-    public Treino DuplicarPara(Guid novoTreinadorId, DateTime agora)
+    public Result<Treino> DuplicarPara(Guid novoTreinadorId, DateTime agora)
     {
         if (novoTreinadorId == Guid.Empty)
-            throw new DomainException("O treinador de destino é inválido.");
+            return Result.Failure<Treino>(TreinoErrors.TreinadorDestinoInvalido);
 
         var copia = new Treino
         {
@@ -150,15 +155,33 @@ public class Treino
             CreatedAt = agora
         };
 
+        var copiarRes = CopiarExerciciosPara(copia);
+        if (copiarRes.IsFailure)
+            return Result.Failure<Treino>(copiarRes.Error!);
+
+        return Result.Success(copia);
+    }
+
+    private Result CopiarExerciciosPara(Treino copia)
+    {
         foreach (var e in _exercicios)
         {
-            var novoEx = TreinoExercicio.Criar(copia.Id, e.ExercicioId, e.Ordem);
+            var novoExRes = TreinoExercicio.Criar(copia.Id, e.ExercicioId, e.Ordem);
+            if (novoExRes.IsFailure)
+                return Result.Failure(novoExRes.Error!);
+            var novoEx = novoExRes.Value;
+
             foreach (var s in e.Series)
-                novoEx.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
+            {
+                var serieRes = novoEx.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
+                if (serieRes.IsFailure)
+                    return Result.Failure(serieRes.Error!);
+            }
+
             copia._exercicios.Add(novoEx);
         }
 
-        return copia;
+        return Result.Success();
     }
 
     private void ReordenarExercicios()

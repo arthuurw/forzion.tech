@@ -12,6 +12,7 @@ public class AtualizarAlunoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<AtualizarAlunoHandler> logger)
 {
     public virtual Task<AlunoResponse> HandleAsync(
@@ -49,7 +50,9 @@ public class AtualizarAlunoHandler(
         if (aluno.Status == AlunoStatus.Inativo)
             throw new AlunoInativoException();
 
-        aluno.Atualizar(command.Nome, command.Email, command.Telefone);
+        var atualizarResult = aluno.Atualizar(command.Nome, command.Email, command.Telefone, timeProvider.GetUtcNow().UtcDateTime);
+        if (atualizarResult.IsFailure)
+            throw new DomainException(atualizarResult.Error!.Message);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

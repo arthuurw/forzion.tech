@@ -55,14 +55,14 @@ public class RedefinirSenhaHandlerTests
             contaId ?? Guid.NewGuid(),
             ComputeHash(RawToken),
             agora.Add(ttl ?? TimeSpan.FromMinutes(30)),
-            agora);
+            agora).Value;
         if (usedAt.HasValue)
             token.MarcarComoUsado(usedAt.Value);
         return token;
     }
 
     private static Conta BuildConta() =>
-        Conta.Criar(Email.Criar("user@example.com"), "old-hash", TipoConta.Aluno, DateTime.UtcNow);
+        Conta.Criar(Email.Criar("user@example.com").Value, "old-hash", TipoConta.Aluno, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_TokenInexistente_LancaDomainException()

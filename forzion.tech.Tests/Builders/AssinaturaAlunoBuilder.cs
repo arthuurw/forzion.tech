@@ -52,7 +52,7 @@ public sealed class AssinaturaAlunoBuilder
     }
 
     public AssinaturaAluno Build() =>
-        AssinaturaAluno.Criar(_vinculoId, _pacoteId, _treinadorId, _alunoId, _valor, _agora);
+        AssinaturaAluno.Criar(_vinculoId, _pacoteId, _treinadorId, _alunoId, _valor, _agora).Value;
 
     public static implicit operator AssinaturaAluno(AssinaturaAlunoBuilder builder) => builder.Build();
 }

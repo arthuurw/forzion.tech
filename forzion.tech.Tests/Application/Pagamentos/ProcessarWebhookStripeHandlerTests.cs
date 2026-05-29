@@ -4,6 +4,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -55,9 +56,9 @@ public class ProcessarWebhookStripeHandlerTests
     public async Task HandleAsync_PaymentIntentSucceeded_MarcaPagoEAgendaRenovacaoEAtiva()
     {
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_abc", "qr", "url", DateTime.UtcNow.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_abc", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_abc", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -78,9 +79,9 @@ public class ProcessarWebhookStripeHandlerTests
     public async Task HandleAsync_PaymentIntentSucceeded_Idempotente_NaoRelancaExcecaoNemComita()
     {
         // Stripe re-entrega webhook para pagamento já confirmado — deve retornar sucesso silencioso
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_dup", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarPago(); // já processado
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_dup", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora); // já processado
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_dup", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -95,9 +96,9 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_PaymentIntentFailed_Idempotente_NaoRelancaExcecao()
     {
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_f2", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarFalhou(); // já processado
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_f2", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarFalhou(TestData.Agora); // já processado
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_f2", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -112,9 +113,9 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_PaymentIntentCanceled_Idempotente_NaoRelancaExcecao()
     {
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_e2", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarExpirado(); // já processado
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_e2", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarExpirado(TestData.Agora); // já processado
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_e2", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -131,8 +132,8 @@ public class ProcessarWebhookStripeHandlerTests
     {
         // Cenário: pagamento confirmado mas assinatura foi excluída/não existe — dinheiro chegou, registra Pago
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_orphan", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_orphan", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_orphan", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -151,8 +152,8 @@ public class ProcessarWebhookStripeHandlerTests
     public async Task HandleAsync_PaymentIntentFailed_MarcaFalhou()
     {
         // Sem assinatura encontrada — só commita o MarcarFalhou (não há contador a incrementar).
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_fail", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_fail", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_fail", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -171,10 +172,10 @@ public class ProcessarWebhookStripeHandlerTests
     {
         // Assinatura Ativa com 2 falhas anteriores; terceira falha cruza o threshold → Inadimplente.
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_3rd_fail", "qr", "url", DateTime.UtcNow.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
-        assinatura.Ativar();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_3rd_fail", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        assinatura.Ativar(TestData.Agora);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
         assinatura.ClearDomainEvents();
@@ -200,10 +201,10 @@ public class ProcessarWebhookStripeHandlerTests
     {
         // Já Inadimplente; quarta falha apenas incrementa contador e dispara PagamentoFalhouEvent.
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_4th_fail", "qr", "url", DateTime.UtcNow.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
-        assinatura.Ativar();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_4th_fail", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        assinatura.Ativar(TestData.Agora);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow); // → Inadimplente
@@ -229,10 +230,10 @@ public class ProcessarWebhookStripeHandlerTests
     {
         // Sucesso em assinatura Inadimplente → Regulariza (Ativa + contador 0).
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_regul", "qr", "url", DateTime.UtcNow.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
-        assinatura.Ativar();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_regul", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        assinatura.Ativar(TestData.Agora);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow); // → Inadimplente
@@ -259,10 +260,10 @@ public class ProcessarWebhookStripeHandlerTests
     {
         // Assinatura Ativa com 2 falhas (abaixo do threshold) e pagamento sucesso → contador zerado, permanece Ativa.
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_zero", "qr", "url", DateTime.UtcNow.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow);
-        assinatura.Ativar();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_zero", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        assinatura.Ativar(TestData.Agora);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
         assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
         assinatura.ClearDomainEvents();
@@ -286,8 +287,8 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_PaymentIntentCanceled_MarcaExpirado()
     {
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_can", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_can", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_can", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
 
@@ -301,8 +302,8 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_AccountUpdatedComChargesEnabled_ConfirmaOnboarding()
     {
-        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow);
-        contaRecebimento.ConfigurarStripeConnect("acct_ok");
+        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_ok", TestData.Agora);
         _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_ok", It.IsAny<CancellationToken>()))
             .ReturnsAsync(contaRecebimento);
 
@@ -359,11 +360,11 @@ public class ProcessarWebhookStripeHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_ok_acct", "qr", "url", DateTime.UtcNow.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, DateTime.UtcNow);
-        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
-        conta.ConfigurarStripeConnect("acct_correct");
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_ok_acct", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow).Value;
+        conta.ConfigurarStripeConnect("acct_correct", TestData.Agora);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_ok_acct", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -386,9 +387,9 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_ChargeRefunded_PagamentoPago_MarcaEstornadoEComita()
     {
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_refund", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarPago();
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_refund", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
         pagamento.ClearDomainEvents();
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_refund", It.IsAny<CancellationToken>()))
@@ -407,10 +408,10 @@ public class ProcessarWebhookStripeHandlerTests
     public async Task HandleAsync_ChargeRefunded_JaEstornado_Idempotente_NaoComita()
     {
         // Stripe re-entrega webhook charge.refunded — handler deve absorver silenciosamente.
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_dup_refund", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarPago();
-        pagamento.MarcarEstornado(); // já processado
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_dup_refund", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
+        pagamento.MarcarEstornado(TestData.Agora); // já processado
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_dup_refund", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -441,8 +442,8 @@ public class ProcessarWebhookStripeHandlerTests
     {
         // Estado inconsistente: refund de Pagamento Pendente. Stripe não deveria mandar
         // mas o defensivo é warn + no-op — não estourar exception (Stripe retentaria).
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_pend_refund", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_pend_refund", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_pend_refund", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -473,13 +474,13 @@ public class ProcessarWebhookStripeHandlerTests
     public async Task HandleAsync_ChargeDisputeCreated_PagamentoPago_MarcaEmDisputaEForcaAssinaturaInadimplente()
     {
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_dispute", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarPago();
+        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_dispute", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
         pagamento.ClearDomainEvents();
 
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 149.90m, DateTime.UtcNow);
-        assinatura.Ativar();
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        assinatura.Ativar(TestData.Agora);
         assinatura.ClearDomainEvents();
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_dispute", It.IsAny<CancellationToken>()))
@@ -503,9 +504,9 @@ public class ProcessarWebhookStripeHandlerTests
     public async Task HandleAsync_ChargeDisputeCreated_PropagaMotivoParaEvento()
     {
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_dispute_reason", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarPago();
+        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_dispute_reason", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
         pagamento.ClearDomainEvents();
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_dispute_reason", It.IsAny<CancellationToken>()))
@@ -522,10 +523,10 @@ public class ProcessarWebhookStripeHandlerTests
     public async Task HandleAsync_ChargeDisputeCreated_JaEmDisputa_Idempotente_NaoComita()
     {
         // Stripe re-entrega webhook charge.dispute.created — handler absorve silenciosamente.
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_dup_dispute", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarPago();
-        pagamento.MarcarEmDisputa("fraudulent"); // já processado
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_dup_dispute", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
+        pagamento.MarcarEmDisputa("fraudulent", TestData.Agora); // já processado
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_dup_dispute", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -543,8 +544,8 @@ public class ProcessarWebhookStripeHandlerTests
     {
         // Estado inconsistente: disputa de Pagamento Pendente (não há cobrança capturada).
         // Defensivo: warn + no-op — não estourar exception (Stripe retentaria infinitamente).
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_pend_dispute", "qr", "url", DateTime.UtcNow.AddHours(1));
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_pend_dispute", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_pend_dispute", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
@@ -586,9 +587,9 @@ public class ProcessarWebhookStripeHandlerTests
     {
         // Pagamento órfão: marca em disputa pra preservar contabilidade, mas sem assinatura
         // pra congelar — log + commit do Pagamento ainda acontece.
-        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_orphan_dispute", "qr", "url", DateTime.UtcNow.AddHours(1));
-        pagamento.MarcarPago();
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_orphan_dispute", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
         pagamento.ClearDomainEvents();
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_orphan_dispute", It.IsAny<CancellationToken>()))
@@ -610,11 +611,11 @@ public class ProcessarWebhookStripeHandlerTests
         // Cross-account replay: PaymentIntent existe mas pertence a outro Connect account
         var treinadorId = Guid.NewGuid();
         var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow);
-        pagamento.DefinirDadosPix("pi_spoofed", "qr", "url", DateTime.UtcNow.AddHours(1));
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, DateTime.UtcNow);
-        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
-        conta.ConfigurarStripeConnect("acct_correct");
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_spoofed", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow).Value;
+        conta.ConfigurarStripeConnect("acct_correct", TestData.Agora);
 
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_spoofed", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);

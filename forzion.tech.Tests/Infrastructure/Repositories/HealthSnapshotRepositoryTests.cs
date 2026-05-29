@@ -20,7 +20,7 @@ public class HealthSnapshotRepositoryTests(InfrastructureTestFixture fixture)
     public async Task AdicionarAsync_Persiste()
     {
         await LimparAsync();
-        var snapshot = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{}", DateTime.UtcNow);
+        var snapshot = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{}", DateTime.UtcNow).Value;
 
         await using (var ctx = fixture.CreateContext())
         {
@@ -44,7 +44,7 @@ public class HealthSnapshotRepositoryTests(InfrastructureTestFixture fixture)
         {
             for (var i = 0; i < 5; i++)
             {
-                var s = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{}", baseTime.AddMinutes(i));
+                var s = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{}", baseTime.AddMinutes(i)).Value;
                 await ctx.HealthSnapshots.AddAsync(s);
             }
             await ctx.SaveChangesAsync();

@@ -18,7 +18,7 @@ public class HealthReportConfigRepositoryTests(InfrastructureTestFixture fixture
     }
 
     private static HealthReportConfig NovaConfig(bool ativo = true) =>
-        HealthReportConfig.Criar(ativo, Hora, new[] { "admin@forzion.tech" }, true, true, true, true, DateTime.UtcNow);
+        HealthReportConfig.Criar(ativo, Hora, new[] { "admin@forzion.tech" }, true, true, true, true, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task ObterAsync_SemRegistro_RetornaNull()
@@ -67,7 +67,7 @@ public class HealthReportConfigRepositoryTests(InfrastructureTestFixture fixture
         await using (var ctx = fixture.CreateContext())
         {
             var atual = await new HealthReportConfigRepository(ctx).ObterAsync();
-            atual!.Atualizar(true, new TimeOnly(9, 0), new[] { "ops@forzion.tech" }, false, false, false, false);
+            atual!.Atualizar(true, new TimeOnly(9, 0), new[] { "ops@forzion.tech" }, false, false, false, false, DateTime.UtcNow);
             await ctx.SaveChangesAsync();
         }
 
