@@ -23,6 +23,8 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 
 ## AREAS COBERTAS POR SPECIFICATION-*
 Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
+- `specs/specification-model.md` — modelo tático DDD (entidades, factories, VOs, enums, domain events, máquinas de estado, exceções).
+- `specs/specification-backend.md` — backend .NET (camadas Clean Arch, Result, UnitOfWork+dispatch de eventos, validação, DI, middleware/filtros, endpoints, repos, auth/rate-limit).
 - `specs/specification-db.md` — estrutura de banco (29 tabelas, migrations, enums, FKs).
 - `specs/specification-email.md` — fluxo de envio Resend + templates + webhook.
 - `specs/specification-frontend.md` — Next.js App Router, MUI, formulários, validação.
