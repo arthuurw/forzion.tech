@@ -154,3 +154,107 @@ describe("CartaoForm — submit com erro Stripe", () => {
     expect(mockStripe.confirmPayment).not.toHaveBeenCalled();
   });
 });
+
+// ─── F7: Stripe partial mock — args + success + processando ──────────────────
+//
+// Mantemos Elements/PaymentElement mockados (DOM), mas useStripe/useElements
+// retornam OBJETOS REALISTAS (com confirmPayment configuravel). Cobre:
+// - args passados pro confirmPayment (elements ref, return_url, redirect)
+// - happy path (resolve sem error) → onPago chamado
+// - estado "processando" durante await (CircularProgress visivel)
+// - erro generico (sem error.message) → fallback string
+//
+// Stripe.js completo (Elements DOM/clientSecret network) fica out-of-scope —
+// testado em E2E Playwright (F3/F29).
+
+describe("CartaoForm — F7 partial Stripe mock", () => {
+  function realisticStripe(confirmPayment: ReturnType<typeof vi.fn>) {
+    // Objeto realista — mesma shape dos retornos da Stripe.js. Outros metodos
+    // (createToken, retrievePaymentIntent, etc) ficam fora pq o componente nao
+    // usa — adicionar conforme precisar.
+    return { confirmPayment } as never;
+  }
+
+  function realisticElements() {
+    // Container Elements opaco — o componente passa `elements` direto pro
+    // confirmPayment; nao introspecciona. Vazio basta.
+    return {} as never;
+  }
+
+  it("confirmPayment recebe elements + return_url=window.location.href + redirect='if_required'", async () => {
+    const confirmPayment = vi.fn().mockResolvedValue({});
+    const elements = realisticElements();
+    vi.mocked(useStripe).mockReturnValue(realisticStripe(confirmPayment));
+    vi.mocked(useElements).mockReturnValue(elements);
+
+    respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
+    render(<PagamentoCartao pagamentoId="p1" />);
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
+
+    await waitFor(() => expect(confirmPayment).toHaveBeenCalledTimes(1));
+    expect(confirmPayment).toHaveBeenCalledWith({
+      elements,
+      confirmParams: { return_url: window.location.href },
+      redirect: "if_required",
+    });
+  });
+
+  it("success path (Stripe resolve sem error) → onPago é chamado", async () => {
+    const confirmPayment = vi.fn().mockResolvedValue({}); // sem error
+    vi.mocked(useStripe).mockReturnValue(realisticStripe(confirmPayment));
+    vi.mocked(useElements).mockReturnValue(realisticElements());
+
+    const onPago = vi.fn();
+    respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
+    render(<PagamentoCartao pagamentoId="p1" onPago={onPago} />);
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
+
+    await waitFor(() => expect(onPago).toHaveBeenCalledTimes(1));
+  });
+
+  it("durante submit (confirmPayment pendente) → mostra CircularProgress + botao disabled", async () => {
+    // Promessa controlada — segura o estado "processando" pra observar.
+    let resolveConfirm: (v: object) => void = () => {};
+    const confirmPayment = vi.fn(
+      () => new Promise<object>((r) => { resolveConfirm = r; }),
+    );
+    vi.mocked(useStripe).mockReturnValue(realisticStripe(confirmPayment));
+    vi.mocked(useElements).mockReturnValue(realisticElements());
+
+    respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
+    render(<PagamentoCartao pagamentoId="p1" />);
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
+
+    // Loading do submit (CircularProgress aparece DENTRO do botao "Pagar").
+    await waitFor(() => {
+      expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    });
+    // Botao disabled durante processando — query por type submit pra
+    // diferenciar do botao "Pagar" inicial.
+    const submitBtn = screen.getByRole("button");
+    expect(submitBtn).toBeDisabled();
+
+    // Libera o promise pra cleanup.
+    resolveConfirm({});
+  });
+
+  it("erro sem message → fallback 'Erro ao processar pagamento.'", async () => {
+    const confirmPayment = vi.fn().mockResolvedValue({ error: {} });
+    vi.mocked(useStripe).mockReturnValue(realisticStripe(confirmPayment));
+    vi.mocked(useElements).mockReturnValue(realisticElements());
+
+    respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
+    render(<PagamentoCartao pagamentoId="p1" />);
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
+
+    expect(await screen.findByText("Erro ao processar pagamento.")).toBeInTheDocument();
+  });
+});

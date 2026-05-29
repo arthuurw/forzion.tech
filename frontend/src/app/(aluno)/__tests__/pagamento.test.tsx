@@ -161,6 +161,57 @@ describe("PagamentoPix", () => {
     // Re-renders nao disparam fetch novo (efeito depende so de pagamentoId).
     expect(tracker.count).toBe(initial);
   });
+
+  // F26 — unmount durante polling não pode deixar interval pendurado.
+  // Sem o cleanup do useEffect (clearInterval no return + active flag), o
+  // setInterval continuaria chamando carregar() após unmount → memory leak
+  // (closure + fetch agendado) + setState em componente desmontado (warn).
+  it("unmount após mount → clearInterval roda e fetch posterior não setState", async () => {
+    const clearSpy = vi.spyOn(globalThis, "clearInterval");
+    const tracker = countPagamentoCalls();
+    server.use(
+      http.get("*/aluno/pagamentos/:id", () => HttpResponse.json(makePagamento())),
+    );
+
+    const { unmount } = render(<PagamentoPix pagamentoId="pay-1" />);
+    expect(await screen.findByText("Pague via Pix")).toBeInTheDocument();
+
+    const callsBeforeUnmount = tracker.count;
+    unmount();
+
+    // clearInterval foi chamado pelo cleanup do useEffect.
+    expect(clearSpy).toHaveBeenCalled();
+
+    // Após unmount, mesmo se uma resposta pendente resolvesse, o `active`
+    // flag impede setState. Não há fetch novo agendado.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(tracker.count).toBe(callsBeforeUnmount);
+
+    clearSpy.mockRestore();
+  });
+
+  // Variante: unmount com fetch in-flight (resposta nunca chega). Cleanup
+  // ainda deve rodar sem erro — `active = false` previne setState quando/se
+  // a Promise eventualmente resolve.
+  it("unmount mid-fetch (response hanging) → sem warn, sem setState", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    hangPagamento();
+
+    const { unmount } = render(<PagamentoPix pagamentoId="pay-1" />);
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+
+    unmount();
+    // Aguarda o microtask queue drenar — se o cleanup falhasse, React logaria
+    // "Can't perform a React state update on an unmounted component".
+    await new Promise((r) => setTimeout(r, 100));
+
+    const warnedAboutUnmount = errorSpy.mock.calls.some((c) =>
+      String(c[0]).includes("unmounted component"),
+    );
+    expect(warnedAboutUnmount).toBe(false);
+
+    errorSpy.mockRestore();
+  });
 });
 
 // ─── PagamentosTreinadorPage ──────────────────────────────────────────────────
