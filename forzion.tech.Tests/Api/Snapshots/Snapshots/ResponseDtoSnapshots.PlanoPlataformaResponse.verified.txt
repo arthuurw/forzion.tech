@@ -1,0 +1,11 @@
+﻿{
+  PlanoId: 11111111-1111-1111-1111-111111111111,
+  Nome: Pro,
+  Tier: Pro,
+  MaxAlunos: 50,
+  Preco: 299.90,
+  IsAtivo: true,
+  CreatedAt: 2026-01-01 08:00 Utc,
+  UpdatedAt: 2026-01-02 09:30 Utc,
+  Descricao: Plano profissional
+}

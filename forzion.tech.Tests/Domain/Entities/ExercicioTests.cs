@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -15,7 +16,7 @@ public class ExercicioTests
     [Fact]
     public void Criar_DadosValidos_ComTreinador_RetornaExercicio()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscularId, DateTime.UtcNow, TreinadorId);
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId);
         e.Nome.Should().Be("Supino");
         e.GrupoMuscularId.Should().Be(GrupoMuscularId);
         e.TreinadorId.Should().Be(TreinadorId);
@@ -26,7 +27,7 @@ public class ExercicioTests
     [Fact]
     public void Criar_SemTreinador_RetornaExercicioGlobal()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscularId, DateTime.UtcNow);
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora);
         e.TreinadorId.Should().BeNull();
         e.IsGlobal.Should().BeTrue();
     }
@@ -36,35 +37,35 @@ public class ExercicioTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => Exercicio.Criar(nome, GrupoMuscularId, DateTime.UtcNow, TreinadorId);
+        var act = () => Exercicio.Criar(nome, GrupoMuscularId, TestData.Agora, TreinadorId);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => Exercicio.Criar(new string('a', 101), GrupoMuscularId, DateTime.UtcNow, TreinadorId);
+        var act = () => Exercicio.Criar(new string('a', 101), GrupoMuscularId, TestData.Agora, TreinadorId);
         act.Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Criar_GrupoMuscularVazio_LancaDomainException()
     {
-        var act = () => Exercicio.Criar("Supino", Guid.Empty, DateTime.UtcNow, TreinadorId);
+        var act = () => Exercicio.Criar("Supino", Guid.Empty, TestData.Agora, TreinadorId);
         act.Should().Throw<DomainException>().WithMessage("O grupo muscular é obrigatório.");
     }
 
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => Exercicio.Criar("Supino", GrupoMuscularId, DateTime.UtcNow, Guid.Empty);
+        var act = () => Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, Guid.Empty);
         act.Should().Throw<DomainException>().WithMessage("O identificador do treinador é inválido.");
     }
 
     [Fact]
     public void Criar_DescricaoMuitoLonga_LancaDomainException()
     {
-        var act = () => Exercicio.Criar("Supino", GrupoMuscularId, DateTime.UtcNow, TreinadorId, new string('a', 501));
+        var act = () => Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId, new string('a', 501));
         act.Should().Throw<DomainException>();
     }
 
@@ -73,7 +74,7 @@ public class ExercicioTests
     [Fact]
     public void Atualizar_DadosValidos_AtualizaCampos()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscularId, DateTime.UtcNow, TreinadorId);
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId);
         e.Atualizar("Supino Reto", OutroGrupoMuscularId, "Descrição");
         e.Nome.Should().Be("Supino Reto");
         e.GrupoMuscularId.Should().Be(OutroGrupoMuscularId);
@@ -84,7 +85,7 @@ public class ExercicioTests
     [Fact]
     public void Atualizar_DescricaoVazia_LimpaDescricao()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscularId, DateTime.UtcNow, TreinadorId, "Desc");
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId, "Desc");
         e.Atualizar(null, null, "");
         e.Descricao.Should().BeNull();
     }
@@ -92,7 +93,7 @@ public class ExercicioTests
     [Fact]
     public void Atualizar_NomeVazio_LancaDomainException()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscularId, DateTime.UtcNow, TreinadorId);
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId);
         var act = () => e.Atualizar("", null, null);
         act.Should().Throw<DomainException>();
     }
@@ -100,7 +101,7 @@ public class ExercicioTests
     [Fact]
     public void Atualizar_GrupoMuscularVazio_LancaDomainException()
     {
-        var e = Exercicio.Criar("Supino", GrupoMuscularId, DateTime.UtcNow, TreinadorId);
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId);
         var act = () => e.Atualizar(null, Guid.Empty, null);
         act.Should().Throw<DomainException>().WithMessage("O grupo muscular é obrigatório.");
     }

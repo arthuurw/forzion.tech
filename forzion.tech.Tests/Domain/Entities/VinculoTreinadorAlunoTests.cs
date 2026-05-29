@@ -2,6 +2,7 @@ using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -15,7 +16,7 @@ public class VinculoTreinadorAlunoTests
     [Fact]
     public void Criar_DadosValidos_RetornaVinculo()
     {
-        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, DateTime.UtcNow);
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora);
 
         v.Id.Should().NotBeEmpty();
         v.TreinadorId.Should().Be(TreinadorId);
@@ -30,14 +31,14 @@ public class VinculoTreinadorAlunoTests
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => VinculoTreinadorAluno.Criar(Guid.Empty, AlunoId, DateTime.UtcNow);
+        var act = () => VinculoTreinadorAluno.Criar(Guid.Empty, AlunoId, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador do treinador é inválido.");
     }
 
     [Fact]
     public void Criar_AlunoIdVazio_LancaDomainException()
     {
-        var act = () => VinculoTreinadorAluno.Criar(TreinadorId, Guid.Empty, DateTime.UtcNow);
+        var act = () => VinculoTreinadorAluno.Criar(TreinadorId, Guid.Empty, TestData.Agora);
         act.Should().Throw<DomainException>().WithMessage("O identificador do aluno é inválido.");
     }
 
@@ -46,7 +47,7 @@ public class VinculoTreinadorAlunoTests
     [Fact]
     public void Aprovar_AguardandoAprovacao_MudaParaAtivo()
     {
-        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, DateTime.UtcNow);
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora);
         var pacoteId = Guid.NewGuid();
 
         v.Aprovar(TreinadorId, pacoteId);
@@ -61,7 +62,7 @@ public class VinculoTreinadorAlunoTests
     [Fact]
     public void Aprovar_JaAtivo_LancaDomainException()
     {
-        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, DateTime.UtcNow);
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora);
         v.Aprovar(TreinadorId, Guid.NewGuid());
 
         var act = () => v.Aprovar(TreinadorId, Guid.NewGuid());
@@ -71,7 +72,7 @@ public class VinculoTreinadorAlunoTests
     [Fact]
     public void Aprovar_PacoteIdVazio_LancaDomainException()
     {
-        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, DateTime.UtcNow);
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora);
         var act = () => v.Aprovar(TreinadorId, Guid.Empty);
         act.Should().Throw<DomainException>().WithMessage("O identificador do pacote é inválido.");
     }
@@ -81,7 +82,7 @@ public class VinculoTreinadorAlunoTests
     [Fact]
     public void Inativar_Ativo_MudaParaInativo()
     {
-        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, DateTime.UtcNow);
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora);
         v.Aprovar(TreinadorId, Guid.NewGuid());
 
         v.Inativar();
@@ -93,7 +94,7 @@ public class VinculoTreinadorAlunoTests
     [Fact]
     public void Inativar_JaInativo_LancaDomainException()
     {
-        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, DateTime.UtcNow);
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora);
         v.Aprovar(TreinadorId, Guid.NewGuid());
         v.Inativar();
 
@@ -104,7 +105,7 @@ public class VinculoTreinadorAlunoTests
     [Fact]
     public void Inativar_AguardandoAprovacao_MudaParaInativo()
     {
-        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, DateTime.UtcNow);
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora);
         v.Inativar();
         v.Status.Should().Be(VinculoStatus.Inativo);
     }

@@ -1,0 +1,4 @@
+﻿{
+  OnboardingCompleto: true,
+  ContaConfigurada: true
+}
