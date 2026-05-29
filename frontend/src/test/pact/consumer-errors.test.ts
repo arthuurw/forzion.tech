@@ -1,5 +1,6 @@
 /**
- * Contratos consumer-driven — error paths (F5 fase 3 test remediation).
+ * Contratos consumer-driven — error paths (F5 fase 3 + F5b fase 4 test
+ * remediation).
  *
  * Espelha consumer.test.ts (happy 200) pra status 401/404/500 nos 4 endpoints
  * cobertos. Garante que o backend mantem shape estavel de ProblemDetails (RFC
@@ -12,16 +13,11 @@
  * O apiClient lanca AxiosError em non-2xx; o consumer le err.response.data.
  *
  * ── Publicacao ───────────────────────────────────────────────────────────────
- * Output em diretorio SEPARADO (`pacts-errors/`) e NAO publicado no broker
- * enquanto o provider (`ForzionApiProviderTests.cs`) nao implementar state
- * handlers (`WithProviderStateUrl`) — sem isso, o verifier do .NET reverte
- * pra resposta 200 dos mocks e a verificacao quebraria todos os 12 erros.
- *
- * O `contract.yml` faz upload de `frontend/pacts/*.json` apenas; arquivos
- * sob `pacts-errors/` ficam LOCAIS. Promover a `pacts/` quando provider
- * state handlers estiverem prontos (backlog Fase 4).
+ * F5b (fase 4): provider state handlers implementados em
+ * ForzionApiProviderTests.cs — o middleware ProviderStateMiddleware mapeia
+ * states em ProblemDetails matching. Contratos agora publicam pro broker
+ * principal (`pacts/`); CI verifica via pact-provider workflow.
  */
-import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { PactV3, MatchersV3 } from "@pact-foundation/pact";
 import type { AxiosError } from "axios";
@@ -29,9 +25,7 @@ import { apiClient } from "@/lib/api/client";
 import { alunoApi } from "@/lib/api/aluno";
 import { contaApi } from "@/lib/api/conta";
 import { adminApi } from "@/lib/api/admin";
-import { CONSUMER, PROVIDER } from "./support/pact-config";
-
-const ERRORS_DIR = path.resolve(process.cwd(), "pacts-errors");
+import { CONSUMER, PROVIDER, PACT_DIR } from "./support/pact-config";
 
 const { like, integer, string } = MatchersV3;
 
@@ -41,7 +35,7 @@ afterEach(() => {
 });
 
 function newPact() {
-  return new PactV3({ consumer: CONSUMER, provider: PROVIDER, dir: ERRORS_DIR, logLevel: "warn" });
+  return new PactV3({ consumer: CONSUMER, provider: PROVIDER, dir: PACT_DIR, logLevel: "warn" });
 }
 
 function problemDetails(status: number, title: string, instance: string) {
