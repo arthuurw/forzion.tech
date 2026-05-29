@@ -1171,6 +1171,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
         public Mock<ListarAlunosHandler> ListarAlunosHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ListarAlunosHandler>>());
 
         public Mock<ListarVinculosHandler> ListarVinculosHandlerMock { get; } = new(

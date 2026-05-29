@@ -49,7 +49,15 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Test", UserId.ToString());
+            new AuthenticationHeaderValue("Test", "treinador");
+        return client;
+    }
+
+    private HttpClient CriarClienteAluno()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Test", "aluno");
         return client;
     }
 
@@ -337,6 +345,45 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    // --- Authorization policy tests (Treinador policy on group) ---
+
+    [Fact]
+    public async Task Post_Criar_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().PostAsJsonAsync("/treinos",
+            new { nome = "X", objetivo = ObjetivoTreino.Hipertrofia });
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Get_Obter_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().GetAsync($"/treinos/{TreinoId}");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Patch_Atualizar_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().PatchAsJsonAsync($"/treinos/{TreinoId}", new { nome = "X" });
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Delete_Excluir_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().DeleteAsync($"/treinos/{TreinoId}");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Post_RegistrarExecucao_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().PostAsJsonAsync($"/treinos/{TreinoId}/execucoes",
+            new { alunoId = Guid.NewGuid(), dataExecucao = DateTime.UtcNow, observacao = (string?)null, exercicios = Array.Empty<object>() });
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     // --- WebApplicationFactory ---
 
     public class TreinoWebFactory : WebApplicationFactory<Program>
@@ -480,8 +527,37 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             if (string.IsNullOrEmpty(header))
                 return Task.FromResult(AuthenticateResult.Fail("Sem token"));
 
-            var userId = header.Replace("Test ", "");
-            var claims = new[] { new Claim("sub", userId) };
+            var param = header.Replace("Test ", "");
+
+            string tipoConta;
+            string userId;
+
+            if (param == "treinador")
+            {
+                tipoConta = "Treinador";
+                userId = TreinadorId.ToString();
+            }
+            else if (param == "aluno")
+            {
+                tipoConta = "Aluno";
+                userId = Guid.NewGuid().ToString();
+            }
+            else if (param == "admin")
+            {
+                tipoConta = "SystemAdmin";
+                userId = Guid.NewGuid().ToString();
+            }
+            else
+            {
+                return Task.FromResult(AuthenticateResult.Fail("Token inválido"));
+            }
+
+            var claims = new[]
+            {
+                new Claim("sub", userId),
+                new Claim("tipo_conta", tipoConta),
+                new Claim("perfil_id", TreinadorId.ToString()),
+            };
             var identity = new ClaimsIdentity(claims, "Test");
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, "Test");
