@@ -6,7 +6,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;

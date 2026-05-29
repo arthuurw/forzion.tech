@@ -18,7 +18,7 @@ using forzion.tech.Application.UseCases.Treinos.ObterTreino;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;

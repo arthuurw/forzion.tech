@@ -10,7 +10,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Exercicios;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;

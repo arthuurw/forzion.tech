@@ -1,6 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;

@@ -1,5 +1,5 @@
 using FluentAssertions;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Tests.Application.Results;
 

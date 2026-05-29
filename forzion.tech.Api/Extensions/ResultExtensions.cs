@@ -1,4 +1,4 @@
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Api.Extensions;
 

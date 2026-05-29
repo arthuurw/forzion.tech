@@ -7,7 +7,7 @@ using System.Text.Json;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;

@@ -1,7 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;

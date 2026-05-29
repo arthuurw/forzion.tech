@@ -1,7 +1,7 @@
 using System.Data;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;

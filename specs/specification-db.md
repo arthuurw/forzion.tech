@@ -44,7 +44,7 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - MetodoPagamento (pagamentos.metodo_pagamento, default Pix): Pix|Cartao
 - TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador
 - StatusSaude (health_snapshots.status_geral): Ok|Degradado|Falha
-- GrupoMuscular (seed de grupos_musculares; não é coluna): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
+- TipoGrupoMuscular (enum; seed de grupos_musculares; não é coluna — entidade `GrupoMuscular` é distinta): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
 
 ## TABELAS
 
