@@ -34,5 +34,9 @@ public class ContaConfiguration : IEntityTypeConfiguration<Conta>
 
         builder.Property(c => c.CreatedAt).HasColumnName("created_at");
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at");
+
+        builder.Property(c => c.AnonimizadaEm)
+            .HasColumnName("anonimizada_em")
+            .HasColumnType("timestamptz");
     }
 }

@@ -215,6 +215,8 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<ListarAlunosAdminHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Admin.Stats.ObterDashboardStatsHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ExportarDadosPessoaisHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.AnonimizarContaHandler>();
 
         services.AddScoped<ObterHealthReportConfigHandler>();
         services.AddScoped<AtualizarHealthReportConfigHandler>();

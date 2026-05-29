@@ -31,6 +31,7 @@ Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
 - `specs/specification-frontend.md` — Next.js App Router, MUI, formulários, validação.
 - `specs/specification-infrastructure.md` — Hostinger VM, docker-compose, nginx, certbot.
 - `specs/specification-git.md` — workflow git, configs recomendadas, worktree, conventional commits.
+- `specs/specification-lgpd.md` — privacidade LGPD: exportação (portabilidade), exclusão por anonimização, consentimento de cookies (gate Sentry), auditoria, endpoints self/admin.
 - `specs/specification-tests.md` — estratégia/disciplina de testes: princípios inegociáveis (enforcement, co-localização, green intocável, rastreio de contagem, resolução de dependência, detecção data-driven), tipos/isolamento, gates (hooks/CI), thresholds, mutation/contract.
 - `specs/specification-stripe.md` — pagamento Stripe Connect + PaymentIntent Pix/Cartão + webhook + billing mensal + CLI.
 

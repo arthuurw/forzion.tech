@@ -101,6 +101,18 @@ public class Treinador : IHasDomainEvents
         return Result.Success();
     }
 
+    public Result Anonimizar(DateTime agora)
+    {
+        if (Nome == "Usuário anonimizado")
+            return Result.Success();
+
+        Nome = "Usuário anonimizado";
+        Telefone = null;
+        UpdatedAt = agora;
+
+        return Result.Success();
+    }
+
     public Result ValidarParaExclusao()
     {
         if (Status != TreinadorStatus.Inativo)

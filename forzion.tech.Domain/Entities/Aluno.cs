@@ -141,6 +141,31 @@ public class Aluno : IHasDomainEvents
         return Result.Success();
     }
 
+    public Result Anonimizar(DateTime agora)
+    {
+        // Idempotent: already anonymized when nome equals the placeholder.
+        // We use a dedicated sentinel check via a nullable flag-style convention:
+        // Nome placeholder is deterministic enough; any re-scrub would be harmless,
+        // but we guard on Nome to keep idempotency without adding a new property.
+        if (Nome == "Usuário anonimizado")
+            return Result.Success();
+
+        Nome = "Usuário anonimizado";
+        Email = null;
+        Telefone = null;
+        FocoTreino = null;
+        LimitacoesFisicas = null;
+        Doencas = null;
+        ObservacoesAdicionais = null;
+        Finalidade = null;
+        NivelCondicionamento = null;
+        DiasDisponiveis = null;
+        TempoDisponivelMinutos = null;
+        UpdatedAt = agora;
+
+        return Result.Success();
+    }
+
     private Result AlterarEmail(string email)
     {
         if (email.Length == 0)

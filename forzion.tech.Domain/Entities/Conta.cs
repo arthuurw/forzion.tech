@@ -20,6 +20,7 @@ public class Conta : IHasDomainEvents
     public DateTime? VerificadoEm { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
+    public DateTime? AnonimizadaEm { get; private set; }
 
     private Conta() { }
 
@@ -62,5 +63,28 @@ public class Conta : IHasDomainEvents
         EmailVerificado = true;
         VerificadoEm = agora;
         UpdatedAt = agora;
+    }
+
+    public Result Anonimizar(DateTime agora)
+    {
+        if (AnonimizadaEm is not null)
+            return Result.Success();
+
+        var tokenAnon = $"anon+{Guid.NewGuid():N}@anonimizado.local";
+        var emailResult = Email.Criar(tokenAnon);
+        // The format satisfies the Email VO regex — failure here would be a bug, so propagate.
+        if (emailResult.IsFailure)
+            return Result.Failure(emailResult.Error!);
+
+        Email = emailResult.Value;
+        PasswordHash = string.Empty;
+        EmailVerificado = false;
+        VerificadoEm = null;
+        AnonimizadaEm = agora;
+        UpdatedAt = agora;
+
+        _domainEvents.Add(new ContaAnonimizadaEvent(Id, TipoConta, agora));
+
+        return Result.Success();
     }
 }

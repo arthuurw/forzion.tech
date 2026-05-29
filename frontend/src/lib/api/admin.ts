@@ -192,4 +192,21 @@ export const adminApi = {
   getDashboardStats() {
     return apiClient.get<DashboardStatsResponse>("/admin/stats/dashboard");
   },
+
+  // LGPD admin actions
+  /**
+   * Exporta dados pessoais de uma conta (treinador ou aluno) — portabilidade.
+   */
+  exportarDadosConta(contaId: string) {
+    return apiClient.get(`/admin/contas/${contaId}/lgpd/exportar`, {
+      responseType: "blob",
+    });
+  },
+
+  /**
+   * Anonimiza/exclui dados pessoais de uma conta — direito ao esquecimento.
+   */
+  anonimizarConta(contaId: string) {
+    return apiClient.delete(`/admin/contas/${contaId}/lgpd`);
+  },
 };

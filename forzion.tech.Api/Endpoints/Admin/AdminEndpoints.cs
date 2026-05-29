@@ -39,6 +39,7 @@ using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
+using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Domain.Enums;
@@ -543,6 +544,43 @@ public static class AdminEndpoints
         })
         .WithSummary("Lista pacotes de um treinador")
         .Produces<IReadOnlyList<PacoteResponse>>();
+
+        // ── LGPD (admin) ────────────────────────────────────────────────────
+
+        group.MapGet("/contas/{id:guid}/lgpd/exportar", async (
+            Guid id,
+            [FromServices] ExportarDadosPessoaisHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler
+                .HandleAsync(new ExportarDadosPessoaisCommand(id), cancellationToken)
+                .ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Exporta dados pessoais de qualquer conta (portabilidade LGPD - admin)")
+        .Produces<DadosPessoaisExport>(StatusCodes.Status200OK)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/contas/{id:guid}/lgpd", async (
+            Guid id,
+            [FromServices] AnonimizarContaHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler
+                .HandleAsync(new AnonimizarContaCommand(
+                    ContaId: id,
+                    RealizadoPorId: userContext.ContaId,
+                    SenhaAtual: null), cancellationToken)
+                .ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Anonimiza permanentemente uma conta (LGPD - admin). Sem confirmação de senha.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
 
         return endpoints;
     }

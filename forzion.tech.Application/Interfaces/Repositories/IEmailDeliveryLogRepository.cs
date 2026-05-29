@@ -14,4 +14,15 @@ public interface IEmailDeliveryLogRepository
     /// evitar logs duplicados.
     /// </summary>
     Task<bool> ExisteAsync(string resendMessageId, string eventType, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists all delivery logs for the given recipient email (LGPD export).
+    /// </summary>
+    Task<IReadOnlyList<EmailDeliveryLog>> ListarPorEmailAsync(string email, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Scrubs the recipient e-mail on all logs matching <paramref name="email"/>
+    /// (LGPD anonymization). Replaces RecipientEmail with an anonymized placeholder.
+    /// </summary>
+    Task AnonimizarPorEmailAsync(string email, CancellationToken cancellationToken = default);
 }

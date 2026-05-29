@@ -25,4 +25,18 @@ export const contaApi = {
   alterarSenha(data: AlterarSenhaData) {
     return apiClient.post("/conta/senha", data);
   },
+  /**
+   * LGPD — portabilidade de dados.
+   * Retorna um blob (JSON) com todos os dados pessoais do usuário.
+   */
+  exportarDados() {
+    return apiClient.get("/conta/lgpd/exportar", { responseType: "blob" });
+  },
+  /**
+   * LGPD — direito ao esquecimento.
+   * Exige confirmação de senha. Conta é anonimizada/excluída no backend.
+   */
+  excluirConta(senha: string) {
+    return apiClient.delete("/conta/lgpd", { data: { senha } });
+  },
 };

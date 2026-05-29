@@ -8,14 +8,20 @@ import PersonIcon from "@mui/icons-material/Person";
 import LockIcon from "@mui/icons-material/Lock";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import SecurityIcon from "@mui/icons-material/Security";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ConsentBanner from "@/components/ui/ConsentBanner";
 import { contaApi, type PerfilResponse } from "@/lib/api/conta";
 import { alunoApi } from "@/lib/api/aluno";
 import { apiClient } from "@/lib/api/client";
+import { extractApiError } from "@/lib/api/extractApiError";
+import { useAuth } from "@/lib/auth/context";
 import type { MeuVinculoResponse, TreinadorResponse, PacoteResponse } from "@/types";
 
 export default function PerfilPage() {
+  const { logout } = useAuth();
   const [perfil, setPerfil] = useState<PerfilResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -38,6 +44,13 @@ export default function PerfilPage() {
   const [selectedPacoteTroca, setSelectedPacoteTroca] = useState<PacoteResponse | null>(null);
   const [loadingTrocaPacotes, setLoadingTrocaPacotes] = useState(false);
   const [savingTroca, setSavingTroca] = useState(false);
+
+  // LGPD state
+  const [exportingData, setExportingData] = useState(false);
+  const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
+  const [deleteSenha, setDeleteSenha] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [consentBannerOpen, setConsentBannerOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -102,6 +115,41 @@ export default function PerfilPage() {
       setError("Erro ao solicitar troca de treinador.");
     } finally {
       setSavingTroca(false);
+    }
+  };
+
+  const handleExportarDados = async () => {
+    setExportingData(true);
+    setError("");
+    try {
+      const res = await contaApi.exportarDados();
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "meus-dados.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao exportar dados."));
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleExcluirConta = async () => {
+    if (!deleteSenha.trim()) return;
+    setDeletingAccount(true);
+    setError("");
+    try {
+      await contaApi.excluirConta(deleteSenha);
+      setDeleteAccountDialog(false);
+      await logout();
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir conta. Verifique sua senha."));
+      setDeleteAccountDialog(false);
+    } finally {
+      setDeletingAccount(false);
+      setDeleteSenha("");
     }
   };
 
@@ -308,6 +356,75 @@ export default function PerfilPage() {
           </Stack>
         </CardContent>
       </Card>
+      {/* Privacidade (LGPD) */}
+      <Card sx={{ mt: 2.5, border: "1px solid", borderColor: "divider" }}>
+        <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <SecurityIcon fontSize="small" sx={{ color: "text.secondary" }} />
+            </Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Privacidade (LGPD)</Typography>
+          </Box>
+          <Stack spacing={1.5}>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={exportingData}
+              onClick={handleExportarDados}
+              sx={{ alignSelf: "flex-start" }}
+            >
+              {exportingData ? "Exportando..." : "Exportar meus dados"}
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setConsentBannerOpen(true)}
+              sx={{ alignSelf: "flex-start" }}
+            >
+              Preferências de cookies
+            </Button>
+            <Divider />
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={() => { setDeleteSenha(""); setDeleteAccountDialog(true); }}
+              sx={{ alignSelf: "flex-start" }}
+            >
+              Excluir minha conta
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      {/* LGPD: confirm delete account */}
+      <ConfirmDialog
+        open={deleteAccountDialog}
+        title="Excluir minha conta"
+        description="Esta ação é irreversível. Todos os seus dados serão excluídos permanentemente. Digite sua senha para confirmar."
+        confirmLabel={deletingAccount ? "Excluindo..." : "Excluir conta"}
+        destructive
+        loading={deletingAccount}
+        onConfirm={handleExcluirConta}
+        onClose={() => { setDeleteAccountDialog(false); setDeleteSenha(""); }}
+      >
+        <TextField
+          label="Senha"
+          type="password"
+          value={deleteSenha}
+          onChange={(e) => setDeleteSenha(e.target.value)}
+          size="small"
+          fullWidth
+          sx={{ mt: 2 }}
+          autoComplete="current-password"
+        />
+      </ConfirmDialog>
+
+      {/* LGPD: reopen consent preferences */}
+      {consentBannerOpen && (
+        <ConsentBanner forceOpen onClose={() => setConsentBannerOpen(false)} />
+      )}
+
       <Dialog open={trocaDialog} onClose={() => setTrocaDialog(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Solicitar troca de treinador</DialogTitle>
         <DialogContent>
