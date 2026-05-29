@@ -40,16 +40,17 @@ public class InativarTreinadorHandler(
             return Result.Failure(inativarResult.Error!);
 
         var vinculos = await vinculoRepository.ListarAtivosPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
+        var treinoAlunosBulk = await treinoAlunoRepository.ListarAtivosPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         foreach (var vinculo in vinculos)
         {
             var vinculoResult = vinculo.Inativar(agora);
             if (vinculoResult.IsFailure)
                 return Result.Failure(vinculoResult.Error!);
-            var treinoAlunos = await treinoAlunoRepository.ListarAtivosPorParAsync(command.TreinadorId, vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
-            foreach (var ta in treinoAlunos)
-                ta.AlterarStatus(TreinoAlunoStatus.Inativo, agora);
         }
+
+        foreach (var ta in treinoAlunosBulk)
+            ta.AlterarStatus(TreinoAlunoStatus.Inativo, agora);
 
         var pacotes = await pacoteRepository.ListarAtivosPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
         foreach (var pacote in pacotes)

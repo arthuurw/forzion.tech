@@ -1,7 +1,9 @@
 using FluentAssertions;
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -10,12 +12,15 @@ namespace forzion.tech.Tests.Application;
 public class ListarAlunosHandlerTests
 {
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<ListarAlunosHandler>> _logger = new();
     private readonly ListarAlunosHandler _handler;
 
     public ListarAlunosHandlerTests()
     {
-        _handler = new ListarAlunosHandler(_alunoRepo.Object, _logger.Object);
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.IsTreinador).Returns(true);
+        _handler = new ListarAlunosHandler(_alunoRepo.Object, _userContext.Object, _logger.Object);
     }
 
     [Fact]
@@ -56,5 +61,32 @@ public class ListarAlunosHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_Aluno_LancaAcessoNegadoException()
+    {
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.IsTreinador).Returns(false);
+
+        var act = async () => await _handler.HandleAsync(new ListarAlunosQuery(Guid.NewGuid()));
+
+        await act.Should().ThrowAsync<AcessoNegadoException>();
+        _alunoRepo.Verify(r => r.ListarPorTreinadorAsync(
+            It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SystemAdmin_AcessaQualquerTreinador()
+    {
+        var treinadorId = Guid.NewGuid();
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
+        _userContext.Setup(c => c.IsTreinador).Returns(false);
+        _alunoRepo.Setup(r => r.ListarPorTreinadorAsync(treinadorId, 1, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Aluno>)[], 0));
+
+        var act = async () => await _handler.HandleAsync(new ListarAlunosQuery(treinadorId));
+
+        await act.Should().NotThrowAsync();
     }
 }

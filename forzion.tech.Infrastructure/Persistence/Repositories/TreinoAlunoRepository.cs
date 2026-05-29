@@ -26,6 +26,13 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<TreinoAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await _context.TreinoAlunos
+            .Where(ta => ta.Status == TreinoAlunoStatus.Ativo &&
+                         _context.Treinos.Any(t => t.Id == ta.TreinoId && t.TreinadorId == treinadorId))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<TreinoAluno>> ListarAtivosPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
         await _context.TreinoAlunos
             .Where(ta => ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo)
