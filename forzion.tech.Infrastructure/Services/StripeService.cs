@@ -15,6 +15,18 @@ public class StripeService(
     // C4: Chave passada explicitamente em cada chamada — sem dependência de estado global
     private RequestOptions RequestOptions => new() { ApiKey = _settings.SecretKey };
 
+    /// <summary>
+    /// Belt-and-suspenders sobre F12 (serializable tx app-side): Stripe-Idempotency-Key
+    /// garante que retry de network/transport NÃO crie 2º PaymentIntent. Stripe responde
+    /// idêntico até 24h depois com a mesma key. Key = `pagamento-{guid_n}` é único e
+    /// estável por pagamento (re-criar Pagamento gera novo Guid → nova key).
+    /// </summary>
+    private RequestOptions PaymentIntentRequestOptions(Guid pagamentoId) => new()
+    {
+        ApiKey = _settings.SecretKey,
+        IdempotencyKey = $"pagamento-{pagamentoId:N}"
+    };
+
     public async Task<string> CriarContaConnectAsync(string email, string nome, CancellationToken cancellationToken = default)
     {
         var service = new AccountService();
@@ -90,7 +102,7 @@ public class StripeService(
             },
         };
 
-        var intent = await service.CreateAsync(options, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var intent = await service.CreateAsync(options, requestOptions: PaymentIntentRequestOptions(pagamentoId), cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var pix = intent.NextAction?.PixDisplayQrCode
             ?? throw new InvalidOperationException("Stripe não retornou dados Pix.");
@@ -128,7 +140,7 @@ public class StripeService(
             },
         };
 
-        var intent = await service.CreateAsync(options, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var intent = await service.CreateAsync(options, requestOptions: PaymentIntentRequestOptions(pagamentoId), cancellationToken: cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("PaymentIntent Cartão {IntentId} criado para conta {AccountId}.", intent.Id, stripeAccountId);
 
@@ -154,5 +166,67 @@ public class StripeService(
             logger.LogWarning(ex, "Webhook Stripe inválido: {Message}.", ex.Message);
             return Task.FromResult(false);
         }
+    }
+
+    // Teto duro: 1000 eventos por execução. Janela default = 7d, com volume normal de webhooks
+    // pagáveis por treinador isso é folgado; passa de 1000 e algo está muito errado (ou janela
+    // foi pedida grande demais) — preferimos truncar e logar a perder controle.
+    private const int MaxEventosPorExecucao = 1000;
+
+    private static readonly string[] TiposReconciliaveis =
+    [
+        "payment_intent.succeeded",
+        "payment_intent.payment_failed",
+        "payment_intent.canceled",
+        "account.updated",
+    ];
+
+    public async Task<IReadOnlyList<StripeEventSummary>> ListarEventosDesdeAsync(
+        DateTime desdeUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var service = new EventService();
+        var options = new EventListOptions
+        {
+            // Created.GreaterThanOrEqual aceita DateTime UTC; Stripe.net converte pra unix internally.
+            Created = new DateRangeOptions
+            {
+                GreaterThanOrEqual = DateTime.SpecifyKind(desdeUtc, DateTimeKind.Utc),
+            },
+            Types = [.. TiposReconciliaveis],
+            Limit = 100,
+        };
+
+        var coletados = new List<StripeEventSummary>();
+
+        // ListAutoPagingAsync resolve cursor pagination transparentemente.
+        // Stripe.net default page size = 100; cap externo em MaxEventosPorExecucao.
+        await foreach (var evt in service.ListAutoPagingAsync(options, RequestOptions, cancellationToken).ConfigureAwait(false))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            coletados.Add(new StripeEventSummary(
+                EventId: evt.Id,
+                Type: evt.Type,
+                PayloadRaw: evt.ToJson(),
+                Created: DateTime.SpecifyKind(evt.Created, DateTimeKind.Utc)));
+
+            if (coletados.Count >= MaxEventosPorExecucao)
+            {
+                logger.LogWarning(
+                    "Reconciliação Stripe atingiu teto de {Max} eventos (desde {Desde:o}). Truncando varredura.",
+                    MaxEventosPorExecucao, desdeUtc);
+                break;
+            }
+        }
+
+        // Stripe retorna em ordem DESC; reordena ASC para replays seguirem cronologia natural.
+        coletados.Sort((a, b) => a.Created.CompareTo(b.Created));
+
+        logger.LogInformation(
+            "Stripe Events.List retornou {Count} eventos relevantes desde {Desde:o}.",
+            coletados.Count, desdeUtc);
+
+        return coletados;
     }
 }

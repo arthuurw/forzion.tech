@@ -27,30 +27,45 @@ public class ProcessarWebhookStripeHandler(
 
         var evento = StripeWebhookParser.Parse(command.Payload);
 
+        await ProcessarEventoAsync(evento, cancellationToken).ConfigureAwait(false);
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Núcleo de processamento de evento Stripe — invariante à origem (webhook live ou reconciliação
+    /// via <c>Events.List</c>). Idempotente em todos os ramos via cheques de estado
+    /// (<c>Pagamento.Status != Pendente</c>, <c>ContaRecebimento.OnboardingCompleto</c>).
+    /// </summary>
+    /// <remarks>
+    /// Retorna o tipo de transição aplicada — útil pro reconciliador classificar
+    /// entre <c>Replayed</c> (mudou estado), <c>JaConsistentes</c> (no-op por idempotência ou
+    /// payload sem alvo na base) e <c>Ignorados</c> (tipo desconhecido).
+    /// </remarks>
+    public virtual async Task<ProcessarEventoResultado> ProcessarEventoAsync(
+        StripeWebhookEvento evento,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(evento);
+
         switch (evento.Type)
         {
             case "payment_intent.succeeded":
-                await ProcessarPagamentoPagoAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
-                break;
+                return await ProcessarPagamentoPagoAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
 
             case "payment_intent.payment_failed":
-                await ProcessarPagamentoFalhouAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
-                break;
+                return await ProcessarPagamentoFalhouAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
 
             case "payment_intent.canceled":
-                await ProcessarPagamentoExpiradoAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
-                break;
+                return await ProcessarPagamentoExpiradoAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
 
             case "account.updated":
-                await ProcessarContaAtualizadaAsync(evento.AccountId!, evento.ChargesEnabled, cancellationToken).ConfigureAwait(false);
-                break;
+                return await ProcessarContaAtualizadaAsync(evento.AccountId!, evento.ChargesEnabled, cancellationToken).ConfigureAwait(false);
 
             default:
                 logger.LogDebug("Evento Stripe ignorado: {EventType}.", evento.Type);
-                break;
+                return ProcessarEventoResultado.Ignorado;
         }
-
-        return Result.Success();
     }
 
     /// <summary>
@@ -85,23 +100,23 @@ public class ProcessarWebhookStripeHandler(
         return true;
     }
 
-    private async Task ProcessarPagamentoPagoAsync(string paymentIntentId, string? eventAccountId, CancellationToken ct)
+    private async Task<ProcessarEventoResultado> ProcessarPagamentoPagoAsync(string paymentIntentId, string? eventAccountId, CancellationToken ct)
     {
         var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
         if (pagamento is null)
         {
             logger.LogWarning("PaymentIntent {PaymentIntentId} não encontrado.", paymentIntentId);
-            return;
+            return ProcessarEventoResultado.JaConsistente;
         }
 
         if (!await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false))
-            return;
+            return ProcessarEventoResultado.JaConsistente;
 
         // Idempotência: Stripe entrega at-least-once; segundo disparo não deve retornar 500
         if (pagamento.Status != PagamentoStatus.Pendente)
         {
             logger.LogDebug("PaymentIntent {PaymentIntentId} já processado (status: {Status}). Ignorando re-entrega.", paymentIntentId, pagamento.Status);
-            return;
+            return ProcessarEventoResultado.JaConsistente;
         }
 
         pagamento.MarcarPago();
@@ -120,20 +135,21 @@ public class ProcessarWebhookStripeHandler(
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("Pagamento {PagamentoId} marcado como pago.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task ProcessarPagamentoFalhouAsync(string paymentIntentId, string? eventAccountId, CancellationToken ct)
+    private async Task<ProcessarEventoResultado> ProcessarPagamentoFalhouAsync(string paymentIntentId, string? eventAccountId, CancellationToken ct)
     {
         var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
-        if (pagamento is null) return;
+        if (pagamento is null) return ProcessarEventoResultado.JaConsistente;
 
         if (!await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false))
-            return;
+            return ProcessarEventoResultado.JaConsistente;
 
         if (pagamento.Status != PagamentoStatus.Pendente)
         {
             logger.LogDebug("PaymentIntent {PaymentIntentId} já processado (status: {Status}). Ignorando re-entrega.", paymentIntentId, pagamento.Status);
-            return;
+            return ProcessarEventoResultado.JaConsistente;
         }
 
         pagamento.MarcarFalhou();
@@ -150,36 +166,56 @@ public class ProcessarWebhookStripeHandler(
         }
 
         logger.LogInformation("Pagamento {PagamentoId} marcado como falhou.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task ProcessarPagamentoExpiradoAsync(string paymentIntentId, string? eventAccountId, CancellationToken ct)
+    private async Task<ProcessarEventoResultado> ProcessarPagamentoExpiradoAsync(string paymentIntentId, string? eventAccountId, CancellationToken ct)
     {
         var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
-        if (pagamento is null) return;
+        if (pagamento is null) return ProcessarEventoResultado.JaConsistente;
 
         if (!await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false))
-            return;
+            return ProcessarEventoResultado.JaConsistente;
 
         if (pagamento.Status != PagamentoStatus.Pendente)
         {
             logger.LogDebug("PaymentIntent {PaymentIntentId} já processado (status: {Status}). Ignorando re-entrega.", paymentIntentId, pagamento.Status);
-            return;
+            return ProcessarEventoResultado.JaConsistente;
         }
 
         pagamento.MarcarExpirado();
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("Pagamento {PagamentoId} marcado como expirado.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task ProcessarContaAtualizadaAsync(string accountId, bool chargesEnabled, CancellationToken ct)
+    private async Task<ProcessarEventoResultado> ProcessarContaAtualizadaAsync(string accountId, bool chargesEnabled, CancellationToken ct)
     {
-        if (!chargesEnabled) return;
+        if (!chargesEnabled) return ProcessarEventoResultado.JaConsistente;
 
         var contaRecebimento = await contaRecebimentoRepository.ObterPorStripeAccountIdAsync(accountId, ct).ConfigureAwait(false);
-        if (contaRecebimento is null || contaRecebimento.OnboardingCompleto) return;
+        if (contaRecebimento is null || contaRecebimento.OnboardingCompleto) return ProcessarEventoResultado.JaConsistente;
 
         contaRecebimento.ConfirmarOnboarding();
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("Onboarding confirmado via webhook para treinador {TreinadorId}.", contaRecebimento.TreinadorId);
+        return ProcessarEventoResultado.Aplicado;
     }
+}
+
+/// <summary>
+/// Classificação do resultado de <see cref="ProcessarWebhookStripeHandler.ProcessarEventoAsync"/>.
+/// Usado pelo reconciliador para contar replays vs. no-ops sem precisar inspecionar o estado
+/// de cada pagamento.
+/// </summary>
+public enum ProcessarEventoResultado
+{
+    /// <summary>Mudou estado (Pagamento Pendente→Pago/Falhou/Expirado ou Onboarding confirmado).</summary>
+    Aplicado,
+
+    /// <summary>No-op: já estava no estado correto, alvo não existe, ou cross-account rejeitado.</summary>
+    JaConsistente,
+
+    /// <summary>Tipo de evento não tratado pela plataforma.</summary>
+    Ignorado,
 }
