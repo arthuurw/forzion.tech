@@ -60,7 +60,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         _factory.CriarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarTreinoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TreinoResp);
+            .ReturnsAsync(Result.Success(TreinoResp));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/treinos",
             new { alunoId = Guid.NewGuid(), nome = "Treino A", objetivo = ObjetivoTreino.Hipertrofia });
@@ -81,7 +81,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         _factory.CriarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarTreinoCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Aluno indisponível."));
+            .ReturnsAsync(Result.Failure<TreinoResponse>(Error.Business("Aluno indisponível.")));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/treinos",
             new { alunoId = Guid.NewGuid(), nome = "Treino A", objetivo = ObjetivoTreino.Hipertrofia });
@@ -272,7 +272,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         _factory.DuplicarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<DuplicarTreinoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TreinoResp);
+            .ReturnsAsync(Result.Success(TreinoResp));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync(
             $"/treinos/{TreinoId}/duplicar", new { });
@@ -316,7 +316,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Guid.NewGuid(), TreinoId, Guid.NewGuid(), DateTime.UtcNow, null, DateTime.UtcNow);
         _factory.RegistrarExecucaoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(execResp);
+            .ReturnsAsync(Result.Success(execResp));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{TreinoId}/execucoes",
             new { alunoId = Guid.NewGuid(), dataExecucao = DateTime.UtcNow, observacao = (string?)null, exercicios = Array.Empty<object>() });

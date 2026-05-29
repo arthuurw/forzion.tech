@@ -270,7 +270,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ExcluirTreinadorHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/treinadores/{TreinadorId}");
@@ -326,7 +326,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.CriarPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaPlano);
+            .ReturnsAsync(Result.Success(RespostaPlano));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync("/admin/planos", new { nome = "Pro", maxAlunos = 50, preco = 199m });
@@ -369,7 +369,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.CriarGrupoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaGrupo);
+            .ReturnsAsync(Result.Success(RespostaGrupo));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync("/admin/grupos-musculares", new { nome = "Ombros" });
@@ -385,7 +385,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         var atribuido = RespostaTreinador with { PlanoPlataformaId = Guid.NewGuid() };
         _factory.AtribuirPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtribuirPlanoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(atribuido);
+            .ReturnsAsync(Result.Success(atribuido));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = Guid.NewGuid() });
@@ -878,7 +878,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.AtualizarPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaPlano);
+            .ReturnsAsync(Result.Success(RespostaPlano));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/planos/{Guid.NewGuid()}", new { nome = "Pro Plus", maxAlunos = 20, preco = 199m });
@@ -934,7 +934,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.AtualizarGrupoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaGrupo);
+            .ReturnsAsync(Result.Success(RespostaGrupo));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/grupos-musculares/{Guid.NewGuid()}", new { nome = "Ombros" });

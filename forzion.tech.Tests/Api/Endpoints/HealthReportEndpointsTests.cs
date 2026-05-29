@@ -6,6 +6,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.HealthReport;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
@@ -98,7 +99,7 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
     {
         _factory.AtualizarMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarHealthReportConfigCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaConfig);
+            .ReturnsAsync(Result.Success(RespostaConfig));
 
         var response = await ClienteAdmin().PutAsJsonAsync("/admin/health-report/config", RequestValido());
 
@@ -150,7 +151,7 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
     [Fact]
     public async Task Post_Run_Admin_Retorna200()
     {
-        _factory.ExecutarMock.Setup(h => h.HandleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(RespostaSnapshot);
+        _factory.ExecutarMock.Setup(h => h.HandleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Result.Success(RespostaSnapshot));
 
         var response = await ClienteAdmin().PostAsync("/admin/health-report/run", null);
 
@@ -162,7 +163,7 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
     {
         _factory.ExecutarMock
             .Setup(h => h.HandleAsync(It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Configuração de relatório de saúde não encontrada."));
+            .ReturnsAsync(Result.Failure<HealthSnapshotResponse>(Error.Business("Configuração de relatório de saúde não encontrada.")));
 
         var response = await ClienteAdmin().PostAsync("/admin/health-report/run", null);
 

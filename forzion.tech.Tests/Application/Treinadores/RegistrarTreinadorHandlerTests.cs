@@ -37,8 +37,9 @@ public class RegistrarTreinadorHandlerTests
 
         var result = await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "Senha123", "Ana"));
 
-        result.Nome.Should().Be("Ana");
-        result.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Ana");
+        result.Value.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
         _contaRepo.Verify(r => r.AdicionarAsync(It.IsAny<Conta>(), It.IsAny<CancellationToken>()), Times.Once);
         _treinadorRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treinador>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);

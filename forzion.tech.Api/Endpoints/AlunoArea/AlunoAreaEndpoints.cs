@@ -77,7 +77,8 @@ public static class AlunoAreaEndpoints
             var result = await handler.HandleAsync(
                 new SolicitarTrocaTreinadorCommand(userContext.PerfilId, request.NovoTreinadorId, request.PacoteId), cancellationToken);
 
-            return Results.Created($"/aluno/vinculo", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/aluno/vinculo", result.Value);
         })
         .WithSummary("Solicita troca de treinador criando vínculo pendente com o novo treinador")
         .Produces<VinculoResponse>(StatusCodes.Status201Created)
@@ -171,7 +172,8 @@ public static class AlunoAreaEndpoints
                 exercicios);
 
             var result = await handler.HandleAsync(command, cancellationToken);
-            return Results.Created($"/aluno/execucoes/{result.ExecucaoId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/aluno/execucoes/{result.Value.ExecucaoId}", result.Value);
         })
         .AddEndpointFilter<RequireAssinaturaAtivaFilter>()
         .WithSummary("Registra a execução de um treino pelo aluno")

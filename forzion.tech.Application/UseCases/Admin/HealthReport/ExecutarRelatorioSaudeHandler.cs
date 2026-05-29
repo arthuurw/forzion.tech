@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Admin.HealthReport;
 
@@ -13,7 +14,7 @@ public class ExecutarRelatorioSaudeHandler(
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
 {
-    public virtual async Task<HealthSnapshotResponse> HandleAsync(CancellationToken cancellationToken = default)
+    public virtual async Task<Result<HealthSnapshotResponse>> HandleAsync(CancellationToken cancellationToken = default)
     {
         var config = await configRepository.ObterAsync(cancellationToken).ConfigureAwait(false)
             ?? throw new DomainException("Configuração de relatório de saúde não encontrada.");
@@ -23,7 +24,7 @@ public class ExecutarRelatorioSaudeHandler(
 
         var snapshotResult = HealthSnapshot.Criar(report.Ambiente, report.StatusGeral, HealthReportPayload.Serializar(report), agora);
         if (snapshotResult.IsFailure)
-            throw new DomainException(snapshotResult.Error!.Message);
+            return Result.Failure<HealthSnapshotResponse>(snapshotResult.Error!);
         var snapshot = snapshotResult.Value;
 
         await snapshotRepository.AdicionarAsync(snapshot, cancellationToken).ConfigureAwait(false);
@@ -32,6 +33,6 @@ public class ExecutarRelatorioSaudeHandler(
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return HealthSnapshotResponseExtensions.ToResponse(snapshot);
+        return Result.Success(HealthSnapshotResponseExtensions.ToResponse(snapshot));
     }
 }

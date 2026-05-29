@@ -2,7 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
@@ -14,7 +14,7 @@ public class CadastrarAlunoHandler(
     TimeProvider timeProvider,
     ILogger<CadastrarAlunoHandler> logger)
 {
-    public virtual Task<AlunoResponse> HandleAsync(
+    public virtual Task<Result<AlunoResponse>> HandleAsync(
         CadastrarAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -22,7 +22,7 @@ public class CadastrarAlunoHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<AlunoResponse> HandleAsyncCore(
+    private async Task<Result<AlunoResponse>> HandleAsyncCore(
         CadastrarAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -30,7 +30,7 @@ public class CadastrarAlunoHandler(
 
         var alunoResult = Aluno.Criar(command.ContaId, command.Nome, timeProvider.GetUtcNow().UtcDateTime, command.Email, command.Telefone);
         if (alunoResult.IsFailure)
-            throw new DomainException(alunoResult.Error!.Message);
+            return Result.Failure<AlunoResponse>(alunoResult.Error!);
         var aluno = alunoResult.Value;
 
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
@@ -38,7 +38,7 @@ public class CadastrarAlunoHandler(
 
         logger.LogInformation("Aluno {AlunoId} cadastrado.", aluno.Id);
 
-        return ToResponse(aluno);
+        return Result.Success(ToResponse(aluno));
     }
 
     internal static AlunoResponse ToResponse(Aluno aluno) => new(

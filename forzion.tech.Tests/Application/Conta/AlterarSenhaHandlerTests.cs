@@ -49,8 +49,9 @@ public class AlterarSenhaHandlerTests
         _passwordHasher.Setup(h => h.Verify("senha123", conta.PasswordHash)).Returns(true);
         _passwordHasher.Setup(h => h.Hash("nova-senha")).Returns("novo-hash");
 
-        await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
+        var result = await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
 
+        result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

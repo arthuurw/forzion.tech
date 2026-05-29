@@ -51,7 +51,8 @@ public class FluxoCompletoTests
         var result = await handler.HandleAsync(
             new RegistrarTreinadorCommand("treinador@teste.com", "Senha123", "Carlos"));
 
-        result.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
         _treinadorRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treinador>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -134,7 +135,8 @@ public class FluxoCompletoTests
 
         var resultado = await handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinador.Id, pacote.Id));
 
-        resultado.Status.Should().Be(VinculoStatus.Ativo);
+        resultado.IsSuccess.Should().BeTrue();
+        resultado.Value.Status.Should().Be(VinculoStatus.Ativo);
     }
 
     // --- Etapa 5: Vincular Ficha ---
@@ -188,8 +190,9 @@ public class FluxoCompletoTests
         var execucao = await handler.HandleAsync(new RegistrarExecucaoCommand(
             treino.Id, aluno.Id, DateTime.UtcNow, null, []));
 
-        execucao.TreinoId.Should().Be(treino.Id);
-        execucao.AlunoId.Should().Be(aluno.Id);
+        execucao.IsSuccess.Should().BeTrue();
+        execucao.Value.TreinoId.Should().Be(treino.Id);
+        execucao.Value.AlunoId.Should().Be(aluno.Id);
         _execucaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<ExecucaoTreino>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

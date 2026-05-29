@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
@@ -15,7 +16,7 @@ public class VerificarOnboardingTreinadorHandler(
     TimeProvider timeProvider,
     ILogger<VerificarOnboardingTreinadorHandler> logger)
 {
-    public virtual async Task<OnboardingStatusResponse> HandleAsync(
+    public virtual async Task<Result<OnboardingStatusResponse>> HandleAsync(
         VerificarOnboardingTreinadorQuery query,
         CancellationToken cancellationToken = default)
     {
@@ -27,10 +28,10 @@ public class VerificarOnboardingTreinadorHandler(
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(query.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         if (contaRecebimento is null || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
-            return new OnboardingStatusResponse(false, false);
+            return Result.Success(new OnboardingStatusResponse(false, false));
 
         if (contaRecebimento.OnboardingCompleto)
-            return new OnboardingStatusResponse(true, true);
+            return Result.Success(new OnboardingStatusResponse(true, true));
 
         var ativa = await stripeService.ContaEstaAtivadaAsync(
             contaRecebimento.StripeConnectAccountId, cancellationToken).ConfigureAwait(false);
@@ -39,11 +40,11 @@ public class VerificarOnboardingTreinadorHandler(
         {
             var confirmarResult = contaRecebimento.ConfirmarOnboarding(timeProvider.GetUtcNow().UtcDateTime);
             if (confirmarResult.IsFailure)
-                throw new DomainException(confirmarResult.Error!.Message);
+                return Result.Failure<OnboardingStatusResponse>(confirmarResult.Error!);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             logger.LogInformation("Onboarding Stripe confirmado para treinador {TreinadorId}.", query.TreinadorId);
         }
 
-        return new OnboardingStatusResponse(ativa, true);
+        return Result.Success(new OnboardingStatusResponse(ativa, true));
     }
 }

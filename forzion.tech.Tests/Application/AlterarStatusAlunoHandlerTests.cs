@@ -35,7 +35,8 @@ public class AlterarStatusAlunoHandlerTests
         var result = await _handler.HandleAsync(
             new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.Inativo));
 
-        result.Status.Should().Be(AlunoStatus.Inativo);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(AlunoStatus.Inativo);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

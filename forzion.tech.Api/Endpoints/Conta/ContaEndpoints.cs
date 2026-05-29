@@ -1,3 +1,4 @@
+using forzion.tech.Api.Extensions;
 using forzion.tech.Application.UseCases.Conta.AlterarSenha;
 using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
 using forzion.tech.Application.UseCases.Conta.Logout;
@@ -30,7 +31,8 @@ public static class ContaEndpoints
             [FromServices] AtualizarPerfilHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new AtualizarPerfilCommand(request.Nome), cancellationToken).ConfigureAwait(false);
+            var result = await handler.HandleAsync(new AtualizarPerfilCommand(request.Nome), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Atualiza o nome do usuário autenticado")
@@ -45,7 +47,8 @@ public static class ContaEndpoints
             [FromServices] AlterarSenhaHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new AlterarSenhaCommand(request.SenhaAtual, request.NovaSenha), cancellationToken).ConfigureAwait(false);
+            var result = await handler.HandleAsync(new AlterarSenhaCommand(request.SenhaAtual, request.NovaSenha), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Altera a senha do usuário autenticado")
@@ -59,7 +62,8 @@ public static class ContaEndpoints
             [FromServices] LogoutHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            var result = await handler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Revoga o token atual e faz logout")

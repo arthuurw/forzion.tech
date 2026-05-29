@@ -2,7 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Admin.HealthReport;
 
@@ -12,7 +12,7 @@ public class AtualizarHealthReportConfigHandler(
     TimeProvider timeProvider,
     IValidator<AtualizarHealthReportConfigCommand> validator)
 {
-    public virtual Task<HealthReportConfigResponse> HandleAsync(
+    public virtual Task<Result<HealthReportConfigResponse>> HandleAsync(
         AtualizarHealthReportConfigCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -20,7 +20,7 @@ public class AtualizarHealthReportConfigHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<HealthReportConfigResponse> HandleAsyncCore(
+    private async Task<Result<HealthReportConfigResponse>> HandleAsyncCore(
         AtualizarHealthReportConfigCommand command,
         CancellationToken cancellationToken)
     {
@@ -43,7 +43,7 @@ public class AtualizarHealthReportConfigHandler(
                 command.IncluirErros,
                 agora);
             if (configResult.IsFailure)
-                throw new DomainException(configResult.Error!.Message);
+                return Result.Failure<HealthReportConfigResponse>(configResult.Error!);
             config = configResult.Value;
 
             await configRepository.AdicionarAsync(config, cancellationToken).ConfigureAwait(false);
@@ -60,10 +60,10 @@ public class AtualizarHealthReportConfigHandler(
                 command.IncluirErros,
                 agora);
             if (atualizarResult.IsFailure)
-                throw new DomainException(atualizarResult.Error!.Message);
+                return Result.Failure<HealthReportConfigResponse>(atualizarResult.Error!);
         }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-        return HealthReportConfigResponseExtensions.ToResponse(config);
+        return Result.Success(HealthReportConfigResponseExtensions.ToResponse(config));
     }
 }

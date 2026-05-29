@@ -4,6 +4,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +19,7 @@ public class RegistrarTreinadorHandler(
     TimeProvider timeProvider,
     ILogger<RegistrarTreinadorHandler> logger)
 {
-    public virtual Task<TreinadorResponse> HandleAsync(
+    public virtual Task<Result<TreinadorResponse>> HandleAsync(
         RegistrarTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -26,7 +27,7 @@ public class RegistrarTreinadorHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<TreinadorResponse> HandleAsyncCore(
+    private async Task<Result<TreinadorResponse>> HandleAsyncCore(
         RegistrarTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -40,16 +41,16 @@ public class RegistrarTreinadorHandler(
 
         var emailResult = Email.Criar(command.Email);
         if (emailResult.IsFailure)
-            throw new DomainException(emailResult.Error!.Message);
+            return Result.Failure<TreinadorResponse>(emailResult.Error!);
 
         var contaResult = Domain.Entities.Conta.Criar(emailResult.Value, passwordHasher.Hash(command.Senha), TipoConta.Treinador, agora);
         if (contaResult.IsFailure)
-            throw new DomainException(contaResult.Error!.Message);
+            return Result.Failure<TreinadorResponse>(contaResult.Error!);
         var conta = contaResult.Value;
 
         var treinadorResult = Treinador.Criar(conta.Id, command.Nome, agora, command.Telefone);
         if (treinadorResult.IsFailure)
-            throw new DomainException(treinadorResult.Error!.Message);
+            return Result.Failure<TreinadorResponse>(treinadorResult.Error!);
         var treinador = treinadorResult.Value;
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
@@ -58,6 +59,6 @@ public class RegistrarTreinadorHandler(
 
         logger.LogInformation("Treinador {TreinadorId} registrado para conta {ContaId}.", treinador.Id, conta.Id);
 
-        return new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoPlataformaId, treinador.CreatedAt);
+        return Result.Success(new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoPlataformaId, treinador.CreatedAt));
     }
 }

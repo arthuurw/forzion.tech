@@ -78,7 +78,8 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new VerificarOnboardingTreinadorQuery(userContext.PerfilId), cancellationToken).ConfigureAwait(false);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Verifica status do onboarding Stripe do treinador")
         .Produces<OnboardingStatusResponse>();
@@ -95,7 +96,8 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new AprovarVinculoCommand(id, userContext.PerfilId, request.PacoteId, request.TrarFichas), cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Aprova o vínculo de um aluno ao treinador")
         .Produces<VinculoResponse>()
@@ -110,9 +112,10 @@ public static class TreinadorEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(
+            var result = await handler.HandleAsync(
                 new DesvincularAlunoCommand(id, userContext.PerfilId, request.Observacao), cancellationToken);
 
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Desvincula um aluno do treinador")
@@ -129,7 +132,8 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new ReativarVinculoCommand(userContext.PerfilId, alunoId, request.PacoteId), cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Reativa um aluno inativo criando um novo vínculo aprovado")
         .Produces<VinculoResponse>()
@@ -352,7 +356,8 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new CopiarExercicioGlobalCommand(id, userContext.PerfilId), cancellationToken);
 
-            return Results.Created($"/treinador/exercicios/{result.ExercicioId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinador/exercicios/{result.Value.ExercicioId}", result.Value);
         })
         .WithSummary("Copia um exercício global para a biblioteca do treinador")
         .Produces<ExercicioResponse>(StatusCodes.Status201Created)
@@ -416,7 +421,8 @@ public static class TreinadorEndpoints
                 new CriarPacoteCommand(userContext.PerfilId, request.Nome, request.Preco, request.Descricao),
                 cancellationToken);
 
-            return Results.Created($"/treinador/pacotes/{result.PacoteId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinador/pacotes/{result.Value.PacoteId}", result.Value);
         })
         .WithSummary("Cria um novo pacote de fichas para alunos")
         .Produces<PacoteResponse>(StatusCodes.Status201Created)
@@ -433,7 +439,8 @@ public static class TreinadorEndpoints
                 new AtualizarPacoteCommand(userContext.PerfilId, pacoteId, request.Nome, request.Preco, request.Descricao),
                 cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atualiza um pacote de fichas do treinador")
         .Produces<PacoteResponse>()

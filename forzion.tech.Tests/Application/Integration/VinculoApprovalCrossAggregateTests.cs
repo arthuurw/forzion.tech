@@ -113,7 +113,8 @@ public class VinculoApprovalCrossAggregateTests
 
         // ETAPA 1 — AprovarVinculo (Application).
         var result = await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
-        result.Status.Should().Be(VinculoStatus.Ativo);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(VinculoStatus.Ativo);
 
         // O evento foi enfileirado no aggregate. Simula UnitOfWork dispatchando
         // (em prod, esse passo acontece dentro do CommitAsync do UoW real).

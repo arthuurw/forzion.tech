@@ -35,10 +35,11 @@ public class AtualizarHealthReportConfigHandlerTests
 
         var result = await _handler.HandleAsync(Command());
 
-        result.Id.Should().NotBeEmpty();
-        result.Ativo.Should().BeTrue();
-        result.HoraEnvioUtc.Should().Be(new TimeOnly(9, 30));
-        result.Destinatarios.Should().ContainSingle().Which.Should().Be("ops@forzion.tech");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Id.Should().NotBeEmpty();
+        result.Value.Ativo.Should().BeTrue();
+        result.Value.HoraEnvioUtc.Should().Be(new TimeOnly(9, 30));
+        result.Value.Destinatarios.Should().ContainSingle().Which.Should().Be("ops@forzion.tech");
         _repo.Verify(r => r.AdicionarAsync(It.IsAny<HealthReportConfig>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -52,9 +53,10 @@ public class AtualizarHealthReportConfigHandlerTests
 
         var result = await _handler.HandleAsync(Command());
 
-        result.Id.Should().Be(existente.Id);
-        result.Ativo.Should().BeTrue();
-        result.HoraEnvioUtc.Should().Be(new TimeOnly(9, 30));
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Id.Should().Be(existente.Id);
+        result.Value.Ativo.Should().BeTrue();
+        result.Value.HoraEnvioUtc.Should().Be(new TimeOnly(9, 30));
         _repo.Verify(r => r.AdicionarAsync(It.IsAny<HealthReportConfig>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

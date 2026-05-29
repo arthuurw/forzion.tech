@@ -3,7 +3,6 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
 using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -59,8 +58,9 @@ public class CriarAssinaturaAlunoHandlerTests
 
         var result = await _handler.HandleAsync(BuildCommand(treinadorId, pacote.Id));
 
-        result.TreinadorId.Should().Be(treinadorId);
-        result.Valor.Should().Be(199.90m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TreinadorId.Should().Be(treinadorId);
+        result.Value.Valor.Should().Be(199.90m);
         _assinaturaRepo.Verify(r => r.AdicionarAsync(
                 It.Is<AssinaturaAluno>(a => a.Valor == 199.90m),
                 It.IsAny<CancellationToken>()),
@@ -77,9 +77,10 @@ public class CriarAssinaturaAlunoHandlerTests
             .ReturnsAsync(ContaOnboarded(treinadorId));
         var pacote = SetupPacote(outroTreinadorId, preco: 100m);
 
-        var act = async () => await _handler.HandleAsync(BuildCommand(treinadorId, pacote.Id));
+        var result = await _handler.HandleAsync(BuildCommand(treinadorId, pacote.Id));
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*Pacote não pertence ao treinador*");
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("Pacote não pertence ao treinador");
         _assinaturaRepo.Verify(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -92,9 +93,10 @@ public class CriarAssinaturaAlunoHandlerTests
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Pacote?)null);
 
-        var act = async () => await _handler.HandleAsync(BuildCommand(treinadorId, Guid.NewGuid()));
+        var result = await _handler.HandleAsync(BuildCommand(treinadorId, Guid.NewGuid()));
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*Pacote não encontrado*");
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("Pacote não encontrado");
     }
 
     [Fact]
@@ -106,8 +108,10 @@ public class CriarAssinaturaAlunoHandlerTests
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        var act = async () => await _handler.HandleAsync(BuildCommand(treinadorId, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*recebimentos*");
+        var result = await _handler.HandleAsync(BuildCommand(treinadorId, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("recebimentos");
     }
 
     [Fact]
@@ -117,8 +121,10 @@ public class CriarAssinaturaAlunoHandlerTests
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ContaRecebimento?)null);
 
-        var act = async () => await _handler.HandleAsync(BuildCommand(treinadorId, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*recebimentos*");
+        var result = await _handler.HandleAsync(BuildCommand(treinadorId, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("recebimentos");
     }
 
     [Fact]

@@ -39,7 +39,8 @@ public class AtualizarPacoteHandlerTests
 
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Premium");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Premium");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

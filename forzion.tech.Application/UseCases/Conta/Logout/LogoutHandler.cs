@@ -1,7 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Conta.Logout;
@@ -13,7 +13,7 @@ public class LogoutHandler(
     TimeProvider timeProvider,
     ILogger<LogoutHandler> logger)
 {
-    public virtual async Task HandleAsync(CancellationToken cancellationToken = default)
+    public virtual async Task<Result> HandleAsync(CancellationToken cancellationToken = default)
     {
         var jti = userContext.Jti;
         var expiraEm = userContext.TokenExpiraEm;
@@ -22,14 +22,14 @@ public class LogoutHandler(
         if (jti == Guid.Empty || expiraEm <= agora)
         {
             logger.LogWarning("Logout com token sem jti válido ou já expirado.");
-            return;
+            return Result.Success();
         }
 
         try
         {
             var tokenResult = TokenRevogado.Criar(jti, expiraEm, agora);
             if (tokenResult.IsFailure)
-                throw new DomainException(tokenResult.Error!.Message);
+                return Result.Failure(tokenResult.Error!);
 
             await tokenRevogadoRepository
                 .AdicionarAsync(tokenResult.Value, cancellationToken)
@@ -45,5 +45,7 @@ public class LogoutHandler(
             // Token já revogado por logout simultâneo — idempotente
             logger.LogDebug(ex, "Token Jti={Jti} já estava revogado (logout simultâneo).", jti);
         }
+
+        return Result.Success();
     }
 }
