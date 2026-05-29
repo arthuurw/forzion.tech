@@ -1,4 +1,5 @@
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.UseCases.Pagamentos;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
@@ -63,8 +64,7 @@ public class StripeService(
         decimal taxaPlataformaPercent,
         CancellationToken cancellationToken = default)
     {
-        var valorCentavos = (long)(valor * 100);
-        var taxaCentavos = (long)(valorCentavos * taxaPlataformaPercent / 100);
+        var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(valor, taxaPlataformaPercent);
 
         var service = new PaymentIntentService();
         var options = new PaymentIntentCreateOptions
@@ -109,8 +109,7 @@ public class StripeService(
         decimal taxaPlataformaPercent,
         CancellationToken cancellationToken = default)
     {
-        var valorCentavos = (long)(valor * 100);
-        var taxaCentavos = (long)(valorCentavos * taxaPlataformaPercent / 100);
+        var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(valor, taxaPlataformaPercent);
 
         var service = new PaymentIntentService();
         var options = new PaymentIntentCreateOptions
