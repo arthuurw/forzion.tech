@@ -8,6 +8,7 @@ import { pagamentoApi } from "@/lib/api/pagamento";
 import type { AssinaturaAlunoResponse, PagamentoResponse } from "@/types";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const statusColor: Record<string, "default" | "success" | "warning" | "error"> = {
   Ativa: "success",
@@ -16,12 +17,20 @@ const statusColor: Record<string, "default" | "success" | "warning" | "error"> =
   Cancelada: "default",
 };
 
+// Texto verbatim do ConfirmDialog — fonte da verdade para o conteúdo da
+// confirmação (também referenciado pelos testes).
+export const CANCELAR_ASSINATURA_DESCRICAO =
+  "Sua assinatura será cancelada imediatamente. Você não terá mais acesso a novas execuções e fichas serão somente leitura. Esta ação NÃO pode ser desfeita pelo portal — para reativar, contate seu treinador.";
+
 export default function AssinaturaAlunoPage() {
   const [assinatura, setAssinatura] = useState<AssinaturaAlunoResponse | null>(null);
   const [pagamentoPendente, setPagamentoPendente] = useState<PagamentoResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mostrarPix, setMostrarPix] = useState(false);
+  const [confirmarCancelar, setConfirmarCancelar] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [sucesso, setSucesso] = useState("");
 
   const carregar = async () => {
     setLoading(true);
@@ -40,6 +49,21 @@ export default function AssinaturaAlunoPage() {
 
   useEffect(() => { carregar(); }, []);
 
+  const cancelarAssinatura = async () => {
+    setCancelando(true);
+    setError("");
+    try {
+      await pagamentoApi.cancelarMinhaAssinatura();
+      setSucesso("Assinatura cancelada com sucesso.");
+      setConfirmarCancelar(false);
+      await carregar();
+    } catch {
+      setError("Não foi possível cancelar a assinatura. Tente novamente.");
+    } finally {
+      setCancelando(false);
+    }
+  };
+
   if (loading) return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
 
   if (!assinatura) {
@@ -50,11 +74,14 @@ export default function AssinaturaAlunoPage() {
     );
   }
 
+  const podeCancelar = assinatura.status === "Ativa" || assinatura.status === "Inadimplente";
+
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 500 } }}>
       <Typography variant="h5" sx={{ fontWeight: "bold", mb: 3 }}>Minha Assinatura</Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {sucesso && <Alert severity="success" sx={{ mb: 2 }}>{sucesso}</Alert>}
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={2}>
@@ -94,6 +121,19 @@ export default function AssinaturaAlunoPage() {
               </Button>
             </>
           )}
+
+          {podeCancelar && (
+            <>
+              <Divider />
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => setConfirmarCancelar(true)}
+              >
+                Cancelar assinatura
+              </Button>
+            </>
+          )}
         </Stack>
       </Paper>
 
@@ -112,6 +152,18 @@ export default function AssinaturaAlunoPage() {
           )}
         </Box>
       )}
+
+      <ConfirmDialog
+        open={confirmarCancelar}
+        title="Cancelar assinatura"
+        description={CANCELAR_ASSINATURA_DESCRICAO}
+        destructive
+        confirmLabel="Cancelar assinatura"
+        cancelLabel="Voltar"
+        loading={cancelando}
+        onConfirm={cancelarAssinatura}
+        onClose={() => { if (!cancelando) setConfirmarCancelar(false); }}
+      />
     </Box>
   );
 }

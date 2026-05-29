@@ -40,13 +40,13 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 ## COMPONENTES
 - `StripeService` (Infrastructure/Services) — implementa `IStripeService`. Wrapper fino sobre Stripe.net SDK; sem retry custom.
 - `MoneyCentavos` (Application/UseCases/Pagamentos) — `ToCentavos(valor)`, `CalcularTaxaCentavos(valorCentavos, taxaPercent)`, `ValorETaxaCentavos(valor, taxaPercent)`. Truncamento deliberado (`(long)`), 8 invariantes em property tests (F16).
-- `ProcessarWebhookStripeHandler` (Application/UseCases/Pagamentos/ProcessarWebhookStripe) — eventos: `payment_intent.succeeded` → MarcarPago + AssinaturaAluno.Ativar() + AgendarProximaCobranca(+1mês); `payment_intent.payment_failed` → MarcarFalhou; `payment_intent.canceled` → MarcarExpirado (Stripe envia auto após `ExpiresAfterSeconds=3600` no Pix); `account.updated` (chargesEnabled=true) → ContaRecebimento.ConfirmarOnboarding. Default → log + ignore.
-- `StripeWebhookParser` (Application/UseCases/Pagamentos/ProcessarWebhookStripe) — parse JsonDocument: type, paymentIntentId, accountId, chargesEnabled.
+- `ProcessarWebhookStripeHandler` (Application/UseCases/Pagamentos/ProcessarWebhookStripe) — eventos: `payment_intent.succeeded` → MarcarPago + AssinaturaAluno.Ativar() + AgendarProximaCobranca(+1mês); `payment_intent.payment_failed` → MarcarFalhou; `payment_intent.canceled` → MarcarExpirado (Stripe envia auto após `ExpiresAfterSeconds=3600` no Pix); `account.updated` (chargesEnabled=true) → ContaRecebimento.ConfirmarOnboarding; `charge.refunded` → MarcarEstornado (refund manual treinador via Dashboard); `charge.dispute.created` → MarcarEmDisputa + assinatura Ativa → Inadimplente. Default → log + ignore.
+- `StripeWebhookParser` (Application/UseCases/Pagamentos/ProcessarWebhookStripe) — parse JsonDocument: type, paymentIntentId, accountId, chargesEnabled, amountRefundedCents (charge.refunded), motivoDisputa (charge.dispute.created). Para `charge.refunded`/`charge.dispute.created`, `paymentIntentId` é lido de `data.object.payment_intent` (Charge/Dispute apontam pro PI subjacente).
 - `IniciarOnboardingTreinadorHandler` (Application/UseCases/Treinadores/IniciarOnboarding) — idempotente: cria ContaRecebimento se ausente, cria Stripe Connect account se StripeConnectAccountId vazio, gera link onboarding sempre.
 - `VerificarOnboardingTreinadorHandler` (Application/UseCases/Treinadores/VerificarOnboarding) — short-circuit se OnboardingCompleto; senão poll `account.ChargesEnabled` + ConfirmarOnboarding local. Retorna `OnboardingStatusResponse(OnboardingCompleto, ContaConfigurada)`.
 - `GerarCobrancaMensalHandler` (Application/UseCases/Pagamentos/GerarCobrancaMensal) — **F12 protege race**. Wrap em `IsolationLevel.Serializable` tx: SELECT pendente → se pendente.StripePaymentIntentId não-null → retorna idempotente; senão MarcarFalhou + Pagamento.Criar + commit. Fora tx: chama StripeService.CriarPix/CartaoPaymentIntent + DefinirDadosPix/Cartao + commit. Catch → MarcarFalhou + rethrow.
-- `Pagamento` (Domain/Entities) — agregado: Status (Pendente → Pago/Falhou/Expirado, transições guard'd via DomainException); `DefinirDadosPix`/`DefinirDadosCartao` setam StripePaymentIntentId; PixExpiracao info-only (não auto-marca Expirado — vem do webhook).
-- `AssinaturaAluno` (Domain/Entities) — agregado: Status (Pendente → Ativa → Inadimplente/Cancelada), `DataProximaCobranca`. `Ativar()` e `AgendarProximaCobranca(novaData, agora)` chamadas no webhook payment_intent.succeeded.
+- `Pagamento` (Domain/Entities) — agregado: Status (Pendente → Pago/Falhou/Expirado; Pago → Estornado/EmDisputa, transições guard'd via DomainException); `DefinirDadosPix`/`DefinirDadosCartao` setam StripePaymentIntentId; PixExpiracao info-only (não auto-marca Expirado — vem do webhook). `MarcarEstornado()` preserva `DataPagamento` + dispara `PagamentoEstornadoEvent` (e-mail + WhatsApp pro aluno). `MarcarEmDisputa(motivo)` preserva `DataPagamento` + dispara `PagamentoEmDisputaEvent` (e-mail urgente + alert log Critical pro treinador; aluno NÃO notificado — já sabe). Refund NÃO cascateia em cancelamento de assinatura; disputa **força** Ativa → Inadimplente via `AssinaturaAluno.MarcarInadimplentePorDisputa` (congelamento imediato, não espera contador).
+- `AssinaturaAluno` (Domain/Entities) — agregado: Status (Pendente → Ativa → Inadimplente/Cancelada), `DataProximaCobranca`. `Ativar()` e `AgendarProximaCobranca(novaData, agora)` chamadas no webhook payment_intent.succeeded. `MarcarInadimplentePorDisputa(agora)` força Ativa → Inadimplente com `TentativasFalhasConsecutivas = LimiteTentativasFalhas` (sinalização) — chamado em `charge.dispute.created` (fraude/desistência drástica do aluno).
 - `ContaRecebimento` (Domain/Entities) — agregado por treinador: StripeConnectAccountId + OnboardingCompleto. `ConfigurarStripeConnect(accountId)` + `ConfirmarOnboarding()` idempotentes.
 
 ## FLUXOS
@@ -72,9 +72,9 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 ### Webhook (Stripe → backend)
 - `POST /webhooks/stripe` — público, rate limit `webhook`. LimitedStream 64KB DoS guard.
 - Header `Stripe-Signature` validado via `EventUtility.ConstructEvent` (HMAC-SHA256 com `Stripe:WebhookSecret`).
-- 4 eventos relevantes: `payment_intent.{succeeded,payment_failed,canceled}` + `account.updated`. Outros → 200 log+ignore.
-- **Idempotência**: cada handler curto-circuita se `Pagamento.Status != Pendente` (Stripe entrega at-least-once). `ConfirmarOnboarding` curto-circuita se já `OnboardingCompleto=true`.
-- **Cross-account defense**: `ValidarConnectAccountAsync` compara `event.AccountId` vs `ContaRecebimento.StripeConnectAccountId` do treinador dono da assinatura. Mismatch → log warning + ignore (defesa contra replay de webhook de outro account assinado pelo mesmo secret).
+- 6 eventos relevantes: `payment_intent.{succeeded,payment_failed,canceled}` + `account.updated` + `charge.refunded` + `charge.dispute.created`. Outros → 200 log+ignore.
+- **Idempotência**: cada handler curto-circuita por estado terminal — `Pagamento.Status != Pendente` para os 3 `payment_intent.*`; `Status == Estornado` para `charge.refunded`; `Status == EmDisputa` para `charge.dispute.created`. Stripe entrega at-least-once. `ConfirmarOnboarding` curto-circuita se já `OnboardingCompleto=true`.
+- **Cross-account defense**: `ValidarConnectAccountAsync` compara `event.AccountId` vs `ContaRecebimento.StripeConnectAccountId` do treinador dono da assinatura. Mismatch → log warning + ignore (defesa contra replay de webhook de outro account assinado pelo mesmo secret). Não aplicada em `charge.refunded`/`charge.dispute.created` (sem vetor útil — refund/dispute invertem dinheiro do próprio destino).
 
 ## ENDPOINTS
 | Método/Rota | Auth | Handler | Sucesso | Erros |
@@ -111,7 +111,7 @@ Stripe não tem sandbox compartilhada — diferencia por chave. Cada ambiente us
 1. Login Stripe → toggle **Test mode** (hmg) ou **Live mode** (prod) no canto superior direito do painel.
 2. Developers → Webhooks → Add endpoint.
 3. URL: `https://<host>/webhooks/stripe` (hmg=homologacao, prod=app).
-4. Events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `account.updated`.
+4. Events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `account.updated`, `charge.refunded`, `charge.dispute.created`.
 5. Copy signing secret → `STRIPE_WEBHOOK_SECRET` no `/opt/forzion/.env` da VM correspondente.
 6. `docker compose -f docker-compose.<env>.yml restart` na VM pra pegar novo env.
 
@@ -153,10 +153,10 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 - Workflow `.github/workflows/billing-reconciliation.yml` — cron `0 4 * * 1` UTC (Segunda 04:00 UTC, weekly); `workflow_dispatch` com input `desde_utc`.
 - Chama `POST /internal/reconciliar-pagamentos` com X-Internal-Key (same FixedTimeEquals pattern). Body `{}` = últimos 7 dias; override via `desdeUtc` ISO-8601.
 - Backend handler `ReconciliarPagamentosStripeHandler` (Application):
-  1. `IStripeService.ListarEventosDesdeAsync(desdeUtc)` — `EventService.ListAutoPagingAsync` filtrando por `payment_intent.{succeeded,payment_failed,canceled}` + `account.updated`, cap 1000 eventos.
+  1. `IStripeService.ListarEventosDesdeAsync(desdeUtc)` — `EventService.ListAutoPagingAsync` filtrando por `payment_intent.{succeeded,payment_failed,canceled}` + `account.updated` + `charge.refunded` + `charge.dispute.created`, cap 1000 eventos.
   2. Por evento: chama `ProcessarWebhookStripeHandler.ProcessarEventoAsync(evento, ct)` — método refatorado pra ser reutilizável sem signature verification (eventos vêm autenticados via nossa API key).
   3. Resultado por evento: `Aplicado` | `JaConsistente` | `Ignorado`. Reconciliator agrega → `{ TotalEventos, Replayed, JaConsistentes, Erros }`.
-  4. Idempotência preservada: handler interno já checa `Pagamento.Status != Pendente`.
+  4. Idempotência preservada: handler interno checa estado terminal por tipo de evento (`Pagamento.Status != Pendente` para `payment_intent.*`; `Status == Estornado` para `charge.refunded`; `Status == EmDisputa` para `charge.dispute.created`).
 - Pega webhooks perdidos (Stripe retry policy desistiu OU rede falhou OU backend estava down).
 - **Monitoring:** step `if: failure()` cria GitHub Issue com label `billing-reconciliation-failed` (mesmo pattern do billing-renewal).
 
@@ -191,6 +191,23 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 
 ### Recuperação (regularização)
 - Aluno acessa `/aluno/pagamentos` (sempre liberado), paga pendente. Webhook `payment_intent.succeeded` → handler chama `RegistrarPagamentoRegularizado` → zera contador + status volta pra Ativa → banner some no próximo load + endpoints liberam.
+
+## CHARGEBACKS / DISPUTAS
+- Disputa (chargeback) = aluno contesta cobrança junto ao banco do cartão. Stripe envia `charge.dispute.created` ao backend.
+- `StripeWebhookParser` extrai `data.object.payment_intent` (lookup) + `data.object.reason` (motivo). Handler `ProcessarWebhookStripeHandler.ProcessarDisputaCriadaAsync`:
+  1. Carrega `Pagamento` por `PaymentIntentId`. Não encontrado → log warn + JaConsistente.
+  2. Idempotência: `Status == EmDisputa` → no-op silencioso (Stripe at-least-once).
+  3. Guard: `Status != Pago` → log warn + no-op (disputa só faz sentido sobre cobrança capturada). NÃO lança DomainException (Stripe retentaria indefinidamente).
+  4. `Pagamento.MarcarEmDisputa(motivo)` — transição `Pago → EmDisputa`, preserva `DataPagamento` (auditoria), dispara `PagamentoEmDisputaEvent(PagamentoId, AssinaturaAlunoId, Valor, MotivoDisputa, OcorridoEm)`.
+  5. **Drástico**: carrega `AssinaturaAluno` e chama `MarcarInadimplentePorDisputa(agora)` — força `Ativa → Inadimplente`, equipara `TentativasFalhasConsecutivas` ao threshold como sinalização. NÃO chama `RegistrarPagamentoFalho` (incrementa contador gradual; disputa exige congelamento imediato).
+  6. Commit único. Cancelada/Inadimplente/Pendente → no-op idempotente.
+- Handlers de `PagamentoEmDisputaEvent`:
+  - `PagamentoEmDisputaEmailTreinadorHandler` (Infrastructure/Notifications/Email) — resolve `Assinatura → Treinador → Conta.Email`, envia e-mail **URGENTE** via `EmailTemplates.PagamentoEmDisputa(nomeTreinador, nomeAluno, valor, motivo)`. CTA aponta para `https://dashboard.stripe.com/disputes` (Stripe não tem API para responder dispute — UI deles obrigatória).
+  - `PagamentoEmDisputaAlertHandler` (Infrastructure/Notifications/Alerts) — `LogLevel.Critical` com campos estruturados (`PagamentoId`, `AssinaturaAlunoId`, `Valor`, `MotivoDisputa`). Arthur acompanha via agregador de log.
+- **Aluno NÃO é notificado**: cliente que abriu disputa já sabe (foi ele que iniciou). Spammar com e-mail redundante adiciona ruído sem valor.
+- Treinador tem **7-21 dias** para responder a disputa no Stripe Dashboard com evidências (provas de entrega de fichas, registros de execução do aluno, prints de WhatsApp). Sem resposta no prazo → Stripe devolve o valor ao cliente + cobra fee de chargeback (~US$ 15). Não temos UI própria pra essa etapa.
+- Reconciliação: `ListarEventosDesdeAsync` inclui `charge.dispute.created` no filtro — disputa nunca passa despercebida se webhook morrer.
+- Pós-disputa: se treinador ganha (evidências aceitas), valor permanece, mas estado `Pagamento.EmDisputa` é terminal (sem auto-volta para Pago). Operação de "fechar disputa" deve ser feita manualmente no admin se for relevante para histórico — não há fluxo automatizado por enquanto.
 
 ## SEGURANÇA
 - `Internal:ApiKey`: `CryptographicOperations.FixedTimeEquals` (constant-time) + length check antes (evita ArgumentException). Vazio → 401.

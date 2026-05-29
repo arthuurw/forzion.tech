@@ -159,4 +159,156 @@ public class PagamentoTests
         var act = () => p.MarcarExpirado();
         act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pendentes podem ser marcados como expirados.");
     }
+
+    // --- MarcarEstornado ---
+
+    [Fact]
+    public void MarcarEstornado_StatusPago_MudaParaEstornado()
+    {
+        var p = CriarValido();
+        p.MarcarPago();
+        p.ClearDomainEvents();
+
+        p.MarcarEstornado();
+
+        p.Status.Should().Be(PagamentoStatus.Estornado);
+        p.UpdatedAt.Should().NotBeNull();
+        // Auditoria: data de pagamento original é preservada como registro histórico.
+        p.DataPagamento.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void MarcarEstornado_DispatchaPagamentoEstornadoEvent()
+    {
+        var p = CriarValido();
+        p.MarcarPago();
+        p.ClearDomainEvents();
+
+        p.MarcarEstornado();
+
+        p.DomainEvents.Should().ContainSingle();
+        var evento = p.DomainEvents.OfType<PagamentoEstornadoEvent>().Single();
+        evento.PagamentoId.Should().Be(p.Id);
+        evento.AssinaturaAlunoId.Should().Be(AssinaturaAlunoId);
+        evento.Valor.Should().Be(Valor);
+    }
+
+    [Theory]
+    [InlineData(PagamentoStatus.Pendente)]
+    [InlineData(PagamentoStatus.Falhou)]
+    [InlineData(PagamentoStatus.Expirado)]
+    public void MarcarEstornado_StatusNaoPago_LancaDomainException(PagamentoStatus statusInicial)
+    {
+        var p = CriarValido();
+        switch (statusInicial)
+        {
+            case PagamentoStatus.Pendente:
+                break;
+            case PagamentoStatus.Falhou:
+                p.MarcarFalhou();
+                break;
+            case PagamentoStatus.Expirado:
+                p.MarcarExpirado();
+                break;
+        }
+
+        var act = () => p.MarcarEstornado();
+        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pagos podem ser estornados.");
+    }
+
+    [Fact]
+    public void MarcarEstornado_JaEstornado_LancaDomainException()
+    {
+        var p = CriarValido();
+        p.MarcarPago();
+        p.MarcarEstornado();
+
+        var act = () => p.MarcarEstornado();
+        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pagos podem ser estornados.");
+    }
+
+    // --- MarcarEmDisputa (chargeback) ---
+
+    [Fact]
+    public void MarcarEmDisputa_StatusPago_TransicionaParaEmDisputa()
+    {
+        var p = CriarValido();
+        p.MarcarPago();
+        p.ClearDomainEvents();
+
+        p.MarcarEmDisputa("fraudulent");
+
+        p.Status.Should().Be(PagamentoStatus.EmDisputa);
+        p.UpdatedAt.Should().NotBeNull();
+        // DataPagamento é registro histórico do recebimento — não pode ser apagada.
+        p.DataPagamento.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void MarcarEmDisputa_DispatchaPagamentoEmDisputaEventComMotivo()
+    {
+        var p = CriarValido();
+        p.MarcarPago();
+        p.ClearDomainEvents();
+
+        p.MarcarEmDisputa("fraudulent");
+
+        p.DomainEvents.Should().ContainSingle();
+        var evento = p.DomainEvents.OfType<PagamentoEmDisputaEvent>().Single();
+        evento.PagamentoId.Should().Be(p.Id);
+        evento.AssinaturaAlunoId.Should().Be(AssinaturaAlunoId);
+        evento.Valor.Should().Be(Valor);
+        evento.MotivoDisputa.Should().Be("fraudulent");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void MarcarEmDisputa_MotivoVazio_NormalizaParaUnknown(string? motivo)
+    {
+        var p = CriarValido();
+        p.MarcarPago();
+        p.ClearDomainEvents();
+
+        p.MarcarEmDisputa(motivo!);
+
+        p.DomainEvents.OfType<PagamentoEmDisputaEvent>().Single()
+            .MotivoDisputa.Should().Be("unknown");
+    }
+
+    [Theory]
+    [InlineData(PagamentoStatus.Pendente)]
+    [InlineData(PagamentoStatus.Falhou)]
+    [InlineData(PagamentoStatus.Expirado)]
+    public void MarcarEmDisputa_StatusNaoPago_LancaDomainException(PagamentoStatus statusInicial)
+    {
+        var p = CriarValido();
+        switch (statusInicial)
+        {
+            case PagamentoStatus.Pendente:
+                break;
+            case PagamentoStatus.Falhou:
+                p.MarcarFalhou();
+                break;
+            case PagamentoStatus.Expirado:
+                p.MarcarExpirado();
+                break;
+        }
+
+        var act = () => p.MarcarEmDisputa("fraudulent");
+        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pagos podem ser marcados em disputa.");
+    }
+
+    [Fact]
+    public void MarcarEmDisputa_JaEmDisputa_LancaDomainException()
+    {
+        // Idempotência ao nível do handler — domain enforce uma única transição.
+        var p = CriarValido();
+        p.MarcarPago();
+        p.MarcarEmDisputa("fraudulent");
+
+        var act = () => p.MarcarEmDisputa("duplicate");
+        act.Should().Throw<DomainException>().WithMessage("Apenas pagamentos pagos podem ser marcados em disputa.");
+    }
 }

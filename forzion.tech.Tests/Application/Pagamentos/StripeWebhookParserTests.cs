@@ -65,4 +65,110 @@ public class StripeWebhookParserTests
         result.AccountId.Should().Be("acct_x");
         result.ChargesEnabled.Should().BeFalse();
     }
+
+    [Fact]
+    public void Parse_ChargeRefunded_ExtraiPaymentIntentIdEAmountRefunded()
+    {
+        // charge.refunded: data.object é Charge — payment_intent string aponta pro PI.
+        var payload = """
+            {
+                "type": "charge.refunded",
+                "data": {
+                    "object": {
+                        "id": "ch_123",
+                        "payment_intent": "pi_refunded",
+                        "amount_refunded": 14990,
+                        "refunded": true
+                    }
+                }
+            }
+            """;
+
+        var result = StripeWebhookParser.Parse(payload);
+
+        result.Type.Should().Be("charge.refunded");
+        result.PaymentIntentId.Should().Be("pi_refunded");
+        result.AmountRefundedCents.Should().Be(14990L);
+    }
+
+    [Fact]
+    public void Parse_ChargeRefundedSemPaymentIntent_RetornaPaymentIntentIdNulo()
+    {
+        // Refund de charge sem PI — não bate no nosso fluxo (sempre criamos via PI).
+        var result = StripeWebhookParser.Parse(
+            """{"type":"charge.refunded","data":{"object":{"id":"ch_x","amount_refunded":100}}}""");
+
+        result.Type.Should().Be("charge.refunded");
+        result.PaymentIntentId.Should().BeNull();
+        result.AmountRefundedCents.Should().Be(100L);
+    }
+
+    [Fact]
+    public void Parse_PaymentIntentSucceeded_AmountRefundedNulo()
+    {
+        // Garantir que o campo só popula em charge.refunded.
+        var result = StripeWebhookParser.Parse(
+            """{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_x"}}}""");
+
+        result.AmountRefundedCents.Should().BeNull();
+    }
+
+    [Fact]
+    public void Parse_ChargeDisputeCreated_ExtraiPaymentIntentIdEMotivo()
+    {
+        // charge.dispute.created: data.object é Dispute. payment_intent + reason são os campos
+        // que o handler precisa pra marcar Pagamento em disputa e notificar treinador.
+        var payload = """
+            {
+                "type": "charge.dispute.created",
+                "data": {
+                    "object": {
+                        "id": "dp_123",
+                        "payment_intent": "pi_disputed",
+                        "charge": "ch_abc",
+                        "amount": 14990,
+                        "reason": "fraudulent"
+                    }
+                }
+            }
+            """;
+
+        var result = StripeWebhookParser.Parse(payload);
+
+        result.Type.Should().Be("charge.dispute.created");
+        result.PaymentIntentId.Should().Be("pi_disputed");
+        result.MotivoDisputa.Should().Be("fraudulent");
+    }
+
+    [Fact]
+    public void Parse_ChargeDisputeCreated_SemReason_RetornaMotivoNulo()
+    {
+        // reason ausente — handler normaliza pra "unknown" via Pagamento.MarcarEmDisputa.
+        var result = StripeWebhookParser.Parse(
+            """{"type":"charge.dispute.created","data":{"object":{"payment_intent":"pi_y"}}}""");
+
+        result.Type.Should().Be("charge.dispute.created");
+        result.PaymentIntentId.Should().Be("pi_y");
+        result.MotivoDisputa.Should().BeNull();
+    }
+
+    [Fact]
+    public void Parse_ChargeDisputeCreated_SemPaymentIntent_RetornaPaymentIntentIdNulo()
+    {
+        var result = StripeWebhookParser.Parse(
+            """{"type":"charge.dispute.created","data":{"object":{"id":"dp_x","reason":"duplicate"}}}""");
+
+        result.PaymentIntentId.Should().BeNull();
+        result.MotivoDisputa.Should().Be("duplicate");
+    }
+
+    [Fact]
+    public void Parse_PaymentIntentSucceeded_MotivoDisputaNulo()
+    {
+        // Campo só popula em charge.dispute.created — não vaza pra outros tipos.
+        var result = StripeWebhookParser.Parse(
+            """{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_x"}}}""");
+
+        result.MotivoDisputa.Should().BeNull();
+    }
 }

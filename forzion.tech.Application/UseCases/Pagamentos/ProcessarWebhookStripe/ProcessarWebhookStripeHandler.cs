@@ -62,6 +62,12 @@ public class ProcessarWebhookStripeHandler(
             case "account.updated":
                 return await ProcessarContaAtualizadaAsync(evento.AccountId!, evento.ChargesEnabled, cancellationToken).ConfigureAwait(false);
 
+            case "charge.refunded":
+                return await ProcessarChargeReembolsadoAsync(evento.PaymentIntentId, evento.AmountRefundedCents, cancellationToken).ConfigureAwait(false);
+
+            case "charge.dispute.created":
+                return await ProcessarDisputaCriadaAsync(evento.PaymentIntentId, evento.MotivoDisputa, cancellationToken).ConfigureAwait(false);
+
             default:
                 logger.LogDebug("Evento Stripe ignorado: {EventType}.", evento.Type);
                 return ProcessarEventoResultado.Ignorado;
@@ -186,6 +192,109 @@ public class ProcessarWebhookStripeHandler(
         pagamento.MarcarExpirado();
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("Pagamento {PagamentoId} marcado como expirado.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarChargeReembolsadoAsync(string? paymentIntentId, long? amountRefundedCents, CancellationToken ct)
+    {
+        // charge.refunded sem payment_intent — refund de charge avulso fora do nosso fluxo
+        // (nunca cobramos sem PaymentIntent). Log e ignora.
+        if (string.IsNullOrEmpty(paymentIntentId))
+        {
+            logger.LogWarning("charge.refunded recebido sem payment_intent. Ignorado.");
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
+        if (pagamento is null)
+        {
+            logger.LogWarning("charge.refunded para PaymentIntent {PaymentIntentId} não encontrado.", paymentIntentId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        // Cross-account check não se aplica: refund parte do MESMO Connect account do treinador
+        // (Stripe Dashboard dele), e não há vetor de replay útil — refund inverte dinheiro do
+        // próprio destino, não há ganho pra atacante.
+
+        // Idempotência: at-least-once. Se já Estornado, segunda entrega é no-op silencioso.
+        // Pendente/Falhou/Expirado é estado inconsistente (refund de algo não-pago) — log warn + no-op.
+        if (pagamento.Status == PagamentoStatus.Estornado)
+        {
+            logger.LogDebug("PaymentIntent {PaymentIntentId} já estornado. Ignorando re-entrega.", paymentIntentId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        if (pagamento.Status != PagamentoStatus.Pago)
+        {
+            logger.LogWarning(
+                "charge.refunded para PaymentIntent {PaymentIntentId} em status inesperado {Status}. Ignorado.",
+                paymentIntentId, pagamento.Status);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        pagamento.MarcarEstornado();
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+
+        logger.LogInformation(
+            "Pagamento {PagamentoId} marcado como estornado (amountRefundedCents={AmountCents}).",
+            pagamento.Id, amountRefundedCents);
+        return ProcessarEventoResultado.Aplicado;
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarDisputaCriadaAsync(string? paymentIntentId, string? motivoDisputa, CancellationToken ct)
+    {
+        // charge.dispute.created sem payment_intent — disputa de charge avulso fora do nosso fluxo.
+        if (string.IsNullOrEmpty(paymentIntentId))
+        {
+            logger.LogWarning("charge.dispute.created recebido sem payment_intent. Ignorado.");
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
+        if (pagamento is null)
+        {
+            logger.LogWarning("charge.dispute.created para PaymentIntent {PaymentIntentId} não encontrado.", paymentIntentId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        // Cross-account check não se aplica: disputa parte do Connect account do treinador
+        // (Stripe roteia evento direto). Sem vetor útil de replay cross-account aqui.
+
+        // Idempotência: at-least-once. Se já EmDisputa, segunda entrega é no-op silencioso.
+        if (pagamento.Status == PagamentoStatus.EmDisputa)
+        {
+            logger.LogDebug("PaymentIntent {PaymentIntentId} já em disputa. Ignorando re-entrega.", paymentIntentId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        // Disputa sobre estado diferente de Pago é incoerente (não há cobrança capturada
+        // para disputar). Log warn + no-op — não lança DomainException para não derrubar
+        // o pipeline de webhook em payload anômalo.
+        if (pagamento.Status != PagamentoStatus.Pago)
+        {
+            logger.LogWarning(
+                "charge.dispute.created para PaymentIntent {PaymentIntentId} em status inesperado {Status}. Ignorado.",
+                paymentIntentId, pagamento.Status);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        pagamento.MarcarEmDisputa(motivoDisputa ?? "unknown");
+
+        // Força transição da assinatura Ativa → Inadimplente (drástico) — disputa é
+        // sinal forte de fraude ou desistência; congela acesso já. RegistrarPagamentoFalho
+        // (incrementa contador gradual) NÃO se aplica aqui.
+        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
+        if (assinatura is not null)
+        {
+            var agora = timeProvider.GetUtcNow().UtcDateTime;
+            assinatura.MarcarInadimplentePorDisputa(agora);
+        }
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+
+        logger.LogInformation(
+            "Pagamento {PagamentoId} marcado em disputa (motivo={Motivo}).",
+            pagamento.Id, motivoDisputa ?? "unknown");
         return ProcessarEventoResultado.Aplicado;
     }
 

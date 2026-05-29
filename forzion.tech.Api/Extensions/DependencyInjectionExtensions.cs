@@ -78,6 +78,7 @@ using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno;
+using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
@@ -281,6 +282,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
         services.AddScoped<CriarAssinaturaAlunoHandler>();
         services.AddScoped<CancelarAssinaturaAlunoHandler>();
+        services.AddScoped<CancelarMinhaAssinaturaAlunoHandler>();
         services.AddScoped<ObterAssinaturaAlunoHandler>();
         services.AddScoped<GerarCobrancaMensalHandler>();
         services.AddScoped<ObterStatusPagamentoHandler>();

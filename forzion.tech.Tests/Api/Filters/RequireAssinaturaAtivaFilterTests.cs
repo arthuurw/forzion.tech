@@ -83,7 +83,7 @@ public class RequireAssinaturaAtivaFilterTests
                 assinatura.MarcarInadimplente();
                 break;
             case AssinaturaAlunoStatus.Cancelada:
-                assinatura.Cancelar();
+                assinatura.Cancelar(Agora);
                 break;
         }
 

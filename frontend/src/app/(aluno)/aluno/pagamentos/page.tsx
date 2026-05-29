@@ -11,11 +11,13 @@ import { pagamentoApi } from "@/lib/api/pagamento";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 
-const statusColor: Record<PagamentoStatus, "default" | "success" | "warning" | "error"> = {
+const statusColor: Record<PagamentoStatus, "default" | "success" | "warning" | "error" | "info"> = {
   Pago: "success",
   Pendente: "warning",
   Expirado: "default",
   Falhou: "error",
+  Estornado: "info",
+  EmDisputa: "error",
 };
 
 const statusLabel: Record<PagamentoStatus, string> = {
@@ -23,6 +25,8 @@ const statusLabel: Record<PagamentoStatus, string> = {
   Pendente: "Pendente",
   Expirado: "Expirado",
   Falhou: "Falhou",
+  Estornado: "Estornado",
+  EmDisputa: "Em disputa",
 };
 
 interface Props {

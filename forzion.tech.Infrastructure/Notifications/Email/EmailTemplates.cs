@@ -234,6 +234,96 @@ internal static class EmailTemplates
             """);
     }
 
+    public static string PagamentoEstornado(string nomeAluno, decimal valor, string linkPortal)
+    {
+        // Formatação pt-BR explícita (R$ 149,90) — independe de culture do processo.
+        var valorFormatado = valor.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"));
+        return Layout(
+            "Cobrança estornada",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Sua cobrança no valor de <strong>R$ {valorFormatado}</strong> foi
+              <strong style="color:#2e7d32">estornada</strong>.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              O valor será devolvido em até 10 dias úteis pelo mesmo método de pagamento utilizado.
+              Cartões podem demorar até 2 ciclos da fatura para refletir.
+            </p>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver pagamentos
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, fale com o seu treinador.
+            </p>
+            """);
+    }
+
+    public static string PagamentoEmDisputa(string nomeTreinador, string nomeAluno, decimal valor, string motivo)
+    {
+        // Formatação pt-BR explícita (R$ 149,90).
+        var valorFormatado = valor.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"));
+        var motivoFormatado = MotivoDisputaPtBr(motivo);
+        // Stripe Dashboard URL bem-conhecida; URL pública estável da Stripe — única
+        // forma do treinador responder à disputa (não temos UI própria).
+#pragma warning disable S1075
+        const string dashboardStripeUrl = "https://dashboard.stripe.com/disputes";
+#pragma warning restore S1075
+        return Layout(
+            "URGENTE — Disputa de pagamento aberta",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              <strong style="color:#c62828">Atenção: uma disputa de pagamento (chargeback) foi aberta pelo aluno {WebUtility.HtmlEncode(nomeAluno)}.</strong>
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Aluno</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(nomeAluno)}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor disputado</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valorFormatado}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Motivo</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(motivoFormatado)}</td>
+              </tr>
+            </table>
+            <p style="color:#444;line-height:1.6">
+              Você tem <strong>de 7 a 21 dias</strong> para responder à disputa pelo painel do Stripe com evidências
+              (provas de entrega de fichas, registros de execução, comunicação com o aluno). Sem resposta, o valor
+              é devolvido automaticamente ao cliente e a taxa do chargeback é cobrada.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              A assinatura do aluno foi <strong>congelada</strong> automaticamente — ele perde acesso a recursos
+              pagos até a disputa ser resolvida.
+            </p>
+            <a href="{dashboardStripeUrl}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#c62828;color:#FFFFFF;text-decoration:none;border-radius:4px;font-weight:bold">
+              Responder no Stripe
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Esta resposta acontece pelo painel do Stripe — a forzion.tech não tem interface própria pra essa etapa.
+            </p>
+            """);
+    }
+
+    private static string MotivoDisputaPtBr(string motivo) => motivo switch
+    {
+        "fraudulent" => "Fraude alegada pelo cliente",
+        "duplicate" => "Cobrança duplicada alegada pelo cliente",
+        "subscription_canceled" => "Assinatura cancelada alegada pelo cliente",
+        "product_not_received" => "Produto/serviço não recebido alegado pelo cliente",
+        "product_unacceptable" => "Produto/serviço inadequado alegado pelo cliente",
+        "credit_not_processed" => "Crédito não processado alegado pelo cliente",
+        "general" => "Disputa geral",
+        "unrecognized" => "Cobrança não reconhecida pelo cliente",
+        "unknown" or "" => "Motivo não informado pelo Stripe",
+        _ => motivo,
+    };
+
     public static string AssinaturaInadimplente(string nomeAluno, int tentativasFalhas, string linkPortal) =>
         Layout(
             "Conta restrita por inadimplência",
@@ -285,6 +375,57 @@ internal static class EmailTemplates
               Ver assinatura
             </a>
             """);
+
+    public static string AssinaturaCancelada(string nomeAluno, DateTime dataCancelamento, string nomeTreinador)
+    {
+        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
+        var dataFormatada = dataCancelamento.ToString("dd/MM/yyyy", ptBr);
+        return Layout(
+            "Assinatura cancelada",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Sua assinatura com o treinador <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>
+              foi <strong style="color:#c62828">cancelada</strong> em <strong>{dataFormatada}</strong>.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              A partir de agora suas fichas ficam em modo somente leitura e novas execuções
+              não poderão ser registradas. Obrigado por ter feito parte da forzion.tech!
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Para reativar, entre em contato com seu treinador.
+            </p>
+            """);
+    }
+
+    public static string AlunoCancelouAssinatura(string nomeTreinador, string nomeAluno, decimal valor)
+    {
+        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
+        var valorFormatado = valor.ToString("N2", ptBr);
+        return Layout(
+            "Aluno cancelou assinatura",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              O aluno <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong> acabou de cancelar a assinatura
+              dele(a) pelo portal.
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor mensal</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valorFormatado}</td>
+              </tr>
+            </table>
+            <p style="color:#444;line-height:1.6">
+              Novas cobranças não serão geradas. Acesse o portal para confirmar o status e
+              avaliar se quer entrar em contato com o aluno.
+            </p>
+            <a href="https://forzion.tech/treinador/alunos"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver alunos
+            </a>
+            """);
+    }
 
     public static string RelatorioSaude(HealthReport report)
     {

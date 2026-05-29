@@ -25,6 +25,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
   - [Regras de Negócio](#regras-de-negócio)
   - [Tratamento de Erros](#tratamento-de-erros)
   - [Configuração e Secrets](#configuração-e-secrets)
+  - [Stripe CLI (webhook local)](#stripe-cli-webhook-local)
   - [Migrations](#migrations)
   - [Testes](#testes)
 - [Frontend](#frontend)
@@ -790,6 +791,48 @@ User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 | `Homolog` | `homolog` | ✅ | ✅ | `ASPNETCORE_ENVIRONMENT=Homolog dotnet run` |
 | `Production` | `public` | ❌ | ❌ | Container Docker |
 | `Test` | mock / em memória | ❌ | ❌ | `dotnet test` |
+
+---
+
+### Stripe CLI (webhook local)
+
+Para validar o fluxo de webhook Stripe em desenvolvimento local sem expor a porta 8080 pra internet, use o [Stripe CLI](https://docs.stripe.com/stripe-cli) — ele encaminha eventos do Test Mode pra `localhost` via tunnel HTTPS e injeta o `whsec_*` certo na assinatura.
+
+**Instalação** — Windows (Scoop):
+
+```bash
+scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
+scoop install stripe
+```
+
+macOS (Homebrew): `brew install stripe/stripe-cli/stripe`. Linux: ver [docs.stripe.com/stripe-cli](https://docs.stripe.com/stripe-cli).
+
+**Login** (1x por máquina — abre browser, autoriza no Test Mode):
+
+```bash
+stripe login
+```
+
+**Encaminhar eventos pro backend local** (terminal dedicado, deixar rodando):
+
+```bash
+stripe listen --forward-to localhost:8080/webhooks/stripe
+```
+
+O CLI imprime na primeira linha um `whsec_*` efêmero — copiar pra `Stripe:WebhookSecret` enquanto o tunnel roda (substituir o `whsec_*` do painel hmg/prod temporariamente). Resetar quando parar o `stripe listen`.
+
+**Disparar eventos sintéticos** (outro terminal):
+
+```bash
+stripe trigger payment_intent.succeeded
+stripe trigger payment_intent.payment_failed
+stripe trigger charge.refunded
+stripe trigger charge.dispute.created
+```
+
+Confere logs do backend: `ProcessarWebhookStripeHandler` deve marcar `Pagamento.Status` consistente (Pago / Falhou+contador inadimplência / Estornado / EmDisputa+inadimplência forçada).
+
+> **Atenção:** o `whsec_*` do `stripe listen` é diferente do registrado no painel hmg/prod. Restaurar o secret de hmg em `user-secrets` ao terminar a sessão local pra não confundir validação E2E real.
 
 ---
 

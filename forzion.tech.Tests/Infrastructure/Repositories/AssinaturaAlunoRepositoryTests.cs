@@ -57,7 +57,7 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
     {
         var a = AssinaturaAluno.Criar(seed.VinculoId, seed.PacoteId, seed.TreinadorId, seed.AlunoId, 99.90m, DateTime.UtcNow);
         if (ativa) a.Ativar();
-        if (cancelada) a.Cancelar();
+        if (cancelada) a.Cancelar(DateTime.UtcNow);
         await ctx.AssinaturaAlunos.AddAsync(a);
         await ctx.SaveChangesAsync();
         return a;
