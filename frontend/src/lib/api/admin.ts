@@ -29,6 +29,11 @@ export interface ListarExerciciosGlobaisResponse {
   tamanhoPagina: number;
 }
 
+export interface DashboardStatsResponse {
+  planoDistribuicao: { tier: string; total: number }[];
+  alunoFinalidade: { finalidade: string; total: number }[];
+}
+
 export interface ListTreinadoresParams {
   status?: TreinadorStatus;
   pagina?: number;
@@ -182,5 +187,9 @@ export const adminApi = {
 
   runHealthReport() {
     return apiClient.post<HealthSnapshotResponse>("/admin/health-report/run");
+  },
+
+  getDashboardStats() {
+    return apiClient.get<DashboardStatsResponse>("/admin/stats/dashboard");
   },
 };

@@ -64,7 +64,9 @@ describe("POST /api/auth — resposta de login", () => {
     expect(setCookie).toContain("token=");
     expect(setCookie).toContain("HttpOnly");
     expect(setCookie).toContain("SameSite=strict");
-    expect(setCookie).toContain("session_guard=1");
+    expect(setCookie).toContain("session_guard=");
+    // session_guard deve ser um UUID aleatório (não mais o valor estático "1")
+    expect(setCookie).not.toContain("session_guard=1;");
   });
 
   it("backend retorna erro → propaga status sem setar cookies", async () => {

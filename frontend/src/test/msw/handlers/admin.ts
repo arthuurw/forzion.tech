@@ -38,4 +38,5 @@ export const adminHandlers: HttpHandler[] = [
   http.put("*/admin/saude/config", unauthorized),
   http.get("*/admin/saude/snapshots", unauthorized),
   http.post("*/admin/saude/executar", unauthorized),
+  http.get("*/admin/stats/dashboard", unauthorized),
 ];

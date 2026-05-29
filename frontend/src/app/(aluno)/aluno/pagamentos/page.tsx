@@ -116,6 +116,11 @@ export default function PagamentosAlunoPage() {
     setLoading(true);
     try {
       const assRes = await pagamentoApi.obterMinhaAssinatura();
+      // 204 No Content → aluno não possui assinatura; lista vazia sem erro
+      if (assRes.status === 204 || !assRes.data?.assinaturaAlunoId) {
+        setPagamentos([]);
+        return;
+      }
       const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
       setPagamentos(pgRes.data);
     } catch {

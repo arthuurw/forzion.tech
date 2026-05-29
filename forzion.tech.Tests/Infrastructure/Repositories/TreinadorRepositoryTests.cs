@@ -53,7 +53,7 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
         {
             var treinador = await actCtx.Treinadores.FirstAsync(t => t.Id == treinadorId);
 
-            var act = async () => await new TreinadorRepository(actCtx).ExcluirComDependenciasAsync(treinador);
+            var act = async () => await new TreinadorRepository(actCtx).ExcluirComDependenciasAsync(treinador, Guid.NewGuid());
 
             await act.Should().NotThrowAsync();
         }

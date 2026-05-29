@@ -31,7 +31,8 @@ public static class PagamentosEndpoints
         {
             var result = await handler.HandleAsync(
                 new ObterStatusPagamentoQuery(pagamentoId, userContext.PerfilId), cancellationToken).ConfigureAwait(false);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Obtém status e QR code de um pagamento")
         .Produces<PagamentoResponse>()

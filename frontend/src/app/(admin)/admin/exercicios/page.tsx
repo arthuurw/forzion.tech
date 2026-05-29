@@ -198,10 +198,10 @@ export default function ExerciciosAdminPage() {
           return (
             <>
               <Tooltip title="Editar">
-                <IconButton size="small" onClick={() => handleOpenEdit(ex)}><EditIcon fontSize="small" /></IconButton>
+                <IconButton size="small" aria-label="Editar exercício" onClick={() => handleOpenEdit(ex)}><EditIcon fontSize="small" /></IconButton>
               </Tooltip>
               <Tooltip title="Excluir">
-                <IconButton size="small" color="error" onClick={() => openExcluir(ex)}><DeleteIcon fontSize="small" /></IconButton>
+                <IconButton size="small" color="error" aria-label="Excluir exercício" onClick={() => openExcluir(ex)}><DeleteIcon fontSize="small" /></IconButton>
               </Tooltip>
             </>
           );

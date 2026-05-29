@@ -202,12 +202,12 @@ export default function TreinadoresAdminPage() {
               {t.status === "AguardandoAprovacao" && (
                 <>
                   <Tooltip title="Aprovar">
-                    <IconButton size="small" color="success" onClick={() => setConfirmAprovar(t)}>
+                    <IconButton size="small" color="success" aria-label="Aprovar treinador" onClick={() => setConfirmAprovar(t)}>
                       <CheckIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Reprovar">
-                    <IconButton size="small" color="error" onClick={() => setConfirmReprovar(t)}>
+                    <IconButton size="small" color="error" aria-label="Reprovar treinador" onClick={() => setConfirmReprovar(t)}>
                       <CloseIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
@@ -215,25 +215,25 @@ export default function TreinadoresAdminPage() {
               )}
               {t.status === "Ativo" && (
                 <Tooltip title="Inativar">
-                  <IconButton size="small" color="error" onClick={() => setConfirmInativar(t)}>
+                  <IconButton size="small" color="error" aria-label="Inativar treinador" onClick={() => setConfirmInativar(t)}>
                     <BlockIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               )}
               {t.status === "Inativo" && (
                 <Tooltip title="Excluir permanentemente">
-                  <IconButton size="small" color="error" onClick={() => setConfirmExcluir(t)}>
+                  <IconButton size="small" color="error" aria-label="Excluir treinador permanentemente" onClick={() => setConfirmExcluir(t)}>
                     <DeleteForeverIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               )}
               <Tooltip title="Atribuir plano">
-                <IconButton size="small" onClick={() => openPlanoDialog(t)}>
+                <IconButton size="small" aria-label="Atribuir plano" onClick={() => openPlanoDialog(t)}>
                   <CardMembershipIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Ver detalhe">
-                <IconButton size="small" onClick={() => router.push(`/admin/treinadores/${t.treinadorId}`)}>
+                <IconButton size="small" aria-label="Ver detalhe do treinador" onClick={() => router.push(`/admin/treinadores/${t.treinadorId}`)}>
                   <InfoIcon fontSize="small" />
                 </IconButton>
               </Tooltip>

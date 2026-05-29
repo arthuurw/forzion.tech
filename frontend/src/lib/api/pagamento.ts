@@ -20,9 +20,6 @@ export const pagamentoApi = {
   obterMinhaAssinatura() {
     return apiClient.get<AssinaturaAlunoResponse>("/aluno/assinatura");
   },
-  obterAssinatura(assinaturaId: string) {
-    return apiClient.get<AssinaturaAlunoResponse>(`/aluno/assinaturas/${assinaturaId}`);
-  },
   cancelarMinhaAssinatura() {
     return apiClient.post<void>("/aluno/assinatura/cancelar");
   },

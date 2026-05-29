@@ -212,6 +212,68 @@ describe("PagamentoPix", () => {
 
     errorSpy.mockRestore();
   });
+
+  // Bug 2 — PagamentoPix 401: sessão expirada durante polling
+  it("401 na primeira chamada → para polling e exibe mensagem de sessão expirada", async () => {
+    server.use(
+      http.get("*/aluno/pagamentos/:id", () =>
+        HttpResponse.json({ title: "Unauthorized" }, { status: 401 }),
+      ),
+    );
+
+    render(<PagamentoPix pagamentoId="pay-1" />);
+    expect(await screen.findByText(/sess(ã|a)o expirou/i)).toBeInTheDocument();
+  });
+
+  it("401 → clearInterval é chamado (polling parado)", async () => {
+    const clearSpy = vi.spyOn(globalThis, "clearInterval");
+    server.use(
+      http.get("*/aluno/pagamentos/:id", () =>
+        HttpResponse.json({ title: "Unauthorized" }, { status: 401 }),
+      ),
+    );
+
+    render(<PagamentoPix pagamentoId="pay-1" />);
+    await screen.findByText(/sess(ã|a)o expirou/i);
+
+    expect(clearSpy).toHaveBeenCalled();
+    clearSpy.mockRestore();
+  });
+
+  it("N erros consecutivos não-401 → exibe aviso de falha de rede", async () => {
+    // Garante que o aviso de rede aparece depois de MAX_CONSECUTIVE_ERRORS (3)
+    // falhas seguidas de 500. Estratégia: mock de setInterval que dispara o
+    // callback imediatamente (sem delay), permitindo acumular 3 erros rápido.
+    let intervalCallback: (() => void) | null = null;
+
+    vi.spyOn(globalThis, "setInterval").mockImplementation((fn: TimerHandler) => {
+      intervalCallback = fn as () => void;
+      return 0 as unknown as ReturnType<typeof setInterval>;
+    });
+    vi.spyOn(globalThis, "clearInterval").mockImplementation(() => {});
+
+    server.use(
+      http.get("*/aluno/pagamentos/:id", () =>
+        HttpResponse.json({ title: "Server Error" }, { status: 500 }),
+      ),
+    );
+
+    const { act } = await import("@testing-library/react");
+
+    render(<PagamentoPix pagamentoId="pay-1" />);
+
+    // Erro 1 (fetch inicial)
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+    // Erro 2 (tick manual do interval)
+    if (intervalCallback) await act(async () => { intervalCallback!(); await new Promise((r) => setTimeout(r, 30)); });
+    // Erro 3 (tick manual do interval)
+    if (intervalCallback) await act(async () => { intervalCallback!(); await new Promise((r) => setTimeout(r, 30)); });
+
+    expect(screen.getByTestId("polling-network-warning")).toBeInTheDocument();
+
+    vi.mocked(globalThis.setInterval).mockRestore();
+    vi.mocked(globalThis.clearInterval).mockRestore();
+  });
 });
 
 // ─── PagamentosTreinadorPage ──────────────────────────────────────────────────
@@ -420,5 +482,25 @@ describe("PagamentosAlunoPage", () => {
     expect(await screen.findByText("Pagar")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Pagar"));
     expect(await screen.findByText("Pagamento via Pix")).toBeInTheDocument();
+  });
+
+  // Bug 1 — 204 No Content: aluno sem assinatura → empty state, sem crash
+  it("204 No Content (sem assinaturaAlunoId) → exibe 'Nenhum pagamento encontrado.' sem erro", async () => {
+    server.use(
+      http.get("*/aluno/assinatura", () => new HttpResponse(null, { status: 204 })),
+    );
+
+    render(<PagamentosAlunoPage />);
+    expect(await screen.findByText("Nenhum pagamento encontrado.")).toBeInTheDocument();
+    expect(screen.queryByText("Erro ao carregar pagamentos.")).not.toBeInTheDocument();
+  });
+
+  it("200 com payload vazio (sem assinaturaAlunoId) → empty state, sem crash", async () => {
+    server.use(
+      http.get("*/aluno/assinatura", () => HttpResponse.json({})),
+    );
+
+    render(<PagamentosAlunoPage />);
+    expect(await screen.findByText("Nenhum pagamento encontrado.")).toBeInTheDocument();
   });
 });

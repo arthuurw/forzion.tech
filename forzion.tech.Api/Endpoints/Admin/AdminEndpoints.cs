@@ -1,6 +1,7 @@
 using forzion.tech.Api.Extensions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
+using forzion.tech.Application.UseCases.Admin.Stats;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
@@ -52,6 +53,16 @@ public static class AdminEndpoints
         var group = endpoints.MapGroup("/admin").WithTags("Admin").RequireAuthorization("SystemAdmin")
             .RequireRateLimiting("write")
             .AddEndpointFilter<PaginacaoFilter>();
+
+        group.MapGet("/stats/dashboard", async (
+            [FromServices] ObterDashboardStatsHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithSummary("Retorna distribuição de treinadores por plano/tier e alunos por finalidade (G-FE-3)")
+        .Produces<DashboardStatsResponse>();
 
         group.MapGet("/treinadores", async (
             [FromServices] ListarTreinadoresHandler handler,
@@ -215,7 +226,8 @@ public static class AdminEndpoints
             [FromServices] ExcluirPlanoPlataformaHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirPlanoPlataformaCommand(id), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirPlanoPlataformaCommand(id), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Inativa um plano de treinador")
@@ -265,12 +277,14 @@ public static class AdminEndpoints
             [FromServices] ExcluirGrupoMuscularHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirGrupoMuscularCommand(id), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirGrupoMuscularCommand(id), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Exclui um grupo muscular")
         .Produces(StatusCodes.Status204NoContent)
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapGet("/exercicios", async (
             [FromServices] ListarExerciciosHandler handler,
@@ -405,7 +419,8 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(treinoAlunoId, Guid.Empty, cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Obtém o detalhe de uma ficha vinculada a um aluno")
         .Produces<FichaAlunoDetalheResponse>()

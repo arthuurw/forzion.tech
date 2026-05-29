@@ -35,15 +35,23 @@ export default function ConfirmDialog({
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
+  const descId = "confirm-dialog-description";
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      aria-describedby={descId}
+      slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}
+    >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        <DialogContentText>{description}</DialogContentText>
+        <DialogContentText id={descId}>{description}</DialogContentText>
         {children}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        <Button onClick={onClose} disabled={loading} autoFocus={destructive}>
           {cancelLabel}
         </Button>
         <Button
@@ -51,6 +59,7 @@ export default function ConfirmDialog({
           color={destructive ? "error" : "primary"}
           variant="contained"
           disabled={loading}
+          autoFocus={!destructive}
           startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
         >
           {confirmLabel}

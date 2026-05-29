@@ -5,7 +5,6 @@ using forzion.tech.Application.Settings;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
 using forzion.tech.Tests.Builders;
 using forzion.tech.Tests.E2E;
 using Microsoft.Extensions.Logging;
@@ -183,7 +182,7 @@ public class GerarCobrancaMensalHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorSemOnboarding_LancaDomainException()
+    public async Task HandleAsync_TreinadorSemOnboarding_RetornaFailureStripe()
     {
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         var assinatura = CriarAssinaturaAluno(treinador.Id);
@@ -193,18 +192,22 @@ public class GerarCobrancaMensalHandlerTests
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ContaRecebimento?)null);
 
-        var act = async () => await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*Stripe*");
+        var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treinador_sem_conta_stripe");
     }
 
     [Fact]
-    public async Task HandleAsync_AssinaturaAlunoNaoEncontrada_LancaDomainException()
+    public async Task HandleAsync_AssinaturaAlunoNaoEncontrada_RetornaFailureNotFound()
     {
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((AssinaturaAluno?)null);
 
-        var act = async () => await _handler.HandleAsync(new GerarCobrancaMensalCommand(Guid.NewGuid(), Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("AssinaturaAluno não encontrada.");
+        var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(Guid.NewGuid(), Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("assinatura_aluno_nao_encontrada");
     }
 
     [Fact]

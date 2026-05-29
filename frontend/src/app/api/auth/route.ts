@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   const { token, ...clientSafeData } = data;
   const response = NextResponse.json(clientSafeData);
   response.cookies.set("token", token, { ...baseOpts, httpOnly: true });
-  response.cookies.set("session_guard", "1", { ...baseOpts, httpOnly: true });
+  response.cookies.set("session_guard", crypto.randomUUID(), { ...baseOpts, httpOnly: true });
 
   return response;
 }

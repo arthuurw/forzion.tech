@@ -16,7 +16,7 @@ public class GrupoMuscularRepository(AppDbContext context) : IGrupoMuscularRepos
     public async Task<GrupoMuscular?> ObterPorNomeAsync(string nome, CancellationToken cancellationToken = default)
     {
         return await _context.Set<GrupoMuscular>()
-            .FirstOrDefaultAsync(g => g.Nome.ToLower() == nome.ToLower(), cancellationToken);
+            .FirstOrDefaultAsync(g => EF.Functions.ILike(g.Nome, nome), cancellationToken);
     }
 
     public async Task<IReadOnlyList<GrupoMuscular>> ListarTodosAsync(CancellationToken cancellationToken = default)

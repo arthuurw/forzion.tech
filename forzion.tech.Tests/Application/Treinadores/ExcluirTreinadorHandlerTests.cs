@@ -37,7 +37,7 @@ public class ExcluirTreinadorHandlerTests
         var result = await _handler.HandleAsync(new ExcluirTreinadorCommand(treinador.Id, adminId));
 
         result.IsSuccess.Should().BeTrue();
-        _treinadorRepo.Verify(r => r.ExcluirComDependenciasAsync(treinador, It.IsAny<CancellationToken>()), Times.Once);
+        _treinadorRepo.Verify(r => r.ExcluirComDependenciasAsync(treinador, adminId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

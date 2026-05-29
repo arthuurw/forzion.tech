@@ -42,7 +42,7 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - AssinaturaAlunoStatus (assinaturas_aluno.status): Pendente|Ativa|Inadimplente|Cancelada
 - PagamentoStatus (pagamentos.status): Pendente|Pago|Expirado|Falhou|Estornado|EmDisputa
 - MetodoPagamento (pagamentos.metodo_pagamento, default Pix): Pix|Cartao
-- TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador
+- TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador|ExclusaoTreinador
 - StatusSaude (health_snapshots.status_geral): Ok|Degradado|Falha
 - TipoGrupoMuscular (enum; seed de grupos_musculares; não é coluna — entidade `GrupoMuscular` é distinta): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
 

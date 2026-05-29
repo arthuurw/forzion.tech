@@ -109,7 +109,8 @@ public static class AlunoAreaEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(treinoAlunoId, userContext.PerfilId, cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Obtém o detalhe de uma ficha vinculada ao aluno autenticado")
         .Produces<FichaAlunoDetalheResponse>()

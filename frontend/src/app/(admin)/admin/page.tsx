@@ -16,7 +16,18 @@ import { adminApi } from "@/lib/api/admin";
 import type {
   TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
 } from "@/types";
-import { FINALIDADE_LABEL } from "@/lib/constants/labels";
+/** Visually-hidden helper for screen-reader-only text. */
+const srOnly: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0,0,0,0)",
+  whiteSpace: "nowrap",
+  borderWidth: 0,
+};
 
 const T_COLORS = { Ativos: "#4caf50", Pendentes: "#F5C400", Inativos: "#757575" };
 const A_COLORS = { Ativos: "#2196f3", Pendentes: "#ff9800", Inativos: "#9e9e9e" };
@@ -44,21 +55,22 @@ export default function DashboardAdminPage() {
   const load = useCallback(async () => {
     try {
       const [
-        ativoTRes, aguardandoTRes, inativoTRes, todosTRes,
-        ativoARes, aguardandoARes, inativoARes, todosARes,
-        planosRes, exerciciosRes, gruposRes,
+        ativoTRes, aguardandoTRes, inativoTRes,
+        ativoARes, aguardandoARes, inativoARes,
+        planosRes, exerciciosRes, gruposRes, statsRes,
+        recentTRes,
       ] = await Promise.all([
         adminApi.listTreinadores({ status: "Ativo", tamanhoPagina: 1 }),
         adminApi.listTreinadores({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
         adminApi.listTreinadores({ status: "Inativo", tamanhoPagina: 1 }),
-        adminApi.listTreinadores({ tamanhoPagina: 100 }),
         adminApi.listAlunos({ status: "Ativo", tamanhoPagina: 1 }),
         adminApi.listAlunos({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
         adminApi.listAlunos({ status: "Inativo", tamanhoPagina: 1 }),
-        adminApi.listAlunos({ tamanhoPagina: 100 }),
         adminApi.listPlanos(),
         adminApi.listExerciciosGlobais({ tamanhoPagina: 1 }),
         adminApi.listGruposMusculares(),
+        adminApi.getDashboardStats(),
+        adminApi.listTreinadores({ tamanhoPagina: 5 }),
       ]);
 
       setTreinadorStats([
@@ -76,43 +88,34 @@ export default function DashboardAdminPage() {
       setPendentes(aguardandoTRes.data.items);
       setAlunosPendentes(aguardandoARes.data.items);
 
-      // Recent trainers: last 5 by createdAt
-      const sorted = [...todosTRes.data.items].sort(
+      // Recent trainers: last 5 by createdAt from the small fetch
+      const sorted = [...recentTRes.data.items].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setRecentTreinadores(sorted.slice(0, 5));
 
-      // Plan distribution
+      // Plan distribution — from dashboard stats endpoint
       const planosData = planosRes.data as PlanoPlataformaResponse[];
       setPlanos(planosData);
       const planoMap = new Map(planosData.map((p) => [p.planoId, p]));
-      const contT: Record<string, PlanoStat> = {};
-      for (const t of todosTRes.data.items) {
-        const key = t.planoPlataformaId ?? "__none";
-        const plano = t.planoPlataformaId ? planoMap.get(t.planoPlataformaId) : null;
-        if (!contT[key]) {
-          contT[key] = {
-            planoId: key,
-            name: plano ? plano.nome : "Sem plano",
-            total: 0,
-            preco: plano?.preco ?? 0,
-            maxAlunos: plano?.maxAlunos ?? 0,
-          };
-        }
-        contT[key].total += 1;
-      }
-      setPlanoStats(Object.values(contT).sort((a, b) => b.total - a.total));
+      const planoBarStats: PlanoStat[] = statsRes.data.planoDistribuicao.map((d) => {
+        const plano = planoMap.get(d.tier);
+        return {
+          planoId: d.tier,
+          name: plano ? plano.nome : d.tier,
+          total: d.total,
+          preco: plano?.preco ?? 0,
+          maxAlunos: plano?.maxAlunos ?? 0,
+        };
+      }).sort((a, b) => b.total - a.total);
+      setPlanoStats(planoBarStats);
 
-      // Student finalidade distribution
-      const contA: Record<string, number> = {};
-      for (const a of todosARes.data.items as AlunoResponse[]) {
-        if (a.finalidade) {
-          const label = FINALIDADE_LABEL[a.finalidade] ?? a.finalidade;
-          contA[label] = (contA[label] ?? 0) + 1;
-        }
-      }
+      // Student finalidade distribution — from dashboard stats endpoint
       setFinalidadeData(
-        Object.entries(contA).sort((a, b) => b[1] - a[1]).map(([name, total]) => ({ name, total }))
+        statsRes.data.alunoFinalidade
+          .slice()
+          .sort((a, b) => b.total - a.total)
+          .map((d) => ({ name: d.finalidade, total: d.total }))
       );
 
       setTotalExercicios(exerciciosRes.data.total);
@@ -225,29 +228,39 @@ export default function DashboardAdminPage() {
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
                 STATUS DOS TREINADORES
               </Typography>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={treinadorStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
-                    {treinadorStats.map((e, i) => <Cell key={i} fill={e.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(v, n) => [v, n]} />
-                  <Legend iconType="circle" iconSize={10} />
-                </PieChart>
-              </ResponsiveContainer>
+              <figure aria-label="Distribuição de treinadores por status" style={{ margin: 0 }}>
+                <span style={srOnly}>
+                  {treinadorStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
+                </span>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={treinadorStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
+                      {treinadorStats.map((e, i) => <Cell key={i} fill={e.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(v, n) => [v, n]} />
+                    <Legend iconType="circle" iconSize={10} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </figure>
             </Paper>
 
             <Paper sx={{ p: 3, borderRadius: 2 }}>
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
                 TREINADORES POR PLANO
               </Typography>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={planoBarData} layout="vertical" margin={{ left: 8, right: 16 }}>
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar dataKey="total" name="Treinadores" fill="#F5C400" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <figure aria-label="Distribuição de treinadores por plano" style={{ margin: 0 }}>
+                <span style={srOnly}>
+                  {planoBarData.map((d) => `${d.name}: ${d.total}`).join(", ")}
+                </span>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={planoBarData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Bar dataKey="total" name="Treinadores" fill="#F5C400" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </figure>
             </Paper>
           </Box>
 
@@ -256,15 +269,20 @@ export default function DashboardAdminPage() {
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
                 STATUS DOS ALUNOS
               </Typography>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={alunoStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
-                    {alunoStats.map((e, i) => <Cell key={i} fill={e.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(v, n) => [v, n]} />
-                  <Legend iconType="circle" iconSize={10} />
-                </PieChart>
-              </ResponsiveContainer>
+              <figure aria-label="Distribuição de alunos por status" style={{ margin: 0 }}>
+                <span style={srOnly}>
+                  {alunoStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
+                </span>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={alunoStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
+                      {alunoStats.map((e, i) => <Cell key={i} fill={e.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(v, n) => [v, n]} />
+                    <Legend iconType="circle" iconSize={10} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </figure>
             </Paper>
 
             <Paper sx={{ p: 3, borderRadius: 2 }}>
@@ -276,14 +294,19 @@ export default function DashboardAdminPage() {
                   <Typography variant="body2" color="text.secondary">Nenhum dado disponível.</Typography>
                 </Box>
               ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={finalidadeData} layout="vertical" margin={{ left: 8, right: 16 }}>
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="total" name="Alunos" fill="#2196f3" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <figure aria-label="Distribuição de alunos por finalidade" style={{ margin: 0 }}>
+                  <span style={srOnly}>
+                    {finalidadeData.map((d) => `${d.name}: ${d.total}`).join(", ")}
+                  </span>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={finalidadeData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12 }} />
+                      <Tooltip />
+                      <Bar dataKey="total" name="Alunos" fill="#2196f3" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </figure>
               )}
             </Paper>
           </Box>
