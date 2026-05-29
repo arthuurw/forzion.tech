@@ -1,6 +1,6 @@
 # Test Remediation — State Dashboard
 
-> Atualizado: **2026-05-28** (Fase 3 fechada — 6/7 done + 1 deferred; F12 unblocked após Docker up)
+> Atualizado: **2026-05-28** (Fase 3 COMPLETA — 7/7 done)
 > Branch central: `fix/frontend-dockerfile-npmrc`
 > Plano fonte: `~/.claude/plans/fa-a-um-review-completo-virtual-squirrel.md`
 
@@ -8,29 +8,29 @@
 
 | Severidade | Total | Pending | In progress | Done | Deferred | Skipped | Blocked |
 |------------|-------|---------|-------------|------|----------|---------|---------|
-| Critical   | 12    | 4       | 0           | 8    | 0        | 0       | 0       |
+| Critical   | 12    | 3       | 0           | 9    | 0        | 0       | 0       |
 | Important  | 18    | 11      | 0           | 7    | 0        | 0       | 0       |
 | Minor      | 8     | 5       | 0           | 1    | 2        | 0       | 0       |
-| **Total**  | **38**| **20**  | **0**       | **16**|**2**    | **0**   | **0**   |
+| **Total**  | **38**| **19**  | **0**       | **17**|**2**    | **0**   | **0**   |
 
 ## Fase ativa
 
 **Fase 4 — Risco médio** (próxima a iniciar)
 
-Fase 3 fechada — 6 done, 1 deferred:
+Fase 3 100% fechada:
 - ✅ F4 Pact provider repo-level (3 handlers convertidos)
 - ✅ F5 Pact error contracts (12 consumer; provider-side state handlers diferidos)
+- ✅ F6 MSW migration (5 arquivos: 4 migrados + 1 deletado, 75 tests pass)
 - ✅ F8 Stryker scope expansion (backend matrix já existia; frontend +components)
 - ✅ F12 Concurrent billing race (Testcontainers + Barrier — confirmado em run real)
 - ✅ F17 FluentValidation tests diretos (7/15 core validators; 8 admin diferidos)
 - ✅ F27 Coverage threshold enforcement (vitest 4 enforce automático documentado)
-- ⏭ F6 MSW migration — DEFERRED Fase 4 (1551 LOC, scope grande)
 
 ## Fases concluídas
 
 - ✅ **Fase 1** (2026-05-28) — Stop false confidence: F1, F2, F13, F38 done.
 - ✅ **Fase 2** (2026-05-28) — Cobertura crítica: F9, F10, F11, F14, F15, F19, F23 done.
-- ✅ **Fase 3** (2026-05-28) — Endurecer gates: F4, F5, F8, F12, F17, F27 done. F6 deferred Fase 4.
+- ✅ **Fase 3** (2026-05-28) — Endurecer gates: F4, F5, F6, F8, F12, F17, F27 done. 100% das tasks fechadas.
 
 ## Fases (visão geral)
 
@@ -38,8 +38,8 @@ Fase 3 fechada — 6 done, 1 deferred:
 |------|------|------------|-----------|-------------------|
 | 1 | Stop false confidence | 1-2 dias | **4/4** ✅ | Não |
 | 2 | Cobertura crítica ausente | 3-5 dias | **7/7** ✅ | **Sim** (resolvido) |
-| 3 | Endurecer gates | 2-3 dias | **6/7** ✅ (F6 deferred) | Não |
-| 4 | Risco médio | ~1 semana | 0/8 + F6 reaberto | Não |
+| 3 | Endurecer gates | 2-3 dias | **7/7** ✅ | Não |
+| 4 | Risco médio | ~1 semana | 0/8 | Não |
 | 5 | Polish | Backlog contínuo | 0/13 | Não |
 
 ## Métricas suite atual (baseline)
@@ -49,7 +49,7 @@ Capturado em **2026-05-28** após Fase 3 (commit `90040c0` + commit F17 TBD):
 | Métrica | Valor | Fonte |
 |---------|-------|-------|
 | Backend tests (Category != Integration) | 1160 pass (+45 F17) | `dotnet test forzion.tech.slnx --filter "Category!=Integration"` |
-| Frontend tests (vitest, 32 suites) | 380 pass | `npm test` em `frontend/` |
+| Frontend tests (vitest, 31 suites pós-F6) | 332 pass | `npm test` em `frontend/` (delta -48 do admin.test.ts deletado em F6) |
 | Frontend Pact consumer (happy + errors) | 4 + 12 = 16 | `npm run test:contract` |
 | Backend E2E (Integration) — F12 race | 1 pass (~10s) | `dotnet test --filter ConcurrentBillingRace` (Docker) |
 | Backend build warnings | 0 | `dotnet build -c Release` |
@@ -79,6 +79,5 @@ Capturado em **2026-05-28** após Fase 3 (commit `90040c0` + commit F17 TBD):
 
 ## Riscos / pendências pra reabrir em Fase 4
 
-- **F6** (MSW migration) — 5 arquivos / 1551 LOC. Plano: 1 arquivo por sessão, começar pelo menor (`saude/page.client.test.tsx`, 91 LOC). `admin.test.ts` pode ser deletado APÓS expansão de `admin.msw.test.ts` cobrir ~30 endpoints.
 - **F5 provider-side** — Implementar state handlers em `ForzionApiProviderTests.cs` (`WithProviderStateUrl` + `/_pact/provider-states` endpoint + middleware que retorna ProblemDetails baseado em state). Promover `pacts-errors/` → `pacts/` no fim. Estimativa: ~30 min.
 - **F17 admin-side** — 8 validators restantes (GruposMusculares Criar+Atualizar, HealthReport-extra, Exercicios/Criar, Pacotes/Atualizar, Planos/Criar+Atualizar, Treinos/AdicionarExercicio). Mesmo pattern de `CoreValidatorsTests.cs`.

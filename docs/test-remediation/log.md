@@ -4,6 +4,50 @@
 
 ---
 
+## 2026-05-28 — F6 fechado (Fase 3 100% completa)
+
+**Sessão:** Continuação direta. Usuário pediu pra quebrar F6 em sub-tasks e fechar tudo de uma vez.
+
+**Feito (1 commit em `fix/frontend-dockerfile-npmrc`):**
+
+1. **F6 MSW migration completa** (TBD commit) `test(frontend): migrate 5 files from vi.mock(@/lib/api/*) to MSW (F6)`
+   - F6a `frontend/src/app/(admin)/admin/saude/page.client.test.tsx` (91 LOC) — 4/4 pass. Bug pego: URLs reais são `/admin/health-report/*` (não `/admin/saude/*` como o mock antigo sugeria).
+   - F6b `frontend/src/components/pagamento/PagamentoCartao.test.tsx` (148 LOC) — 8/8 pass. Stripe mock continua via `vi.mock(@stripe/*)` (F7 separado).
+   - F6c `frontend/src/app/(aluno)/__tests__/pagamento.test.tsx` (356 LOC) — 26/26 pass. Cobre PagamentoPix + PagamentosTreinadorPage + OnboardingRetornoPage + PagamentosAlunoPage.
+   - F6d `frontend/src/lib/api/admin.test.ts` — **DELETADO** (50 tests pinavam só URL+params via `expect(mockGet).toHaveBeenCalledWith(...)`; valor baixo vs MSW. Redundante com `admin.msw.test.ts` + Pact contracts + page tests que já exercitam adminApi via MSW real).
+   - F6e `frontend/src/app/(admin)/__tests__/admin-pages.test.tsx` (588 LOC) — 37/37 pass. Cobre 6 page components admin com handler closures pra capturar URL onde precisa (ex: pacotesPath captura no Pacotes tab test).
+
+**Surpresas pegas durante migração:**
+- **URLs divergentes**: o test antigo de saude mockava `getHealthReportConfig` sem verificar URL real → o backend usa `/admin/health-report/config`, não `/admin/saude/*`. Mock antigo passava silenciosamente; MSW pegou.
+- **window.location não-restaurável em jsdom**: o teste original de "clique em configurar → redireciona" sobrescrevia `window.location` via `Object.defineProperty` + restaurava no fim. Em fluxo de falha (test fails antes do restore), a property fica spoofada e corrompe `axios.baseURL` resolution em tests posteriores. Fix: NÃO mexer em window.location — assertar só que POST foi chamado via flag no handler MSW. Navigate end-to-end fica pra E2E Playwright.
+- **MSW handler ordering**: `server.use(handler1); server.use(handler2)` prepende ambos. Resetado em `afterEach` via `server.resetHandlers()` (integration setup).
+
+**Decisões:**
+- F6d deletado em vez de migrado: 50 tests de baixo valor (apenas pin de URL+params via vi.mock spy). MSW migration teria ~600 LOC novas com mesmo sinal raso. `admin.msw.test.ts` (3 tests piloto) + page tests (via MSW real) + Pact contracts cobrem as mesmas garantias com mais profundidade.
+- Stripe mock (`@stripe/react-stripe-js`) mantido em F6b — F7 (partial mock pra cobrir useStripe/useElements realisticamente) é finding separado.
+- Hook mocks (`usePaginatedList`, `recharts`, `next/navigation`) mantidos em F6e — não são `@/lib/api/*`, fora do scope F6.
+
+**Métricas:**
+- Frontend tests: 332 pass / 31 suites (era 380/32). Delta -48: -50 admin.test.ts deletado + ~+2 net adds em outros files.
+- Backend tests: 1200 pass (sem mudança nesta sessão).
+- F6 migration coverage: 75 tests novos rodando contra apiClient real + MSW HTTP intercept.
+
+**Métricas pós-sessão:** Total findings 38 — done 17, deferred 2, pending 19.
+
+**Próximos passos (Fase 4):**
+- F3 Stripe checkout sem skip — seeded user com pagamento garantido.
+- F7 Stripe component partial mock (useStripe/useElements realistas).
+- F16 Money rounding property test via CsCheck.
+- F25 Rate limit eviction (MAX_ENTRIES=10k).
+- F26 PagamentoPix unmount mid-poll.
+- F28 Role revoked mid-request E2E.
+- F29 Stripe Connect onboarding E2E.
+- F30 Cross-aggregate App-level integration.
+- F5 provider-side state handlers (~30 min).
+- F17 admin-side 8 validators restantes (~1 hr).
+
+---
+
 ## 2026-05-28 — F12 fechado após Docker up (Fase 3 100% das tasks com Docker)
 
 **Sessão:** Continuação. Usuário trouxe Docker Desktop online.

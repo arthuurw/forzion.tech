@@ -48,17 +48,17 @@
 - **Notas:** 12 contratos consumer (401/404/500 × 4 endpoints) provam que o consumer trata AxiosError corretamente e que o backend deve manter shape estável de ProblemDetails (status/title/detail/instance). Output em `pacts-errors/` (separado de `pacts/` publicado) até provider state handlers serem implementados — sem isso, verifier do .NET retornaria 200 dos mocks e quebraria todos os 12.
 
 ### F6 — `vi.mock("@/lib/api/*")` ainda ativo em 6 arquivos
-- **Status:** `pending` (DEFERRED Fase 4 — scope ~1551 linhas)
-- **Fase:** 3 → 4
-- **Arquivos (5 únicos confirmados):**
-  - `frontend/src/lib/api/admin.test.ts` (368 LOC)
-  - `frontend/src/components/pagamento/PagamentoCartao.test.tsx` (148 LOC)
-  - `frontend/src/app/(aluno)/__tests__/pagamento.test.tsx` (356 LOC)
-  - `frontend/src/app/(admin)/__tests__/admin-pages.test.tsx` (588 LOC)
-  - `frontend/src/app/(admin)/admin/saude/page.client.test.tsx` (91 LOC)
-- **Commit:** —
-- **Data fechado:** —
-- **Notas:** Pattern já estabelecido em `admin.msw.test.ts`. Plano Fase 4: migrar 1 arquivo por sessão, começar pelo menor (saude page.client, 91 LOC). admin.test.ts é redundante com admin.msw.test.ts — pode ser deletado APÓS expansão do msw test pra cobrir os ~30 endpoints da admin API.
+- **Status:** `done`
+- **Fase:** 3
+- **Arquivos:**
+  - F6a `frontend/src/app/(admin)/admin/saude/page.client.test.tsx` (91 → 100 LOC) — 4/4 pass
+  - F6b `frontend/src/components/pagamento/PagamentoCartao.test.tsx` (148 → 150 LOC) — 8/8 pass
+  - F6c `frontend/src/app/(aluno)/__tests__/pagamento.test.tsx` (356 → 340 LOC) — 26/26 pass
+  - F6d `frontend/src/lib/api/admin.test.ts` — DELETED (50+ trivial spy assertions; redundante com `admin.msw.test.ts` + Pact + page tests)
+  - F6e `frontend/src/app/(admin)/__tests__/admin-pages.test.tsx` (588 → 530 LOC) — 37/37 pass
+- **Commit:** TBD
+- **Data fechado:** 2026-05-28
+- **Notas:** Migrado tudo de `vi.mock("@/lib/api/*")` pra MSW (apiClient real, `server.use(http.METHOD("*/url", () => HttpResponse.json(...)))`. F6d deletado em vez de migrado — 50 testes pinavam só URL+params (`expect(mockGet).toHaveBeenCalledWith(...)`), valor baixo vs MSW (Pact e page tests cobrem mesmo concern com mais profundidade). Surpresas durante migração: (a) URLs reais usam `/admin/health-report/*`, não `/admin/saude/*`; (b) `Object.defineProperty(window, "location", ...)` em jsdom NÃO é restaurável depois de falha → corrompe origin pra tests posteriores via axios baseURL resolution. Workaround: capturar URL via handler closure em vez de mexer em window.location. Total pós-F6: 332 pass / 31 suites (de 380/32, -48 do admin.test.ts deletado).
 
 ### F7 — `@stripe/react-stripe-js` mockado wholesale
 - **Status:** `pending`

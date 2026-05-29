@@ -1,12 +1,19 @@
+// F6b (Fase 3 test remediation) — migrado de vi.mock("@/lib/api/pagamento")
+// pra MSW. apiClient real envia GET /aluno/pagamentos/:id; MSW intercepta.
+// Pega bugs de URL templating/serializacao escondidos pelo mock antigo.
+//
+// @stripe/* continua mockado: F7 (componente Stripe partial mock) ainda
+// pendente — fora do scope F6 (separacao de concerns).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useStripe, useElements } from "@stripe/react-stripe-js";
-import { pagamentoApi } from "@/lib/api/pagamento";
+import { http, HttpResponse } from "msw";
+import { server } from "@/test/msw/server";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 import type { PagamentoResponse } from "@/types";
 import type React from "react";
 
-// ─── Mocks ───────────────────────────────────────────────────────────────────
+// ─── Stripe mock (F7 territory, not F6) ──────────────────────────────────────
 
 vi.mock("@stripe/stripe-js", () => ({
   loadStripe: vi.fn(() => Promise.resolve(null)),
@@ -17,10 +24,6 @@ vi.mock("@stripe/react-stripe-js", () => ({
   PaymentElement: () => <div data-testid="payment-element" />,
   useStripe: vi.fn(),
   useElements: vi.fn(),
-}));
-
-vi.mock("@/lib/api/pagamento", () => ({
-  pagamentoApi: { obterPagamento: vi.fn() },
 }));
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -39,14 +42,21 @@ const BASE: PagamentoResponse = {
   createdAt: "2025-03-15T00:00:00Z",
 };
 
-function mockObter(data: Partial<PagamentoResponse>) {
-  vi.mocked(pagamentoApi.obterPagamento).mockResolvedValue({
-    data: { ...BASE, ...data },
-  } as never);
+function respondPagamento(overrides: Partial<PagamentoResponse>) {
+  server.use(
+    http.get("*/aluno/pagamentos/:id", () =>
+      HttpResponse.json({ ...BASE, ...overrides }),
+    ),
+  );
+}
+
+function hangPagamento() {
+  server.use(
+    http.get("*/aluno/pagamentos/:id", () => new Promise<Response>(() => {})),
+  );
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(useStripe).mockReturnValue(null);
   vi.mocked(useElements).mockReturnValue(null);
 });
@@ -57,7 +67,7 @@ afterEach(() => vi.clearAllMocks());
 
 describe("PagamentoCartao — loading", () => {
   it("exibe spinner enquanto carrega", () => {
-    vi.mocked(pagamentoApi.obterPagamento).mockReturnValue(new Promise(() => {}));
+    hangPagamento();
     render(<PagamentoCartao pagamentoId="p1" />);
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
@@ -67,7 +77,7 @@ describe("PagamentoCartao — loading", () => {
 
 describe("PagamentoCartao — sem clientSecret", () => {
   it("exibe alerta de indisponibilidade", async () => {
-    mockObter({ clientSecret: null });
+    respondPagamento({ clientSecret: null });
     render(<PagamentoCartao pagamentoId="p1" />);
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
     expect(screen.getByText(/indisponíveis/)).toBeInTheDocument();
@@ -78,14 +88,14 @@ describe("PagamentoCartao — sem clientSecret", () => {
 
 describe("PagamentoCartao — status terminal", () => {
   it("status Falhou → alerta de falha", async () => {
-    mockObter({ status: "Falhou", clientSecret: "cs_test" });
+    respondPagamento({ status: "Falhou", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
     expect(screen.getByText(/Pagamento falhou/)).toBeInTheDocument();
   });
 
   it("status Expirado → alerta de expiração", async () => {
-    mockObter({ status: "Expirado", clientSecret: "cs_test" });
+    respondPagamento({ status: "Expirado", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
     expect(screen.getByText(/Pagamento expirado/)).toBeInTheDocument();
@@ -96,7 +106,7 @@ describe("PagamentoCartao — status terminal", () => {
 
 describe("PagamentoCartao — formulário", () => {
   it("clientSecret presente e status Pendente → renderiza PaymentElement", async () => {
-    mockObter({ status: "Pendente", clientSecret: "cs_test" });
+    respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
     expect(screen.getByTestId("payment-element")).toBeInTheDocument();
@@ -104,7 +114,7 @@ describe("PagamentoCartao — formulário", () => {
   });
 
   it("status Pago dentro do form → exibe confirmação", async () => {
-    mockObter({ status: "Pago", clientSecret: "cs_test" });
+    respondPagamento({ status: "Pago", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
     expect(screen.getByText("Pagamento confirmado!")).toBeInTheDocument();
@@ -121,27 +131,25 @@ describe("CartaoForm — submit com erro Stripe", () => {
     vi.mocked(useStripe).mockReturnValue(mockStripe as never);
     vi.mocked(useElements).mockReturnValue({} as never);
 
-    mockObter({ status: "Pendente", clientSecret: "cs_test" });
+    respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
 
     expect(await screen.findByText("Card declined")).toBeInTheDocument();
-    // botão volta a ser habilitado após erro
     expect(screen.getByRole("button", { name: "Pagar" })).toBeEnabled();
   });
 
   it("submit sem stripe/elements → não chama confirmPayment", async () => {
     const mockStripe = { confirmPayment: vi.fn() };
-    vi.mocked(useStripe).mockReturnValue(null); // stripe null = guard no início do handler
+    vi.mocked(useStripe).mockReturnValue(null);
     vi.mocked(useElements).mockReturnValue({} as never);
 
-    mockObter({ status: "Pendente", clientSecret: "cs_test" });
+    respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
     render(<PagamentoCartao pagamentoId="p1" />);
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
 
-    // botão desabilitado quando stripe é null
     expect(screen.getByRole("button", { name: "Pagar" })).toBeDisabled();
     expect(mockStripe.confirmPayment).not.toHaveBeenCalled();
   });
