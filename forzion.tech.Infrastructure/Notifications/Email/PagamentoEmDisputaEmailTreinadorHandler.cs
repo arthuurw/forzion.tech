@@ -27,6 +27,7 @@ public sealed class PagamentoEmDisputaEmailTreinadorHandler(
     IContaRepository contaRepository,
     IAlunoRepository alunoRepository,
     IEmailService emailService,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<PagamentoEmDisputaEmailTreinadorHandler> logger) : IDomainEventHandler<PagamentoEmDisputaEvent>
 {
     public async Task HandleAsync(PagamentoEmDisputaEvent domainEvent, CancellationToken cancellationToken = default)
@@ -42,6 +43,11 @@ public sealed class PagamentoEmDisputaEmailTreinadorHandler(
             logger.LogWarning("PagamentoEmDisputaEmailTreinadorHandler: assinatura {Id} não encontrada.", domainEvent.AssinaturaAlunoId);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(assinatura.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.Email) return;
 
         var treinador = await treinadorRepository
             .ObterPorIdAsync(assinatura.TreinadorId, cancellationToken)

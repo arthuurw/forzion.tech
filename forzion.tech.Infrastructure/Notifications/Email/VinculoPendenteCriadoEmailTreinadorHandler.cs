@@ -15,12 +15,18 @@ public sealed class VinculoPendenteCriadoEmailTreinadorHandler(
     IContaRepository contaRepository,
     IAlunoRepository alunoRepository,
     IEmailService emailService,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<VinculoPendenteCriadoEmailTreinadorHandler> logger) : IDomainEventHandler<VinculoPendenteCriadoEvent>
 {
     public async Task HandleAsync(VinculoPendenteCriadoEvent domainEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
         if (!emailService.Habilitado) return;
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(domainEvent.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.Email) return;
 
         var treinador = await treinadorRepository
             .ObterPorIdAsync(domainEvent.TreinadorId, cancellationToken)

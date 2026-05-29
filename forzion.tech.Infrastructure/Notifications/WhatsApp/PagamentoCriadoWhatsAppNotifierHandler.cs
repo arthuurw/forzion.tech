@@ -20,6 +20,7 @@ public sealed class PagamentoCriadoWhatsAppNotifierHandler(
     IAssinaturaAlunoRepository assinaturaRepository,
     IAlunoRepository alunoRepository,
     IWhatsAppNotifier whatsAppNotifier,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     IOptions<AppSettings> appSettings,
     ILogger<PagamentoCriadoWhatsAppNotifierHandler> logger) : IDomainEventHandler<PagamentoCriadoEvent>
 {
@@ -52,6 +53,11 @@ public sealed class PagamentoCriadoWhatsAppNotifierHandler(
             logger.LogDebug("PagamentoCriadoWhatsAppNotifierHandler: aluno {Id} sem telefone — ignorado.", aluno.Id);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(assinatura.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.WhatsApp) return;
 
         var linkPortal = $"{appSettings.Value.FrontendBaseUrl}/aluno/pagamentos";
 

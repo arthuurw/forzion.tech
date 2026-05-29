@@ -11,25 +11,21 @@ using DomainEmail = forzion.tech.Domain.ValueObjects.Email;
 
 namespace forzion.tech.Tests.Infrastructure.Notifications.Email;
 
-public class AssinaturaAlunoCanceladaEmailAlunoHandlerTests
+public class AlunoInativadoEmailHandlerTests
 {
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IContaRepository> _contaRepo = new();
-    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IEmailService> _emailService = new();
     private readonly Mock<IPlanoNotificationPolicy> _planoPolicy = new();
-    private readonly Mock<ILogger<AssinaturaAlunoCanceladaEmailAlunoHandler>> _logger = new();
-    private readonly AssinaturaAlunoCanceladaEmailAlunoHandler _handler;
+    private readonly Mock<ILogger<AlunoInativadoEmailHandler>> _logger = new();
+    private readonly AlunoInativadoEmailHandler _handler;
 
-    private static readonly Guid AssinaturaId = Guid.NewGuid();
     private static readonly Guid AlunoId = Guid.NewGuid();
     private static readonly Guid ContaId = Guid.NewGuid();
-    private static readonly Guid TreinadorId = Guid.NewGuid();
 
-    private static readonly AssinaturaAlunoCanceladaEvent Evento =
-        new(AssinaturaId, AlunoId, TreinadorId, 150m, TestData.Agora);
+    private static readonly AlunoInativadoEvent Evento = new(AlunoId, TestData.Agora);
 
-    public AssinaturaAlunoCanceladaEmailAlunoHandlerTests()
+    public AlunoInativadoEmailHandlerTests()
     {
         _emailService.SetupGet(e => e.Habilitado).Returns(true);
         _emailService.Setup(e => e.EnviarAsync(
@@ -37,13 +33,11 @@ public class AssinaturaAlunoCanceladaEmailAlunoHandlerTests
             .Returns(Task.CompletedTask);
         _contaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conta?)null);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Treinador?)null);
-        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _planoPolicy.Setup(p => p.ResolverPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CanaisNotificacao(true, true));
 
-        _handler = new AssinaturaAlunoCanceladaEmailAlunoHandler(
-            _alunoRepo.Object, _contaRepo.Object, _treinadorRepo.Object,
+        _handler = new AlunoInativadoEmailHandler(
+            _alunoRepo.Object, _contaRepo.Object,
             _emailService.Object, _planoPolicy.Object, _logger.Object);
     }
 
@@ -73,22 +67,18 @@ public class AssinaturaAlunoCanceladaEmailAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_AlunoComEmail_EnviaConfirmacaoCancelamento()
+    public async Task HandleAsync_AlunoComEmail_EnviaNotificacaoInativado()
     {
         var aluno = Aluno.Criar(ContaId, "Maria", TestData.Agora, email: "maria@aluno.com").Value;
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Coach Joana", TestData.Agora).Value;
-
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(TreinadorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(treinador);
 
         await _handler.HandleAsync(Evento);
 
         _emailService.Verify(e => e.EnviarAsync(
             "maria@aluno.com",
-            It.Is<string>(s => s.Contains("cancelada", StringComparison.OrdinalIgnoreCase)),
-            It.Is<string>(html => html.Contains("Maria") && html.Contains("Coach Joana") && html.Contains("cancelada")),
+            It.Is<string>(s => s.Contains("inativada", StringComparison.OrdinalIgnoreCase)),
+            It.Is<string>(html => html.Contains("Maria")),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -115,27 +105,24 @@ public class AssinaturaAlunoCanceladaEmailAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorNaoEncontrado_UsaPlaceholder()
+    public async Task HandleAsync_AlunoSemEmailEContaNull_NaoEnvia()
     {
-        var aluno = Aluno.Criar(ContaId, "Ana", TestData.Agora, email: "ana@x.com").Value;
-
+        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora).Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
+        // _contaRepo retorna null por padrão
 
         await _handler.HandleAsync(Evento);
 
         _emailService.Verify(e => e.EnviarAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.Is<string>(html => html.Contains("seu treinador")),
-            It.IsAny<CancellationToken>()),
-            Times.Once);
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
     public async Task HandleAsync_PlanoSemPermissaoEmail_NaoEnvia()
     {
-        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _planoPolicy.Setup(p => p.ResolverPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CanaisNotificacao(false, false));
 
         await _handler.HandleAsync(Evento);

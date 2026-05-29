@@ -18,6 +18,7 @@ namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 public sealed class AssinaturaAlunoCanceladaWhatsAppAlunoHandler(
     IAlunoRepository alunoRepository,
     IWhatsAppNotifier whatsAppNotifier,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     IOptions<AppSettings> appSettings,
     ILogger<AssinaturaAlunoCanceladaWhatsAppAlunoHandler> logger) : IDomainEventHandler<AssinaturaAlunoCanceladaEvent>
 {
@@ -41,6 +42,11 @@ public sealed class AssinaturaAlunoCanceladaWhatsAppAlunoHandler(
             logger.LogDebug("AssinaturaAlunoCanceladaWhatsAppAlunoHandler: aluno {Id} sem telefone — ignorado.", aluno.Id);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(domainEvent.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.WhatsApp) return;
 
         var linkPortal = $"{appSettings.Value.FrontendBaseUrl}/aluno/pagamentos";
 

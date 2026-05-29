@@ -22,6 +22,7 @@ public sealed class PagamentoFalhouEmailHandler(
     IContaRepository contaRepository,
     IEmailService emailService,
     IOptions<AppSettings> appSettings,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<PagamentoFalhouEmailHandler> logger) : IDomainEventHandler<PagamentoFalhouEvent>
 {
     public async Task HandleAsync(PagamentoFalhouEvent domainEvent, CancellationToken cancellationToken = default)
@@ -37,6 +38,11 @@ public sealed class PagamentoFalhouEmailHandler(
             logger.LogWarning("PagamentoFalhouEmailHandler: assinatura {Id} não encontrada.", domainEvent.AssinaturaAlunoId);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(assinatura.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.Email) return;
 
         var aluno = await alunoRepository
             .ObterPorIdAsync(assinatura.AlunoId, cancellationToken)

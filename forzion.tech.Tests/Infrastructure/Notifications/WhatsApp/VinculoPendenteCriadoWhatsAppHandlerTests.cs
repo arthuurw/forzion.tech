@@ -14,6 +14,7 @@ public class VinculoPendenteCriadoWhatsAppHandlerTests
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IWhatsAppNotifier> _notifier = new();
+    private readonly Mock<IPlanoNotificationPolicy> _planoPolicy = new();
     private readonly Mock<ILogger<VinculoPendenteCriadoWhatsAppHandler>> _logger = new();
     private readonly VinculoPendenteCriadoWhatsAppHandler _handler;
 
@@ -28,9 +29,11 @@ public class VinculoPendenteCriadoWhatsAppHandlerTests
         _notifier.Setup(n => n.Habilitado).Returns(true);
         _notifier.Setup(n => n.SendTemplateAsync(It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, true));
 
         _handler = new VinculoPendenteCriadoWhatsAppHandler(
-            _treinadorRepo.Object, _alunoRepo.Object, _notifier.Object, _logger.Object);
+            _treinadorRepo.Object, _alunoRepo.Object, _notifier.Object, _planoPolicy.Object, _logger.Object);
     }
 
     [Fact]
@@ -112,5 +115,21 @@ public class VinculoPendenteCriadoWhatsAppHandlerTests
                 m.BodyParameters.Contains("Um aluno")),
             It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PlanoSemWhatsApp_NaoEnvia()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", TestData.Agora, telefone: "11999998888").Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(treinador);
+        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, false));
+
+        await _handler.HandleAsync(Evento);
+
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

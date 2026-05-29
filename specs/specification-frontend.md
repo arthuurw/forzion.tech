@@ -211,6 +211,13 @@ interceptor resposta:
 - Responses de domínio: `AlunoResponse`, `TreinadorResponse`, `VinculoResponse`, `TreinoResponse`, `ExercicioResponse`, `PlanoPlataformaResponse`, `GrupoMuscularResponse`, `PacoteResponse`, `AssinaturaAlunoResponse`, `PagamentoResponse`, `ExecucaoTreinoResponse`, etc.
 - Enums: `AlunoStatus`, `TreinadorStatus`, `VinculoStatus`, `TreinoAlunoStatus`, `ObjetivoTreino`, `DificuldadeTreino`, `FinalidadeTreino`, `NivelCondicionamento`, `TempoDisponivel`, `AssinaturaAlunoStatus`, `PagamentoStatus`, `MetodoPagamento`, `TierPlano`.
 
+## ELITE "EM BREVE"
+Plano tier=Elite indisponível para seleção/atribuição. Três pontos de aplicação:
+- **Landing** (`_landing/`): card Elite não-clicável (sem link de ação) + badge "Em breve".
+- **Admin — planos** (`(admin)/planos`): dropdown `TierPlano` com opção `Elite` `disabled` (visível mas não selecionável).
+- **Admin — treinadores** (`(admin)/treinadores`): formulário de atribuição de plano exclui `Elite` das opções listadas.
+Backend rejeita `AtribuirPlano` com tier=Elite → `PlanoPlataformaErrors.EliteIndisponivel` (422). Cross-ref [specification-model].
+
 ## TESTES (`vitest.config.mts`)
 3 projects vitest:
 

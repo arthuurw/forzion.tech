@@ -13,6 +13,7 @@ public sealed class AssinaturaAlunoCriadaWhatsAppHandler(
     IAlunoRepository alunoRepository,
     IPacoteRepository pacoteRepository,
     IWhatsAppNotifier whatsAppNotifier,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<AssinaturaAlunoCriadaWhatsAppHandler> logger) : IDomainEventHandler<AssinaturaAlunoCriadaEvent>
 {
     public async Task HandleAsync(AssinaturaAlunoCriadaEvent domainEvent, CancellationToken cancellationToken = default)
@@ -35,6 +36,11 @@ public sealed class AssinaturaAlunoCriadaWhatsAppHandler(
             logger.LogDebug("AssinaturaAlunoCriadaWhatsAppHandler: aluno {Id} sem telefone — ignorado.", aluno.Id);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(domainEvent.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.WhatsApp) return;
 
         var pacote = await pacoteRepository
             .ObterPorIdAsync(domainEvent.PacoteId, cancellationToken)

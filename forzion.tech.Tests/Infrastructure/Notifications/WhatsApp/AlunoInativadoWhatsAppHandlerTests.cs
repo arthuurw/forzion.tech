@@ -13,6 +13,7 @@ public class AlunoInativadoWhatsAppHandlerTests
 {
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IWhatsAppNotifier> _notifier = new();
+    private readonly Mock<IPlanoNotificationPolicy> _planoPolicy = new();
     private readonly Mock<ILogger<AlunoInativadoWhatsAppHandler>> _logger = new();
     private readonly AlunoInativadoWhatsAppHandler _handler;
 
@@ -25,9 +26,11 @@ public class AlunoInativadoWhatsAppHandlerTests
         _notifier.Setup(n => n.Habilitado).Returns(true);
         _notifier.Setup(n => n.SendTemplateAsync(It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _planoPolicy.Setup(p => p.ResolverPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, true));
 
         _handler = new AlunoInativadoWhatsAppHandler(
-            _alunoRepo.Object, _notifier.Object, _logger.Object);
+            _alunoRepo.Object, _notifier.Object, _planoPolicy.Object, _logger.Object);
     }
 
     [Fact]
@@ -85,5 +88,21 @@ public class AlunoInativadoWhatsAppHandlerTests
                 m.BodyParameters.Contains("Maria")),
             It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PlanoSemWhatsApp_NaoEnvia()
+    {
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Maria", TestData.Agora, telefone: "11999998888").Value;
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(aluno);
+        _planoPolicy.Setup(p => p.ResolverPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, false));
+
+        await _handler.HandleAsync(Evento);
+
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

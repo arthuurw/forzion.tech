@@ -15,12 +15,18 @@ public sealed class AssinaturaAlunoCanceladaEmailAlunoHandler(
     IContaRepository contaRepository,
     ITreinadorRepository treinadorRepository,
     IEmailService emailService,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<AssinaturaAlunoCanceladaEmailAlunoHandler> logger) : IDomainEventHandler<AssinaturaAlunoCanceladaEvent>
 {
     public async Task HandleAsync(AssinaturaAlunoCanceladaEvent domainEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
         if (!emailService.Habilitado) return;
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(domainEvent.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.Email) return;
 
         var aluno = await alunoRepository
             .ObterPorIdAsync(domainEvent.AlunoId, cancellationToken)

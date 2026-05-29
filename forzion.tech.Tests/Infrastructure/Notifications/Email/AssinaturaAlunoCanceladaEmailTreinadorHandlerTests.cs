@@ -17,6 +17,7 @@ public class AssinaturaAlunoCanceladaEmailTreinadorHandlerTests
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IEmailService> _emailService = new();
+    private readonly Mock<IPlanoNotificationPolicy> _planoPolicy = new();
     private readonly Mock<ILogger<AssinaturaAlunoCanceladaEmailTreinadorHandler>> _logger = new();
     private readonly AssinaturaAlunoCanceladaEmailTreinadorHandler _handler;
 
@@ -34,10 +35,12 @@ public class AssinaturaAlunoCanceladaEmailTreinadorHandlerTests
         _emailService.Setup(e => e.EnviarAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, true));
 
         _handler = new AssinaturaAlunoCanceladaEmailTreinadorHandler(
             _treinadorRepo.Object, _contaRepo.Object, _alunoRepo.Object,
-            _emailService.Object, _logger.Object);
+            _emailService.Object, _planoPolicy.Object, _logger.Object);
     }
 
     [Fact]
@@ -129,5 +132,18 @@ public class AssinaturaAlunoCanceladaEmailTreinadorHandlerTests
             It.Is<string>(html => html.Contains("Um aluno")),
             It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PlanoSemPermissaoEmail_NaoEnvia()
+    {
+        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(false, false));
+
+        await _handler.HandleAsync(Evento);
+
+        _emailService.Verify(e => e.EnviarAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }
