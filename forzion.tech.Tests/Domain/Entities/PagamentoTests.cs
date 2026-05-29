@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Tests.Builders;
 
@@ -27,6 +28,22 @@ public class PagamentoTests
         p.StripePaymentIntentId.Should().BeNull();
         p.PixQrCode.Should().BeNull();
         p.DataPagamento.Should().BeNull();
+    }
+
+    [Fact]
+    public void Criar_DispatchaPagamentoCriadoEvent()
+    {
+        // P0 (M6 follow-up) — notifica aluno via email + WhatsApp (handlers
+        // em Infrastructure) que cobranca esta disponivel.
+        var p = Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora, MetodoPagamento.Cartao);
+
+        p.DomainEvents.Should().ContainSingle();
+        var evento = p.DomainEvents.OfType<PagamentoCriadoEvent>().Single();
+        evento.PagamentoId.Should().Be(p.Id);
+        evento.AssinaturaAlunoId.Should().Be(AssinaturaAlunoId);
+        evento.Valor.Should().Be(Valor);
+        evento.MetodoPagamento.Should().Be(MetodoPagamento.Cartao);
+        evento.OcorridoEm.Should().Be(TestData.Agora);
     }
 
     [Fact]

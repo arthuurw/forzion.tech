@@ -153,6 +153,41 @@ internal static class EmailTemplates
             </p>
             """);
 
+    public static string CobrancaDisponivel(string nomeAluno, decimal valor, MetodoPagamento metodo, string linkPortal)
+    {
+        var metodoLabel = metodo == MetodoPagamento.Cartao ? "cartão de crédito" : "Pix";
+        // Formatação pt-BR explícita (R$ 149,90) — independe de culture do processo.
+        var valorFormatado = valor.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"));
+        return Layout(
+            "Cobrança disponível",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Uma nova cobrança da sua assinatura está disponível.
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valorFormatado}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Método</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{metodoLabel}</td>
+              </tr>
+            </table>
+            <p style="color:#444;line-height:1.6">
+              Acesse o portal para concluir o pagamento.
+            </p>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver pagamento
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, fale com o seu treinador.
+            </p>
+            """);
+    }
+
     public static string AssinaturaAlunoCriada(string nomeAluno, string nomeTreinador, string nomePacote, decimal valor) =>
         Layout(
             "AssinaturaAluno criada!",

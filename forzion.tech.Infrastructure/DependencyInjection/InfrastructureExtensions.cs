@@ -141,9 +141,13 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoEmailHandler>();
         services.AddScoped<IDomainEventHandler<AlunoInativadoEvent>, AlunoInativadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<ContaRegistradaEvent>, ContaRegistradaEmailHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoEmailHandler>();
 
         // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
+
+        // Domain event handlers — WhatsApp
+        services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
 
         // Domain event handlers — projeção billing
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();

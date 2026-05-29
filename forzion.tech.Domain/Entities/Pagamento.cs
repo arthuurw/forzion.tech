@@ -1,10 +1,15 @@
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Domain.Entities;
 
-public class Pagamento
+public class Pagamento : IHasDomainEvents
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
     public Guid Id { get; private set; }
     public Guid AssinaturaAlunoId { get; private set; }
     public decimal Valor { get; private set; }
@@ -28,7 +33,7 @@ public class Pagamento
         if (valor <= 0)
             throw new DomainException("O valor do pagamento deve ser maior que zero.");
 
-        return new Pagamento
+        var pagamento = new Pagamento
         {
             Id = Guid.NewGuid(),
             AssinaturaAlunoId = assinaturaId,
@@ -37,6 +42,11 @@ public class Pagamento
             MetodoPagamento = metodo,
             CreatedAt = agora
         };
+
+        pagamento._domainEvents.Add(new PagamentoCriadoEvent(
+            pagamento.Id, assinaturaId, valor, metodo, agora));
+
+        return pagamento;
     }
 
     public void DefinirDadosPix(string paymentIntentId, string qrCode, string qrCodeUrl, DateTime expiracao)
