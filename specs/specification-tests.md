@@ -94,4 +94,4 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - **Coverlet por-assembly**: `Threshold` aplica ao filtro `Include`; rodar steps separados por assembly (não misturar).
 
 ## 11. REFERÊNCIAS
-[specification-backend] (camadas/handlers), [specification-db] (Testcontainers/schemas), [specification-git] (CRLF/format/commits), [specification-stripe] (FakeStripeService/webhook), [specification-email]/[specification-whatsapp] (Null* + decorators de teste). Relatório de validação ao vivo + gaps: `.specs/qa/validation-report-2026-05-29.md`.
+[specification-backend] (camadas/handlers), [specification-db] (Testcontainers/schemas), [specification-git] (CRLF/format/commits), [specification-stripe] (FakeStripeService/webhook), [specification-email]/[specification-whatsapp] (Null* + decorators de teste), [specification-security] (semgrep/zap/dep-scan gates), [specification-observability] (lighthouse budgets), [specification-frontend-ui] (harness a11y). Relatório de validação ao vivo + gaps: `.specs/qa/validation-report-2026-05-29.md`.

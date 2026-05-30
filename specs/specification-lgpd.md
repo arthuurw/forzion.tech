@@ -1,6 +1,6 @@
 # specification-lgpd — privacidade: portabilidade, exclusão (anonimização), consentimento
 
-DOC PARA AGENTES. Fonte de verdade dos direitos do titular (LGPD) no forzion.tech: exportação de dados (portabilidade, art. 20), exclusão de conta por ANONIMIZAÇÃO (direito ao esquecimento, art. 18), e consentimento de cookies (incl. dado sensível de saúde, art. 11). Formato denso. Consultar antes de alterar export/anonimização, banner de consentimento, ou tratamento de PII.
+DOC PARA AGENTES. Fonte de verdade dos direitos do titular (LGPD) no forzion.tech: exportação de dados (portabilidade, art. 20), exclusão de conta por ANONIMIZAÇÃO (direito ao esquecimento, art. 18), e consentimento de cookies (incl. dado sensível de saúde, art. 11). Formato denso. Consultar antes de alterar export/anonimização, banner de consentimento, ou tratamento de PII. Cross-ref: [specification-security] (gate de consentimento → Sentry, postura de segurança), [specification-frontend-ui] (ConsentBanner), [specification-observability] (Sentry/RUM gateado por consentimento).
 
 ## MANUTENÇÃO
 - Atualizar NA MESMA TAREFA de mudança em: campos PII (export/anonimização), endpoints LGPD, banner/consentimento, gate do Sentry, auditoria, regra de bloqueio.
