@@ -17,6 +17,10 @@ export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
     globals: true,
+    // Render de server-components + cold imports ficam lentos sob instrumentação
+    // de coverage (v8); o default de 5s estoura em CI/local. Herdado pelos projects
+    // (extends: true). Não enfraquece asserção — só acomoda overhead de import.
+    testTimeout: 20000,
     coverage: {
       provider: "v8",
       // Thresholds abaixo sao ENFORCED automaticamente quando `vitest run --coverage`
