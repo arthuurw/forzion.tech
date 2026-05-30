@@ -19,6 +19,7 @@ paths = [
   '''frontend/src/test/msw/types\.ts$''',
   '''frontend/e2e/specs/.+\.spec\.ts$''',
   '''frontend/src/.+\.test\.(ts|tsx)$''',
+  '''forzion\.tech\.Tests/.+\.cs$''',
 ]
 
 regexes = [
