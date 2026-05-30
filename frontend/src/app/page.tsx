@@ -1,10 +1,25 @@
 import { Box, Container, Typography, Button, Grid, Card, CardContent, Chip } from "@mui/material";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import HowItWorks from "./_landing/HowItWorks";
 import type { PlanoPlataformaResponse } from "@/types";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "forzion.tech",
+  url: SITE_URL,
+  description: "Plataforma de gestão de treinos para personal trainers",
+};
 
 async function getPlanos(): Promise<PlanoPlataformaResponse[]> {
   try {
@@ -22,6 +37,10 @@ export default async function LandingPage() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", bgcolor: "background.default" }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
       {/* Header */}
       <Box
         component="header"

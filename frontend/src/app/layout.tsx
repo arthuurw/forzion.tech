@@ -15,9 +15,27 @@ const inter = Inter({
   display: "swap",
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
+const SITE_DESCRIPTION = "Plataforma de gestão de treinos para personal trainers";
+
 export const metadata: Metadata = {
-  title: "forzion.tech",
-  description: "Plataforma de gestão de treinos para personal trainers",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "forzion.tech — Gestão para Personal Trainers",
+    template: "%s | forzion.tech",
+  },
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "forzion.tech",
+    locale: "pt_BR",
+    url: "/",
+    title: "forzion.tech — Gestão para Personal Trainers",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export const viewport: Viewport = {
