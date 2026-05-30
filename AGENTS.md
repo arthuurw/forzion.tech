@@ -38,6 +38,7 @@ Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
 - `specs/specification-observability.md` — logging→DB, `/health`, relatório de saúde, RUM (Web Vitals/Sentry), perf budgets.
 - `specs/specification-frontend-ui.md` — design tokens, componentes UI/forms, governance, a11y WCAG AA (divergência F18).
 - `specs/specification-seo.md` — metadata/canonical, OpenGraph, robots/sitemap, JSON-LD (aspiracional).
+- `specs/specification-local-ci-repro.md` — reproduzir os gates do CI localmente + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet8, postgres fsync, .slnx, E2E email-block) + achados (Application coverage <85).
 
 ## CONVENÇÕES-CHAVE
 - DDD: entidades com factory `Criar`; domain events despachados no `UnitOfWork.CommitAsync` (re-entrância tratada). Result<T> pattern. FluentValidation auto-descoberto. Handlers registrados manualmente no DI.
