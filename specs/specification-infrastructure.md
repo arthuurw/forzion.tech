@@ -23,6 +23,7 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 - `location /webhooks/` → `http://backend:8080` (ANTES de `location /`). Necessário p/ headers `svix-*` crus (webhooks **Stripe** `/webhooks/stripe` E **Resend** `/webhooks/resend`). NÃO usar proxy SPA `/api/backend` p/ webhook (descarta headers). Ver [specification-email].
 - `location /` → `http://frontend:3000` (proxy + ws upgrade). Backend NÃO tem outra rota pública (só via Next `/api/backend/[...path]` e `/api/auth/*`).
 - Server `pact.homologacao.forzion.tech:443` → `pact-broker:9292` (usa cert do domínio principal até `certbot --expand`).
+- **X-Robots-Tag (homolog)**: server block `homologacao.forzion.tech:443` injeta `add_header X-Robots-Tag "noindex, nofollow" always;` — homolog é host público; evita indexação por buscadores. NÃO replicar no server de produção (forzion.tech, futuro). Defesa em profundidade com `robots.ts` env-gated no frontend. Ver [specification-security] §3 / [specification-seo] §4.1.
 
 ## SSL (Let's Encrypt / certbot)
 - Bootstrap UMA VEZ: `scripts/init-ssl.sh <dominio> <email>` — sobe `nginx-init.conf` (HTTP-only p/ desafio ACME) → `certbot certonly --webroot` → `sed DOMAIN_PLACEHOLDER` no `nginx.conf` → `up -d` stack.

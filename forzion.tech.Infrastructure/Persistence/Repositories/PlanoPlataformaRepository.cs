@@ -13,6 +13,7 @@ public class PlanoPlataformaRepository(AppDbContext context) : IPlanoPlataformaR
 
     public async Task<IReadOnlyList<PlanoPlataforma>> ListarAsync(CancellationToken cancellationToken = default) =>
         await context.PlanosPlataforma
+            .AsNoTracking()
             .OrderBy(p => p.MaxAlunos).ThenBy(p => p.Preco)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

@@ -81,6 +81,7 @@ public static class PagamentosEndpoints
             [FromServices] GerarCobrancaMensalHandler gerarHandler,
             [FromServices] IAssinaturaAlunoRepository assinaturaRepository,
             [FromServices] ILogger<Program> logger,
+            [FromServices] TimeProvider timeProvider,
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
@@ -97,7 +98,7 @@ public static class PagamentosEndpoints
                 return Results.Unauthorized();
 
             var assinaturas = await assinaturaRepository
-                .ListarParaRenovarAsync(DateTime.UtcNow, cancellationToken).ConfigureAwait(false);
+                .ListarParaRenovarAsync(timeProvider.GetUtcNow().UtcDateTime, cancellationToken).ConfigureAwait(false);
 
             var falhas = 0;
             foreach (var assinatura in assinaturas)

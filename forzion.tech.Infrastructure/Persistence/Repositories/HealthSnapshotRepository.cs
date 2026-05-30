@@ -11,6 +11,7 @@ public class HealthSnapshotRepository(AppDbContext context) : IHealthSnapshotRep
 
     public async Task<IReadOnlyList<HealthSnapshot>> ListarRecentesAsync(int limite, CancellationToken cancellationToken = default) =>
         await context.HealthSnapshots
+            .AsNoTracking()
             .OrderByDescending(s => s.CapturadoEm)
             .Take(limite)
             .ToListAsync(cancellationToken)

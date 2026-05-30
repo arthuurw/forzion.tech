@@ -27,6 +27,7 @@ public class AssinaturaAlunoRepository(AppDbContext context) : IAssinaturaAlunoR
 
     public async Task<IReadOnlyList<AssinaturaAluno>> ListarParaRenovarAsync(DateTime ate, CancellationToken cancellationToken = default) =>
         await context.AssinaturaAlunos
+            .AsNoTracking()
             .Where(a => a.Status == AssinaturaAlunoStatus.Ativa && a.DataProximaCobranca <= ate)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

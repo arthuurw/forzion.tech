@@ -17,6 +17,7 @@ public class ErrorLogRepository(AppDbContext context) : IErrorLogRepository
 
     public async Task<IReadOnlyList<ErrorLogEntry>> ListarDesdeAsync(DateTime desde, int limite, CancellationToken cancellationToken = default) =>
         await context.ErrorLogs
+            .AsNoTracking()
             .Where(e => e.OcorridoEm >= desde)
             .OrderByDescending(e => e.OcorridoEm)
             .Take(limite)

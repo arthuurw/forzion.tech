@@ -57,7 +57,7 @@ Story = `*.stories.tsx`. A11y test (vitest-axe dedicado) = `*.a11y.test.tsx`. Co
 | Componente | Propósito | Props-chave | Story? | a11y test? |
 |---|---|---|---|---|
 | `AlertBanner` | alerta inline colapsável | `open`, `severity`(error\|warning\|info\|success, def error), `title?`, `message`, `onClose?` | ✅ | ✅ vitest-axe (4 severities + sem title + close) |
-| `StatusChip` | chip de status domínio | `status`(AlunoStatus\|TreinadorStatus\|VinculoStatus), `size`(small def) | ✅ | ✅ vitest-axe |
+| `StatusChip` | chip de status domínio | `status`(AlunoStatus\|TreinadorStatus\|VinculoStatus), `size`(small def) | ✅ | ✅ vitest-axe (rotulado: `aria-label="Status: ${label}"`) |
 | `EmptyState` | estado vazio + CTA | `message`, `actionLabel?`, `onAction?` | ✅ | ✅ vitest-axe |
 | `LoadingSpinner` | spinner (page/inline) | `fullPage`(def false), `label`(def "Carregando" → `aria-label`) | ✅ | ✅ vitest-axe |
 | `ConfirmDialog` | dialog confirmação genérico | `open`, `title`, `description`, `confirmLabel`, `cancelLabel`, `destructive`, `loading`, `children?`, `onConfirm`, `onClose` | ✅ | ⚠️ UNIT only (`__tests__/a11y.test.tsx`: aria-describedby + autoFocus) — SEM vitest-axe dedicado |
@@ -114,7 +114,7 @@ Barrel `forms/index.ts`: FormTextField, FormSelect, PasswordField. NENHUM form c
 - **Foco / keyboard nav**:
   - `ConfirmDialog`: `aria-describedby` → id da descrição; `autoFocus` condicional — destrutivo ⇒ foco no **Cancelar** (`autoFocus={destructive}`), não-destrutivo ⇒ foco no **Confirmar** (anti-clique-acidental).
   - `ResponsiveTable`: linha clicável (desktop `TableRow`, mobile card `Box`) recebe `role="button"` + `tabIndex={0}` + `onKeyDown` (Enter/Space com `preventDefault`) SOMENTE quando `onRowClick` definido; coluna `actions` faz `stopPropagation`.
-- **`aria-label`**: `LoadingSpinner` (`CircularProgress aria-label={label}`); `PasswordField` IconButton ("Mostrar/Ocultar senha"); `ConsentBanner` Dialog ("Consentimento de cookies e privacidade LGPD"); IconButtons de ação em páginas treinador/aluno/admin; charts admin via `<figure aria-label=...>` (testado em `admin/__tests__/a11y-dashboard.test.tsx`).
+- **`aria-label`**: `LoadingSpinner` (`CircularProgress aria-label={label}`); `StatusChip` (`Chip aria-label={\`Status: ${label}\`}` — `src/components/ui/StatusChip.tsx`, nome acessível explícito do status); `PasswordField` IconButton ("Mostrar/Ocultar senha"); `ConsentBanner` Dialog ("Consentimento de cookies e privacidade LGPD"); IconButtons de ação em páginas treinador/aluno/admin; charts admin via `<figure aria-label=...>` (testado em `admin/__tests__/a11y-dashboard.test.tsx`).
 - **`role="alert"`**: `components/aluno/AlunoInadimplenteBanner.tsx` (anúncio assertivo). NOTA: AlertBanner/Snackbar usam MUI `Alert` (role implícito); **não há `aria-live` explícito** custom para erros de formulário — erros vão via `helperText` (associação `aria-describedby` provida pelo MUI TextField/FormControl).
 - **`prefers-reduced-motion`**: HONRADO em runtime. `src/styles/globals.css` tem `@media (prefers-reduced-motion: reduce)` que neutraliza animações/transições globalmente (`animation-duration`/`transition-duration: 0.01ms !important`, `animation-iteration-count: 1`, `scroll-behavior: auto`) em `*, *::before, *::after` — cobre transições MUI (`transition: all 0.15s ease` em Button/ListItemButton). Harness de teste `src/test/determinism/motion.ts` força `reduce` via `matchMedia` stub p/ determinismo.
 

@@ -37,7 +37,7 @@ Metadata por rota agora existe via `layout.tsx` server por rota (ver §2.2). Nen
 | Artefato | Status | Path / nota |
 |----------|--------|-------------|
 | `sitemap.ts` | `[ATUAL]` (T5) | `frontend/src/app/sitemap.ts` → gera `/sitemap.xml` (build confirmou rota) |
-| `robots.ts` | `[ATUAL]` (T5) | `frontend/src/app/robots.ts` → gera `/robots.txt` (build confirmou rota) |
+| `robots.ts` | `[ATUAL]` (T5+A1) | `frontend/src/app/robots.ts` → `/robots.txt`. ENV-GATED `NEXT_PUBLIC_INDEXABLE` (default noindex total; allow só em prod). §4.1 |
 | `generateMetadata` em rota | AUSENTE `[GAP]` | só `export const metadata` estático (suficiente p/ superfície atual; dinâmico fica p/ perfil de treinador §5.2) |
 | `openGraph` / `twitter` | `[ATUAL]` (T5) | root `layout.tsx` |
 | `robots` (campo metadata) | `[ATUAL]` (T5) | noindex em grupos auth + transacionais (§4.2) |
@@ -114,17 +114,15 @@ twitter: { card: "summary_large_image" },
 
 ## 4. CRAWL CONTROL — `[ATUAL]` (T5)
 
-### 4.1 `robots.ts` — `[ATUAL]` (T5)
-`src/app/robots.ts` (Next gera `/robots.txt`):
+### 4.1 `robots.ts` — `[ATUAL]` (T5 + review-fix A1)
+`src/app/robots.ts` (Next gera `/robots.txt`). **ENV-GATED** (`NEXT_PUBLIC_INDEXABLE`): indexável SÓ quando `=== "true"` (produção); qualquer outro valor/ausente ⇒ `disallow: "/"` (noindex TOTAL). Default seguro = noindex — impede indexar homolog/staging (host público). Quando indexável:
 ```ts
-export default function robots(): MetadataRoute.Robots {
-  return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/treinador", "/aluno", "/perfil", "/api/"] },
-    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech"}/sitemap.xml`,
-  };
-}
+const indexable = process.env.NEXT_PUBLIC_INDEXABLE === "true";
+// !indexable → { rules: { userAgent: "*", disallow: "/" } }
+// indexable  → allow "/" + disallow ["/admin","/treinador","/aluno","/perfil","/api/"] + sitemap
 ```
-- Disallow cobre os grupos autenticados `(admin)`/`(treinador)`/`(aluno)` + `/perfil` + Route Handlers `/api/`.
+- Disallow (quando indexável) cobre os grupos autenticados `(admin)`/`(treinador)`/`(aluno)` + `/perfil` + Route Handlers `/api/`.
+- **Defesa em profundidade (A1)**: além do env-gate, o nginx do host de homolog (`homologacao.forzion.tech`) injeta `X-Robots-Tag: noindex, nofollow` (ver [specification-security] §3 / [specification-infrastructure] nginx). `NEXT_PUBLIC_INDEXABLE=true` só no ambiente de produção.
 
 ### 4.2 index vs noindex por grupo — `[ATUAL]` (T5)
 | Grupo de rota | Política | Como |

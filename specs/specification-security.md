@@ -39,6 +39,9 @@ Defesa em profundidade em 3 camadas independentes. Cabeçalhos emitidos em mais 
 | Strict-Transport-Security | `max-age=31536000; includeSubDomains` (só Production, cs:70-71) | idem (ts:45) | idem `always` (nginx:43) |
 | Content-Security-Policy | — | `buildCsp()` (ts:46) + Report-Only se `CSP_REPORT_ONLY=true` (ts:48) | — |
 | X-DNS-Prefetch-Control | — | `on` (ts:40) | — |
+| X-Robots-Tag | — | — | `noindex, nofollow` **só no host homolog** (nginx.conf, server `homologacao.forzion.tech`) |
+
+**X-Robots-Tag (homolog noindex, A1)**: o server block de `homologacao.forzion.tech` injeta `add_header X-Robots-Tag "noindex, nofollow" always;` — impede buscadores de indexar o staging público (não competir/expor vs produção). NÃO replicar no server block de produção. Defesa em profundidade com `robots.ts` env-gated (`NEXT_PUBLIC_INDEXABLE`, default noindex) — ver [specification-seo] §4.1.
 
 **CSP** (`next.config.ts:20-37`) — só na camada Next (apenas o frontend serve HTML ao browser): `default-src 'self'`; `script-src 'self' 'unsafe-inline'` (+`'unsafe-eval'` só em dev p/ HMR) + `https://js.stripe.com`; `style-src 'self' 'unsafe-inline'` (Emotion injeta inline); `img-src 'self' data: blob: https://*.stripe.com`; `connect-src 'self' https://api.stripe.com https://*.sentry.io`; `frame-src https://js.stripe.com`; `worker-src 'self' blob:` (Sentry Replay); `frame-ancestors 'none'`; `base-uri 'self'`; `form-action 'self'`. `'unsafe-inline'` em script-src é exigido (Next hidrata sem nonce) — false-positive aceito no ZAP (rule 10055, §6).
 

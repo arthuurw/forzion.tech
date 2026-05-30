@@ -13,6 +13,7 @@ public class PacoteRepository(AppDbContext context) : IPacoteRepository
 
     public async Task<IReadOnlyList<Pacote>> ListarPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
         await context.Pacotes
+            .AsNoTracking()
             .Where(p => p.TreinadorId == treinadorId)
             .OrderBy(p => p.Nome)
             .ToListAsync(cancellationToken)
