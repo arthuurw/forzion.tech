@@ -60,4 +60,33 @@ public class LogoutHandlerTests
         _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task HandleAsync_TokenDuplicado_TrataIdempotenteERetornaSuccess()
+    {
+        _userContext.Setup(u => u.Jti).Returns(Guid.NewGuid());
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddHours(1));
+
+        var dbEx = new InvalidOperationException("falha", new Exception("duplicate key value violates unique constraint"));
+        _tokenRepo.Setup(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()))
+                  .ThrowsAsync(dbEx);
+
+        var result = await _handler.HandleAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ExcecaoNaoRelacionadaAConflito_Propaga()
+    {
+        _userContext.Setup(u => u.Jti).Returns(Guid.NewGuid());
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddHours(1));
+
+        _tokenRepo.Setup(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()))
+                  .ThrowsAsync(new InvalidOperationException("erro inesperado"));
+
+        var act = async () => await _handler.HandleAsync();
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
 }

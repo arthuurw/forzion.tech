@@ -86,4 +86,28 @@ public class AlterarSenhaHandlerTests
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
+
+    // ── Validator (AlterarSenhaCommandValidator) ────────────────────────────────
+
+    private static readonly AlterarSenhaCommandValidator _realValidator = new();
+
+    [Theory]
+    [InlineData("", "Senha@123")]                 // SenhaAtual vazia
+    [InlineData("atual", "")]                     // NovaSenha vazia
+    [InlineData("atual", "Ab1")]                  // < 8 chars
+    [InlineData("atual", "abcdefg1")]             // sem maiúscula
+    [InlineData("atual", "ABCDEFG1")]             // sem minúscula
+    [InlineData("atual", "Abcdefgh")]             // sem dígito
+    public void Validator_CommandInvalido_Falha(string senhaAtual, string novaSenha)
+    {
+        var result = _realValidator.Validate(new AlterarSenhaCommand(senhaAtual, novaSenha));
+        result.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Validator_CommandValido_Passa()
+    {
+        var result = _realValidator.Validate(new AlterarSenhaCommand("SenhaAtual1", "NovaSenha@9"));
+        result.IsValid.Should().BeTrue();
+    }
 }

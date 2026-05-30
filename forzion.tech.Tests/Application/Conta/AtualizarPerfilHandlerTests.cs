@@ -87,4 +87,57 @@ public class AtualizarPerfilHandlerTests
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_AtualizaSystemAdmin_Comita()
+    {
+        var contaId = Guid.NewGuid();
+        var admin = SystemUser.Criar(contaId, "Admin", DateTime.UtcNow).Value;
+
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.TipoConta).Returns(TipoConta.SystemAdmin);
+        _systemUserRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(admin);
+
+        var result = await _handler.HandleAsync(new AtualizarPerfilCommand("Admin Novo"));
+
+        result.IsSuccess.Should().BeTrue();
+        admin.Nome.Should().Be("Admin Novo");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AdminNaoEncontrado_LancaDomainException()
+    {
+        var contaId = Guid.NewGuid();
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.TipoConta).Returns(TipoConta.SystemAdmin);
+        _systemUserRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync((SystemUser?)null);
+
+        var act = async () => await _handler.HandleAsync(new AtualizarPerfilCommand("X"));
+        await act.Should().ThrowAsync<DomainException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorNaoEncontrado_LancaDomainException()
+    {
+        var contaId = Guid.NewGuid();
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Treinador);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
+
+        var act = async () => await _handler.HandleAsync(new AtualizarPerfilCommand("X"));
+        await act.Should().ThrowAsync<DomainException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TipoContaInvalido_RetornaFailure()
+    {
+        _userContext.Setup(u => u.ContaId).Returns(Guid.NewGuid());
+        _userContext.Setup(u => u.TipoConta).Returns((TipoConta)99);
+
+        var result = await _handler.HandleAsync(new AtualizarPerfilCommand("X"));
+
+        result.IsFailure.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
