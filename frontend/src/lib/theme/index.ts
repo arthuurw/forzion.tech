@@ -17,15 +17,21 @@ const theme = createTheme(
         contrastText: "#FFFFFF",
       },
       error: {
-        main: "#D32F2F",
+        // #C62828: 5.62:1 on #FFF / 5.29:1 on #F7F8FA (text/icon on light, WCAG AA pass);
+        // white-on-error in contained buttons = 5.62:1 (also AA). Prev #D32F2F was only 4.98/4.69 (thin margin).
+        main: "#C62828",
       },
       background: {
         default: "#F7F8FA",
         paper: "#FFFFFF",
       },
       text: {
+        // #111827: 17.74:1 on #FFF / 16.69:1 on #F7F8FA (AA pass).
         primary: "#111827",
-        secondary: "#6B7280",
+        // #4B5563 (gray-600): 7.56:1 on #FFF / 7.11:1 on #F7F8FA — WCAG AA pass on both app
+        // backgrounds with margin. Prev #6B7280 (gray-500) was 4.83/4.55 (passed white but razor-thin
+        // on #F7F8FA, and MUI derives placeholder/disabled/helperText/secondary from it). F18 fix.
+        secondary: "#4B5563",
       },
       divider: "rgba(0,0,0,0.08)",
     },

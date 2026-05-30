@@ -19,11 +19,11 @@ Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` ap
 | `secondary.main` | `#1A1A1A` | quase-preto |
 | `secondary.light` | `#2E2E2E` | |
 | `secondary.contrastText` | `#FFFFFF` | |
-| `error.main` | `#D32F2F` | (sem light/dark/warning/info/success custom → MUI defaults) |
+| `error.main` | `#C62828` | 5.6:1 em #FFF / 5.3:1 em #F7F8FA (AA); branco sobre error em botão = 5.6:1 (AA). (sem light/dark/warning/info/success custom → MUI defaults) |
 | `background.default` | `#F7F8FA` | cinza claro app |
 | `background.paper` | `#FFFFFF` | |
-| `text.primary` | `#111827` | |
-| `text.secondary` | `#6B7280` | ⚠️ fonte de violações color-contrast (F18) |
+| `text.primary` | `#111827` | 17.7:1 em #FFF / 16.7:1 em #F7F8FA (AA) |
+| `text.secondary` | `#4B5563` | gray-600; 7.6:1 em #FFF / 7.1:1 em #F7F8FA (AA) — F18 resolvido (era #6B7280 ≈4.6:1 em #F7F8FA) |
 | `divider` | `rgba(0,0,0,0.08)` | (MuiDivider override → `rgba(0,0,0,0.07)`) |
 
 NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip/Snackbar herdam paleta MUI default desses severities.
@@ -102,13 +102,13 @@ Barrel `forms/index.ts`: FormTextField, FormSelect, PasswordField. NENHUM form c
 | Storybook | `@storybook/addon-a11y` | `.storybook/main.ts` (addon) + `preview.tsx` (`parameters.a11y.element:#storybook-root`, `manual:false`) | toda story |
 | Lighthouse | `categories:accessibility minScore 0.95` (error gate) | `frontend/lighthouserc.json` | `/`, `/login`, `/cadastro/aluno`, `/cadastro/treinador` (REFERENCIAR [specification-observability]) |
 
-`pkg`: `@axe-core/playwright ^4.11.3`. `runAxe(page)` = tags AA **com `color-contrast` DESABILITADA**; `runAxeStrict(page)` = mesmas tags SEM disable (inclui color-contrast).
+`pkg`: `@axe-core/playwright ^4.11.3`. `runAxe(page)` = tags AA (wcag2a/aa + wcag21a/aa) **INCLUINDO `color-contrast`** — sem `disableRules`. Único helper (não há mais `runAxeStrict`).
 
-### ⚠️ DIVERGÊNCIA INTENÇÃO×IMPL — F18 (color-contrast)
-- **Intenção**: WCAG 2.1 AA pleno (inclui 1.4.3 contraste).
-- **Impl**: regra `color-contrast` DESABILITADA no `runAxe` default (`axe.ts:17 disableRules(["color-contrast"])`). Tema MUI tem violações REAIS de contraste — fonte principal: `text.secondary #6B7280`, chips, e variantes herdadas default. CONCERNS classifica F18 como **Medium**.
-- **Mitigação (ratchet, não gate hard)**: `runAxeStrict` + `e2e/specs/a11y/color-contrast-ratchet.spec.ts` medem ceiling de violações e travam com `toBeLessThanOrEqual`. Ceilings atuais: `/login` = **20**, `/cadastro/treinador` = **30**. NUNCA aumentar sem comentário; ratchetar pra baixo ao ajustar tema; em 0 → mover `color-contrast` pro `runAxe` default. Auditoria/refactor de tema = out-of-scope até então.
-- **GAP residual**: lighthouse a11y 0.95 (que INCLUI contraste) coexiste com regra desabilitada no axe E2E — fontes de verdade divergentes; o gate lighthouse pode flagar contraste que o ratchet axe tolera.
+### CONFORMANCE WCAG 2.1 AA — color-contrast (F18 RESOLVIDO)
+- **Conformance real**: WCAG 2.1 AA pleno, **incluindo 1.4.3 contraste**. `color-contrast` gateia no `runAxe` default (`e2e/utils/axe.ts`), aplicado por `e2e/specs/a11y/all-pages-axe.spec.ts` (`expect(violations).toEqual([])`) sobre rotas públicas + autenticadas.
+- **Fix de tema** (`src/lib/theme/index.ts`): `text.secondary` `#6B7280`→`#4B5563` (gray-600; 7.6:1 #FFF / 7.1:1 #F7F8FA — antes ≈4.6:1 em #F7F8FA, fonte das violações: secondary, placeholder, disabled, helperText herdam disto); `error.main` `#D32F2F`→`#C62828` (5.6:1 / 5.3:1; branco-sobre-error em botão = 5.6:1 AA). `text.primary #111827` e `primary.contrastText #1A1A1A` sobre `primary #F5C400` (10.6:1) já passavam.
+- **Removido**: ratchet spec `color-contrast-ratchet.spec.ts` e helper `runAxeStrict` (não havia outro uso). Gate hard ON — sem mitigação por ratchet.
+- **Lighthouse**: a11y 0.95 (que inclui contraste) agora alinhado ao axe E2E — fontes de verdade convergentes.
 
 ### Padrões a11y reais encontrados
 - **Foco / keyboard nav**:
@@ -116,7 +116,7 @@ Barrel `forms/index.ts`: FormTextField, FormSelect, PasswordField. NENHUM form c
   - `ResponsiveTable`: linha clicável (desktop `TableRow`, mobile card `Box`) recebe `role="button"` + `tabIndex={0}` + `onKeyDown` (Enter/Space com `preventDefault`) SOMENTE quando `onRowClick` definido; coluna `actions` faz `stopPropagation`.
 - **`aria-label`**: `LoadingSpinner` (`CircularProgress aria-label={label}`); `PasswordField` IconButton ("Mostrar/Ocultar senha"); `ConsentBanner` Dialog ("Consentimento de cookies e privacidade LGPD"); IconButtons de ação em páginas treinador/aluno/admin; charts admin via `<figure aria-label=...>` (testado em `admin/__tests__/a11y-dashboard.test.tsx`).
 - **`role="alert"`**: `components/aluno/AlunoInadimplenteBanner.tsx` (anúncio assertivo). NOTA: AlertBanner/Snackbar usam MUI `Alert` (role implícito); **não há `aria-live` explícito** custom para erros de formulário — erros vão via `helperText` (associação `aria-describedby` provida pelo MUI TextField/FormControl).
-- **`prefers-reduced-motion`**: ⚠️ **NÃO há honra em runtime/CSS de app** — nenhuma media-query `prefers-reduced-motion` no código de produção. Existe APENAS no harness de teste: `src/test/determinism/motion.ts` força `prefers-reduced-motion: reduce` via `matchMedia` stub (default true) p/ eliminar flake de animação. Transições MUI (`transition: all 0.15s ease` em Button/ListItemButton) rodam independente da preferência do usuário. GAP de a11y (motion) não trackeado em CONCERNS.
+- **`prefers-reduced-motion`**: HONRADO em runtime. `src/styles/globals.css` tem `@media (prefers-reduced-motion: reduce)` que neutraliza animações/transições globalmente (`animation-duration`/`transition-duration: 0.01ms !important`, `animation-iteration-count: 1`, `scroll-behavior: auto`) em `*, *::before, *::after` — cobre transições MUI (`transition: all 0.15s ease` em Button/ListItemButton). Harness de teste `src/test/determinism/motion.ts` força `reduce` via `matchMedia` stub p/ determinismo.
 
 ## RESPONSIVIDADE (REFERENCIAR [specification-frontend] §RESPONSIVIDADE — não duplicar)
 - Breakpoints MUI default; corte mobile/desktop em `md` (900px). `ResponsiveTable` usa `useMediaQuery(breakpoints.down("md"))`: ≥md = `<Table>`; <md = cards (primary/secondary/actions via `Column.mobileRole`, fallback `resolveRole`: idx0=primary, último right-aligned=actions, resto=secondary).

@@ -9,6 +9,7 @@ using forzion.tech.Api.Endpoints.Exercicios;
 using forzion.tech.Api.Endpoints.Pagamentos;
 using forzion.tech.Api.Endpoints.Treinos;
 using forzion.tech.Api.Endpoints.Treinador;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -87,9 +88,18 @@ public static class RouteBuilderExtensions
 
     private static IEndpointRouteBuilder MapHealthCheck(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks("/health")
+        // LIVENESS: nenhum check (Predicate => false) — 200 enquanto o processo estiver
+        // vivo. Mantido assim porque docker-compose/frontend dependem deste contrato.
+        endpoints.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false })
             .AllowAnonymous()
             .RequireRateLimiting("read");
+
+        // READINESS: executa apenas os checks taggeados "ready" (DbContextCheck "db").
+        // 200 quando o DB responde; 503 (Unhealthy) caso contrário.
+        endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") })
+            .AllowAnonymous()
+            .RequireRateLimiting("read");
+
         return endpoints;
     }
 }

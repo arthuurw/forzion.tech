@@ -72,6 +72,7 @@ using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscula
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
 using forzion.tech.Infrastructure.DependencyInjection;
+using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
 using forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
@@ -172,7 +173,12 @@ public static class DependencyInjectionExtensions
         services.AddSwagger();
         services.AddJwtAuthentication(configuration, environment);
         services.AddCorsPolicies(configuration);
-        services.AddHealthChecks();
+        // Liveness é o endpoint sem checks (Predicate => false) mapeado em RouteBuilder.
+        // Readiness usa o DbContextCheck taggeado "ready": só executa quando /health/ready
+        // é chamado (CanConnectAsync). Em ambiente Test o AppDbContext não é registrado
+        // (AddInfrastructure é pulado), então o check só é exercido quando há AppDbContext em DI.
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready" });
 
         services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));

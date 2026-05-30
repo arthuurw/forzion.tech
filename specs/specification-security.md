@@ -33,7 +33,7 @@ Defesa em profundidade em 3 camadas independentes. Cabeçalhos emitidos em mais 
 | Header | Camada APP (backend `RouteBuilderExtensions.cs:64-72`) | Camada NEXT (`next.config.ts`) | Camada EDGE (`nginx.conf`) |
 |---|---|---|---|
 | X-Content-Type-Options | `nosniff` (cs:66) | `nosniff` (ts:42) | `nosniff` (nginx:45) |
-| X-Frame-Options | **`DENY`** (cs:67) | **`DENY`** (ts:41) | **`SAMEORIGIN`** (nginx:44) ⚠️ |
+| X-Frame-Options | **`DENY`** (cs:67) | **`DENY`** (ts:41) | **`DENY`** (nginx:44) |
 | Referrer-Policy | `no-referrer` (cs:68) | `strict-origin-when-cross-origin` (ts:43) | — |
 | Permissions-Policy | `camera=(),microphone=(),geolocation=()` (cs:69) | idem (ts:44) | — |
 | Strict-Transport-Security | `max-age=31536000; includeSubDomains` (só Production, cs:70-71) | idem (ts:45) | idem `always` (nginx:43) |
@@ -42,7 +42,7 @@ Defesa em profundidade em 3 camadas independentes. Cabeçalhos emitidos em mais 
 
 **CSP** (`next.config.ts:20-37`) — só na camada Next (apenas o frontend serve HTML ao browser): `default-src 'self'`; `script-src 'self' 'unsafe-inline'` (+`'unsafe-eval'` só em dev p/ HMR) + `https://js.stripe.com`; `style-src 'self' 'unsafe-inline'` (Emotion injeta inline); `img-src 'self' data: blob: https://*.stripe.com`; `connect-src 'self' https://api.stripe.com https://*.sentry.io`; `frame-src https://js.stripe.com`; `worker-src 'self' blob:` (Sentry Replay); `frame-ancestors 'none'`; `base-uri 'self'`; `form-action 'self'`. `'unsafe-inline'` em script-src é exigido (Next hidrata sem nonce) — false-positive aceito no ZAP (rule 10055, §6).
 
-⚠️ **INCONSISTÊNCIA X-Frame-Options edge×app**: nginx seta `SAMEORIGIN` (nginx.conf:44) enquanto app/Next setam `DENY`. Para HTML servido pelo Next o nginx encaminha a resposta upstream e ainda adiciona seu `add_header` ⇒ o browser recebe **DOIS** `X-Frame-Options` (`DENY` do Next + `SAMEORIGIN` do nginx). Por spec, múltiplos `X-Frame-Options` ⇒ navegadores adotam a política **mais restritiva** (efetivamente `DENY` = nega todo enquadramento). Logo a proteção contra clickjacking permanece `DENY` na prática; `frame-ancestors 'none'` no CSP reforça (CSP prevalece sobre XFO em browsers modernos). Mesmo assim a divergência é confusa e deve ser alinhada: padronizar nginx p/ `DENY` (ou remover o header do edge, já que app/Next setam). Atualizar nginx.conf:44 nesta tarefa se mexer.
+**X-Frame-Options alinhado em 3 camadas** (`DENY`): app (cs:67), Next (ts:41) e edge nginx (nginx.conf:44) todos setam `DENY`. Para HTML do Next o browser pode receber o header duplicado (Next + nginx) com mesmo valor `DENY` ⇒ sem ambiguidade. `frame-ancestors 'none'` no CSP reforça (CSP prevalece sobre XFO em browsers modernos). Anteriormente o edge usava `SAMEORIGIN` (divergência cosmética, mitigada pelo "mais restritivo vence"); resolvido — manter os 3 alinhados ao mexer em qualquer camada.
 
 ## 4. RATE LIMIT / BRUTE-FORCE
 Duas camadas (frontend pré-auth + backend autoritativo).

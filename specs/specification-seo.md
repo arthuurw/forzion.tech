@@ -1,6 +1,6 @@
 # specification-seo — SEO & metadata (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade de SEO/metadata do frontend (metadata por rota, OpenGraph, crawl control, structured data). PARCIALMENTE ASPIRACIONAL — surface atual mínima; maioria é RECOMENDAÇÃO/GAP. Formato denso, agent-oriented. Cross-ref: [specification-frontend] (rotas/grupos de layout/App Router), [specification-frontend-ui] (landing/componentes), [specification-observability] (lighthouse perf budgets/cadência), [specification-tests] (gate lighthouse no CI).
+DOC PARA AGENTES. Fonte de verdade de SEO/metadata do frontend (metadata por rota, OpenGraph, crawl control, structured data). Base implementada (T5): metadataBase/title-template/OG dinâmica/robots/sitemap/JSON-LD/canonical/noindex. Aspiracional restante: perfil público de treinador + promoção do gate SEO `warn`→`error`. Formato denso, agent-oriented. Cross-ref: [specification-frontend] (rotas/grupos de layout/App Router), [specification-frontend-ui] (landing/componentes), [specification-observability] (lighthouse perf budgets/cadência), [specification-tests] (gate lighthouse no CI).
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA ao: adicionar/alterar `metadata`/`generateMetadata` em rotas, criar `sitemap.ts`/`robots.ts`, adicionar OpenGraph/JSON-LD, mudar `lang`/`metadataBase`, ou alterar threshold SEO no lighthouse.
@@ -11,16 +11,20 @@ DOC PARA AGENTES. Fonte de verdade de SEO/metadata do frontend (metadata por rot
 ## 1. ESTADO ATUAL
 
 ### Metadata root — `[ATUAL]`
-`frontend/src/app/layout.tsx` (linhas 18-27):
+`frontend/src/app/layout.tsx`:
 | Campo | Valor atual |
 |-------|-------------|
-| `metadata.title` | `"forzion.tech"` (string fixa; SEM `template`) |
+| `metadata.title` | `{ default: "forzion.tech — Gestão para Personal Trainers", template: "%s | forzion.tech" }` `[ATUAL]` (T5) |
 | `metadata.description` | `"Plataforma de gestão de treinos para personal trainers"` |
-| `metadata.metadataBase` | AUSENTE `[GAP]` (URLs OG/canonical resolvem relativas → quebram fora de same-origin) |
+| `metadata.metadataBase` | `new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech")` `[ATUAL]` (T5) |
+| `metadata.openGraph` | `type=website, siteName=forzion.tech, locale=pt_BR, url="/", title, description` `[ATUAL]` (T5) |
+| `metadata.twitter` | `{ card: "summary_large_image" }` `[ATUAL]` (T5) |
 | `viewport` | `width=device-width, initialScale=1, viewportFit=cover` (export `Viewport` separado) |
-| `<html lang>` | `"pt-BR"` (linha 35) `[ATUAL]` |
+| `<html lang>` | `"pt-BR"` `[ATUAL]` |
 
-`metadata` é o ÚNICO export de metadata em TODO `src/app` (grep confirmado: 1 match, root layout). Nenhuma rota usa `generateMetadata` nem `export const metadata` própria.
+OG image resolvida por CONVENÇÃO de arquivo `frontend/src/app/opengraph-image.tsx` (`next/og` `ImageResponse`, 1200×630, `runtime="nodejs"`) — não listada em `openGraph.images`. `[ATUAL]` (T5)
+Env: `NEXT_PUBLIC_SITE_URL` documentada em `frontend/.env.example` (default `https://forzion.tech`). `[ATUAL]` (T5)
+Metadata por rota agora existe via `layout.tsx` server por rota (ver §2.2). Nenhuma rota usa `generateMetadata` ainda (só `export const metadata` estático).
 
 ### Lighthouse SEO — `[ATUAL]`
 `frontend/lighthouserc.json`:
@@ -29,20 +33,18 @@ DOC PARA AGENTES. Fonte de verdade de SEO/metadata do frontend (metadata por rot
 - URLs auditadas: `/`, `/login`, `/cadastro/aluno`, `/cadastro/treinador`.
 - Cross-ref: [specification-tests] (gates lighthouse), [specification-infrastructure].
 
-### O que NÃO existe (grep/glob confirmados) — `[GAP]`
-| Artefato | Status | Verificação |
+### Artefatos SEO — estado pós-T5
+| Artefato | Status | Path / nota |
 |----------|--------|-------------|
-| `frontend/src/app/sitemap.ts` | AUSENTE | glob `**/sitemap.{ts,tsx}` → 0 |
-| `frontend/src/app/robots.ts` | AUSENTE | glob `**/robots.{ts,tsx}` → 0 |
-| `frontend/public/robots.txt` | AUSENTE | glob → 0 (public tem só `*.svg`, `.well-known/security.txt`, `mockServiceWorker.js`) |
-| `frontend/public/sitemap.xml` | AUSENTE | glob → 0 |
-| `generateMetadata` em qualquer rota | AUSENTE | grep `generateMetadata` em `src` → 0 matches |
-| `openGraph` / `twitter` | AUSENTE | grep → 0 |
-| `robots` (campo metadata) | AUSENTE | grep → 0 |
-| `alternates`/`canonical` | AUSENTE | grep → 0 |
-| `application/ld+json` (structured data) | AUSENTE | grep → 0 |
-| OG image asset | AUSENTE | sem `og*.png`/`opengraph-image.*` em `public/` ou `app/` |
-| `favicon`/`icon`/`apple-icon` | NÃO CONFIRMADO via convenção App Router (sem `app/icon.*`/`app/favicon.ico` no glob) `[GAP]` |
+| `sitemap.ts` | `[ATUAL]` (T5) | `frontend/src/app/sitemap.ts` → gera `/sitemap.xml` (build confirmou rota) |
+| `robots.ts` | `[ATUAL]` (T5) | `frontend/src/app/robots.ts` → gera `/robots.txt` (build confirmou rota) |
+| `generateMetadata` em rota | AUSENTE `[GAP]` | só `export const metadata` estático (suficiente p/ superfície atual; dinâmico fica p/ perfil de treinador §5.2) |
+| `openGraph` / `twitter` | `[ATUAL]` (T5) | root `layout.tsx` |
+| `robots` (campo metadata) | `[ATUAL]` (T5) | noindex em grupos auth + transacionais (§4.2) |
+| `alternates`/`canonical` | `[ATUAL]` (T5) | `/`, `/login`, `/cadastro/treinador`, `/cadastro/aluno` |
+| `application/ld+json` (structured data) | `[ATUAL]` (T5) | Organization na landing `page.tsx` (§5.1) |
+| OG image | `[ATUAL]` (T5) | `app/opengraph-image.tsx` (dinâmica next/og) → rota `/opengraph-image` no build |
+| `favicon`/`icon`/`apple-icon` | NÃO CONFIRMADO via convenção App Router `[GAP]` | sem `app/icon.*`/`app/favicon.ico` |
 
 ### Superfície pública indexável — `[ATUAL]`
 Rotas públicas (grupo `(public)` + landing) — únicas candidatas a `index` (ver [specification-frontend] §grupos de rota):
@@ -56,12 +58,12 @@ Rotas públicas (grupo `(public)` + landing) — únicas candidatas a `index` (v
 
 NOTA: NÃO existe rota de perfil público de treinador (`/treinadores/[id]` ou similar). Listagem de treinadores é só via API `/api/auth/treinadores` (consumida no cadastro do aluno). Logo, structured data Person/Service por treinador é hoje INAPLICÁVEL (ver §5).
 
-## 2. METADATA POR ROTA — `[REC]`
+## 2. METADATA POR ROTA — `[ATUAL]` (T5)
 
 Padrão App Router: cada `page.tsx`/`layout.tsx` exporta `metadata` estático ou `generateMetadata` (dinâmico).
 
-### 2.1 Title template no root — `[REC]`
-`src/app/layout.tsx`, substituir `title` string por:
+### 2.1 Title template no root — `[ATUAL]` (T5)
+`src/app/layout.tsx` implementa:
 ```ts
 title: {
   default: "forzion.tech — Gestão para Personal Trainers",
@@ -69,21 +71,27 @@ title: {
 },
 metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech"),
 ```
-- `metadataBase` é PRÉ-REQUISITO para canonical/OG absolutos. `NEXT_PUBLIC_SITE_URL` NÃO existe hoje (grep env → 0) → adicionar em `frontend/.env*` e documentar em [specification-frontend] §env.
+- `metadataBase` é PRÉ-REQUISITO para canonical/OG absolutos. `NEXT_PUBLIC_SITE_URL` documentada em `frontend/.env.example` (default `https://forzion.tech`). `[ATUAL]` (T5)
 
-### 2.2 `metadata` por página pública — `[REC]`
-| Rota | title (vira `… | forzion.tech`) | canonical | robots |
-|------|------|-----------|--------|
-| `/` | (usa `default`) | `/` | index, follow |
-| `/login` | `Entrar` | `/login` | index, follow |
-| `/cadastro/treinador` | `Criar conta — Treinador` | `/cadastro/treinador` | index, follow |
-| `/cadastro/aluno` | `Criar conta — Aluno` | `/cadastro/aluno` | index, follow |
-| `/forgot-password` etc. | `Recuperar acesso` | (próprio) | `noindex, follow` |
+### 2.2 `metadata` por página pública — `[ATUAL]` (T5)
+| Rota | title (vira `… | forzion.tech`) | canonical | robots | Onde |
+|------|------|-----------|--------|------|
+| `/` | (usa `default`) | `/` | index, follow | `app/page.tsx` (server, `export const metadata`) |
+| `/login` | `Entrar` | `/login` | index, follow | `(public)/login/layout.tsx` |
+| `/cadastro/treinador` | `Criar conta — Treinador` | `/cadastro/treinador` | index, follow | `(public)/cadastro/treinador/layout.tsx` |
+| `/cadastro/aluno` | `Criar conta — Aluno` | `/cadastro/aluno` | index, follow | `(public)/cadastro/aluno/layout.tsx` |
+| `/forgot-password` | `Recuperar acesso` | (sem canonical) | `noindex, follow` | `(public)/forgot-password/layout.tsx` |
+| `/reset-password` | `Redefinir senha` | (sem canonical) | `noindex, follow` | `(public)/reset-password/layout.tsx` |
+| `/verify-email` | `Verificar e-mail` | (sem canonical) | `noindex, follow` | `(public)/verify-email/layout.tsx` |
+| `/resend-verification` | `Reenviar verificação` | (sem canonical) | `noindex, follow` | `(public)/resend-verification/layout.tsx` |
 
 Canonical via `alternates: { canonical: "/rota" }` (resolve sobre `metadataBase`).
-NOTA: páginas públicas são Client Components (forms RHF). `export const metadata` exige Server Component — usar `metadata` no `layout.tsx` da rota OU split server-wrapper. Verificar `"use client"` antes de adicionar export (quebra build se na mesma página client).
+NOTA: as 7 páginas `(public)/*` são Client Components (forms RHF) → `export const metadata` na page quebraria o build. SOLUÇÃO ADOTADA: criado `layout.tsx` server por rota (passa-through `children`) carregando title/canonical/robots. O `(public)/layout.tsx` do grupo permanece como wrapper de UI sem metadata.
 
-## 3. OPENGRAPH / SOCIAL CARDS — `[REC]`
+## 3. OPENGRAPH / SOCIAL CARDS — `[ATUAL]` (T5)
+
+IMPLEMENTADO: `openGraph`/`twitter` no root `layout.tsx`; OG image dinâmica em `app/opengraph-image.tsx` (next/og `ImageResponse`, fundo `#1A1A1A`, nome em `#F5C400`, tagline "Gestão para Personal Trainers", 1200×630, fontes default sem fetch de binário, `runtime="nodejs"` p/ compat com `output:"standalone"`). Build gera rota `/opengraph-image`. Referência histórica de design abaixo.
+
 
 Relevância B2C: links compartilhados em WhatsApp/LinkedIn/Instagram (canal primário de aquisição de personal trainers). Sem OG → preview sem imagem/título = baixa CTR.
 
@@ -104,10 +112,10 @@ twitter: { card: "summary_large_image" },
 - `og:description` deve refletir o hero da landing (`page.tsx` linha 116: "Da prescrição ao acompanhamento — com controle, histórico e estrutura centralizados.").
 - CSP impacto: `next/og` runtime edge — sem impacto no CSP de runtime do cliente. OG image é servida same-origin (`img-src 'self'` já cobre). Ver [specification-frontend] §headers.
 
-## 4. CRAWL CONTROL — `[REC]`
+## 4. CRAWL CONTROL — `[ATUAL]` (T5)
 
-### 4.1 `robots.ts` — `[REC]`
-Criar `src/app/robots.ts` (Next gera `/robots.txt`):
+### 4.1 `robots.ts` — `[ATUAL]` (T5)
+`src/app/robots.ts` (Next gera `/robots.txt`):
 ```ts
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -118,17 +126,17 @@ export default function robots(): MetadataRoute.Robots {
 ```
 - Disallow cobre os grupos autenticados `(admin)`/`(treinador)`/`(aluno)` + `/perfil` + Route Handlers `/api/`.
 
-### 4.2 index vs noindex por grupo — `[REC]`
+### 4.2 index vs noindex por grupo — `[ATUAL]` (T5)
 | Grupo de rota | Política | Como |
 |---------------|----------|------|
-| `(public)` cadastro/login | `index, follow` | default (sem robots meta) |
-| `(public)` forgot/reset/verify/resend | `noindex, follow` | `metadata.robots` no layout/página |
-| `(admin)`, `(treinador)`, `(aluno)`, `/perfil` | `noindex, nofollow` | `metadata.robots` no layout do grupo + disallow robots.txt |
+| `(public)` cadastro/login | `index, follow` | `metadata.robots` no `layout.tsx` por rota (§2.2) |
+| `(public)` forgot/reset/verify/resend | `noindex, follow` | `metadata.robots` no `layout.tsx` por rota (§2.2) |
+| `(admin)`, `(treinador)`, `(aluno)`, `/perfil` | `noindex, nofollow` | `export const metadata = { robots: { index:false, follow:false } }` no layout do grupo (todos server) + disallow robots.txt |
 
 NOTA defesa-em-profundidade: áreas autenticadas já protegidas por middleware (redirect `/login` sem token — [specification-frontend] §middleware). robots.txt/noindex é camada adicional (crawlers não logam, mas evita vazamento de URLs em SERP).
 
-### 4.3 `sitemap.ts` — `[REC]`
-Criar `src/app/sitemap.ts` listando SÓ rotas públicas indexáveis:
+### 4.3 `sitemap.ts` — `[ATUAL]` (T5)
+`src/app/sitemap.ts` lista SÓ rotas públicas indexáveis:
 ```ts
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
@@ -140,8 +148,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
 ## 5. STRUCTURED DATA (schema.org JSON-LD) — `[REC]`
 
-### 5.1 Organization (landing) — `[REC]`
-Injetar em `src/app/page.tsx` (Server Component, OK):
+### 5.1 Organization (landing) — `[ATUAL]` (T5)
+Injetado em `src/app/page.tsx` (Server Component) via `<script type="application/ld+json">` com `dangerouslySetInnerHTML`:
 ```tsx
 <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
   "@context": "https://schema.org", "@type": "Organization",
@@ -167,10 +175,10 @@ INAPLICÁVEL hoje: não há página pública de treinador (ver §1). SE for cria
 - `[REC]` Adicionar auditoria de structured data fora do Lighthouse (ex.: validação manual via Rich Results Test) — não há audit automatizado de JSON-LD no CI hoje `[GAP]`.
 
 ## RESUMO DE PRIORIZAÇÃO (impacto SEO B2C)
-1. `metadataBase` + `NEXT_PUBLIC_SITE_URL` (pré-req de tudo) — `[GAP]`
-2. OpenGraph + OG image (CTR em WhatsApp/LinkedIn) — `[GAP]`
-3. `robots.ts` + `sitemap.ts` (indexação correta; noindex áreas auth) — `[GAP]`
-4. title template + descriptions/canonical por página — `[GAP]`
-5. JSON-LD Organization na landing — `[GAP]`
-6. Promover gate SEO `warn`→`error` — `[GAP]`
+1. `metadataBase` + `NEXT_PUBLIC_SITE_URL` (pré-req de tudo) — `[ATUAL]` (T5)
+2. OpenGraph + OG image dinâmica (CTR em WhatsApp/LinkedIn) — `[ATUAL]` (T5)
+3. `robots.ts` + `sitemap.ts` (indexação correta; noindex áreas auth) — `[ATUAL]` (T5)
+4. title template + canonical/noindex por página — `[ATUAL]` (T5)
+5. JSON-LD Organization na landing — `[ATUAL]` (T5)
+6. Promover gate SEO `warn`→`error` — `[GAP]` (follow-up; ver §6)
 7. (Futuro produto) rota pública de treinador + metadata/JSON-LD dinâmicos — `[REC FUTURO]`
