@@ -17,8 +17,6 @@ import { server } from "@/test/msw/server";
 import { buildPagamento } from "@/test/factories";
 import type { PagamentoResponse, OnboardingStatusResponse } from "@/types";
 
-// ─── Mocks Next ──────────────────────────────────────────────────────────────
-
 vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: React.ReactNode }) => (
     <a href={href}>{children}</a>
@@ -29,8 +27,7 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() })),
 }));
 
-// ─── Helpers (F36: makePagamento consolidado via buildPagamento) ──────────────
-
+// F36: makePagamento consolidado via buildPagamento.
 const PIX_DEFAULTS: Partial<PagamentoResponse> = {
   pagamentoId: "pay-1",
   assinaturaAlunoId: "ass-1",
@@ -69,8 +66,6 @@ function countPagamentoCalls(): { count: number; reset: () => void } {
   );
   return { get count() { return count; }, reset: () => { count = 0; } };
 }
-
-// ─── PagamentoPix ────────────────────────────────────────────────────────────
 
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 
@@ -276,8 +271,6 @@ describe("PagamentoPix", () => {
   });
 });
 
-// ─── PagamentosTreinadorPage ──────────────────────────────────────────────────
-
 import PagamentosTreinadorPage from "@/app/(treinador)/treinador/pagamentos/page";
 
 describe("PagamentosTreinadorPage", () => {
@@ -347,8 +340,6 @@ describe("PagamentosTreinadorPage", () => {
   });
 });
 
-// ─── OnboardingRetornoPage ────────────────────────────────────────────────────
-
 import OnboardingRetornoPage from "@/app/(treinador)/treinador/onboarding/retorno/page";
 
 describe("OnboardingRetornoPage", () => {
@@ -396,8 +387,6 @@ describe("OnboardingRetornoPage", () => {
     expect(await screen.findByText("Cadastro incompleto")).toBeInTheDocument();
   });
 });
-
-// ─── PagamentosAlunoPage ──────────────────────────────────────────────────────
 
 import PagamentosAlunoPage from "@/app/(aluno)/aluno/pagamentos/page";
 

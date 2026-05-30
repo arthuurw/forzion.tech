@@ -41,8 +41,6 @@ public static class TreinadorEndpoints
         var group = endpoints.MapGroup("/treinador").WithTags("Treinador").RequireAuthorization("Treinador").RequireRateLimiting("write")
             .AddEndpointFilter<PaginacaoFilter>();
 
-        // --- Onboarding Stripe ---
-
         group.MapPost("/onboarding", async (
             [FromBody] IniciarOnboardingRequest request,
             [FromServices] IniciarOnboardingTreinadorHandler handler,
@@ -83,8 +81,6 @@ public static class TreinadorEndpoints
         })
         .WithSummary("Verifica status do onboarding Stripe do treinador")
         .Produces<OnboardingStatusResponse>();
-
-        // --- Vínculos ---
 
         group.MapPost("/vinculos/{id:guid}/aprovar", async (
             Guid id,
@@ -139,8 +135,6 @@ public static class TreinadorEndpoints
         .Produces<VinculoResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
-
-        // --- Alunos ---
 
         group.MapGet("/alunos", async (
             [FromServices] ListarAlunosHandler handler,
@@ -239,8 +233,6 @@ public static class TreinadorEndpoints
         .WithSummary("Lista vínculos do treinador com paginação")
         .Produces<ListarVinculosResponse>();
 
-        // --- Treinos ---
-
         group.MapGet("/treinos", async (
             [FromServices] ListarTreinosDoTreinadorHandler handler,
             [FromServices] IUserContext userContext,
@@ -283,8 +275,6 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
-        // --- Grupos Musculares ---
-
         group.MapGet("/grupos-musculares", async (
             [FromServices] ListarGruposMuscularesHandler handler,
             CancellationToken cancellationToken) =>
@@ -293,8 +283,6 @@ public static class TreinadorEndpoints
             return Results.Ok(result);
         })
         .WithSummary("Lista todos os grupos musculares");
-
-        // --- Exercícios ---
 
         group.MapGet("/exercicios", async (
             [FromServices] ListarExerciciosHandler handler,
@@ -397,8 +385,6 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
-
-        // --- Pacotes ---
 
         group.MapGet("/pacotes", async (
             [FromServices] ListarPacotesHandler handler,

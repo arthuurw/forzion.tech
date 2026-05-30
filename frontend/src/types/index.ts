@@ -156,7 +156,6 @@ export interface PlanoPlataformaResponse {
   updatedAt?: string | null;
 }
 
-// Grupo Muscular
 export interface GrupoMuscularResponse {
   id: string;
   nome: string;
@@ -287,7 +286,6 @@ export interface ProblemDetails {
   code?: string;
 }
 
-// Relatório de saúde
 export type StatusSaude = "Ok" | "Degradado" | "Falha";
 
 export interface HealthReportConfigResponse {

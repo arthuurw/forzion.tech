@@ -32,7 +32,6 @@ public class AlterarStatusAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        // Validação de autorização: apenas SystemAdmin pode alterar status de alunos
         if (!userContext.IsSystemAdmin)
             throw new AcessoNegadoException();
 

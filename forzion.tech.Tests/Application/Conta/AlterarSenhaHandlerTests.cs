@@ -87,8 +87,6 @@ public class AlterarSenhaHandlerTests
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
-    // ── Validator (AlterarSenhaCommandValidator) ────────────────────────────────
-
     private static readonly AlterarSenhaCommandValidator _realValidator = new();
 
     [Theory]

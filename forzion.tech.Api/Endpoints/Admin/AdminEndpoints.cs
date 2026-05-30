@@ -235,7 +235,6 @@ public static class AdminEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        // Grupos Musculares
         group.MapGet("/grupos-musculares", async (
             [FromServices] ListarGruposMuscularesHandler handler,
             CancellationToken cancellationToken) =>
@@ -353,8 +352,6 @@ public static class AdminEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
-        // --- Alunos (visibilidade admin) ---
-
         group.MapGet("/alunos", async (
             [FromServices] ListarAlunosAdminHandler handler,
             HttpContext httpContext,
@@ -464,8 +461,6 @@ public static class AdminEndpoints
         .Produces<ProgressaoAlunoResponse>()
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
-        // --- Sub-recursos de treinadores (visibilidade admin) ---
-
         group.MapGet("/treinadores/{id:guid}/alunos", async (
             Guid id,
             [FromServices] ListarAlunosHandler handler,
@@ -544,8 +539,6 @@ public static class AdminEndpoints
         })
         .WithSummary("Lista pacotes de um treinador")
         .Produces<IReadOnlyList<PacoteResponse>>();
-
-        // ── LGPD (admin) ────────────────────────────────────────────────────
 
         group.MapGet("/contas/{id:guid}/lgpd/exportar", async (
             Guid id,

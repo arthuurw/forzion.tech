@@ -85,7 +85,6 @@ export const adminApi = {
     return apiClient.delete(`/admin/planos/${planoId}`);
   },
 
-  // Grupos Musculares
   listGruposMusculares() {
     return apiClient.get<GrupoMuscularResponse[]>("/admin/grupos-musculares");
   },

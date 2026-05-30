@@ -49,7 +49,7 @@ public class GerarCobrancaMensalHandler(
 
         Pagamento pagamento;
 
-        // ── Atomicidade G-PAY-1 ──────────────────────────────────────────────────────
+        // Atomicidade G-PAY-1.
         // Abordagem: Stripe ANTES do único commit (single-write).
         //
         // Problema original (dois commits):
@@ -81,7 +81,6 @@ public class GerarCobrancaMensalHandler(
         //
         // Zumbi legado (Pendente sem StripePaymentIntentId de corridas anteriores ao fix):
         //   Ainda detectado e marcado Falhou antes de criar novo — caminho preservado abaixo.
-        // ────────────────────────────────────────────────────────────────────────────────
 
         await using (var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken).ConfigureAwait(false))
         {

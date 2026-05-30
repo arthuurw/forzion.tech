@@ -15,7 +15,6 @@ async function renderLanding(planos: ReturnType<typeof buildPlano>[]) {
   });
 
   const { default: LandingPage } = await import("@/app/page");
-  // async server component — resolve the promise and render the resulting JSX
   const jsx = await LandingPage();
   render(jsx);
 }

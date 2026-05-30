@@ -52,7 +52,6 @@ export interface CriarPacoteData {
 }
 
 export const treinadorApi = {
-  // ── Alunos ──
   listAlunos(params?: { status?: AlunoStatus; pagina?: number; tamanhoPagina?: number }) {
     return apiClient.get<PaginatedResponse<AlunoResponse>>("/treinador/alunos", { params });
   },
@@ -66,7 +65,6 @@ export const treinadorApi = {
     return apiClient.get<ProgressaoAlunoResponse>(`/treinador/alunos/${alunoId}/progressao`, { params });
   },
 
-  // ── Vínculos ──
   listVinculos(params?: { status?: VinculoStatus; pagina?: number; tamanhoPagina?: number }) {
     return apiClient.get<PaginatedResponse<VinculoDetalheResponse>>("/treinador/vinculos", { params });
   },
@@ -77,7 +75,6 @@ export const treinadorApi = {
     return apiClient.post(`/treinador/vinculos/${vinculoId}/desvincular`, { observacao: observacao ?? null });
   },
 
-  // ── Fichas ──
   listFichas(params?: { pagina?: number; tamanhoPagina?: number; nome?: string; objetivo?: string; ordenarPor?: string }) {
     return apiClient.get<PaginatedResponse<TreinoResponse>>("/treinador/treinos", { params });
   },
@@ -103,7 +100,6 @@ export const treinadorApi = {
     return apiClient.get<TreinoAlunoVinculado[]>(`/treinos/${treinoId}/alunos`);
   },
 
-  // ── Exercícios da ficha ──
   adicionarExercicio(treinoId: string, data: AdicionarExercicioData) {
     return apiClient.post(`/treinos/${treinoId}/exercicios`, data);
   },
@@ -117,12 +113,10 @@ export const treinadorApi = {
     return apiClient.patch<TreinoResponse>(`/treinos/${treinoId}/exercicios/${treinoExercicioId}/observacao`, { observacao });
   },
 
-  // ── Grupos Musculares ──
   listGruposMusculares() {
     return apiClient.get<GrupoMuscularResponse[]>("/treinador/grupos-musculares");
   },
 
-  // ── Biblioteca ──
   listExercicios(params?: { global?: boolean; pagina?: number; tamanhoPagina?: number; nome?: string; grupoMuscularId?: string; ordenarPor?: string }) {
     return apiClient.get<PaginatedResponse<ExercicioResponse>>("/treinador/exercicios", { params });
   },
@@ -143,7 +137,6 @@ export const treinadorApi = {
     return apiClient.post<VinculoDetalheResponse>(`/treinador/alunos/${alunoId}/reativar`, { pacoteId });
   },
 
-  // ── Pacotes ──
   listPacotes() {
     return apiClient.get<PacoteResponse[]>("/treinador/pacotes");
   },

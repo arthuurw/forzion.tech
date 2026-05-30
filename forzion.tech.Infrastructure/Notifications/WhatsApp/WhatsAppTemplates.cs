@@ -16,7 +16,6 @@ public static class WhatsAppTemplates
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
     private static string Money(decimal v) => v.ToString("N2", PtBr);
 
-    // ── Aluno ──────────────────────────────────────────────────────────────
     public static WhatsAppTemplateMessage CobrancaDisponivel(string nomeAluno, decimal valor, MetodoPagamento metodo, string linkPortal)
         => new("cobranca_disponivel", [nomeAluno, Money(valor), metodo == MetodoPagamento.Cartao ? "cartão de crédito" : "Pix", linkPortal]);
 
@@ -47,7 +46,6 @@ public static class WhatsAppTemplates
     public static WhatsAppTemplateMessage VinculoAprovado(string nomeAluno)
         => new("vinculo_aprovado", [nomeAluno]);
 
-    // ── Treinador ──────────────────────────────────────────────────────────
     public static WhatsAppTemplateMessage TreinadorAprovado(string nomeTreinador)
         => new("treinador_aprovado", [nomeTreinador]);
 

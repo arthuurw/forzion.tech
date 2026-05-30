@@ -26,8 +26,6 @@ vi.mock("exceljs", () => ({
 import { buildFichaRows, exportarFichaParaExcel, safeCell, sanitizeFilename } from "@/lib/utils/excel";
 import type { FichaExportParams } from "@/lib/utils/excel";
 
-// ─── helpers ────────────────────────────────────────────────────────────────
-
 function makeSerie(overrides?: Partial<SerieConfigResponse>): SerieConfigResponse {
   return {
     serieConfigId: "s1",
@@ -59,8 +57,6 @@ const BASE: FichaExportParams = {
   objetivo: "Hipertrofia",
   exercicios: [makeExercicio()],
 };
-
-// ─── sanitizeFilename ────────────────────────────────────────────────────────
 
 describe("sanitizeFilename", () => {
   it("allows word chars, spaces, and hyphens", () => {
@@ -112,8 +108,6 @@ describe("sanitizeFilename", () => {
   });
 });
 
-// ─── safeCell ───────────────────────────────────────────────────────────────
-
 describe("safeCell — formula injection prevention for ExcelJS", () => {
   it("prefixes '=' strings with apostrophe", () => {
     expect(safeCell('=HYPERLINK("http://evil.com","x")')).toBe("'=HYPERLINK(\"http://evil.com\",\"x\")");
@@ -156,8 +150,6 @@ describe("safeCell — formula injection prevention for ExcelJS", () => {
   });
 });
 
-// ─── buildFichaRows — header structure ──────────────────────────────────────
-
 describe("buildFichaRows — header", () => {
   it("row 0: label + nome da ficha", () => {
     expect(buildFichaRows(BASE)[0]).toEqual(["Ficha de Treino", "Treino A"]);
@@ -184,8 +176,6 @@ describe("buildFichaRows — header", () => {
     ]);
   });
 });
-
-// ─── buildFichaRows — exercise data rows ────────────────────────────────────
 
 describe("buildFichaRows — exercise data", () => {
   it("data starts at row index 4", () => {
@@ -305,8 +295,6 @@ describe("buildFichaRows — exercise data", () => {
   });
 });
 
-// ─── buildFichaRows — formula injection (raw values) ────────────────────────
-
 describe("buildFichaRows — raw values (safeCell applied later by exportarFichaParaExcel)", () => {
   /**
    * buildFichaRows is a pure data function — it returns raw values without
@@ -341,8 +329,6 @@ describe("buildFichaRows — raw values (safeCell applied later by exportarFicha
     expect(buildFichaRows({ ...BASE, exercicios: [ex] })[4][1]).toBe("|cmd;calc!A0");
   });
 });
-
-// ─── exportarFichaParaExcel ──────────────────────────────────────────────────
 
 describe("exportarFichaParaExcel", () => {
   let anchorEl: { href: string; download: string; click: ReturnType<typeof vi.fn> };

@@ -17,8 +17,6 @@ vi.mock("next/navigation", () => ({
   useParams: vi.fn(() => ({ fichaId: "ficha-1" })),
 }));
 
-// ─── Factories ───────────────────────────────────────────────────────────────
-
 function makeSerie(overrides: Partial<SerieConfigResponse> = {}): SerieConfigResponse {
   return {
     serieConfigId: "s-1",
@@ -67,11 +65,8 @@ function respondFicha(ficha: TreinoAlunoDetalheResponse = makeFicha()) {
   );
 }
 
-// ─── Imports (lazy após mocks) ────────────────────────────────────────────────
-
+// Import lazy após mocks.
 import ExecutarFichaPage from "../[fichaId]/executar/page";
-
-// ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("ExecutarFichaPage — hint de agregação por exercício", () => {
   afterEach(() => vi.clearAllMocks());
@@ -91,7 +86,6 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     respondFicha();
     render(<ExecutarFichaPage />);
 
-    // Espera a ficha carregar
     await screen.findByText("Supino");
 
     // O span com title contendo "média" deve existir

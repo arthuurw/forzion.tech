@@ -95,7 +95,6 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
 
     render(<AssinaturaAlunoPage />);
 
-    // Esperar página carregar
     expect(await screen.findByText("Pendente")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancelar assinatura" })).not.toBeInTheDocument();
   });

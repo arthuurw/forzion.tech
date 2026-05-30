@@ -7,8 +7,6 @@ using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Application.UseCases.Conta.Lgpd;
 
-// ── Command ───────────────────────────────────────────────────────────────────
-
 /// <param name="ContaId">ID da conta a ser anonimizada.</param>
 /// <param name="RealizadoPorId">
 /// ID de quem executa a operação: igual a ContaId (self) ou o ID do admin.
@@ -18,8 +16,6 @@ namespace forzion.tech.Application.UseCases.Conta.Lgpd;
 /// Null quando acionado por admin (RealizadoPorId != ContaId).
 /// </param>
 public record AnonimizarContaCommand(Guid ContaId, Guid RealizadoPorId, string? SenhaAtual = null);
-
-// ── Handler ───────────────────────────────────────────────────────────────────
 
 public class AnonimizarContaHandler(
     IContaRepository contaRepository,
@@ -48,17 +44,15 @@ public class AnonimizarContaHandler(
     {
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        // ── 1. Load conta ────────────────────────────────────────────────
         var conta = await contaRepository
             .ObterPorIdAsync(command.ContaId, cancellationToken).ConfigureAwait(false);
         if (conta is null)
             return Result.Failure(Error.NotFound("conta.nao_encontrada", "Conta não encontrada."));
 
-        // ── 1b. Idempotent: already anonymized → success ─────────────────
+        // Idempotent: already anonymized → success.
         if (conta.AnonimizadaEm is not null)
             return Result.Success();
 
-        // ── 1c. Self-service password confirmation ───────────────────────
         var isSelf = command.RealizadoPorId == command.ContaId;
         if (isSelf)
         {
@@ -74,7 +68,7 @@ public class AnonimizarContaHandler(
                     "Senha incorreta."));
         }
 
-        // ── 2. Resolve perfil and capture old PII for log scrub ──────────
+        // Capture old PII before scrubbing — needed later to anonimizar delivery logs.
         var oldEmail = conta.Email.Value;
         string? oldTelefone = null;
         Guid? alunoIdParaAssinante = null;
@@ -101,7 +95,6 @@ public class AnonimizarContaHandler(
             {
                 oldTelefone = treinador.Telefone;
 
-                // ── Block: treinador with active vínculos ────────────────
                 var vinculosAtivos = await vinculoRepository
                     .ListarAtivosPorTreinadorAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
                 if (vinculosAtivos.Count > 0)
@@ -115,17 +108,14 @@ public class AnonimizarContaHandler(
             }
         }
 
-        // ── 3. Anonimizar Conta (scrubs email, clears hash, sets AnonimizadaEm) ──
         var contaResult = conta.Anonimizar(agora);
         if (contaResult.IsFailure)
             return contaResult;
 
-        // ── 4. Anonimizar Assinante read-model (if aluno) ────────────────
         if (alunoIdParaAssinante.HasValue)
             await assinanteRepository
                 .AnonimizarPorAlunoIdAsync(alunoIdParaAssinante.Value, cancellationToken).ConfigureAwait(false);
 
-        // ── 5. Scrub delivery logs ────────────────────────────────────────
         await emailDeliveryLogRepository
             .AnonimizarPorEmailAsync(oldEmail, cancellationToken).ConfigureAwait(false);
 
@@ -133,13 +123,12 @@ public class AnonimizarContaHandler(
             await whatsAppDeliveryLogRepository
                 .AnonimizarPorTelefoneAsync(oldTelefone, cancellationToken).ConfigureAwait(false);
 
-        // ── 6. Session/token prevention: PasswordHash already cleared by
-        //       Conta.Anonimizar — login impossible; tokens still valid until
-        //       their natural expiry (JWT stateless). To force immediate logout,
-        //       callers may revoke the current jti separately (outside this handler).
-        //       AnonimizadaEm is checked on login if desired (middleware opt-in). ──
+        // Session/token prevention: PasswordHash already cleared by
+        // Conta.Anonimizar — login impossible; tokens still valid until
+        // their natural expiry (JWT stateless). To force immediate logout,
+        // callers may revoke the current jti separately (outside this handler).
+        // AnonimizadaEm is checked on login if desired (middleware opt-in).
 
-        // ── 7. Audit log ──────────────────────────────────────────────────
         var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AnonimizacaoConta,
             realizadoPorId: command.RealizadoPorId,
@@ -150,7 +139,7 @@ public class AnonimizarContaHandler(
             await logAprovacaoRepository
                 .AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
-        // ── 8. Single CommitAsync — domain events dispatched here ─────────
+        // Single CommitAsync — domain events dispatched here.
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success();

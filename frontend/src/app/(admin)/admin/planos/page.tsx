@@ -29,7 +29,6 @@ export default function PlanosAdminPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // criar
   const [criarOpen, setCriarOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [tier, setTier] = useState<TierPlano>("Basic");
@@ -38,7 +37,6 @@ export default function PlanosAdminPage() {
   const [descricao, setDescricao] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // editar
   const [editPlano, setEditPlano] = useState<PlanoPlataformaResponse | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editTier, setEditTier] = useState<TierPlano>("Basic");
@@ -47,7 +45,6 @@ export default function PlanosAdminPage() {
   const [editDescricao, setEditDescricao] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // excluir
   const [confirmExcluir, setConfirmExcluir] = useState<PlanoPlataformaResponse | null>(null);
   const [loadingExcluir, setLoadingExcluir] = useState(false);
 

@@ -45,7 +45,6 @@ export default function PerfilPage() {
   const [loadingTrocaPacotes, setLoadingTrocaPacotes] = useState(false);
   const [savingTroca, setSavingTroca] = useState(false);
 
-  // LGPD state
   const [exportingData, setExportingData] = useState(false);
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
   const [deleteSenha, setDeleteSenha] = useState("");

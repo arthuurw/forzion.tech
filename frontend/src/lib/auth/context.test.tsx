@@ -39,8 +39,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// ─── Montagem / GET /api/auth/me ─────────────────────────────────────────────
-
 describe("AuthProvider — GET /api/auth/me", () => {
   it("sucesso (200 com user) → popula user, isLoading false", async () => {
     server.use(http.get("*/api/auth/me", () => HttpResponse.json(SESSION_USER)));
@@ -86,8 +84,6 @@ describe("AuthProvider — GET /api/auth/me", () => {
   });
 });
 
-// ─── login() ─────────────────────────────────────────────────────────────────
-
 describe("login()", () => {
   it("seta user com tipoConta do LoginResponse", async () => {
     render(
@@ -105,8 +101,6 @@ describe("login()", () => {
     expect(screen.getByTestId("user")).toHaveTextContent("Treinador");
   });
 });
-
-// ─── logout() ────────────────────────────────────────────────────────────────
 
 describe("logout()", () => {
   it("POST /api/auth/logout → user null → push /login", async () => {
@@ -139,8 +133,6 @@ describe("logout()", () => {
     expect(mockPush).toHaveBeenCalledWith("/login");
   });
 });
-
-// ─── useAuth fora do provider ─────────────────────────────────────────────────
 
 describe("useAuth fora do provider", () => {
   it("lanca erro descritivo", () => {

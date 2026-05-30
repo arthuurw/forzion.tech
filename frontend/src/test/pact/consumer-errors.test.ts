@@ -12,7 +12,7 @@
  *
  * O apiClient lanca AxiosError em non-2xx; o consumer le err.response.data.
  *
- * ── Publicacao ───────────────────────────────────────────────────────────────
+ * Publicacao:
  * F5b (fase 4): provider state handlers implementados em
  * ForzionApiProviderTests.cs — o middleware ProviderStateMiddleware mapeia
  * states em ProblemDetails matching. Contratos agora publicam pro broker
@@ -66,8 +66,6 @@ async function captureError(call: () => Promise<unknown>): Promise<AxiosError> {
 }
 
 describe("Contrato: forzion-frontend -> forzion-api (errors)", () => {
-  // ── 401 Unauthorized ─────────────────────────────────────────────────────────
-
   it("GET /aluno/fichas -> 401 quando nao autenticado", async () => {
     const pact = newPact()
       .given("requisicao sem credenciais validas")
@@ -125,8 +123,6 @@ describe("Contrato: forzion-frontend -> forzion-api (errors)", () => {
     });
   });
 
-  // ── 404 NotFound ─────────────────────────────────────────────────────────────
-
   it("GET /aluno/fichas -> 404 quando aluno nao encontrado", async () => {
     const pact = newPact()
       .given("aluno autenticado mas nao existe no banco")
@@ -182,8 +178,6 @@ describe("Contrato: forzion-frontend -> forzion-api (errors)", () => {
       expect(err.response?.status).toBe(404);
     });
   });
-
-  // ── 500 InternalServerError ──────────────────────────────────────────────────
 
   it("GET /aluno/fichas -> 500 em falha inesperada", async () => {
     const pact = newPact()
