@@ -119,4 +119,42 @@ public class RegistrarAlunoHandlerTests
         var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("invalido", "123", "", Guid.Empty, Guid.Empty));
         await act.Should().ThrowAsync<ValidationException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_PacoteNaoEncontrado_LancaPacoteNaoEncontradoException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Pacote?)null);
+
+        var act = async () => await _handler.HandleAsync(
+            new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+
+        await act.Should().ThrowAsync<PacoteNaoEncontradoException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_PacoteDeOutroTreinador_RetornaFailure()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        // Pacote pertence a OUTRO treinador.
+        var pacote = Pacote.Criar(Guid.NewGuid(), "Basic", 10, DateTime.UtcNow).Value;
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var result = await _handler.HandleAsync(
+            new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("não pertence ao treinador");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

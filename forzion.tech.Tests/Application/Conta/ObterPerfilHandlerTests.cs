@@ -96,4 +96,31 @@ public class ObterPerfilHandlerTests
         var act = async () => await _handler.HandleAsync();
         await act.Should().ThrowAsync<DomainException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_PerfilAlunoInexistente_LancaDomainException()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Aluno);
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync((Aluno?)null);
+
+        var act = async () => await _handler.HandleAsync();
+        await act.Should().ThrowAsync<DomainException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TipoContaInvalido_LancaDomainException()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Aluno);
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.TipoConta).Returns((TipoConta)99);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+
+        var act = async () => await _handler.HandleAsync();
+        await act.Should().ThrowAsync<DomainException>();
+    }
 }

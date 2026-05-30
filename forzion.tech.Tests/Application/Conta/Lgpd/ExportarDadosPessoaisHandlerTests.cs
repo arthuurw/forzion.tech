@@ -199,6 +199,184 @@ public class ExportarDadosPessoaisHandlerTests
 
     // ── audit log ─────────────────────────────────────────────────────────────
 
+    // ── aluno export TOTALMENTE populado — exercita todos os Map* e getters de DTO ──
+
+    [Fact]
+    public async Task HandleAsync_Aluno_Populado_MapeiaTodosOsCampos()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Aluno, "joana@test.com");
+        var aluno = Aluno.Criar(
+            contaId, "Joana Aluna", TestData.Agora,
+            email: "joana@test.com",
+            telefone: "+5511999998888",
+            diasDisponiveis: 4,
+            tempoDisponivelMinutos: TempoDisponivel.UmaHora,
+            finalidade: FinalidadeTreino.Hipertrofia,
+            focoTreino: "Membros superiores",
+            nivelCondicionamento: NivelCondicionamento.Intermediario,
+            limitacoesFisicas: "Joelho direito",
+            doencas: "Nenhuma",
+            observacoesAdicionais: "Treina pela manhã").Value;
+
+        var treinadorId = Guid.NewGuid();
+        var vinculoId = Guid.NewGuid();
+        var pacoteId = Guid.NewGuid();
+        var assinatura = AssinaturaAluno.Criar(vinculoId, pacoteId, treinadorId, aluno.Id, 149.90m, TestData.Agora).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, TestData.Agora).Value;
+
+        var pagamento = Pagamento.Criar(assinatura.Id, 149.90m, TestData.Agora, MetodoPagamento.Cartao).Value;
+        pagamento.MarcarPago(TestData.Agora);
+
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Forca, treinadorId, TestData.Agora, DificuldadeTreino.Avancado).Value;
+        var execucao = ExecucaoTreino.Criar(treino.Id, aluno.Id, TestData.Agora, TestData.Agora, "Concluído com carga máxima").Value;
+
+        var emailLog = EmailDeliveryLog.Criar("rid-1", "delivered", "joana@test.com", TestData.Agora, "{}", TestData.Agora);
+        var waLog = WhatsAppDeliveryLog.Criar("mid-1", "read", "+5511999998888", TestData.Agora, "{}", TestData.Agora);
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _assinaturaRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync([assinatura]);
+        _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync([pagamento]);
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(assinatura.VinculoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _treinoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync((new List<Treino> { treino }.AsReadOnly() as IReadOnlyList<Treino>, 1));
+        _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync([execucao]);
+        _emailLogRepo.Setup(r => r.ListarPorEmailAsync("joana@test.com", It.IsAny<CancellationToken>())).ReturnsAsync([emailLog]);
+        _waLogRepo.Setup(r => r.ListarPorTelefoneAsync("+5511999998888", It.IsAny<CancellationToken>())).ReturnsAsync([waLog]);
+        SetupLogAprovacao();
+
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+
+        result.IsSuccess.Should().BeTrue();
+        var export = result.Value;
+
+        // Conta DTO
+        export.Conta.ContaId.Should().Be(conta.Id);
+        export.Conta.Email.Should().Be("joana@test.com");
+        export.Conta.TipoConta.Should().Be("Aluno");
+
+        // Aluno DTO — todos os campos opcionais
+        export.Aluno.Should().NotBeNull();
+        var a = export.Aluno!;
+        a.AlunoId.Should().Be(aluno.Id);
+        a.Nome.Should().Be("Joana Aluna");
+        a.Email.Should().Be("joana@test.com");
+        a.Telefone.Should().Be("+5511999998888");
+        a.DiasDisponiveis.Should().Be(4);
+        a.TempoDisponivelMinutos.Should().Be(TempoDisponivel.UmaHora.ToString());
+        a.Finalidade.Should().Be(FinalidadeTreino.Hipertrofia.ToString());
+        a.FocoTreino.Should().Be("Membros superiores");
+        a.NivelCondicionamento.Should().Be(NivelCondicionamento.Intermediario.ToString());
+        a.LimitacoesFisicas.Should().Be("Joelho direito");
+        a.Doencas.Should().Be("Nenhuma");
+        a.ObservacoesAdicionais.Should().Be("Treina pela manhã");
+
+        // Assinatura DTO
+        export.Assinaturas.Should().HaveCount(1);
+        export.Assinaturas[0].AssinaturaId.Should().Be(assinatura.Id);
+        export.Assinaturas[0].PacoteId.Should().Be(pacoteId);
+        export.Assinaturas[0].TreinadorId.Should().Be(treinadorId);
+        export.Assinaturas[0].Valor.Should().Be(149.90m);
+
+        // Pagamento DTO — MapPagamento
+        export.Pagamentos.Should().HaveCount(1);
+        export.Pagamentos[0].PagamentoId.Should().Be(pagamento.Id);
+        export.Pagamentos[0].AssinaturaId.Should().Be(assinatura.Id);
+        export.Pagamentos[0].Valor.Should().Be(149.90m);
+        export.Pagamentos[0].Status.Should().Be("Pago");
+        export.Pagamentos[0].MetodoPagamento.Should().Be(MetodoPagamento.Cartao.ToString());
+        export.Pagamentos[0].DataPagamento.Should().Be(TestData.Agora);
+
+        // Vinculo DTO — MapVinculo
+        export.Vinculos.Should().HaveCount(1);
+        export.Vinculos[0].VinculoId.Should().Be(vinculo.Id);
+        export.Vinculos[0].TreinadorId.Should().Be(treinadorId);
+        export.Vinculos[0].AlunoId.Should().Be(aluno.Id);
+
+        // Treino DTO — MapTreino
+        export.Treinos.Should().HaveCount(1);
+        export.Treinos[0].TreinoId.Should().Be(treino.Id);
+        export.Treinos[0].Nome.Should().Be("Treino A");
+        export.Treinos[0].Objetivo.Should().Be(ObjetivoTreino.Forca.ToString());
+        export.Treinos[0].Dificuldade.Should().Be(DificuldadeTreino.Avancado.ToString());
+
+        // Execucao DTO — MapExecucao
+        export.Execucoes.Should().HaveCount(1);
+        export.Execucoes[0].ExecucaoId.Should().Be(execucao.Id);
+        export.Execucoes[0].TreinoId.Should().Be(treino.Id);
+        export.Execucoes[0].Observacao.Should().Be("Concluído com carga máxima");
+
+        // Email/WhatsApp logs — MapEmailLog / MapWhatsAppLog
+        export.EmailDeliveryLogs.Should().HaveCount(1);
+        export.EmailDeliveryLogs[0].LogId.Should().Be(emailLog.Id);
+        export.EmailDeliveryLogs[0].EventType.Should().Be("delivered");
+        export.WhatsAppDeliveryLogs.Should().HaveCount(1);
+        export.WhatsAppDeliveryLogs[0].LogId.Should().Be(waLog.Id);
+        export.WhatsAppDeliveryLogs[0].EventType.Should().Be("read");
+    }
+
+    // ── treinador export TOTALMENTE populado — exercita MapPacote/MapTreino/MapVinculo ──
+
+    [Fact]
+    public async Task HandleAsync_Treinador_Populado_MapeiaPacotesTreinosVinculos()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Treinador, "coach@test.com");
+        var treinador = Treinador.Criar(contaId, "Coach Pro", TestData.Agora, "+5521988887777").Value;
+        treinador.Aprovar(Guid.NewGuid(), TestData.Agora);
+
+        var alunoId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, alunoId, TestData.Agora).Value;
+        var pacote = Pacote.Criar(treinador.Id, "Plano Premium", 299.90m, TestData.Agora, "Acompanhamento completo").Value;
+        var treino = Treino.Criar("Treino Full Body", ObjetivoTreino.Resistencia, treinador.Id, TestData.Agora, DificuldadeTreino.Intermediario).Value;
+
+        var emailLog = EmailDeliveryLog.Criar("rid-2", "bounced", "coach@test.com", TestData.Agora, "{}", TestData.Agora);
+        var waLog = WhatsAppDeliveryLog.Criar("mid-2", "delivered", "+5521988887777", TestData.Agora, "{}", TestData.Agora);
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _vinculoRepo.Setup(r => r.ListarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync([vinculo]);
+        _pacoteRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync([pacote]);
+        _treinoRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, 1, int.MaxValue, null, null, null, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync((new List<(Treino, string?)> { (treino, "Aluno X") }.AsReadOnly() as IReadOnlyList<(Treino, string?)>, 1));
+        _emailLogRepo.Setup(r => r.ListarPorEmailAsync("coach@test.com", It.IsAny<CancellationToken>())).ReturnsAsync([emailLog]);
+        _waLogRepo.Setup(r => r.ListarPorTelefoneAsync("+5521988887777", It.IsAny<CancellationToken>())).ReturnsAsync([waLog]);
+        SetupLogAprovacao();
+
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+
+        result.IsSuccess.Should().BeTrue();
+        var export = result.Value;
+
+        // Treinador DTO — AprovadoEm preenchido
+        export.Treinador.Should().NotBeNull();
+        export.Treinador!.TreinadorId.Should().Be(treinador.Id);
+        export.Treinador.Nome.Should().Be("Coach Pro");
+        export.Treinador.Telefone.Should().Be("+5521988887777");
+        export.Treinador.AprovadoEm.Should().Be(TestData.Agora);
+
+        // Vinculo / Pacote / Treino mapeados
+        export.Vinculos.Should().HaveCount(1);
+        export.Vinculos[0].TreinadorId.Should().Be(treinador.Id);
+
+        export.Pacotes.Should().HaveCount(1);
+        export.Pacotes[0].PacoteId.Should().Be(pacote.Id);
+        export.Pacotes[0].Nome.Should().Be("Plano Premium");
+        export.Pacotes[0].Preco.Should().Be(299.90m);
+        export.Pacotes[0].Descricao.Should().Be("Acompanhamento completo");
+        export.Pacotes[0].IsAtivo.Should().BeTrue();
+
+        export.Treinos.Should().HaveCount(1);
+        export.Treinos[0].TreinoId.Should().Be(treino.Id);
+        export.Treinos[0].Objetivo.Should().Be(ObjetivoTreino.Resistencia.ToString());
+
+        // logs do titular
+        export.EmailDeliveryLogs.Should().ContainSingle().Which.EventType.Should().Be("bounced");
+        export.WhatsAppDeliveryLogs.Should().ContainSingle().Which.EventType.Should().Be("delivered");
+    }
+
     [Fact]
     public async Task HandleAsync_Aluno_GravaLogAuditoria()
     {

@@ -172,4 +172,74 @@ public class RegistrarExecucaoHandlerTests
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_ComItensDeExercicio_RegistraExecucaoComItens()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        var alunoId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
+        vinculo.Aprovar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
+
+        _userContext.Setup(u => u.PerfilId).Returns(alunoId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+
+        var item = new RegistrarExecucaoItemCommand(
+            TreinoExercicioId: Guid.NewGuid(),
+            SeriesExecutadas: 4,
+            RepeticoesExecutadas: 10,
+            CargaExecutada: 80.5m,
+            Observacao: "pesado");
+
+        // exercita ctor/getters do RegistrarExecucaoItemCommand
+        item.TreinoExercicioId.Should().NotBeEmpty();
+        item.SeriesExecutadas.Should().Be(4);
+        item.RepeticoesExecutadas.Should().Be(10);
+        item.CargaExecutada.Should().Be(80.5m);
+        item.Observacao.Should().Be("pesado");
+
+        var command = new RegistrarExecucaoCommand(treino.Id, alunoId, DateTime.UtcNow, "treino concluído", [item]);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Observacao.Should().Be("treino concluído");
+        _execucaoRepo.Verify(r => r.AdicionarAsync(
+            It.Is<ExecucaoTreino>(e => e.Exercicios.Count == 1), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ItemDeExercicioInvalido_RetornaFailureSemComitar()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        var alunoId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
+        vinculo.Aprovar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
+
+        _userContext.Setup(u => u.PerfilId).Returns(alunoId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+
+        // SeriesExecutadas < 1 → ExecucaoExercicio.Criar falha
+        var item = new RegistrarExecucaoItemCommand(Guid.NewGuid(), SeriesExecutadas: 0, RepeticoesExecutadas: 10, CargaExecutada: null, Observacao: null);
+        var command = new RegistrarExecucaoCommand(treino.Id, alunoId, DateTime.UtcNow, null, [item]);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        _execucaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<ExecucaoTreino>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

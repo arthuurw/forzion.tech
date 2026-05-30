@@ -673,6 +673,87 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_PaymentIntent_ConnectAccount_AssinaturaNaoEncontrada_Rejeita()
+    {
+        // ValidarConnectAccountAsync: assinatura is null → false (rejeita, não muta).
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_sem_assin", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_sem_assin", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AssinaturaAluno?)null);
+
+        var result = await _handler.HandleAsync(new ProcessarWebhookStripeCommand(
+            PaymentIntentPayloadComConnectAccount("payment_intent.succeeded", "pi_sem_assin", "acct_any"),
+            ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pendente);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntent_ConnectAccount_TreinadorSemConnectAccount_Rejeita()
+    {
+        // ValidarConnectAccountAsync: conta?.StripeConnectAccountId is null → false (warn + rejeita).
+        var treinadorId = Guid.NewGuid();
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_no_connect", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), treinadorId, Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_no_connect", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+        // conta sem ConfigurarStripeConnect → StripeConnectAccountId null (ou conta inexistente)
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
+
+        var result = await _handler.HandleAsync(new ProcessarWebhookStripeCommand(
+            PaymentIntentPayloadComConnectAccount("payment_intent.succeeded", "pi_no_connect", "acct_any"),
+            ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pendente);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AccountUpdated_ContaNaoEncontrada_NaoComita()
+    {
+        // ProcessarContaAtualizadaAsync: contaRecebimento is null → JaConsistente, sem commit.
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_unknown", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(AccountPayload("acct_unknown", true), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AccountUpdated_OnboardingJaCompleto_Idempotente_NaoComita()
+    {
+        // ProcessarContaAtualizadaAsync: OnboardingCompleto já true → JaConsistente, sem commit.
+        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_done", TestData.Agora);
+        contaRecebimento.ConfirmarOnboarding(TestData.Agora); // já completo
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_done", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(AccountPayload("acct_done", true), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        contaRecebimento.OnboardingCompleto.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_PaymentIntent_ConnectAccountDivergente_RejeitaSemMutar()
     {
         // Cross-account replay: PaymentIntent existe mas pertence a outro Connect account
