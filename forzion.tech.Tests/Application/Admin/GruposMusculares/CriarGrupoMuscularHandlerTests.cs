@@ -27,15 +27,12 @@ public class CriarGrupoMuscularHandlerTests
     [Fact]
     public async Task HandleAsync_NomeValido_CriaGrupoMuscular()
     {
-        // Arrange
         var command = new CriarGrupoMuscularCommand("Peito");
         _repository.Setup(r => r.ObterPorNomeAsync("Peito", It.IsAny<CancellationToken>()))
             .ReturnsAsync((GrupoMuscular?)null);
 
-        // Act
         var result = await _handler.HandleAsync(command);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Nome.Should().Be("Peito");
         _repository.Verify(r => r.AdicionarAsync(It.Is<GrupoMuscular>(g => g.Nome == "Peito"), It.IsAny<CancellationToken>()), Times.Once);
@@ -45,15 +42,12 @@ public class CriarGrupoMuscularHandlerTests
     [Fact]
     public async Task HandleAsync_NomeDuplicado_RetornaFalha()
     {
-        // Arrange
         var command = new CriarGrupoMuscularCommand("Peito");
         _repository.Setup(r => r.ObterPorNomeAsync("Peito", It.IsAny<CancellationToken>()))
             .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value);
 
-        // Act
         var result = await _handler.HandleAsync(command);
 
-        // Assert
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Should().Contain("Já existe um grupo muscular com este nome.");
     }

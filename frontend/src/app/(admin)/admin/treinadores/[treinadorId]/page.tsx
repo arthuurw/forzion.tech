@@ -62,7 +62,6 @@ export default function DetalheTreinadorAdminPage() {
   const [pacotesLoading, setPacotesLoading] = useState(false);
   const [pacotesLoaded, setPacotesLoaded] = useState(false);
 
-  // LGPD state
   const [exportingLgpd, setExportingLgpd] = useState(false);
   const [anonimizarDialog, setAnonimizarDialog] = useState(false);
   const [anonimizando, setAnonimizando] = useState(false);

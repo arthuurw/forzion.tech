@@ -11,7 +11,6 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 
-// Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   useParams: () => ({}),
@@ -30,7 +29,6 @@ vi.mock("next/dynamic", () => ({
 import PerfilPage from "../page";
 import { renderWithProviders } from "@/test/render";
 
-// Set up default MSW handlers for /conta/perfil
 beforeEach(() => {
   server.use(
     http.get("*/conta/perfil", () =>
@@ -44,7 +42,6 @@ beforeEach(() => {
     http.get("*/aluno/vinculo", () =>
       HttpResponse.json({ vinculoAtivo: null, vinculoPendente: null }),
     ),
-    // auth/me returns logged in user
     http.get("*/api/auth/me", () =>
       HttpResponse.json({
         contaId: "conta-123",
@@ -89,7 +86,6 @@ describe("/perfil LGPD section", () => {
       config: {} as any,
     } as any);
 
-    // Mock URL APIs
     const originalCreateObjectURL = globalThis.URL?.createObjectURL;
     const originalRevokeObjectURL = globalThis.URL?.revokeObjectURL;
     if (globalThis.URL) {
@@ -97,7 +93,6 @@ describe("/perfil LGPD section", () => {
       globalThis.URL.revokeObjectURL = vi.fn();
     }
 
-    // Mock anchor click
     const originalCreateElement = document.createElement.bind(document);
     vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
       const el = originalCreateElement(tag as keyof HTMLElementTagNameMap);
@@ -121,7 +116,6 @@ describe("/perfil LGPD section", () => {
       expect(exportSpy).toHaveBeenCalledOnce();
     });
 
-    // Restore
     exportSpy.mockRestore();
     vi.restoreAllMocks();
     if (globalThis.URL) {
@@ -150,19 +144,17 @@ describe("/perfil LGPD section", () => {
       ).toBeInTheDocument();
     });
 
-    // Open the dialog — use getAllByRole to avoid ambiguity; button is the first match
+    // getAllByRole avoids ambiguity; the trigger button is the first match
     const deleteBtn = screen.getAllByRole("button", { name: /excluir minha conta/i })[0];
     fireEvent.click(deleteBtn);
 
-    // Wait for the ConfirmDialog to be open
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toBeInTheDocument();
 
-    // Fill in the senha field inside the dialog specifically
+    // Fill senha within the dialog specifically (label repeats outside)
     const senhaInput = within(dialog).getByLabelText(/senha/i);
     fireEvent.change(senhaInput, { target: { value: "minha-senha-123" } });
 
-    // Click confirm — "Excluir conta" button
     const confirmBtn = within(dialog).getByRole("button", { name: /excluir conta/i });
     fireEvent.click(confirmBtn);
 

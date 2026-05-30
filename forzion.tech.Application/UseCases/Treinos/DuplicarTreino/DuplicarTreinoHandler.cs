@@ -31,7 +31,6 @@ public class DuplicarTreinoHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        // Validar autorização
         if (!userContext.IsSystemAdmin && original.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 

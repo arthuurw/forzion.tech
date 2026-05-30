@@ -51,7 +51,6 @@ export default function TreinosTreinadorPage() {
   const [editDataInicio, setEditDataInicio] = useState("");
   const [editDataFim, setEditDataFim] = useState("");
 
-  // filtros
   const [filtroNome, setFiltroNome] = useState("");
   const [filtroObjetivo, setFiltroObjetivo] = useState("");
   const [ordenarPor, setOrdenarPor] = useState("nome");

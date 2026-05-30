@@ -33,7 +33,6 @@ public class DesvincularAlunoHandler(
         var vinculo = await vinculoRepository.ObterPorIdAsync(command.VinculoId, cancellationToken).ConfigureAwait(false)
             ?? throw new VinculoNaoEncontradoException();
 
-        // Validar autorização
         if (!userContext.IsSystemAdmin && vinculo.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 

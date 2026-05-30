@@ -73,8 +73,6 @@ public static class ContaEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        // ── LGPD ────────────────────────────────────────────────────────────
-
         var lgpdGroup = endpoints.MapGroup("/conta/lgpd")
             .WithTags("Conta")
             .RequireAuthorization()

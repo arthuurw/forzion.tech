@@ -7,8 +7,6 @@ using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Application.UseCases.Conta.Lgpd;
 
-// ── DTOs ─────────────────────────────────────────────────────────────────────
-
 public record ContaExportDto(
     Guid ContaId,
     string Email,
@@ -121,11 +119,7 @@ public record DadosPessoaisExport(
     IReadOnlyList<EmailDeliveryLogExportDto> EmailDeliveryLogs,
     IReadOnlyList<WhatsAppDeliveryLogExportDto> WhatsAppDeliveryLogs);
 
-// ── Command ───────────────────────────────────────────────────────────────────
-
 public record ExportarDadosPessoaisCommand(Guid ContaId);
-
-// ── Handler ───────────────────────────────────────────────────────────────────
 
 public class ExportarDadosPessoaisHandler(
     IContaRepository contaRepository,
@@ -171,7 +165,6 @@ public class ExportarDadosPessoaisHandler(
             conta.VerificadoEm,
             conta.CreatedAt);
 
-        // ── Perfil ─────────────────────────────────────────────────────────
         AlunoExportDto? alunoDto = null;
         TreinadorExportDto? treinadorDto = null;
 
@@ -190,7 +183,6 @@ public class ExportarDadosPessoaisHandler(
                 treinadorDto = MapTreinador(treinador);
         }
 
-        // ── Vínculos, assinaturas, pagamentos, treinos, execuções ──────────
         var vinculos = new List<VinculoExportDto>();
         var assinaturas = new List<AssinaturaExportDto>();
         var pagamentos = new List<PagamentoExportDto>();
@@ -220,12 +212,10 @@ public class ExportarDadosPessoaisHandler(
                     vinculos.Add(MapVinculo(vinculo));
             }
 
-            // Treinos visíveis ao aluno
             var (treinosItems, _) = await treinoRepository
                 .ListarPorAlunoAsync(alunoId, 1, int.MaxValue, cancellationToken).ConfigureAwait(false);
             treinos.AddRange(treinosItems.Select(MapTreino));
 
-            // Execuções do aluno
             var execItems = await execucaoTreinoRepository
                 .ListarPorAlunoAsync(alunoId, 1, int.MaxValue, cancellationToken).ConfigureAwait(false);
             execucoes.AddRange(execItems.Select(MapExecucao));
@@ -248,7 +238,7 @@ public class ExportarDadosPessoaisHandler(
             treinos.AddRange(treinosItems.Select(t => MapTreino(t.Treino)));
         }
 
-        // ── Delivery logs — only the titular's email/phone ─────────────────
+        // Delivery logs — only the titular's email/phone (never third-party PII).
         var emailLogs = await emailDeliveryLogRepository
             .ListarPorEmailAsync(conta.Email.Value, cancellationToken).ConfigureAwait(false);
 
@@ -264,7 +254,6 @@ public class ExportarDadosPessoaisHandler(
             whatsAppLogs.AddRange(waLogs.Select(MapWhatsAppLog));
         }
 
-        // ── Audit log ──────────────────────────────────────────────────────
         var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.ExportacaoDados,
             realizadoPorId: command.ContaId,
@@ -295,8 +284,6 @@ public class ExportarDadosPessoaisHandler(
 
         return Result.Success(export);
     }
-
-    // ── Mappers ──────────────────────────────────────────────────────────────
 
     private static AlunoExportDto MapAluno(Aluno a) => new(
         a.Id, a.Nome, a.Email?.Value, a.Telefone, a.Status.ToString(),

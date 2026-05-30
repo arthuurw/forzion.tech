@@ -60,8 +60,6 @@ public class AnonimizarContaHandlerTests
             _timeProvider.Object);
     }
 
-    // ── helpers ───────────────────────────────────────────────────────────────
-
     private static Conta CriarContaComHash(TipoConta tipo, string email = "user@test.com") =>
         Conta.Criar(Email.Criar(email).Value, HashCorreto, tipo, TestData.Agora).Value;
 

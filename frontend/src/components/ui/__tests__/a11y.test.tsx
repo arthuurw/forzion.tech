@@ -16,8 +16,6 @@ vi.mock("@mui/material", async () => {
   return { ...(actual as object), useMediaQuery: vi.fn(() => false) };
 });
 
-// ─── ConfirmDialog — a11y ────────────────────────────────────────────────────
-
 describe("ConfirmDialog — a11y", () => {
   const base = {
     open: true,
@@ -51,8 +49,6 @@ describe("ConfirmDialog — a11y", () => {
   });
 });
 
-// ─── ResponsiveTable — keyboard activation ──────────────────────────────────
-
 type Row = { id: string; nome: string };
 
 const COLS: Column[] = [
@@ -85,10 +81,7 @@ describe("ResponsiveTable — keyboard activation (desktop)", () => {
         renderCell={renderCell} onRowClick={onRowClick}
       />,
     );
-    // Both rows should have role=button
     const rows = screen.getAllByRole("button", { name: undefined });
-    // Filter to only those that contain "João" or "Maria" (the TR elements)
-    // They are identified by tabIndex=0 and role=button
     const tableRows = document
       .querySelectorAll("tr[role='button']");
     expect(tableRows.length).toBe(2);

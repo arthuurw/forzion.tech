@@ -140,8 +140,6 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
-        // --- Endpoints Públicos (para Cadastro) ---
-
         group.MapGet("/planos", async (
             [FromServices] ListarPlanosPlataformaHandler handler,
             CancellationToken cancellationToken) =>

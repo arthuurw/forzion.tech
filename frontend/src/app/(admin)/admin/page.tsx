@@ -16,7 +16,6 @@ import { adminApi } from "@/lib/api/admin";
 import type {
   TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
 } from "@/types";
-/** Visually-hidden helper for screen-reader-only text. */
 const srOnly: React.CSSProperties = {
   position: "absolute",
   width: 1,
@@ -88,13 +87,11 @@ export default function DashboardAdminPage() {
       setPendentes(aguardandoTRes.data.items);
       setAlunosPendentes(aguardandoARes.data.items);
 
-      // Recent trainers: last 5 by createdAt from the small fetch
       const sorted = [...recentTRes.data.items].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setRecentTreinadores(sorted.slice(0, 5));
 
-      // Plan distribution — from dashboard stats endpoint
       const planosData = planosRes.data as PlanoPlataformaResponse[];
       setPlanos(planosData);
       const planoMap = new Map(planosData.map((p) => [p.planoId, p]));
@@ -110,7 +107,6 @@ export default function DashboardAdminPage() {
       }).sort((a, b) => b.total - a.total);
       setPlanoStats(planoBarStats);
 
-      // Student finalidade distribution — from dashboard stats endpoint
       setFinalidadeData(
         statsRes.data.alunoFinalidade
           .slice()

@@ -21,18 +21,15 @@ export default function PacotesTreinadorPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // criar
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [preco, setPreco] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // excluir
   const [deleteTarget, setDeleteTarget] = useState<PacoteResponse | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // editar
   const [editTarget, setEditTarget] = useState<PacoteResponse | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editDescricao, setEditDescricao] = useState("");

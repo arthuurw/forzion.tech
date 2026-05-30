@@ -11,8 +11,6 @@ import { fc, test } from "@fast-check/vitest";
 import { formatarSeries, formatarData, getWeekLabel } from "./formatting";
 import type { SerieConfigResponse } from "@/types";
 
-// ─── formatarSeries ───────────────────────────────────────────────────────
-
 describe("formatarSeries", () => {
   test.prop([fc.constant([])])("array vazio sempre retorna '—'", (empty) => {
     expect(formatarSeries(empty as unknown as SerieConfigResponse[])).toBe("—");
@@ -59,8 +57,6 @@ describe("formatarSeries", () => {
   });
 });
 
-// ─── formatarData ─────────────────────────────────────────────────────────
-
 describe("formatarData", () => {
   test.prop([
     fc.date({ min: new Date("2000-01-01"), max: new Date("2099-12-31"), noInvalidDate: true }),
@@ -88,8 +84,6 @@ describe("formatarData", () => {
     expect(result.slice(3, 5)).toBe(mes);
   });
 });
-
-// ─── getWeekLabel ─────────────────────────────────────────────────────────
 
 describe("getWeekLabel", () => {
   test.prop([

@@ -15,7 +15,6 @@ import ConsentBanner from "../ConsentBanner";
 // Helper to set / clear the document.cookie "consent" value
 function setCookieConsent(value: string | null) {
   if (value === null) {
-    // Expire the cookie
     document.cookie = "consent=; max-age=0; path=/";
   } else {
     document.cookie = `consent=${encodeURIComponent(value)}; path=/`;
@@ -32,13 +31,11 @@ function getConsentCookie(): string | null {
 
 describe("ConsentBanner", () => {
   beforeEach(() => {
-    // Clear consent cookie before each test
     setCookieConsent(null);
   });
 
   it("renders banner when no consent cookie exists", () => {
     render(<ConsentBanner />);
-    // The dialog should be visible (role=dialog with LGPD-related accessible name)
     expect(
       screen.getByRole("dialog", { name: /cookie|consentimento|lgpd/i }),
     ).toBeInTheDocument();
@@ -81,10 +78,8 @@ describe("ConsentBanner", () => {
     render(<ConsentBanner />);
     fireEvent.click(screen.getByRole("button", { name: /preferências/i }));
 
-    // Should now show the preferences panel with analytics switch
     expect(screen.getByText(/análise/i)).toBeInTheDocument();
 
-    // Analytics switch is off by default — toggle it on
     // MUI Switch renders role="switch", not "checkbox"
     const switches = screen.getAllByRole("switch", { hidden: true });
     // First switch is "Essenciais" (disabled), second is "Análise"

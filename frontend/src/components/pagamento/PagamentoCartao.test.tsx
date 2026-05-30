@@ -14,8 +14,7 @@ import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 import type { PagamentoResponse } from "@/types";
 import type React from "react";
 
-// ─── Stripe mock (F7 territory, not F6) ──────────────────────────────────────
-
+// Stripe mock: F7 territory, not F6.
 vi.mock("@stripe/stripe-js", () => ({
   loadStripe: vi.fn(() => Promise.resolve(null)),
 }));
@@ -27,9 +26,7 @@ vi.mock("@stripe/react-stripe-js", () => ({
   useElements: vi.fn(),
 }));
 
-// ─── Fixtures (F36: consolidado via buildPagamento) ──────────────────────────
-
-// Defaults pra este spec: Cartao Pendente com clientSecret valido.
+// F36: fixtures consolidados via buildPagamento. Defaults pra este spec: Cartao Pendente com clientSecret valido.
 const CARTAO_DEFAULTS: Partial<PagamentoResponse> = {
   pagamentoId: "p1",
   assinaturaAlunoId: "a1",
@@ -62,8 +59,6 @@ beforeEach(() => {
 
 afterEach(() => vi.clearAllMocks());
 
-// ─── Loading ─────────────────────────────────────────────────────────────────
-
 describe("PagamentoCartao — loading", () => {
   it("exibe spinner enquanto carrega", () => {
     hangPagamento();
@@ -71,8 +66,6 @@ describe("PagamentoCartao — loading", () => {
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 });
-
-// ─── Sem clientSecret ────────────────────────────────────────────────────────
 
 describe("PagamentoCartao — sem clientSecret", () => {
   it("exibe alerta de indisponibilidade", async () => {
@@ -82,8 +75,6 @@ describe("PagamentoCartao — sem clientSecret", () => {
     expect(screen.getByText(/indisponíveis/)).toBeInTheDocument();
   });
 });
-
-// ─── Status terminal com clientSecret ────────────────────────────────────────
 
 describe("PagamentoCartao — status terminal", () => {
   it("status Falhou → alerta de falha", async () => {
@@ -101,8 +92,6 @@ describe("PagamentoCartao — status terminal", () => {
   });
 });
 
-// ─── Formulário com clientSecret válido ──────────────────────────────────────
-
 describe("PagamentoCartao — formulário", () => {
   it("clientSecret presente e status Pendente → renderiza PaymentElement", async () => {
     respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
@@ -119,8 +108,6 @@ describe("PagamentoCartao — formulário", () => {
     expect(screen.getByText("Pagamento confirmado!")).toBeInTheDocument();
   });
 });
-
-// ─── Submit com erro Stripe ───────────────────────────────────────────────────
 
 describe("CartaoForm — submit com erro Stripe", () => {
   it("exibe mensagem de erro e remove loading", async () => {
@@ -154,8 +141,7 @@ describe("CartaoForm — submit com erro Stripe", () => {
   });
 });
 
-// ─── F7: Stripe partial mock — args + success + processando ──────────────────
-//
+// F7: Stripe partial mock — args + success + processando.
 // Mantemos Elements/PaymentElement mockados (DOM), mas useStripe/useElements
 // retornam OBJETOS REALISTAS (com confirmPayment configuravel). Cobre:
 // - args passados pro confirmPayment (elements ref, return_url, redirect)
@@ -239,7 +225,6 @@ describe("CartaoForm — F7 partial Stripe mock", () => {
     const submitBtn = screen.getByRole("button");
     expect(submitBtn).toBeDisabled();
 
-    // Libera o promise pra cleanup.
     resolveConfirm({});
   });
 

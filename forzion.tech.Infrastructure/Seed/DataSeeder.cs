@@ -25,7 +25,6 @@ public class DataSeeder(
 
     private static readonly (GrupoMuscularEnum Grupo, string Nome, string? Descricao)[] ExerciciosGlobais =
     [
-        // Peito
         (GrupoMuscularEnum.Peito, "Supino Reto com Barra", "Empurre a barra partindo do peito até a extensão total dos braços."),
         (GrupoMuscularEnum.Peito, "Supino Inclinado com Halteres", "Movimento de empurre em banco inclinado a 30-45°."),
         (GrupoMuscularEnum.Peito, "Supino Declinado com Barra", "Supino em banco declinado, ênfase na porção inferior do peitoral."),
@@ -37,7 +36,6 @@ public class DataSeeder(
         (GrupoMuscularEnum.Peito, "Pullover com Halter", "Alongamento e contração do peitoral em amplitude total."),
         (GrupoMuscularEnum.Peito, "Crossover Baixo no Cabo", "Cabo preso na parte inferior, enfatiza a porção superior do peitoral."),
 
-        // Costas
         (GrupoMuscularEnum.Costas, "Puxada Frontal no Pulley", "Puxe a barra até a altura do queixo com pegada aberta."),
         (GrupoMuscularEnum.Costas, "Remada Curvada com Barra", "Tronco inclinado, puxe a barra em direção ao abdômen."),
         (GrupoMuscularEnum.Costas, "Remada Unilateral com Halter", "Apoiado no banco, puxe o halter até a linha do quadril."),
@@ -49,7 +47,6 @@ public class DataSeeder(
         (GrupoMuscularEnum.Costas, "Pulldown com Braços Retos", "Em pé, deprima as escápulas e pressione a barra de cima para baixo."),
         (GrupoMuscularEnum.Costas, "Hiperextensão Lombar", "Extensão do tronco no banco romano para fortalecer a lombar."),
 
-        // Ombro
         (GrupoMuscularEnum.Ombro, "Desenvolvimento com Barra", "Pressione a barra do nível dos ombros até a extensão total."),
         (GrupoMuscularEnum.Ombro, "Desenvolvimento com Halteres", "Versão com halteres permite maior amplitude e equilíbrio bilateral."),
         (GrupoMuscularEnum.Ombro, "Elevação Lateral com Halteres", "Eleve os braços lateralmente até a linha dos ombros."),
@@ -61,7 +58,6 @@ public class DataSeeder(
         (GrupoMuscularEnum.Ombro, "Elevação Lateral com Cabo", "Versão com cabo mantém tensão constante no deltoide lateral."),
         (GrupoMuscularEnum.Ombro, "Desenvolvimento Militar", "Desenvolvimento com barra livre em pé, exige maior estabilização do core."),
 
-        // Bíceps
         (GrupoMuscularEnum.Biceps, "Rosca Direta com Barra", "Flexão de cotovelo bilateral com barra reta ou W."),
         (GrupoMuscularEnum.Biceps, "Rosca Alternada com Halteres", "Flexão de cotovelo alternada com supinação do antebraço."),
         (GrupoMuscularEnum.Biceps, "Rosca Concentrada", "Cotovelo apoiado na coxa, máxima contração do bíceps."),
@@ -73,7 +69,6 @@ public class DataSeeder(
         (GrupoMuscularEnum.Biceps, "Rosca Zottman", "Sobe supinado e desce pronado, trabalha toda a musculatura do braço."),
         (GrupoMuscularEnum.Biceps, "Rosca 21", "Dividida em 3 fases de 7 repetições para máxima fadiga."),
 
-        // Tríceps
         (GrupoMuscularEnum.Triceps, "Tríceps Testa com Barra", "Flexione e estenda os cotovelos levando a barra até a testa."),
         (GrupoMuscularEnum.Triceps, "Tríceps Pulley Corda", "Extensão de cotovelo com corda no cabo, abertura na fase final."),
         (GrupoMuscularEnum.Triceps, "Tríceps Pulley Barra", "Extensão de cotovelo com barra reta ou V no cabo."),
@@ -85,7 +80,6 @@ public class DataSeeder(
         (GrupoMuscularEnum.Triceps, "Extensão Overhead no Cabo", "Cabo preso atrás do corpo, extensão de cotovelo acima da cabeça."),
         (GrupoMuscularEnum.Triceps, "Tríceps Unilateral no Cabo", "Extensão unilateral de cotovelo para correção de desequilíbrios."),
 
-        // Pernas
         (GrupoMuscularEnum.Pernas, "Agachamento Livre", "Exercício composto fundamental para quadríceps, glúteos e isquiotibiais."),
         (GrupoMuscularEnum.Pernas, "Leg Press 45°", "Prensa inclinada, permite alto volume com menor estresse na lombar."),
         (GrupoMuscularEnum.Pernas, "Extensão de Joelhos", "Isolamento do quadríceps na cadeira extensora."),
@@ -97,7 +91,6 @@ public class DataSeeder(
         (GrupoMuscularEnum.Pernas, "Cadeira Adutora", "Fechamento das pernas para trabalhar adutores do quadril."),
         (GrupoMuscularEnum.Pernas, "Panturrilha em Pé", "Elevação do calcanhar em pé para gastrocnêmio e sóleo."),
 
-        // Glúteos
         (GrupoMuscularEnum.Gluteos, "Hip Thrust com Barra", "Extensão de quadril com barra sobre o colo, máxima ativação glútea."),
         (GrupoMuscularEnum.Gluteos, "Agachamento Sumô", "Postura larga com pés apontados para fora, ênfase nos glúteos."),
         (GrupoMuscularEnum.Gluteos, "Elevação Pélvica no Chão", "Versão bodyweight do hip thrust, ideal para iniciantes."),
@@ -109,7 +102,6 @@ public class DataSeeder(
         (GrupoMuscularEnum.Gluteos, "Stiff Unilateral com Halter", "Equilíbrio em uma perna com maior amplitude e ativação glútea."),
         (GrupoMuscularEnum.Gluteos, "Coice com Caneleira", "Extensão de quadril em quatro apoios com caneleira."),
 
-        // Core
         (GrupoMuscularEnum.Core, "Prancha Isométrica", "Contração isométrica de todo o core em posição de apoio."),
         (GrupoMuscularEnum.Core, "Abdominal Crunch", "Flexão do tronco com amplitude parcial, foco no reto abdominal."),
         (GrupoMuscularEnum.Core, "Elevação de Pernas", "Deitado, eleve as pernas estendidas até 90° para o reto inferior."),
@@ -121,7 +113,6 @@ public class DataSeeder(
         (GrupoMuscularEnum.Core, "Oblíquo com Cabo", "Rotação de tronco lateral com resistência do cabo."),
         (GrupoMuscularEnum.Core, "Hollow Body", "Contração isométrica com corpo em forma de banana invertida."),
 
-        // Full Body
         (GrupoMuscularEnum.FullBody, "Burpee", "Combinação de flexão, agachamento e salto para alta demanda cardiovascular."),
         (GrupoMuscularEnum.FullBody, "Clean and Press com Barra", "Levantamento olímpico combinando power clean e desenvolvimento."),
         (GrupoMuscularEnum.FullBody, "Kettlebell Swing", "Balanço de kettlebell com explosão de quadril, trabalha cadeia posterior."),

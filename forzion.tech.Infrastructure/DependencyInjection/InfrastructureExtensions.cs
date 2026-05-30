@@ -63,7 +63,6 @@ public static class InfrastructureExtensions
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 
-        // Repositórios
         services.AddScoped<IContaRepository, ContaRepository>();
         services.AddScoped<IAlunoRepository, AlunoRepository>();
         services.AddScoped<ITreinoRepository, TreinoRepository>();
@@ -141,8 +140,6 @@ public static class InfrastructureExtensions
                 EnvolverComDecorator(sp,
                     new NullEmailService(sp.GetRequiredService<ILogger<NullEmailService>>())));
         }
-
-        // Domain event handlers — e-mail
         services.AddScoped<IDomainEventHandler<TreinadorAprovadoEvent>, TreinadorAprovadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<TreinadorReprovadoEvent>, TreinadorReprovadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoEmailHandler>();
@@ -162,10 +159,8 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<VinculoPendenteCriadoEvent>, VinculoPendenteCriadoEmailTreinadorHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoReativadaEvent>, AssinaturaAlunoReativadaEmailAlunoHandler>();
 
-        // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
 
-        // Domain event handlers — WhatsApp
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoEstornadoEvent>, PagamentoEstornadoWhatsAppNotifierHandler>();
@@ -182,8 +177,6 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoWhatsAppHandler>();
         services.AddScoped<IDomainEventHandler<VinculoPendenteCriadoEvent>, VinculoPendenteCriadoWhatsAppHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoReativadaEvent>, AssinaturaAlunoReativadaWhatsAppHandler>();
-
-        // Domain event handlers — projeção billing
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();
         services.AddScoped<IDomainEventHandler<AlunoAtualizadoEvent>, AlunoAtualizadoSincronizarAssinanteHandler>();
 

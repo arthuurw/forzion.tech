@@ -9,7 +9,7 @@ vi.mock("next/server", () => ({
   },
 }));
 
-// ─── jose mock ───────────────────────────────────────────────────────────────
+// jose mock.
 // The middleware uses jwtVerify from "jose". In unit tests we mock it so that:
 //  - tokens whose payload contains a recognised tipo_conta → resolve successfully
 //  - tokens flagged as INVALID_SIG → reject (simulate signature mismatch)
@@ -72,8 +72,6 @@ function redirectedTo(): string {
 
 beforeEach(() => vi.clearAllMocks());
 
-// ─── Rotas públicas ──────────────────────────────────────────────────────────
-
 describe("middleware — rotas públicas", () => {
   it("/ sem auth → pass-through", async () => {
     await middleware(makeRequest("/"));
@@ -100,8 +98,6 @@ describe("middleware — rotas públicas", () => {
   });
 });
 
-// ─── Não autenticado em área protegida ──────────────────────────────────────
-
 describe("middleware — sem auth em área protegida", () => {
   it.each([
     ["/admin"],
@@ -121,8 +117,7 @@ describe("middleware — sem auth em área protegida", () => {
   });
 });
 
-// ─── Assinatura inválida (G-SEC-3) ───────────────────────────────────────────
-
+// G-SEC-3: assinatura JWT inválida
 describe("middleware — assinatura JWT inválida", () => {
   it("token com assinatura inválida em área protegida → redirect /login", async () => {
     await middleware(makeRequest("/aluno/fichas", {
@@ -155,8 +150,6 @@ describe("middleware — assinatura JWT inválida", () => {
   });
 });
 
-// ─── Autenticado em /login ───────────────────────────────────────────────────
-
 describe("middleware — autenticado em /login", () => {
   it.each([
     ["SystemAdmin", "/admin"],
@@ -168,8 +161,6 @@ describe("middleware — autenticado em /login", () => {
     expect(redirectedTo()).toBe(expected);
   });
 });
-
-// ─── Papel errado na rota ────────────────────────────────────────────────────
 
 describe("middleware — papel errado na rota", () => {
   it("Aluno em /admin → redirect /aluno", async () => {
@@ -187,8 +178,6 @@ describe("middleware — papel errado na rota", () => {
     expect(redirectedTo()).toBe("/admin");
   });
 });
-
-// ─── Autenticado na área correta ─────────────────────────────────────────────
 
 describe("middleware — autenticado na área correta", () => {
   it.each([

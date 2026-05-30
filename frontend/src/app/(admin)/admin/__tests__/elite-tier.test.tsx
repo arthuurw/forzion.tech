@@ -10,8 +10,6 @@ import { server } from "@/test/msw/server";
 import { buildPlano } from "@/test/factories/plano";
 import type { TreinadorResponse } from "@/types";
 
-// ─── Global mocks ────────────────────────────────────────────────────────────
-
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
   useParams: vi.fn(() => ({})),
@@ -37,8 +35,6 @@ vi.mock("@/hooks/usePaginatedList", () => ({
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 const mockUsePaginatedList = vi.mocked(usePaginatedList);
 
-// ─── PlanosAdminPage ─────────────────────────────────────────────────────────
-
 describe("PlanosAdminPage — Elite desabilitado no dropdown de tier", () => {
   const planoBasic = buildPlano({ tier: "Basic", nome: "Plano Basic" });
 
@@ -52,24 +48,17 @@ describe("PlanosAdminPage — Elite desabilitado no dropdown de tier", () => {
     const { default: Page } = await import("@/app/(admin)/admin/planos/page");
     render(<Page />);
 
-    // Open create dialog
     fireEvent.click(screen.getByRole("button", { name: /novo plano/i }));
 
-    // The dialog should be visible — find the Tier select
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 
-    // MUI TextField select renders a <div role="combobox"> or the select button.
-    // Open the Tier dropdown by clicking the select's button element.
-    // The dialog contains a select labeled "Tier"
+    // MUI TextField select renders a <div role="combobox">; open the Tier dropdown via mouseDown.
     const dialog = screen.getByRole("dialog");
-    // The select input for Tier — MUI renders it as a div with role="combobox" or button
-    // Find the select button within the dialog
     const tierInput = within(dialog).getByRole("combobox", { name: /tier/i });
     fireEvent.mouseDown(tierInput);
 
-    // Now the listbox should be in the DOM
     await waitFor(() => {
       const listbox = screen.getByRole("listbox");
       const eliteOption = within(listbox).getByText("Elite (em breve)");
@@ -84,15 +73,12 @@ describe("PlanosAdminPage — Elite desabilitado no dropdown de tier", () => {
     const { default: Page } = await import("@/app/(admin)/admin/planos/page");
     render(<Page />);
 
-    // Wait for plan card to render
     await waitFor(() => {
       expect(screen.getByText("Plano Basic")).toBeInTheDocument();
     });
 
-    // Click the edit button (aria-label="Editar")
     fireEvent.click(screen.getByRole("button", { name: "Editar" }));
 
-    // Edit dialog should open
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
@@ -110,8 +96,6 @@ describe("PlanosAdminPage — Elite desabilitado no dropdown de tier", () => {
     });
   });
 });
-
-// ─── TreinadoresAdminPage — Elite excluído do autocomplete ───────────────────
 
 describe("TreinadoresAdminPage — Elite excluído do autocomplete de plano", () => {
   const planoBasic = buildPlano({ tier: "Basic", nome: "Plano Basic" });
@@ -150,32 +134,26 @@ describe("TreinadoresAdminPage — Elite excluído do autocomplete de plano", ()
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/page");
     render(<Page />);
 
-    // Wait for the treinador row to render
     await waitFor(() => {
       expect(screen.getByText("Treinador Teste")).toBeInTheDocument();
     });
 
-    // Click the "Atribuir plano" button (CardMembershipIcon)
     const membershipBtn = screen.getAllByRole("button").find((b) =>
       b.querySelector("[data-testid='CardMembershipIcon']"),
     );
     expect(membershipBtn).toBeDefined();
     fireEvent.click(membershipBtn!);
 
-    // Wait for the plan assignment dialog to open and plans to load from MSW
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 
-    // Open the Autocomplete dropdown
     const combobox = screen.getByRole("combobox");
     fireEvent.mouseDown(combobox);
     fireEvent.change(combobox, { target: { value: "" } });
 
-    // Wait for options to appear
     await waitFor(() => {
       const listbox = screen.getByRole("listbox");
-      // Basic plan should be present
       expect(within(listbox).getByText(/Plano Basic/i)).toBeInTheDocument();
       // Elite plan must NOT be in the listbox
       expect(within(listbox).queryByText(/Plano Elite/i)).not.toBeInTheDocument();

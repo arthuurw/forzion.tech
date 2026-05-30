@@ -66,12 +66,10 @@ export default function DetalheAlunoAdminPage() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState(0);
 
-  // LGPD state
   const [exportingLgpd, setExportingLgpd] = useState(false);
   const [anonimizarDialog, setAnonimizarDialog] = useState(false);
   const [anonimizando, setAnonimizando] = useState(false);
 
-  // Progressão
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [exercicios, setExercicios] = useState<ExercicioProgressao[]>([]);
   const [progLoading, setProgLoading] = useState(false);

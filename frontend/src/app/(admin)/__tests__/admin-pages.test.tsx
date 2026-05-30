@@ -13,8 +13,6 @@ import type {
   VinculoAlunoItemResponse, PacoteResponse,
 } from "@/types";
 
-// ─── Mocks globais (nao API) ─────────────────────────────────────────────────
-
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
   useParams: vi.fn(() => ({})),
@@ -54,8 +52,6 @@ import { usePaginatedList } from "@/hooks/usePaginatedList";
 
 const mockUsePaginatedList = vi.mocked(usePaginatedList);
 const mockUseParams = vi.mocked(useParams);
-
-// ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const mockAluno: AlunoResponse = {
   alunoId: "aluno-001",
@@ -114,13 +110,9 @@ const mockTreino: TreinoResponse = {
   updatedAt: null,
 };
 
-// ─── Helpers MSW ─────────────────────────────────────────────────────────────
-
 function hang() {
   return new Promise<Response>(() => {});
 }
-
-// ─── AlunosAdminPage ─────────────────────────────────────────────────────────
 
 describe("AlunosAdminPage", () => {
   beforeEach(() => {
@@ -150,8 +142,6 @@ describe("AlunosAdminPage", () => {
     expect(screen.getByLabelText("Buscar por nome")).toBeInTheDocument();
   });
 });
-
-// ─── DetalheAlunoAdminPage ───────────────────────────────────────────────────
 
 describe("DetalheAlunoAdminPage", () => {
   beforeEach(() => {
@@ -208,8 +198,6 @@ describe("DetalheAlunoAdminPage", () => {
   });
 });
 
-// ─── DetalheTreinadorAdminPage ───────────────────────────────────────────────
-
 describe("DetalheTreinadorAdminPage", () => {
   const mockTreinador = {
     treinadorId: "t-001",
@@ -264,8 +252,6 @@ describe("DetalheTreinadorAdminPage", () => {
     });
   });
 });
-
-// ─── DetalheTreinoAdminPage ───────────────────────────────────────────────────
 
 describe("DetalheTreinoAdminPage", () => {
   beforeEach(() => {
@@ -326,8 +312,6 @@ describe("DetalheTreinoAdminPage", () => {
   });
 });
 
-// ─── Fixtures extras ─────────────────────────────────────────────────────────
-
 const BASE_PAGINATED = {
   total: 0, page: 0, pageSize: 20, loading: false,
   error: "", success: "",
@@ -348,8 +332,6 @@ const mockVinculoPendente: VinculoAlunoItemResponse = {
   status: "AguardandoAprovacao", dataInicio: null,
   createdAt: "2025-03-01T00:00:00Z",
 };
-
-// ─── AlunosAdminPage — renderCell e filtros ──────────────────────────────────
 
 describe("AlunosAdminPage — renderCell com dados", () => {
   const mockAlunoRender: AlunoResponse = {
@@ -394,8 +376,6 @@ describe("AlunosAdminPage — renderCell com dados", () => {
     expect(setPage).toHaveBeenCalledWith(0);
   });
 });
-
-// ─── DetalheAlunoAdminPage — tabs e vínculos ────────────────────────────────
 
 describe("DetalheAlunoAdminPage — tabs", () => {
   const mockAlunoTabs: AlunoResponse = {
@@ -496,8 +476,6 @@ describe("DetalheAlunoAdminPage — tabs", () => {
   });
 });
 
-// ─── DetalheAlunoAdminPage — progressão com dados e formatPhone ──────────────
-
 describe("DetalheAlunoAdminPage — progressão com dados", () => {
   const mockAlunoTel10: AlunoResponse = {
     alunoId: "aluno-tel10", nome: "Tel Dez", email: "tel@test.com",
@@ -551,8 +529,6 @@ describe("DetalheAlunoAdminPage — progressão com dados", () => {
     expect(screen.getByText("Último: 65 kg")).toBeInTheDocument();
   });
 });
-
-// ─── DetalheTreinadorAdminPage — tabs ────────────────────────────────────────
 
 describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
   const mockTreinador = {

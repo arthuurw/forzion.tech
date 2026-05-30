@@ -12,8 +12,6 @@ import { server } from "@/test/msw/server";
 import type { TreinadorResponse } from "@/types";
 import type { DashboardStatsResponse } from "@/lib/api/admin";
 
-// ─── Global mocks ─────────────────────────────────────────────────────────────
-
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
   useParams: vi.fn(() => ({})),
@@ -50,8 +48,6 @@ vi.mock("recharts", () => ({
   Legend: () => null,
 }));
 
-// ─── Fixtures ────────────────────────────────────────────────────────────────
-
 const emptyPaginated = { items: [], total: 0, pagina: 1, tamanhoPagina: 1 };
 
 const dashboardStats: DashboardStatsResponse = {
@@ -75,8 +71,6 @@ function setupDefaultHandlers() {
     http.get("*/admin/stats/dashboard", () => HttpResponse.json(dashboardStats)),
   );
 }
-
-// ─── G-FE-3: dashboard stats endpoint ────────────────────────────────────────
 
 describe("DashboardAdminPage — G-FE-3 stats endpoint", () => {
   let statsCallCount = 0;
@@ -120,7 +114,6 @@ describe("DashboardAdminPage — G-FE-3 stats endpoint", () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
     render(<Page />);
 
-    // Wait for component to finish loading
     await waitFor(() => {
       expect(statsCallCount).toBe(1);
     });
@@ -128,8 +121,6 @@ describe("DashboardAdminPage — G-FE-3 stats endpoint", () => {
     expect(bulkTreinadoresCallCount).toBe(0);
   });
 });
-
-// ─── A11y — charts: figure aria-label present ────────────────────────────────
 
 describe("DashboardAdminPage — a11y charts", () => {
   beforeEach(() => {
@@ -177,7 +168,6 @@ describe("DashboardAdminPage — a11y charts", () => {
     render(<Page />);
 
     await waitFor(() => {
-      // finalidadeData has entries from dashboardStats mock
       const figure = document.querySelector(
         "figure[aria-label='Distribuição de alunos por finalidade']",
       );
@@ -185,8 +175,6 @@ describe("DashboardAdminPage — a11y charts", () => {
     });
   });
 });
-
-// ─── A11y — IconButtons: aria-label on treinadores page ──────────────────────
 
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 const mockUsePaginatedList = vi.mocked(usePaginatedList);

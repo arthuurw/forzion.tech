@@ -15,16 +15,12 @@ import type {
   TreinoResponse,
 } from "@/types";
 
-// ─── Navigation mock ─────────────────────────────────────────────────────────
-
 const mockPush = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: mockPush, back: vi.fn(), replace: vi.fn() })),
   useParams: vi.fn(() => ({})),
 }));
-
-// ─── Recharts stub ───────────────────────────────────────────────────────────
 
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -38,8 +34,6 @@ vi.mock("recharts", () => ({
   Tooltip: () => null,
   Legend: () => null,
 }));
-
-// ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const PACOTE: PacoteResponse = {
   pacoteId: "pac-1",
@@ -88,8 +82,6 @@ function buildVinculo(
   };
 }
 
-// ─── Setup default MSW handlers ───────────────────────────────────────────────
-
 function setupDashboardHandlers(pendentes: VinculoDetalheResponse[]) {
   server.use(
     http.get("*/treinador/vinculos", ({ request }) => {
@@ -107,8 +99,6 @@ function setupDashboardHandlers(pendentes: VinculoDetalheResponse[]) {
   );
 }
 
-// ─── Tests ───────────────────────────────────────────────────────────────────
-
 describe("DashboardTreinadorPage — null pacoteId redirect (G-FE-2)", () => {
   beforeEach(() => {
     mockPush.mockClear();
@@ -121,7 +111,6 @@ describe("DashboardTreinadorPage — null pacoteId redirect (G-FE-2)", () => {
     const { default: Page } = await import("@/app/(treinador)/treinador/page");
     render(<Page />);
 
-    // Wait for the page to finish loading (spinner disappears)
     await waitFor(() => {
       expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     });
@@ -158,19 +147,15 @@ describe("DashboardTreinadorPage — null pacoteId redirect (G-FE-2)", () => {
 
     const buttons = screen.getAllByRole("button", { name: /aprovar/i });
     expect(buttons.length).toBeGreaterThan(0);
-    // Button should be enabled when pacoteId is present
     expect(buttons[0]).toBeEnabled();
 
     fireEvent.click(buttons[0]);
 
-    // Should NOT redirect to alunos
     await waitFor(() => {
       expect(mockPush).not.toHaveBeenCalledWith("/treinador/alunos");
     });
   });
 });
-
-// ─── extractApiError integration — dashboard load error ─────────────────────
 
 describe("DashboardTreinadorPage — load error shows backend detail (G-FE-1)", () => {
   it("shows backend detail message from ProblemDetails when load fails", async () => {
