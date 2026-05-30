@@ -6,6 +6,7 @@ import HowItWorks from "./_landing/HowItWorks";
 import type { PlanoPlataformaResponse } from "@/types";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
+import * as Sentry from "@sentry/nextjs";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
 
@@ -27,7 +28,8 @@ async function getPlanos(): Promise<PlanoPlataformaResponse[]> {
     const res = await fetch(`${base}/auth/planos`, { cache: "no-store" });
     if (!res.ok) return [];
     return res.json();
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return [];
   }
 }

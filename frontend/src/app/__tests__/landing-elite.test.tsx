@@ -29,11 +29,13 @@ afterEach(() => {
 });
 
 describe("LandingPage — plano Elite", () => {
+  // First render pays the cold module-import cost (page.tsx + its deps) which can
+  // exceed the 5s default under parallel load — give this one an explicit timeout.
   it("exibe badge 'Em breve' para plano com tier Elite", async () => {
     const elite = buildPlano({ tier: "Elite", nome: "Elite" });
     await renderLanding([elite]);
     expect(screen.getByText("Em breve")).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("plano Elite NÃO está envolto em link para /cadastro/treinador", async () => {
     const elite = buildPlano({ tier: "Elite", nome: "Elite" });
