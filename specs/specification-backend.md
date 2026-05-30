@@ -1,6 +1,6 @@
 # specification-backend — backend (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade da arquitetura do backend (.NET 8, Clean Architecture + DDD). Camadas Application/Api/Infrastructure. Formato denso. Cross-ref: [specification-model] (domínio: entidades/eventos/invariantes), [specification-db] (EF/persistência), [specification-stripe] (pagamento), [specification-email] (notificações), [specification-infrastructure] (deploy/nginx/CI).
+DOC PARA AGENTES. Fonte de verdade da arquitetura do backend (.NET 8, Clean Architecture + DDD). Camadas Application/Api/Infrastructure. Formato denso. Cross-ref: [specification-model] (domínio: entidades/eventos/invariantes), [specification-db] (EF/persistência), [specification-stripe] (pagamento), [specification-email] (notificações), [specification-infrastructure] (deploy/nginx/CI), [specification-security] (postura consolidada: auth/headers/rate-limit/webhook signing), [specification-observability] (logging/health/relatório de saúde).
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança em: camadas, padrão Result, UnitOfWork/dispatch de eventos, validação, DI, middleware, filtros, convenções de endpoint, repositórios, auth, rate limiting.

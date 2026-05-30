@@ -1,6 +1,6 @@
 # specification-frontend — frontend (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, agent-oriented. Consultar antes de qualquer alteração de rota, auth, layout, API proxy, testes ou segurança. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums).
+DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, agent-oriented. Consultar antes de qualquer alteração de rota, auth, layout, API proxy, testes ou segurança. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums), [specification-frontend-ui] (design tokens/componentes/a11y), [specification-seo] (metadata/OG/crawl), [specification-observability] (RUM Web Vitals/Sentry), [specification-security] (CSP/headers/rate-limit frontend).
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança relevante em: rotas, grupos de layout, auth, API proxy, componentes estruturais, strategy de testes, deps críticas, headers de segurança.

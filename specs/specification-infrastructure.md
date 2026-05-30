@@ -1,6 +1,6 @@
 # specification-infrastructure — infraestrutura & deploy (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/CD, deploy, ambientes e secrets. Formato denso, agent-oriented. Consultar antes de mexer em deploy, pipeline, nginx, SSL, env/secrets ou hosting. Cross-ref: [specification-db] (Supabase/schemas/connection/migrations), [specification-email] (Resend/webhook/Svix/nginx-webhook).
+DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/CD, deploy, ambientes e secrets. Formato denso, agent-oriented. Consultar antes de mexer em deploy, pipeline, nginx, SSL, env/secrets ou hosting. Cross-ref: [specification-db] (Supabase/schemas/connection/migrations), [specification-email] (Resend/webhook/Svix/nginx-webhook), [specification-security] (semgrep/zap/secrets/edge headers nginx), [specification-observability] (healthcheck/Sentry/lighthouse/smoke).
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança relevante em: provedor de hosting, compose, nginx, SSL, workflows CI/CD, fluxo de deploy, ambientes, mapeamento de env/secret.
