@@ -75,6 +75,9 @@ nunit-*.xml
 .test-strategy-memory.md
 .architecture-memory.md
 
+# Node (deps locais; o app Node vive em frontend/ com seu próprio lock)
+node_modules/
+
 # Stryker mutation testing output
 stryker-output/
 StrykerOutput/
