@@ -99,6 +99,10 @@ export default defineConfig({
             "src/lib/api/admin.msw.test.ts",
             "src/lib/auth/context.test.tsx",
             "src/hooks/useInactivity.test.ts",
+            // Hooks RTL (renderHook) exigem jsdom → project integration
+            "src/hooks/useConsent.test.ts",
+            "src/hooks/usePaginatedList.test.ts",
+            "src/hooks/useCRUDDialog.test.ts",
           ],
         },
       },
@@ -119,6 +123,9 @@ export default defineConfig({
             "src/lib/utils/excel.test.ts",
             "src/lib/auth/context.test.tsx",
             "src/hooks/useInactivity.test.ts",
+            "src/hooks/useConsent.test.ts",
+            "src/hooks/usePaginatedList.test.ts",
+            "src/hooks/useCRUDDialog.test.ts",
             // Pilot MSW com apiClient real
             "src/lib/api/admin.msw.test.ts",
           ],
