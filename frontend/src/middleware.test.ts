@@ -9,7 +9,33 @@ vi.mock("next/server", () => ({
   },
 }));
 
+// jose mock.
+// The middleware uses jwtVerify from "jose". In unit tests we mock it so that:
+//  - tokens whose payload contains a recognised tipo_conta → resolve successfully
+//  - tokens flagged as INVALID_SIG → reject (simulate signature mismatch)
+//  - expired tokens (exp in past) still reject via jose (lifetime validation)
+
 const FUTURE = Math.floor(Date.now() / 1000) + 3600;
+
+// Tokens that should be treated as having an invalid signature.
+const INVALID_SIG_SENTINEL = "__INVALID_SIG__";
+
+vi.mock("jose", () => ({
+  jwtVerify: vi.fn(async (token: string) => {
+    if (token === INVALID_SIG_SENTINEL) {
+      throw new Error("JWTSignatureVerificationFailed");
+    }
+    // Decode payload from the fake JWT used in tests.
+    const parts = token.split(".");
+    if (parts.length !== 3) throw new Error("invalid token");
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    // Simulate lifetime check: reject if expired.
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      throw new Error("JWTExpired");
+    }
+    return { payload };
+  }),
+}));
 
 function makeJwt(payload: Record<string, unknown>): string {
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
@@ -46,35 +72,31 @@ function redirectedTo(): string {
 
 beforeEach(() => vi.clearAllMocks());
 
-// ─── Rotas públicas ──────────────────────────────────────────────────────────
-
 describe("middleware — rotas públicas", () => {
-  it("/ sem auth → pass-through", () => {
-    middleware(makeRequest("/"));
+  it("/ sem auth → pass-through", async () => {
+    await middleware(makeRequest("/"));
     expect(NextResponse.next).toHaveBeenCalled();
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
-  it("/login sem auth → pass-through", () => {
-    middleware(makeRequest("/login"));
+  it("/login sem auth → pass-through", async () => {
+    await middleware(makeRequest("/login"));
     expect(NextResponse.next).toHaveBeenCalled();
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
-  it("/cadastro/aluno sem auth → pass-through", () => {
-    middleware(makeRequest("/cadastro/aluno"));
+  it("/cadastro/aluno sem auth → pass-through", async () => {
+    await middleware(makeRequest("/cadastro/aluno"));
     expect(NextResponse.next).toHaveBeenCalled();
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
-  it("/cadastro/treinador mesmo autenticado → pass-through", () => {
-    middleware(makeRequest("/cadastro/treinador", validCookies("Aluno")));
+  it("/cadastro/treinador mesmo autenticado → pass-through", async () => {
+    await middleware(makeRequest("/cadastro/treinador", validCookies("Aluno")));
     expect(NextResponse.next).toHaveBeenCalled();
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 });
-
-// ─── Não autenticado em área protegida ──────────────────────────────────────
 
 describe("middleware — sem auth em área protegida", () => {
   it.each([
@@ -82,67 +104,94 @@ describe("middleware — sem auth em área protegida", () => {
     ["/treinador/alunos"],
     ["/aluno/fichas"],
     ["/perfil"],
-  ])("%s → redirect /login", (path) => {
-    middleware(makeRequest(path));
+  ])("%s → redirect /login", async (path) => {
+    await middleware(makeRequest(path));
     expect(NextResponse.redirect).toHaveBeenCalledOnce();
     expect(redirectedTo()).toBe("/login");
   });
 
-  it("token sem session_guard → trata como não autenticado → redirect /login", () => {
+  it("token sem session_guard → trata como não autenticado → redirect /login", async () => {
     const token = makeJwt({ tipo_conta: "Aluno", exp: FUTURE });
-    middleware(makeRequest("/aluno/fichas", { token })); // session_guard ausente
+    await middleware(makeRequest("/aluno/fichas", { token })); // session_guard ausente
     expect(redirectedTo()).toBe("/login");
   });
 });
 
-// ─── Autenticado em /login ───────────────────────────────────────────────────
+// G-SEC-3: assinatura JWT inválida
+describe("middleware — assinatura JWT inválida", () => {
+  it("token com assinatura inválida em área protegida → redirect /login", async () => {
+    await middleware(makeRequest("/aluno/fichas", {
+      token: INVALID_SIG_SENTINEL,
+      session_guard: "1",
+    }));
+    expect(NextResponse.redirect).toHaveBeenCalledOnce();
+    expect(redirectedTo()).toBe("/login");
+  });
+
+  it("token com assinatura inválida em /login → pass-through (não redireciona para dashboard)", async () => {
+    await middleware(makeRequest("/login", {
+      token: INVALID_SIG_SENTINEL,
+      session_guard: "1",
+    }));
+    // Treated as unauthenticated → /login is public → next()
+    expect(NextResponse.next).toHaveBeenCalled();
+    expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+
+  it("token expirado em área protegida → redirect /login", async () => {
+    const PAST = Math.floor(Date.now() / 1000) - 3600;
+    const expiredToken = makeJwt({ tipo_conta: "Aluno", exp: PAST });
+    await middleware(makeRequest("/aluno/fichas", {
+      token: expiredToken,
+      session_guard: "1",
+    }));
+    expect(NextResponse.redirect).toHaveBeenCalledOnce();
+    expect(redirectedTo()).toBe("/login");
+  });
+});
 
 describe("middleware — autenticado em /login", () => {
   it.each([
     ["SystemAdmin", "/admin"],
     ["Treinador",   "/treinador"],
     ["Aluno",       "/aluno"],
-  ] as const)("%s → redirect %s", (tipoConta, expected) => {
-    middleware(makeRequest("/login", validCookies(tipoConta)));
+  ] as const)("%s → redirect %s", async (tipoConta, expected) => {
+    await middleware(makeRequest("/login", validCookies(tipoConta)));
     expect(NextResponse.redirect).toHaveBeenCalledOnce();
     expect(redirectedTo()).toBe(expected);
   });
 });
 
-// ─── Papel errado na rota ────────────────────────────────────────────────────
-
 describe("middleware — papel errado na rota", () => {
-  it("Aluno em /admin → redirect /aluno", () => {
-    middleware(makeRequest("/admin", validCookies("Aluno")));
+  it("Aluno em /admin → redirect /aluno", async () => {
+    await middleware(makeRequest("/admin", validCookies("Aluno")));
     expect(redirectedTo()).toBe("/aluno");
   });
 
-  it("Treinador em /aluno/fichas → redirect /treinador", () => {
-    middleware(makeRequest("/aluno/fichas", validCookies("Treinador")));
+  it("Treinador em /aluno/fichas → redirect /treinador", async () => {
+    await middleware(makeRequest("/aluno/fichas", validCookies("Treinador")));
     expect(redirectedTo()).toBe("/treinador");
   });
 
-  it("SystemAdmin em /treinador/alunos → redirect /admin", () => {
-    middleware(makeRequest("/treinador/alunos", validCookies("SystemAdmin")));
+  it("SystemAdmin em /treinador/alunos → redirect /admin", async () => {
+    await middleware(makeRequest("/treinador/alunos", validCookies("SystemAdmin")));
     expect(redirectedTo()).toBe("/admin");
   });
 });
-
-// ─── Autenticado na área correta ─────────────────────────────────────────────
 
 describe("middleware — autenticado na área correta", () => {
   it.each([
     ["Aluno",       "/aluno/fichas"],
     ["Treinador",   "/treinador/alunos"],
     ["SystemAdmin", "/admin"],
-  ] as const)("%s em %s → pass-through", (tipoConta, path) => {
-    middleware(makeRequest(path, validCookies(tipoConta)));
+  ] as const)("%s em %s → pass-through", async (tipoConta, path) => {
+    await middleware(makeRequest(path, validCookies(tipoConta)));
     expect(NextResponse.next).toHaveBeenCalled();
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
-  it("autenticado em / → pass-through", () => {
-    middleware(makeRequest("/", validCookies("Aluno")));
+  it("autenticado em / → pass-through", async () => {
+    await middleware(makeRequest("/", validCookies("Aluno")));
     expect(NextResponse.next).toHaveBeenCalled();
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });

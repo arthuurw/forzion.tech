@@ -28,7 +28,6 @@ public class ObterAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        // Validar autorização
         if (!userContext.IsSystemAdmin && userContext.PerfilId != aluno.Id)
         {
             if (userContext.IsTreinador)

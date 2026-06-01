@@ -64,7 +64,9 @@ describe("POST /api/auth — resposta de login", () => {
     expect(setCookie).toContain("token=");
     expect(setCookie).toContain("HttpOnly");
     expect(setCookie).toContain("SameSite=strict");
-    expect(setCookie).toContain("session_guard=1");
+    expect(setCookie).toContain("session_guard=");
+    // session_guard deve ser um UUID aleatório (não mais o valor estático "1")
+    expect(setCookie).not.toContain("session_guard=1;");
   });
 
   it("backend retorna erro → propaga status sem setar cookies", async () => {
@@ -82,6 +84,31 @@ describe("POST /api/auth — resposta de login", () => {
     const res = await POST(req);
     expect(res.status).toBe(401);
     expect(res.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("JSON malformado → 400 sem chamar backend", async () => {
+    let backendCalled = false;
+    server.use(
+      http.post("*/auth/login", () => {
+        backendCalled = true;
+        return HttpResponse.json({}, { status: 200 });
+      }),
+    );
+
+    const req = createMockRequest({ method: "POST", body: {} });
+    Object.defineProperty(req, "json", {
+      value: async () => {
+        throw new SyntaxError("Unexpected token");
+      },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(backendCalled).toBe(false);
+    expect(await res.json()).toEqual({
+      title: "Corpo da requisição inválido.",
+      status: 400,
+    });
   });
 
   it("rate limit excedido → retorna 429", async () => {

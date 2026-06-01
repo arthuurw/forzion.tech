@@ -3,6 +3,8 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
@@ -15,7 +17,7 @@ public class AtribuirPlanoHandler(
     TimeProvider timeProvider,
     ILogger<AtribuirPlanoHandler> logger)
 {
-    public virtual Task<TreinadorResponse> HandleAsync(
+    public virtual Task<Result<TreinadorResponse>> HandleAsync(
         AtribuirPlanoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -23,31 +25,41 @@ public class AtribuirPlanoHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<TreinadorResponse> HandleAsyncCore(
+    private async Task<Result<TreinadorResponse>> HandleAsyncCore(
         AtribuirPlanoCommand command,
         CancellationToken cancellationToken = default)
     {
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        _ = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
+        var plano = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoPlataformaNaoEncontradoException();
 
-        treinador.AtribuirPlano(command.PlanoId);
+        if (plano.Tier == TierPlano.Elite)
+            return Result.Failure<TreinadorResponse>(PlanoPlataformaErrors.EliteIndisponivel);
 
-        var log = LogAprovacao.Registrar(
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        var atribuirResult = treinador.AtribuirPlano(command.PlanoId, agora);
+        if (atribuirResult.IsFailure)
+            return Result.Failure<TreinadorResponse>(atribuirResult.Error!);
+
+        var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AtribuicaoPlanTreinador,
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
-            timeProvider.GetUtcNow().UtcDateTime,
+            agora,
             $"Plano {command.PlanoId} atribuído.");
+        if (logResult.IsFailure)
+            return Result.Failure<TreinadorResponse>(logResult.Error!);
+        var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Plano {PlanoId} atribuído ao treinador {TreinadorId}.", command.PlanoId, treinador.Id);
 
-        return new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoPlataformaId, treinador.CreatedAt);
+        return Result.Success(new TreinadorResponse(treinador.Id, treinador.ContaId, treinador.Nome, treinador.Status, treinador.PlanoPlataformaId, treinador.CreatedAt));
     }
 }

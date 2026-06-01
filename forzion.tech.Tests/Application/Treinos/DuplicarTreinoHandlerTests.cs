@@ -37,8 +37,8 @@ public class DuplicarTreinoHandlerTests
     public async Task HandleAsync_TreinoExistente_DuplicaERetornaCopia()
     {
         var treinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
-        var ex = treino.AdicionarExercicio(Guid.NewGuid());
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        var ex = treino.AdicionarExercicio(Guid.NewGuid(), DateTime.UtcNow).Value;
         ex.AdicionarSerie(3, 12, null, null, 50m, 60);
 
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
@@ -46,9 +46,10 @@ public class DuplicarTreinoHandlerTests
 
         var result = await _handler.HandleAsync(new DuplicarTreinoCommand(treinadorId, treino.Id));
 
-        result.TreinoId.Should().NotBe(treino.Id);
-        result.Nome.Should().Be("Treino A (cópia)");
-        result.Exercicios.Should().HaveCount(1);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TreinoId.Should().NotBe(treino.Id);
+        result.Value.Nome.Should().Be("Treino A (cópia)");
+        result.Value.Exercicios.Should().HaveCount(1);
         _treinoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treino>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -58,7 +59,7 @@ public class DuplicarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.PerfilId).Returns(outroTreinadorId);

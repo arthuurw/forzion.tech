@@ -1,11 +1,14 @@
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
+using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 
 public class ListarAlunosHandler(
     IAlunoRepository alunoRepository,
+    IUserContext userContext,
     ILogger<ListarAlunosHandler> logger)
 {
     public virtual Task<ListarAlunosResponse> HandleAsync(
@@ -20,6 +23,9 @@ public class ListarAlunosHandler(
         ListarAlunosQuery query,
         CancellationToken cancellationToken = default)
     {
+        if (!userContext.IsSystemAdmin && !userContext.IsTreinador)
+            throw new AcessoNegadoException();
+
         var (items, total) = await alunoRepository
             .ListarPorTreinadorAsync(query.TreinadorId, query.Pagina, query.TamanhoPagina, cancellationToken)
             .ConfigureAwait(false);

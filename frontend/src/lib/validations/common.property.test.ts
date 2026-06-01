@@ -34,8 +34,6 @@ const safeEmailArb = fc
   )
   .map(([local, domain]) => `${local}@${domain}`);
 
-// ─── emailSchema ──────────────────────────────────────────────────────────
-
 describe("emailSchema", () => {
   test.prop([safeEmailArb])(
     "emails do sub-conjunto seguro sempre passam",
@@ -59,8 +57,6 @@ describe("emailSchema", () => {
   );
 });
 
-// ─── passwordSchema ───────────────────────────────────────────────────────
-
 describe("passwordSchema", () => {
   test.prop([fc.string({ minLength: 8, maxLength: 200 })])(
     "qualquer string com >= 8 chars passa",
@@ -76,8 +72,6 @@ describe("passwordSchema", () => {
     },
   );
 });
-
-// ─── registerPasswordSchema ───────────────────────────────────────────────
 
 describe("registerPasswordSchema", () => {
   test.prop([
@@ -111,8 +105,6 @@ describe("registerPasswordSchema", () => {
   );
 });
 
-// ─── nomeSchema ───────────────────────────────────────────────────────────
-
 describe("nomeSchema", () => {
   test.prop([fc.string({ minLength: 2, maxLength: 100 })])(
     "string de 2-100 chars sempre passa",
@@ -135,8 +127,6 @@ describe("nomeSchema", () => {
     },
   );
 });
-
-// ─── telefoneSchema ───────────────────────────────────────────────────────
 
 describe("telefoneSchema", () => {
   test.prop([fc.stringMatching(/^\d{10,11}$/)])(
@@ -166,8 +156,6 @@ describe("telefoneSchema", () => {
     },
   );
 });
-
-// ─── loginSchema ──────────────────────────────────────────────────────────
 
 describe("loginSchema", () => {
   test.prop([

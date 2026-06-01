@@ -1,6 +1,7 @@
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Interfaces;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -18,18 +19,18 @@ public class PlanoPlataforma : ICapacidadePlano
 
     private PlanoPlataforma() { }
 
-    public static PlanoPlataforma Criar(string nome, TierPlano tier, int maxAlunos, decimal preco, DateTime agora, string? descricao = null)
+    public static Result<PlanoPlataforma> Criar(string nome, TierPlano tier, int maxAlunos, decimal preco, DateTime agora, string? descricao = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome é obrigatório.");
+            return Result.Failure<PlanoPlataforma>(PlanoPlataformaErrors.NomeObrigatorio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure<PlanoPlataforma>(PlanoPlataformaErrors.NomeMuitoLongo);
         if (maxAlunos <= 0)
-            throw new DomainException("O limite de alunos deve ser maior que zero.");
+            return Result.Failure<PlanoPlataforma>(PlanoPlataformaErrors.MaxAlunosInvalido);
         if (preco < 0)
-            throw new DomainException("O preço não pode ser negativo.");
+            return Result.Failure<PlanoPlataforma>(PlanoPlataformaErrors.PrecoNegativo);
 
-        return new PlanoPlataforma
+        return Result.Success(new PlanoPlataforma
         {
             Id = Guid.NewGuid(),
             Nome = nome.Trim(),
@@ -39,17 +40,17 @@ public class PlanoPlataforma : ICapacidadePlano
             Preco = preco,
             IsAtivo = true,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void Atualizar(string? nome, TierPlano? tier, int? maxAlunos, decimal? preco, string? descricao = null)
+    public Result Atualizar(string? nome, TierPlano? tier, int? maxAlunos, decimal? preco, DateTime agora, string? descricao = null)
     {
         if (nome is not null)
         {
             if (string.IsNullOrWhiteSpace(nome))
-                throw new DomainException("O nome não pode ser vazio.");
+                return Result.Failure(PlanoPlataformaErrors.NomeVazio);
             if (nome.Trim().Length > 100)
-                throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+                return Result.Failure(PlanoPlataformaErrors.NomeMuitoLongo);
             Nome = nome.Trim();
         }
 
@@ -59,31 +60,32 @@ public class PlanoPlataforma : ICapacidadePlano
         if (maxAlunos is not null)
         {
             if (maxAlunos <= 0)
-                throw new DomainException("O limite de alunos deve ser maior que zero.");
+                return Result.Failure(PlanoPlataformaErrors.MaxAlunosInvalido);
             MaxAlunos = maxAlunos.Value;
         }
 
         if (preco is not null)
         {
             if (preco < 0)
-                throw new DomainException("O preço não pode ser negativo.");
+                return Result.Failure(PlanoPlataformaErrors.PrecoNegativo);
             Preco = preco.Value;
         }
 
         Descricao = descricao?.Trim() ?? Descricao;
 
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void Inativar()
+    public void Inativar(DateTime agora)
     {
         IsAtivo = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 
-    public void Ativar()
+    public void Ativar(DateTime agora)
     {
         IsAtivo = true;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 }

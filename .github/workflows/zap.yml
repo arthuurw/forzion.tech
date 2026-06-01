@@ -1,6 +1,11 @@
-name: ZAP DAST baseline (manual)
+name: ZAP DAST (baseline + active rules — F22)
 
-# Varredura DAST baseline contra a URL homolog. Manual (precisa de stack viva).
+# Varredura DAST contra a URL homolog. Manual (precisa de stack viva). Inclui:
+#   - baseline passivo (headers/cookies/CSP)
+#   - full scan com active rules: SQLi, XSS, path traversal, command injection
+# F22 (Fase 5): expandido de baseline-only pra Automation Framework via
+# action-full-scan. Active scan e LENTO (~30 min); rodar so manual ou sob
+# schedule esparso.
 on:
   workflow_dispatch:
     inputs:
@@ -8,14 +13,26 @@ on:
         description: "URL alvo (default: variável HOMOLOG_BASE_URL)"
         required: false
         default: ""
+      mode:
+        description: "Modo: baseline (rapido, passivo) ou full (active rules)"
+        required: false
+        default: "baseline"
+        type: choice
+        options:
+          - baseline
+          - full
+  schedule:
+    # Sexta 02:00 UTC — antes do fim de semana; janela longa pra full scan
+    # eventualmente trocar pra full sem impactar weekday dev.
+    - cron: "0 2 * * 5"
 
 permissions:
   contents: read
   issues: write
 
 jobs:
-  zap-baseline:
-    name: ZAP baseline
+  zap:
+    name: ZAP ${{ github.event.inputs.mode || 'baseline' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,11 +51,20 @@ jobs:
           fi
           echo "target=$T" >> "$GITHUB_OUTPUT"
 
-      # Baseline passivo (sem ataque ativo). O zap.yaml (Automation Framework)
-      # pode ser wired via zaproxy/action-af numa fase futura para um scan mais
-      # completo; aqui um baseline simples já cobre headers/cookies/CSP.
-      - name: ZAP Baseline Scan
+      - name: ZAP Baseline Scan (passivo)
+        if: ${{ github.event.inputs.mode != 'full' }}
         uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ steps.t.outputs.target }}
+          cmd_options: "-a"
+          allow_issue_writing: false
+
+      # F22 — full scan com active rules. SQLi/XSS/path-traversal/CMDi.
+      # action-full-scan usa ZAP -A modo ativo + ataques estilo OWASP top 10.
+      # Pode demorar ~30 min — rodar so quando necessario.
+      - name: ZAP Full Scan (active rules)
+        if: ${{ github.event.inputs.mode == 'full' }}
+        uses: zaproxy/action-full-scan@v0.10.0
         with:
           target: ${{ steps.t.outputs.target }}
           cmd_options: "-a"

@@ -1,9 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Box, Typography, Chip, CircularProgress, Button, Paper, Stack } from "@mui/material";
+import { Box, Typography, Chip, CircularProgress, Button, Paper, Stack, Alert } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { isAxiosError } from "axios";
 import { pagamentoApi } from "@/lib/api/pagamento";
 import type { PagamentoResponse } from "@/types";
+
+const MAX_CONSECUTIVE_ERRORS = 3;
 
 interface Props {
   pagamentoId: string;
@@ -13,22 +16,47 @@ interface Props {
 export default function PagamentoPix({ pagamentoId, onPago }: Props) {
   const [pagamento, setPagamento] = useState<PagamentoResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pollingError, setPollingError] = useState<"auth" | "network" | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const consecutiveErrorsRef = useRef(0);
+
+  // onPago via ref: callers passam callback inline (não memoizado). Mantê-lo nas
+  // deps do effect reiniciaria o polling a cada render do pai (fetch imediato +
+  // novo interval). A ref deixa o effect depender só de pagamentoId.
+  const onPagoRef = useRef(onPago);
+  useEffect(() => { onPagoRef.current = onPago; }, [onPago]);
 
   useEffect(() => {
     let active = true;
+
+    const stopPolling = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    };
 
     const carregar = async () => {
       try {
         const res = await pagamentoApi.obterPagamento(pagamentoId);
         if (!active) return;
+        consecutiveErrorsRef.current = 0;
         setPagamento(res.data);
         if (res.data.status === "Pago") {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          onPago?.();
+          stopPolling();
+          onPagoRef.current?.();
         }
-      } catch {
-        // silencia erros transitórios de polling
+      } catch (err) {
+        if (!active) return;
+        if (isAxiosError(err) && err.response?.status === 401) {
+          // Sessão expirada — parar polling e alertar usuário
+          stopPolling();
+          setPollingError("auth");
+        } else {
+          consecutiveErrorsRef.current += 1;
+          if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
+            setPollingError("network");
+          }
+          // erros transitórios abaixo do limiar são silenciados
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -42,9 +70,27 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
     };
-  }, [pagamentoId, onPago]);
+  }, [pagamentoId]);
 
   if (loading) return <CircularProgress />;
+
+  if (pollingError === "auth") {
+    return (
+      <Alert severity="error" data-testid="polling-auth-error">
+        Sua sessão expirou. Faça login novamente para continuar.
+      </Alert>
+    );
+  }
+
+  if (pollingError === "network" && !pagamento) {
+    // Não foi possível obter nenhum dado após N tentativas consecutivas
+    return (
+      <Alert severity="warning" data-testid="polling-network-warning">
+        Não foi possível verificar o status do pagamento. Tente recarregar a página.
+      </Alert>
+    );
+  }
+
   if (!pagamento) return null;
 
   if (pagamento.status === "Pago") {
@@ -72,6 +118,11 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
   return (
     <Paper variant="outlined" sx={{ p: 3, maxWidth: 380, mx: "auto" }}>
       <Stack spacing={2} sx={{ alignItems: "center" }}>
+        {pollingError === "network" && (
+          <Alert severity="warning" sx={{ width: "100%" }} data-testid="polling-network-warning">
+            Não foi possível verificar o status do pagamento. Tente recarregar a página.
+          </Alert>
+        )}
         <Typography variant="h6">Pague via Pix</Typography>
         <Typography variant="h5" color="primary" sx={{ fontWeight: "bold" }}>
           {pagamento.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}

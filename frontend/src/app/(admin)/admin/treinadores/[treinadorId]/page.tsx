@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Stack, IconButton, Chip,
-  Tab, Tabs, Tooltip,
+  Tab, Tabs, Tooltip, Button,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoIcon from "@mui/icons-material/Info";
@@ -12,8 +12,10 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import DataList from "@/components/ui/DataList";
 import InfoLine from "@/components/ui/InfoLine";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
+import { extractApiError } from "@/lib/api/extractApiError";
 import type {
   TreinadorResponse, AlunoResponse, VinculoDetalheResponse,
   TreinoResponse, PacoteResponse,
@@ -60,6 +62,10 @@ export default function DetalheTreinadorAdminPage() {
   const [pacotesLoading, setPacotesLoading] = useState(false);
   const [pacotesLoaded, setPacotesLoaded] = useState(false);
 
+  const [exportingLgpd, setExportingLgpd] = useState(false);
+  const [anonimizarDialog, setAnonimizarDialog] = useState(false);
+  const [anonimizando, setAnonimizando] = useState(false);
+
   useEffect(() => {
     setLoadingHeader(true);
     adminApi.getTreinador(treinadorId)
@@ -100,6 +106,39 @@ export default function DetalheTreinadorAdminPage() {
     }
   }, [tab, treinadorId, pacotesLoaded]);
 
+  const handleExportarLgpd = async () => {
+    if (!treinador?.contaId) return;
+    setExportingLgpd(true);
+    try {
+      const res = await adminApi.exportarDadosConta(treinador.contaId);
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dados-${treinador.contaId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao exportar dados."));
+    } finally {
+      setExportingLgpd(false);
+    }
+  };
+
+  const handleAnonimizar = async () => {
+    if (!treinador?.contaId) return;
+    setAnonimizando(true);
+    try {
+      await adminApi.anonimizarConta(treinador.contaId);
+      setAnonimizarDialog(false);
+      router.push("/admin/treinadores");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao anonimizar conta."));
+      setAnonimizarDialog(false);
+    } finally {
+      setAnonimizando(false);
+    }
+  };
+
   if (loadingHeader) return <LoadingSpinner />;
 
   return (
@@ -128,6 +167,7 @@ export default function DetalheTreinadorAdminPage() {
         <Tab label="Vínculos" />
         <Tab label="Treinos" />
         <Tab label="Pacotes" />
+        <Tab label="LGPD" />
       </Tabs>
 
       {/* Tab 0: Alunos */}
@@ -220,7 +260,7 @@ export default function DetalheTreinadorAdminPage() {
             );
             return (
               <Tooltip title="Ver detalhe">
-                <IconButton size="small" onClick={() => router.push(`/admin/treinos/${t.treinoId}`)}>
+                <IconButton size="small" aria-label="Ver detalhe do treino" onClick={() => router.push(`/admin/treinos/${t.treinoId}`)}>
                   <InfoIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
@@ -267,6 +307,48 @@ export default function DetalheTreinadorAdminPage() {
           />
         )
       )}
+      {/* Tab 4: LGPD */}
+      {tab === 4 && (
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
+              Ações LGPD
+            </Typography>
+            <Stack spacing={1.5}>
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={exportingLgpd || !treinador?.contaId}
+                onClick={handleExportarLgpd}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                {exportingLgpd ? "Exportando..." : "Exportar dados (LGPD)"}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                disabled={!treinador?.contaId}
+                onClick={() => setAnonimizarDialog(true)}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                Anonimizar conta (LGPD)
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={anonimizarDialog}
+        title="Anonimizar conta"
+        description="Esta ação é irreversível. Os dados pessoais desta conta serão anonimizados permanentemente (LGPD - direito ao esquecimento)."
+        confirmLabel={anonimizando ? "Anonimizando..." : "Anonimizar"}
+        destructive
+        loading={anonimizando}
+        onConfirm={handleAnonimizar}
+        onClose={() => setAnonimizarDialog(false)}
+      />
     </Box>
   );
 }

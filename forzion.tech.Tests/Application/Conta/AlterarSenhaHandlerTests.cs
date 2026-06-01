@@ -31,11 +31,12 @@ public class AlterarSenhaHandlerTests
             _contaRepo.Object,
             _passwordHasher.Object,
             _unitOfWork.Object,
+            TimeProvider.System,
             _validator.Object);
     }
 
     private static DomainConta CriarConta() =>
-        DomainConta.Criar(Email.Criar("user@test.com"), "hash-atual", TipoConta.Aluno, DateTime.UtcNow);
+        DomainConta.Criar(Email.Criar("user@test.com").Value, "hash-atual", TipoConta.Aluno, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_SenhaCorreta_AtualizaEComita()
@@ -48,8 +49,9 @@ public class AlterarSenhaHandlerTests
         _passwordHasher.Setup(h => h.Verify("senha123", conta.PasswordHash)).Returns(true);
         _passwordHasher.Setup(h => h.Hash("nova-senha")).Returns("novo-hash");
 
-        await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
+        var result = await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
 
+        result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -83,5 +85,27 @@ public class AlterarSenhaHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    private static readonly AlterarSenhaCommandValidator _realValidator = new();
+
+    [Theory]
+    [InlineData("", "Senha@123")]                 // SenhaAtual vazia
+    [InlineData("atual", "")]                     // NovaSenha vazia
+    [InlineData("atual", "Ab1")]                  // < 8 chars
+    [InlineData("atual", "abcdefg1")]             // sem maiúscula
+    [InlineData("atual", "ABCDEFG1")]             // sem minúscula
+    [InlineData("atual", "Abcdefgh")]             // sem dígito
+    public void Validator_CommandInvalido_Falha(string senhaAtual, string novaSenha)
+    {
+        var result = _realValidator.Validate(new AlterarSenhaCommand(senhaAtual, novaSenha));
+        result.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Validator_CommandValido_Passa()
+    {
+        var result = _realValidator.Validate(new AlterarSenhaCommand("SenhaAtual1", "NovaSenha@9"));
+        result.IsValid.Should().BeTrue();
     }
 }

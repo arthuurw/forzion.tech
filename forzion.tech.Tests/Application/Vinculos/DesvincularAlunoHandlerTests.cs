@@ -7,6 +7,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Vinculos;
 
@@ -35,16 +36,17 @@ public class DesvincularAlunoHandlerTests
     public async Task HandleAsync_InativaVinculoECascadeTreinoAluno()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
-        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        var treinoAluno = TreinoAluno.Criar(Guid.NewGuid(), vinculo.AlunoId, DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _treinoAlunoRepo.Setup(r => r.ListarAtivosPorParAsync(treinadorId, vinculo.AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<TreinoAluno>)new[] { treinoAluno });
 
-        await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
+        var result = await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
 
+        result.IsSuccess.Should().BeTrue();
         vinculo.Status.Should().Be(VinculoStatus.Inativo);
         treinoAluno.Status.Should().Be(TreinoAlunoStatus.Inativo);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -55,7 +57,7 @@ public class DesvincularAlunoHandlerTests
     {
         var treinadorLogadoId = Guid.NewGuid();
         var outroTreinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(outroTreinadorId, Guid.NewGuid(), DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(outroTreinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorLogadoId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
@@ -74,19 +76,19 @@ public class DesvincularAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_VinculoJaInativo_LancaDomainException()
+    public async Task HandleAsync_VinculoJaInativo_RetornaFalha()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
-        vinculo.Inativar();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        vinculo.Inativar(TestData.Agora);
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
 
-        var act = async () => await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
+        var result = await _handler.HandleAsync(new DesvincularAlunoCommand(vinculo.Id, treinadorId));
 
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*já está inativo*");
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("já está inativo");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -101,8 +103,8 @@ public class DesvincularAlunoHandlerTests
     public async Task HandleAsync_ComAssinaturaAtiva_CancelaAssinatura()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
-        var assinatura = AssinaturaAluno.Criar(vinculo.Id, Guid.NewGuid(), treinadorId, vinculo.AlunoId, 100m, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        var assinatura = AssinaturaAluno.Criar(vinculo.Id, Guid.NewGuid(), treinadorId, vinculo.AlunoId, 100m, DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.PerfilId).Returns(treinadorId);
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);

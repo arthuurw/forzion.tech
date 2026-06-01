@@ -8,69 +8,8 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
 {
     private readonly AppDbContext _context = context;
 
-    public async Task<IReadOnlyList<ExecucaoDetalheItem>> ListarPorAlunoComExerciciosAsync(
-        Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default)
-    {
-        var execucoes = await _context.ExecucoesTreino
-            .Where(e => e.AlunoId == alunoId && e.DataExecucao >= de && e.DataExecucao <= ate)
-            .OrderBy(e => e.DataExecucao)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (execucoes.Count == 0)
-            return [];
-
-        var ids = execucoes.Select(e => e.Id).ToList();
-
-        var exercicios = await (
-            from ee in _context.ExecucoesExercicio
-            join te in _context.TreinoExercicios on ee.TreinoExercicioId equals te.Id
-            join ex in _context.Exercicios on te.ExercicioId equals ex.Id
-            join gm in _context.GruposMusculares on ex.GrupoMuscularId equals gm.Id
-            where ids.Contains(ee.ExecucaoTreinoId)
-            select new
-            {
-                ee.ExecucaoTreinoId,
-                ee.TreinoExercicioId,
-                NomeExercicio = ex.Nome,
-                GrupoMuscular = gm.Nome,
-                ee.SeriesExecutadas,
-                ee.RepeticoesExecutadas,
-                ee.CargaExecutada,
-            }
-        ).ToListAsync(cancellationToken).ConfigureAwait(false);
-
-        var porExecucao = exercicios
-            .GroupBy(e => e.ExecucaoTreinoId)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<ExecucaoExercicioDetalhe>)g
-                    .Select(e => new ExecucaoExercicioDetalhe(
-                        e.TreinoExercicioId,
-                        e.NomeExercicio,
-                        e.GrupoMuscular,
-                        e.SeriesExecutadas,
-                        e.RepeticoesExecutadas,
-                        e.CargaExecutada))
-                    .ToList());
-
-        return execucoes
-            .Select(e => new ExecucaoDetalheItem(
-                e.Id,
-                e.DataExecucao,
-                e.TreinoId,
-                e.Observacao,
-                porExecucao.TryGetValue(e.Id, out var exs) ? exs : []))
-            .ToList();
-    }
-
     public async Task AdicionarAsync(ExecucaoTreino execucao, CancellationToken cancellationToken = default) =>
         await _context.ExecucoesTreino.AddAsync(execucao, cancellationToken).ConfigureAwait(false);
-
-    public async Task<bool> ExisteParaTreinoAsync(Guid treinoId, CancellationToken cancellationToken = default) =>
-        await _context.ExecucoesTreino
-            .AnyAsync(e => e.TreinoId == treinoId, cancellationToken)
-            .ConfigureAwait(false);
 
     public async Task<bool> ExisteParaTreinoComAlunoAtivoAsync(Guid treinoId, CancellationToken cancellationToken = default) =>
         await _context.ExecucoesTreino
@@ -137,4 +76,37 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
         await _context.ExecucoesTreino
             .CountAsync(e => e.AlunoId == alunoId, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<ProgressaoAggRow>> ProjetarProgressaoAsync(
+        Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default)
+    {
+        // Push GROUP BY to SQL: one row per (exercício, grupoMuscular, data).
+        // Aggregação em SQL evita hidratar cada execução.
+        // Npgsql exige Kind=Utc para comparar com colunas timestamptz (handlers passam
+        // DateTime.UtcNow.Date, que vem com Kind=Unspecified).
+        de = DateTime.SpecifyKind(de, DateTimeKind.Utc);
+        ate = DateTime.SpecifyKind(ate, DateTimeKind.Utc);
+
+        var rows = await (
+            from e in _context.ExecucoesTreino
+            join ee in _context.ExecucoesExercicio on e.Id equals ee.ExecucaoTreinoId
+            join te in _context.TreinoExercicios on ee.TreinoExercicioId equals te.Id
+            join ex in _context.Exercicios on te.ExercicioId equals ex.Id
+            join gm in _context.GruposMusculares on ex.GrupoMuscularId equals gm.Id
+            where e.AlunoId == alunoId && e.DataExecucao >= de && e.DataExecucao <= ate
+            group new { ee.CargaExecutada, ee.SeriesExecutadas, ee.RepeticoesExecutadas }
+                by new { NomeExercicio = ex.Nome, GrupoMuscular = gm.Nome, Data = e.DataExecucao.Date }
+            into g
+            orderby g.Key.GrupoMuscular, g.Key.NomeExercicio, g.Key.Data
+            select new ProgressaoAggRow(
+                g.Key.NomeExercicio,
+                g.Key.GrupoMuscular,
+                g.Key.Data,
+                g.Max(x => x.CargaExecutada),
+                g.Average(x => (double)x.SeriesExecutadas),
+                g.Average(x => (double)x.RepeticoesExecutadas))
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return rows;
+    }
 }

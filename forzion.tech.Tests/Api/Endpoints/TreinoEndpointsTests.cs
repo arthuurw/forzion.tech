@@ -18,7 +18,7 @@ using forzion.tech.Application.UseCases.Treinos.ObterTreino;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
@@ -49,7 +49,15 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Test", UserId.ToString());
+            new AuthenticationHeaderValue("Test", "treinador");
+        return client;
+    }
+
+    private HttpClient CriarClienteAluno()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Test", "aluno");
         return client;
     }
 
@@ -60,7 +68,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         _factory.CriarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarTreinoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TreinoResp);
+            .ReturnsAsync(Result.Success(TreinoResp));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/treinos",
             new { alunoId = Guid.NewGuid(), nome = "Treino A", objetivo = ObjetivoTreino.Hipertrofia });
@@ -81,7 +89,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         _factory.CriarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarTreinoCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Aluno indisponível."));
+            .ReturnsAsync(Result.Failure<TreinoResponse>(Error.Business("Aluno indisponível.")));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/treinos",
             new { alunoId = Guid.NewGuid(), nome = "Treino A", objetivo = ObjetivoTreino.Hipertrofia });
@@ -272,7 +280,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         _factory.DuplicarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<DuplicarTreinoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TreinoResp);
+            .ReturnsAsync(Result.Success(TreinoResp));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync(
             $"/treinos/{TreinoId}/duplicar", new { });
@@ -316,7 +324,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Guid.NewGuid(), TreinoId, Guid.NewGuid(), DateTime.UtcNow, null, DateTime.UtcNow);
         _factory.RegistrarExecucaoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(execResp);
+            .ReturnsAsync(Result.Success(execResp));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{TreinoId}/execucoes",
             new { alunoId = Guid.NewGuid(), dataExecucao = DateTime.UtcNow, observacao = (string?)null, exercicios = Array.Empty<object>() });
@@ -334,6 +342,45 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
         var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{TreinoId}/execucoes",
             new { alunoId = Guid.NewGuid(), dataExecucao = DateTime.UtcNow, observacao = (string?)null, exercicios = Array.Empty<object>() });
 
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    // --- Authorization policy tests (Treinador policy on group) ---
+
+    [Fact]
+    public async Task Post_Criar_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().PostAsJsonAsync("/treinos",
+            new { nome = "X", objetivo = ObjetivoTreino.Hipertrofia });
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Get_Obter_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().GetAsync($"/treinos/{TreinoId}");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Patch_Atualizar_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().PatchAsJsonAsync($"/treinos/{TreinoId}", new { nome = "X" });
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Delete_Excluir_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().DeleteAsync($"/treinos/{TreinoId}");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Post_RegistrarExecucao_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().PostAsJsonAsync($"/treinos/{TreinoId}/execucoes",
+            new { alunoId = Guid.NewGuid(), dataExecucao = DateTime.UtcNow, observacao = (string?)null, exercicios = Array.Empty<object>() });
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -369,7 +416,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<ITreinoRepository>(),
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<AtualizarTreinoHandler>>());
 
         public Mock<ExcluirTreinoHandler> ExcluirHandlerMock { get; } = new(
@@ -386,7 +433,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IUserContext>(),
-            AdicionarValidator,
+            AdicionarValidator, TimeProvider.System,
             Mock.Of<ILogger<AdicionarExercicioHandler>>())
         { CallBase = true };
 
@@ -395,7 +442,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<RemoverExercicioHandler>>());
 
         public Mock<DuplicarTreinoHandler> DuplicarHandlerMock { get; } = new(
@@ -480,8 +527,37 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             if (string.IsNullOrEmpty(header))
                 return Task.FromResult(AuthenticateResult.Fail("Sem token"));
 
-            var userId = header.Replace("Test ", "");
-            var claims = new[] { new Claim("sub", userId) };
+            var param = header.Replace("Test ", "");
+
+            string tipoConta;
+            string userId;
+
+            if (param == "treinador")
+            {
+                tipoConta = "Treinador";
+                userId = TreinadorId.ToString();
+            }
+            else if (param == "aluno")
+            {
+                tipoConta = "Aluno";
+                userId = Guid.NewGuid().ToString();
+            }
+            else if (param == "admin")
+            {
+                tipoConta = "SystemAdmin";
+                userId = Guid.NewGuid().ToString();
+            }
+            else
+            {
+                return Task.FromResult(AuthenticateResult.Fail("Token inválido"));
+            }
+
+            var claims = new[]
+            {
+                new Claim("sub", userId),
+                new Claim("tipo_conta", tipoConta),
+                new Claim("perfil_id", TreinadorId.ToString()),
+            };
             var identity = new ClaimsIdentity(claims, "Test");
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, "Test");

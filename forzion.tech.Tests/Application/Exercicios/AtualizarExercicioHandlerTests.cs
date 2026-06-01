@@ -20,15 +20,15 @@ public class AtualizarExercicioHandlerTests
     public AtualizarExercicioHandlerTests()
     {
         _grupoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow));
-        _handler = new AtualizarExercicioHandler(_exercicioRepo.Object, _grupoRepo.Object, _unitOfWork.Object);
+            .ReturnsAsync(GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value);
+        _handler = new AtualizarExercicioHandler(_exercicioRepo.Object, _grupoRepo.Object, _unitOfWork.Object, TimeProvider.System);
     }
 
     private static Exercicio CriarExercicioTreinador(Guid treinadorId) =>
-        Exercicio.Criar("Supino Reto", GrupoId, DateTime.UtcNow, treinadorId);
+        Exercicio.Criar("Supino Reto", GrupoId, DateTime.UtcNow, treinadorId).Value;
 
     private static Exercicio CriarExercicioGlobal() =>
-        Exercicio.Criar("Agachamento", GrupoId, DateTime.UtcNow);
+        Exercicio.Criar("Agachamento", GrupoId, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_TreinadorAtualizaProprio_RetornaResponse()

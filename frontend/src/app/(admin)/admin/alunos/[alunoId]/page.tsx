@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Stack, IconButton, Chip,
-  Tab, Tabs, ToggleButtonGroup, ToggleButton, Grid, Skeleton,
+  Tab, Tabs, ToggleButtonGroup, ToggleButton, Grid, Skeleton, Button,
 } from "@mui/material";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -15,8 +15,10 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import DataList from "@/components/ui/DataList";
 import InfoLine from "@/components/ui/InfoLine";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
+import { extractApiError } from "@/lib/api/extractApiError";
 import type {
   AlunoResponse, MeuVinculoResponse, FichaAlunoResponse,
   ExecucaoTreinoResponse, ExercicioProgressao,
@@ -64,7 +66,10 @@ export default function DetalheAlunoAdminPage() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState(0);
 
-  // Progressão
+  const [exportingLgpd, setExportingLgpd] = useState(false);
+  const [anonimizarDialog, setAnonimizarDialog] = useState(false);
+  const [anonimizando, setAnonimizando] = useState(false);
+
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [exercicios, setExercicios] = useState<ExercicioProgressao[]>([]);
   const [progLoading, setProgLoading] = useState(false);
@@ -131,6 +136,39 @@ export default function DetalheAlunoAdminPage() {
     aluno.focoTreino || aluno.limitacoesFisicas || aluno.doencas || aluno.observacoesAdicionais
   ), [aluno]);
 
+  const handleExportarLgpd = async () => {
+    if (!aluno?.contaId) return;
+    setExportingLgpd(true);
+    try {
+      const res = await adminApi.exportarDadosConta(aluno.contaId);
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dados-${aluno.contaId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao exportar dados."));
+    } finally {
+      setExportingLgpd(false);
+    }
+  };
+
+  const handleAnonimizar = async () => {
+    if (!aluno?.contaId) return;
+    setAnonimizando(true);
+    try {
+      await adminApi.anonimizarConta(aluno.contaId);
+      setAnonimizarDialog(false);
+      router.push("/admin/alunos");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao anonimizar conta."));
+      setAnonimizarDialog(false);
+    } finally {
+      setAnonimizando(false);
+    }
+  };
+
   if (loadingHeader) return <LoadingSpinner />;
 
   return (
@@ -152,6 +190,7 @@ export default function DetalheAlunoAdminPage() {
         <Tab label="Fichas" />
         <Tab label="Execuções" />
         <Tab label="Progressão" />
+        <Tab label="LGPD" />
       </Tabs>
 
       {/* Tab 0: Dados */}
@@ -372,6 +411,49 @@ export default function DetalheAlunoAdminPage() {
           )}
         </Box>
       )}
+
+      {/* Tab 4: LGPD */}
+      {tab === 4 && (
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
+              Ações LGPD
+            </Typography>
+            <Stack spacing={1.5}>
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={exportingLgpd || !aluno?.contaId}
+                onClick={handleExportarLgpd}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                {exportingLgpd ? "Exportando..." : "Exportar dados (LGPD)"}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                disabled={!aluno?.contaId}
+                onClick={() => setAnonimizarDialog(true)}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                Anonimizar conta (LGPD)
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={anonimizarDialog}
+        title="Anonimizar conta"
+        description="Esta ação é irreversível. Os dados pessoais deste aluno serão anonimizados permanentemente (LGPD - direito ao esquecimento)."
+        confirmLabel={anonimizando ? "Anonimizando..." : "Anonimizar"}
+        destructive
+        loading={anonimizando}
+        onConfirm={handleAnonimizar}
+        onClose={() => setAnonimizarDialog(false)}
+      />
     </Box>
   );
 }

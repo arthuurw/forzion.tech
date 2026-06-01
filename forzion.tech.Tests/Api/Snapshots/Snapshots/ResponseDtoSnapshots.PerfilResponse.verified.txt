@@ -1,0 +1,5 @@
+﻿{
+  Nome: Arthur Webster,
+  Email: arthur@forzion.tech,
+  TipoConta: Aluno
+}

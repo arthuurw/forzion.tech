@@ -4,6 +4,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 
@@ -35,7 +36,7 @@ public class RedefinirSenhaHandler(
     TimeProvider timeProvider,
     IValidator<RedefinirSenhaCommand> validator)
 {
-    public virtual Task HandleAsync(
+    public virtual Task<Result> HandleAsync(
         RedefinirSenhaCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -43,7 +44,7 @@ public class RedefinirSenhaHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task HandleAsyncCore(
+    private async Task<Result> HandleAsyncCore(
         RedefinirSenhaCommand command,
         CancellationToken cancellationToken)
     {
@@ -54,20 +55,27 @@ public class RedefinirSenhaHandler(
         var token = await tokenRepository.BuscarPorHashAsync(hash, cancellationToken).ConfigureAwait(false);
 
         if (token is null || token.UsedAt.HasValue)
-            throw new DomainException("Token inválido ou já utilizado.");
+            return Result.Failure(Error.Business("Token inválido ou já utilizado."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
         if (token.ExpiresAt < agora)
-            throw new DomainException("Token expirado. Solicite um novo link de redefinição.");
+            return Result.Failure(Error.Business("Token expirado. Solicite um novo link de redefinição."));
 
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
             ?? throw new DomainException("Conta não encontrada.");
 
-        conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha));
-        token.MarcarComoUsado(agora);
+        var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), agora);
+        if (atualizarResult.IsFailure)
+            return Result.Failure(atualizarResult.Error!);
+
+        var marcarResult = token.MarcarComoUsado(agora);
+        if (marcarResult.IsFailure)
+            return Result.Failure(marcarResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        return Result.Success();
     }
 
     private static string ComputeHash(string rawToken)

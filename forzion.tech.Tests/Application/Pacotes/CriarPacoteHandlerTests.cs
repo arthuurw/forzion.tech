@@ -33,11 +33,12 @@ public class CriarPacoteHandlerTests
 
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Básico");
-        result.Descricao.Should().Be("Treino + acompanhamento");
-        result.Preco.Should().Be(150m);
-        result.TreinadorId.Should().Be(treinadorId);
-        result.IsAtivo.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Básico");
+        result.Value.Descricao.Should().Be("Treino + acompanhamento");
+        result.Value.Preco.Should().Be(150m);
+        result.Value.TreinadorId.Should().Be(treinadorId);
+        result.Value.IsAtivo.Should().BeTrue();
         _pacoteRepo.Verify(r => r.AdicionarAsync(It.IsAny<Pacote>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -50,8 +51,9 @@ public class CriarPacoteHandlerTests
 
         var result = await _handler.HandleAsync(command);
 
-        result.Descricao.Should().BeNull();
-        result.IsAtivo.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Descricao.Should().BeNull();
+        result.Value.IsAtivo.Should().BeTrue();
     }
 
     [Fact]

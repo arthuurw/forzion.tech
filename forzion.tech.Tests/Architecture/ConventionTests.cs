@@ -1,7 +1,8 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using forzion.tech.Application.Results;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Shared;
 using NetArchTest.Rules;
 
 namespace forzion.tech.Tests.Architecture;
@@ -14,7 +15,7 @@ namespace forzion.tech.Tests.Architecture;
 public class ConventionTests
 {
     private static readonly Assembly DomainAssembly = typeof(Aluno).Assembly;
-    private static readonly Assembly ApplicationAssembly = typeof(Result).Assembly;
+    private static readonly Assembly ApplicationAssembly = typeof(LimiteTreinadorService).Assembly;
 
     // LogAprovacao usa a factory "Registrar" (audit log) em vez de "Criar" — excecao explicita,
     // documentada, em vez de afrouxar a regra para todas as entidades.
@@ -80,7 +81,7 @@ public class ConventionTests
         var violacoes = EntidadesDeDominio()
             .Where(t => !t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
                 .Any(m => (m.Name == "Criar" || FactoriesAlternativas.Contains(m.Name))
-                    && m.ReturnType == t))
+                    && (m.ReturnType == t || m.ReturnType == typeof(Result<>).MakeGenericType(t))))
             .Select(t => t.Name)
             .ToList();
 

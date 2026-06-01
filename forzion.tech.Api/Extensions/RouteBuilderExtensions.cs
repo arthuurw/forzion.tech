@@ -1,5 +1,6 @@
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Endpoints.Admin;
+using Microsoft.Extensions.Logging;
 using forzion.tech.Api.Endpoints.AlunoArea;
 using forzion.tech.Api.Endpoints.Auth;
 using forzion.tech.Api.Endpoints.Alunos;
@@ -8,6 +9,7 @@ using forzion.tech.Api.Endpoints.Exercicios;
 using forzion.tech.Api.Endpoints.Pagamentos;
 using forzion.tech.Api.Endpoints.Treinos;
 using forzion.tech.Api.Endpoints.Treinador;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -17,6 +19,7 @@ public static class RouteBuilderExtensions
     {
         endpoints.MapAuthEndpoints();
         endpoints.MapAdminEndpoints();
+        endpoints.MapHealthReportEndpoints();
         endpoints.MapTreinadorEndpoints();
         endpoints.MapAlunoAreaEndpoints();
         endpoints.MapAlunoEndpoints();
@@ -31,6 +34,28 @@ public static class RouteBuilderExtensions
 
     public static IApplicationBuilder UseApiConfiguration(this WebApplication app)
     {
+        // CORS startup check: emit a LogWarning when no valid origins are configured
+        // in non-Test environments so the deny-all state is visible in logs.
+        if (!app.Environment.IsEnvironment("Test"))
+        {
+            var raw = app.Configuration["Cors:AllowedOrigins"]?.Split(';') ?? Array.Empty<string>();
+            var hasValidOrigins = raw
+                .Select(o => o.Trim())
+                .Any(o => !string.IsNullOrWhiteSpace(o)
+                          && !o.Contains('*')
+                          && Uri.TryCreate(o, UriKind.Absolute, out _));
+
+            if (!hasValidOrigins)
+            {
+                var corsLogger = app.Services.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("CorsConfiguration");
+                corsLogger.LogWarning(
+                    "CORS: Cors:AllowedOrigins is empty or contains no valid origins. " +
+                    "All cross-origin browser requests will be denied. " +
+                    "Set 'Cors:AllowedOrigins' in configuration to allow frontend access.");
+            }
+        }
+
         app.UseSwaggerInDevelopment();
         app.UseExceptionHandler();
 
@@ -49,9 +74,12 @@ public static class RouteBuilderExtensions
         });
 
         app.UseCors("AllowFrontend");
-        app.UseRateLimiter();
+        // Ordem: Authentication antes do RateLimiter para que policies particionadas
+        // por sub claim consigam identificar o usuário; sem isso a chave caía sempre
+        // no fallback de IP, inutilizando a partição por usuário.
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseRateLimiter();
 
         app.MapHealthCheck();
 
@@ -60,7 +88,18 @@ public static class RouteBuilderExtensions
 
     private static IEndpointRouteBuilder MapHealthCheck(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks("/health");
+        // LIVENESS: nenhum check (Predicate => false) — 200 enquanto o processo estiver
+        // vivo. Mantido assim porque docker-compose/frontend dependem deste contrato.
+        endpoints.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false })
+            .AllowAnonymous()
+            .RequireRateLimiting("read");
+
+        // READINESS: executa apenas os checks taggeados "ready" (DbContextCheck "db").
+        // 200 quando o DB responde; 503 (Unhealthy) caso contrário.
+        endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") })
+            .AllowAnonymous()
+            .RequireRateLimiting("read");
+
         return endpoints;
     }
 }

@@ -4,5 +4,4 @@ public record CriarAssinaturaAlunoCommand(
     Guid VinculoId,
     Guid PacoteId,
     Guid TreinadorId,
-    Guid AlunoId,
-    decimal Valor);
+    Guid AlunoId);

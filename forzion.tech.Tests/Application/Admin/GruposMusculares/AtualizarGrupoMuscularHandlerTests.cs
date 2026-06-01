@@ -21,19 +21,20 @@ public class AtualizarGrupoMuscularHandlerTests
     {
         _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
-        _handler = new AtualizarGrupoMuscularHandler(_repository.Object, _unitOfWork.Object, _validator.Object);
+        _handler = new AtualizarGrupoMuscularHandler(_repository.Object, _unitOfWork.Object, TimeProvider.System, _validator.Object);
     }
 
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetornaResponse()
     {
-        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         _repository.Setup(r => r.ObterPorNomeAsync("Costas", It.IsAny<CancellationToken>())).ReturnsAsync((GrupoMuscular?)null);
 
         var result = await _handler.HandleAsync(new AtualizarGrupoMuscularCommand(grupo.Id, "Costas"));
 
-        result.Nome.Should().Be("Costas");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Costas");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -48,27 +49,29 @@ public class AtualizarGrupoMuscularHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_NomeDuplicadoOutroGrupo_LancaDomainException()
+    public async Task HandleAsync_NomeDuplicadoOutroGrupo_RetornaFalha()
     {
-        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
-        var outro = GrupoMuscular.Criar("Costas", DateTime.UtcNow);
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
+        var outro = GrupoMuscular.Criar("Costas", DateTime.UtcNow).Value;
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         _repository.Setup(r => r.ObterPorNomeAsync("Costas", It.IsAny<CancellationToken>())).ReturnsAsync(outro);
 
-        var act = async () => await _handler.HandleAsync(new AtualizarGrupoMuscularCommand(grupo.Id, "Costas"));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*Já existe outro*");
+        var result = await _handler.HandleAsync(new AtualizarGrupoMuscularCommand(grupo.Id, "Costas"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("Já existe outro");
     }
 
     [Fact]
-    public async Task HandleAsync_MesmoNomeMesmoId_NaoLancaException()
+    public async Task HandleAsync_MesmoNomeMesmoId_RetornaSucesso()
     {
-        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
         _repository.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         _repository.Setup(r => r.ObterPorNomeAsync("Peito", It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
 
-        var act = async () => await _handler.HandleAsync(new AtualizarGrupoMuscularCommand(grupo.Id, "Peito"));
-        await act.Should().NotThrowAsync();
+        var result = await _handler.HandleAsync(new AtualizarGrupoMuscularCommand(grupo.Id, "Peito"));
+
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Fact]

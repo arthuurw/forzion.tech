@@ -29,7 +29,7 @@ public class CriarExercicioHandlerTests
     public async Task HandleAsync_DadosValidos_CadastraERetorna()
     {
         var treinadorId = Guid.NewGuid();
-        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
         _grupoRepo.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
         var command = new CriarExercicioCommand(treinadorId, "Supino Reto", grupo.Id, "Descrição");
 

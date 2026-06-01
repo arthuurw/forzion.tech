@@ -1,6 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -28,15 +28,18 @@ public class VincularFichaAoAlunoHandler(
         VincularFichaAoAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
-        var treinadorId = userContext.PerfilId;
-
         var treino = await treinoRepository
             .ObterPorIdAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        if (treino.TreinadorId != treinadorId)
+        // SystemAdmin pode agir em nome de qualquer treinador (consistência com os
+        // demais handlers do grupo /treinos); treinador só na própria ficha.
+        if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
+
+        // Vínculo/ficha resolvidos pelo dono do treino (admin agindo em nome dele).
+        var treinadorId = treino.TreinadorId;
 
         _ = await vinculoRepository
             .ObterAtivoAsync(treinadorId, command.AlunoId, cancellationToken)
@@ -53,7 +56,10 @@ public class VincularFichaAoAlunoHandler(
             return Result.Failure(Error.Business($"Esta ficha já está vinculada ao aluno {nomeExistente}."));
         }
 
-        var treinoAluno = TreinoAluno.Criar(command.TreinoId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime);
+        var treinoAlunoResult = TreinoAluno.Criar(command.TreinoId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime);
+        if (treinoAlunoResult.IsFailure)
+            return Result.Failure(treinoAlunoResult.Error!);
+        var treinoAluno = treinoAlunoResult.Value;
 
         await treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

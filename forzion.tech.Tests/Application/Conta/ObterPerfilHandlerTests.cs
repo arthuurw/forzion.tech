@@ -31,14 +31,14 @@ public class ObterPerfilHandlerTests
     }
 
     private static DomainConta CriarConta(TipoConta tipo) =>
-        DomainConta.Criar(Email.Criar("user@test.com"), "hash", tipo, DateTime.UtcNow);
+        DomainConta.Criar(Email.Criar("user@test.com").Value, "hash", tipo, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_Aluno_RetornaPerfilComNome()
     {
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.Aluno);
-        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(contaId, "João", DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
@@ -56,7 +56,7 @@ public class ObterPerfilHandlerTests
     {
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.Treinador);
-        var treinador = Treinador.Criar(contaId, "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(contaId, "Carlos", DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Treinador);
@@ -74,7 +74,7 @@ public class ObterPerfilHandlerTests
     {
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.SystemAdmin);
-        var admin = SystemUser.Criar(conta.Id, "Admin", DateTime.UtcNow);
+        var admin = SystemUser.Criar(conta.Id, "Admin", DateTime.UtcNow).Value;
 
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.SystemAdmin);
@@ -92,6 +92,33 @@ public class ObterPerfilHandlerTests
         var contaId = Guid.NewGuid();
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync((DomainConta?)null);
+
+        var act = async () => await _handler.HandleAsync();
+        await act.Should().ThrowAsync<DomainException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_PerfilAlunoInexistente_LancaDomainException()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Aluno);
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync((Aluno?)null);
+
+        var act = async () => await _handler.HandleAsync();
+        await act.Should().ThrowAsync<DomainException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TipoContaInvalido_LancaDomainException()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Aluno);
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.TipoConta).Returns((TipoConta)99);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var act = async () => await _handler.HandleAsync();
         await act.Should().ThrowAsync<DomainException>();

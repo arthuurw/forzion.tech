@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -17,18 +18,18 @@ public class ExecucaoTreino
 
     private ExecucaoTreino() { }
 
-    public static ExecucaoTreino Criar(Guid treinoId, Guid alunoId, DateTime dataExecucao, DateTime agora, string? observacao = null)
+    public static Result<ExecucaoTreino> Criar(Guid treinoId, Guid alunoId, DateTime dataExecucao, DateTime agora, string? observacao = null)
     {
         if (treinoId == Guid.Empty)
-            throw new DomainException("O treino é inválido.");
+            return Result.Failure<ExecucaoTreino>(ExecucaoTreinoErrors.TreinoInvalido);
         if (alunoId == Guid.Empty)
-            throw new DomainException("O aluno é inválido.");
+            return Result.Failure<ExecucaoTreino>(ExecucaoTreinoErrors.AlunoInvalido);
         if (dataExecucao == default)
-            throw new DomainException("A data de execução é inválida.");
+            return Result.Failure<ExecucaoTreino>(ExecucaoTreinoErrors.DataExecucaoInvalida);
         if (observacao is not null && observacao.Length > 500)
-            throw new DomainException("A observação deve ter no máximo 500 caracteres.");
+            return Result.Failure<ExecucaoTreino>(ExecucaoTreinoErrors.ObservacaoMuitoLonga);
 
-        return new ExecucaoTreino
+        return Result.Success(new ExecucaoTreino
         {
             Id = Guid.NewGuid(),
             TreinoId = treinoId,
@@ -36,18 +37,21 @@ public class ExecucaoTreino
             DataExecucao = dataExecucao,
             Observacao = observacao,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void AdicionarExercicio(
+    public Result AdicionarExercicio(
         Guid treinoExercicioId,
         int seriesExecutadas,
         int repeticoesExecutadas,
         decimal? cargaExecutada,
         string? observacao = null)
     {
-        var item = ExecucaoExercicio.Criar(
+        var r = ExecucaoExercicio.Criar(
             Id, treinoExercicioId, seriesExecutadas, repeticoesExecutadas, cargaExecutada, observacao);
-        _exercicios.Add(item);
+        if (r.IsFailure)
+            return Result.Failure(r.Error!);
+        _exercicios.Add(r.Value);
+        return Result.Success();
     }
 }

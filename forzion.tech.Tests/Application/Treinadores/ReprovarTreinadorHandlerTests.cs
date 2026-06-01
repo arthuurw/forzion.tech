@@ -7,6 +7,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Treinadores;
 
@@ -31,7 +32,7 @@ public class ReprovarTreinadorHandlerTests
     public async Task HandleAsync_TreinadorAguardando_ReprovaEComita()
     {
         var adminId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         await _handler.HandleAsync(new ReprovarTreinadorCommand(treinador.Id, adminId));
@@ -45,7 +46,7 @@ public class ReprovarTreinadorHandlerTests
     public async Task HandleAsync_ComObservacao_RegistraLog()
     {
         var adminId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         await _handler.HandleAsync(new ReprovarTreinadorCommand(treinador.Id, adminId, "Documentação inválida"));
@@ -57,12 +58,13 @@ public class ReprovarTreinadorHandlerTests
     public async Task HandleAsync_TreinadorJaAtivo_LancaDomainException()
     {
         var adminId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        treinador.Aprovar(adminId);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(adminId, TestData.Agora);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new ReprovarTreinadorCommand(treinador.Id, adminId));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*aguardando aprovação*");
+        var result = await _handler.HandleAsync(new ReprovarTreinadorCommand(treinador.Id, adminId));
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("aguardando aprovação");
     }
 
     [Fact]

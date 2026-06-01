@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Conta.Logout;
@@ -9,23 +10,29 @@ public class LogoutHandler(
     ITokenRevogadoRepository tokenRevogadoRepository,
     IUserContext userContext,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<LogoutHandler> logger)
 {
-    public virtual async Task HandleAsync(CancellationToken cancellationToken = default)
+    public virtual async Task<Result> HandleAsync(CancellationToken cancellationToken = default)
     {
         var jti = userContext.Jti;
         var expiraEm = userContext.TokenExpiraEm;
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        if (jti == Guid.Empty || expiraEm <= DateTime.UtcNow)
+        if (jti == Guid.Empty || expiraEm <= agora)
         {
             logger.LogWarning("Logout com token sem jti válido ou já expirado.");
-            return;
+            return Result.Success();
         }
 
         try
         {
+            var tokenResult = TokenRevogado.Criar(jti, expiraEm, agora);
+            if (tokenResult.IsFailure)
+                return Result.Failure(tokenResult.Error!);
+
             await tokenRevogadoRepository
-                .AdicionarAsync(TokenRevogado.Criar(jti, expiraEm), cancellationToken)
+                .AdicionarAsync(tokenResult.Value, cancellationToken)
                 .ConfigureAwait(false);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -38,5 +45,7 @@ public class LogoutHandler(
             // Token já revogado por logout simultâneo — idempotente
             logger.LogDebug(ex, "Token Jti={Jti} já estava revogado (logout simultâneo).", jti);
         }
+
+        return Result.Success();
     }
 }

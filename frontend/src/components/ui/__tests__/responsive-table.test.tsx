@@ -8,8 +8,6 @@ vi.mock("@mui/material", async () => {
   return { ...(actual as object), useMediaQuery: vi.fn(() => false) };
 });
 
-// ─── Fixtures ────────────────────────────────────────────────────────────────
-
 type Row = { id: string; nome: string; status: string };
 
 const COLS: Column[] = [
@@ -35,8 +33,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(useMediaQuery).mockReturnValue(false); // desktop por padrão
 });
-
-// ─── Desktop (isMobile = false) ──────────────────────────────────────────────
 
 describe("ResponsiveTable — desktop", () => {
   it("renderiza cabeçalhos das colunas", () => {
@@ -72,12 +68,9 @@ describe("ResponsiveTable — desktop", () => {
     render(
       <ResponsiveTable columns={COLS} rows={ROWS} rowKey={(r) => r.id} renderCell={renderCell} />,
     );
-    // Apenas verifica que o componente renderiza sem erro
     expect(screen.getByText("João")).toBeInTheDocument();
   });
 });
-
-// ─── Desktop com paginação ───────────────────────────────────────────────────
 
 describe("ResponsiveTable — paginação", () => {
   const onPageChange = vi.fn();
@@ -127,15 +120,11 @@ describe("ResponsiveTable — paginação", () => {
         renderCell={renderCell} pagination={pagination}
       />,
     );
-    // Abre o MUI Select
     fireEvent.mouseDown(screen.getByRole("combobox"));
-    // Clica na opção 25
     fireEvent.click(screen.getByRole("option", { name: "25" }));
     expect(onRowsPerPageChange).toHaveBeenCalledWith(25);
   });
 });
-
-// ─── Mobile (isMobile = true) ────────────────────────────────────────────────
 
 describe("ResponsiveTable — mobile", () => {
   beforeEach(() => vi.mocked(useMediaQuery).mockReturnValue(true));
@@ -152,7 +141,6 @@ describe("ResponsiveTable — mobile", () => {
     render(
       <ResponsiveTable columns={COLS} rows={ROWS} rowKey={(r) => r.id} renderCell={renderCell} />,
     );
-    // Ambas as rows estão presentes
     expect(screen.getByText("João")).toBeInTheDocument();
     expect(screen.getByText("Maria")).toBeInTheDocument();
   });
@@ -190,7 +178,6 @@ describe("ResponsiveTable — mobile", () => {
         columns={colsWithHidden} rows={ROWS} rowKey={(r) => r.id} renderCell={renderCell}
       />,
     );
-    // Label "Oculto:" não aparece como cabeçalho secundário
     expect(screen.queryByText("Oculto:")).not.toBeInTheDocument();
   });
 });

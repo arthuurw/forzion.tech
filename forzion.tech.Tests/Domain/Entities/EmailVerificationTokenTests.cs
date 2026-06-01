@@ -13,7 +13,7 @@ public class EmailVerificationTokenTests
     [Fact]
     public void Criar_DadosValidos_RetornaTokenCorreto()
     {
-        var token = EmailVerificationToken.Criar(ContaId, HashValido, Agora.AddHours(24), Agora);
+        var token = EmailVerificationToken.Criar(ContaId, HashValido, Agora.AddHours(24), Agora).Value;
 
         token.Id.Should().NotBe(Guid.Empty);
         token.ContaId.Should().Be(ContaId);
@@ -26,8 +26,9 @@ public class EmailVerificationTokenTests
     [Fact]
     public void Criar_ContaIdVazio_LancaDomainException()
     {
-        var act = () => EmailVerificationToken.Criar(Guid.Empty, HashValido, Agora.AddHours(24), Agora);
-        act.Should().Throw<DomainException>().WithMessage("*identificador da conta*");
+        var r = EmailVerificationToken.Criar(Guid.Empty, HashValido, Agora.AddHours(24), Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Contain("identificador da conta");
     }
 
     [Theory]
@@ -35,21 +36,23 @@ public class EmailVerificationTokenTests
     [InlineData("   ")]
     public void Criar_TokenHashVazio_LancaDomainException(string hash)
     {
-        var act = () => EmailVerificationToken.Criar(ContaId, hash, Agora.AddHours(24), Agora);
-        act.Should().Throw<DomainException>().WithMessage("*hash do token*");
+        var r = EmailVerificationToken.Criar(ContaId, hash, Agora.AddHours(24), Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Contain("hash do token");
     }
 
     [Fact]
     public void Criar_ExpiracaoNaoFutura_LancaDomainException()
     {
-        var act = () => EmailVerificationToken.Criar(ContaId, HashValido, Agora, Agora);
-        act.Should().Throw<DomainException>().WithMessage("*expiração deve ser futura*");
+        var r = EmailVerificationToken.Criar(ContaId, HashValido, Agora, Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Contain("expiração deve ser futura");
     }
 
     [Fact]
     public void MarcarComoVerificado_TokenNovo_PreencheVerifiedAt()
     {
-        var token = EmailVerificationToken.Criar(ContaId, HashValido, Agora.AddHours(24), Agora);
+        var token = EmailVerificationToken.Criar(ContaId, HashValido, Agora.AddHours(24), Agora).Value;
 
         token.MarcarComoVerificado(Agora.AddMinutes(5));
 
@@ -59,11 +62,12 @@ public class EmailVerificationTokenTests
     [Fact]
     public void MarcarComoVerificado_TokenJaUtilizado_LancaDomainException()
     {
-        var token = EmailVerificationToken.Criar(ContaId, HashValido, Agora.AddHours(24), Agora);
+        var token = EmailVerificationToken.Criar(ContaId, HashValido, Agora.AddHours(24), Agora).Value;
         token.MarcarComoVerificado(Agora.AddMinutes(5));
 
-        var act = () => token.MarcarComoVerificado(Agora.AddMinutes(10));
+        var r = token.MarcarComoVerificado(Agora.AddMinutes(10));
 
-        act.Should().Throw<DomainException>().WithMessage("*já foi utilizado*");
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Contain("já foi utilizado");
     }
 }

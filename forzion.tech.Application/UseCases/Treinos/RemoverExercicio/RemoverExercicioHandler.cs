@@ -1,6 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -13,6 +13,7 @@ public class RemoverExercicioHandler(
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<RemoverExercicioHandler> logger)
 {
     public virtual Task<Result<TreinoResponse>> HandleAsync(
@@ -39,9 +40,14 @@ public class RemoverExercicioHandler(
             .ExisteParaTreinoComAlunoAtivoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        Treino.ValidarMutabilidade(executado);
+        var mutabilidadeResult = Treino.ValidarMutabilidade(executado);
+        if (mutabilidadeResult.IsFailure)
+            return Result.Failure<TreinoResponse>(mutabilidadeResult.Error!);
 
-        treino.RemoverExercicio(command.TreinoExercicioId);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var removerResult = treino.RemoverExercicio(command.TreinoExercicioId, agora);
+        if (removerResult.IsFailure)
+            return Result.Failure<TreinoResponse>(removerResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

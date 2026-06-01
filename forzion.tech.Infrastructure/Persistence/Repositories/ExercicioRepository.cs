@@ -23,7 +23,7 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(nome))
-            query = query.Where(e => e.Nome.ToLower().Contains(nome.ToLower()));
+            query = query.Where(e => EF.Functions.ILike(e.Nome, $"%{nome}%"));
 
         if (grupoMuscularId.HasValue)
             query = query.Where(e => e.GrupoMuscularId == grupoMuscularId.Value);
@@ -67,7 +67,7 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
     public async Task<bool> NomeJaExisteAsync(string nome, Guid? treinadorId, Guid? excludeId = null, CancellationToken cancellationToken = default) =>
         await _context.Exercicios
             .AnyAsync(e => e.TreinadorId == treinadorId
-                        && e.Nome.ToLower() == nome.ToLower()
+                        && EF.Functions.ILike(e.Nome, nome)
                         && (excludeId == null || e.Id != excludeId), cancellationToken)
             .ConfigureAwait(false);
 

@@ -1,7 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -19,7 +19,6 @@ public class RegistrarAlunoHandler(
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
     IValidator<RegistrarAlunoCommand> validator,
-    IWhatsAppNotifier whatsAppNotifier,
     TimeProvider timeProvider,
     ILogger<RegistrarAlunoHandler> logger)
 {
@@ -54,11 +53,19 @@ public class RegistrarAlunoHandler(
             return Result.Failure<AlunoResponse>(Error.Business("O pacote informado não pertence ao treinador selecionado."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var conta = Domain.Entities.Conta.Criar(Email.Criar(command.Email), passwordHasher.Hash(command.Senha), TipoConta.Aluno, agora);
+        var emailResult = Email.Criar(command.Email);
+        if (emailResult.IsFailure)
+            return Result.Failure<AlunoResponse>(emailResult.Error!);
+
+        var contaResult = Domain.Entities.Conta.Criar(emailResult.Value, passwordHasher.Hash(command.Senha), TipoConta.Aluno, agora);
+        if (contaResult.IsFailure)
+            return Result.Failure<AlunoResponse>(contaResult.Error!);
+        var conta = contaResult.Value;
+
         var tempoDisponivel = command.TempoDisponivelMinutos.HasValue
             ? (TempoDisponivel?)command.TempoDisponivelMinutos.Value
             : null;
-        var aluno = Aluno.Criar(
+        var alunoResult = Aluno.Criar(
             conta.Id,
             command.Nome,
             agora,
@@ -72,7 +79,14 @@ public class RegistrarAlunoHandler(
             command.LimitacoesFisicas,
             command.Doencas,
             command.ObservacoesAdicionais);
-        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, aluno.Id, agora, command.PacoteId);
+        if (alunoResult.IsFailure)
+            return Result.Failure<AlunoResponse>(alunoResult.Error!);
+        var aluno = alunoResult.Value;
+
+        var vinculoResult = VinculoTreinadorAluno.Criar(command.TreinadorId, aluno.Id, agora, command.PacoteId);
+        if (vinculoResult.IsFailure)
+            return Result.Failure<AlunoResponse>(vinculoResult.Error!);
+        var vinculo = vinculoResult.Value;
 
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
@@ -80,14 +94,6 @@ public class RegistrarAlunoHandler(
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Aluno {AlunoId} registrado com vínculo pendente ao treinador {TreinadorId}.", aluno.Id, command.TreinadorId);
-
-        if (!string.IsNullOrWhiteSpace(treinador.Telefone))
-        {
-            await whatsAppNotifier.SendAsync(
-                treinador.Telefone,
-                $"Novo aluno aguardando aprovação: {command.Nome}. Acesse o app para aprovar o vínculo.",
-                cancellationToken).ConfigureAwait(false);
-        }
 
         return Result.Success(CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno));
     }

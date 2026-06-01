@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
 
@@ -16,7 +17,7 @@ public record FichaAlunoDetalheResponse(
 
 public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository, IExercicioRepository exercicioRepository, IUserContext userContext)
 {
-    public virtual async Task<FichaAlunoDetalheResponse> HandleAsync(
+    public virtual async Task<Result<FichaAlunoDetalheResponse>> HandleAsync(
         Guid treinoAlunoId,
         Guid alunoId,
         CancellationToken cancellationToken = default)
@@ -34,13 +35,14 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
                 .ObterDetalheAsync(treinoAlunoId, alunoId, cancellationToken)
                 .ConfigureAwait(false);
 
-        if (detalhe is null) throw new TreinoNaoEncontradoException();
+        if (detalhe is null)
+            return Result.Failure<FichaAlunoDetalheResponse>(Error.NotFound("ficha_nao_encontrada", "Ficha não encontrada."));
 
         var nomesExercicio = await exercicioRepository
             .ObterNomesPorIdsAsync(detalhe.Treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
             .ConfigureAwait(false);
 
-        return new FichaAlunoDetalheResponse(
+        return Result.Success(new FichaAlunoDetalheResponse(
             detalhe.TreinoAluno.Id,
             detalhe.Treino.Id,
             detalhe.Treino.Nome,
@@ -54,6 +56,6 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
                     s.Id, s.Quantidade, s.RepeticoesMin, s.RepeticoesMax,
                     s.Descricao, s.Carga, s.Descanso, s.Ordem)).ToList(),
                 te.Ordem,
-                te.Observacao))]);
+                te.Observacao))]));
     }
 }

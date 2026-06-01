@@ -1,33 +1,36 @@
 using System.Text.RegularExpressions;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.ValueObjects;
 
 public sealed record Email
 {
+    // NonBacktracking elimina catastrophic backtracking; timeout largo evita falsos
+    // RegexMatchTimeoutException em ambientes lentos (CI cold start, Release JIT).
     private static readonly Regex FormatoValido = new(
         @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase,
-        TimeSpan.FromMilliseconds(100));
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.NonBacktracking,
+        TimeSpan.FromSeconds(1));
 
     public string Value { get; }
 
     private Email(string value) => Value = value;
 
-    public static Email Criar(string value)
+    public static Result<Email> Criar(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new DomainException("O e-mail é obrigatório.");
+            return Result.Failure<Email>(EmailErrors.Obrigatorio);
 
         var normalizado = value.Trim().ToLowerInvariant();
 
         if (normalizado.Length > 256)
-            throw new DomainException("O e-mail deve ter no máximo 256 caracteres.");
+            return Result.Failure<Email>(EmailErrors.MuitoLongo);
 
         if (!FormatoValido.IsMatch(normalizado))
-            throw new DomainException("O e-mail informado é inválido.");
+            return Result.Failure<Email>(EmailErrors.Invalido);
 
-        return new Email(normalizado);
+        return Result.Success(new Email(normalizado));
     }
 
     // Bypassa validações — apenas para reconstituição a partir de dados já persistidos.

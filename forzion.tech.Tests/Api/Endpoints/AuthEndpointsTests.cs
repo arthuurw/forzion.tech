@@ -6,7 +6,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
@@ -105,7 +105,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
     {
         _factory.RegistrarTreinadorHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaTreinador);
+            .ReturnsAsync(Result.Success(RespostaTreinador));
 
         var response = await _factory.CreateClient().PostAsJsonAsync("/auth/register/treinador",
             new { Email = "novo@test.com", Senha = "Senha@123", Nome = "Carlos" });
@@ -277,7 +277,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<RegistrarAlunoCommand>>(),
-            Mock.Of<IWhatsAppNotifier>(), TimeProvider.System,
+            TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         public Mock<VerificarEmailHandler> VerificarEmailHandlerMock { get; } = new(

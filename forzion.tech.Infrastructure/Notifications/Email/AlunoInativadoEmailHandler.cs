@@ -9,11 +9,17 @@ public sealed class AlunoInativadoEmailHandler(
     IAlunoRepository alunoRepository,
     IContaRepository contaRepository,
     IEmailService emailService,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<AlunoInativadoEmailHandler> logger) : IDomainEventHandler<AlunoInativadoEvent>
 {
     public async Task HandleAsync(AlunoInativadoEvent domainEvent, CancellationToken cancellationToken = default)
     {
         if (!emailService.Habilitado) return;
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorAlunoAsync(domainEvent.AlunoId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.Email) return;
 
         var aluno = await alunoRepository
             .ObterPorIdAsync(domainEvent.AlunoId, cancellationToken)

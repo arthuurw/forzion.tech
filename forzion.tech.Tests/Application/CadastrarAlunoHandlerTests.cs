@@ -32,7 +32,8 @@ public class CadastrarAlunoHandlerTests
         var command = new CadastrarAlunoCommand(Guid.NewGuid(), "Aluno", "a@e.com", "123");
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Aluno");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Aluno");
         _alunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Aluno>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -43,5 +44,19 @@ public class CadastrarAlunoHandlerTests
         var command = new CadastrarAlunoCommand(Guid.NewGuid(), "", "invalido", new string('1', 21));
         var act = async () => await _handler.HandleAsync(command);
         await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ContaIdVazio_RetornaFailureDoDominioSemPersistir()
+    {
+        // ContaId não é validado pelo validator, então passa pela validação e
+        // Aluno.Criar retorna Result.Failure (ContaIdInvalido).
+        var command = new CadastrarAlunoCommand(Guid.Empty, "Aluno", null, null);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        _alunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Aluno>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

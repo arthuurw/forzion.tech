@@ -40,12 +40,12 @@ public class VerificarEmailHandlerTests
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 
     private static EmailVerificationToken TokenValido(Guid contaId, DateTime criadoEm, DateTime expiraEm) =>
-        EmailVerificationToken.Criar(contaId, Hash(RawToken), expiraEm, criadoEm);
+        EmailVerificationToken.Criar(contaId, Hash(RawToken), expiraEm, criadoEm).Value;
 
     [Fact]
     public async Task HandleAsync_TokenValido_MarcaContaVerificada()
     {
-        var conta = Conta.Criar(Email.Criar("aluno@test.com"), "hash", TipoConta.Aluno, Agora);
+        var conta = Conta.Criar(Email.Criar("aluno@test.com").Value, "hash", TipoConta.Aluno, Agora).Value;
         var token = TokenValido(conta.Id, Agora.AddMinutes(-5), Agora.AddHours(23));
 
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))

@@ -1,5 +1,6 @@
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -15,7 +16,7 @@ public class LogAprovacao
 
     private LogAprovacao() { }
 
-    public static LogAprovacao Registrar(
+    public static Result<LogAprovacao> Registrar(
         TipoAcaoAprovacao tipoAcao,
         Guid realizadoPorId,
         Guid entidadeId,
@@ -24,15 +25,15 @@ public class LogAprovacao
         string? observacao = null)
     {
         if (realizadoPorId == Guid.Empty)
-            throw new DomainException("O identificador de quem realizou a ação é inválido.");
+            return Result.Failure<LogAprovacao>(LogAprovacaoErrors.RealizadoPorIdInvalido);
         if (entidadeId == Guid.Empty)
-            throw new DomainException("O identificador da entidade é inválido.");
+            return Result.Failure<LogAprovacao>(LogAprovacaoErrors.EntidadeIdInvalido);
         if (string.IsNullOrWhiteSpace(entidadeTipo))
-            throw new DomainException("O tipo da entidade é obrigatório.");
+            return Result.Failure<LogAprovacao>(LogAprovacaoErrors.EntidadeTipoObrigatorio);
         if (observacao is not null && observacao.Length > 500)
-            throw new DomainException("A observação deve ter no máximo 500 caracteres.");
+            return Result.Failure<LogAprovacao>(LogAprovacaoErrors.ObservacaoMuitoLonga);
 
-        return new LogAprovacao
+        return Result.Success(new LogAprovacao
         {
             Id = Guid.NewGuid(),
             TipoAcao = tipoAcao,
@@ -41,6 +42,6 @@ public class LogAprovacao
             EntidadeTipo = entidadeTipo,
             Observacao = observacao,
             CreatedAt = agora
-        };
+        });
     }
 }

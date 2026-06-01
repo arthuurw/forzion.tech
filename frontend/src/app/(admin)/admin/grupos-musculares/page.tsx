@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useCallback, useEffect, useState } from "react";
 import {
   Box, Typography, Card, Button, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -135,10 +135,10 @@ export default function GruposMuscularesAdminPage() {
               return (
                 <>
                   <Tooltip title="Editar">
-                    <IconButton size="small" onClick={() => openEdit(g)}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" aria-label="Editar grupo muscular" onClick={() => openEdit(g)}><EditIcon fontSize="small" /></IconButton>
                   </Tooltip>
                   <Tooltip title="Excluir">
-                    <IconButton size="small" color="error" onClick={() => setConfirmExcluir(g)}><DeleteIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="error" aria-label="Excluir grupo muscular" onClick={() => setConfirmExcluir(g)}><DeleteIcon fontSize="small" /></IconButton>
                   </Tooltip>
                 </>
               );

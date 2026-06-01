@@ -17,8 +17,17 @@ export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
     globals: true,
+    // Render de server-components + cold imports ficam lentos sob instrumentação
+    // de coverage (v8); o default de 5s estoura em CI/local. Herdado pelos projects
+    // (extends: true). Não enfraquece asserção — só acomoda overhead de import.
+    testTimeout: 20000,
     coverage: {
       provider: "v8",
+      // Thresholds abaixo sao ENFORCED automaticamente quando `vitest run --coverage`
+      // executa: vitest v4 falha com exit code != 0 se qualquer threshold por glob
+      // nao for atingido. `npm run test:coverage` (= `vitest run --coverage`) e
+      // chamado em CI no job `test-frontend`, entao o gate e bloqueante. Nao precisa
+      // de flag `--check-coverage` (esse e linguajar de nyc, nao vitest).
       reporter: ["text", "json", "json-summary", "html", "lcov", "text-summary"],
       exclude: [
         "node_modules/",
@@ -90,6 +99,10 @@ export default defineConfig({
             "src/lib/api/admin.msw.test.ts",
             "src/lib/auth/context.test.tsx",
             "src/hooks/useInactivity.test.ts",
+            // Hooks RTL (renderHook) exigem jsdom → project integration
+            "src/hooks/useConsent.test.ts",
+            "src/hooks/usePaginatedList.test.ts",
+            "src/hooks/useCRUDDialog.test.ts",
           ],
         },
       },
@@ -110,6 +123,9 @@ export default defineConfig({
             "src/lib/utils/excel.test.ts",
             "src/lib/auth/context.test.tsx",
             "src/hooks/useInactivity.test.ts",
+            "src/hooks/useConsent.test.ts",
+            "src/hooks/usePaginatedList.test.ts",
+            "src/hooks/useCRUDDialog.test.ts",
             // Pilot MSW com apiClient real
             "src/lib/api/admin.msw.test.ts",
           ],

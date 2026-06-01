@@ -21,7 +21,7 @@ public class ListarVinculosHandlerTests
     public async Task HandleAsync_ExistemVinculos_RetornaPaginado()
     {
         var treinadorId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
         var items = new List<VinculoComDetalheAluno>
         {
             new(vinculo, "João Silva", "joao@email.com", false)
@@ -68,7 +68,7 @@ public class ListarVinculosHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
         var items = new List<VinculoComDetalheAluno> { new(vinculo, "Maria", "maria@email.com", true) };
         _vinculoRepo.Setup(r => r.ListarComDetalhesAsync(treinadorId, null, 1, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync((items, 1));

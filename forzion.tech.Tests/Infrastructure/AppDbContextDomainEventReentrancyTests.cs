@@ -33,8 +33,8 @@ public class AppDbContextDomainEventReentrancyTests(InfrastructureTestFixture fi
         await ctx.Database.EnsureCreatedAsync();
         dispatcher.Context = ctx;
 
-        var conta = Conta.Criar(Email.Criar($"reentr{Guid.NewGuid():N}@test.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
-        var aluno = Aluno.Criar(conta.Id, "Reentrancia", DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar($"reentr{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
+        var aluno = Aluno.Criar(conta.Id, "Reentrancia", DateTime.UtcNow).Value;
         var eventosEsperados = conta.DomainEvents.Count + aluno.DomainEvents.Count;
         eventosEsperados.Should().BeGreaterThan(0, "Conta.Criar/Aluno.Criar precisam levantar ao menos um evento para o cenário ser válido");
 

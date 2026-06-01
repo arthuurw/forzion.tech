@@ -31,16 +31,16 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
 
     private static ContaRecebimento ContaOnboarded(Guid treinadorId)
     {
-        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow);
-        conta.ConfigurarStripeConnect("acct_123");
-        conta.ConfirmarOnboarding();
+        var conta = ContaRecebimento.Criar(treinadorId, DateTime.UtcNow).Value;
+        conta.ConfigurarStripeConnect("acct_123", DateTime.UtcNow);
+        conta.ConfirmarOnboarding(DateTime.UtcNow);
         return conta;
     }
 
     [Fact]
     public async Task HandleAsync_VinculoSemPacote_NaoCriaAssinaturaAluno()
     {
-        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow).Value;
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);
 
@@ -53,9 +53,9 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
     public async Task HandleAsync_TreinadorSemOnboarding_NaoCriaAssinaturaAluno()
     {
         var pacoteId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
-        vinculo.Aprovar(Evento.TreinadorId, pacoteId);
-        var contaRecebimento = ContaRecebimento.Criar(Evento.TreinadorId, DateTime.UtcNow);
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow).Value;
+        vinculo.Aprovar(Evento.TreinadorId, pacoteId, DateTime.UtcNow);
+        var contaRecebimento = ContaRecebimento.Criar(Evento.TreinadorId, DateTime.UtcNow).Value;
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);
@@ -82,12 +82,12 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
     public async Task HandleAsync_HappyPath_CriaAssinaturaAlunoECommita()
     {
         var pacoteId = Guid.NewGuid();
-        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow);
-        vinculo.Aprovar(Evento.TreinadorId, pacoteId);
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow).Value;
+        vinculo.Aprovar(Evento.TreinadorId, pacoteId, DateTime.UtcNow);
 
         var contaRecebimento = ContaOnboarded(Evento.TreinadorId);
 
-        var pacote = Pacote.Criar(Evento.TreinadorId, "Plano mensal", 150m, DateTime.UtcNow);
+        var pacote = Pacote.Criar(Evento.TreinadorId, "Plano mensal", 150m, DateTime.UtcNow).Value;
 
         _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(vinculo);

@@ -22,13 +22,6 @@ export function freezeTime(iso: string = DETERMINISTIC_NOW_ISO): void {
 }
 
 /**
- * Avanca o relogio fake em N milissegundos.
- */
-export function advanceTime(ms: number): void {
-  vi.advanceTimersByTime(ms);
-}
-
-/**
  * Restaura o relogio real (use no afterEach).
  */
 export function restoreTime(): void {

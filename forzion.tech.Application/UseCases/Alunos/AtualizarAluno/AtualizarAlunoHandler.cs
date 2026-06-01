@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
@@ -12,9 +13,10 @@ public class AtualizarAlunoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
+    TimeProvider timeProvider,
     ILogger<AtualizarAlunoHandler> logger)
 {
-    public virtual Task<AlunoResponse> HandleAsync(
+    public virtual Task<Result<AlunoResponse>> HandleAsync(
         AtualizarAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -22,7 +24,7 @@ public class AtualizarAlunoHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<AlunoResponse> HandleAsyncCore(
+    private async Task<Result<AlunoResponse>> HandleAsyncCore(
         AtualizarAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -31,7 +33,6 @@ public class AtualizarAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        // Validar autorização
         if (!userContext.IsSystemAdmin && userContext.PerfilId != aluno.Id)
         {
             if (userContext.IsTreinador)
@@ -49,12 +50,14 @@ public class AtualizarAlunoHandler(
         if (aluno.Status == AlunoStatus.Inativo)
             throw new AlunoInativoException();
 
-        aluno.Atualizar(command.Nome, command.Email, command.Telefone);
+        var atualizarResult = aluno.Atualizar(command.Nome, command.Email, command.Telefone, timeProvider.GetUtcNow().UtcDateTime);
+        if (atualizarResult.IsFailure)
+            return Result.Failure<AlunoResponse>(atualizarResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Aluno {AlunoId} atualizado.", aluno.Id);
 
-        return CadastrarAlunoHandler.ToResponse(aluno);
+        return Result.Success(CadastrarAlunoHandler.ToResponse(aluno));
     }
 }

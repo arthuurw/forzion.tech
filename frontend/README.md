@@ -34,7 +34,7 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 |--|------------|--------|
 | Framework | Next.js (App Router) | 16 |
 | UI | MUI (Material UI) + Emotion | v9 |
-| Linguagem | TypeScript | 5 |
+| Linguagem | TypeScript | 6 |
 | Forms | React Hook Form + Zod | 7 + 4 |
 | HTTP | Axios | 1.x |
 | Estado global | Zustand | 5 |
@@ -57,7 +57,7 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 | E2E + a11y de página | Playwright + @axe-core/playwright | 1.x |
 | Component workshop | Storybook 10 + test-runner | 10 |
 | Mutation testing | Stryker (lib + hooks) | 9 |
-| Contract testing | Pact (consumer-driven, broker self-hosted) | 13 |
+| Contract testing | Pact (consumer-driven, broker self-hosted) | 16 |
 | Performance | Lighthouse CI + bundle-analyzer + linkinator | — |
 | Dead code | knip + madge | 5 / 8 |
 
@@ -67,7 +67,7 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 
 ## Pré-requisitos
 
-- Node.js 20+
+- Node.js 22+
 - API backend rodando em `http://localhost:5230` ou `https://localhost:7220` (ver `../README.md`)
 
 ---
@@ -238,7 +238,7 @@ frontend/
 │   │   │   └── HowItWorks.tsx          # Seção "Como funciona" da landing page
 │   │   ├── perfil/
 │   │   │   ├── layout.tsx
-│   │   │   └── page.tsx                # Perfil + alterar senha (todos os perfis)
+│   │   │   └── page.tsx                # Perfil + alterar senha + LGPD (exportar/excluir conta, cookies)
 │   │   ├── layout.tsx                  # Root layout — AuthProvider + SnackbarProvider + viewport
 │   │   ├── page.tsx                    # Landing page (hero + planos + CTA)
 │   │   ├── error.tsx                   # Error boundary global
@@ -261,6 +261,7 @@ frontend/
 │   │   │   └── ProgressaoAluno.tsx     # Gráfico de progressão do aluno
 │   │   └── ui/
 │   │       ├── AlertBanner.tsx         # Banner de erro/sucesso inline
+│   │       ├── ConsentBanner.tsx       # Banner de consentimento de cookies (LGPD); reabrível via /perfil
 │   │       ├── ConfirmDialog.tsx       # Dialog de confirmação genérico
 │   │       ├── DataList.tsx            # Card com loading + empty + tabela paginada
 │   │       ├── EmptyState.tsx          # Estado vazio com ícone e mensagem
@@ -352,7 +353,7 @@ frontend/
 | `/aluno/historico` | Aluno | Histórico de execuções com gráficos de progressão |
 | `/aluno/assinatura` | Aluno | Status da assinatura + pagamento pendente (Pix ou cartão) |
 | `/aluno/pagamentos` | Aluno | Histórico de cobranças com tabela e dialog de pagamento inline |
-| `/perfil` | todos | Dados da conta + alterar senha |
+| `/perfil` | todos | Dados da conta + alterar senha + **LGPD**: exportar dados (JSON), excluir conta (exige senha), preferências de cookies |
 
 ---
 
@@ -785,11 +786,11 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 
 | Módulo | Funções principais |
 |--------|-------------------|
-| `lib/api/admin.ts` | `listTreinadores`, `aprovarTreinador`, `reprovarTreinador`, `inativarTreinador`, `excluirTreinador`, `atribuirPlano`, `listPlanos`, `criarPlano`, `atualizarPlano`, `excluirPlano`, `listGruposMusculares`, `criarGrupo`, `atualizarGrupo`, `excluirGrupo`, `listExerciciosGlobais`, `criarExercicioGlobal`, `atualizarExercicioGlobal`, `excluirExercicioGlobal` — **visibilidade admin:** `listAlunos`, `getAluno`, `getAlunoVinculo`, `getAlunoFichas`, `getFichaDetalhe`, `getAlunoExecucoes`, `getAlunoProgressao`, `getTreinadorAlunos`, `getTreinadorVinculos`, `getTreinadorTreinos`, `getTreino`, `getTreinadorPacotes` |
+| `lib/api/admin.ts` | `listTreinadores`, `aprovarTreinador`, `reprovarTreinador`, `inativarTreinador`, `excluirTreinador`, `atribuirPlano`, `listPlanos`, `criarPlano`, `atualizarPlano`, `excluirPlano`, `listGruposMusculares`, `criarGrupo`, `atualizarGrupo`, `excluirGrupo`, `listExerciciosGlobais`, `criarExercicioGlobal`, `atualizarExercicioGlobal`, `excluirExercicioGlobal` — **visibilidade admin:** `listAlunos`, `getAluno`, `getAlunoVinculo`, `getAlunoFichas`, `getFichaDetalhe`, `getAlunoExecucoes`, `getAlunoProgressao`, `getTreinadorAlunos`, `getTreinadorVinculos`, `getTreinadorTreinos`, `getTreino`, `getTreinadorPacotes` — **dashboard/saúde:** stats dashboard, health-report config/snapshots — **LGPD:** `exportarDadosConta`, `anonimizarConta` |
 | `lib/api/treinador.ts` | `listarAlunos`, `obterAluno`, `atualizarAluno`, `listarVinculos`, `aprovarVinculo`, `desvincularAluno`, `listarTreinos`, `listarExercicios`, `criarExercicio`, `atualizarExercicio`, `excluirExercicio`, `copiarExercicioGlobal`, `listarPacotes`, `criarPacote`, `atualizarPacote` |
 | `lib/api/aluno.ts` | `listarFichas`, `obterFicha`, `listarExecucoes`, `registrarExecucao`, `obterVinculo`, `solicitarTrocaTreinador` |
 | `lib/api/pagamento.ts` | `iniciarOnboarding`, `verificarOnboarding`, `gerarCobranca`, `obterPagamento`, `listarPagamentosAssinatura`, `obterAssinatura` |
-| `lib/api/conta.ts` | `obterPerfil`, `atualizarPerfil`, `alterarSenha`, `logout` |
+| `lib/api/conta.ts` | `obterPerfil`, `atualizarPerfil`, `alterarSenha`, `logout`, `exportarDados` (LGPD; Blob JSON), `excluirConta(senha)` (LGPD; anonimização) |
 
 ---
 
@@ -797,18 +798,21 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 
 ### Paleta
 
-Paleta: **amarelo** (`#F5C400`) / **preto** (`#1A1A1A`) / **vermelho** (`#D32F2F`)
+Paleta: **amarelo** (`#F5C400`) / **preto** (`#1A1A1A`) / **vermelho** (`#C62828`)
 
 | Token MUI | Valor |
 |-----------|-------|
 | `primary.main` | `#F5C400` |
 | `primary.contrastText` | `#1A1A1A` |
 | `secondary.main` | `#1A1A1A` |
-| `error.main` | `#D32F2F` |
-| `background.default` | `#F5F5F5` |
+| `error.main` | `#C62828` (WCAG AA ≈5.6:1 no branco) |
+| `text.secondary` | `#4B5563` (WCAG AA ≈7.6:1 no branco) |
+| `background.default` | `#F7F8FA` |
 | `background.paper` | `#FFFFFF` |
 | Font | Roboto (Google Fonts) |
-| `borderRadius` | 8px |
+| `borderRadius` | 12 (overrides por componente: botões 10, cards 16) |
+
+> Contraste de cor auditado para WCAG 2.1 AA: `error.main` e `text.secondary` endurecidos (F18 resolvido); o gate `color-contrast` roda no `runAxe` default dos specs Playwright.
 
 Localização: `ptBR` (MUI + Day.js).
 
@@ -953,7 +957,6 @@ Rode `npm run test:coverage` para o panorama atual.
 | `NextRequest.cookies` não parseia header em testes | API interna do Next.js não disponível em unit tests | Mock direto do objeto `{ cookies: { get: vi.fn() } }` |
 | `jwtVerify` falha em testes de `/api/auth/me` | Necessita JWT assinado com HMAC real | Usar `jose.SignJWT` com `TEST_SECRET` + `beforeAll(() => { process.env.JWT_SECRET = TEST_SECRET })` |
 | Formatação de moeda com non-breaking space | `toLocaleString("pt-BR")` produz `R$ 99,90` — `getByText("R$ 99,90")` falha | Usar `getByText((c) => c.includes("99,90"))` |
-| `extractTipoConta` não exportada | Era função local | Exportar explicitamente com `export function` |
 | Base64 padding em JWT de teste | `btoa(payload).replace(/=/g, "")` → `atob` falha silenciosamente | Usar `btoa` sem strip dos `=` |
 | `onTimeout` chamado múltiplas vezes | `setInterval` continua após `TIMEOUT_MS` | Usar `toHaveBeenCalled()`, não `toHaveBeenCalledOnce()` |
 | Mock de módulo com constructor (`new ExcelJS.Workbook()`) | `vi.fn(() => instance)` com arrow function não é construtível | Usar `vi.hoisted` + `class WorkbookMock { addWorksheet = fn; xlsx = { writeBuffer: fn }; }` e referenciar em `vi.mock("exceljs", () => ({ default: { Workbook: excelMocks.WorkbookMock } }))` |

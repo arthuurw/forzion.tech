@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Treinos.CriarTreino;
@@ -18,7 +19,7 @@ public class CriarTreinoHandler(
     TimeProvider timeProvider,
     ILogger<CriarTreinoHandler> logger)
 {
-    public virtual Task<TreinoResponse> HandleAsync(
+    public virtual Task<Result<TreinoResponse>> HandleAsync(
         CriarTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -26,7 +27,7 @@ public class CriarTreinoHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<TreinoResponse> HandleAsyncCore(
+    private async Task<Result<TreinoResponse>> HandleAsyncCore(
         CriarTreinoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -51,12 +52,18 @@ public class CriarTreinoHandler(
         }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var treino = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId, agora, command.Dificuldade, command.DataInicio, command.DataFim);
+        var treinoResult = Treino.Criar(command.Nome, command.Objetivo, command.TreinadorId, agora, command.Dificuldade, command.DataInicio, command.DataFim);
+        if (treinoResult.IsFailure)
+            return Result.Failure<TreinoResponse>(treinoResult.Error!);
+        var treino = treinoResult.Value;
         await treinoRepository.AdicionarAsync(treino, cancellationToken).ConfigureAwait(false);
 
         if (command.AlunoId.HasValue)
         {
-            var treinoAluno = TreinoAluno.Criar(treino.Id, command.AlunoId.Value, agora);
+            var treinoAlunoResult = TreinoAluno.Criar(treino.Id, command.AlunoId.Value, agora);
+            if (treinoAlunoResult.IsFailure)
+                return Result.Failure<TreinoResponse>(treinoAlunoResult.Error!);
+            var treinoAluno = treinoAlunoResult.Value;
             await treinoAlunoRepository.AdicionarAsync(treinoAluno, cancellationToken).ConfigureAwait(false);
         }
 
@@ -66,6 +73,6 @@ public class CriarTreinoHandler(
             treino.Id,
             command.AlunoId.HasValue ? $" para o aluno {command.AlunoId.Value}" : " sem aluno vinculado");
 
-        return TreinoResponseExtensions.ToResponse(treino);
+        return Result.Success(TreinoResponseExtensions.ToResponse(treino));
     }
 }

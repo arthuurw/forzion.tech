@@ -1,6 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -33,29 +33,39 @@ public class InativarTreinadorHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        treinador.Inativar(command.AdminId);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        var inativarResult = treinador.Inativar(agora, command.AdminId);
+        if (inativarResult.IsFailure)
+            return Result.Failure(inativarResult.Error!);
 
         var vinculos = await vinculoRepository.ListarAtivosPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
+        var treinoAlunosBulk = await treinoAlunoRepository.ListarAtivosPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         foreach (var vinculo in vinculos)
         {
-            vinculo.Inativar();
-            var treinoAlunos = await treinoAlunoRepository.ListarAtivosPorParAsync(command.TreinadorId, vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
-            foreach (var ta in treinoAlunos)
-                ta.AlterarStatus(TreinoAlunoStatus.Inativo);
+            var vinculoResult = vinculo.Inativar(agora);
+            if (vinculoResult.IsFailure)
+                return Result.Failure(vinculoResult.Error!);
         }
+
+        foreach (var ta in treinoAlunosBulk)
+            ta.AlterarStatus(TreinoAlunoStatus.Inativo, agora);
 
         var pacotes = await pacoteRepository.ListarAtivosPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
         foreach (var pacote in pacotes)
-            pacote.Inativar();
+            pacote.Inativar(agora);
 
-        var log = LogAprovacao.Registrar(
+        var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.InativacaoTreinador,
             command.AdminId,
             treinador.Id,
             nameof(Treinador),
-            timeProvider.GetUtcNow().UtcDateTime,
+            agora,
             command.Observacao);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+        var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

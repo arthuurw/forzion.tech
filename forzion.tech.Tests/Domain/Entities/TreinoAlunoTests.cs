@@ -1,7 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -10,7 +10,7 @@ public class TreinoAlunoTests
     [Fact]
     public void Criar_DadosValidos_RetornaTreinoAluno()
     {
-        var ta = TreinoAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow);
+        var ta = TreinoAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), TestData.Agora).Value;
         ta.Status.Should().Be(TreinoAlunoStatus.Ativo);
         ta.UpdatedAt.Should().BeNull();
     }
@@ -18,22 +18,22 @@ public class TreinoAlunoTests
     [Fact]
     public void Criar_TreinoIdVazio_LancaDomainException()
     {
-        var act = () => TreinoAluno.Criar(Guid.Empty, Guid.NewGuid(), DateTime.UtcNow);
-        act.Should().Throw<DomainException>();
+        var r = TreinoAluno.Criar(Guid.Empty, Guid.NewGuid(), TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Criar_AlunoIdVazio_LancaDomainException()
     {
-        var act = () => TreinoAluno.Criar(Guid.NewGuid(), Guid.Empty, DateTime.UtcNow);
-        act.Should().Throw<DomainException>();
+        var r = TreinoAluno.Criar(Guid.NewGuid(), Guid.Empty, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void AlterarStatus_Inativo_AtualizaStatus()
     {
-        var ta = TreinoAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow);
-        ta.AlterarStatus(TreinoAlunoStatus.Inativo);
+        var ta = TreinoAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), TestData.Agora).Value;
+        ta.AlterarStatus(TreinoAlunoStatus.Inativo, TestData.Agora);
         ta.Status.Should().Be(TreinoAlunoStatus.Inativo);
         ta.UpdatedAt.Should().NotBeNull();
     }

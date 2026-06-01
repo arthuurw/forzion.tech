@@ -1,8 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\forzion.tech.Domain\forzion.tech.Domain.csproj" />
     <ProjectReference Include="..\forzion.tech.Application\forzion.tech.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="forzion.tech.Tests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -21,15 +21,12 @@ public class RegistrarAlunoHandlerTests
     private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
-    private readonly Mock<IWhatsAppNotifier> _whatsAppNotifier = new();
     private readonly Mock<ILogger<RegistrarAlunoHandler>> _logger = new();
     private readonly RegistrarAlunoHandler _handler;
 
     public RegistrarAlunoHandlerTests()
     {
         _passwordHasher.Setup(p => p.Hash(It.IsAny<string>())).Returns("hash");
-        _whatsAppNotifier.Setup(n => n.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
         _handler = new RegistrarAlunoHandler(
             _contaRepo.Object,
             _alunoRepo.Object,
@@ -39,7 +36,7 @@ public class RegistrarAlunoHandlerTests
             _passwordHasher.Object,
             _unitOfWork.Object,
             new RegistrarAlunoCommandValidator(),
-            _whatsAppNotifier.Object, TimeProvider.System,
+            TimeProvider.System,
             _logger.Object);
     }
 
@@ -47,9 +44,9 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_DadosValidos_CriaContaAlunoEVinculo()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        treinador.Aprovar(Guid.NewGuid());
-        var pacote = Pacote.Criar(treinadorId, "Basic", 10, DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        var pacote = Pacote.Criar(treinadorId, "Basic", 10, DateTime.UtcNow).Value;
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -69,9 +66,9 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_TreinadorInativo_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        treinador.Aprovar(Guid.NewGuid());
-        treinador.Inativar();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        treinador.Inativar(DateTime.UtcNow);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -85,7 +82,7 @@ public class RegistrarAlunoHandlerTests
     public async Task HandleAsync_TreinadorAguardandoAprovacao_LancaDomainException()
     {
         var treinadorId = Guid.NewGuid();
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         // Status padrão = AguardandoAprovacao
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
@@ -99,7 +96,7 @@ public class RegistrarAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_EmailJaCadastrado_LancaException()
     {
-        var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
@@ -121,5 +118,43 @@ public class RegistrarAlunoHandlerTests
     {
         var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("invalido", "123", "", Guid.Empty, Guid.Empty));
         await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_PacoteNaoEncontrado_LancaPacoteNaoEncontradoException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Pacote?)null);
+
+        var act = async () => await _handler.HandleAsync(
+            new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+
+        await act.Should().ThrowAsync<PacoteNaoEncontradoException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_PacoteDeOutroTreinador_RetornaFailure()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        // Pacote pertence a OUTRO treinador.
+        var pacote = Pacote.Criar(Guid.NewGuid(), "Basic", 10, DateTime.UtcNow).Value;
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var result = await _handler.HandleAsync(
+            new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("não pertence ao treinador");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

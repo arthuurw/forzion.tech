@@ -1,6 +1,6 @@
 using System.Reflection;
 using forzion.tech.Api.Middleware;
-using forzion.tech.Application.Results;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Infrastructure.Persistence;
 using NetArchTest.Rules;
@@ -20,7 +20,7 @@ public class LayeringTests
     private const string ApiNamespace = "forzion.tech.Api";
 
     private static readonly Assembly DomainAssembly = typeof(Aluno).Assembly;
-    private static readonly Assembly ApplicationAssembly = typeof(Result).Assembly;
+    private static readonly Assembly ApplicationAssembly = typeof(LimiteTreinadorService).Assembly;
     private static readonly Assembly InfrastructureAssembly = typeof(AppDbContext).Assembly;
     private static readonly Assembly ApiAssembly = typeof(GlobalExceptionHandler).Assembly;
 

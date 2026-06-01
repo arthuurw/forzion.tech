@@ -20,6 +20,10 @@ test.describe("LGPD: delete account", () => {
   test("aluno consegue excluir propria conta via /perfil", async ({ page }) => {
     await page.goto("/perfil");
 
+    // Dispensa o banner de consentimento (modal, dynamic-import) que cobre a página no
+    // primeiro acesso — Playwright auto-espera o botão aparecer.
+    await page.getByRole("button", { name: /só essenciais/i }).click();
+
     const deleteButton = page.getByRole("button", { name: /excluir.*conta|deletar conta/i });
     await expect(
       deleteButton,

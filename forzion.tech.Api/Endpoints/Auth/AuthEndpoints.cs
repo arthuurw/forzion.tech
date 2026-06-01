@@ -49,7 +49,8 @@ public static class AuthEndpoints
             var result = await handler.HandleAsync(
                 new RegistrarTreinadorCommand(request.Email, request.Senha, request.Nome, request.Telefone), cancellationToken);
 
-            return Results.Created($"/treinador/perfil", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinador/perfil", result.Value);
         })
         .AllowAnonymous()
         .RequireRateLimiting("auth")
@@ -99,7 +100,8 @@ public static class AuthEndpoints
             [FromServices] RedefinirSenhaHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new RedefinirSenhaCommand(request.Token, request.NovaSenha), cancellationToken);
+            var result = await handler.HandleAsync(new RedefinirSenhaCommand(request.Token, request.NovaSenha), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok();
         })
         .AllowAnonymous()
@@ -137,8 +139,6 @@ public static class AuthEndpoints
         .WithSummary("Reenvia o e-mail de verificação (sempre retorna 200)")
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
-
-        // --- Endpoints Públicos (para Cadastro) ---
 
         group.MapGet("/planos", async (
             [FromServices] ListarPlanosPlataformaHandler handler,

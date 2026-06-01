@@ -19,11 +19,11 @@ public class CancelarAssinaturaAlunoHandlerTests
     public CancelarAssinaturaAlunoHandlerTests()
     {
         _handler = new CancelarAssinaturaAlunoHandler(
-            _assinaturaRepo.Object, _unitOfWork.Object, _logger.Object);
+            _assinaturaRepo.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     private static AssinaturaAluno CriarAssinaturaAluno() =>
-        AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 100m, DateTime.UtcNow);
+        AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 100m, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_AssinaturaAlunoAtiva_Cancela()
@@ -41,7 +41,7 @@ public class CancelarAssinaturaAlunoHandlerTests
     public async Task HandleAsync_AssinaturaAlunoJaCancelada_RetornaFailure()
     {
         var assinatura = CriarAssinaturaAluno();
-        assinatura.Cancelar();
+        assinatura.Cancelar(DateTime.UtcNow);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 
         var result = await _handler.HandleAsync(new CancelarAssinaturaAlunoCommand(assinatura.Id));

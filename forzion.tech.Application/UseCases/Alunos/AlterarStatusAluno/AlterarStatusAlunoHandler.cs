@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
@@ -11,9 +12,10 @@ public class AlterarStatusAlunoHandler(
     IAlunoRepository alunoRepository,
     IUserContext userContext,
     IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     ILogger<AlterarStatusAlunoHandler> logger)
 {
-    public virtual Task<AlunoResponse> HandleAsync(
+    public virtual Task<Result<AlunoResponse>> HandleAsync(
         AlterarStatusAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -21,7 +23,7 @@ public class AlterarStatusAlunoHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<AlunoResponse> HandleAsyncCore(
+    private async Task<Result<AlunoResponse>> HandleAsyncCore(
         AlterarStatusAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -30,21 +32,25 @@ public class AlterarStatusAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
-        // Validação de autorização: apenas SystemAdmin pode alterar status de alunos
         if (!userContext.IsSystemAdmin)
             throw new AcessoNegadoException();
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        Result statusResult;
         if (command.NovoStatus == AlunoStatus.Ativo)
-            aluno.Ativar();
+            statusResult = aluno.Ativar(agora);
         else if (command.NovoStatus == AlunoStatus.Inativo)
-            aluno.Inativar();
+            statusResult = aluno.Inativar(agora);
         else
-            throw new DomainException($"Transição de status '{command.NovoStatus}' não permitida.");
+            return Result.Failure<AlunoResponse>(Error.Business($"Transição de status '{command.NovoStatus}' não permitida."));
+
+        if (statusResult.IsFailure)
+            return Result.Failure<AlunoResponse>(statusResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Status do aluno {AlunoId} alterado para {Status}.", aluno.Id, command.NovoStatus);
 
-        return CadastrarAlunoHandler.ToResponse(aluno);
+        return Result.Success(CadastrarAlunoHandler.ToResponse(aluno));
     }
 }

@@ -1,7 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
@@ -10,11 +10,11 @@ public class TreinoTests
     private static readonly Guid TreinadorId = Guid.NewGuid();
 
     private static Treino CriarTreino() =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora).Value;
 
     private static TreinoExercicio AdicionarComSerie(Treino t, Guid? exercicioId = null)
     {
-        var ex = t.AdicionarExercicio(exercicioId ?? Guid.NewGuid());
+        var ex = t.AdicionarExercicio(exercicioId ?? Guid.NewGuid(), TestData.Agora).Value;
         ex.AdicionarSerie(3, 10, 12, null, null, null);
         return ex;
     }
@@ -38,8 +38,8 @@ public class TreinoTests
         var inicio = new DateOnly(2025, 1, 1);
         var fim = new DateOnly(2025, 3, 31);
 
-        var t = Treino.Criar("Treino B", ObjetivoTreino.Forca, TreinadorId, DateTime.UtcNow,
-            DificuldadeTreino.Avancado, inicio, fim);
+        var t = Treino.Criar("Treino B", ObjetivoTreino.Forca, TreinadorId, TestData.Agora,
+            DificuldadeTreino.Avancado, inicio, fim).Value;
 
         t.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
         t.DataInicio.Should().Be(inicio);
@@ -56,18 +56,18 @@ public class TreinoTests
     [Fact]
     public void Criar_DataFimAnteriorAoInicio_LancaDomainException()
     {
-        var act = () => Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow,
+        var r = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora,
             dataInicio: new DateOnly(2025, 6, 1),
             dataFim: new DateOnly(2025, 5, 1));
 
-        act.Should().Throw<DomainException>();
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Criar_DataInicioSemFim_Permitido()
     {
-        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow,
-            dataInicio: new DateOnly(2025, 1, 1));
+        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora,
+            dataInicio: new DateOnly(2025, 1, 1)).Value;
         t.DataInicio.Should().NotBeNull();
         t.DataFim.Should().BeNull();
     }
@@ -77,22 +77,22 @@ public class TreinoTests
     [InlineData("   ")]
     public void Criar_NomeVazio_LancaDomainException(string nome)
     {
-        var act = () => Treino.Criar(nome, ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow);
-        act.Should().Throw<DomainException>();
+        var r = Treino.Criar(nome, ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Criar_NomeMuitoLongo_LancaDomainException()
     {
-        var act = () => Treino.Criar(new string('a', 101), ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow);
-        act.Should().Throw<DomainException>();
+        var r = Treino.Criar(new string('a', 101), ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Criar_TreinadorIdVazio_LancaDomainException()
     {
-        var act = () => Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.Empty, DateTime.UtcNow);
-        act.Should().Throw<DomainException>();
+        var r = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.Empty, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     // --- Atualizar ---
@@ -101,7 +101,7 @@ public class TreinoTests
     public void Atualizar_DadosValidos_AtualizaCampos()
     {
         var t = CriarTreino();
-        t.Atualizar("Treino B", ObjetivoTreino.Forca);
+        t.Atualizar("Treino B", ObjetivoTreino.Forca, TestData.Agora);
         t.Nome.Should().Be("Treino B");
         t.Objetivo.Should().Be(ObjetivoTreino.Forca);
         t.UpdatedAt.Should().NotBeNull();
@@ -111,15 +111,15 @@ public class TreinoTests
     public void Atualizar_NomeVazio_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.Atualizar("", null);
-        act.Should().Throw<DomainException>();
+        var r = t.Atualizar("", null, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Atualizar_ApenasObjetivo_MantemNome()
     {
         var t = CriarTreino();
-        t.Atualizar(null, ObjetivoTreino.Resistencia);
+        t.Atualizar(null, ObjetivoTreino.Resistencia, TestData.Agora);
         t.Nome.Should().Be("Treino A");
         t.Objetivo.Should().Be(ObjetivoTreino.Resistencia);
     }
@@ -128,7 +128,7 @@ public class TreinoTests
     public void Atualizar_Dificuldade_AlteraDificuldade()
     {
         var t = CriarTreino();
-        t.Atualizar(null, null, DificuldadeTreino.Avancado);
+        t.Atualizar(null, null, TestData.Agora, DificuldadeTreino.Avancado);
         t.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
     }
 
@@ -139,7 +139,7 @@ public class TreinoTests
         var inicio = new DateOnly(2025, 1, 1);
         var fim = new DateOnly(2025, 6, 30);
 
-        t.Atualizar(null, null, dataInicio: inicio, dataFim: fim);
+        t.Atualizar(null, null, TestData.Agora, dataInicio: inicio, dataFim: fim);
 
         t.DataInicio.Should().Be(inicio);
         t.DataFim.Should().Be(fim);
@@ -149,21 +149,21 @@ public class TreinoTests
     public void Atualizar_DataFimAnteriorAoInicio_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.Atualizar(null, null,
+        var r = t.Atualizar(null, null, TestData.Agora,
             dataInicio: new DateOnly(2025, 6, 1),
             dataFim: new DateOnly(2025, 5, 1));
 
-        act.Should().Throw<DomainException>();
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Atualizar_LimparDatas_ZeraCampos()
     {
-        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, DateTime.UtcNow,
+        var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora,
             dataInicio: new DateOnly(2025, 1, 1),
-            dataFim: new DateOnly(2025, 12, 31));
+            dataFim: new DateOnly(2025, 12, 31)).Value;
 
-        t.Atualizar(null, null, limparDataInicio: true, limparDataFim: true);
+        t.Atualizar(null, null, TestData.Agora, limparDataInicio: true, limparDataFim: true);
 
         t.DataInicio.Should().BeNull();
         t.DataFim.Should().BeNull();
@@ -186,27 +186,27 @@ public class TreinoTests
     public void AdicionarSerie_QuantidadeZero_LancaDomainException()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
-        var act = () => ex.AdicionarSerie(0, 12, null, null, null, null);
-        act.Should().Throw<DomainException>();
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
+        var r = ex.AdicionarSerie(0, 12, null, null, null, null);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void AdicionarSerie_RepeticoesMinZero_LancaDomainException()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
-        var act = () => ex.AdicionarSerie(3, 0, null, null, null, null);
-        act.Should().Throw<DomainException>();
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
+        var r = ex.AdicionarSerie(3, 0, null, null, null, null);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void AdicionarSerie_CargaNegativa_LancaDomainException()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
-        var act = () => ex.AdicionarSerie(3, 10, null, null, -1m, null);
-        act.Should().Throw<DomainException>();
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
+        var r = ex.AdicionarSerie(3, 10, null, null, -1m, null);
+        r.IsFailure.Should().BeTrue();
     }
 
     // --- RemoverExercicio ---
@@ -219,7 +219,7 @@ public class TreinoTests
         AdicionarComSerie(t);
         AdicionarComSerie(t);
 
-        t.RemoverExercicio(t.Exercicios[0].Id);
+        t.RemoverExercicio(t.Exercicios[0].Id, TestData.Agora);
 
         t.Exercicios.Should().HaveCount(2);
         t.Exercicios[0].Ordem.Should().Be(1);
@@ -230,8 +230,8 @@ public class TreinoTests
     public void RemoverExercicio_IdInexistente_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.RemoverExercicio(Guid.NewGuid());
-        act.Should().Throw<DomainException>();
+        var r = t.RemoverExercicio(Guid.NewGuid(), TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     // --- Duplicar ---
@@ -240,10 +240,10 @@ public class TreinoTests
     public void Duplicar_CriaCopiaComExercicios()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
         ex.AdicionarSerie(3, 10, 12, "Trabalho", 10m, 60);
 
-        var copia = t.Duplicar(DateTime.UtcNow);
+        var copia = t.Duplicar(TestData.Agora).Value;
 
         copia.Id.Should().NotBe(t.Id);
         copia.Nome.Should().Be("Treino A (cópia)");
@@ -259,7 +259,7 @@ public class TreinoTests
     public void Duplicar_SemExercicios_CriaCopiaSemExercicios()
     {
         var t = CriarTreino();
-        var copia = t.Duplicar(DateTime.UtcNow);
+        var copia = t.Duplicar(TestData.Agora).Value;
         copia.Exercicios.Should().BeEmpty();
     }
 
@@ -269,11 +269,11 @@ public class TreinoTests
     public void DuplicarPara_TreinadorValido_CriaComNovoTreinadorId()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
         ex.AdicionarSerie(3, 10, 12, null, null, null);
 
         var novoTreinadorId = Guid.NewGuid();
-        var copia = t.DuplicarPara(novoTreinadorId, DateTime.UtcNow);
+        var copia = t.DuplicarPara(novoTreinadorId, TestData.Agora).Value;
 
         copia.Id.Should().NotBe(t.Id);
         copia.TreinadorId.Should().Be(novoTreinadorId);
@@ -285,8 +285,9 @@ public class TreinoTests
     public void DuplicarPara_TreinadorIdVazio_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.DuplicarPara(Guid.Empty, DateTime.UtcNow);
-        act.Should().Throw<DomainException>().WithMessage("O treinador de destino é inválido.");
+        var r = t.DuplicarPara(Guid.Empty, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O treinador de destino é inválido.");
     }
 
     // --- ValidarMutabilidade ---
@@ -294,15 +295,17 @@ public class TreinoTests
     [Fact]
     public void ValidarMutabilidade_Executado_LancaTreinoExecutadoException()
     {
-        var act = () => Treino.ValidarMutabilidade(true);
-        act.Should().Throw<TreinoExecutadoException>();
+        var r = Treino.ValidarMutabilidade(true);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("treino.ja_executado");
+        r.Error!.Message.Should().Be("Treino já executado não pode ser alterado.");
     }
 
     [Fact]
     public void ValidarMutabilidade_NaoExecutado_NaoLancaExcecao()
     {
-        var act = () => Treino.ValidarMutabilidade(false);
-        act.Should().NotThrow();
+        var r = Treino.ValidarMutabilidade(false);
+        r.IsSuccess.Should().BeTrue();
     }
 
     // --- Atualizar — NomeMuitoLongo ---
@@ -311,8 +314,9 @@ public class TreinoTests
     public void Atualizar_NomeMuitoLongo_LancaDomainException()
     {
         var t = CriarTreino();
-        var act = () => t.Atualizar(new string('a', 101), null);
-        act.Should().Throw<DomainException>().WithMessage("O nome deve ter no máximo 100 caracteres.");
+        var r = t.Atualizar(new string('a', 101), null, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O nome deve ter no máximo 100 caracteres.");
     }
 
     // --- TreinoExercicio.AtualizarObservacao ---
@@ -321,7 +325,7 @@ public class TreinoTests
     public void AtualizarObservacao_DadosValidos_AtualizaCampo()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
 
         ex.AtualizarObservacao("Manter postura");
 
@@ -332,7 +336,7 @@ public class TreinoTests
     public void AtualizarObservacao_Null_ZeraCampo()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
         ex.AtualizarObservacao("Manter postura");
 
         ex.AtualizarObservacao(null);
@@ -344,7 +348,7 @@ public class TreinoTests
     public void AtualizarObservacao_TextoBranco_ZeraCampo()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
 
         ex.AtualizarObservacao("   ");
 
@@ -355,10 +359,11 @@ public class TreinoTests
     public void AtualizarObservacao_TextoMuitoLongo_LancaDomainException()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
 
-        var act = () => ex.AtualizarObservacao(new string('a', 501));
-        act.Should().Throw<DomainException>().WithMessage("A observação deve ter no máximo 500 caracteres.");
+        var r = ex.AtualizarObservacao(new string('a', 501));
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("A observação deve ter no máximo 500 caracteres.");
     }
 
     // --- TreinoExercicio.AtualizarSeries ---
@@ -367,17 +372,18 @@ public class TreinoTests
     public void AtualizarSeries_ListaVazia_LancaDomainException()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
 
-        var act = () => ex.AtualizarSeries([]);
-        act.Should().Throw<DomainException>().WithMessage("O exercício deve ter pelo menos um grupo de séries.");
+        var r = ex.AtualizarSeries([]);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O exercício deve ter pelo menos um grupo de séries.");
     }
 
     [Fact]
     public void AtualizarSeries_ListaValida_SubstituiSeries()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
         ex.AdicionarSerie(3, 10, 12, null, null, null);
 
         ex.AtualizarSeries([(4, 8, 10, "Pesado", 20m, 90)]);
@@ -393,25 +399,27 @@ public class TreinoTests
     public void AdicionarSerie_RepeticoesMaxMenorQueMin_LancaDomainException()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
-        var act = () => ex.AdicionarSerie(3, 10, 8, null, null, null);
-        act.Should().Throw<DomainException>().WithMessage("O máximo de repetições não pode ser menor que o mínimo.");
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
+        var r = ex.AdicionarSerie(3, 10, 8, null, null, null);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O máximo de repetições não pode ser menor que o mínimo.");
     }
 
     [Fact]
     public void AdicionarSerie_DescansoNegativo_LancaDomainException()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
-        var act = () => ex.AdicionarSerie(3, 10, null, null, null, -1);
-        act.Should().Throw<DomainException>().WithMessage("O descanso não pode ser negativo.");
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
+        var r = ex.AdicionarSerie(3, 10, null, null, null, -1);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O descanso não pode ser negativo.");
     }
 
     [Fact]
     public void AdicionarSerie_DescricaoSoBrancos_SetaNull()
     {
         var t = CriarTreino();
-        var ex = t.AdicionarExercicio(Guid.NewGuid());
+        var ex = t.AdicionarExercicio(Guid.NewGuid(), TestData.Agora).Value;
         ex.AdicionarSerie(3, 10, null, "   ", null, null);
 
         ex.Series[0].Descricao.Should().BeNull();

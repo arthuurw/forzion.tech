@@ -32,9 +32,10 @@ public class CriarPlanoPlataformaHandlerTests
 
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Starter");
-        result.MaxAlunos.Should().Be(10);
-        result.Preco.Should().Be(99.90m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Starter");
+        result.Value.MaxAlunos.Should().Be(10);
+        result.Value.Preco.Should().Be(99.90m);
         _planoRepo.Verify(r => r.AdicionarAsync(It.IsAny<PlanoPlataforma>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

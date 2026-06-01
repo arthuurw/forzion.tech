@@ -12,9 +12,9 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 ## STACK & SCHEMAS
 - PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. App = ASP.NET Core 8, DDD.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema. `MigrationsHistoryTable("__EFMigrationsHistory")` sem schema (segue search_path).
-- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 26 tabelas cada (25 EF + ai_token_usage).
+- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 29 tabelas cada (28 EF + ai_token_usage).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 24 migrations EF aplicadas. Tabela de controle `__EFMigrationsHistory` por schema.
+- 28 migrations EF aplicadas. Tabela de controle `__EFMigrationsHistory` por schema.
 
 ## CONVENÇÕES
 - PK: `id` uuid gerado na app (Guid.NewGuid), não pelo banco. Exceção: `tokens_revogados` PK=`jti`.
@@ -40,15 +40,16 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - NivelCondicionamento (alunos.nivel_condicionamento): Sedentario|Iniciante|Intermediario|Avancado
 - TempoDisponivel (alunos.tempo_disponivel_minutos, int): 30|45|60|90|120
 - AssinaturaAlunoStatus (assinaturas_aluno.status): Pendente|Ativa|Inadimplente|Cancelada
-- PagamentoStatus (pagamentos.status): Pendente|Pago|Expirado|Falhou
+- PagamentoStatus (pagamentos.status): Pendente|Pago|Expirado|Falhou|Estornado|EmDisputa
 - MetodoPagamento (pagamentos.metodo_pagamento, default Pix): Pix|Cartao
-- TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador
-- GrupoMuscular (seed de grupos_musculares; não é coluna): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
+- TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador|ExclusaoTreinador|ExportacaoDados|AnonimizacaoConta
+- StatusSaude (health_snapshots.status_geral): Ok|Degradado|Falha
+- TipoGrupoMuscular (enum; seed de grupos_musculares; não é coluna — entidade `GrupoMuscular` é distinta): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
 
 ## TABELAS
 
 ### Identidade & Auth
-contas — credenciais + tipo. id(uuid,NN); email(varchar256,NN); password_hash(text,NN,bcrypt); tipo_conta(text,NN,TipoConta); email_verificado(bool,NN,default false); verificado_em(tstz,null); created_at(NN); updated_at(null). PK(id) UQ(email).
+contas — credenciais + tipo. id(uuid,NN); email(varchar256,NN); password_hash(text,NN,bcrypt); tipo_conta(text,NN,TipoConta); email_verificado(bool,NN,default false); verificado_em(tstz,null); anonimizada_em(tstz,null,LGPD); created_at(NN); updated_at(null). PK(id) UQ(email).
 
 system_users — perfil admin plataforma. id(uuid,NN); conta_id(uuid,NN); nome(varchar,NN); role(text,NN,SystemRole); status(text,NN,UsuarioStatus); created_at(NN); updated_at(null). PK(id) FK(conta_id→contas,RESTRICT).
 
@@ -59,6 +60,8 @@ password_reset_tokens — reset de senha. id(uuid,NN); conta_id(uuid,NN,sem FK);
 email_verification_tokens — verificação de e-mail no cadastro. id(uuid,NN); conta_id(uuid,NN,sem FK); token_hash(varchar64,NN); expires_at(tstz,NN,+24h); verified_at(tstz,null); created_at(NN). PK(id) UQ(token_hash) idx(conta_id).
 
 email_delivery_logs — auditoria entrega e-mail (webhook Resend/Svix). id(uuid,NN); resend_message_id(varchar100,NN); event_type(varchar50,NN); recipient_email(varchar254,NN); ocorrido_em(tstz,NN); payload(text,NN,JSON cru); created_at(NN). PK(id) idx(resend_message_id), idx(event_type).
+
+whatsapp_delivery_logs — auditoria entrega WhatsApp (webhook Meta Cloud API). id(uuid,NN); meta_message_id(varchar100,NN); event_type(varchar50,NN); recipient_phone(varchar32,NN); ocorrido_em(tstz,NN); payload(text,NN,JSON cru); created_at(NN). PK(id) idx(meta_message_id), idx(event_type).
 
 ### Planos & Recebimento (treinador↔plataforma)
 planos_plataforma — planos de assinatura do treinador. id(uuid,NN); nome(varchar,NN); max_alunos(int,NN); preco(numeric,NN); is_ativo(bool,NN); tier(varchar,NN,TierPlano); descricao(varchar,null); created_at(NN); updated_at(null). PK(id).
@@ -95,7 +98,7 @@ execucoes_treino — sessão executada pelo aluno. id(uuid,NN); treino_id(uuid,N
 execucoes_exercicio — detalhe por exercício da execução. id(uuid,NN); execucao_treino_id(uuid,NN); treino_exercicio_id(uuid,NN); series_executadas(int,NN); repeticoes_executadas(int,NN); carga_executada(numeric,null); observacao(varchar,null). PK(id) FK(execucao_treino_id→execucoes_treino,CASCADE) FK(treino_exercicio_id→treino_exercicios,RESTRICT).
 
 ### Assinaturas & Pagamentos (aluno↔treinador)
-assinaturas_aluno — assinatura recorrente. id(uuid,NN); vinculo_id(uuid,NN); pacote_id(uuid,NN); treinador_id(uuid,NN); aluno_id(uuid,NN); valor(numeric,NN); status(text,NN,AssinaturaAlunoStatus); data_inicio(tstz,NN); data_proxima_cobranca(tstz,NN); data_cancelamento(tstz,null); created_at(NN); updated_at(null). PK(id) FK(vinculo_id→vinculos_treinador_aluno,RESTRICT) FK(pacote_id→pacotes,RESTRICT) FK(treinador_id→treinadores,RESTRICT) FK(aluno_id→alunos,RESTRICT) UQ(vinculo_id).
+assinaturas_aluno — assinatura recorrente. id(uuid,NN); vinculo_id(uuid,NN); pacote_id(uuid,NN); treinador_id(uuid,NN); aluno_id(uuid,NN); valor(numeric,NN); status(text,NN,AssinaturaAlunoStatus); tentativas_falhas_consecutivas(int,NN,default 0); data_inicio(tstz,NN); data_proxima_cobranca(tstz,NN); data_cancelamento(tstz,null); created_at(NN); updated_at(null). PK(id) FK(vinculo_id→vinculos_treinador_aluno,RESTRICT) FK(pacote_id→pacotes,RESTRICT) FK(treinador_id→treinadores,RESTRICT) FK(aluno_id→alunos,RESTRICT) UQ(vinculo_id).
 
 pagamentos — cobranças da assinatura. id(uuid,NN); assinatura_aluno_id(uuid,NN); valor(numeric,NN); status(text,NN,PagamentoStatus); metodo_pagamento(text,NN,default Pix,MetodoPagamento); stripe_payment_intent_id(varchar,null); client_secret(varchar,null); pix_qr_code(text,null); pix_qr_code_url(varchar,null); pix_expiracao(tstz,null); data_pagamento(tstz,null); created_at(NN); updated_at(null). PK(id) FK(assinatura_aluno_id→assinaturas_aluno,RESTRICT) UQ(stripe_payment_intent_id) UQ(assinatura_aluno_id WHERE status='Pendente').
 
@@ -103,6 +106,13 @@ pagamentos — cobranças da assinatura. id(uuid,NN); assinatura_aluno_id(uuid,N
 assinantes — read model derivado de Aluno (sync via domain events). id(uuid,NN); aluno_id(uuid,NN); nome(varchar,NN); email(varchar,null); created_at(NN); updated_at(null). PK(id) UQ(aluno_id) [sem FK física].
 
 ai_token_usage — consumo de tokens IA por user/agente/dia. NON-EF. id(uuid,NN); user_id(uuid,NN); agent_type(varchar,NN); date(date,NN); token_count(int,NN). PK(id) UQ(user_id,agent_type,date).
+
+### Observabilidade / Saúde (relatório diário)
+health_report_config — config runtime do relatório diário de saúde (1 linha por schema). id(uuid,NN); ativo(bool,NN); hora_envio_utc(time,NN); destinatarios(text,NN,csv emails normalizados); incluir_liveness(bool,NN); incluir_kpis(bool,NN); incluir_entregabilidade(bool,NN); incluir_erros(bool,NN); ultimo_envio_em(tstz,null); created_at(NN); updated_at(null). PK(id).
+
+health_snapshots — snapshot diário da saúde do ambiente. id(uuid,NN); capturado_em(tstz,NN); ambiente(varchar100,NN); status_geral(text,NN,StatusSaude); payload_json(text,NN,JSON das seções); created_at(NN). PK(id) idx(capturado_em).
+
+error_logs — log de ERROR/Critical (sink custom, best-effort) p/ a seção de erros. id(uuid,NN); ocorrido_em(tstz,NN); nivel(varchar20,NN); origem(varchar256,NN); mensagem(varchar4000,NN,truncada); created_at(NN). PK(id) idx(ocorrido_em).
 
 ## ACESSOS / ROLES (Supabase)
 - forzion_api: usado em `ConnectionStrings:AppConnection` (runtime do app + `dotnet ef`). Dono dos objetos em homolog/develop. Em public: NÃO é dono (objetos do postgres) → precisa `GRANT ALL ON ALL TABLES IN SCHEMA public TO forzion_api` + USAGE/CREATE. Search Path da connection define o schema ativo.

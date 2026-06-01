@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, CircularProgress, Alert,
@@ -11,11 +11,13 @@ import { pagamentoApi } from "@/lib/api/pagamento";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 
-const statusColor: Record<PagamentoStatus, "default" | "success" | "warning" | "error"> = {
+const statusColor: Record<PagamentoStatus, "default" | "success" | "warning" | "error" | "info"> = {
   Pago: "success",
   Pendente: "warning",
   Expirado: "default",
   Falhou: "error",
+  Estornado: "info",
+  EmDisputa: "error",
 };
 
 const statusLabel: Record<PagamentoStatus, string> = {
@@ -23,6 +25,8 @@ const statusLabel: Record<PagamentoStatus, string> = {
   Pendente: "Pendente",
   Expirado: "Expirado",
   Falhou: "Falhou",
+  Estornado: "Estornado",
+  EmDisputa: "Em disputa",
 };
 
 interface Props {
@@ -112,6 +116,11 @@ export default function PagamentosAlunoPage() {
     setLoading(true);
     try {
       const assRes = await pagamentoApi.obterMinhaAssinatura();
+      // 204 No Content → aluno não possui assinatura; lista vazia sem erro
+      if (assRes.status === 204 || !assRes.data?.assinaturaAlunoId) {
+        setPagamentos([]);
+        return;
+      }
       const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
       setPagamentos(pgRes.data);
     } catch {

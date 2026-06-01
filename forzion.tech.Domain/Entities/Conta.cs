@@ -1,6 +1,7 @@
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.ValueObjects;
 
 namespace forzion.tech.Domain.Entities;
@@ -19,15 +20,16 @@ public class Conta : IHasDomainEvents
     public DateTime? VerificadoEm { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
+    public DateTime? AnonimizadaEm { get; private set; }
 
     private Conta() { }
 
-    public static Conta Criar(Email email, string passwordHash, TipoConta tipoConta, DateTime agora)
+    public static Result<Conta> Criar(Email email, string passwordHash, TipoConta tipoConta, DateTime agora)
     {
         ArgumentNullException.ThrowIfNull(email);
 
         if (string.IsNullOrWhiteSpace(passwordHash))
-            throw new DomainException("O hash da senha é obrigatório.");
+            return Result.Failure<Conta>(ContaErrors.PasswordHashObrigatorio);
 
         var conta = new Conta
         {
@@ -41,16 +43,17 @@ public class Conta : IHasDomainEvents
 
         conta._domainEvents.Add(new ContaRegistradaEvent(conta.Id, email.Value, agora));
 
-        return conta;
+        return Result.Success(conta);
     }
 
-    public void AtualizarSenha(string novoHash)
+    public Result AtualizarSenha(string novoHash, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(novoHash))
-            throw new DomainException("O hash da senha é obrigatório.");
+            return Result.Failure(ContaErrors.PasswordHashObrigatorio);
 
         PasswordHash = novoHash;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
     public void MarcarEmailVerificado(DateTime agora)
@@ -60,5 +63,28 @@ public class Conta : IHasDomainEvents
         EmailVerificado = true;
         VerificadoEm = agora;
         UpdatedAt = agora;
+    }
+
+    public Result Anonimizar(DateTime agora)
+    {
+        if (AnonimizadaEm is not null)
+            return Result.Success();
+
+        var tokenAnon = $"anon+{Guid.NewGuid():N}@anonimizado.local";
+        var emailResult = Email.Criar(tokenAnon);
+        // The format satisfies the Email VO regex — failure here would be a bug, so propagate.
+        if (emailResult.IsFailure)
+            return Result.Failure(emailResult.Error!);
+
+        Email = emailResult.Value;
+        PasswordHash = string.Empty;
+        EmailVerificado = false;
+        VerificadoEm = null;
+        AnonimizadaEm = agora;
+        UpdatedAt = agora;
+
+        _domainEvents.Add(new ContaAnonimizadaEvent(Id, TipoConta, agora));
+
+        return Result.Success();
     }
 }

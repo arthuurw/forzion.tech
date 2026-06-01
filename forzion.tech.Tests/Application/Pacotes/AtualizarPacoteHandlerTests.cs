@@ -22,11 +22,11 @@ public class AtualizarPacoteHandlerTests
         _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
 
-        _handler = new AtualizarPacoteHandler(_pacoteRepo.Object, _unitOfWork.Object, _validator.Object);
+        _handler = new AtualizarPacoteHandler(_pacoteRepo.Object, _unitOfWork.Object, _validator.Object, TimeProvider.System);
     }
 
     private static Pacote CriarPacote(Guid treinadorId) =>
-        Pacote.Criar(treinadorId, "Básico", 100m, DateTime.UtcNow);
+        Pacote.Criar(treinadorId, "Básico", 100m, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_PacoteExistenteMesmoDono_AtualizaECommita()
@@ -39,7 +39,8 @@ public class AtualizarPacoteHandlerTests
 
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Premium");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Premium");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

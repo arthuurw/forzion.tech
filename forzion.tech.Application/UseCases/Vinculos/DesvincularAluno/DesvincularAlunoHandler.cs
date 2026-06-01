@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
@@ -17,7 +18,7 @@ public class DesvincularAlunoHandler(
     TimeProvider timeProvider,
     ILogger<DesvincularAlunoHandler> logger)
 {
-    public virtual Task HandleAsync(
+    public virtual Task<Result> HandleAsync(
         DesvincularAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -25,38 +26,49 @@ public class DesvincularAlunoHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task HandleAsyncCore(
+    private async Task<Result> HandleAsyncCore(
         DesvincularAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
         var vinculo = await vinculoRepository.ObterPorIdAsync(command.VinculoId, cancellationToken).ConfigureAwait(false)
             ?? throw new VinculoNaoEncontradoException();
 
-        // Validar autorização
         if (!userContext.IsSystemAdmin && vinculo.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
 
-        vinculo.Inativar();
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var inativarResult = vinculo.Inativar(agora);
+        if (inativarResult.IsFailure)
+            return Result.Failure(inativarResult.Error!);
 
         var assinatura = await assinaturaRepository.ObterPorVinculoIdAsync(vinculo.Id, cancellationToken).ConfigureAwait(false);
         if (assinatura is not null && assinatura.Status != Domain.Enums.AssinaturaAlunoStatus.Cancelada)
-            assinatura.Cancelar();
+        {
+            var cancelarResult = assinatura.Cancelar(agora);
+            if (cancelarResult.IsFailure)
+                return Result.Failure(cancelarResult.Error!);
+        }
 
         var treinoAlunos = await treinoAlunoRepository.ListarAtivosPorParAsync(vinculo.TreinadorId, vinculo.AlunoId, cancellationToken).ConfigureAwait(false);
         foreach (var ta in treinoAlunos)
-            ta.AlterarStatus(TreinoAlunoStatus.Inativo);
+            ta.AlterarStatus(TreinoAlunoStatus.Inativo, agora);
 
-        var log = LogAprovacao.Registrar(
+        var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.InativacaoVinculo,
             userContext.PerfilId,
             vinculo.Id,
             nameof(VinculoTreinadorAluno),
-            timeProvider.GetUtcNow().UtcDateTime,
+            agora,
             command.Observacao);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+        var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Vínculo {VinculoId} inativado por {RealizadoPorId}. {Count} ficha(s) afetada(s).", vinculo.Id, userContext.PerfilId, treinoAlunos.Count);
+
+        return Result.Success();
     }
 }

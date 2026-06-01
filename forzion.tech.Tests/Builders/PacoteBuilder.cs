@@ -43,7 +43,7 @@ public sealed class PacoteBuilder
         return this;
     }
 
-    public Pacote Build() => Pacote.Criar(_treinadorId, _nome, _preco, _agora, _descricao);
+    public Pacote Build() => Pacote.Criar(_treinadorId, _nome, _preco, _agora, _descricao).Value;
 
     public static implicit operator Pacote(PacoteBuilder builder) => builder.Build();
 }

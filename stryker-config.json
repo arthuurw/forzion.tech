@@ -1,4 +1,5 @@
 {
+  "_comment": "F8 (Fase 3 test remediation): scope expandido. `project` aqui e default local; .github/workflows/mutation.yml roda matriz Domain + Application via `--project`. break 40 e calibrado pelo piso (Application ~46%, Domain ~82%).",
   "stryker-config": {
     "solution": "forzion.tech.slnx",
     "project": "forzion.tech.Domain/forzion.tech.Domain.csproj",

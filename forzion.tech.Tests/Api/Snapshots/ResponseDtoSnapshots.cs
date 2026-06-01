@@ -1,9 +1,15 @@
+using forzion.tech.Application.UseCases.Admin.HealthReport;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.AssinaturaAlunos;
 using forzion.tech.Application.UseCases.Auth.Login;
+using forzion.tech.Application.UseCases.Conta.ObterPerfil;
 using forzion.tech.Application.UseCases.Pacotes;
 using forzion.tech.Application.UseCases.Pagamentos;
+using forzion.tech.Application.UseCases.Planos;
 using forzion.tech.Application.UseCases.Treinadores;
+using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
+using forzion.tech.Application.UseCases.Vinculos;
+using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Domain.Enums;
 using static VerifyXunit.Verifier;
 
@@ -95,4 +101,81 @@ public class ResponseDtoSnapshots
         ClientSecret: "pi_secret_deterministico",
         DataPagamento: null,
         CreatedAt: Criado));
+
+    // F33 (Fase 5) — DTOs adicionais que faltavam.
+
+    [Fact]
+    public Task PagamentoResponse_Treinador_OmiteClientSecret() => Verify(new PagamentoResponse(
+        PagamentoId: Id1,
+        AssinaturaAlunoId: Id2,
+        Valor: 149.90m,
+        Status: PagamentoStatus.Pago,
+        MetodoPagamento: MetodoPagamento.Cartao,
+        PixQrCode: null,
+        PixQrCodeUrl: null,
+        PixExpiracao: null,
+        ClientSecret: null,
+        DataPagamento: Atualizado,
+        CreatedAt: Criado));
+
+    [Fact]
+    public Task VinculoResponse() => Verify(new VinculoResponse(
+        VinculoId: Id1,
+        TreinadorId: Id2,
+        AlunoId: Id3,
+        PacoteId: Id4,
+        Status: VinculoStatus.Ativo,
+        CreatedAt: Criado));
+
+    [Fact]
+    public Task VinculoAlunoItemResponse() => Verify(new VinculoAlunoItemResponse(
+        VinculoId: Id1,
+        TreinadorId: Id2,
+        NomeTreinador: "Coach Silva",
+        Status: VinculoStatus.Ativo,
+        DataInicio: Criado,
+        CreatedAt: Criado));
+
+    [Fact]
+    public Task PerfilResponse() => Verify(new PerfilResponse(
+        Nome: "Arthur Webster",
+        Email: "arthur@forzion.tech",
+        TipoConta: "Aluno"));
+
+    [Fact]
+    public Task PlanoPlataformaResponse() => Verify(new PlanoPlataformaResponse(
+        PlanoId: Id1,
+        Nome: "Pro",
+        Tier: TierPlano.Pro,
+        MaxAlunos: 50,
+        Preco: 299.90m,
+        IsAtivo: true,
+        CreatedAt: Criado,
+        UpdatedAt: Atualizado,
+        Descricao: "Plano profissional"));
+
+    [Fact]
+    public Task OnboardingStatusResponse() => Verify(new OnboardingStatusResponse(
+        OnboardingCompleto: true,
+        ContaConfigurada: true));
+
+    [Fact]
+    public Task HealthSnapshotResponse() => Verify(new HealthSnapshotResponse(
+        Id: Id1,
+        CapturadoEm: Criado,
+        Ambiente: "Homolog",
+        StatusGeral: StatusSaude.Ok,
+        PayloadJson: "{\"liveness\":\"ok\"}"));
+
+    [Fact]
+    public Task HealthReportConfigResponse() => Verify(new HealthReportConfigResponse(
+        Id: Id1,
+        Ativo: true,
+        HoraEnvioUtc: new TimeOnly(8, 30, 0),
+        Destinatarios: new[] { "ops@forzion.tech", "dev@forzion.tech" },
+        IncluirLiveness: true,
+        IncluirKpis: true,
+        IncluirEntregabilidade: true,
+        IncluirErros: false,
+        UltimoEnvioEm: Atualizado));
 }

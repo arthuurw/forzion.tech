@@ -78,6 +78,18 @@ export function ResponsiveTable<T>({
             {rowIndex > 0 && <Divider />}
             <Box
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              role={onRowClick ? "button" : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined
+              }
               sx={{
                 px: 2,
                 py: 1.5,
@@ -141,6 +153,18 @@ export function ResponsiveTable<T>({
                 key={rowKey(row)}
                 hover
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                role={onRowClick ? "button" : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onRowClick(row);
+                        }
+                      }
+                    : undefined
+                }
                 sx={{ cursor: onRowClick ? "pointer" : "default" }}
               >
                 {columns.map((col, i) => (

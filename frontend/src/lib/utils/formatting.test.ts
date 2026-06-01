@@ -16,8 +16,6 @@ function makeSerie(overrides: Partial<SerieConfigResponse> = {}): SerieConfigRes
   };
 }
 
-// ─── formatarSeries ──────────────────────────────────────────────────────────
-
 describe("formatarSeries", () => {
   it("array vazio → —", () => {
     expect(formatarSeries([])).toBe("—");
@@ -53,8 +51,6 @@ describe("formatarSeries", () => {
   });
 });
 
-// ─── formatarData ────────────────────────────────────────────────────────────
-
 describe("formatarData", () => {
   it("ISO com time → DD/MM", () => {
     expect(formatarData("2025-03-15T00:00:00")).toBe("15/03");
@@ -68,8 +64,6 @@ describe("formatarData", () => {
     expect(formatarData("2025-12-31T10:00:00Z")).toBe("31/12");
   });
 });
-
-// ─── getWeekLabel ────────────────────────────────────────────────────────────
 
 describe("getWeekLabel", () => {
   // Semana de referência: 2025-03-03 a 2025-03-09 (seg → dom) → todos retornam "03/03"
@@ -85,8 +79,6 @@ describe("getWeekLabel", () => {
     expect(getWeekLabel(dateStr)).toBe("03/03");
   });
 });
-
-// ─── periodoParaDatas ────────────────────────────────────────────────────────
 
 describe("periodoParaDatas", () => {
   beforeEach(() => {

@@ -1,13 +1,13 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
 
 public class ExecucaoTreinoTests
 {
     private static ExecucaoTreino CriarExecucao() =>
-        ExecucaoTreino.Criar(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow);
+        ExecucaoTreino.Criar(Guid.NewGuid(), Guid.NewGuid(), TestData.Agora, TestData.Agora).Value;
 
     // --- Criar ---
 
@@ -22,30 +22,30 @@ public class ExecucaoTreinoTests
     [Fact]
     public void Criar_TreinoIdVazio_LancaDomainException()
     {
-        var act = () => ExecucaoTreino.Criar(Guid.Empty, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow);
-        act.Should().Throw<DomainException>();
+        var r = ExecucaoTreino.Criar(Guid.Empty, Guid.NewGuid(), TestData.Agora, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Criar_AlunoIdVazio_LancaDomainException()
     {
-        var act = () => ExecucaoTreino.Criar(Guid.NewGuid(), Guid.Empty, DateTime.UtcNow, DateTime.UtcNow);
-        act.Should().Throw<DomainException>();
+        var r = ExecucaoTreino.Criar(Guid.NewGuid(), Guid.Empty, TestData.Agora, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Criar_DataDefault_LancaDomainException()
     {
-        var act = () => ExecucaoTreino.Criar(Guid.NewGuid(), Guid.NewGuid(), default, DateTime.UtcNow);
-        act.Should().Throw<DomainException>();
+        var r = ExecucaoTreino.Criar(Guid.NewGuid(), Guid.NewGuid(), default, TestData.Agora);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void Criar_ObservacaoMuitoLonga_LancaDomainException()
     {
-        var act = () => ExecucaoTreino.Criar(
-            Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow, new string('a', 501));
-        act.Should().Throw<DomainException>();
+        var r = ExecucaoTreino.Criar(
+            Guid.NewGuid(), Guid.NewGuid(), TestData.Agora, TestData.Agora, new string('a', 501));
+        r.IsFailure.Should().BeTrue();
     }
 
     // --- AdicionarExercicio ---
@@ -65,24 +65,24 @@ public class ExecucaoTreinoTests
     public void AdicionarExercicio_SeriesZero_LancaDomainException()
     {
         var e = CriarExecucao();
-        var act = () => e.AdicionarExercicio(Guid.NewGuid(), 0, 12, null);
-        act.Should().Throw<DomainException>();
+        var r = e.AdicionarExercicio(Guid.NewGuid(), 0, 12, null);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void AdicionarExercicio_RepeticoesZero_LancaDomainException()
     {
         var e = CriarExecucao();
-        var act = () => e.AdicionarExercicio(Guid.NewGuid(), 3, 0, null);
-        act.Should().Throw<DomainException>();
+        var r = e.AdicionarExercicio(Guid.NewGuid(), 3, 0, null);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void AdicionarExercicio_CargaNegativa_LancaDomainException()
     {
         var e = CriarExecucao();
-        var act = () => e.AdicionarExercicio(Guid.NewGuid(), 3, 12, -1m);
-        act.Should().Throw<DomainException>();
+        var r = e.AdicionarExercicio(Guid.NewGuid(), 3, 12, -1m);
+        r.IsFailure.Should().BeTrue();
     }
 
     [Fact]
@@ -98,16 +98,18 @@ public class ExecucaoTreinoTests
     public void AdicionarExercicio_TreinoExercicioIdVazio_LancaDomainException()
     {
         var e = CriarExecucao();
-        var act = () => e.AdicionarExercicio(Guid.Empty, 3, 12, null);
-        act.Should().Throw<DomainException>().WithMessage("O exercício do treino é inválido.");
+        var r = e.AdicionarExercicio(Guid.Empty, 3, 12, null);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O exercício do treino é inválido.");
     }
 
     [Fact]
     public void AdicionarExercicio_ObservacaoMuitoLonga_LancaDomainException()
     {
         var e = CriarExecucao();
-        var act = () => e.AdicionarExercicio(Guid.NewGuid(), 3, 12, null, new string('a', 501));
-        act.Should().Throw<DomainException>().WithMessage("A observação deve ter no máximo 500 caracteres.");
+        var r = e.AdicionarExercicio(Guid.NewGuid(), 3, 12, null, new string('a', 501));
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("A observação deve ter no máximo 500 caracteres.");
     }
 
     [Fact]

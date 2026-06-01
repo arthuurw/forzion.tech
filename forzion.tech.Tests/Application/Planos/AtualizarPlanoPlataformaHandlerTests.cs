@@ -21,34 +21,36 @@ public class AtualizarPlanoPlataformaHandlerTests
     {
         _validator.Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
-        _handler = new AtualizarPlanoPlataformaHandler(_planoRepo.Object, _unitOfWork.Object, _validator.Object);
+        _handler = new AtualizarPlanoPlataformaHandler(_planoRepo.Object, _unitOfWork.Object, _validator.Object, TimeProvider.System);
     }
 
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetornaResponse()
     {
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow).Value;
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
         var result = await _handler.HandleAsync(new AtualizarPlanoPlataformaCommand(plano.Id, "Pro", null, 20, 199.90m));
 
-        result.Nome.Should().Be("Pro");
-        result.MaxAlunos.Should().Be(20);
-        result.Preco.Should().Be(199.90m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Pro");
+        result.Value.MaxAlunos.Should().Be(20);
+        result.Value.Preco.Should().Be(199.90m);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task HandleAsync_ApenasNome_AtualizaSoNome()
     {
-        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow);
+        var plano = PlanoPlataforma.Criar("Starter", forzion.tech.Domain.Enums.TierPlano.Basic, 10, 99.90m, DateTime.UtcNow).Value;
         _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
 
         var result = await _handler.HandleAsync(new AtualizarPlanoPlataformaCommand(plano.Id, "Pro", null, null, null));
 
-        result.Nome.Should().Be("Pro");
-        result.MaxAlunos.Should().Be(10);
-        result.Preco.Should().Be(99.90m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Pro");
+        result.Value.MaxAlunos.Should().Be(10);
+        result.Value.Preco.Should().Be(99.90m);
     }
 
     [Fact]

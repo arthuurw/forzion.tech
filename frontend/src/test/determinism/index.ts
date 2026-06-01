@@ -45,7 +45,6 @@ export function uninstallDeterminism(): void {
 
 export {
   freezeTime,
-  advanceTime,
   restoreTime,
   DETERMINISTIC_NOW_ISO,
 } from "./time";
