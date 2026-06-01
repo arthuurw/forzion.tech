@@ -40,7 +40,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 ## COMPONENTES
 - `MetaWhatsAppCloudNotifier` / `NullWhatsAppNotifier` / `EnvironmentWhatsAppDecorator`.
 - `PhoneNumberNormalizer` (static) — E.164 dígitos sem `+`, DDI BR `55` default; null/inválido → null.
-- `WhatsAppTemplates` (static, catálogo central — análogo a `EmailTemplates`) — 15 factories → `WhatsAppTemplateMessage`. Money pt-BR. **Templates NÃO mais hardcoded nos handlers.**
+- `WhatsAppTemplates` (static, catálogo central — análogo a `EmailTemplates`) — 16 factories → `WhatsAppTemplateMessage`. Money pt-BR. **Templates NÃO mais hardcoded nos handlers.**
 - Handlers de domain event (Infrastructure/Notifications/WhatsApp) — ver FLUXOS. Padrão: `if(!whatsAppNotifier.Habilitado) return;` → resolve destinatário (repo) → check telefone null (skip) → `SendTemplateAsync(WhatsAppTemplates.X(...))`.
 - Webhook: `WhatsAppDeliveryLog` (Domain) + `IWhatsAppDeliveryLogRepository` + `ProcessarWebhookWhatsAppHandler` (Infrastructure).
 
@@ -86,8 +86,8 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 
 ## CUSTO & MODELO META (per-message)
 - Desde 01/07/2025: por mensagem, cobra quando *template* é entregue. Categorias marketing / utility / authentication / service. Utility grátis na janela 24h; service grátis.
-- Notifier usa `type:template` → entrega **fora da janela** (corrigido vs `type:text` anterior). ⚠️ **DEPENDÊNCIA EXTERNA**: cada template (15 nomes abaixo) precisa ser **criado e aprovado no Meta Business Manager** (categoria utility/auth, idioma pt_BR, body com variáveis posicionais na ordem do catálogo). Sem aprovação, a Meta rejeita o envio. Ação manual de ops — não automatizável via código.
-- Templates (snake_case): aluno `cobranca_disponivel`,`cobranca_falhou`,`pagamento_estornado`,`assinatura_inadimplente`,`assinatura_cancelada`,`bem_vindo_aluno`,`assinatura_criada`,`aluno_inativado`,`vinculo_aprovado`; treinador `treinador_aprovado`,`treinador_reprovado`,`treinador_inativado`,`aluno_cancelou_assinatura`,`pagamento_em_disputa`,`novo_aluno_pendente`.
+- Notifier usa `type:template` → entrega **fora da janela** (corrigido vs `type:text` anterior). ⚠️ **DEPENDÊNCIA EXTERNA**: cada template (16 nomes abaixo) precisa ser **criado e aprovado no Meta Business Manager** (categoria utility/auth, idioma pt_BR, body com variáveis posicionais na ordem do catálogo). Sem aprovação, a Meta rejeita o envio. Ação manual de ops — não automatizável via código.
+- Templates (snake_case): aluno `cobranca_disponivel`,`cobranca_falhou`,`pagamento_estornado`,`assinatura_inadimplente`,`assinatura_reativada`,`assinatura_cancelada`,`bem_vindo_aluno`,`assinatura_criada`,`aluno_inativado`,`vinculo_aprovado`; treinador `treinador_aprovado`,`treinador_reprovado`,`treinador_inativado`,`aluno_cancelou_assinatura`,`pagamento_em_disputa`,`novo_aluno_pendente`.
 - Brasil base (USD/msg, ~2026): marketing ~$0.0625 · auth ~$0.0315 · utility menor + volume. Confirmar rate card no WhatsApp Manager.
 
 ## SEGURANÇA

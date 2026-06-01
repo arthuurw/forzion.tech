@@ -40,7 +40,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - **property** (`*.property.test.ts`, fast-check — excluídos da cobertura), **contract** (Pact consumer, `npm run test:contract`), **E2E Playwright** (`e2e/specs/`: smoke/critical/security/lgpd/multi-tab/network/a11y/visual; 5 projects browser+mobile; `auth.setup` gera storage-state por papel; snapshots por-OS `*-{platform}.png`), **storybook** (+ a11y addon).
 
 ## 4. CONTAGEM / RASTREIO (baseline 2026-05-29)
-- Backend: **1634** testes (unit + integração/Testcontainers) — verde. Frontend: **377** (vitest 3 projects) — verde. Playwright E2E: ~16 smoke+critical rodados ao vivo (suíte maior; alguns specs com brittleness de seletor — ver [.specs/qa]).
+- Backend: **1668** testes (unit + integração/Testcontainers) — verde. Frontend: **377** (vitest 3 projects) — verde. Playwright E2E: ~16 smoke+critical rodados ao vivo (suíte maior; alguns specs com brittleness de seletor — ver [.specs/qa]).
 - Regra: a contagem NÃO regride sem decisão humana. Teste que falha **fica** (vermelho visível) até ser corrigido pelo código — não some. Cobertura por piso protege contra suíte parar de rodar (§7).
 
 ## 5. CO-LOCALIZAÇÃO (mapa)
@@ -94,4 +94,4 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - **Coverlet por-assembly**: `Threshold` aplica ao filtro `Include`; rodar steps separados por assembly (não misturar).
 
 ## 11. REFERÊNCIAS
-[specification-backend] (camadas/handlers), [specification-db] (Testcontainers/schemas), [specification-git] (CRLF/format/commits), [specification-stripe] (FakeStripeService/webhook), [specification-email]/[specification-whatsapp] (Null* + decorators de teste), [specification-security] (semgrep/zap/dep-scan gates), [specification-observability] (lighthouse budgets), [specification-frontend-ui] (harness a11y), [specification-local-ci-repro] (reproduzir gates local + gotchas + achado Application coverage <85). Relatório de validação ao vivo + gaps: `.specs/qa/validation-report-2026-05-29.md`.
+[specification-backend] (camadas/handlers), [specification-db] (Testcontainers/schemas), [specification-git] (CRLF/format/commits), [specification-stripe] (FakeStripeService/webhook), [specification-email]/[specification-whatsapp] (Null* + decorators de teste), [specification-security] (semgrep/zap/dep-scan gates), [specification-observability] (lighthouse budgets), [specification-frontend-ui] (harness a11y), [specification-local-ci-repro] (reproduzir gates local + gotchas; achado Application coverage <85 RESOLVIDO — method 95.86%, commit 947ff91). Relatório de validação ao vivo + gaps: `.specs/qa/validation-report-2026-05-29.md`.

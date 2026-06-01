@@ -18,7 +18,7 @@ Gate `ci.yml` = `[test-backend-unit, test-backend-integration, test-frontend, bu
 | Gate/check | Comando local | Rodável Win? | Caveat |
 |---|---|---|---|
 | backend build+format | `dotnet build -c Release` ; `dotnet format forzion.tech.slnx --verify-no-changes` | ✅ | format exige CRLF (§2). `.slnx` precisa SDK ≥9/10. |
-| backend unit (1617) | `dotnet test forzion.tech.Tests --filter "Category!=Integration"` | ✅ | — |
+| backend unit (1668) | `dotnet test forzion.tech.Tests --filter "Category!=Integration"` | ✅ | — |
 | **backend coverage gates** | ver §3 | ⚠️ | NÃO rodar 6× `--no-build` em sequência no Windows (merge/lock → números errados/rc=1). Rodar 1× sem Include e ler a tabela por módulo. |
 | backend integração (Testcontainers) | `dotnet test forzion.tech.Tests --filter "Category=Integration"` | ✅ (Docker) | 96 testes; sobe Postgres efêmero. |
 | backend vuln/SBOM | `dotnet list forzion.tech.slnx package --vulnerable --include-transitive` | ✅ | — |
@@ -50,10 +50,10 @@ Medido 2026-05-30 (idêntico SDK 8 e 10 → não é artefato de SDK):
 | Módulo | Line | Branch | Method | Gate CI | Status |
 |---|---|---|---|---|---|
 | Domain | 94.76% | 93.09% | 93.77% | branch 75 / line+method 85 | ✅ |
-| Application | 89.12% | 80.75% | **84.51%** | branch 75 / line+method 85 | ❌ **method < 85** |
+| Application | 94.77% | 84.51% | **95.86%** | branch 75 / line+method 85 | ✅ (resolvido — commit 947ff91) |
 | Api | 87.74% | 55.95% | 79.03% | line 85 / method 70 | ✅ |
 | Infrastructure | 6.2% | 67.15% | 34.87% | (só gate na suíte de integração: branch 35) | n/a unit |
-- ⚠️ **ACHADO ABERTO**: gate `test-backend-unit > Coverage Application (line/method 85)` **FALHA** (`-p:ThresholdType="line,method"` exige AMBOS ≥85; method 84.51). Confirmado via comando exato do CI sob SDK 8 (rc=1). O comentário de baseline no `ci.yml` (method 93.1%) está DESATUALIZADO — features LGPD/WhatsApp/admin-stats adicionaram handlers de Application sem cobertura de método suficiente, e essas branches nunca rodaram o CI completo. RESOLUÇÃO: adicionar testes unit cobrindo os métodos descobertos da Application (preferível) OU rever o piso com aprovação humana ([specification-tests] §8 proíbe abaixar sem aprovação).
+- ✅ **ACHADO RESOLVIDO (commit 947ff91)**: o gate `test-backend-unit > Coverage Application (line/method 85)` chegou a FALHAR (`-p:ThresholdType="line,method"` exige AMBOS ≥85; method estava 84.51 — features LGPD/WhatsApp/admin-stats adicionaram handlers sem cobertura de método). RESOLUÇÃO aplicada: +51 testes unit cobrindo métodos/DTOs/lambdas descobertos (LGPD/admin/treinos/pagamentos) → Application agora line 94.77% / branch 84.51% / **method 95.86%**, gate verde. O comentário de baseline conservador no `ci.yml` (method 93.1%) continua abaixo do real (95.86%) — piso intacto, não abaixado ([specification-tests] §8).
 - Reproduzir 1 gate: `dotnet test forzion.tech.Tests --no-build -c Release --filter "Category!=Integration" -p:CollectCoverage=true -p:Include="[forzion.tech.Application]*" -p:Threshold=85 -p:ThresholdType="line,method" -p:ThresholdStat=Total` (rebuild antes; não encadear vários).
 
 ## 4. E2E A11Y LOCAL (color-contrast hard-gate)
@@ -68,5 +68,5 @@ Medido 2026-05-30 (idêntico SDK 8 e 10 → não é artefato de SDK):
 ## 5. ACHADOS DESTA VALIDAÇÃO (2026-05-30) & status
 - ✅ corrigido: openapi-drift (swagger +8 endpoints), vitest `testTimeout` 20000 (timeouts sob coverage), gitleaks allowlist `forzion.tech.Tests/**.cs`, color-contrast landing (`HowItWorks` eyebrow `#7a6300`, números `#808080`).
 - ✅ verde local: semgrep 0, gitleaks 0 (CI-equiv), integração 96, contract 16, hygiene, audit/license/sbom, public+admin a11y.
-- ❌ ABERTO: **Application coverage method 84.51% < 85%** (§3) — bloqueará o gate `test-backend-unit` no PR.
+- ✅ resolvido (commit 947ff91): **Application coverage method 84.51% → 95.86%** (§3) — gate `test-backend-unit` verde (+51 testes unit; suíte 1617 → 1668).
 - ⏭️ deferido (CI valida): frontend coverage thresholds (node 22 não medido limpo — máquina lenta), aluno/treinador a11y (bloqueio de verificação de email).

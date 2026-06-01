@@ -9,13 +9,14 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 
 ## STACK & GATE
 - SDK: Stripe.net `51.1.0` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
-- `IStripeService` (Application/Interfaces): 6 métodos:
+- `IStripeService` (Application/Interfaces): 7 métodos:
   - `CriarContaConnectAsync(email, nome, ct)` → `accountId`
   - `GerarLinkOnboardingAsync(accountId, urlRetorno, urlCancelamento, ct)` → URL
   - `CriarPixPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `PixPaymentResult(intentId, qrCode, qrCodeUrl, expiracao)`
   - `CriarCartaoPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `CartaoPaymentResult(intentId, clientSecret)`
   - `ContaEstaAtivadaAsync(accountId, ct)` → `bool` (poll `account.ChargesEnabled`)
   - `ValidarWebhookAsync(payload, assinaturaHeader)` → `bool` (`EventUtility.ConstructEvent` HMAC-SHA256)
+  - `ListarEventosDesdeAsync(desdeUtc, ct)` → `IReadOnlyList<StripeEventSummary>` (reconciliação — ver §RECONCILIAÇÃO)
 - Impl única: `StripeService` (Infrastructure/Services). Sem `NullStripeService` — `StripeSettings.ValidateOnStart` exige `SecretKey`/`WebhookSecret` não-vazios (boot falha sem config).
 - `RequestOptions { ApiKey }` passada em cada chamada (sem estado global).
 - Métodos `Create*PaymentIntent`: usam `MoneyCentavos.ValorETaxaCentavos(valor, taxaPercent)` (Application/UseCases/Pagamentos) — extração de F16 (truncamento via `(long)`; sum preservation ≤1 centavo). NÃO usar Math.Round / banker's rounding.
@@ -84,7 +85,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 | POST /treinador/pagamentos/cobrar/{id}?metodo=Pix\|Cartao | Treinador | GerarCobrancaMensalHandler | 200 `PagamentoResponse` (treinador, sem ClientSecret) | 403, 404, 409, 422, 500 |
 | GET /aluno/pagamentos/{id} | Aluno | ObterStatusPagamentoHandler | 200 `PagamentoResponse` (aluno, COM ClientSecret) | 403, 404 |
 | GET /aluno/pagamentos/assinatura/{id} | Aluno | ListarPagamentosAssinaturaAlunoHandler | 200 `PagamentoResponse[]` | 403, 404 |
-| POST /internal/processar-renovacoes | X-Internal-Key | inline `PagamentosEndpoints.cs:77` | 200 `{processadas, falhas}` | 401 |
+| POST /internal/processar-renovacoes | X-Internal-Key | inline `PagamentosEndpoints.cs:79` | 200 `{processadas, falhas}` | 401 |
 | POST /webhooks/stripe | nenhum (Stripe-Signature) | ProcessarWebhookStripeHandler | 200 (ok/ignorado) | 400 (assinatura inválida ou payload >64KB) |
 
 ⚠ `DomainException` → **422** (UnprocessableEntity, `GlobalExceptionHandler`), NÃO 400. Só `ValidationException` (FluentValidation, formato) → 400.

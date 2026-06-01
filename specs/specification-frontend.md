@@ -25,12 +25,14 @@ DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, ag
 - `withSentryConfig`: source maps só sobem com `SENTRY_AUTH_TOKEN`; `next build` sem token funciona (sem upload). `sourcemaps.disable: !SENTRY_AUTH_TOKEN`.
 - `withBundleAnalyzer`: ativo via `ANALYZE=true` (script `analyze`).
 - `API_BASE_URL` obrigatório em `NODE_ENV=production` (throw em build se ausente).
+- `JWT_SECRET` obrigatório em `NODE_ENV=production` (throw em build se ausente).
 
 ## SEGURANÇA — HEADERS HTTP
 Aplicados via `next.config.ts` em todas as rotas (`source: "/(.*)"`) com `securityHeaders`:
 
 | Header | Valor |
 |--------|-------|
+| `X-DNS-Prefetch-Control` | `on` |
 | `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline'[+'unsafe-eval' só dev] https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.stripe.com; font-src 'self'; connect-src 'self' https://api.stripe.com https://*.sentry.io; frame-src https://js.stripe.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'` |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
 | `X-Frame-Options` | `DENY` |
@@ -72,10 +74,10 @@ src/
     pagamento/         — PagamentoCartao, PagamentoPix
     treinador/         — componentes específicos do treinador
     ui/                — componentes compartilhados (ErrorBoundary, SnackbarProvider, LoadingSpinner, DataList, etc.)
-  hooks/               — useInactivity, usePaginatedList, useCRUDDialog
+  hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent
   lib/
-    api/               — client.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
-    auth/              — context.tsx, jwt.ts, session.ts
+    api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
+    auth/              — context.tsx, jwt.ts, helpers.ts, buildPlaceholder.ts
     constants/         — enrollmentOptions, labels
     rateLimit.ts       — rate limiter em memória (login)
     theme/             — ThemeRegistry.tsx, index.ts (MUI theme)
@@ -98,6 +100,7 @@ html[lang=pt-BR]
         ErrorBoundary
           AuthProvider
             SnackbarProvider
+              ConsentProvider
               {children}
 ```
 - `metadata`: title="forzion.tech", description.
@@ -165,7 +168,7 @@ POST /api/auth/logout
 | `/api/auth/reset-password` | POST | Executa reset |
 | `/api/auth/resend-verification` | POST | Reenvio de verificação |
 | `/api/auth/treinadores` | GET | Listagem pública de treinadores (cadastro aluno) |
-| `/api/auth/treinadores/[id]/pacotes` | GET | Pacotes do treinador (cadastro aluno) |
+| `/api/auth/treinadores/[treinadorId]/pacotes` | GET | Pacotes do treinador (cadastro aluno) |
 
 **Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP. Mapa em memória por processo (não persistido entre restarts). Aplicado em login e register.
 

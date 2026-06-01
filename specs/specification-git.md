@@ -4,7 +4,7 @@ DOC PARA AGENTES. Fonte de verdade do workflow git deste repo. Formato denso, ag
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Atualizar NA MESMA TAREFA de mudança em: scopes de Conventional Commits, layout de branches, hooks `.husky/`, regras de pre-commit, comandos de setup, política de push/rebase.
-- Vive em `specs/` (versionado; commitar). NÃO duplicar AGENTS.md regra 26 (scopes) — referenciar.
+- Vive em `specs/` (versionado; commitar). NÃO duplicar os scopes de Conventional Commits do AGENTS.md (§CONVENÇÕES-CHAVE) — referenciar.
 
 ## CONTEXTO
 Solo dev. 1 alteração por branch. Multi-folder: cada frente vive em pasta isolada (clone independente OU worktree). Prioriza baixa fricção sync local↔origin. SEM branch protection no remoto (push direto permitido). CI ainda gate de PR.

@@ -104,11 +104,10 @@ openGraph: {
   url: "/",
   title: "forzion.tech — Gestão para Personal Trainers",
   description: "Da prescrição ao acompanhamento — controle, histórico e estrutura centralizados.",
-  images: [{ url: "/opengraph-image.png", width: 1200, height: 630 }],
 },
 twitter: { card: "summary_large_image" },
 ```
-- Imagem: `1200x630`. Opções App Router: arquivo estático `app/opengraph-image.png` OU geração dinâmica `app/opengraph-image.tsx` (`next/og` `ImageResponse`). `[GAP]` nenhum existe.
+- Imagem: `1200x630`. SEM campo `openGraph.images` explícito — a OG image é resolvida pela **file convention** do App Router via `app/opengraph-image.tsx` (geração dinâmica `next/og` `ImageResponse`, rota `/opengraph-image`). IMPLEMENTADO (não é gap).
 - `og:description` deve refletir o hero da landing (`page.tsx` linha 116: "Da prescrição ao acompanhamento — com controle, histórico e estrutura centralizados.").
 - CSP impacto: `next/og` runtime edge — sem impacto no CSP de runtime do cliente. OG image é servida same-origin (`img-src 'self'` já cobre). Ver [specification-frontend] §headers.
 

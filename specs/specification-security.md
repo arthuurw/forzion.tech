@@ -12,11 +12,11 @@ Trust boundaries: `internet → nginx (edge, TLS terminate) → {frontend:3000 |
 | SPA / páginas Next | `nginx /` → `frontend:3000` | sessão JWT (cookie/header via proxy) | servidor Next também é proxy BFF |
 | Proxy BFF backend | Next `/api/backend/[...path]` | repassa Bearer do usuário | frontend reescreve p/ `API_BASE_URL`; descarta headers crus (ex. svix-*) |
 | Auth proxy | Next `/api/auth/*` | pré-auth (login/registro/reset) | rate-limit frontend in-memory (§4) + rate-limit backend `auth` |
-| Webhooks | `nginx /webhooks/` → `backend:8080` DIRETO | assinatura (Stripe/Svix/Meta) — anônimo | bypassa o proxy SPA p/ preservar headers de assinatura crus (nginx.conf:55-62) |
+| Webhooks | `nginx /webhooks/` → `backend:8080` DIRETO | assinatura (Stripe/Svix/Meta) — anônimo | bypassa o proxy SPA p/ preservar headers de assinatura crus (nginx.conf:59-66) |
 | Endpoints internos | `/internal/processar-renovacoes`, `/internal/reconciliar-pagamentos` | header `X-Internal-Key` constant-time (§5) | server-to-server (billing-renewal GH Action); EXPOSTO via HTTPS público sem WAF (gap §8) |
 | Health | `/health` | anônimo + rate `read` | — |
 
-Swagger NÃO é exposto publicamente: backend só serve Swagger em Development (nginx.conf:47-49).
+Swagger NÃO é exposto publicamente: backend só serve Swagger em Development (nginx.conf:51-53).
 
 ## 2. AUTHN / AUTHZ
 Mecânica completa em [specification-backend] §4 (auth/authorization, rate-limiting, internal). Resumo de postura:
@@ -25,7 +25,7 @@ Mecânica completa em [specification-backend] §4 (auth/authorization, rate-limi
 - **Blacklist por `jti`** (`OnTokenValidated`, `cs:61-76`): todo token exige `jti` GUID válido (`ctx.Fail` se ausente `cs:64-67`); consulta `ITokenRevogadoRepository.EstaRevogadoAsync` → revogado ⇒ `ctx.Fail`. Logout/troca-de-senha gravam jti revogado; `LimparTokensRevogadosService` (hosted) faz GC. Repo ausente (DI Test) ⇒ checagem pulada (`cs:71`).
 - **Policies por `tipo_conta`** (`cs:49-52`): `SystemAdmin` | `Treinador` | `Aluno` (`RequireClaim`). Ownership por recurso (`perfil_id`/`sub`) é enforçado nos handlers/filters, não nas policies — ver [specification-backend] §4 (filters `IEndpointFilter`).
 - **Sessional-only, SEM refresh token**: não há endpoint de refresh nem token de longa duração. Rationale: superfície reduzida (sem rotação/armazenamento de refresh tokens, sem replay de refresh roubado); revogação imediata via blacklist jti. Implicação: expiração ⇒ re-login (sem renovação silenciosa); UX aceitável p/ o escopo. Mudança aqui (adicionar refresh) reabre toda a superfície de token rotation — atualizar esta spec + backend §4.
-- **CORS** (`DependencyInjectionExtensions.cs:309-331`): origins de `Cors:AllowedOrigins` (`;`-separado), rejeita `*` e URIs inválidas (`cs:315-317`); métodos GET/POST/PUT/DELETE/PATCH/OPTIONS; headers `Content-Type/Authorization/Accept/X-Requested-With`; `AllowCredentials`. Lista vazia ⇒ deny-all + `LogWarning` no boot (`RouteBuilderExtensions.cs:38-55`).
+- **CORS** (`DependencyInjectionExtensions.cs:315-337`): origins de `Cors:AllowedOrigins` (`;`-separado), rejeita `*` e URIs inválidas (`cs:317-323`); métodos GET/POST/PUT/DELETE/PATCH/OPTIONS; headers `Content-Type/Authorization/Accept/X-Requested-With`; `AllowCredentials`. Lista vazia ⇒ deny-all + `LogWarning` no boot (`RouteBuilderExtensions.cs:38-55`).
 
 ## 3. HTTP SECURITY HEADERS / CSP (3 camadas)
 Defesa em profundidade em 3 camadas independentes. Cabeçalhos emitidos em mais de uma camada ⇒ o navegador pode receber duplicatas.
