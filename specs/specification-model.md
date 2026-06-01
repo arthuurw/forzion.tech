@@ -18,7 +18,7 @@ DOC PARA AGENTES. Fonte de verdade do modelo tático DDD (entidades, VOs, evento
 Linha por entidade: nome — propósito; factory; métodos de mutação; invariantes; eventos. `*` = implementa `IHasDomainEvents`. Colunas em [specification-db].
 
 ### Identidade & Auth
-- **Conta*** — credenciais + tipo (raiz de identidade). `Criar(Email, passwordHash, TipoConta, agora)` → emite `ContaRegistradaEvent`; nasce `EmailVerificado=false`. Métodos: `AtualizarSenha(novoHash)`; `MarcarEmailVerificado(agora)` (idempotente: no-op se já verificado). Inv: passwordHash não-vazio; email não-nulo.
+- **Conta*** — credenciais + tipo (raiz de identidade). `Criar(Email, passwordHash, TipoConta, agora)` → emite `ContaRegistradaEvent`; nasce `EmailVerificado=false`. Métodos: `AtualizarSenha(novoHash)`; `MarcarEmailVerificado(agora)` (idempotente: no-op se já verificado); `Anonimizar(agora)` (LGPD: idempotente — no-op se `AnonimizadaEm` já setado; troca Email por token `anon+{guid}@anonimizado.local`, zera PasswordHash, reset EmailVerificado/VerificadoEm, set `AnonimizadaEm`, emite `ContaAnonimizadaEvent`). Prop `AnonimizadaEm` (nullable). Inv: passwordHash não-vazio; email não-nulo.
 - **SystemUser** — perfil admin plataforma. `Criar(contaId, nome, agora, role=SuperAdmin)` → nasce `Status=Ativo`. Métodos: `AlterarRole`, `AlterarStatus`, `AtualizarNome`. Inv: contaId≠Empty; nome 1..100.
 - **TokenRevogado** — blacklist JWT (logout). `Criar(jti, expiraEm)`. Inv: jti≠Empty; expiraEm futuro (`> DateTime.UtcNow`). PK=Jti. Sem mutação.
 - **PasswordResetToken** — reset senha. `Criar(contaId, tokenHash, expiresAt, agora)`. `MarcarComoUsado(agora)` (lança se já usado). Inv: contaId≠Empty; hash não-vazio; expiresAt>agora.
@@ -28,7 +28,7 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
 ### Treinador / Aluno / Vínculo
 - **Treinador*** — perfil treinador (state machine própria). `Criar(contaId, nome, agora, telefone?=null)` → `Status=AguardandoAprovacao`. Métodos: `Aprovar(aprovadoPorId)` (→Ativo, set AprovadoPorId/Em, emite `TreinadorAprovadoEvent`); `Reprovar(reprovadoPorId)` (→Inativo, emite `TreinadorReprovadoEvent`); `Inativar(inativadoPorId?)` (→Inativo, emite `TreinadorInativadoEvent`); `AtribuirPlano(planoPlataformaId)` (lança se Inativo); `AtualizarNome(nome)`; guards `ValidarDisponibilidade()` (lança se ≠Ativo), `ValidarParaExclusao()` (só exclui se Inativo). Inv: nome 1..100; aprovar/reprovar só de AguardandoAprovacao.
 - **Aluno*** — perfil aluno + anamnese. `Criar(contaId, nome, agora, email?, telefone?, diasDisponiveis?, tempoDisponivelMinutos?, finalidade?, focoTreino?, nivelCondicionamento?, limitacoesFisicas?, doencas?, observacoesAdicionais?)` → `Status=AguardandoAprovacao`; emite `AlunoRegistradoEvent(AlunoId, ContaId, Nome, Email?, agora)`. Métodos: `Atualizar(nome?, email?, telefone?)` (emite `AlunoAtualizadoEvent`); `Ativar()` (lança se já Ativo, SEM evento); `Inativar()` (emite `AlunoInativadoEvent`). `Email` é VO OPCIONAL (nasce null no cadastro; string vazia → null). Inv: nome 1..100; telefone ≤20.
-- **VinculoTreinadorAluno*** — relação treinador↔aluno (aprovação + pacote). `Criar(treinadorId, alunoId, agora, pacoteId?=null)` → `Status=AguardandoAprovacao`. Métodos: `Aprovar(aprovadoPorId, pacoteId)` (→Ativo, set Pacote/AprovadoPor/Em/DataInicio, emite `VinculoAprovadoEvent`); `Inativar()` (→Inativo, set DataFim, SEM evento). Inv: ids≠Empty; aprovar só de AguardandoAprovacao; pacoteId≠Empty na aprovação.
+- **VinculoTreinadorAluno*** — relação treinador↔aluno (aprovação + pacote). `Criar(treinadorId, alunoId, agora, pacoteId?=null)` → `Status=AguardandoAprovacao`, emite `VinculoPendenteCriadoEvent`. Métodos: `Aprovar(aprovadoPorId, pacoteId)` (→Ativo, set Pacote/AprovadoPor/Em/DataInicio, emite `VinculoAprovadoEvent`); `Inativar()` (→Inativo, set DataFim, SEM evento). Inv: ids≠Empty; aprovar só de AguardandoAprovacao; pacoteId≠Empty na aprovação.
 - **ContaRecebimento** — Stripe Connect do treinador (onboarding state). `Criar(treinadorId, agora)` → `OnboardingCompleto=false`. Métodos: `ConfigurarStripeConnect(accountId)` (set account); `ConfirmarOnboarding()` (lança se sem account → `OnboardingCompleto=true`). Prop derivada `Configurada` (= account não-vazio). Sem eventos. Fluxo em [specification-stripe].
 
 ### Treino / Exercício / Execução
@@ -51,7 +51,7 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
   - `AgendarProximaCobranca(data, agora)` — set DataProximaCobranca (data deve ser futura). SEM evento.
   - `RegistrarPagamentoFalho(agora)` — Cancelada→no-op; senão incrementa `TentativasFalhasConsecutivas`, SEMPRE emite `PagamentoFalhouEvent`; se contador≥3 E Status=Ativa → Inadimplente + emite `AssinaturaAlunoMarcadaInadimplenteEvent`.
   - `MarcarInadimplentePorDisputa(agora)` — só de Ativa (else no-op idempotente): →Inadimplente imediato, equipara contador a 3, emite `AssinaturaAlunoMarcadaInadimplenteEvent`. (Chargeback congela acesso sem esperar threshold.)
-  - `RegistrarPagamentoRegularizado(agora)` — Cancelada→no-op; zera contador; se Inadimplente→Ativa (reativa). Idempotente.
+  - `RegistrarPagamentoRegularizado(agora)` — Cancelada→no-op; zera contador; se Inadimplente→Ativa (reativa) emite `AssinaturaAlunoReativadaEvent` (G-PAY-3: só na transição efetiva Inadimplente→Ativa). Idempotente (2ª chamada já Ativa = sem evento).
 - **Pagamento*** — cobrança da assinatura (state machine). `Criar(assinaturaId, valor, agora, metodo=Pix)` → `Status=Pendente`, emite `PagamentoCriadoEvent`. Métodos:
   - `DefinirDadosPix(paymentIntentId, qrCode, qrCodeUrl, expiracao)` / `DefinirDadosCartao(paymentIntentId, clientSecret)` — set dados Stripe (validam não-vazio). SEM evento.
   - `MarcarPago()` — só de Pendente, set DataPagamento. SEM evento (⚠️ regularização da assinatura é orquestrada na Application, não cascateia daqui).
@@ -68,7 +68,7 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
 - **LogAprovacao** — auditoria de aprovações/inativações. Factory `Registrar(tipoAcao, realizadoPorId, entidadeId, entidadeTipo, agora, observacao?)`. Inv: ids≠Empty; entidadeTipo não-vazio; obs ≤500. Append-only.
 
 ## 3. VALUE OBJECTS
-- **Email** (único VO) — `sealed record`, `string Value`. `Criar(value)`: normaliza (`Trim().ToLowerInvariant()`), valida ≤256 + regex `^[^@\s]+@[^@\s]+\.[^@\s]+$` (Compiled+IgnoreCase+NonBacktracking, timeout 1s); inválido → `DomainException`. `FromDatabase(value)`: BYPASSA validação (reconstituição de dados já persistidos). `ToString()`=Value. Igualdade/imutabilidade via `record`.
+- **Email** (único VO) — `sealed record`, `string Value`. `Criar(value)` → `Result<Email>` (NÃO lança): normaliza (`Trim().ToLowerInvariant()`), valida ≤256 + regex `^[^@\s]+@[^@\s]+\.[^@\s]+$` (Compiled+IgnoreCase+NonBacktracking, timeout 1s); falha → `Result.Failure` com `EmailErrors.Obrigatorio` (vazio) / `EmailErrors.MuitoLongo` (>256) / `EmailErrors.Invalido` (regex). `FromDatabase(value)`: BYPASSA validação (reconstituição de dados já persistidos). `ToString()`=Value. Igualdade/imutabilidade via `record`.
 
 ## 4. ENUMS
 Significado/transições de domínio (mapeamento de coluna em [specification-db]).
@@ -88,7 +88,7 @@ Significado/transições de domínio (mapeamento de coluna em [specification-db]
 - **AssinaturaAlunoStatus** {Pendente, Ativa, Inadimplente, Cancelada} — §6.
 - **PagamentoStatus** {Pendente, Pago, Expirado, Falhou, Estornado, EmDisputa} — §6. EmDisputa só transiciona de Pago.
 - **MetodoPagamento** {Pix, Cartao} — método da cobrança (default Pix).
-- **TipoAcaoAprovacao** {AprovacaoTreinador, ReprovacaoTreinador, InativacaoTreinador, AprovacaoVinculo, ReprovacaoVinculo, InativacaoVinculo, AtribuicaoPlanTreinador} — tipo registrado em LogAprovacao.
+- **TipoAcaoAprovacao** {AprovacaoTreinador, ReprovacaoTreinador, InativacaoTreinador, AprovacaoVinculo, ReprovacaoVinculo, InativacaoVinculo, AtribuicaoPlanTreinador, ExclusaoTreinador, ExportacaoDados, AnonimizacaoConta} — tipo registrado em LogAprovacao (ExportacaoDados/AnonimizacaoConta = trilha LGPD).
 - **StatusSaude** {Ok, Degradado, Falha} — status geral do HealthSnapshot.
 - **TipoGrupoMuscular** {Peito, Costas, Ombro, Biceps, Triceps, Pernas, Gluteos, Core, FullBody} — ⚠️ enum no namespace Enums chamado `TipoGrupoMuscular` (não `GrupoMuscular`); a entidade catálogo é `GrupoMuscular`. Usado p/ seed dos 9 grupos; não é coluna ([specification-db]).
 
@@ -98,16 +98,19 @@ Todos `sealed record : IDomainEvent`. Handlers (e-mail/WhatsApp/projeção) em [
 | Evento | Emitido por | Payload | Efeito (handler) |
 |--------|-------------|---------|------------------|
 | ContaRegistradaEvent | Conta.Criar | ContaId, Email, OcorridoEm | e-mail verificação ([specification-email]) |
+| ContaAnonimizadaEvent | Conta.Anonimizar | ContaId, TipoConta, OcorridoEm | trilha LGPD (anonimização efetiva) |
 | AlunoRegistradoEvent | Aluno.Criar | AlunoId, ContaId, Nome, Email?, OcorridoEm | e-mail BemVindoAluno + sync Assinante |
 | AlunoAtualizadoEvent | Aluno.Atualizar | AlunoId, Nome, Email?, OcorridoEm | sync read model Assinante |
 | AlunoInativadoEvent | Aluno.Inativar | AlunoId, OcorridoEm | e-mail AlunoInativado |
 | TreinadorAprovadoEvent | Treinador.Aprovar | TreinadorId, AprovadoPorId, OcorridoEm | e-mail TreinadorAprovado |
 | TreinadorReprovadoEvent | Treinador.Reprovar | TreinadorId, ReprovadoPorId, OcorridoEm | e-mail TreinadorReprovado |
 | TreinadorInativadoEvent | Treinador.Inativar | TreinadorId, InativadoPorId, OcorridoEm | e-mail TreinadorInativado |
+| VinculoPendenteCriadoEvent | VinculoTreinadorAluno (criação AguardandoAprovacao) | VinculoId, TreinadorId, AlunoId, OcorridoEm | notifica treinador de aluno pendente (e-mail + WhatsApp) |
 | VinculoAprovadoEvent | VinculoTreinadorAluno.Aprovar | VinculoId, TreinadorId, AlunoId, AprovadoPorId, OcorridoEm | e-mail VinculoAprovado |
 | AssinaturaAlunoCriadaEvent | AssinaturaAluno.Criar | AssinaturaAlunoId, TreinadorId, AlunoId, PacoteId, Valor, OcorridoEm | e-mail AssinaturaAlunoCriada |
 | AssinaturaAlunoCanceladaEvent | AssinaturaAluno.Cancelar | AssinaturaAlunoId, AlunoId, TreinadorId, Valor, OcorridoEm | notifica aluno + treinador |
 | AssinaturaAlunoMarcadaInadimplenteEvent | AssinaturaAluno.RegistrarPagamentoFalho (cruza limite) / MarcarInadimplentePorDisputa | AssinaturaAlunoId, AlunoId, TreinadorId, TentativasFalhasConsecutivas, OcorridoEm | notifica + bloqueia consumo ([specification-stripe]) |
+| AssinaturaAlunoReativadaEvent | AssinaturaAluno.RegistrarPagamentoRegularizado (Inadimplente→Ativa) | AssinaturaAlunoId, AlunoId, TreinadorId, OcorridoEm | notifica aluno + treinador (regularização) |
 | PagamentoCriadoEvent | Pagamento.Criar | PagamentoId, AssinaturaAlunoId, Valor, MetodoPagamento, OcorridoEm | e-mail/WhatsApp CobrancaDisponivel |
 | PagamentoFalhouEvent | AssinaturaAluno.RegistrarPagamentoFalho | AssinaturaAlunoId, AlunoId, TentativasFalhasConsecutivas, OcorridoEm | notificação progressiva (1/2+/3+) |
 | PagamentoEstornadoEvent | Pagamento.MarcarEstornado | PagamentoId, AssinaturaAlunoId, Valor, OcorridoEm | e-mail aluno (não cascateia cancelamento) |
@@ -198,5 +201,5 @@ Base `DomainException : Exception` (ctors: vazio / message / message+inner). Tod
 
 ## 8. INTERFACES DE DOMÍNIO
 - **IDomainEvent** (Events) — `DateTime OcorridoEm`. Contrato base de evento.
-- **IHasDomainEvents** (Events) — `IReadOnlyList<IDomainEvent> DomainEvents; void ClearDomainEvents();`. Implementado por: Conta, Aluno, Treinador, VinculoTreinadorAluno, AssinaturaAluno, Pagamento.
+- **IHasDomainEvents** (Events) — `IReadOnlyList<IDomainEvent> DomainEvents; void ClearDomainEvents();`. Implementado por: Conta (emite `ContaRegistradaEvent` + `ContaAnonimizadaEvent`), Aluno, Treinador, VinculoTreinadorAluno, AssinaturaAluno, Pagamento.
 - **ICapacidadePlano** (Interfaces) — `int MaxAlunos`. Implementado por `PlanoPlataforma`; abstrai a regra de capacidade usada na validação de `LimiteAlunosAtingidoException`.

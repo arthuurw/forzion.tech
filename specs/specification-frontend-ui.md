@@ -70,7 +70,7 @@ Story = `*.stories.tsx`. A11y test (vitest-axe dedicado) = `*.a11y.test.tsx`. Co
 | `InfoLine` | label:value inline (sem `"use client"`) | `label`, `value` | ❌ | ❌ |
 | `Logo` | wordmark "forzion.tech" | `size`(sm\|md\|lg), `sx?` | ❌ | ❌ |
 
-Barrel `ui/index.ts` exporta APENAS: Logo, StatusChip, EmptyState, ConfirmDialog, AlertBanner, LoadingSpinner. Os demais (DataList, ResponsiveTable, ConsentBanner, ConsentProvider, SnackbarProvider, ErrorBoundary, InfoLine) importados por path direto.
+NÃO há barrel `ui/index.ts`. Todos os componentes são importados por path direto (ex. `@/components/ui/StatusChip`).
 
 ## INVENTÁRIO FORMS (`src/components/forms/*`)
 Integração react-hook-form via `Controller` + `useFormContext` (RHF context obrigatório no ancestral — ver [specification-frontend] §forms/validação). Erro Zod renderizado em `helperText`/`FormHelperText`.
@@ -81,14 +81,15 @@ Integração react-hook-form via `Controller` + `useFormContext` (RHF context ob
 | `FormSelect` | Select controlado | `name`, `label`, `options[]`(value/label), `required?`; `InputLabel id={name}-label` linkado | ❌ | ❌ |
 | `PasswordField` | senha + toggle visibilidade | `name` + `...TextFieldProps` (sem `type`); IconButton `aria-label` "Mostrar/Ocultar senha" | ❌ | ❌ |
 
-Barrel `forms/index.ts`: FormTextField, FormSelect, PasswordField. NENHUM form component tem story nem a11y test dedicado (gap — ver §GOVERNANCE).
+NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/forms/FormTextField`). NENHUM form component tem story nem a11y test dedicado (gap — ver §GOVERNANCE).
 
 ## GOVERNANCE
 - **`ui/` vs domínio**: `src/components/ui/*` = genérico/reutilizável, ZERO acoplamento a entidade de negócio (exceção pragmática: `StatusChip` importa enums de `@/types`). Componente acoplado a domínio (aluno/treinador/admin/pagamento) vive em `src/components/<dominio>/*` (ex. `components/aluno/AlunoInadimplenteBanner.tsx`), NÃO em `ui/`.
 - **Forms**: `src/components/forms/*` = primitivos RHF reutilizáveis. Form de domínio compõe estes; não duplicar lógica `Controller`.
 - **Requisito ao CRIAR componente em `ui/`**: idealmente story (`*.stories.tsx`) + a11y test. ESTADO REAL: cumprido só pelos 4 primeiros da tabela (AlertBanner/StatusChip/EmptyState/LoadingSpinner têm story+vitest-axe); ConfirmDialog/ResponsiveTable têm story+a11y-unit; demais não têm nenhum. Padrão a alvejar, não invariante atual.
 - **Padrão de props**: discriminantes via enum string — `severity`(error\|warning\|info\|success), `size`(small\|medium), `status`(enums domínio), `mobileRole`(primary\|secondary\|actions\|hidden). Booleans de modo: `destructive`, `loading`, `fullPage`, `forceOpen`. Callbacks `on*` opcionais habilitam comportamento (ex. `onRowClick` ⇒ row vira `role=button` focável).
-- **Barrel**: adicionar export em `ui/index.ts` apenas se o componente for de uso amplo (os de provider/wrapper ficam fora propositalmente).
+- **Imports**: NÃO há barrel (`ui/index.ts`/`forms/index.ts` inexistentes); sempre path direto.
+- **Componentes de domínio (não-`ui/`)**: `components/aluno/AlunoInadimplenteBanner.tsx` (banner persistente `role=alert`); `components/aluno/AlunoInadimplenteGate.tsx` (wrapper client-side: fetch on-mount de `obterMinhaAssinatura`, renderiza o banner quando status `Inadimplente`, falha silenciosa); `components/treinador/ProgressaoAluno.tsx` (gráficos recharts de progressão por exercício, props `alunoId`, seletor de período 7d/30d/60d/90d/6m/1a/tudo).
 
 ## ACESSIBILIDADE
 **Conformance alvo: WCAG 2.1 AA** (declarado como ALVO; sem doc de auditoria formal de conformidade no repo). Tags axe usadas: `wcag2a + wcag2aa + wcag21a + wcag21aa` (`frontend/e2e/utils/axe.ts`).

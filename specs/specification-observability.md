@@ -92,7 +92,7 @@ Pipeline distinto do `/health`: coleta profunda (DB connect real, KPIs, entregab
 
 ## 4. FRONTEND RUM (Sentry + Web Vitals)
 ### Web Vitals
-- `frontend/src/components/observability/WebVitals.tsx` — `"use client"`, montado 1× no root layout, sem UI. `useReportWebVitals` (next/web-vitals) → cada métrica (LCP, CLS, INP, FCP, TTFB) vira `Sentry.addBreadcrumb({ category: "web-vitals", level: "info", data: {value,id,label} })`. Breadcrumb anexa ao erro/replay da mesma sessão (contexto de perf). Core vitals de pageload TAMBÉM coletados pelo `browserTracingIntegration` do Sentry. Agregação p75/dashboards = gap (Fase 18 / §6).
+- `frontend/src/components/observability/WebVitals.tsx` — `"use client"`, montado 1× no root layout, sem UI. `useReportWebVitals` (next/web-vitals) → cada métrica (LCP, CLS, INP, FCP, TTFB) vira `Sentry.addBreadcrumb({ category: "web-vitals", level: "info", data: {value,id,label} })`. Breadcrumb anexa ao erro/replay da mesma sessão (contexto de perf). Core vitals de pageload também podem ser coletados pelo `browserTracingIntegration` — integração DEFAULT do `@sentry/nextjs` (ativa via `tracesSampleRate`), NÃO registrada explicitamente em `instrumentation-client.ts` (que só wira `replayIntegration`). Agregação p75/dashboards = gap (Fase 18 / §6).
 
 ### Sentry init (gates + no-op)
 - `next.config.ts` `withSentryConfig`: plugin de build. Source maps SÓ com `SENTRY_AUTH_TOKEN` (`sourcemaps.disable = !TOKEN`) → `next build` em dev/CI sem token funciona. `silent: !CI`, `disableLogger: true`, `widenClientFileUpload: true`. Org/project/authToken via env.

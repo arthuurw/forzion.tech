@@ -27,7 +27,7 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 3. Captura email/telefone antigos (p/ scrub de logs).
 4. `conta.Anonimizar` + `aluno|treinador.Anonimizar` + anonimiza read-model `assinantes` (`IAssinanteRepository.AnonimizarPorAlunoIdAsync`).
 5. Scrub recipient dos delivery logs: `IEmailDeliveryLogRepository.AnonimizarPorEmailAsync(email)` + `IWhatsAppDeliveryLogRepository.AnonimizarPorTelefoneAsync(phone)` (UPDATE recipient → placeholder; payload mantido p/ auditoria de entrega).
-6. Sessão: `PasswordHash` vazio + `AnonimizadaEm` impedem login futuro (revogação efetiva).
+6. Sessão: `PasswordHash` vazio + `AnonimizadaEm` impedem login FUTURO (re-autenticação impossível). Tokens JWT já emitidos permanecem válidos até a expiração natural (stateless) — NÃO há revogação imediata de sessão; logout forçado exige revogar o `jti` corrente à parte (fora do escopo deste handler — `AnonimizarContaHandler.cs:126-130`).
 7. `LogAprovacao.Registrar(AnonimizacaoConta, ...)`.
 8. `CommitAsync` único (despacha `ContaAnonimizadaEvent`). **RETÉM** pagamentos/assinaturas/logs (sem PII direto).
 

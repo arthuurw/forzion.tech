@@ -36,7 +36,7 @@ Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`.
 
 Áreas (`UseCases/`) e use cases notáveis:
 - **Auth**: `Login` (gera JWT; resposta genérica anti-enumeração; exige `EmailVerificado`), `RedefinirSenha`, `VerificarEmail`.
-- **Conta**: `ObterPerfil`, `AtualizarPerfil`, `AlterarSenha`, `Logout` (revoga jti).
+- **Conta**: `ObterPerfil`, `AtualizarPerfil`, `AlterarSenha`, `Logout` (revoga jti); `Conta/Lgpd/ExportarDadosPessoais` (`GET /conta/lgpd/exportar` — portabilidade: export versionado só do titular, nunca PII de terceiros) e `Conta/Lgpd/AnonimizarConta` (`DELETE /conta/lgpd` — self exige reconfirmação de senha BCrypt; anonimiza Conta/Aluno|Treinador + read model Assinante + delivery logs por email/telefone; idempotente; treinador com vínculos ativos rejeitado → `conta.offboarding_necessario`; registra `LogAprovacao` LGPD). Grupo `/conta/lgpd` autenticado + rate-limit "write".
 - **Alunos**: `RegistrarAluno` (self-signup), `CadastrarAluno`, `AtualizarAluno`, `AlterarStatusAluno`, `ListarAlunos`, `ObterAluno`, `ListarFichasAluno`/`ObterFichaAluno`, `ListarExecucoesAluno`, `ObterProgressaoAluno`/`ObterMinhaProgressao`.
 - **Treinadores**: `RegistrarTreinador`, `AprovarTreinador`/`ReprovarTreinador`/`InativarTreinador`/`ExcluirTreinador`, `AtribuirPlano` (**rejeita tier=Elite** → `Result.Failure(PlanoPlataformaErrors.EliteIndisponivel)`), `IniciarOnboarding`/`VerificarOnboarding` (Stripe Connect), `ListarTreinadores`/`ListarTreinadoresPublicos`/`ObterTreinador`.
 - **Vinculos**: `AprovarVinculo` (tx serializable; troca de treinador inativa vínculo anterior + cascateia/copia fichas via `TrarFichas`; valida limite de plano; notifica WhatsApp), `DesvincularAluno`, `ReativarVinculo`, `SolicitarTrocaTreinador`, `ListarVinculos`, `ObterVinculoAluno`.
@@ -46,7 +46,7 @@ Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`.
 - **Treinos**: `CriarTreino`, `AtualizarTreino`, `ExcluirTreino`, `DuplicarTreino`, `ObterTreino`, `ListarTreinos`/`ListarTreinosDoTreinador`/`ListarFichasDoAluno`/`ListarAlunosTreino`, `AdicionarExercicio`/`RemoverExercicio`/`EditarExercicioTreino`/`AtualizarObservacaoExercicio`, `RegistrarExecucao`, `VincularFichaAoAluno`.
 - **Pacotes**: `CriarPacote`, `AtualizarPacote`, `ExcluirPacote`, `ListarPacotes`.
 - **Planos**: `CriarPlanoPlataforma`, `AtualizarPlanoPlataforma`, `ExcluirPlanoPlataforma`, `ListarPlanosPlataforma`.
-- **Admin**: `Alunos/ListarAlunosAdmin`, `GruposMusculares/*` (CRUD), `HealthReport` (`ObterHealthReportConfig`/`AtualizarHealthReportConfig`/`ListarHealthSnapshots`/`ExecutarRelatorioSaude`).
+- **Admin**: `Alunos/ListarAlunosAdmin`, `GruposMusculares/*` (CRUD), `HealthReport` (`ObterHealthReportConfig`/`AtualizarHealthReportConfig`/`ListarHealthSnapshots`/`ExecutarRelatorioSaude`), `Stats/ObterDashboardStats` (`GET /admin/stats/dashboard` — distribuição de treinadores por plano/tier e alunos por finalidade; via `IAdminStatsRepository`, response `DashboardStatsResponse`).
 
 ### FluentValidation
 - Validators `AbstractValidator<TCommand>` colocalizados na pasta do use case (ex.: `LoginCommandValidator`).
@@ -60,7 +60,7 @@ Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`.
 - **Notificação por tier**: `IPlanoNotificationPolicy` (Application/Interfaces): `Task<CanaisNotificacao> ObterCanaispor TreinadorAsync(treinadorId, ct)` / `ObterCanaisPorAlunoAsync(alunoId, ct)`. Record `CanaisNotificacao(bool Email, bool WhatsApp)`. Impl `PlanoNotificationPolicy` (Infrastructure/Notifications/): resolve treinador → `PlanoPlataformaId` → plano → `TierPlanoExtensions`; resolve aluno → vínculo ativo → assinatura atual → treinador → plano; sem plano = `(false,false)`. Registrado `AddScoped` no DI. Cross-ref `TierPlanoExtensions` [specification-model].
 - Health: `IHealthReportCollector`, `IHealthReportSender`.
 - App services: `ILimiteTreinadorService`.
-- Repositórios (`Interfaces/Repositories/`, 24): Conta, Aluno, Treino, Exercicio, GrupoMuscular, TreinoAluno, ExecucaoTreino, SystemUser, Treinador, PlanoPlataforma, Pacote, VinculoTreinadorAluno, LogAprovacao, TokenRevogado, PasswordResetToken, EmailVerificationToken, EmailDeliveryLog, AssinaturaAluno, Pagamento, Assinante, ContaRecebimento, HealthReportConfig, HealthSnapshot, ErrorLog. Implementações em `Infrastructure/Persistence/Repositories`.
+- Repositórios (`Interfaces/Repositories/`, 26): Conta, Aluno, Treino, Exercicio, GrupoMuscular, TreinoAluno, ExecucaoTreino, SystemUser, Treinador, PlanoPlataforma, Pacote, VinculoTreinadorAluno, LogAprovacao, TokenRevogado, PasswordResetToken, EmailVerificationToken, EmailDeliveryLog, WhatsAppDeliveryLog, AssinaturaAluno, Pagamento, Assinante, ContaRecebimento, HealthReportConfig, HealthSnapshot, ErrorLog, AdminStats. Implementações em `Infrastructure/Persistence/Repositories`.
 
 ### Services / Settings
 - `Application/Services/LimiteTreinadorService` (`ILimiteTreinadorService`): valida que treinador tem plano e que `vínculos ativos < plano.MaxAlunos`; senão lança `LimiteAlunosAtingidoException`. Usa `ICapacidadePlano` (domínio).
