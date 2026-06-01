@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Grid, Button,
@@ -12,6 +12,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { treinadorApi } from "@/lib/api/treinador";
+import { extractApiError } from "@/lib/api/extractApiError";
 import type { PacoteResponse } from "@/types";
 
 export default function PacotesTreinadorPage() {
@@ -20,18 +21,15 @@ export default function PacotesTreinadorPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // criar
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [preco, setPreco] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // excluir
   const [deleteTarget, setDeleteTarget] = useState<PacoteResponse | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // editar
   const [editTarget, setEditTarget] = useState<PacoteResponse | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editDescricao, setEditDescricao] = useState("");
@@ -43,8 +41,8 @@ export default function PacotesTreinadorPage() {
     try {
       const res = await treinadorApi.listPacotes();
       setPacotes(res.data);
-    } catch {
-      setError("Erro ao carregar pacotes.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar pacotes."));
     } finally {
       setLoading(false);
     }
@@ -67,8 +65,8 @@ export default function PacotesTreinadorPage() {
       setOpen(false);
       resetForm();
       load();
-    } catch {
-      setError("Erro ao criar pacote.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao criar pacote."));
     } finally {
       setSaving(false);
     }
@@ -89,11 +87,8 @@ export default function PacotesTreinadorPage() {
       setSuccess(`Pacote "${deleteTarget.nome}" excluído.`);
       setDeleteTarget(null);
       load();
-    } catch (err: unknown) {
-      const detail = err instanceof Object && "response" in err
-        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-        : undefined;
-      setError(detail ?? "Erro ao excluir pacote.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir pacote."));
     } finally {
       setDeleting(false);
     }
@@ -111,8 +106,8 @@ export default function PacotesTreinadorPage() {
       setSuccess(`Pacote "${editNome}" atualizado.`);
       setEditTarget(null);
       load();
-    } catch {
-      setError("Erro ao atualizar pacote.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar pacote."));
     } finally {
       setEditSaving(false);
     }

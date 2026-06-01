@@ -1,6 +1,7 @@
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -23,16 +24,16 @@ public class VinculoTreinadorAluno : IHasDomainEvents
 
     private VinculoTreinadorAluno() { }
 
-    public static VinculoTreinadorAluno Criar(Guid treinadorId, Guid alunoId, DateTime agora, Guid? pacoteId = null)
+    public static Result<VinculoTreinadorAluno> Criar(Guid treinadorId, Guid alunoId, DateTime agora, Guid? pacoteId = null)
     {
         if (treinadorId == Guid.Empty)
-            throw new DomainException("O identificador do treinador é inválido.");
+            return Result.Failure<VinculoTreinadorAluno>(VinculoErrors.TreinadorIdInvalido);
         if (alunoId == Guid.Empty)
-            throw new DomainException("O identificador do aluno é inválido.");
+            return Result.Failure<VinculoTreinadorAluno>(VinculoErrors.AlunoIdInvalido);
         if (pacoteId.HasValue && pacoteId.Value == Guid.Empty)
-            throw new DomainException("O identificador do pacote é inválido.");
+            return Result.Failure<VinculoTreinadorAluno>(VinculoErrors.PacoteIdInvalido);
 
-        return new VinculoTreinadorAluno
+        var vinculo = new VinculoTreinadorAluno
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
@@ -41,29 +42,33 @@ public class VinculoTreinadorAluno : IHasDomainEvents
             Status = VinculoStatus.AguardandoAprovacao,
             CreatedAt = agora
         };
+        vinculo._domainEvents.Add(new VinculoPendenteCriadoEvent(vinculo.Id, treinadorId, alunoId, agora));
+        return Result.Success(vinculo);
     }
 
-    public void Aprovar(Guid aprovadoPorId, Guid pacoteId)
+    public Result Aprovar(Guid aprovadoPorId, Guid pacoteId, DateTime agora)
     {
         if (Status != VinculoStatus.AguardandoAprovacao)
-            throw new DomainException("Apenas vínculos aguardando aprovação podem ser aprovados.");
+            return Result.Failure(VinculoErrors.NaoAguardandoAprovacao);
         if (pacoteId == Guid.Empty)
-            throw new DomainException("O identificador do pacote é inválido.");
+            return Result.Failure(VinculoErrors.PacoteIdInvalido);
 
         Status = VinculoStatus.Ativo;
         PacoteId = pacoteId;
         AprovadoPorId = aprovadoPorId;
-        AprovadoEm = DateTime.UtcNow;
-        DataInicio = DateTime.UtcNow;
-        _domainEvents.Add(new VinculoAprovadoEvent(Id, TreinadorId, AlunoId, aprovadoPorId, DateTime.UtcNow));
+        AprovadoEm = agora;
+        DataInicio = agora;
+        _domainEvents.Add(new VinculoAprovadoEvent(Id, TreinadorId, AlunoId, aprovadoPorId, agora));
+        return Result.Success();
     }
 
-    public void Inativar()
+    public Result Inativar(DateTime agora)
     {
         if (Status == VinculoStatus.Inativo)
-            throw new DomainException("O vínculo já está inativo.");
+            return Result.Failure(VinculoErrors.JaInativo);
 
         Status = VinculoStatus.Inativo;
-        DataFim = DateTime.UtcNow;
+        DataFim = agora;
+        return Result.Success();
     }
 }

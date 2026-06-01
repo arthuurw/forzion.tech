@@ -1,5 +1,8 @@
+using forzion.tech.Api.Extensions;
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Conta.AlterarSenha;
 using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
+using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Conta.Logout;
 using forzion.tech.Application.UseCases.Conta.ObterPerfil;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +33,8 @@ public static class ContaEndpoints
             [FromServices] AtualizarPerfilHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new AtualizarPerfilCommand(request.Nome), cancellationToken).ConfigureAwait(false);
+            var result = await handler.HandleAsync(new AtualizarPerfilCommand(request.Nome), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Atualiza o nome do usuário autenticado")
@@ -45,7 +49,8 @@ public static class ContaEndpoints
             [FromServices] AlterarSenhaHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new AlterarSenhaCommand(request.SenhaAtual, request.NovaSenha), cancellationToken).ConfigureAwait(false);
+            var result = await handler.HandleAsync(new AlterarSenhaCommand(request.SenhaAtual, request.NovaSenha), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Altera a senha do usuário autenticado")
@@ -59,7 +64,8 @@ public static class ContaEndpoints
             [FromServices] LogoutHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            var result = await handler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Revoga o token atual e faz logout")
@@ -67,9 +73,52 @@ public static class ContaEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
+        var lgpdGroup = endpoints.MapGroup("/conta/lgpd")
+            .WithTags("Conta")
+            .RequireAuthorization()
+            .RequireRateLimiting("write");
+
+        lgpdGroup.MapGet("/exportar", async (
+            [FromServices] ExportarDadosPessoaisHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler
+                .HandleAsync(new ExportarDadosPessoaisCommand(userContext.ContaId), cancellationToken)
+                .ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Exporta os dados pessoais do titular autenticado (portabilidade LGPD)")
+        .Produces<DadosPessoaisExport>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
+
+        lgpdGroup.MapDelete("/", async (
+            [FromBody] AnonimizarContaSelfRequest request,
+            [FromServices] AnonimizarContaHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler
+                .HandleAsync(new AnonimizarContaCommand(
+                    userContext.ContaId,
+                    userContext.ContaId,
+                    request.Senha), cancellationToken)
+                .ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Anonimiza permanentemente a conta do titular (exclusão LGPD). Requer confirmação de senha.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
+
         return endpoints;
     }
 }
 
 public record AtualizarPerfilRequest(string Nome);
 public record AlterarSenhaRequest(string SenhaAtual, string NovaSenha);
+public record AnonimizarContaSelfRequest(string Senha);

@@ -23,7 +23,7 @@ public class ListarAlunosTreinoHandlerTests
     }
 
     private static Treino CriarTreino(Guid treinadorId) =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_TreinadorDono_RetornaAlunos()

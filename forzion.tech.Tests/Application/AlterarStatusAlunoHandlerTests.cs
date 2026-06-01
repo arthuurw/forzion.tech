@@ -22,7 +22,7 @@ public class AlterarStatusAlunoHandlerTests
     public AlterarStatusAlunoHandlerTests()
     {
         _handler = new AlterarStatusAlunoHandler(
-            _alunoRepo.Object, _userContext.Object, _unitOfWork.Object, _logger.Object);
+            _alunoRepo.Object, _userContext.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
@@ -35,7 +35,8 @@ public class AlterarStatusAlunoHandlerTests
         var result = await _handler.HandleAsync(
             new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.Inativo));
 
-        result.Status.Should().Be(AlunoStatus.Inativo);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(AlunoStatus.Inativo);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -69,5 +70,35 @@ public class AlterarStatusAlunoHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_NovoStatusAguardandoAprovacao_RetornaFailureTransicaoNaoPermitida()
+    {
+        var aluno = new AlunoBuilder().ComNome("João").Build();
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
+
+        var result = await _handler.HandleAsync(
+            new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.AguardandoAprovacao));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("não permitida");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AtivarAlunoJaAtivo_RetornaFailureDaTransicaoDeDominio()
+    {
+        var aluno = new AlunoBuilder().ComNome("João").Build();
+        aluno.Ativar(TestData.Agora); // já fica Ativo
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
+
+        var result = await _handler.HandleAsync(
+            new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.Ativo));
+
+        result.IsFailure.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

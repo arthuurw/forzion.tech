@@ -1,0 +1,14 @@
+﻿{
+  Id: 11111111-1111-1111-1111-111111111111,
+  Ativo: true,
+  HoraEnvioUtc: 8:30 AM,
+  Destinatarios: [
+    ops@forzion.tech,
+    dev@forzion.tech
+  ],
+  IncluirLiveness: true,
+  IncluirKpis: true,
+  IncluirEntregabilidade: true,
+  IncluirErros: false,
+  UltimoEnvioEm: 2026-01-02 09:30 Utc
+}

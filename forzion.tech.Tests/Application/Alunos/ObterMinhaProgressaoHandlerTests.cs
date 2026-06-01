@@ -25,9 +25,9 @@ public class ObterMinhaProgressaoHandlerTests
         var ate = new DateTime(2025, 1, 31);
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
-        _execucaoRepo.Setup(r => r.ListarPorAlunoComExerciciosAsync(
+        _execucaoRepo.Setup(r => r.ProjetarProgressaoAsync(
                 alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ExecucaoDetalheItem>());
+            .ReturnsAsync(new List<ProgressaoAggRow>());
 
         var result = await _handler.HandleAsync(de, ate);
 
@@ -40,34 +40,37 @@ public class ObterMinhaProgressaoHandlerTests
         var alunoId = Guid.NewGuid();
         var de = new DateTime(2025, 1, 1);
         var ate = new DateTime(2025, 1, 31);
-        var exercicio = new ExecucaoExercicioDetalhe(Guid.NewGuid(), "Supino", "Peito", 3, 10, 80m);
-        var execucao = new ExecucaoDetalheItem(Guid.NewGuid(), de, Guid.NewGuid(), null,
-            new List<ExecucaoExercicioDetalhe> { exercicio });
+
+        // SQL-aggregated row for one exercise on one day
+        var row = new ProgressaoAggRow("Supino", "Peito", de.Date, 80m, 3.0, 10.0);
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
-        _execucaoRepo.Setup(r => r.ListarPorAlunoComExerciciosAsync(
+        _execucaoRepo.Setup(r => r.ProjetarProgressaoAsync(
                 alunoId, de.Date, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ExecucaoDetalheItem> { execucao });
+            .ReturnsAsync(new List<ProgressaoAggRow> { row });
 
         var result = await _handler.HandleAsync(de, ate);
 
         result.Exercicios.Should().HaveCount(1);
         result.Exercicios[0].NomeExercicio.Should().Be("Supino");
+        result.Exercicios[0].Historico[0].CargaMaxima.Should().Be(80m);
     }
 
     [Fact]
     public async Task HandleAsync_AteInclusivo_PassaFimDoDia()
     {
         var alunoId = Guid.NewGuid();
+        DateTime capturedAte = default;
+
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
-        _execucaoRepo.Setup(r => r.ListarPorAlunoComExerciciosAsync(
+        _execucaoRepo
+            .Setup(r => r.ProjetarProgressaoAsync(
                 alunoId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ExecucaoDetalheItem>())
-            .Callback<Guid, DateTime, DateTime, CancellationToken>((_, _, ateArg, _) =>
-            {
-                ateArg.TimeOfDay.Should().BeGreaterThan(TimeSpan.Zero);
-            });
+            .Callback<Guid, DateTime, DateTime, CancellationToken>((_, _, ateArg, _) => capturedAte = ateArg)
+            .ReturnsAsync(new List<ProgressaoAggRow>());
 
         await _handler.HandleAsync(DateTime.Today, DateTime.Today);
+
+        capturedAte.TimeOfDay.Should().BeGreaterThan(TimeSpan.Zero);
     }
 }

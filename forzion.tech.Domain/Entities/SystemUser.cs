@@ -1,5 +1,6 @@
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -15,16 +16,16 @@ public class SystemUser
 
     private SystemUser() { }
 
-    public static SystemUser Criar(Guid contaId, string nome, DateTime agora, SystemRole role = SystemRole.SuperAdmin)
+    public static Result<SystemUser> Criar(Guid contaId, string nome, DateTime agora, SystemRole role = SystemRole.SuperAdmin)
     {
         if (contaId == Guid.Empty)
-            throw new DomainException("O identificador da conta é inválido.");
+            return Result.Failure<SystemUser>(SystemUserErrors.ContaIdInvalido);
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome é obrigatório.");
+            return Result.Failure<SystemUser>(SystemUserErrors.NomeObrigatorio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure<SystemUser>(SystemUserErrors.NomeMuitoLongo);
 
-        return new SystemUser
+        return Result.Success(new SystemUser
         {
             Id = Guid.NewGuid(),
             ContaId = contaId,
@@ -32,29 +33,30 @@ public class SystemUser
             Role = role,
             Status = UsuarioStatus.Ativo,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void AlterarRole(SystemRole novoRole)
+    public void AlterarRole(SystemRole novoRole, DateTime agora)
     {
         Role = novoRole;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 
-    public void AlterarStatus(UsuarioStatus novoStatus)
+    public void AlterarStatus(UsuarioStatus novoStatus, DateTime agora)
     {
         Status = novoStatus;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 
-    public void AtualizarNome(string nome)
+    public Result AtualizarNome(string nome, DateTime agora)
     {
         if (string.IsNullOrWhiteSpace(nome))
-            throw new DomainException("O nome é obrigatório.");
+            return Result.Failure(SystemUserErrors.NomeObrigatorio);
         if (nome.Trim().Length > 100)
-            throw new DomainException("O nome deve ter no máximo 100 caracteres.");
+            return Result.Failure(SystemUserErrors.NomeMuitoLongo);
 
         Nome = nome.Trim();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 }

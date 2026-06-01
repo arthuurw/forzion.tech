@@ -29,7 +29,6 @@ public class ObterTreinoHandler(
             .ConfigureAwait(false)
             ?? throw new TreinoNaoEncontradoException();
 
-        // Validar autorização
         if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
         {
             if (userContext.IsAluno)

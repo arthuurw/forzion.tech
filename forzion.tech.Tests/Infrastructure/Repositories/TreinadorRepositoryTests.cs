@@ -22,15 +22,15 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
 
         await using (var seedCtx = fixture.CreateContext())
         {
-            var contaT = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
-            var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow);
-            var contaA = Conta.Criar(Email.Criar($"a{Guid.NewGuid():N}@test.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
-            var aluno = Aluno.Criar(contaA.Id, $"Al{Guid.NewGuid():N}", DateTime.UtcNow);
-            var pacote = Pacote.Criar(treinador.Id, $"Pac{Guid.NewGuid():N}", 99.90m, DateTime.UtcNow);
-            var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow);
-            vinculo.Aprovar(treinador.Id, pacote.Id);
-            var assinatura = AssinaturaAluno.Criar(vinculo.Id, pacote.Id, treinador.Id, aluno.Id, 99.90m, DateTime.UtcNow);
-            var pagamento = Pagamento.Criar(assinatura.Id, 99.90m, DateTime.UtcNow);
+            var contaT = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+            var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+            var contaA = Conta.Criar(Email.Criar($"a{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
+            var aluno = Aluno.Criar(contaA.Id, $"Al{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+            var pacote = Pacote.Criar(treinador.Id, $"Pac{Guid.NewGuid():N}", 99.90m, DateTime.UtcNow).Value;
+            var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow).Value;
+            vinculo.Aprovar(treinador.Id, pacote.Id, DateTime.UtcNow);
+            var assinatura = AssinaturaAluno.Criar(vinculo.Id, pacote.Id, treinador.Id, aluno.Id, 99.90m, DateTime.UtcNow).Value;
+            var pagamento = Pagamento.Criar(assinatura.Id, 99.90m, DateTime.UtcNow).Value;
 
             await seedCtx.Contas.AddRangeAsync(contaT, contaA);
             await seedCtx.Treinadores.AddAsync(treinador);
@@ -53,7 +53,7 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
         {
             var treinador = await actCtx.Treinadores.FirstAsync(t => t.Id == treinadorId);
 
-            var act = async () => await new TreinadorRepository(actCtx).ExcluirComDependenciasAsync(treinador);
+            var act = async () => await new TreinadorRepository(actCtx).ExcluirComDependenciasAsync(treinador, Guid.NewGuid());
 
             await act.Should().NotThrowAsync();
         }

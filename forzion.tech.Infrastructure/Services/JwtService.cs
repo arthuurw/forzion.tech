@@ -22,8 +22,8 @@ public class JwtService : IJwtService
         _secret = configuration["Auth:JwtSecret"]
             ?? throw new InvalidOperationException("Configuração 'Auth:JwtSecret' não encontrada.");
 
-        if (_secret.Length < 32)
-            throw new InvalidOperationException("Auth:JwtSecret deve ter ao menos 32 caracteres (256 bits).");
+        if (System.Text.Encoding.UTF8.GetByteCount(_secret) < 32)
+            throw new InvalidOperationException("Auth:JwtSecret deve ter ao menos 32 bytes (256 bits).");
         _issuer = configuration["Auth:JwtIssuer"] ?? "forzion.tech";
         _audience = configuration["Auth:JwtAudience"] ?? "forzion.tech";
 

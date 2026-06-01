@@ -1,3 +1,4 @@
+using forzion.tech.Api.Extensions;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
@@ -10,6 +11,7 @@ using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
 using forzion.tech.Application.UseCases.AssinaturaAlunos;
+using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,6 +37,26 @@ public static class AlunoAreaEndpoints
         .Produces<AssinaturaAlunoResponse>()
         .Produces(StatusCodes.Status204NoContent);
 
+        group.MapPost("/assinatura/cancelar", async (
+            [FromServices] CancelarMinhaAssinaturaAlunoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new CancelarMinhaAssinaturaAlunoCommand(userContext.PerfilId), cancellationToken);
+
+            if (result.IsSuccess) return Results.Ok();
+
+            if (result.Error?.Code == CancelarMinhaAssinaturaAlunoHandler.AssinaturaNaoEncontradaErrorCode)
+                return Results.NotFound(new { detail = result.Error.Message });
+
+            return result.ToProblemResult();
+        })
+        .WithSummary("Aluno autenticado cancela a própria assinatura ativa")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         group.MapGet("/vinculo", async (
             [FromServices] ObterVinculoAlunoHandler handler,
             [FromServices] IUserContext userContext,
@@ -55,7 +77,8 @@ public static class AlunoAreaEndpoints
             var result = await handler.HandleAsync(
                 new SolicitarTrocaTreinadorCommand(userContext.PerfilId, request.NovoTreinadorId, request.PacoteId), cancellationToken);
 
-            return Results.Created($"/aluno/vinculo", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/aluno/vinculo", result.Value);
         })
         .WithSummary("Solicita troca de treinador criando vínculo pendente com o novo treinador")
         .Produces<VinculoResponse>(StatusCodes.Status201Created)
@@ -86,7 +109,8 @@ public static class AlunoAreaEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(treinoAlunoId, userContext.PerfilId, cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Obtém o detalhe de uma ficha vinculada ao aluno autenticado")
         .Produces<FichaAlunoDetalheResponse>()
@@ -122,7 +146,7 @@ public static class AlunoAreaEndpoints
                 ? ateParsed.Date
                 : hoje;
             if (de > ate)
-                return Results.BadRequest("O parâmetro 'de' deve ser anterior a 'ate'.");
+                return Results.Problem(detail: "O parâmetro 'de' deve ser anterior a 'ate'.", statusCode: 400);
             var result = await handler.HandleAsync(de, ate, cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         })
@@ -149,8 +173,10 @@ public static class AlunoAreaEndpoints
                 exercicios);
 
             var result = await handler.HandleAsync(command, cancellationToken);
-            return Results.Created($"/aluno/execucoes/{result.ExecucaoId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/aluno/execucoes/{result.Value.ExecucaoId}", result.Value);
         })
+        .AddEndpointFilter<RequireAssinaturaAtivaFilter>()
         .WithSummary("Registra a execução de um treino pelo aluno")
         .Produces<RegistrarExecucaoResponse>(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status403Forbidden)

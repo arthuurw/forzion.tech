@@ -1,4 +1,5 @@
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -9,13 +10,13 @@ public class TokenRevogado
 
     private TokenRevogado() { }
 
-    public static TokenRevogado Criar(Guid jti, DateTime expiraEm)
+    public static Result<TokenRevogado> Criar(Guid jti, DateTime expiraEm, DateTime agora)
     {
         if (jti == Guid.Empty)
-            throw new DomainException("O identificador do token é inválido.");
-        if (expiraEm <= DateTime.UtcNow)
-            throw new DomainException("A data de expiração do token deve ser futura.");
+            return Result.Failure<TokenRevogado>(TokenErrors.JtiInvalido);
+        if (expiraEm <= agora)
+            return Result.Failure<TokenRevogado>(TokenErrors.ExpiracaoNaoFuturaRevogado);
 
-        return new() { Jti = jti, ExpiraEm = expiraEm };
+        return Result.Success(new TokenRevogado { Jti = jti, ExpiraEm = expiraEm });
     }
 }

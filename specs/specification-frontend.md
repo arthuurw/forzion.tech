@@ -1,6 +1,6 @@
 # specification-frontend — frontend (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, agent-oriented. Consultar antes de qualquer alteração de rota, auth, layout, API proxy, testes ou segurança. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums).
+DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, agent-oriented. Consultar antes de qualquer alteração de rota, auth, layout, API proxy, testes ou segurança. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums), [specification-frontend-ui] (design tokens/componentes/a11y), [specification-seo] (metadata/OG/crawl), [specification-observability] (RUM Web Vitals/Sentry), [specification-security] (CSP/headers/rate-limit frontend).
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança relevante em: rotas, grupos de layout, auth, API proxy, componentes estruturais, strategy de testes, deps críticas, headers de segurança.
@@ -25,12 +25,14 @@ DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, ag
 - `withSentryConfig`: source maps só sobem com `SENTRY_AUTH_TOKEN`; `next build` sem token funciona (sem upload). `sourcemaps.disable: !SENTRY_AUTH_TOKEN`.
 - `withBundleAnalyzer`: ativo via `ANALYZE=true` (script `analyze`).
 - `API_BASE_URL` obrigatório em `NODE_ENV=production` (throw em build se ausente).
+- `JWT_SECRET` obrigatório em `NODE_ENV=production` (throw em build se ausente).
 
 ## SEGURANÇA — HEADERS HTTP
 Aplicados via `next.config.ts` em todas as rotas (`source: "/(.*)"`) com `securityHeaders`:
 
 | Header | Valor |
 |--------|-------|
+| `X-DNS-Prefetch-Control` | `on` |
 | `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline'[+'unsafe-eval' só dev] https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.stripe.com; font-src 'self'; connect-src 'self' https://api.stripe.com https://*.sentry.io; frame-src https://js.stripe.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'` |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
 | `X-Frame-Options` | `DENY` |
@@ -72,10 +74,10 @@ src/
     pagamento/         — PagamentoCartao, PagamentoPix
     treinador/         — componentes específicos do treinador
     ui/                — componentes compartilhados (ErrorBoundary, SnackbarProvider, LoadingSpinner, DataList, etc.)
-  hooks/               — useInactivity, usePaginatedList, useCRUDDialog
+  hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent
   lib/
-    api/               — client.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
-    auth/              — context.tsx, jwt.ts, session.ts
+    api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
+    auth/              — context.tsx, jwt.ts, helpers.ts, buildPlaceholder.ts
     constants/         — enrollmentOptions, labels
     rateLimit.ts       — rate limiter em memória (login)
     theme/             — ThemeRegistry.tsx, index.ts (MUI theme)
@@ -98,6 +100,7 @@ html[lang=pt-BR]
         ErrorBoundary
           AuthProvider
             SnackbarProvider
+              ConsentProvider
               {children}
 ```
 - `metadata`: title="forzion.tech", description.
@@ -165,16 +168,22 @@ POST /api/auth/logout
 | `/api/auth/reset-password` | POST | Executa reset |
 | `/api/auth/resend-verification` | POST | Reenvio de verificação |
 | `/api/auth/treinadores` | GET | Listagem pública de treinadores (cadastro aluno) |
-| `/api/auth/treinadores/[id]/pacotes` | GET | Pacotes do treinador (cadastro aluno) |
+| `/api/auth/treinadores/[treinadorId]/pacotes` | GET | Pacotes do treinador (cadastro aluno) |
 
 **Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP. Mapa em memória por processo (não persistido entre restarts). Aplicado em login e register.
 
 ## API CLIENT (`src/lib/api/client.ts`)
 ```
 apiClient = axios.create({ baseURL: NEXT_PUBLIC_API_BASE_URL ?? "/api/backend" })
-interceptor resposta: status 401 → window.location.href = "/login"
+interceptor resposta:
+  401 → window.location.href = "/login"
+  403 + data.code === "ASSINATURA_INADIMPLENTE" → dispatch CustomEvent
+        `forzion:assinatura-inadimplente` em window (NÃO redireciona; só notifica).
+        AppLayout escuta e renderiza toast (regularizar em Pagamentos).
 ```
-Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`.
+- `ASSINATURA_INADIMPLENTE_EVENT` + `ASSINATURA_INADIMPLENTE_MESSAGE` exportados do client.
+- Enforcement server-side: backend `RequireAssinaturaAtivaFilter` retorna 403 `ASSINATURA_INADIMPLENTE` em endpoints restritos (ex.: POST execuções). Cross-ref inadimplência: [specification-stripe].
+- Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`.
 
 ## APPLAYOUT (autenticado)
 - Verifica `!isLoading && !user` → chama `/api/auth/logout` (limpa cookies) → `router.replace("/login")`.
@@ -204,6 +213,13 @@ Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, 
 - `PaginatedResponse<T>`: `{ items, total, pagina, tamanhoPagina }`
 - Responses de domínio: `AlunoResponse`, `TreinadorResponse`, `VinculoResponse`, `TreinoResponse`, `ExercicioResponse`, `PlanoPlataformaResponse`, `GrupoMuscularResponse`, `PacoteResponse`, `AssinaturaAlunoResponse`, `PagamentoResponse`, `ExecucaoTreinoResponse`, etc.
 - Enums: `AlunoStatus`, `TreinadorStatus`, `VinculoStatus`, `TreinoAlunoStatus`, `ObjetivoTreino`, `DificuldadeTreino`, `FinalidadeTreino`, `NivelCondicionamento`, `TempoDisponivel`, `AssinaturaAlunoStatus`, `PagamentoStatus`, `MetodoPagamento`, `TierPlano`.
+
+## ELITE "EM BREVE"
+Plano tier=Elite indisponível para seleção/atribuição. Três pontos de aplicação:
+- **Landing** (`_landing/`): card Elite não-clicável (sem link de ação) + badge "Em breve".
+- **Admin — planos** (`(admin)/planos`): dropdown `TierPlano` com opção `Elite` `disabled` (visível mas não selecionável).
+- **Admin — treinadores** (`(admin)/treinadores`): formulário de atribuição de plano exclui `Elite` das opções listadas.
+Backend rejeita `AtribuirPlano` com tier=Elite → `PlanoPlataformaErrors.EliteIndisponivel` (422). Cross-ref [specification-model].
 
 ## TESTES (`vitest.config.mts`)
 3 projects vitest:

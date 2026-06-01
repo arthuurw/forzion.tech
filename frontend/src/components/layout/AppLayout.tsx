@@ -23,6 +23,7 @@ import { NAV_BY_TIPO } from "./NavConfig";
 import { useAuth } from "@/lib/auth/context";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { useInactivity } from "@/hooks/useInactivity";
+import { ASSINATURA_INADIMPLENTE_EVENT } from "@/lib/api/client";
 
 const DRAWER_WIDTH = 232;
 const DRAWER_COLLAPSED = 68;
@@ -36,6 +37,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [inactivityWarn, setInactivityWarn] = useState<string | null>(null);
+  const [inadimplenteToast, setInadimplenteToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ message?: string }>).detail;
+      setInadimplenteToast(detail?.message ?? "Assinatura inadimplente.");
+    };
+    window.addEventListener(ASSINATURA_INADIMPLENTE_EVENT, handler);
+    return () => window.removeEventListener(ASSINATURA_INADIMPLENTE_EVENT, handler);
+  }, []);
 
   const handleWarn = useCallback((minutes: number) => {
     setInactivityWarn(
@@ -219,6 +230,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           sx={{ maxWidth: 480 }}
         >
           {inactivityWarn}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!inadimplenteToast}
+        autoHideDuration={8000}
+        onClose={() => setInadimplenteToast(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          severity="error"
+          variant="filled"
+          onClose={() => setInadimplenteToast(null)}
+          sx={{ maxWidth: 480 }}
+        >
+          {inadimplenteToast}
         </Alert>
       </Snackbar>
     </Box>

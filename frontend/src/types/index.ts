@@ -156,7 +156,6 @@ export interface PlanoPlataformaResponse {
   updatedAt?: string | null;
 }
 
-// Grupo Muscular
 export interface GrupoMuscularResponse {
   id: string;
   nome: string;
@@ -242,7 +241,7 @@ export interface ProgressaoAlunoResponse {
 }
 
 export type AssinaturaAlunoStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
-export type PagamentoStatus = "Pendente" | "Pago" | "Expirado" | "Falhou";
+export type PagamentoStatus = "Pendente" | "Pago" | "Expirado" | "Falhou" | "Estornado" | "EmDisputa";
 export type MetodoPagamento = "Pix" | "Cartao";
 
 export interface AssinaturaAlunoResponse {
@@ -285,4 +284,36 @@ export interface ProblemDetails {
   status: number;
   errors?: Record<string, string[]>;
   code?: string;
+}
+
+export type StatusSaude = "Ok" | "Degradado" | "Falha";
+
+export interface HealthReportConfigResponse {
+  id: string;
+  ativo: boolean;
+  horaEnvioUtc: string;
+  destinatarios: string[];
+  incluirLiveness: boolean;
+  incluirKpis: boolean;
+  incluirEntregabilidade: boolean;
+  incluirErros: boolean;
+  ultimoEnvioEm: string | null;
+}
+
+export interface AtualizarHealthReportConfigRequest {
+  ativo: boolean;
+  horaEnvioUtc: string;
+  destinatarios: string[];
+  incluirLiveness: boolean;
+  incluirKpis: boolean;
+  incluirEntregabilidade: boolean;
+  incluirErros: boolean;
+}
+
+export interface HealthSnapshotResponse {
+  id: string;
+  capturadoEm: string;
+  ambiente: string;
+  statusGeral: StatusSaude;
+  payloadJson: string;
 }

@@ -5,6 +5,10 @@ on:
     - cron: '0 8 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   renovar:
     name: Processar renovações mensais
@@ -16,3 +20,31 @@ jobs:
             -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
             -H "Content-Type: application/json" \
             "https://${{ secrets.HOMOLOG_HOST }}/internal/processar-renovacoes"
+
+      - name: Notificar falha via issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `[billing-renewal] Falha em ${new Date().toISOString().slice(0, 10)}`;
+            const body = [
+              '⚠️ Workflow **Billing Renewal** falhou.',
+              '',
+              `**Run:** ${runUrl}`,
+              `**Trigger:** ${context.eventName} (${context.ref})`,
+              '',
+              'Sem renovação hoje = cobranças não geradas para assinaturas com `DataProximaCobranca <= now`.',
+              '',
+              'Investigar:',
+              '1. Endpoint `/internal/processar-renovacoes` respondeu?',
+              '2. `INTERNAL_API_KEY` da VM bate com secret do environment?',
+              '3. Backend logs (`docker compose logs backend --tail 200`)',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ops', 'billing-renewal-failed']
+            });

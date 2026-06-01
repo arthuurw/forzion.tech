@@ -22,12 +22,6 @@ export const OBJETIVOS_FILTRO: { value: string; label: string }[] = [
   { value: "Condicionamento", label: "Condicionamento" },
 ];
 
-export const DIFICULDADE_LABEL: Record<DificuldadeTreino, string> = {
-  Iniciante: "Iniciante",
-  Intermediario: "Intermediário",
-  Avancado: "Avançado",
-};
-
 export const DIFICULDADES: { value: DificuldadeTreino; label: string; color: string }[] = [
   { value: "Iniciante",     label: "Iniciante",     color: "#4caf50" },
   { value: "Intermediario", label: "Intermediário", color: "#ff9800" },

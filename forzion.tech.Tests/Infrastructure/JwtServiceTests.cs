@@ -32,7 +32,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaValida_RetornaStringNaoVazia()
     {
-        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
         var token = CriarServico().GerarToken(conta, perfilId);
@@ -43,7 +43,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaValida_TokenContemClaimsCorretos()
     {
-        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
         var token = CriarServico().GerarToken(conta, perfilId);
@@ -59,7 +59,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaSystemAdmin_TokenContemTipoCorreto()
     {
-        var conta = Conta.Criar(Email.Criar("admin@test.com"), "hash", TipoConta.SystemAdmin, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("admin@test.com").Value, "hash", TipoConta.SystemAdmin, DateTime.UtcNow).Value;
         var perfilId = conta.Id;
 
         var token = CriarServico().GerarToken(conta, perfilId);
@@ -73,7 +73,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaAluno_TokenContemTipoCorreto()
     {
-        var conta = Conta.Criar(Email.Criar("aluno@test.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("aluno@test.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
         var token = CriarServico().GerarToken(conta, perfilId);
@@ -94,7 +94,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_TokenPossuiIssuerEAudienceCorretos()
     {
-        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
 
         var token = CriarServico().GerarToken(conta, Guid.NewGuid());
 
@@ -108,7 +108,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_TokenPossuiExpiracao()
     {
-        var conta = Conta.Criar(Email.Criar("trainer@test.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
 
         var token = CriarServico().GerarToken(conta, Guid.NewGuid());
 
@@ -131,5 +131,45 @@ public class JwtServiceTests
         var act = () => new JwtService(config);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Auth:JwtSecret*");
+    }
+
+    [Fact]
+    public void Construtor_SecretCurto_LancaInvalidOperationException()
+    {
+        // Validates byte count (not char count) — a 31-byte ASCII secret must be rejected.
+        // "0123456789012345678901234567890" is exactly 31 ASCII characters = 31 UTF-8 bytes.
+        var secret = "0123456789012345678901234567890"; // 31 chars / 31 bytes
+        secret.Length.Should().Be(31); // guard: ensure the constant is correct
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:JwtSecret"] = secret,
+                ["Auth:JwtIssuer"] = Issuer,
+                ["Auth:JwtAudience"] = Audience,
+            })
+            .Build();
+
+        var act = () => new JwtService(config);
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*32 bytes*");
+    }
+
+    [Fact]
+    public void Construtor_SecretCom32Bytes_NaoLancaExcecao()
+    {
+        // Exactly 32 ASCII chars = 32 UTF-8 bytes — should be accepted.
+        var secret = "01234567890123456789012345678901"; // 32 chars / 32 bytes
+        secret.Length.Should().Be(32);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:JwtSecret"] = secret,
+                ["Auth:JwtIssuer"] = Issuer,
+                ["Auth:JwtAudience"] = Audience,
+            })
+            .Build();
+
+        var act = () => new JwtService(config);
+        act.Should().NotThrow();
     }
 }

@@ -6,8 +6,8 @@ import { runAxe } from "../../utils/axe";
  * A11y 1/1 — varre paginas-chave com @axe-core/playwright.
  *
  * WCAG 2.1 AA. Tag rules: wcag2a + wcag2aa + wcag21a + wcag21aa.
- * Regra `color-contrast` desabilitada (tema MUI tem casos de baixo contraste
- * em chips/text.secondary; cobrir em fase a11y dedicada futura).
+ * Regra `color-contrast` HABILITADA (F18 resolvido: tema MUI auditado/corrigido;
+ * runAxe default agora gateia contraste — ver e2e/utils/axe.ts).
  *
  * Cada describe usa storage state por role (descope-scoped `test.use`).
  */

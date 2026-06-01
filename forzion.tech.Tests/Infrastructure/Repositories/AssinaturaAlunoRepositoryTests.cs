@@ -17,18 +17,18 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
 
     private static async Task<SeedCtx> SeedContextAsync(AppDbContext ctx, Guid? existingAlunoId = null)
     {
-        var emailT = Email.Criar($"t{Guid.NewGuid():N}@test.com");
-        var contaT = Conta.Criar(emailT, "hash", TipoConta.Treinador, DateTime.UtcNow);
-        var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow);
+        var emailT = Email.Criar($"t{Guid.NewGuid():N}@test.com").Value;
+        var contaT = Conta.Criar(emailT, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
         await ctx.Contas.AddAsync(contaT);
         await ctx.Treinadores.AddAsync(treinador);
 
         Guid alunoId;
         if (existingAlunoId is null)
         {
-            var emailA = Email.Criar($"a{Guid.NewGuid():N}@test.com");
-            var contaA = Conta.Criar(emailA, "hash", TipoConta.Aluno, DateTime.UtcNow);
-            var aluno = Aluno.Criar(contaA.Id, $"Al{Guid.NewGuid():N}", DateTime.UtcNow);
+            var emailA = Email.Criar($"a{Guid.NewGuid():N}@test.com").Value;
+            var contaA = Conta.Criar(emailA, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
+            var aluno = Aluno.Criar(contaA.Id, $"Al{Guid.NewGuid():N}", DateTime.UtcNow).Value;
             await ctx.Contas.AddAsync(contaA);
             await ctx.Alunos.AddAsync(aluno);
             alunoId = aluno.Id;
@@ -38,11 +38,11 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
             alunoId = existingAlunoId.Value;
         }
 
-        var pacote = Pacote.Criar(treinador.Id, $"Pac{Guid.NewGuid():N}", 99.90m, DateTime.UtcNow);
+        var pacote = Pacote.Criar(treinador.Id, $"Pac{Guid.NewGuid():N}", 99.90m, DateTime.UtcNow).Value;
         await ctx.Pacotes.AddAsync(pacote);
 
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, alunoId, DateTime.UtcNow);
-        vinculo.Aprovar(treinador.Id, pacote.Id);
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, alunoId, DateTime.UtcNow).Value;
+        vinculo.Aprovar(treinador.Id, pacote.Id, DateTime.UtcNow);
         await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
 
         await ctx.SaveChangesAsync();
@@ -55,9 +55,9 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         bool ativa = true,
         bool cancelada = false)
     {
-        var a = AssinaturaAluno.Criar(seed.VinculoId, seed.PacoteId, seed.TreinadorId, seed.AlunoId, 99.90m, DateTime.UtcNow);
-        if (ativa) a.Ativar();
-        if (cancelada) a.Cancelar();
+        var a = AssinaturaAluno.Criar(seed.VinculoId, seed.PacoteId, seed.TreinadorId, seed.AlunoId, 99.90m, DateTime.UtcNow).Value;
+        if (ativa) a.Ativar(DateTime.UtcNow);
+        if (cancelada) a.Cancelar(DateTime.UtcNow);
         await ctx.AssinaturaAlunos.AddAsync(a);
         await ctx.SaveChangesAsync();
         return a;

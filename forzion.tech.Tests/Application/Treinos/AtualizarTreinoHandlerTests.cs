@@ -30,11 +30,12 @@ public class AtualizarTreinoHandlerTests
             _exercicioRepo.Object,
             _unitOfWork.Object,
             _userContext.Object,
+            TimeProvider.System,
             _logger.Object);
     }
 
     private static Treino CriarTreino(Guid treinadorId) =>
-        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow);
+        Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
 
     [Fact]
     public async Task HandleAsync_DadosValidos_AtualizaERetornaResponse()
@@ -161,7 +162,7 @@ public class AtualizarTreinoHandlerTests
         var treinadorId = Guid.NewGuid();
         var treino = Treino.Criar("T", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow,
             dataInicio: new DateOnly(2025, 1, 1),
-            dataFim: new DateOnly(2025, 12, 31));
+            dataFim: new DateOnly(2025, 12, 31)).Value;
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
         _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
 

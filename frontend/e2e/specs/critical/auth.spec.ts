@@ -40,7 +40,6 @@ test.describe("auth flow", () => {
     await login.submit(email!, password!);
     await page.waitForURL(/\/admin/);
 
-    // Abre menu do avatar e clica em Sair
     await page.getByRole("button").filter({ has: page.locator(".MuiAvatar-root") }).first().click();
     await page.getByRole("menuitem", { name: /sair/i }).click();
 

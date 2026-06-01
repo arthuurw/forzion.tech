@@ -10,7 +10,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Exercicios;
 using forzion.tech.Application.UseCases.Exercicios.CriarExercicio;
 using forzion.tech.Application.UseCases.Exercicios.ListarExercicios;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
@@ -69,7 +69,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     {
         _factory.CriarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Nome duplicado."));
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Nome duplicado.")));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
             new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });

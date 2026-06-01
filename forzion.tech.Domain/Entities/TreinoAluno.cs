@@ -1,5 +1,6 @@
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -14,26 +15,26 @@ public class TreinoAluno
 
     private TreinoAluno() { }
 
-    public static TreinoAluno Criar(Guid treinoId, Guid alunoId, DateTime agora)
+    public static Result<TreinoAluno> Criar(Guid treinoId, Guid alunoId, DateTime agora)
     {
         if (treinoId == Guid.Empty)
-            throw new DomainException("O treino é inválido.");
+            return Result.Failure<TreinoAluno>(TreinoAlunoErrors.TreinoInvalido);
         if (alunoId == Guid.Empty)
-            throw new DomainException("O aluno é inválido.");
+            return Result.Failure<TreinoAluno>(TreinoAlunoErrors.AlunoInvalido);
 
-        return new TreinoAluno
+        return Result.Success(new TreinoAluno
         {
             Id = Guid.NewGuid(),
             TreinoId = treinoId,
             AlunoId = alunoId,
             Status = TreinoAlunoStatus.Ativo,
             CreatedAt = agora
-        };
+        });
     }
 
-    public void AlterarStatus(TreinoAlunoStatus status)
+    public void AlterarStatus(TreinoAlunoStatus status, DateTime agora)
     {
         Status = status;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
     }
 }

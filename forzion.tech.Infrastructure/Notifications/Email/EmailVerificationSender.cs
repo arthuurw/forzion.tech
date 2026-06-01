@@ -27,7 +27,7 @@ public class EmailVerificationSender(
             contaId,
             tokenHash,
             agora.AddHours(24),
-            agora);
+            agora).Value;
 
         await tokenRepository.AdicionarAsync(token, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

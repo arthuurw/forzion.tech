@@ -1,11 +1,17 @@
+// F6e (Fase 3 test remediation) — migrado de vi.mock("@/lib/api/admin")
+// pra MSW. apiClient real envia GET; MSW intercepta. Pega bugs de URL,
+// params, e interceptor que mock antigo escondia.
+//
+// Mocks restantes (next/navigation, usePaginatedList hook, recharts) NAO sao
+// @/lib/api/* — fora do scope F6.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { server } from "@/test/msw/server";
 import type {
   AlunoResponse, TreinoResponse, MeuVinculoResponse,
-  VinculoAlunoItemResponse, FichaAlunoResponse, PacoteResponse,
+  VinculoAlunoItemResponse, PacoteResponse,
 } from "@/types";
-
-// ─── Mocks globais ────────────────────────────────────────────────────────────
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
@@ -41,33 +47,11 @@ vi.mock("recharts", () => ({
   Bar: () => null,
 }));
 
-vi.mock("@/lib/api/admin", () => ({
-  adminApi: {
-    listAlunos: vi.fn(),
-    getAluno: vi.fn(),
-    getTreinador: vi.fn(),
-    getAlunoVinculo: vi.fn(),
-    getAlunoFichas: vi.fn(),
-    getAlunoExecucoes: vi.fn(),
-    getAlunoProgressao: vi.fn(),
-    getTreinadorAlunos: vi.fn(),
-    getTreinadorVinculos: vi.fn(),
-    getTreinadorTreinos: vi.fn(),
-    getTreinadorPacotes: vi.fn(),
-    getTreino: vi.fn(),
-    listTreinadores: vi.fn(),
-  },
-}));
-
-import { adminApi } from "@/lib/api/admin";
 import { useParams } from "next/navigation";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 
-const mockAdminApi = vi.mocked(adminApi);
 const mockUsePaginatedList = vi.mocked(usePaginatedList);
 const mockUseParams = vi.mocked(useParams);
-
-// ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const mockAluno: AlunoResponse = {
   alunoId: "aluno-001",
@@ -126,11 +110,17 @@ const mockTreino: TreinoResponse = {
   updatedAt: null,
 };
 
-// ─── AlunosAdminPage ─────────────────────────────────────────────────────────
+function hang() {
+  return new Promise<Response>(() => {});
+}
 
 describe("AlunosAdminPage", () => {
   beforeEach(() => {
-    mockAdminApi.listAlunos.mockResolvedValue({ data: { items: [], total: 0, pagina: 1, tamanhoPagina: 20 } } as never);
+    server.use(
+      http.get("*/admin/alunos", () =>
+        HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 20 }),
+      ),
+    );
   });
 
   it("renderiza título 'Alunos'", async () => {
@@ -142,8 +132,6 @@ describe("AlunosAdminPage", () => {
   it("renderiza filtro de status", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
-    // DataList renderiza TablePagination (NativeSelect rows-per-page) além do filtro de status
-    // → múltiplos role="combobox" na página; getAllByRole evita falha por ambiguidade
     const comboboxes = screen.getAllByRole("combobox");
     expect(comboboxes.length).toBeGreaterThanOrEqual(1);
   });
@@ -155,17 +143,17 @@ describe("AlunosAdminPage", () => {
   });
 });
 
-// ─── DetalheAlunoAdminPage ───────────────────────────────────────────────────
-
 describe("DetalheAlunoAdminPage", () => {
   beforeEach(() => {
     mockUseParams.mockReturnValue({ alunoId: "aluno-001" });
-    mockAdminApi.getAluno.mockResolvedValue({ data: mockAluno } as never);
-    mockAdminApi.getAlunoVinculo.mockResolvedValue({ data: mockVinculo } as never);
+    server.use(
+      http.get("*/admin/alunos/:id", () => HttpResponse.json(mockAluno)),
+      http.get("*/admin/alunos/:id/vinculo", () => HttpResponse.json(mockVinculo)),
+    );
   });
 
   it("exibe spinner durante carregamento", async () => {
-    mockAdminApi.getAluno.mockImplementation(() => new Promise(() => {}));
+    server.use(http.get("*/admin/alunos/:id", () => hang()));
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
@@ -199,7 +187,9 @@ describe("DetalheAlunoAdminPage", () => {
   });
 
   it("exibe alerta de erro quando API falha", async () => {
-    mockAdminApi.getAluno.mockRejectedValue(new Error("Network error"));
+    server.use(
+      http.get("*/admin/alunos/:id", () => HttpResponse.json({ title: "fail" }, { status: 500 })),
+    );
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     await waitFor(() => {
@@ -207,8 +197,6 @@ describe("DetalheAlunoAdminPage", () => {
     });
   });
 });
-
-// ─── DetalheTreinadorAdminPage ───────────────────────────────────────────────
 
 describe("DetalheTreinadorAdminPage", () => {
   const mockTreinador = {
@@ -222,11 +210,13 @@ describe("DetalheTreinadorAdminPage", () => {
 
   beforeEach(() => {
     mockUseParams.mockReturnValue({ treinadorId: "t-001" });
-    mockAdminApi.getTreinador.mockResolvedValue({ data: mockTreinador } as never);
+    server.use(
+      http.get("*/admin/treinadores/:id", () => HttpResponse.json(mockTreinador)),
+    );
   });
 
   it("exibe spinner durante carregamento", async () => {
-    mockAdminApi.getTreinador.mockImplementation(() => new Promise(() => {}));
+    server.use(http.get("*/admin/treinadores/:id", () => hang()));
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
@@ -252,7 +242,9 @@ describe("DetalheTreinadorAdminPage", () => {
   });
 
   it("exibe alerta de erro quando getTreinador falha", async () => {
-    mockAdminApi.getTreinador.mockRejectedValue(new Error("fail"));
+    server.use(
+      http.get("*/admin/treinadores/:id", () => HttpResponse.json({ title: "fail" }, { status: 500 })),
+    );
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     await waitFor(() => {
@@ -261,16 +253,16 @@ describe("DetalheTreinadorAdminPage", () => {
   });
 });
 
-// ─── DetalheTreinoAdminPage ───────────────────────────────────────────────────
-
 describe("DetalheTreinoAdminPage", () => {
   beforeEach(() => {
     mockUseParams.mockReturnValue({ treinoId: "treino-001" });
-    mockAdminApi.getTreino.mockResolvedValue({ data: mockTreino } as never);
+    server.use(
+      http.get("*/admin/treinos/:id", () => HttpResponse.json(mockTreino)),
+    );
   });
 
   it("exibe spinner durante carregamento", async () => {
-    mockAdminApi.getTreino.mockImplementation(() => new Promise(() => {}));
+    server.use(http.get("*/admin/treinos/:id", () => hang()));
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
@@ -309,7 +301,9 @@ describe("DetalheTreinoAdminPage", () => {
   });
 
   it("exibe alerta de erro quando API falha", async () => {
-    mockAdminApi.getTreino.mockRejectedValue(new Error("Not found"));
+    server.use(
+      http.get("*/admin/treinos/:id", () => HttpResponse.json({ title: "fail" }, { status: 404 })),
+    );
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);
     await waitFor(() => {
@@ -317,8 +311,6 @@ describe("DetalheTreinoAdminPage", () => {
     });
   });
 });
-
-// ─── Fixtures extras ─────────────────────────────────────────────────────────
 
 const BASE_PAGINATED = {
   total: 0, page: 0, pageSize: 20, loading: false,
@@ -341,10 +333,8 @@ const mockVinculoPendente: VinculoAlunoItemResponse = {
   createdAt: "2025-03-01T00:00:00Z",
 };
 
-// ─── AlunosAdminPage — renderCell e filtros ──────────────────────────────────
-
 describe("AlunosAdminPage — renderCell com dados", () => {
-  const mockAluno: AlunoResponse = {
+  const mockAlunoRender: AlunoResponse = {
     alunoId: "a-render-1", nome: "Pedro Render", email: "pedro@test.com",
     telefone: null, status: "Ativo", contaId: "c1",
     createdAt: "2025-01-10T00:00:00Z", updatedAt: null,
@@ -354,7 +344,7 @@ describe("AlunosAdminPage — renderCell com dados", () => {
   };
 
   beforeEach(() => {
-    mockUsePaginatedList.mockReturnValue({ ...BASE_PAGINATED, items: [mockAluno], total: 1 });
+    mockUsePaginatedList.mockReturnValue({ ...BASE_PAGINATED, items: [mockAlunoRender], total: 1 });
   });
 
   it("renderiza nome do aluno (i=0)", async () => {
@@ -372,7 +362,6 @@ describe("AlunosAdminPage — renderCell com dados", () => {
   it("renderiza status chip (i=2)", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/alunos/page");
     render(<Page />);
-    // StatusChip mostra "Ativo"
     expect(screen.getAllByText("Ativo").length).toBeGreaterThan(0);
   });
 
@@ -388,10 +377,8 @@ describe("AlunosAdminPage — renderCell com dados", () => {
   });
 });
 
-// ─── DetalheAlunoAdminPage — tabs e vínculos ────────────────────────────────
-
 describe("DetalheAlunoAdminPage — tabs", () => {
-  const mockAluno: AlunoResponse = {
+  const mockAlunoTabs: AlunoResponse = {
     alunoId: "aluno-001", nome: "Maria Silva", email: "maria@email.com",
     telefone: "11987654321", status: "Ativo", contaId: "conta-001",
     createdAt: "2024-01-15T00:00:00Z", updatedAt: null,
@@ -400,11 +387,21 @@ describe("DetalheAlunoAdminPage — tabs", () => {
     limitacoesFisicas: null, doencas: null, observacoesAdicionais: null,
   };
 
+  let progressaoCalled = false;
+
   beforeEach(() => {
     mockUseParams.mockReturnValue({ alunoId: "aluno-001" });
-    mockAdminApi.getAluno.mockResolvedValue({ data: mockAluno } as never);
-    mockAdminApi.getAlunoVinculo.mockResolvedValue({ data: { vinculoAtivo: null, vinculoPendente: null } } as never);
-    mockAdminApi.getAlunoProgressao.mockResolvedValue({ data: { exercicios: [] } } as never);
+    progressaoCalled = false;
+    server.use(
+      http.get("*/admin/alunos/:id", () => HttpResponse.json(mockAlunoTabs)),
+      http.get("*/admin/alunos/:id/vinculo", () =>
+        HttpResponse.json({ vinculoAtivo: null, vinculoPendente: null }),
+      ),
+      http.get("*/admin/alunos/:id/progressao", () => {
+        progressaoCalled = true;
+        return HttpResponse.json({ exercicios: [] });
+      }),
+    );
     mockUsePaginatedList.mockReturnValue({ ...BASE_PAGINATED, items: [] });
   });
 
@@ -430,22 +427,26 @@ describe("DetalheAlunoAdminPage — tabs", () => {
     expect(await screen.findByText("Maria Silva")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Progressão" }));
     expect(await screen.findByText("Nenhuma execução registrada no período.")).toBeInTheDocument();
-    expect(mockAdminApi.getAlunoProgressao).toHaveBeenCalled();
+    expect(progressaoCalled).toBe(true);
   });
 
   it("vinculoAtivo → exibe nome do treinador", async () => {
-    mockAdminApi.getAlunoVinculo.mockResolvedValue({
-      data: { vinculoAtivo: mockVinculoAtivo, vinculoPendente: null },
-    } as never);
+    server.use(
+      http.get("*/admin/alunos/:id/vinculo", () =>
+        HttpResponse.json({ vinculoAtivo: mockVinculoAtivo, vinculoPendente: null }),
+      ),
+    );
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     expect(await screen.findByText("Treinador Vinculado XYZ")).toBeInTheDocument();
   });
 
   it("vinculoPendente (sem ativo) → exibe nome do novo treinador", async () => {
-    mockAdminApi.getAlunoVinculo.mockResolvedValue({
-      data: { vinculoAtivo: null, vinculoPendente: mockVinculoPendente },
-    } as never);
+    server.use(
+      http.get("*/admin/alunos/:id/vinculo", () =>
+        HttpResponse.json({ vinculoAtivo: null, vinculoPendente: mockVinculoPendente }),
+      ),
+    );
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     expect(await screen.findByText("Novo Treinador ABC")).toBeInTheDocument();
@@ -464,21 +465,21 @@ describe("DetalheAlunoAdminPage — tabs", () => {
   });
 
   it("aluno com perfil de treino → exibe seção Perfil de treino", async () => {
-    mockAdminApi.getAluno.mockResolvedValue({
-      data: { ...mockAluno, finalidade: "Hipertrofia", nivelCondicionamento: "Iniciante" },
-    } as never);
+    server.use(
+      http.get("*/admin/alunos/:id", () =>
+        HttpResponse.json({ ...mockAlunoTabs, finalidade: "Hipertrofia", nivelCondicionamento: "Iniciante" }),
+      ),
+    );
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     expect(await screen.findByText("Perfil de treino")).toBeInTheDocument();
   });
 });
 
-// ─── DetalheAlunoAdminPage — progressão com dados e formatPhone ──────────────
-
 describe("DetalheAlunoAdminPage — progressão com dados", () => {
   const mockAlunoTel10: AlunoResponse = {
     alunoId: "aluno-tel10", nome: "Tel Dez", email: "tel@test.com",
-    telefone: "1198765432", // 10 dígitos
+    telefone: "1198765432",
     status: "Ativo", contaId: "c1",
     createdAt: "2024-01-15T00:00:00Z", updatedAt: null,
     diasDisponiveis: null, tempoDisponivelMinutos: null,
@@ -488,31 +489,37 @@ describe("DetalheAlunoAdminPage — progressão com dados", () => {
 
   beforeEach(() => {
     mockUseParams.mockReturnValue({ alunoId: "aluno-tel10" });
-    mockAdminApi.getAlunoVinculo.mockResolvedValue({ data: { vinculoAtivo: null, vinculoPendente: null } } as never);
+    server.use(
+      http.get("*/admin/alunos/:id/vinculo", () =>
+        HttpResponse.json({ vinculoAtivo: null, vinculoPendente: null }),
+      ),
+    );
     mockUsePaginatedList.mockReturnValue({ ...BASE_PAGINATED, items: [] });
   });
 
   it("aluno com telefone 10 dígitos → exibe formato (XX) XXXX-XXXX", async () => {
-    mockAdminApi.getAluno.mockResolvedValue({ data: mockAlunoTel10 } as never);
+    server.use(http.get("*/admin/alunos/:id", () => HttpResponse.json(mockAlunoTel10)));
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     expect(await screen.findByText("(11) 9876-5432")).toBeInTheDocument();
   });
 
   it("progressão com exercícios → renderiza card de exercício", async () => {
-    mockAdminApi.getAluno.mockResolvedValue({ data: mockAlunoTel10 } as never);
-    mockAdminApi.getAlunoProgressao.mockResolvedValue({
-      data: {
-        exercicios: [{
-          nomeExercicio: "Supino Reto",
-          grupoMuscular: "Peitoral",
-          historico: [
-            { data: "2025-05-01", cargaMaxima: 60, seriesExecutadas: 4, repeticoesExecutadas: 10 },
-            { data: "2025-05-08", cargaMaxima: 65, seriesExecutadas: 4, repeticoesExecutadas: 10 },
-          ],
-        }],
-      },
-    } as never);
+    server.use(
+      http.get("*/admin/alunos/:id", () => HttpResponse.json(mockAlunoTel10)),
+      http.get("*/admin/alunos/:id/progressao", () =>
+        HttpResponse.json({
+          exercicios: [{
+            nomeExercicio: "Supino Reto",
+            grupoMuscular: "Peitoral",
+            historico: [
+              { data: "2025-05-01", cargaMaxima: 60, seriesExecutadas: 4, repeticoesExecutadas: 10 },
+              { data: "2025-05-08", cargaMaxima: 65, seriesExecutadas: 4, repeticoesExecutadas: 10 },
+            ],
+          }],
+        }),
+      ),
+    );
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
     expect(await screen.findByText("Tel Dez")).toBeInTheDocument();
@@ -522,8 +529,6 @@ describe("DetalheAlunoAdminPage — progressão com dados", () => {
     expect(screen.getByText("Último: 65 kg")).toBeInTheDocument();
   });
 });
-
-// ─── DetalheTreinadorAdminPage — tabs ────────────────────────────────────────
 
 describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
   const mockTreinador = {
@@ -538,10 +543,18 @@ describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
     treinadorId: "t-001",
   };
 
+  let pacotesPath: string | null = null;
+
   beforeEach(() => {
     mockUseParams.mockReturnValue({ treinadorId: "t-001" });
-    mockAdminApi.getTreinador.mockResolvedValue({ data: mockTreinador } as never);
-    mockAdminApi.getTreinadorPacotes.mockResolvedValue({ data: [mockPacote] } as never);
+    pacotesPath = null;
+    server.use(
+      http.get("*/admin/treinadores/:id", () => HttpResponse.json(mockTreinador)),
+      http.get("*/admin/treinadores/:id/pacotes", ({ request }) => {
+        pacotesPath = new URL(request.url).pathname;
+        return HttpResponse.json([mockPacote]);
+      }),
+    );
     mockUsePaginatedList.mockReturnValue({ ...BASE_PAGINATED, items: [] });
   });
 
@@ -561,17 +574,20 @@ describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
     expect(screen.getByText("Nenhum treino encontrado para este treinador.")).toBeInTheDocument();
   });
 
-  it("tab Pacotes → chama getTreinadorPacotes e exibe pacote", async () => {
+  it("tab Pacotes → chama getTreinadorPacotes (URL captura) e exibe pacote", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     expect(await screen.findByText("Carlos Ferreira")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Pacotes" }));
     expect(await screen.findByText("Pacote Premium")).toBeInTheDocument();
-    expect(mockAdminApi.getTreinadorPacotes).toHaveBeenCalledWith("t-001");
+    // Captura via MSW handler: verifica URL contém treinadorId correto.
+    expect(pacotesPath).toContain("/admin/treinadores/t-001/pacotes");
   });
 
   it("tab Pacotes → sem pacotes exibe 'Nenhum pacote cadastrado.'", async () => {
-    mockAdminApi.getTreinadorPacotes.mockResolvedValue({ data: [] } as never);
+    server.use(
+      http.get("*/admin/treinadores/:id/pacotes", () => HttpResponse.json([])),
+    );
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
     expect(await screen.findByText("Carlos Ferreira")).toBeInTheDocument();

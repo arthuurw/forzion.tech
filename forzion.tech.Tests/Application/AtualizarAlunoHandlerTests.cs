@@ -28,6 +28,7 @@ public class AtualizarAlunoHandlerTests
             _vinculoRepo.Object,
             _unitOfWork.Object,
             _userContext.Object,
+            TimeProvider.System,
             _logger.Object);
     }
 
@@ -39,7 +40,8 @@ public class AtualizarAlunoHandlerTests
 
         var result = await _handler.HandleAsync(new AtualizarAlunoCommand(aluno.Id, "Maria", null, null));
 
-        result.Nome.Should().Be("Maria");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Maria");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -81,8 +83,8 @@ public class AtualizarAlunoHandlerTests
     public async Task HandleAsync_AlunoInativo_LancaAlunoInativoException()
     {
         var aluno = new AlunoBuilder().ComNome("João").Build();
-        aluno.Ativar();
-        aluno.Inativar();
+        aluno.Ativar(TestData.Agora);
+        aluno.Inativar(TestData.Agora);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var act = async () => await _handler.HandleAsync(
@@ -97,5 +99,53 @@ public class AtualizarAlunoHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_DominioRetornaFailure_RetornaFailureSemCommit()
+    {
+        var aluno = new AlunoBuilder().ComNome("João").Build();
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+
+        // Email inválido faz Aluno.Atualizar retornar Result.Failure (não exceção).
+        var result = await _handler.HandleAsync(new AtualizarAlunoCommand(aluno.Id, null, "email-invalido", null));
+
+        result.IsFailure.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlunoAtualizandoProprioPerfil_AtualizaERetorna()
+    {
+        var aluno = new AlunoBuilder().ComNome("João").Build();
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.PerfilId).Returns(aluno.Id);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+
+        var result = await _handler.HandleAsync(new AtualizarAlunoCommand(aluno.Id, "Maria", null, null));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Maria");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorComVinculoAtivo_AtualizaERetorna()
+    {
+        var treinadorId = Guid.NewGuid();
+        var aluno = new AlunoBuilder().ComNome("João").Build();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, TestData.Agora, Guid.NewGuid()).Value;
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.IsTreinador).Returns(true);
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, aluno.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(vinculo);
+
+        var result = await _handler.HandleAsync(new AtualizarAlunoCommand(aluno.Id, "Maria", null, null));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

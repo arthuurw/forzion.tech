@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useCallback, useState } from "react";
 import {
   Box, Typography, Select, MenuItem, FormControl, InputLabel, IconButton,
@@ -17,6 +17,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
+import { extractApiError } from "@/lib/api/extractApiError";
 import type { VinculoDetalheResponse, VinculoStatus, PacoteResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 
@@ -58,8 +59,8 @@ export default function AlunosTreinadorPage() {
       try {
         const res = await treinadorApi.listPacotes();
         setPacotes(res.data);
-      } catch {
-        setError("Erro ao carregar pacotes.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar pacotes."));
       }
     }
   };
@@ -85,8 +86,8 @@ export default function AlunosTreinadorPage() {
       setSuccess(`${reativarDialog.nomeAluno} reativado com o pacote "${selectedPacoteReativar.nome}".`);
       setReativarDialog(null);
       reload();
-    } catch {
-      setError("Erro ao reativar aluno.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao reativar aluno."));
     } finally {
       setLoadingReativar(false);
     }
@@ -100,8 +101,8 @@ export default function AlunosTreinadorPage() {
       setSuccess(`${aprovarDialog.nomeAluno} aprovado com o pacote "${selectedPacote.nome}".`);
       setAprovarDialog(null);
       reload();
-    } catch {
-      setError("Erro ao aprovar vínculo.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao aprovar vínculo."));
     } finally {
       setLoadingAprovar(false);
     }
@@ -116,8 +117,8 @@ export default function AlunosTreinadorPage() {
       setConfirmDesvincular(null);
       setObservacaoDesvincular("");
       reload();
-    } catch {
-      setError("Erro ao desvincular aluno.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao desvincular aluno."));
     } finally {
       setLoadingDesvincular(false);
     }

@@ -17,5 +17,5 @@ interface StatusChipProps {
 
 export default function StatusChip({ status, size = "small" }: StatusChipProps) {
   const { label, color } = CONFIG[status];
-  return <Chip label={label} color={color} size={size} />;
+  return <Chip label={label} color={color} size={size} aria-label={`Status: ${label}`} />;
 }

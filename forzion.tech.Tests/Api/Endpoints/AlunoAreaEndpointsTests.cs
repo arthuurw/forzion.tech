@@ -21,6 +21,7 @@ using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
@@ -130,7 +131,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.SolicitarTrocaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<SolicitarTrocaTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaNovoVinculo);
+            .ReturnsAsync(Result.Success(RespostaNovoVinculo));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/troca-treinador",
             new { NovoTreinadorId, PacoteId = Guid.NewGuid() });
@@ -159,7 +160,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.ObterFichaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaFichaDetalhe);
+            .ReturnsAsync(Result.Success(RespostaFichaDetalhe));
 
         var response = await CriarClienteAluno().GetAsync($"/aluno/fichas/{TreinoAlunoId}");
 
@@ -187,7 +188,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.RegistrarExecucaoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaExecucao);
+            .ReturnsAsync(Result.Success(RespostaExecucao));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/execucoes",
             new
@@ -248,7 +249,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.ObterStatusPagamentoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ObterStatusPagamentoQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaPagamento);
+            .ReturnsAsync(Result.Success(RespostaPagamento));
 
         var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/{PagamentoId}");
 
@@ -301,7 +302,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.SolicitarTrocaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<SolicitarTrocaTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Aluno já possui vínculo ativo."));
+            .ReturnsAsync(Result.Failure<VinculoResponse>(Error.Business("Aluno já possui vínculo ativo.")));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/troca-treinador",
             new { NovoTreinadorId, PacoteId = Guid.NewGuid() });
@@ -321,6 +322,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
             .GetAsync($"/aluno/progressao?de={hoje}&ate={ontem}");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
     // --- GET /aluno/pagamentos/assinatura/{id} error path ---
@@ -344,7 +346,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.ObterFichaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new TreinoNaoEncontradoException());
+            .ReturnsAsync(Result.Failure<FichaAlunoDetalheResponse>(Error.NotFound("ficha_nao_encontrada", "Ficha não encontrada.")));
 
         var response = await CriarClienteAluno().GetAsync($"/aluno/fichas/{Guid.NewGuid()}");
 
@@ -358,7 +360,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.RegistrarExecucaoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Treino não disponível."));
+            .ReturnsAsync(Result.Failure<RegistrarExecucaoResponse>(Error.Business("Treino não disponível.")));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/execucoes",
             new
@@ -461,6 +463,14 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
                 userContextMock.Setup(u => u.PerfilId).Returns(AlunoId);
                 userContextMock.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
                 services.AddScoped(_ => userContextMock.Object);
+
+                // Repositórios usados pelo RequireAssinaturaAtivaFilter — stubs sem
+                // aluno cadastrado fazem o filtro entrar em bypass, mantendo
+                // os testes existentes de POST /aluno/execucoes funcionando.
+                services.RemoveAll<IAlunoRepository>();
+                services.RemoveAll<IAssinaturaAlunoRepository>();
+                services.AddScoped(_ => Mock.Of<IAlunoRepository>());
+                services.AddScoped(_ => Mock.Of<IAssinaturaAlunoRepository>());
 
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, AlunoTestAuthHandler>("Test", _ => { });

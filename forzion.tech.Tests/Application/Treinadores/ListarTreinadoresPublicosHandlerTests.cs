@@ -4,6 +4,7 @@ using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Treinadores;
 
@@ -45,5 +46,5 @@ public class ListarTreinadoresPublicosHandlerTests
     }
 
     private static Treinador CriarTreinador(string nome) =>
-        Treinador.Criar(Guid.NewGuid(), nome, DateTime.UtcNow);
+        Treinador.Criar(Guid.NewGuid(), nome, DateTime.UtcNow).Value;
 }

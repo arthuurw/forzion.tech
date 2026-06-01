@@ -188,6 +188,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
+                    b.Property<int>("TentativasFalhasConsecutivas")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("tentativas_falhas_consecutivas");
+
                     b.Property<Guid>("TreinadorId")
                         .HasColumnType("uuid")
                         .HasColumnName("treinador_id");
@@ -232,6 +238,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<DateTime?>("AnonimizadaEm")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("anonimizada_em");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -410,6 +420,48 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("email_verification_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.ErrorLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("mensagem");
+
+                    b.Property<string>("Nivel")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("nivel");
+
+                    b.Property<DateTime>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrido_em");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("origem");
+
+                    b.HasKey("Id")
+                        .HasName("pk_error_logs");
+
+                    b.HasIndex("OcorridoEm")
+                        .HasDatabaseName("ix_error_logs_ocorrido_em");
+
+                    b.ToTable("error_logs", (string)null);
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.ExecucaoExercicio", b =>
                 {
                     b.Property<Guid>("Id")
@@ -569,6 +621,101 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_grupos_musculares_nome");
 
                     b.ToTable("grupos_musculares", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.HealthReportConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Destinatarios")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("destinatarios");
+
+                    b.Property<TimeOnly>("HoraEnvioUtc")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("hora_envio_utc");
+
+                    b.Property<bool>("IncluirEntregabilidade")
+                        .HasColumnType("boolean")
+                        .HasColumnName("incluir_entregabilidade");
+
+                    b.Property<bool>("IncluirErros")
+                        .HasColumnType("boolean")
+                        .HasColumnName("incluir_erros");
+
+                    b.Property<bool>("IncluirKpis")
+                        .HasColumnType("boolean")
+                        .HasColumnName("incluir_kpis");
+
+                    b.Property<bool>("IncluirLiveness")
+                        .HasColumnType("boolean")
+                        .HasColumnName("incluir_liveness");
+
+                    b.Property<DateTime?>("UltimoEnvioEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_envio_em");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_health_report_config");
+
+                    b.ToTable("health_report_config", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.HealthSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Ambiente")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ambiente");
+
+                    b.Property<DateTime>("CapturadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("capturado_em");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("StatusGeral")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status_geral");
+
+                    b.HasKey("Id")
+                        .HasName("pk_health_snapshots");
+
+                    b.HasIndex("CapturadoEm")
+                        .HasDatabaseName("ix_health_snapshots_capturado_em");
+
+                    b.ToTable("health_snapshots", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.LogAprovacao", b =>
@@ -1205,6 +1352,56 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_vinculos_treinador_aluno_treinador_id_status");
 
                     b.ToTable("vinculos_treinador_aluno", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.WhatsAppDeliveryLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("MetaMessageId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("meta_message_id");
+
+                    b.Property<DateTime>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrido_em");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("RecipientPhone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("recipient_phone");
+
+                    b.HasKey("Id")
+                        .HasName("pk_whatsapp_delivery_logs");
+
+                    b.HasIndex("EventType")
+                        .HasDatabaseName("ix_whatsapp_delivery_logs_event_type");
+
+                    b.HasIndex("MetaMessageId")
+                        .HasDatabaseName("ix_whatsapp_delivery_logs_meta_message_id");
+
+                    b.ToTable("whatsapp_delivery_logs", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Aluno", b =>

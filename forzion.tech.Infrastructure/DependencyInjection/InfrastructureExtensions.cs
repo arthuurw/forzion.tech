@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Handlers;
+using forzion.tech.Infrastructure.Notifications.Alerts;
 using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using forzion.tech.Infrastructure.Persistence;
@@ -28,6 +29,12 @@ public static class InfrastructureExtensions
             inner,
             sp.GetRequiredService<IOptions<EmailSettings>>().Value,
             sp.GetRequiredService<ILogger<EnvironmentEmailDecorator>>());
+
+    private static IWhatsAppNotifier EnvolverComWhatsAppDecorator(IServiceProvider sp, IWhatsAppNotifier inner) =>
+        new EnvironmentWhatsAppDecorator(
+            inner,
+            sp.GetRequiredService<IOptions<WhatsAppSettings>>().Value,
+            sp.GetRequiredService<ILogger<EnvironmentWhatsAppDecorator>>());
 
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
@@ -56,7 +63,6 @@ public static class InfrastructureExtensions
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 
-        // Repositórios
         services.AddScoped<IContaRepository, ContaRepository>();
         services.AddScoped<IAlunoRepository, AlunoRepository>();
         services.AddScoped<ITreinoRepository, TreinoRepository>();
@@ -74,10 +80,18 @@ public static class InfrastructureExtensions
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
+        services.AddScoped<IWhatsAppDeliveryLogRepository, WhatsAppDeliveryLogRepository>();
+        services.AddScoped<IPlanoNotificationPolicy, Notifications.PlanoNotificationPolicy>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
         services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
+        services.AddScoped<IHealthReportConfigRepository, HealthReportConfigRepository>();
+        services.AddScoped<IHealthSnapshotRepository, HealthSnapshotRepository>();
+        services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+        services.AddScoped<IAdminStatsRepository, AdminStatsRepository>();
+        services.AddScoped<IHealthReportCollector, Health.HealthReportCollector>();
+        services.AddScoped<IHealthReportSender, Health.HealthReportSender>();
 
         // Stripe — valida no startup que SecretKey e WebhookSecret estão configurados
         services.AddOptions<StripeSettings>()
@@ -126,8 +140,6 @@ public static class InfrastructureExtensions
                 EnvolverComDecorator(sp,
                     new NullEmailService(sp.GetRequiredService<ILogger<NullEmailService>>())));
         }
-
-        // Domain event handlers — e-mail
         services.AddScoped<IDomainEventHandler<TreinadorAprovadoEvent>, TreinadorAprovadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<TreinadorReprovadoEvent>, TreinadorReprovadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoEmailHandler>();
@@ -136,15 +148,44 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoEmailHandler>();
         services.AddScoped<IDomainEventHandler<AlunoInativadoEvent>, AlunoInativadoEmailHandler>();
         services.AddScoped<IDomainEventHandler<ContaRegistradaEvent>, ContaRegistradaEmailHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoEmailHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouEmailHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoEstornadoEvent>, PagamentoEstornadoEmailHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoEmDisputaEvent>, PagamentoEmDisputaEmailTreinadorHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoEmDisputaEvent>, PagamentoEmDisputaAlertHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoMarcadaInadimplenteEvent>, AssinaturaAlunoMarcadaInadimplenteEmailHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaEmailAlunoHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaEmailTreinadorHandler>();
+        services.AddScoped<IDomainEventHandler<VinculoPendenteCriadoEvent>, VinculoPendenteCriadoEmailTreinadorHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoReativadaEvent>, AssinaturaAlunoReativadaEmailAlunoHandler>();
 
-        // Domain event handlers — pagamento
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
 
-        // Domain event handlers — projeção billing
+        services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoEstornadoEvent>, PagamentoEstornadoWhatsAppNotifierHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoMarcadaInadimplenteEvent>, AssinaturaAlunoMarcadaInadimplenteWhatsAppNotifierHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaWhatsAppAlunoHandler>();
+        services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoCriadaEvent>, AssinaturaAlunoCriadaWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<AlunoInativadoEvent>, AlunoInativadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<TreinadorAprovadoEvent>, TreinadorAprovadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<TreinadorReprovadoEvent>, TreinadorReprovadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<TreinadorInativadoEvent>, TreinadorInativadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaWhatsAppTreinadorHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoEmDisputaEvent>, PagamentoEmDisputaWhatsAppTreinadorHandler>();
+        services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<VinculoPendenteCriadoEvent>, VinculoPendenteCriadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<AssinaturaAlunoReativadaEvent>, AssinaturaAlunoReativadaWhatsAppHandler>();
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();
         services.AddScoped<IDomainEventHandler<AlunoAtualizadoEvent>, AlunoAtualizadoSincronizarAssinanteHandler>();
 
-        // WhatsApp notifier — Meta Cloud API when configured, no-op otherwise
+        // WhatsAppSettings — guardrail de ambiente (defaults prod-safe)
+        services.AddOptions<WhatsAppSettings>().BindConfiguration("WhatsApp");
+
+        // WhatsApp notifier — Meta Cloud API when configured, no-op otherwise. Sempre
+        // embrulhado no EnvironmentWhatsAppDecorator: passthrough em prod, redirect/allowlist
+        // de telefone em não-prod.
         var whatsAppPhoneNumberId = configuration["WhatsApp:PhoneNumberId"];
         var whatsAppAccessToken = configuration["WhatsApp:AccessToken"];
         var whatsAppApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v21.0";
@@ -157,11 +198,14 @@ public static class InfrastructureExtensions
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", whatsAppAccessToken);
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
-            services.AddScoped<IWhatsAppNotifier, MetaWhatsAppCloudNotifier>();
+            services.AddScoped<IWhatsAppNotifier>(sp =>
+                EnvolverComWhatsAppDecorator(sp, sp.GetRequiredService<MetaWhatsAppCloudNotifier>()));
         }
         else
         {
-            services.AddScoped<IWhatsAppNotifier, NullWhatsAppNotifier>();
+            services.AddScoped<IWhatsAppNotifier>(sp =>
+                EnvolverComWhatsAppDecorator(sp,
+                    new NullWhatsAppNotifier(sp.GetRequiredService<ILogger<NullWhatsAppNotifier>>())));
         }
 
         return services;

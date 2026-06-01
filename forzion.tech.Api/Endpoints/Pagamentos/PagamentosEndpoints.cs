@@ -4,6 +4,7 @@ using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
+using forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStripe;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +31,8 @@ public static class PagamentosEndpoints
         {
             var result = await handler.HandleAsync(
                 new ObterStatusPagamentoQuery(pagamentoId, userContext.PerfilId), cancellationToken).ConfigureAwait(false);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Obtém status e QR code de um pagamento")
         .Produces<PagamentoResponse>()
@@ -79,6 +81,7 @@ public static class PagamentosEndpoints
             [FromServices] GerarCobrancaMensalHandler gerarHandler,
             [FromServices] IAssinaturaAlunoRepository assinaturaRepository,
             [FromServices] ILogger<Program> logger,
+            [FromServices] TimeProvider timeProvider,
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
@@ -95,7 +98,7 @@ public static class PagamentosEndpoints
                 return Results.Unauthorized();
 
             var assinaturas = await assinaturaRepository
-                .ListarParaRenovarAsync(DateTime.UtcNow, cancellationToken).ConfigureAwait(false);
+                .ListarParaRenovarAsync(timeProvider.GetUtcNow().UtcDateTime, cancellationToken).ConfigureAwait(false);
 
             var falhas = 0;
             foreach (var assinatura in assinaturas)
@@ -120,6 +123,43 @@ public static class PagamentosEndpoints
         .Produces<object>()
         .ProducesProblem(StatusCodes.Status401Unauthorized);
 
+        endpoints.MapPost("/internal/reconciliar-pagamentos", async (
+            HttpContext httpContext,
+            [FromBody] ReconciliarPagamentosStripeRequest? body,
+            [FromServices] ReconciliarPagamentosStripeHandler handler,
+            IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            var apiKey = configuration["Internal:ApiKey"];
+            var headerKey = httpContext.Request.Headers["X-Internal-Key"].FirstOrDefault() ?? string.Empty;
+
+            // Mesma defesa do endpoint de renovações: constant-time compare + checagem de tamanho.
+            var headerBytes = Encoding.UTF8.GetBytes(headerKey);
+            var keyBytes = Encoding.UTF8.GetBytes(apiKey ?? string.Empty);
+            if (string.IsNullOrEmpty(apiKey)
+                || headerBytes.Length != keyBytes.Length
+                || !CryptographicOperations.FixedTimeEquals(headerBytes, keyBytes))
+                return Results.Unauthorized();
+
+            var command = new ReconciliarPagamentosStripeCommand(body?.DesdeUtc);
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithTags("Internal")
+        .WithSummary("Reconcilia eventos Stripe da janela especificada (default últimos 7d) — requer X-Internal-Key")
+        .AllowAnonymous()
+        .RequireRateLimiting("internal")
+        .Produces<ReconciliarPagamentosStripeResponse>()
+        .ProducesProblem(StatusCodes.Status401Unauthorized);
+
         return endpoints;
     }
+
+    /// <summary>
+    /// Body opcional para <c>/internal/reconciliar-pagamentos</c>. Quando <c>null</c> ou ausente,
+    /// o handler usa janela default de 7 dias a partir do <see cref="TimeProvider"/>.
+    /// </summary>
+    public sealed record ReconciliarPagamentosStripeRequest(DateTime? DesdeUtc);
 }

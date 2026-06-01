@@ -19,6 +19,10 @@ test.describe("LGPD: export data", () => {
   test("aluno consegue exportar dados em /perfil", async ({ page }) => {
     await page.goto("/perfil");
 
+    // Dispensa o banner de consentimento (modal, dynamic-import) que cobre a página no
+    // primeiro acesso — Playwright auto-espera o botão aparecer.
+    await page.getByRole("button", { name: /só essenciais/i }).click();
+
     const exportButton = page.getByRole("button", {
       name: /exportar.*dados|baixar.*meus dados/i,
     });

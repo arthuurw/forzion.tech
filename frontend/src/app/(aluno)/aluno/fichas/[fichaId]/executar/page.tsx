@@ -249,8 +249,25 @@ export default function ExecutarFichaPage() {
             <Divider sx={{ mb: 2.5 }} />
 
             {/* Executed — one row per individual set */}
-            <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-              Executado
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1.5 }}>
+              <Typography variant="overline" color="text.secondary" sx={{ display: "block" }}>
+                Executado
+              </Typography>
+              <Box
+                component="span"
+                title="Reps e carga são registrados como média das séries preenchidas por exercício."
+                sx={{ display: "flex", alignItems: "center", cursor: "help" }}
+              >
+                <InfoOutlinedIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+              </Box>
+            </Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              data-testid="exec-aggregation-hint"
+              sx={{ display: "block", mb: 1 }}
+            >
+              Valores registrados como média por exercício.
             </Typography>
             <Stack spacing={0.75}>
               {currentSets.map((set, idx) => {

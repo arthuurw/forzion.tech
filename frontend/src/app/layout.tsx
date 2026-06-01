@@ -6,6 +6,7 @@ import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import ThemeRegistry from "@/lib/theme/ThemeRegistry";
 import { WebVitals } from "@/components/observability/WebVitals";
+import ConsentProvider from "@/components/ui/ConsentProvider";
 import "@/styles/globals.css";
 
 const inter = Inter({
@@ -14,9 +15,27 @@ const inter = Inter({
   display: "swap",
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
+const SITE_DESCRIPTION = "Plataforma de gestão de treinos para personal trainers";
+
 export const metadata: Metadata = {
-  title: "forzion.tech",
-  description: "Plataforma de gestão de treinos para personal trainers",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "forzion.tech — Gestão para Personal Trainers",
+    template: "%s | forzion.tech",
+  },
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "forzion.tech",
+    locale: "pt_BR",
+    url: "/",
+    title: "forzion.tech — Gestão para Personal Trainers",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export const viewport: Viewport = {
@@ -38,7 +57,10 @@ export default function RootLayout({
           <ThemeRegistry>
             <ErrorBoundary>
               <AuthProvider>
-                <SnackbarProvider>{children}</SnackbarProvider>
+                <SnackbarProvider>
+                  <ConsentProvider />
+                  {children}
+                </SnackbarProvider>
               </AuthProvider>
             </ErrorBoundary>
           </ThemeRegistry>

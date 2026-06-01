@@ -36,7 +36,7 @@ public class ListarFichasDoAlunoHandlerTests
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
         var treinoId = Guid.NewGuid();
-        var treinoAluno = TreinoAluno.Criar(treinoId, alunoId, DateTime.UtcNow);
+        var treinoAluno = TreinoAluno.Criar(treinoId, alunoId, DateTime.UtcNow).Value;
         var fichas = new List<TreinoAlunoComNome>
         {
             new(treinoAluno, "Treino Força")
@@ -60,9 +60,9 @@ public class ListarFichasDoAlunoHandlerTests
         var alunoId = Guid.NewGuid();
         var fichas = new List<TreinoAlunoComNome>
         {
-            new(TreinoAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow), "Treino A"),
-            new(TreinoAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow), "Treino B"),
-            new(TreinoAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow), "Treino C")
+            new(TreinoAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow).Value, "Treino A"),
+            new(TreinoAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow).Value, "Treino B"),
+            new(TreinoAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow).Value, "Treino C")
         };
         _treinoAlunoRepo.Setup(r => r.ListarAtivosComNomePorParAsync(treinadorId, alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(fichas);

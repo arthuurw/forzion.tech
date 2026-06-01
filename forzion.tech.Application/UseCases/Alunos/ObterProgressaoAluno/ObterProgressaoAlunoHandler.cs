@@ -31,10 +31,28 @@ public class ObterProgressaoAlunoHandler(
 
         var ate = query.Ate.Date.AddDays(1).AddTicks(-1);
 
-        var execucoes = await execucaoRepository
-            .ListarPorAlunoComExerciciosAsync(query.AlunoId, query.De.Date, ate, cancellationToken)
+        var rows = await execucaoRepository
+            .ProjetarProgressaoAsync(query.AlunoId, query.De.Date, ate, cancellationToken)
             .ConfigureAwait(false);
 
-        return new ProgressaoAlunoResponse(ProgressaoProjection.Projetar(execucoes));
+        // Regroup in-memory: one ExercicioProgressao per (NomeExercicio, GrupoMuscular),
+        // with one PontoProgressao per day. SQL already orders by grupoMuscular/nome/data.
+        var exercicios = rows
+            .GroupBy(r => (r.NomeExercicio, r.GrupoMuscular))
+            .Select(g => new ExercicioProgressao(
+                g.Key.NomeExercicio,
+                g.Key.GrupoMuscular,
+                g.OrderBy(r => r.Data)
+                    .Select(r => new PontoProgressao(
+                        r.Data,
+                        r.CargaMaxima,
+                        (int)Math.Round(r.MediaSeries),
+                        (int)Math.Round(r.MediaRepeticoes)))
+                    .ToList()))
+            .OrderBy(e => e.GrupoMuscular)
+            .ThenBy(e => e.NomeExercicio)
+            .ToList();
+
+        return new ProgressaoAlunoResponse(exercicios);
     }
 }

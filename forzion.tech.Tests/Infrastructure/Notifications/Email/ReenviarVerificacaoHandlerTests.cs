@@ -41,7 +41,7 @@ public class ReenviarVerificacaoHandlerTests
     [Fact]
     public async Task HandleAsync_ContaJaVerificada_NaoEnvia()
     {
-        var conta = Conta.Criar(EmailVO.Criar("ja@example.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        var conta = Conta.Criar(EmailVO.Criar("ja@example.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         conta.MarcarEmailVerificado(DateTime.UtcNow);
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
@@ -54,7 +54,7 @@ public class ReenviarVerificacaoHandlerTests
     [Fact]
     public async Task HandleAsync_ContaNaoVerificada_Envia()
     {
-        var conta = Conta.Criar(EmailVO.Criar("pendente@example.com"), "hash", TipoConta.Aluno, DateTime.UtcNow);
+        var conta = Conta.Criar(EmailVO.Criar("pendente@example.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 

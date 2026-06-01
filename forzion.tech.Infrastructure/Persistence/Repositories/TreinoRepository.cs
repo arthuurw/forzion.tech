@@ -30,7 +30,7 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
                 select new { TreinoId = t.Id, NomeAluno = (string?)a.Nome, t.Nome, t.Objetivo, t.CreatedAt };
 
         if (!string.IsNullOrWhiteSpace(nome))
-            q = q.Where(x => x.Nome.ToLower().Contains(nome.ToLower()));
+            q = q.Where(x => EF.Functions.ILike(x.Nome, $"%{nome}%"));
 
         if (!string.IsNullOrWhiteSpace(objetivo) && Enum.TryParse<ObjetivoTreino>(objetivo, out var obj))
             q = q.Where(x => x.Objetivo == obj);

@@ -41,8 +41,6 @@ public static class TreinadorEndpoints
         var group = endpoints.MapGroup("/treinador").WithTags("Treinador").RequireAuthorization("Treinador").RequireRateLimiting("write")
             .AddEndpointFilter<PaginacaoFilter>();
 
-        // --- Onboarding Stripe ---
-
         group.MapPost("/onboarding", async (
             [FromBody] IniciarOnboardingRequest request,
             [FromServices] IniciarOnboardingTreinadorHandler handler,
@@ -56,7 +54,7 @@ public static class TreinadorEndpoints
             if (string.IsNullOrEmpty(urlBase)
                 || !UrlValidator.IsUrlPermitida(request.UrlRetorno, urlBase)
                 || !UrlValidator.IsUrlPermitida(request.UrlCancelamento, urlBase))
-                return Results.BadRequest("URLs de retorno fora do domínio permitido.");
+                return Results.Problem(detail: "URLs de retorno fora do domínio permitido.", statusCode: 400);
 
             var result = await handler.HandleAsync(
                 new IniciarOnboardingTreinadorCommand(userContext.PerfilId, request.UrlRetorno, request.UrlCancelamento),
@@ -78,12 +76,11 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new VerificarOnboardingTreinadorQuery(userContext.PerfilId), cancellationToken).ConfigureAwait(false);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Verifica status do onboarding Stripe do treinador")
         .Produces<OnboardingStatusResponse>();
-
-        // --- Vínculos ---
 
         group.MapPost("/vinculos/{id:guid}/aprovar", async (
             Guid id,
@@ -95,7 +92,8 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new AprovarVinculoCommand(id, userContext.PerfilId, request.PacoteId, request.TrarFichas), cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Aprova o vínculo de um aluno ao treinador")
         .Produces<VinculoResponse>()
@@ -110,9 +108,10 @@ public static class TreinadorEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(
+            var result = await handler.HandleAsync(
                 new DesvincularAlunoCommand(id, userContext.PerfilId, request.Observacao), cancellationToken);
 
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Desvincula um aluno do treinador")
@@ -129,14 +128,13 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new ReativarVinculoCommand(userContext.PerfilId, alunoId, request.PacoteId), cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Reativa um aluno inativo criando um novo vínculo aprovado")
         .Produces<VinculoResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
-
-        // --- Alunos ---
 
         group.MapGet("/alunos", async (
             [FromServices] ListarAlunosHandler handler,
@@ -198,7 +196,7 @@ public static class TreinadorEndpoints
                 : hoje;
 
             if (de > ate)
-                return Results.BadRequest("O parâmetro 'de' deve ser anterior a 'ate'.");
+                return Results.Problem(detail: "O parâmetro 'de' deve ser anterior a 'ate'.", statusCode: 400);
 
             var query = new ObterProgressaoAlunoQuery(alunoId, de, ate);
             var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
@@ -234,8 +232,6 @@ public static class TreinadorEndpoints
         })
         .WithSummary("Lista vínculos do treinador com paginação")
         .Produces<ListarVinculosResponse>();
-
-        // --- Treinos ---
 
         group.MapGet("/treinos", async (
             [FromServices] ListarTreinosDoTreinadorHandler handler,
@@ -279,8 +275,6 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
-        // --- Grupos Musculares ---
-
         group.MapGet("/grupos-musculares", async (
             [FromServices] ListarGruposMuscularesHandler handler,
             CancellationToken cancellationToken) =>
@@ -289,8 +283,6 @@ public static class TreinadorEndpoints
             return Results.Ok(result);
         })
         .WithSummary("Lista todos os grupos musculares");
-
-        // --- Exercícios ---
 
         group.MapGet("/exercicios", async (
             [FromServices] ListarExerciciosHandler handler,
@@ -352,7 +344,8 @@ public static class TreinadorEndpoints
             var result = await handler.HandleAsync(
                 new CopiarExercicioGlobalCommand(id, userContext.PerfilId), cancellationToken);
 
-            return Results.Created($"/treinador/exercicios/{result.ExercicioId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinador/exercicios/{result.Value.ExercicioId}", result.Value);
         })
         .WithSummary("Copia um exercício global para a biblioteca do treinador")
         .Produces<ExercicioResponse>(StatusCodes.Status201Created)
@@ -393,8 +386,6 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
-        // --- Pacotes ---
-
         group.MapGet("/pacotes", async (
             [FromServices] ListarPacotesHandler handler,
             [FromServices] IUserContext userContext,
@@ -416,7 +407,8 @@ public static class TreinadorEndpoints
                 new CriarPacoteCommand(userContext.PerfilId, request.Nome, request.Preco, request.Descricao),
                 cancellationToken);
 
-            return Results.Created($"/treinador/pacotes/{result.PacoteId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinador/pacotes/{result.Value.PacoteId}", result.Value);
         })
         .WithSummary("Cria um novo pacote de fichas para alunos")
         .Produces<PacoteResponse>(StatusCodes.Status201Created)
@@ -433,7 +425,8 @@ public static class TreinadorEndpoints
                 new AtualizarPacoteCommand(userContext.PerfilId, pacoteId, request.Nome, request.Preco, request.Descricao),
                 cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atualiza um pacote de fichas do treinador")
         .Produces<PacoteResponse>()

@@ -1,3 +1,4 @@
+using forzion.tech.Api.Extensions;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos;
@@ -87,8 +88,9 @@ public static class AlunoEndpoints
             CancellationToken cancellationToken) =>
         {
             var command = new AtualizarAlunoCommand(id, request.Nome, request.Email, request.Telefone);
-            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .RequireAuthorization()
         .WithSummary("Atualiza os dados de um aluno")
@@ -107,8 +109,9 @@ public static class AlunoEndpoints
             CancellationToken cancellationToken) =>
         {
             var command = new AlterarStatusAlunoCommand(id, request.Status);
-            var response = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .RequireAuthorization("SystemAdmin")
         .WithSummary("Altera o status de um aluno (somente Admin)")

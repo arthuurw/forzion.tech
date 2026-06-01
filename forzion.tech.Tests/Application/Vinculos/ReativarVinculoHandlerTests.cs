@@ -7,6 +7,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Vinculos;
 
@@ -33,8 +34,8 @@ public class ReativarVinculoHandlerTests
 
     private static Aluno CriarAluno()
     {
-        var a = Aluno.Criar(Guid.NewGuid(), "João Silva", DateTime.UtcNow);
-        a.Ativar();
+        var a = Aluno.Criar(Guid.NewGuid(), "João Silva", DateTime.UtcNow).Value;
+        a.Ativar(TestData.Agora);
         return a;
     }
 
@@ -50,9 +51,10 @@ public class ReativarVinculoHandlerTests
 
         var result = await _handler.HandleAsync(new ReativarVinculoCommand(treinadorId, aluno.Id, pacoteId));
 
-        result.Status.Should().Be(VinculoStatus.Ativo);
-        result.TreinadorId.Should().Be(treinadorId);
-        result.AlunoId.Should().Be(aluno.Id);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(VinculoStatus.Ativo);
+        result.Value.TreinadorId.Should().Be(treinadorId);
+        result.Value.AlunoId.Should().Be(aluno.Id);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -71,7 +73,7 @@ public class ReativarVinculoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var aluno = CriarAluno();
-        var vinculoAtivo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, DateTime.UtcNow);
+        var vinculoAtivo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, DateTime.UtcNow).Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtivo);
 

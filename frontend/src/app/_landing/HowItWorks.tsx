@@ -30,7 +30,7 @@ export default function HowItWorks() {
     <Box sx={{ bgcolor: "background.default", py: { xs: 8, md: 12 } }}>
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: 8 }}>
-          <Typography variant="overline" sx={{ color: "primary.dark", fontWeight: 700, letterSpacing: "0.1em" }}>
+          <Typography variant="overline" sx={{ color: "#7a6300", fontWeight: 700, letterSpacing: "0.1em" }}>
             COMO FUNCIONA
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
@@ -69,7 +69,7 @@ export default function HowItWorks() {
                   >
                     <Icon sx={{ fontSize: 26, color: "secondary.main" }} />
                   </Box>
-                  <Typography variant="h5" sx={{ fontWeight: 800, color: "divider", letterSpacing: "-0.02em" }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: "#808080", letterSpacing: "-0.02em" }}>
                     {step}
                   </Typography>
                 </Box>

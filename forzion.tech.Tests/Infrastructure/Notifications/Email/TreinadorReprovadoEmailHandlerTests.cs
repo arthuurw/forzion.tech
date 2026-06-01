@@ -60,7 +60,7 @@ public class TreinadorReprovadoEmailHandlerTests
     [Fact]
     public async Task HandleAsync_ContaNaoEncontrada_NaoEnvia()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);
         _contaRepo.Setup(r => r.ObterPorIdAsync(treinador.ContaId, It.IsAny<CancellationToken>()))
@@ -76,8 +76,8 @@ public class TreinadorReprovadoEmailHandlerTests
     [Fact]
     public async Task HandleAsync_HappyPath_EnviaEmailCorreto()
     {
-        var conta = Conta.Criar(EmailVO.FromDatabase("ana@example.com"), "hash", TipoConta.Treinador, DateTime.UtcNow);
-        var treinador = Treinador.Criar(conta.Id, "Ana", DateTime.UtcNow);
+        var conta = Conta.Criar(EmailVO.FromDatabase("ana@example.com"), "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        var treinador = Treinador.Criar(conta.Id, "Ana", DateTime.UtcNow).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);

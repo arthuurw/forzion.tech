@@ -42,15 +42,16 @@ public class CriarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
 
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var command = new CriarTreinoCommand(treinadorId, alunoId, "Treino A", ObjetivoTreino.Hipertrofia);
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Treino A");
-        result.TreinadorId.Should().Be(treinadorId);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Treino A");
+        result.Value.TreinadorId.Should().Be(treinadorId);
         _treinoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treino>(), It.IsAny<CancellationToken>()), Times.Once);
         _treinoAlunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<TreinoAluno>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -61,7 +62,7 @@ public class CriarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
 
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
         _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
@@ -103,7 +104,8 @@ public class CriarTreinoHandlerTests
 
         var result = await _handler.HandleAsync(command);
 
-        result.Nome.Should().Be("Treino Livre");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Treino Livre");
         _alunoRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _treinoAlunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<TreinoAluno>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -114,7 +116,7 @@ public class CriarTreinoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
-        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow);
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
 
         var inicio = new DateOnly(2025, 1, 1);
@@ -124,9 +126,10 @@ public class CriarTreinoHandlerTests
 
         var result = await _handler.HandleAsync(command);
 
-        result.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
-        result.DataInicio.Should().Be(inicio);
-        result.DataFim.Should().Be(fim);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Dificuldade.Should().Be(DificuldadeTreino.Avancado);
+        result.Value.DataInicio.Should().Be(inicio);
+        result.Value.DataFim.Should().Be(fim);
     }
 
     [Fact]

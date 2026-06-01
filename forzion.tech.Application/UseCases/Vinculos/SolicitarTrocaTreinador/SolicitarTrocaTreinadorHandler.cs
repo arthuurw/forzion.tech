@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
@@ -15,7 +16,7 @@ public class SolicitarTrocaTreinadorHandler(
     TimeProvider timeProvider,
     ILogger<SolicitarTrocaTreinadorHandler> logger)
 {
-    public virtual Task<VinculoResponse> HandleAsync(
+    public virtual Task<Result<VinculoResponse>> HandleAsync(
         SolicitarTrocaTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -23,7 +24,7 @@ public class SolicitarTrocaTreinadorHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<VinculoResponse> HandleAsyncCore(
+    private async Task<Result<VinculoResponse>> HandleAsyncCore(
         SolicitarTrocaTreinadorCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -33,26 +34,31 @@ public class SolicitarTrocaTreinadorHandler(
         var novoTreinador = await treinadorRepository.ObterPorIdAsync(command.NovoTreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        novoTreinador.ValidarDisponibilidade();
+        var disponibilidadeResult = novoTreinador.ValidarDisponibilidade();
+        if (disponibilidadeResult.IsFailure)
+            return Result.Failure<VinculoResponse>(disponibilidadeResult.Error!);
 
         var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoAtivo is null)
-            throw new DomainException("Você precisa ter um vínculo ativo para solicitar a troca de treinador.");
+            return Result.Failure<VinculoResponse>(Error.Business("Você precisa ter um vínculo ativo para solicitar a troca de treinador."));
 
         if (vinculoAtivo.TreinadorId == command.NovoTreinadorId)
-            throw new DomainException("Você já está vinculado a este treinador.");
+            return Result.Failure<VinculoResponse>(Error.Business("Você já está vinculado a este treinador."));
 
         var vinculoPendente = await vinculoRepository.ObterPendentePorParAsync(command.NovoTreinadorId, command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoPendente is not null)
-            throw new DomainException("Você já possui uma solicitação pendente com este treinador.");
+            return Result.Failure<VinculoResponse>(Error.Business("Você já possui uma solicitação pendente com este treinador."));
 
-        var novoVinculo = VinculoTreinadorAluno.Criar(command.NovoTreinadorId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime, command.PacoteId);
+        var novoVinculoResult = VinculoTreinadorAluno.Criar(command.NovoTreinadorId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime, command.PacoteId);
+        if (novoVinculoResult.IsFailure)
+            return Result.Failure<VinculoResponse>(novoVinculoResult.Error!);
+        var novoVinculo = novoVinculoResult.Value;
 
         await vinculoRepository.AdicionarAsync(novoVinculo, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Aluno {AlunoId} solicitou troca para treinador {TreinadorId}.", command.AlunoId, command.NovoTreinadorId);
 
-        return new VinculoResponse(novoVinculo.Id, novoVinculo.TreinadorId, novoVinculo.AlunoId, novoVinculo.PacoteId, novoVinculo.Status, novoVinculo.CreatedAt);
+        return Result.Success(new VinculoResponse(novoVinculo.Id, novoVinculo.TreinadorId, novoVinculo.AlunoId, novoVinculo.PacoteId, novoVinculo.Status, novoVinculo.CreatedAt));
     }
 }

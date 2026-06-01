@@ -9,14 +9,14 @@ namespace forzion.tech.Tests.Builders;
 /// </summary>
 public sealed class ContaBuilder
 {
-    private Email _email = Email.Criar("conta.teste@forzion.tech");
+    private Email _email = Email.Criar("conta.teste@forzion.tech").Value;
     private string _passwordHash = "hash-deterministico";
     private TipoConta _tipoConta = TipoConta.Aluno;
     private DateTime _agora = TestData.Agora;
 
     public ContaBuilder ComEmail(string email)
     {
-        _email = Email.Criar(email);
+        _email = Email.Criar(email).Value;
         return this;
     }
 
@@ -38,7 +38,7 @@ public sealed class ContaBuilder
         return this;
     }
 
-    public Conta Build() => Conta.Criar(_email, _passwordHash, _tipoConta, _agora);
+    public Conta Build() => Conta.Criar(_email, _passwordHash, _tipoConta, _agora).Value;
 
     public static implicit operator Conta(ContaBuilder builder) => builder.Build();
 }

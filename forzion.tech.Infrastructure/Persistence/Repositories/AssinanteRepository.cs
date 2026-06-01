@@ -15,4 +15,13 @@ public class AssinanteRepository(AppDbContext context) : IAssinanteRepository
 
     public async Task AdicionarAsync(Assinante assinante, CancellationToken cancellationToken = default) =>
         await _context.Assinantes.AddAsync(assinante, cancellationToken).ConfigureAwait(false);
+
+    public async Task AnonimizarPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await _context.Assinantes
+            .Where(a => a.AlunoId == alunoId)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(a => a.Nome, "Usuário anonimizado")
+                      .SetProperty(a => a.Email, (string?)null),
+                cancellationToken)
+            .ConfigureAwait(false);
 }

@@ -7,7 +7,7 @@ using System.Text.Json;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
@@ -270,7 +270,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ExcluirTreinadorHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/treinadores/{TreinadorId}");
@@ -326,7 +326,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.CriarPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaPlano);
+            .ReturnsAsync(Result.Success(RespostaPlano));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync("/admin/planos", new { nome = "Pro", maxAlunos = 50, preco = 199m });
@@ -369,7 +369,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.CriarGrupoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaGrupo);
+            .ReturnsAsync(Result.Success(RespostaGrupo));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync("/admin/grupos-musculares", new { nome = "Ombros" });
@@ -385,7 +385,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         var atribuido = RespostaTreinador with { PlanoPlataformaId = Guid.NewGuid() };
         _factory.AtribuirPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtribuirPlanoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(atribuido);
+            .ReturnsAsync(Result.Success(atribuido));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = Guid.NewGuid() });
@@ -547,7 +547,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ObterFichaAlunoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaFichaDetalhe);
+            .ReturnsAsync(Result.Success(RespostaFichaDetalhe));
 
         var response = await CriarClienteAdmin().GetAsync($"/admin/fichas/{TreinoAlunoId}");
 
@@ -559,7 +559,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ObterFichaAlunoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new TreinoNaoEncontradoException());
+            .ReturnsAsync(Result.Failure<FichaAlunoDetalheResponse>(Error.NotFound("ficha_nao_encontrada", "Ficha não encontrada.")));
 
         var response = await CriarClienteAdmin().GetAsync($"/admin/fichas/{Guid.NewGuid()}");
 
@@ -632,6 +632,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .GetAsync($"/admin/alunos/{AlunoId}/progressao?de={hoje}&ate={ontem}");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
     // --- GET /admin/treinadores/{id}/alunos ---
@@ -878,7 +879,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.AtualizarPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaPlano);
+            .ReturnsAsync(Result.Success(RespostaPlano));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/planos/{Guid.NewGuid()}", new { nome = "Pro Plus", maxAlunos = 20, preco = 199m });
@@ -906,7 +907,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ExcluirPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/planos/{Guid.NewGuid()}");
@@ -919,7 +920,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ExcluirPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirPlanoPlataformaCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new PlanoPlataformaNaoEncontradoException());
+            .ReturnsAsync(Result.Failure(Error.NotFound("plano_nao_encontrado", "Plano não encontrado.")));
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/planos/{Guid.NewGuid()}");
@@ -934,7 +935,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.AtualizarGrupoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaGrupo);
+            .ReturnsAsync(Result.Success(RespostaGrupo));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/grupos-musculares/{Guid.NewGuid()}", new { nome = "Ombros" });
@@ -962,7 +963,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ExcluirGrupoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/grupos-musculares/{Guid.NewGuid()}");
@@ -975,7 +976,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ExcluirGrupoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirGrupoMuscularCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new GrupoMuscularNaoEncontradoException());
+            .ReturnsAsync(Result.Failure(Error.NotFound("grupo_muscular_nao_encontrado", "Grupo muscular não encontrado.")));
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/grupos-musculares/{Guid.NewGuid()}");
@@ -1171,6 +1172,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
         public Mock<ListarAlunosHandler> ListarAlunosHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ListarAlunosHandler>>());
 
         public Mock<ListarVinculosHandler> ListarVinculosHandlerMock { get; } = new(
@@ -1196,15 +1198,15 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<AtualizarPlanoPlataformaHandler> AtualizarPlanoHandlerMock { get; } = new(
             Mock.Of<IPlanoPlataformaRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IValidator<AtualizarPlanoPlataformaCommand>>());
+            Mock.Of<IValidator<AtualizarPlanoPlataformaCommand>>(), TimeProvider.System);
 
         public Mock<ExcluirPlanoPlataformaHandler> ExcluirPlanoHandlerMock { get; } = new(
             Mock.Of<IPlanoPlataformaRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
 
         public Mock<AtualizarGrupoMuscularHandler> AtualizarGrupoHandlerMock { get; } = new(
             Mock.Of<IGrupoMuscularRepository>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<IValidator<AtualizarGrupoMuscularCommand>>());
 
         public Mock<ExcluirGrupoMuscularHandler> ExcluirGrupoHandlerMock { get; } = new(
@@ -1227,7 +1229,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<AtualizarExercicioHandler> AtualizarExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IGrupoMuscularRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
 
         public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Svix;
@@ -57,6 +57,15 @@ public class ProcessarWebhookResendHandler(
             return Result.Success();
         }
 
+        // Idempotência: Resend entrega at-least-once. (ResendMessageId, EventType)
+        // identifica unicamente um evento; se já existe, é re-entrega → no-op silencioso.
+        if (await logRepository.ExisteAsync(parsed.EmailId, parsed.EventType, cancellationToken).ConfigureAwait(false))
+        {
+            logger.LogDebug("Evento Resend já processado (messageId: {MessageId}, type: {EventType}). Ignorando re-entrega.",
+                parsed.EmailId, parsed.EventType);
+            return Result.Success();
+        }
+
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var log = EmailDeliveryLog.Criar(
             parsed.EmailId,
@@ -90,7 +99,11 @@ public class ProcessarWebhookResendHandler(
             new Webhook(secret).Verify(command.Payload, headers);
             return true;
         }
-        catch (Exception ex) when (ex.GetType().Name.Contains("Verification") || ex.GetType().Name.Contains("Webhook"))
+        // Svix lança WebhookVerificationException; o tipo concreto não é público de forma
+        // estável entre versões do pacote, então casamos por nome (assinatura inválida/erro
+        // de verificação) — qualquer falha de Verify significa assinatura inválida → false.
+        catch (Exception ex) when (ex.GetType().Name.Contains("Verification", StringComparison.OrdinalIgnoreCase)
+                                   || ex.GetType().Name.Contains("Webhook", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }

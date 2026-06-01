@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, CardActions, Grid, Button, Chip,
@@ -15,12 +15,12 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { adminApi } from "@/lib/api/admin";
 import type { PlanoPlataformaResponse, TierPlano } from "@/types";
 
-const TIER_OPTIONS: { value: TierPlano; label: string }[] = [
+const TIER_OPTIONS: { value: TierPlano; label: string; disabled?: boolean }[] = [
   { value: "Free",    label: "Free" },
   { value: "Basic",   label: "Basic" },
   { value: "Pro",     label: "Pro" },
   { value: "ProPlus", label: "Pro Plus" },
-  { value: "Elite",   label: "Elite" },
+  { value: "Elite",   label: "Elite (em breve)", disabled: true },
 ];
 
 export default function PlanosAdminPage() {
@@ -29,7 +29,6 @@ export default function PlanosAdminPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // criar
   const [criarOpen, setCriarOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [tier, setTier] = useState<TierPlano>("Basic");
@@ -38,7 +37,6 @@ export default function PlanosAdminPage() {
   const [descricao, setDescricao] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // editar
   const [editPlano, setEditPlano] = useState<PlanoPlataformaResponse | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editTier, setEditTier] = useState<TierPlano>("Basic");
@@ -47,7 +45,6 @@ export default function PlanosAdminPage() {
   const [editDescricao, setEditDescricao] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // excluir
   const [confirmExcluir, setConfirmExcluir] = useState<PlanoPlataformaResponse | null>(null);
   const [loadingExcluir, setLoadingExcluir] = useState(false);
 
@@ -200,7 +197,7 @@ export default function PlanosAdminPage() {
               select label="Tier" value={tier} onChange={(e) => setTier(e.target.value as TierPlano)}
               size="small" fullWidth required
             >
-              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value} disabled={o.disabled}>{o.label}</MenuItem>)}
             </TextField>
             <TextField label="Máximo de alunos" type="number" value={maxAlunos} onChange={(e) => setMaxAlunos(e.target.value)} size="small" fullWidth required slotProps={{ htmlInput: { min: 1 } }} />
             <TextField label="Preço (R$)" type="number" value={preco} onChange={(e) => setPreco(e.target.value)} size="small" fullWidth required slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />
@@ -225,7 +222,7 @@ export default function PlanosAdminPage() {
               select label="Tier" value={editTier} onChange={(e) => setEditTier(e.target.value as TierPlano)}
               size="small" fullWidth
             >
-              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value} disabled={o.disabled}>{o.label}</MenuItem>)}
             </TextField>
             <TextField label="Máximo de alunos" type="number" value={editMaxAlunos} onChange={(e) => setEditMaxAlunos(e.target.value)} size="small" fullWidth slotProps={{ htmlInput: { min: 1 } }} />
             <TextField label="Preço (R$)" type="number" value={editPreco} onChange={(e) => setEditPreco(e.target.value)} size="small" fullWidth slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />

@@ -2,15 +2,17 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Planos.AtualizarPlanoPlataforma;
 
 public class AtualizarPlanoPlataformaHandler(
     IPlanoPlataformaRepository planoRepository,
     IUnitOfWork unitOfWork,
-    IValidator<AtualizarPlanoPlataformaCommand> validator)
+    IValidator<AtualizarPlanoPlataformaCommand> validator,
+    TimeProvider timeProvider)
 {
-    public virtual Task<PlanoPlataformaResponse> HandleAsync(
+    public virtual Task<Result<PlanoPlataformaResponse>> HandleAsync(
         AtualizarPlanoPlataformaCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -18,7 +20,7 @@ public class AtualizarPlanoPlataformaHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<PlanoPlataformaResponse> HandleAsyncCore(
+    private async Task<Result<PlanoPlataformaResponse>> HandleAsyncCore(
         AtualizarPlanoPlataformaCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -27,10 +29,12 @@ public class AtualizarPlanoPlataformaHandler(
         var plano = await planoRepository.ObterPorIdAsync(command.PlanoId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoPlataformaNaoEncontradoException();
 
-        plano.Atualizar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, command.Descricao);
+        var atualizarResult = plano.Atualizar(command.Nome, command.Tier, command.MaxAlunos, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
+        if (atualizarResult.IsFailure)
+            return Result.Failure<PlanoPlataformaResponse>(atualizarResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return PlanoPlataformaResponseExtensions.ToResponse(plano);
+        return Result.Success(PlanoPlataformaResponseExtensions.ToResponse(plano));
     }
 }

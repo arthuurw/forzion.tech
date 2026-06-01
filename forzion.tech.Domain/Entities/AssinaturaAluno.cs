@@ -1,6 +1,7 @@
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -9,6 +10,9 @@ public class AssinaturaAluno : IHasDomainEvents
     private readonly List<IDomainEvent> _domainEvents = [];
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
+
+    /// <summary>Threshold pra transição Ativa → Inadimplente.</summary>
+    public const int LimiteTentativasFalhas = 3;
 
     public Guid Id { get; private set; }
     public Guid VinculoId { get; private set; }
@@ -20,23 +24,24 @@ public class AssinaturaAluno : IHasDomainEvents
     public DateTime DataInicio { get; private set; }
     public DateTime DataProximaCobranca { get; private set; }
     public DateTime? DataCancelamento { get; private set; }
+    public int TentativasFalhasConsecutivas { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
     private AssinaturaAluno() { }
 
-    public static AssinaturaAluno Criar(Guid vinculoId, Guid pacoteId, Guid treinadorId, Guid alunoId, decimal valor, DateTime agora)
+    public static Result<AssinaturaAluno> Criar(Guid vinculoId, Guid pacoteId, Guid treinadorId, Guid alunoId, decimal valor, DateTime agora)
     {
         if (vinculoId == Guid.Empty)
-            throw new DomainException("O identificador do vínculo é inválido.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.VinculoIdInvalido);
         if (pacoteId == Guid.Empty)
-            throw new DomainException("O identificador do pacote é inválido.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.PacoteIdInvalido);
         if (treinadorId == Guid.Empty)
-            throw new DomainException("O identificador do treinador é inválido.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.TreinadorIdInvalido);
         if (alunoId == Guid.Empty)
-            throw new DomainException("O identificador do aluno é inválido.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.AlunoIdInvalido);
         if (valor <= 0)
-            throw new DomainException("O valor da assinatura deve ser maior que zero.");
+            return Result.Failure<AssinaturaAluno>(AssinaturaAlunoErrors.ValorInvalido);
 
         var assinatura = new AssinaturaAluno
         {
@@ -55,43 +60,137 @@ public class AssinaturaAluno : IHasDomainEvents
         assinatura._domainEvents.Add(new AssinaturaAlunoCriadaEvent(
             assinatura.Id, treinadorId, alunoId, pacoteId, valor, agora));
 
-        return assinatura;
+        return Result.Success(assinatura);
     }
 
-    public void Ativar()
+    public Result Ativar(DateTime agora)
     {
         if (Status == AssinaturaAlunoStatus.Cancelada)
-            throw new DomainException("AssinaturaAluno cancelada não pode ser ativada.");
+            return Result.Failure(AssinaturaAlunoErrors.CanceladaNaoAtivavel);
+
+        // G-PAY-4: Inadimplente → Ativa NÃO pode ser feito via Ativar; o contador de falhas
+        // consecutivas precisa ser zerado antes. Callers devem invocar RegistrarPagamentoRegularizado,
+        // que transiciona atomicamente e reseta TentativasFalhasConsecutivas.
+        if (Status == AssinaturaAlunoStatus.Inadimplente)
+            return Result.Failure(AssinaturaAlunoErrors.InadimplenteDeveUsarRegularizacao);
 
         Status = AssinaturaAlunoStatus.Ativa;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void MarcarInadimplente()
+    public Result MarcarInadimplente(DateTime agora)
     {
         if (Status != AssinaturaAlunoStatus.Ativa)
-            throw new DomainException("Apenas assinaturas ativas podem ser marcadas como inadimplentes.");
+            return Result.Failure(AssinaturaAlunoErrors.ApenasAtivasInadimplentes);
 
         Status = AssinaturaAlunoStatus.Inadimplente;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
-    public void Cancelar()
+    public Result Cancelar(DateTime agora)
     {
         if (Status == AssinaturaAlunoStatus.Cancelada)
-            throw new DomainException("A assinatura já está cancelada.");
+            return Result.Failure(AssinaturaAlunoErrors.JaCancelada);
 
         Status = AssinaturaAlunoStatus.Cancelada;
-        DataCancelamento = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        DataCancelamento = agora;
+        UpdatedAt = agora;
+
+        _domainEvents.Add(new AssinaturaAlunoCanceladaEvent(
+            Id, AlunoId, TreinadorId, Valor, agora));
+        return Result.Success();
     }
 
-    public void AgendarProximaCobranca(DateTime dataProximaCobranca, DateTime agora)
+    public Result AgendarProximaCobranca(DateTime dataProximaCobranca, DateTime agora)
     {
         if (dataProximaCobranca <= agora)
-            throw new DomainException("A data da próxima cobrança deve ser futura.");
+            return Result.Failure(AssinaturaAlunoErrors.ProximaCobrancaNaoFutura);
 
         DataProximaCobranca = dataProximaCobranca;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Incrementa contador de tentativas falhas e, se atingir
+    /// <see cref="LimiteTentativasFalhas"/>, transiciona Ativa → Inadimplente
+    /// (atomicamente). Sempre dispara <see cref="PagamentoFalhouEvent"/>; quando
+    /// cruza o threshold, dispara também <see cref="AssinaturaAlunoMarcadaInadimplenteEvent"/>.
+    ///
+    /// Assinatura Cancelada → no-op (não conta tentativas).
+    /// Assinatura Pendente → conta tentativas mas não marca Inadimplente (só
+    /// Ativa transiciona; Pendente sai por outro caminho).
+    /// </summary>
+    public void RegistrarPagamentoFalho(DateTime agora)
+    {
+        if (Status == AssinaturaAlunoStatus.Cancelada)
+            return;
+
+        TentativasFalhasConsecutivas++;
+        UpdatedAt = agora;
+
+        _domainEvents.Add(new PagamentoFalhouEvent(
+            Id, AlunoId, TentativasFalhasConsecutivas, agora));
+
+        if (TentativasFalhasConsecutivas >= LimiteTentativasFalhas
+            && Status == AssinaturaAlunoStatus.Ativa)
+        {
+            Status = AssinaturaAlunoStatus.Inadimplente;
+            _domainEvents.Add(new AssinaturaAlunoMarcadaInadimplenteEvent(
+                Id, AlunoId, TreinadorId, TentativasFalhasConsecutivas, agora));
+        }
+    }
+
+    /// <summary>
+    /// Força transição Ativa → Inadimplente em caso de disputa (chargeback) Stripe.
+    /// Diferente de <see cref="RegistrarPagamentoFalho"/>, não incrementa contador
+    /// gradualmente: disputa é evento de alta gravidade (fraude ou desistência
+    /// drástica do aluno), então o acesso é congelado imediatamente — não vale a
+    /// pena esperar atingir <see cref="LimiteTentativasFalhas"/>.
+    ///
+    /// <para>
+    /// Cancelada → no-op (cancelada permanece cancelada).
+    /// Inadimplente → no-op idempotente (já está no estado correto).
+    /// Pendente → no-op (sai por outra via; disputa em assinatura nunca-ativada
+    /// é cenário improvável).
+    /// Ativa → transiciona, equipara contador a <see cref="LimiteTentativasFalhas"/>
+    /// e dispara <see cref="AssinaturaAlunoMarcadaInadimplenteEvent"/>.
+    /// </para>
+    /// </summary>
+    public void MarcarInadimplentePorDisputa(DateTime agora)
+    {
+        if (Status != AssinaturaAlunoStatus.Ativa) return;
+
+        Status = AssinaturaAlunoStatus.Inadimplente;
+        TentativasFalhasConsecutivas = LimiteTentativasFalhas;
+        UpdatedAt = agora;
+
+        _domainEvents.Add(new AssinaturaAlunoMarcadaInadimplenteEvent(
+            Id, AlunoId, TreinadorId, TentativasFalhasConsecutivas, agora));
+    }
+
+    /// <summary>
+    /// Zera contador de tentativas falhas. Se assinatura estava Inadimplente,
+    /// volta pra Ativa (reativa) e dispara <see cref="AssinaturaAlunoReativadaEvent"/>.
+    /// Idempotente — chamar 2x não causa dano (segunda chamada não dispara evento pois
+    /// já está Ativa). Cancelada permanece Cancelada (não auto-reativa).
+    /// </summary>
+    public void RegistrarPagamentoRegularizado(DateTime agora)
+    {
+        if (Status == AssinaturaAlunoStatus.Cancelada)
+            return;
+
+        TentativasFalhasConsecutivas = 0;
+
+        // G-PAY-3: só dispara evento na transição efetiva Inadimplente → Ativa.
+        if (Status == AssinaturaAlunoStatus.Inadimplente)
+        {
+            Status = AssinaturaAlunoStatus.Ativa;
+            _domainEvents.Add(new AssinaturaAlunoReativadaEvent(Id, AlunoId, TreinadorId, agora));
+        }
+
         UpdatedAt = agora;
     }
 }

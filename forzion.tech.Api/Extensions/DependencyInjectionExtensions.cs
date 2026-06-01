@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using FluentValidation;
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Context;
+using forzion.tech.Api.Filters;
 using forzion.tech.Api.Middleware;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
@@ -65,27 +66,33 @@ using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
 using forzion.tech.Application.UseCases.Vinculos.SolicitarTrocaTreinador;
 using forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
+using forzion.tech.Application.UseCases.Admin.HealthReport;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
 using forzion.tech.Infrastructure.DependencyInjection;
+using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
 using forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno;
+using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
+using forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStripe;
 using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.Settings;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -109,51 +116,69 @@ public static class DependencyInjectionExtensions
         }
         else
         {
+            // Particionar por chave (IP anônimo ou sub claim autenticado) — sem isso
+            // os limiters tinham um único bucket global e um IP malicioso conseguia
+            // exaurir o cap pra plataforma inteira (10 logins/min totais).
             services.AddRateLimiter(opt =>
             {
                 opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                opt.AddFixedWindowLimiter("auth", c =>
+
+                static string KeyFromIpOrSub(HttpContext ctx)
                 {
-                    c.PermitLimit = 10;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
-                opt.AddFixedWindowLimiter("write", c =>
+                    var sub = ctx.User?.FindFirst("sub")?.Value
+                              ?? ctx.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrEmpty(sub))
+                        return $"u:{sub}";
+                    return $"ip:{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+                }
+
+                static string KeyFromIp(HttpContext ctx) =>
+                    $"ip:{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+                static FixedWindowRateLimiterOptions Fixed(int permit, TimeSpan window) => new()
                 {
-                    c.PermitLimit = 60;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
-                opt.AddFixedWindowLimiter("read", c =>
-                {
-                    c.PermitLimit = 120;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
-                opt.AddFixedWindowLimiter("internal", c =>
-                {
-                    c.PermitLimit = 5;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
-                opt.AddFixedWindowLimiter("webhook", c =>
-                {
-                    c.PermitLimit = 300;
-                    c.Window = TimeSpan.FromMinutes(1);
-                    c.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    c.QueueLimit = 0;
-                });
+                    PermitLimit = permit,
+                    Window = window,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                };
+
+                // auth: pré-autenticação — chave por IP (não há sub ainda)
+                opt.AddPolicy("auth", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                        _ => Fixed(10, TimeSpan.FromMinutes(1))));
+
+                // write: por usuário se autenticado, IP caso contrário
+                opt.AddPolicy("write", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                        _ => Fixed(60, TimeSpan.FromMinutes(1))));
+
+                // read: idem
+                opt.AddPolicy("read", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                        _ => Fixed(120, TimeSpan.FromMinutes(1))));
+
+                // internal: server-to-server (billing-renewal) — por IP origem
+                opt.AddPolicy("internal", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                        _ => Fixed(5, TimeSpan.FromMinutes(1))));
+
+                // webhook: Stripe/Resend — por IP (provedores têm faixas conhecidas)
+                opt.AddPolicy("webhook", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                        _ => Fixed(300, TimeSpan.FromMinutes(1))));
             });
         }
 
         services.AddSwagger();
         services.AddJwtAuthentication(configuration, environment);
         services.AddCorsPolicies(configuration);
-        services.AddHealthChecks();
+        // Liveness é o endpoint sem checks (Predicate => false) mapeado em RouteBuilder.
+        // Readiness usa o DbContextCheck taggeado "ready": só executa quando /health/ready
+        // é chamado (CanConnectAsync). Em ambiente Test o AppDbContext não é registrado
+        // (AddInfrastructure é pulado), então o check só é exercido quando há AppDbContext em DI.
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready" });
 
         services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -161,10 +186,14 @@ public static class DependencyInjectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, HttpUserContext>();
 
+        services.AddTransient<RequireAssinaturaAtivaFilter>();
+
         if (!environment.IsEnvironment("Test"))
         {
             services.AddInfrastructure(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
+            services.AddHostedService<RelatorioSaudeDiarioService>();
+            services.AddSingleton<ILoggerProvider, ErrorLogDbSinkProvider>();
         }
 
         return services;
@@ -185,11 +214,20 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ReenviarVerificacaoHandler>();
         services.AddScoped<EmailVerificationSender>();
         services.AddScoped<ProcessarWebhookResendHandler>();
+        services.AddScoped<forzion.tech.Infrastructure.Notifications.WhatsApp.ProcessarWebhookWhatsAppHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();
 
         services.AddScoped<ListarAlunosAdminHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Admin.Stats.ObterDashboardStatsHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ExportarDadosPessoaisHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.AnonimizarContaHandler>();
+
+        services.AddScoped<ObterHealthReportConfigHandler>();
+        services.AddScoped<AtualizarHealthReportConfigHandler>();
+        services.AddScoped<ListarHealthSnapshotsHandler>();
+        services.AddScoped<ExecutarRelatorioSaudeHandler>();
 
         services.AddScoped<ObterTreinadorHandler>();
         services.AddScoped<ListarTreinadoresHandler>();
@@ -254,11 +292,13 @@ public static class DependencyInjectionExtensions
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
         services.AddScoped<CriarAssinaturaAlunoHandler>();
         services.AddScoped<CancelarAssinaturaAlunoHandler>();
+        services.AddScoped<CancelarMinhaAssinaturaAlunoHandler>();
         services.AddScoped<ObterAssinaturaAlunoHandler>();
         services.AddScoped<GerarCobrancaMensalHandler>();
         services.AddScoped<ObterStatusPagamentoHandler>();
         services.AddScoped<ListarPagamentosAssinaturaAlunoHandler>();
         services.AddScoped<ProcessarWebhookStripeHandler>();
+        services.AddScoped<ReconciliarPagamentosStripeHandler>();
 
         services.AddScoped<ListarFichasAlunoHandler>();
         services.AddScoped<ListarExecucoesAlunoHandler>();

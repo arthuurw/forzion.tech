@@ -12,6 +12,7 @@ public interface ITreinoAlunoRepository
     Task<TreinoAluno?> ObterAsync(Guid treinoId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<int> ContarAtivosPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TreinoAluno>> ListarAtivosPorParAsync(Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TreinoAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TreinoAluno>> ListarAtivosPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TreinoAlunoComNome>> ListarAtivosComNomePorParAsync(Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TreinoAlunoComNome>> ListarAtivosComNomePorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);

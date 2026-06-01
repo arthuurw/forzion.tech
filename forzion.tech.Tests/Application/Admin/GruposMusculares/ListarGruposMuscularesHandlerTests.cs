@@ -21,9 +21,9 @@ public class ListarGruposMuscularesHandlerTests
     {
         var grupos = new List<GrupoMuscular>
         {
-            GrupoMuscular.Criar("Peito", DateTime.UtcNow),
-            GrupoMuscular.Criar("Costas", DateTime.UtcNow),
-            GrupoMuscular.Criar("Pernas", DateTime.UtcNow),
+            GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value,
+            GrupoMuscular.Criar("Costas", DateTime.UtcNow).Value,
+            GrupoMuscular.Criar("Pernas", DateTime.UtcNow).Value,
         };
         _repository.Setup(r => r.ListarTodosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(grupos);
 
@@ -46,7 +46,7 @@ public class ListarGruposMuscularesHandlerTests
     [Fact]
     public async Task HandleAsync_MapeiaCamposCorretamente()
     {
-        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow);
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
         _repository.Setup(r => r.ListarTodosAsync(It.IsAny<CancellationToken>())).ReturnsAsync([grupo]);
 
         var result = await _handler.HandleAsync();

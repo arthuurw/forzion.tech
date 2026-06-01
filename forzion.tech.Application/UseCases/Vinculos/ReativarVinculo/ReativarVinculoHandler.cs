@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
@@ -16,7 +17,7 @@ public class ReativarVinculoHandler(
     TimeProvider timeProvider,
     ILogger<ReativarVinculoHandler> logger)
 {
-    public virtual Task<VinculoResponse> HandleAsync(
+    public virtual Task<Result<VinculoResponse>> HandleAsync(
         ReativarVinculoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -24,7 +25,7 @@ public class ReativarVinculoHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task<VinculoResponse> HandleAsyncCore(
+    private async Task<Result<VinculoResponse>> HandleAsyncCore(
         ReativarVinculoCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -32,7 +33,7 @@ public class ReativarVinculoHandler(
             ?? throw new AlunoNaoEncontradoException();
 
         if (aluno.Status != AlunoStatus.Ativo)
-            throw new DomainException("Aluno inativo não pode ter vínculo reativado.");
+            return Result.Failure<VinculoResponse>(Error.Business("Aluno inativo não pode ter vínculo reativado."));
 
         var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoAtivo is not null)
@@ -41,23 +42,32 @@ public class ReativarVinculoHandler(
         await limiteTreinadorService.ValidarAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var vinculo = VinculoTreinadorAluno.Criar(command.TreinadorId, command.AlunoId, agora);
-        vinculo.Aprovar(command.TreinadorId, command.PacoteId);
+        var vinculoResult = VinculoTreinadorAluno.Criar(command.TreinadorId, command.AlunoId, agora);
+        if (vinculoResult.IsFailure)
+            return Result.Failure<VinculoResponse>(vinculoResult.Error!);
+        var vinculo = vinculoResult.Value;
+
+        var aprovarResult = vinculo.Aprovar(command.TreinadorId, command.PacoteId, agora);
+        if (aprovarResult.IsFailure)
+            return Result.Failure<VinculoResponse>(aprovarResult.Error!);
 
         await vinculoRepository.AdicionarAsync(vinculo, cancellationToken).ConfigureAwait(false);
 
-        var log = LogAprovacao.Registrar(
+        var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AprovacaoVinculo,
             command.TreinadorId,
             vinculo.Id,
             nameof(VinculoTreinadorAluno),
             agora);
+        if (logResult.IsFailure)
+            return Result.Failure<VinculoResponse>(logResult.Error!);
+        var log = logResult.Value;
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Vínculo reativado entre treinador {TreinadorId} e aluno {AlunoId}.", command.TreinadorId, command.AlunoId);
 
-        return new VinculoResponse(vinculo.Id, vinculo.TreinadorId, vinculo.AlunoId, vinculo.PacoteId, vinculo.Status, vinculo.CreatedAt);
+        return Result.Success(new VinculoResponse(vinculo.Id, vinculo.TreinadorId, vinculo.AlunoId, vinculo.PacoteId, vinculo.Status, vinculo.CreatedAt));
     }
 }

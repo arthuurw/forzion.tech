@@ -1,7 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Results;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -15,6 +15,7 @@ public class AdicionarExercicioHandler(
     IUnitOfWork unitOfWork,
     IUserContext userContext,
     IValidator<AdicionarExercicioCommand> validator,
+    TimeProvider timeProvider,
     ILogger<AdicionarExercicioHandler> logger)
 {
     public virtual Task<Result<TreinoResponse>> HandleAsync(
@@ -43,7 +44,9 @@ public class AdicionarExercicioHandler(
             .ExisteParaTreinoComAlunoAtivoAsync(command.TreinoId, cancellationToken)
             .ConfigureAwait(false);
 
-        Treino.ValidarMutabilidade(executado);
+        var mutabilidadeResult = Treino.ValidarMutabilidade(executado);
+        if (mutabilidadeResult.IsFailure)
+            return Result.Failure<TreinoResponse>(mutabilidadeResult.Error!);
 
         var exercicioExiste = await exercicioRepository
             .ExisteAsync(command.ExercicioId, treino.TreinadorId, cancellationToken)
@@ -52,9 +55,18 @@ public class AdicionarExercicioHandler(
         if (!exercicioExiste)
             throw new ExercicioNaoEncontradoException();
 
-        var novoExercicio = treino.AdicionarExercicio(command.ExercicioId);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var adicionarResult = treino.AdicionarExercicio(command.ExercicioId, agora);
+        if (adicionarResult.IsFailure)
+            return Result.Failure<TreinoResponse>(adicionarResult.Error!);
+        var novoExercicio = adicionarResult.Value;
+
         foreach (var s in command.Series)
-            novoExercicio.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
+        {
+            var serieResult = novoExercicio.AdicionarSerie(s.Quantidade, s.RepeticoesMin, s.RepeticoesMax, s.Descricao, s.Carga, s.Descanso);
+            if (serieResult.IsFailure)
+                return Result.Failure<TreinoResponse>(serieResult.Error!);
+        }
 
         await treinoRepository.AdicionarTreinoExercicioAsync(novoExercicio, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

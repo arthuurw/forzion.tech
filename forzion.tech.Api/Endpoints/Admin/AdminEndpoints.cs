@@ -1,6 +1,7 @@
 using forzion.tech.Api.Extensions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
+using forzion.tech.Application.UseCases.Admin.Stats;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
@@ -38,6 +39,7 @@ using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
+using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Domain.Enums;
@@ -52,6 +54,16 @@ public static class AdminEndpoints
         var group = endpoints.MapGroup("/admin").WithTags("Admin").RequireAuthorization("SystemAdmin")
             .RequireRateLimiting("write")
             .AddEndpointFilter<PaginacaoFilter>();
+
+        group.MapGet("/stats/dashboard", async (
+            [FromServices] ObterDashboardStatsHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithSummary("Retorna distribuição de treinadores por plano/tier e alunos por finalidade (G-FE-3)")
+        .Produces<DashboardStatsResponse>();
 
         group.MapGet("/treinadores", async (
             [FromServices] ListarTreinadoresHandler handler,
@@ -86,13 +98,13 @@ public static class AdminEndpoints
 
         group.MapPost("/treinadores/{id:guid}/aprovar", async (
             Guid id,
-            [FromBody] AprovarTreinadorRequest request,
+            [FromBody] AprovarTreinadorRequest? request,
             [FromServices] AprovarTreinadorHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AprovarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
+                new AprovarTreinadorCommand(id, userContext.ContaId, request?.Observacao), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
@@ -104,13 +116,13 @@ public static class AdminEndpoints
 
         group.MapPost("/treinadores/{id:guid}/reprovar", async (
             Guid id,
-            [FromBody] ReprovarTreinadorRequest request,
+            [FromBody] ReprovarTreinadorRequest? request,
             [FromServices] ReprovarTreinadorHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new ReprovarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
+                new ReprovarTreinadorCommand(id, userContext.ContaId, request?.Observacao), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
@@ -122,13 +134,13 @@ public static class AdminEndpoints
 
         group.MapPost("/treinadores/{id:guid}/inativar", async (
             Guid id,
-            [FromBody] InativarTreinadorRequest request,
+            [FromBody] InativarTreinadorRequest? request,
             [FromServices] InativarTreinadorHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new InativarTreinadorCommand(id, userContext.ContaId, request.Observacao), cancellationToken);
+                new InativarTreinadorCommand(id, userContext.ContaId, request?.Observacao), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
@@ -144,7 +156,8 @@ public static class AdminEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirTreinadorCommand(id, userContext.ContaId), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirTreinadorCommand(id, userContext.ContaId), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Exclui permanentemente um treinador inativo e todas as suas dependências. LogAprovacao é preservado.")
@@ -162,7 +175,8 @@ public static class AdminEndpoints
             var result = await handler.HandleAsync(
                 new AtribuirPlanoCommand(id, request.PlanoId, userContext.ContaId), cancellationToken);
 
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atribui um PlanoPlataforma a um treinador")
         .Produces<TreinadorResponse>()
@@ -186,7 +200,8 @@ public static class AdminEndpoints
             var result = await handler.HandleAsync(
                 new CriarPlanoPlataformaCommand(request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
 
-            return Results.Created($"/admin/planos/{result.PlanoId}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/admin/planos/{result.Value.PlanoId}", result.Value);
         })
         .WithSummary("Cria um novo plano de treinador")
         .Produces<PlanoPlataformaResponse>(StatusCodes.Status201Created)
@@ -200,7 +215,8 @@ public static class AdminEndpoints
         {
             var result = await handler.HandleAsync(
                 new AtualizarPlanoPlataformaCommand(id, request.Nome, request.Tier, request.MaxAlunos, request.Preco, request.Descricao), cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atualiza nome, maxAlunos e/ou preço de um plano")
         .Produces<PlanoPlataformaResponse>()
@@ -211,14 +227,14 @@ public static class AdminEndpoints
             [FromServices] ExcluirPlanoPlataformaHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirPlanoPlataformaCommand(id), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirPlanoPlataformaCommand(id), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Inativa um plano de treinador")
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        // Grupos Musculares
         group.MapGet("/grupos-musculares", async (
             [FromServices] ListarGruposMuscularesHandler handler,
             CancellationToken cancellationToken) =>
@@ -235,7 +251,8 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(new CriarGrupoMuscularCommand(request.Nome), cancellationToken);
-            return Results.Created($"/admin/grupos-musculares/{result.Id}", result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/admin/grupos-musculares/{result.Value.Id}", result.Value);
         })
         .WithSummary("Cria um novo grupo muscular")
         .Produces<GrupoMuscularResponse>(StatusCodes.Status201Created)
@@ -248,7 +265,8 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(new AtualizarGrupoMuscularCommand(id, request.Nome), cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Atualiza um grupo muscular")
         .Produces<GrupoMuscularResponse>()
@@ -259,12 +277,14 @@ public static class AdminEndpoints
             [FromServices] ExcluirGrupoMuscularHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new ExcluirGrupoMuscularCommand(id), cancellationToken);
+            var result = await handler.HandleAsync(new ExcluirGrupoMuscularCommand(id), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
         .WithSummary("Exclui um grupo muscular")
         .Produces(StatusCodes.Status204NoContent)
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapGet("/exercicios", async (
             [FromServices] ListarExerciciosHandler handler,
@@ -332,8 +352,6 @@ public static class AdminEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
-        // --- Alunos (visibilidade admin) ---
-
         group.MapGet("/alunos", async (
             [FromServices] ListarAlunosAdminHandler handler,
             HttpContext httpContext,
@@ -399,7 +417,8 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(treinoAlunoId, Guid.Empty, cancellationToken);
-            return Results.Ok(result);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
         })
         .WithSummary("Obtém o detalhe de uma ficha vinculada a um aluno")
         .Produces<FichaAlunoDetalheResponse>()
@@ -433,7 +452,7 @@ public static class AdminEndpoints
                 : hoje;
 
             if (de > ate)
-                return Results.BadRequest("O parâmetro 'de' deve ser anterior a 'ate'.");
+                return Results.Problem(detail: "O parâmetro 'de' deve ser anterior a 'ate'.", statusCode: 400);
 
             var result = await handler.HandleAsync(new ObterProgressaoAlunoQuery(id, de, ate), cancellationToken);
             return Results.Ok(result);
@@ -441,8 +460,6 @@ public static class AdminEndpoints
         .WithSummary("Retorna a progressão de carga de um aluno no período")
         .Produces<ProgressaoAlunoResponse>()
         .ProducesProblem(StatusCodes.Status400BadRequest);
-
-        // --- Sub-recursos de treinadores (visibilidade admin) ---
 
         group.MapGet("/treinadores/{id:guid}/alunos", async (
             Guid id,
@@ -522,6 +539,41 @@ public static class AdminEndpoints
         })
         .WithSummary("Lista pacotes de um treinador")
         .Produces<IReadOnlyList<PacoteResponse>>();
+
+        group.MapGet("/contas/{id:guid}/lgpd/exportar", async (
+            Guid id,
+            [FromServices] ExportarDadosPessoaisHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler
+                .HandleAsync(new ExportarDadosPessoaisCommand(id), cancellationToken)
+                .ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Exporta dados pessoais de qualquer conta (portabilidade LGPD - admin)")
+        .Produces<DadosPessoaisExport>(StatusCodes.Status200OK)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/contas/{id:guid}/lgpd", async (
+            Guid id,
+            [FromServices] AnonimizarContaHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler
+                .HandleAsync(new AnonimizarContaCommand(
+                    ContaId: id,
+                    RealizadoPorId: userContext.ContaId,
+                    SenhaAtual: null), cancellationToken)
+                .ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Anonimiza permanentemente uma conta (LGPD - admin). Sem confirmação de senha.")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
 
         return endpoints;
     }

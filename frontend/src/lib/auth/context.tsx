@@ -26,16 +26,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    const controller = new AbortController();
+    fetch("/api/auth/me", { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: SessionUser | null) => {
+        if (controller.signal.aborted) return;
         setUser(data);
         setIsLoading(false);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) return;
         setUser(null);
         setIsLoading(false);
       });
+    return () => controller.abort();
   }, []);
 
   const login = useCallback((data: LoginResponse) => {

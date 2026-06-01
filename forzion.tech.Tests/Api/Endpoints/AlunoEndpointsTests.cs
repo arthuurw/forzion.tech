@@ -6,11 +6,14 @@ using FluentAssertions;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.AlterarStatusAluno;
 using forzion.tech.Application.UseCases.Alunos.AtualizarAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
+using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
@@ -126,7 +129,7 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
     {
         _factory.AtualizarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaAluno);
+            .ReturnsAsync(Result.Success(RespostaAluno));
 
         var response = await CriarClienteAutenticado().PatchAsJsonAsync($"/alunos/{AlunoId}",
             new { nome = "Maria" });
@@ -174,7 +177,7 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
     {
         _factory.AlterarStatusHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AlterarStatusAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RespostaAluno);
+            .ReturnsAsync(Result.Success(RespostaAluno));
 
         var response = await CriarClienteAutenticado().PatchAsJsonAsync($"/alunos/{AlunoId}/status",
             new { status = "Inativo" });
@@ -208,6 +211,40 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    // --- GET /alunos/{alunoId}/treinos ---
+
+    [Fact]
+    public async Task Get_ListarTreinos_SemAutenticacao_Retorna401()
+    {
+        var response = await _factory.CreateClient().GetAsync($"/alunos/{AlunoId}/treinos");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_ListarTreinos_Autenticado_Retorna200()
+    {
+        var resposta = new ListarTreinosResponse([], 0, 1, 20);
+        _factory.ListarTreinosHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ListarTreinosQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(resposta);
+
+        var response = await CriarClienteAutenticado().GetAsync($"/alunos/{AlunoId}/treinos");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_ListarTreinos_CallerSemVinculo_Retorna403()
+    {
+        _factory.ListarTreinosHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ListarTreinosQuery>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AcessoNegadoException());
+
+        var response = await CriarClienteAutenticado().GetAsync($"/alunos/{Guid.NewGuid()}/treinos");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     // --- WebApplicationFactory ---
 
     public class AlunoWebFactory : WebApplicationFactory<Program>
@@ -220,20 +257,28 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
 
         public Mock<ListarAlunosHandler> ListarHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ListarAlunosHandler>>());
 
         public Mock<AtualizarAlunoHandler> AtualizarHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IUserContext>(),
+            Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<AtualizarAlunoHandler>>());
 
         public Mock<AlterarStatusAlunoHandler> AlterarStatusHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IUserContext>(),
-            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<AlterarStatusAlunoHandler>>());
+
+        public Mock<ListarTreinosHandler> ListarTreinosHandlerMock { get; } = new(
+            Mock.Of<ITreinoRepository>(),
+            Mock.Of<IExercicioRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(),
+            Mock.Of<IUserContext>(),
+            Mock.Of<ILogger<ListarTreinosHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -247,12 +292,14 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
                 services.RemoveAll<ListarAlunosHandler>();
                 services.RemoveAll<AtualizarAlunoHandler>();
                 services.RemoveAll<AlterarStatusAlunoHandler>();
+                services.RemoveAll<ListarTreinosHandler>();
                 services.RemoveAll<IUserContext>();
 
                 services.AddScoped(_ => ObterHandlerMock.Object);
                 services.AddScoped(_ => ListarHandlerMock.Object);
                 services.AddScoped(_ => AtualizarHandlerMock.Object);
                 services.AddScoped(_ => AlterarStatusHandlerMock.Object);
+                services.AddScoped(_ => ListarTreinosHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.PerfilId).Returns(PerfilId);

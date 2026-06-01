@@ -7,6 +7,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Application.Vinculos;
 
@@ -32,8 +33,8 @@ public class SolicitarTrocaTreinadorHandlerTests
 
     private static Treinador CriarTreinadorAtivo()
     {
-        var t = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
-        t.Aprovar(Guid.NewGuid());
+        var t = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
         return t;
     }
 
@@ -42,7 +43,7 @@ public class SolicitarTrocaTreinadorHandlerTests
     {
         var novoTreinador = CriarTreinadorAtivo();
         var alunoId = Guid.NewGuid();
-        var vinculoAtual = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow);
+        var vinculoAtual = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow).Value;
         var pacoteId = Guid.NewGuid();
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(novoTreinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(novoTreinador);
@@ -51,8 +52,9 @@ public class SolicitarTrocaTreinadorHandlerTests
 
         var result = await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(alunoId, novoTreinador.Id, pacoteId));
 
-        result.Status.Should().Be(VinculoStatus.AguardandoAprovacao);
-        result.TreinadorId.Should().Be(novoTreinador.Id);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(VinculoStatus.AguardandoAprovacao);
+        result.Value.TreinadorId.Should().Be(novoTreinador.Id);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -66,58 +68,62 @@ public class SolicitarTrocaTreinadorHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorInativo_LancaDomainException()
+    public async Task HandleAsync_TreinadorInativo_RetornaFalha()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow);
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(Guid.NewGuid(), treinador.Id, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*disponível*");
+        var result = await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(Guid.NewGuid(), treinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("disponível");
     }
 
     [Fact]
-    public async Task HandleAsync_SemVinculoAtivo_LancaDomainException()
+    public async Task HandleAsync_SemVinculoAtivo_RetornaFalha()
     {
         var novoTreinador = CriarTreinadorAtivo();
         var alunoId = Guid.NewGuid();
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(novoTreinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(novoTreinador);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
 
-        var act = async () => await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(alunoId, novoTreinador.Id, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*vínculo ativo*");
+        var result = await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(alunoId, novoTreinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("vínculo ativo");
     }
 
     [Fact]
-    public async Task HandleAsync_MesmoTreinador_LancaDomainException()
+    public async Task HandleAsync_MesmoTreinador_RetornaFalha()
     {
         var treinadorId = Guid.NewGuid();
         var novoTreinador = CriarTreinadorAtivo();
         var alunoId = Guid.NewGuid();
-        var vinculoAtual = VinculoTreinadorAluno.Criar(novoTreinador.Id, alunoId, DateTime.UtcNow);
+        var vinculoAtual = VinculoTreinadorAluno.Criar(novoTreinador.Id, alunoId, DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(novoTreinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(novoTreinador);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtual);
 
-        var act = async () => await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(alunoId, novoTreinador.Id, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*já está vinculado*");
+        var result = await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(alunoId, novoTreinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("já está vinculado");
     }
 
     [Fact]
-    public async Task HandleAsync_JaTemPendente_LancaDomainException()
+    public async Task HandleAsync_JaTemPendente_RetornaFalha()
     {
         var novoTreinador = CriarTreinadorAtivo();
         var alunoId = Guid.NewGuid();
-        var vinculoAtual = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow);
-        var vinculoPendente = VinculoTreinadorAluno.Criar(novoTreinador.Id, alunoId, DateTime.UtcNow);
+        var vinculoAtual = VinculoTreinadorAluno.Criar(Guid.NewGuid(), alunoId, DateTime.UtcNow).Value;
+        var vinculoPendente = VinculoTreinadorAluno.Criar(novoTreinador.Id, alunoId, DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(novoTreinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(novoTreinador);
         _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAtual);
         _vinculoRepo.Setup(r => r.ObterPendentePorParAsync(novoTreinador.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);
 
-        var act = async () => await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(alunoId, novoTreinador.Id, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*pendente*");
+        var result = await _handler.HandleAsync(new SolicitarTrocaTreinadorCommand(alunoId, novoTreinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Should().Contain("pendente");
     }
 
     [Fact]

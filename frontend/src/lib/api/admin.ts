@@ -17,6 +17,9 @@ import type {
   VinculoStatus,
   TreinoResponse,
   PacoteResponse,
+  HealthReportConfigResponse,
+  AtualizarHealthReportConfigRequest,
+  HealthSnapshotResponse,
 } from "@/types";
 
 export interface ListarExerciciosGlobaisResponse {
@@ -24,6 +27,11 @@ export interface ListarExerciciosGlobaisResponse {
   total: number;
   pagina: number;
   tamanhoPagina: number;
+}
+
+export interface DashboardStatsResponse {
+  planoDistribuicao: { tier: string; total: number }[];
+  alunoFinalidade: { finalidade: string; total: number }[];
 }
 
 export interface ListTreinadoresParams {
@@ -77,7 +85,6 @@ export const adminApi = {
     return apiClient.delete(`/admin/planos/${planoId}`);
   },
 
-  // Grupos Musculares
   listGruposMusculares() {
     return apiClient.get<GrupoMuscularResponse[]>("/admin/grupos-musculares");
   },
@@ -162,5 +169,43 @@ export const adminApi = {
 
   getTreinadorPacotes(treinadorId: string) {
     return apiClient.get<PacoteResponse[]>(`/admin/treinadores/${treinadorId}/pacotes`);
+  },
+
+  // Relatório de saúde
+  getHealthReportConfig() {
+    return apiClient.get<HealthReportConfigResponse>("/admin/health-report/config");
+  },
+
+  updateHealthReportConfig(data: AtualizarHealthReportConfigRequest) {
+    return apiClient.put<HealthReportConfigResponse>("/admin/health-report/config", data);
+  },
+
+  listHealthSnapshots(params?: { limite?: number }) {
+    return apiClient.get<HealthSnapshotResponse[]>("/admin/health-report/snapshots", { params });
+  },
+
+  runHealthReport() {
+    return apiClient.post<HealthSnapshotResponse>("/admin/health-report/run");
+  },
+
+  getDashboardStats() {
+    return apiClient.get<DashboardStatsResponse>("/admin/stats/dashboard");
+  },
+
+  // LGPD admin actions
+  /**
+   * Exporta dados pessoais de uma conta (treinador ou aluno) — portabilidade.
+   */
+  exportarDadosConta(contaId: string) {
+    return apiClient.get(`/admin/contas/${contaId}/lgpd/exportar`, {
+      responseType: "blob",
+    });
+  },
+
+  /**
+   * Anonimiza/exclui dados pessoais de uma conta — direito ao esquecimento.
+   */
+  anonimizarConta(contaId: string) {
+    return apiClient.delete(`/admin/contas/${contaId}/lgpd`);
   },
 };
