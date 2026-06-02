@@ -35,7 +35,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 | `App:FrontendBaseUrl` | `AppSettings` | base dos links nas mensagens | default vazio |
 
 - `WhatsAppSettings` (Application/Settings) bind seção `WhatsApp`. Defaults prod-safe.
-- Deploy: env vars no compose (`WhatsApp__*`, hoje comentadas; descomentar + setar no `/opt/forzion/.env`). Local: User Secrets.
+- Deploy: env vars no compose. `docker-compose.homolog.yml` mapeia `WhatsApp__*` ← `${WHATSAPP_*}` (PhoneNumberId, AccessToken, ApiVersion, AppSecret, WebhookVerifyToken, MarcarComoTeste [default `true` em hmg], RedirecionarDestinatariosPara, AllowlistTelefones) → setar no `/opt/forzion/.env`. `docker-compose.yml` (local dev) mantém só PhoneNumberId/AccessToken/ApiVersion comentadas. Local sem Docker: User Secrets. Chaves documentadas em `.env.example`.
 
 ## COMPONENTES
 - `MetaWhatsAppCloudNotifier` / `NullWhatsAppNotifier` / `EnvironmentWhatsAppDecorator`.
