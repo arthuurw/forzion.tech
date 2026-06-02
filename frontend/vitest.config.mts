@@ -92,6 +92,7 @@ export default defineConfig({
             "src/hooks/**/*.test.ts",
             "src/hooks/**/*.property.test.ts",
             "src/middleware.test.ts",
+            "src/middleware.signature.test.ts",
           ],
           exclude: [
             // Testes em src/lib/** que dependem de DOM rodam no project integration
