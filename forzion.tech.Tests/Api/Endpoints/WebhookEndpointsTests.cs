@@ -61,20 +61,74 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
+    [Fact]
+    public async Task Post_WebhookStripe_SemHeaderAssinatura_RepassaAssinaturaVaziaERetorna400()
+    {
+        // Handler é mockado, então a leitura do header Stripe-Signature pelo endpoint
+        // não era exercitada. Captura o command p/ provar o plumbing: header ausente
+        // => AssinaturaAlunoStripe == "" => handler falha => 400.
+        ProcessarWebhookStripeCommand? captured = null;
+        _factory.ProcessarWebhookHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookStripeCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<ProcessarWebhookStripeCommand, CancellationToken>((c, _) => captured = c)
+            .ReturnsAsync((ProcessarWebhookStripeCommand c, CancellationToken _) =>
+                string.IsNullOrEmpty(c.AssinaturaAlunoStripe)
+                    ? Result.Failure(Error.Business("Assinatura ausente."))
+                    : Result.Success());
+
+        var content = new StringContent("{\"type\":\"payment_intent.succeeded\"}", Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/webhooks/stripe") { Content = content };
+
+        var response = await _factory.CreateClient().SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        captured.Should().NotBeNull();
+        captured!.AssinaturaAlunoStripe.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Post_WebhookStripe_ComHeaderAssinatura_RepassaValorDoHeaderAoHandler()
+    {
+        ProcessarWebhookStripeCommand? captured = null;
+        _factory.ProcessarWebhookHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookStripeCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<ProcessarWebhookStripeCommand, CancellationToken>((c, _) => captured = c)
+            .ReturnsAsync(Result.Success());
+
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/webhooks/stripe") { Content = content };
+        request.Headers.Add("Stripe-Signature", "t=1,v1=deadbeef");
+
+        var response = await _factory.CreateClient().SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        captured.Should().NotBeNull();
+        captured!.AssinaturaAlunoStripe.Should().Be("t=1,v1=deadbeef");
+    }
+
     // --- GET /webhooks/whatsapp (Meta verification handshake) ---
 
     [Fact]
     public async Task Get_WebhookWhatsApp_TokenCorreto_Retorna200ComChallenge()
     {
-        // The Test environment sets WhatsApp:WebhookVerifyToken via appsettings or defaults to empty.
-        // We exercise the happy-path by sending the same token the factory configures.
+        // Token real configurado na factory (não vazio) — exercita o match verdadeiro,
+        // não o caso degenerado empty==empty.
         var response = await _factory.CreateClient()
-            .GetAsync("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=&hub.challenge=abc123");
+            .GetAsync($"/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token={WebhookWebFactory.VerifyToken}&hub.challenge=abc123");
 
-        // When expectedToken is empty and verifyToken is empty the constant-time compare passes.
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
         body.Should().Be("abc123");
+    }
+
+    [Fact]
+    public async Task Get_WebhookWhatsApp_TokenVazio_Retorna403()
+    {
+        // Com token real configurado, um verify_token vazio NÃO pode passar.
+        var response = await _factory.CreateClient()
+            .GetAsync("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=&hub.challenge=abc123");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -99,6 +153,8 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
 
     public class WebhookWebFactory : WebApplicationFactory<Program>
     {
+        public const string VerifyToken = "meta-verify-token-test";
+
         public Mock<ProcessarWebhookStripeHandler> ProcessarWebhookHandlerMock { get; } = new(
             Mock.Of<IPagamentoRepository>(),
             Mock.Of<IAssinaturaAlunoRepository>(),
@@ -112,6 +168,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             builder.UseEnvironment("Test");
             builder.UseSetting("AllowedHosts", "*");
             builder.UseSetting("Auth:JwtSecret", "test-only-secret-at-least-32-chars!!");
+            builder.UseSetting("WhatsApp:WebhookVerifyToken", VerifyToken);
 
             builder.ConfigureServices(services =>
             {
