@@ -63,28 +63,29 @@ public class Treino
         bool limparDataInicio = false,
         bool limparDataFim = false)
     {
+        string? nomeProspectivo = null;
         if (nome is not null)
         {
             if (string.IsNullOrWhiteSpace(nome))
                 return Result.Failure(TreinoErrors.NomeVazio);
             if (nome.Trim().Length > 100)
                 return Result.Failure(TreinoErrors.NomeMuitoLongo);
-            Nome = nome.Trim();
+            nomeProspectivo = nome.Trim();
         }
 
+        var inicioProspectivo = limparDataInicio ? null : (dataInicio ?? DataInicio);
+        var fimProspectivo = limparDataFim ? null : (dataFim ?? DataFim);
+        if (inicioProspectivo.HasValue && fimProspectivo.HasValue && fimProspectivo < inicioProspectivo)
+            return Result.Failure(TreinoErrors.DataFimAnteriorInicio);
+
+        if (nomeProspectivo is not null)
+            Nome = nomeProspectivo;
         if (objetivo is not null)
             Objetivo = objetivo.Value;
-
         if (dificuldade is not null)
             Dificuldade = dificuldade.Value;
-
-        DataInicio = limparDataInicio ? null : (dataInicio ?? DataInicio);
-        DataFim = limparDataFim ? null : (dataFim ?? DataFim);
-
-        var inicio = DataInicio;
-        var fim = DataFim;
-        if (inicio.HasValue && fim.HasValue && fim < inicio)
-            return Result.Failure(TreinoErrors.DataFimAnteriorInicio);
+        DataInicio = inicioProspectivo;
+        DataFim = fimProspectivo;
 
         UpdatedAt = agora;
         return Result.Success();

@@ -26,6 +26,10 @@ public class CriarAssinaturaAlunoHandler(
         CriarAssinaturaAlunoCommand command,
         CancellationToken cancellationToken = default)
     {
+        // Precondição confiável: VinculoId já está ativo e casa com AlunoId/TreinadorId — o único
+        // produtor é o fluxo interno de aprovação de vínculo. Não há caller externo, então o vínculo
+        // NÃO é revalidado aqui. Se algum endpoint público passar a chamar este handler, adicionar
+        // lookup de vínculo (ativo + match aluno/treinador) antes de criar a assinatura.
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)

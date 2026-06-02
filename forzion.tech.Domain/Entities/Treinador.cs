@@ -11,6 +11,8 @@ public class Treinador : IHasDomainEvents
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
 
+    private bool _anonimizado;
+
     public Guid Id { get; private set; }
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
@@ -103,9 +105,10 @@ public class Treinador : IHasDomainEvents
 
     public Result Anonimizar(DateTime agora)
     {
-        if (Nome == "Usuário anonimizado")
+        if (_anonimizado)
             return Result.Success();
 
+        _anonimizado = true;
         Nome = "Usuário anonimizado";
         Telefone = null;
         UpdatedAt = agora;

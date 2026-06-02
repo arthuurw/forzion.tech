@@ -155,7 +155,7 @@ public class LoginHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaDomainException()
+    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaInvalidOperationException()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         conta.MarcarEmailVerificado(DateTime.UtcNow);
@@ -168,7 +168,9 @@ public class LoginHandlerTests
 
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
-        await act.Should().ThrowAsync<DomainException>();
+        // Inconsistência de dados → InvalidOperationException (não DomainException) → mapeia p/ 500, não 422.
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .And.Should().NotBeAssignableTo<DomainException>();
     }
 
     [Fact]

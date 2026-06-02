@@ -91,6 +91,44 @@ public class AlunoAnonimizarTests
     }
 
     [Fact]
+    public void Anonimizar_NomeIgualAoPlaceholderMasNaoAnonimizado_AindaScrubaPII()
+    {
+        var aluno = Aluno.Criar(
+            ContaId,
+            "Usuário anonimizado",
+            TestData.Agora,
+            email: "real@email.com",
+            telefone: "11999999999",
+            finalidade: FinalidadeTreino.Emagrecimento,
+            focoTreino: "Cardio",
+            doencas: "Hipertensão").Value;
+
+        var resultado = aluno.Anonimizar(TestData.Agora);
+
+        resultado.IsSuccess.Should().BeTrue();
+        aluno.Email.Should().BeNull();
+        aluno.Telefone.Should().BeNull();
+        aluno.Finalidade.Should().BeNull();
+        aluno.FocoTreino.Should().BeNull();
+        aluno.Doencas.Should().BeNull();
+    }
+
+    [Fact]
+    public void Anonimizar_NomeIgualAoPlaceholder_SegundaChamadaIdempotente()
+    {
+        var agora = new DateTime(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        var aluno = Aluno.Criar(
+            ContaId, "Usuário anonimizado", TestData.Agora, telefone: "11999999999").Value;
+        aluno.Anonimizar(agora);
+
+        var resultado = aluno.Anonimizar(agora.AddHours(1));
+
+        resultado.IsSuccess.Should().BeTrue();
+        aluno.Telefone.Should().BeNull();
+        aluno.UpdatedAt.Should().Be(agora);
+    }
+
+    [Fact]
     public void Anonimizar_AlunoSemCamposOpcionais_ScrubaApenasNome()
     {
         var aluno = Aluno.Criar(ContaId, "Carlos", TestData.Agora).Value;
