@@ -40,6 +40,8 @@ public class JwtService : IJwtService
 
         var claims = new[]
         {
+            // sub = identidade estável p/ particionar o rate-limit por usuário (KeyFromIpOrSub).
+            new Claim(JwtRegisteredClaimNames.Sub, conta.Id.ToString()),
             new Claim("conta_id", conta.Id.ToString()),
             new Claim("tipo_conta", conta.TipoConta.ToString()),
             new Claim("perfil_id", perfilId.ToString()),
