@@ -41,21 +41,23 @@ public class LoginHandler(
         if (!conta.EmailVerificado)
             throw new EmailNaoVerificadoException();
 
+        // Conta verificada sem perfil correspondente é inconsistência de dados (não regra de
+        // negócio): mapeia p/ 500, não 422 (DomainException). Idem TipoConta inválido.
         var perfilId = conta.TipoConta switch
         {
             Domain.Enums.TipoConta.Aluno =>
                 (await alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
-                ?? throw new DomainException("Perfil de aluno não encontrado para esta conta."),
+                ?? throw new InvalidOperationException("Perfil de aluno não encontrado para esta conta."),
 
             Domain.Enums.TipoConta.Treinador =>
                 (await treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
-                ?? throw new DomainException("Perfil de treinador não encontrado para esta conta."),
+                ?? throw new InvalidOperationException("Perfil de treinador não encontrado para esta conta."),
 
             Domain.Enums.TipoConta.SystemAdmin =>
                 (await systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
-                ?? throw new DomainException("Perfil de administrador não encontrado para esta conta."),
+                ?? throw new InvalidOperationException("Perfil de administrador não encontrado para esta conta."),
 
-            _ => throw new DomainException("Tipo de conta inválido.")
+            _ => throw new InvalidOperationException("Tipo de conta inválido.")
         };
 
         var token = jwtService.GerarToken(conta, perfilId);
