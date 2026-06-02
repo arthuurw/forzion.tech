@@ -19,6 +19,16 @@ services:
       Email__AllowlistDominios: ${EMAIL_ALLOWLIST_DOMAINS:-}
       App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-https://homologacao.forzion.tech}
       Internal__ApiKey: ${INTERNAL_API_KEY:-}
+      # WhatsApp via Meta Cloud API (opcional — PhoneNumberId+AccessToken vazios → NullWhatsAppNotifier)
+      WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}
+      WhatsApp__ApiVersion: ${WHATSAPP_API_VERSION:-v21.0}
+      WhatsApp__AppSecret: ${WHATSAPP_APP_SECRET:-}
+      WhatsApp__WebhookVerifyToken: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-}
+      # Guardrail não-prod: redireciona/restringe destinatários (test number Meta cobre só 5 números pré-cadastrados)
+      WhatsApp__MarcarComoTeste: ${WHATSAPP_MARK_AS_TEST:-true}
+      WhatsApp__RedirecionarDestinatariosPara: ${WHATSAPP_REDIRECT_TO:-}
+      WhatsApp__AllowlistTelefones: ${WHATSAPP_ALLOWLIST_PHONES:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
