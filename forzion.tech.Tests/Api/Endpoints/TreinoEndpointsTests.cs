@@ -415,6 +415,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
         public Mock<AtualizarTreinoHandler> AtualizarHandlerMock { get; } = new(
             Mock.Of<ITreinoRepository>(),
             Mock.Of<IExercicioRepository>(),
+            Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IUserContext>(), TimeProvider.System,
             Mock.Of<ILogger<AtualizarTreinoHandler>>());

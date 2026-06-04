@@ -71,6 +71,33 @@ public class TreinadorAnonimizarTests
     }
 
     [Fact]
+    public void Anonimizar_NomeIgualAoPlaceholderMasNaoAnonimizado_AindaScrubaTelefone()
+    {
+        var treinador = Treinador.Criar(
+            ContaId, "Usuário anonimizado", TestData.Agora, "11988887777").Value;
+
+        var resultado = treinador.Anonimizar(TestData.Agora);
+
+        resultado.IsSuccess.Should().BeTrue();
+        treinador.Telefone.Should().BeNull();
+    }
+
+    [Fact]
+    public void Anonimizar_NomeIgualAoPlaceholder_SegundaChamadaIdempotente()
+    {
+        var agora = new DateTime(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        var treinador = Treinador.Criar(
+            ContaId, "Usuário anonimizado", TestData.Agora, "11988887777").Value;
+        treinador.Anonimizar(agora);
+
+        var resultado = treinador.Anonimizar(agora.AddHours(1));
+
+        resultado.IsSuccess.Should().BeTrue();
+        treinador.Telefone.Should().BeNull();
+        treinador.UpdatedAt.Should().Be(agora);
+    }
+
+    [Fact]
     public void Anonimizar_NaoAlteraOutrosCampos()
     {
         var treinador = CriarTreinador();

@@ -157,6 +157,26 @@ public class TreinoTests
     }
 
     [Fact]
+    public void Atualizar_DataFimAnteriorAoInicio_NaoMutaCampos()
+    {
+        var inicioOriginal = new DateOnly(2025, 1, 1);
+        var fimOriginal = new DateOnly(2025, 12, 31);
+        var t = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora,
+            DificuldadeTreino.Iniciante, inicioOriginal, fimOriginal).Value;
+
+        var r = t.Atualizar("Treino B", ObjetivoTreino.Forca, TestData.Agora, DificuldadeTreino.Avancado,
+            dataInicio: new DateOnly(2025, 6, 1),
+            dataFim: new DateOnly(2025, 5, 1));
+
+        r.IsFailure.Should().BeTrue();
+        t.Nome.Should().Be("Treino A");
+        t.Objetivo.Should().Be(ObjetivoTreino.Hipertrofia);
+        t.Dificuldade.Should().Be(DificuldadeTreino.Iniciante);
+        t.DataInicio.Should().Be(inicioOriginal);
+        t.DataFim.Should().Be(fimOriginal);
+    }
+
+    [Fact]
     public void Atualizar_LimparDatas_ZeraCampos()
     {
         var t = Treino.Criar("T", ObjetivoTreino.Hipertrofia, TreinadorId, TestData.Agora,

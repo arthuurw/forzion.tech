@@ -51,6 +51,7 @@ public class JwtServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
 
+        jwt.Claims.Should().Contain(c => c.Type == "sub" && c.Value == conta.Id.ToString());
         jwt.Claims.Should().Contain(c => c.Type == "conta_id" && c.Value == conta.Id.ToString());
         jwt.Claims.Should().Contain(c => c.Type == "tipo_conta" && c.Value == "Treinador");
         jwt.Claims.Should().Contain(c => c.Type == "perfil_id" && c.Value == perfilId.ToString());

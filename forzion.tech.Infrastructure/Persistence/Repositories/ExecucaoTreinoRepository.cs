@@ -84,6 +84,9 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
         // Aggregação em SQL evita hidratar cada execução.
         // Npgsql exige Kind=Utc para comparar com colunas timestamptz (handlers passam
         // DateTime.UtcNow.Date, que vem com Kind=Unspecified).
+        // O bucket `DataExecucao.Date` é UTC-determinístico: em coluna timestamptz (modo
+        // não-legacy) o Npgsql traduz `.Date` para `date_trunc('day', x, 'UTC')`, NÃO no TZ
+        // da sessão. Não trocar por cast a date (`::date` seria TZ-dependente).
         de = DateTime.SpecifyKind(de, DateTimeKind.Utc);
         ate = DateTime.SpecifyKind(ate, DateTimeKind.Utc);
 

@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +10,7 @@ namespace forzion.tech.Application.UseCases.Treinos.AtualizarTreino;
 public class AtualizarTreinoHandler(
     ITreinoRepository treinoRepository,
     IExercicioRepository exercicioRepository,
+    IExecucaoTreinoRepository execucaoTreinoRepository,
     IUnitOfWork unitOfWork,
     IUserContext userContext,
     TimeProvider timeProvider,
@@ -33,6 +35,14 @@ public class AtualizarTreinoHandler(
 
         if (!userContext.IsSystemAdmin && treino.TreinadorId != userContext.PerfilId)
             throw new AcessoNegadoException();
+
+        var executado = await execucaoTreinoRepository
+            .ExisteParaTreinoComAlunoAtivoAsync(command.TreinoId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var mutabilidadeResult = Treino.ValidarMutabilidade(executado);
+        if (mutabilidadeResult.IsFailure)
+            return Result.Failure<TreinoResponse>(mutabilidadeResult.Error!);
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var atualizarResult = treino.Atualizar(command.Nome, command.Objetivo, agora, command.Dificuldade, command.DataInicio, command.DataFim, command.LimparDataInicio, command.LimparDataFim);

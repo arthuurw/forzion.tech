@@ -17,9 +17,9 @@ DOC PARA AGENTES. Fonte de verdade dos direitos do titular (LGPD) no forzion.tec
 ## MODELO DE ANONIMIZAÇÃO (Domain)
 Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 - `Conta.Anonimizar(agora)`: `Email` → token irreversível `anon+{guid:N}@anonimizado.local` (via `Email.Criar`, normalizado), `PasswordHash` → vazio (login impossível), `AnonimizadaEm = agora`, email não-verificado. Emite `ContaAnonimizadaEvent(ContaId, TipoConta, OcorridoEm)`. Idempotente via `AnonimizadaEm != null`.
-- `Aluno.Anonimizar(agora)`: scrub nome (→"Usuário anonimizado"), email(opt), telefone, e **anamnese SENSÍVEL** (finalidade, foco_treino, nivel_condicionamento, limitacoes_fisicas, doencas, observacoes_adicionais, dias/tempo). Idempotente via sentinela de nome.
-- `Treinador.Anonimizar(agora)`: scrub nome (→sentinela), telefone. Idempotente.
-- Coluna `contas.anonimizada_em` (tstz null) — migration `AdicionarAnonimizadaEmContas`. Aluno/Treinador usam sentinela de nome (sem coluna nova).
+- `Aluno.Anonimizar(agora)`: scrub nome (→"Usuário anonimizado"), email(opt), telefone, e **anamnese SENSÍVEL** (finalidade, foco_treino, nivel_condicionamento, limitacoes_fisicas, doencas, observacoes_adicionais, dias/tempo). Idempotente via flag interna `_anonimizado` (NÃO via nome — um usuário real chamado "Usuário anonimizado" ainda tem PII scrub-ada na 1ª chamada).
+- `Treinador.Anonimizar(agora)`: scrub nome (→sentinela), telefone. Idempotente via flag interna `_anonimizado`.
+- Coluna `contas.anonimizada_em` (tstz null) — migration `AdicionarAnonimizadaEmContas`. Aluno/Treinador: flag transiente `_anonimizado` (campo privado NÃO mapeado, sem coluna/migration). Idempotência cross-sessão garantida pelo handler via `conta.AnonimizadaEm` (não re-chama `Anonimizar` em conta já anonimizada).
 
 ## FLUXO DE EXCLUSÃO (`AnonimizarContaHandler`, transação única)
 1. Carrega conta (NotFound se ausente; idempotente se já anonimizada).

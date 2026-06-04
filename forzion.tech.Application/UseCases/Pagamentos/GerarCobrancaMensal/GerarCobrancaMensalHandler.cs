@@ -49,38 +49,16 @@ public class GerarCobrancaMensalHandler(
 
         Pagamento pagamento;
 
-        // Atomicidade G-PAY-1.
-        // Abordagem: Stripe ANTES do único commit (single-write).
-        //
-        // Problema original (dois commits):
-        //   commit-1 persiste Pagamento Pendente sem StripePaymentIntentId
-        //   → Stripe chamado
-        //   → commit-2 persiste intent id
-        //   Se commit-2 falha: row fica Pendente sem intent ("zumbi") ocupando o slot
-        //   único e sem PaymentIntent cobrável.
-        //
-        // Solução: chamar Stripe dentro da transação serializable, antes do único commit.
-        //   1. Serializable tx garante que apenas um caller por vez vê/cria Pendente.
-        //   2. Pagamento.Criar() gera o Guid; Stripe recebe esse Guid como idempotency key
-        //      (StripeService já usa "pagamento-{guid:N}" em PaymentIntentRequestOptions).
-        //   3. DefinirDados* aplica intent id/client-secret no objeto em memória.
-        //   4. Um único CommitAsync persiste Pagamento já com StripePaymentIntentId — sem
-        //      janela entre commit-1 e commit-2.
-        //
-        // Falha no único commit:
-        //   → Pagamento nunca chegou ao banco → próximo retry não encontra Pendente →
-        //     recria Pagamento com NOVO Guid → Stripe recebe idempotency key diferente
-        //     (novo Guid) → novo intent. O intent anterior fica órfão no Stripe e expira
-        //     em ≤24h (comportamento aceitável: nenhum dinheiro capturado).
-        //
-        // Tradeoff vs. Stripe-antes-de-tudo (sem tx):
-        //   Manter a serializable tx é necessário para impedir concorrência de dois callers
-        //   que ambos não veem Pendente e tentam criar simultaneamente. O Guid + idempotency
-        //   key Stripe protege apenas contra retry da *mesma* instância; a tx protege
-        //   contra corrida entre instâncias distintas (ex.: job + endpoint).
-        //
-        // Zumbi legado (Pendente sem StripePaymentIntentId de corridas anteriores ao fix):
-        //   Ainda detectado e marcado Falhou antes de criar novo — caminho preservado abaixo.
+        // Atomicidade G-PAY-1 (F12): Stripe ANTES do único commit (single-write).
+        //   - Por quê não 2 commits: persistir Pendente, chamar Stripe, persistir o intent id
+        //     num 2º commit deixa um Pendente sem intent ("zumbi") ocupando o slot único se o
+        //     2º commit falha. Aqui o Guid de Pagamento.Criar() vira idempotency key do Stripe,
+        //     DefinirDados* aplica o intent em memória e um único CommitAsync grava tudo junto.
+        //   - Por quê serializable tx (e não só Stripe-antes-de-tudo): protege contra dois callers
+        //     concorrentes (job + endpoint) que ambos não veem Pendente e criam em paralelo; o Guid
+        //     só cobre retry da MESMA instância. Falha no commit → nada gravado → retry recria com
+        //     novo Guid/intent; o intent órfão expira em ≤24h sem captura.
+        //   - Zumbi legado (pré-fix): ainda detectado e marcado Falhou antes de recriar (abaixo).
 
         await using (var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken).ConfigureAwait(false))
         {

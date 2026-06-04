@@ -10,6 +10,7 @@ using forzion.tech.Api.Endpoints.Pagamentos;
 using forzion.tech.Api.Endpoints.Treinos;
 using forzion.tech.Api.Endpoints.Treinador;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -58,6 +59,24 @@ public static class RouteBuilderExtensions
 
         app.UseSwaggerInDevelopment();
         app.UseExceptionHandler();
+
+        // Atrás do nginx (Homolog/Production): reescreve RemoteIpAddress/scheme a partir
+        // do X-Forwarded-*. Precisa rodar ANTES de HttpsRedirection/Auth/RateLimiter. Sem isso
+        // o RemoteIpAddress seria o IP do container nginx → rate-limit colapsa todos os
+        // clientes num bucket (CC2). O backend só é alcançável via nginx (rede docker isolada,
+        // sem porta publicada), então o único hop é confiável: limpamos as listas default
+        // (que só confiam em loopback) p/ aceitar o cabeçalho do proxy. ForwardLimit=1 = 1 hop.
+        if (app.Environment.IsProduction() || app.Environment.IsEnvironment("Homolog"))
+        {
+            var forwarded = new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+                ForwardLimit = 1,
+            };
+            forwarded.KnownNetworks.Clear();
+            forwarded.KnownProxies.Clear();
+            app.UseForwardedHeaders(forwarded);
+        }
 
         if (app.Environment.IsProduction())
             app.UseHttpsRedirection();

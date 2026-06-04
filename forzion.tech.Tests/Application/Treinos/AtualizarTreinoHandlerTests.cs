@@ -14,6 +14,7 @@ public class AtualizarTreinoHandlerTests
 {
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IExercicioRepository> _exercicioRepo = new();
+    private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<AtualizarTreinoHandler>> _logger = new();
@@ -22,12 +23,16 @@ public class AtualizarTreinoHandlerTests
     public AtualizarTreinoHandlerTests()
     {
         _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _execucaoRepo
+            .Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         _exercicioRepo
             .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string>());
         _handler = new AtualizarTreinoHandler(
             _treinoRepo.Object,
             _exercicioRepo.Object,
+            _execucaoRepo.Object,
             _unitOfWork.Object,
             _userContext.Object,
             TimeProvider.System,
@@ -154,6 +159,40 @@ public class AtualizarTreinoHandlerTests
 
         result.Value.DataInicio.Should().Be(inicio);
         result.Value.DataFim.Should().Be(fim);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinoJaExecutado_RetornaFailureMutabilidade()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = CriarTreino(treinadorId);
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var command = new AtualizarTreinoCommand(treino.Id, "Novo Nome", ObjetivoTreino.Emagrecimento);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treino.ja_executado");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinoSemExecucao_AtualizaComSucesso()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = CriarTreino(treinadorId);
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _execucaoRepo.Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var command = new AtualizarTreinoCommand(treino.Id, "Novo Nome", ObjetivoTreino.Emagrecimento);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Nome.Should().Be("Novo Nome");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

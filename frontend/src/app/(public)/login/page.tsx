@@ -1,5 +1,6 @@
 "use client";
 import { Box, Typography, Button, CircularProgress, Divider } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -106,9 +107,9 @@ export default function LoginPage() {
             mb: 2,
             p: 2,
             borderRadius: 1,
-            bgcolor: "warning.light",
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
             border: "1px solid",
-            borderColor: "warning.main",
+            borderColor: "primary.main",
           }}
         >
           <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
@@ -121,7 +122,8 @@ export default function LoginPage() {
           </Typography>
           {!reenviado && (
             <Button
-              variant="outlined"
+              variant="contained"
+              color="primary"
               size="small"
               onClick={handleReenviar}
               disabled={reenviando}

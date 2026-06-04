@@ -80,6 +80,28 @@ public class LoginHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_EmailDesconhecido_e_SenhaErrada_ProduzemErroIdentico()
+    {
+        // Anti-enumeração: e-mail inexistente e senha errada DEVEM ser indistinguíveis
+        // (mesmo tipo + mensagem) p/ não revelar se a conta existe. Falha se alguém
+        // diferenciar os ramos (ex.: lançar "usuário não encontrado" no email desconhecido).
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("desconhecido@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Conta?)null);
+        var actDesconhecido = async () => await _handler.HandleAsync(new LoginCommand("desconhecido@test.com", "Senha123"));
+        var exDesconhecido = (await actDesconhecido.Should().ThrowAsync<CredenciaisInvalidasException>()).Which;
+
+        var conta = Conta.Criar(Email.Criar("existe@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("existe@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify(It.IsAny<string>(), "hash")).Returns(false);
+        var actSenha = async () => await _handler.HandleAsync(new LoginCommand("existe@test.com", "Senha123"));
+        var exSenha = (await actSenha.Should().ThrowAsync<CredenciaisInvalidasException>()).Which;
+
+        exSenha.GetType().Should().Be(exDesconhecido.GetType());
+        exSenha.Message.Should().Be(exDesconhecido.Message);
+    }
+
+    [Fact]
     public async Task HandleAsync_EmailNormalizado_BuscaEmMinusculo()
     {
         _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
@@ -155,7 +177,7 @@ public class LoginHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaDomainException()
+    public async Task HandleAsync_PerfilNaoEncontradoParaConta_LancaInvalidOperationException()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         conta.MarcarEmailVerificado(DateTime.UtcNow);
@@ -168,7 +190,9 @@ public class LoginHandlerTests
 
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
-        await act.Should().ThrowAsync<DomainException>();
+        // Inconsistência de dados → InvalidOperationException (não DomainException) → mapeia p/ 500, não 422.
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .And.Should().NotBeAssignableTo<DomainException>();
     }
 
     [Fact]
