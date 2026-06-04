@@ -15,7 +15,7 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 
 ## STACKS COMPOSE
 - **`docker-compose.homolog.yml`** — ATIVO (hmg). Build-on-VM. Serviços: `backend`(build Api/Dockerfile, `ASPNETCORE_ENVIRONMENT=Homolog`, env via `${...}`, healthcheck `GET /health:8080`), `frontend`(build, `depends_on backend healthy`), `nginx`(80/443, bind-mount `nginx.conf`+`certbot` ro), `certbot`(loop renew 12h), `pact-postgres`+`pact-broker`(:9292). Env ← `/opt/forzion/.env`.
-- **`docker-compose.yml`** — LOCAL dev. `postgres`(postgres:16, schema `homolog` via Search Path) + `backend`(build, `Development`, :8080) + `frontend`(:3001→3000). Alternativa SEM Docker: `dotnet run` → User Secrets → **Supabase REMOTO** (não local; ⚠️ migra/seeda remoto — ver [specification-db]).
+- **`docker-compose.yml`** — LOCAL dev. `postgres`(postgres:16, schema `develop` via Search Path; criado no init por `scripts/init-develop-schema.sql`) + `backend`(build, `Development`, :8080) + `frontend`(:3001→3000). Alternativa SEM Docker: `dotnet run` → User Secrets → **Supabase REMOTO** (não local; ⚠️ migra/seeda remoto — ver [specification-db]).
 - **`docker-compose.server.yml`** — PREPARADO/NÃO-ATIVO. Deploy por imagem de registry (`${REGISTRY}/forzion/{backend,frontend}:${TAG}`). Hoje NÃO há CI que builde/pushe imagem; caminho previsto p/ prod.
 
 ## NGINX / ROTEAMENTO
