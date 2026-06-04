@@ -12,6 +12,8 @@ public class Aluno : IHasDomainEvents
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
 
+    private bool _anonimizado;
+
     public Guid Id { get; private set; }
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
@@ -92,6 +94,10 @@ public class Aluno : IHasDomainEvents
 
     public Result Atualizar(string? nome, string? email, string? telefone, DateTime agora)
     {
+        var nomeOriginal = Nome;
+        var emailOriginal = Email?.Value;
+        var telefoneOriginal = Telefone;
+
         if (nome is not null)
         {
             if (string.IsNullOrWhiteSpace(nome))
@@ -114,6 +120,13 @@ public class Aluno : IHasDomainEvents
             if (telefoneResult.IsFailure)
                 return telefoneResult;
         }
+
+        var houveMudanca = Nome != nomeOriginal
+            || Email?.Value != emailOriginal
+            || Telefone != telefoneOriginal;
+
+        if (!houveMudanca)
+            return Result.Success();
 
         UpdatedAt = agora;
         _domainEvents.Add(new AlunoAtualizadoEvent(Id, Nome, Email?.Value, agora));
@@ -143,13 +156,10 @@ public class Aluno : IHasDomainEvents
 
     public Result Anonimizar(DateTime agora)
     {
-        // Idempotent: already anonymized when nome equals the placeholder.
-        // We use a dedicated sentinel check via a nullable flag-style convention:
-        // Nome placeholder is deterministic enough; any re-scrub would be harmless,
-        // but we guard on Nome to keep idempotency without adding a new property.
-        if (Nome == "Usuário anonimizado")
+        if (_anonimizado)
             return Result.Success();
 
+        _anonimizado = true;
         Nome = "Usuário anonimizado";
         Email = null;
         Telefone = null;

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
@@ -149,6 +150,42 @@ public class AlunoTests
         var r = aluno.Atualizar("", null, null, TestData.Agora);
         r.IsFailure.Should().BeTrue();
         r.Error!.Message.Should().Be("O nome não pode ser vazio.");
+    }
+
+    [Fact]
+    public void Atualizar_ComMudancaReal_EmiteAlunoAtualizadoEvent()
+    {
+        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora).Value;
+        aluno.ClearDomainEvents();
+
+        aluno.Atualizar("Maria", null, null, TestData.Agora);
+
+        aluno.DomainEvents.OfType<AlunoAtualizadoEvent>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Atualizar_SemMudanca_NaoEmiteEventoNemAtualizaUpdatedAt()
+    {
+        var aluno = Aluno.Criar(
+            ContaId, "João", TestData.Agora, "joao@email.com", "11999999999").Value;
+        aluno.ClearDomainEvents();
+
+        var resultado = aluno.Atualizar("João", "joao@email.com", "11999999999", TestData.Agora.AddHours(1));
+
+        resultado.IsSuccess.Should().BeTrue();
+        aluno.DomainEvents.OfType<AlunoAtualizadoEvent>().Should().BeEmpty();
+        aluno.UpdatedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Atualizar_CamposNulos_NaoEmiteEvento()
+    {
+        var aluno = Aluno.Criar(ContaId, "João", TestData.Agora).Value;
+        aluno.ClearDomainEvents();
+
+        aluno.Atualizar(null, null, null, TestData.Agora);
+
+        aluno.DomainEvents.OfType<AlunoAtualizadoEvent>().Should().BeEmpty();
     }
 
     // --- Ativar / Inativar ---

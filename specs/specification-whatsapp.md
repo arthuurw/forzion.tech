@@ -35,7 +35,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 | `App:FrontendBaseUrl` | `AppSettings` | base dos links nas mensagens | default vazio |
 
 - `WhatsAppSettings` (Application/Settings) bind seção `WhatsApp`. Defaults prod-safe.
-- Deploy: env vars no compose (`WhatsApp__*`, hoje comentadas; descomentar + setar no `/opt/forzion/.env`). Local: User Secrets.
+- Deploy: env vars no compose. `docker-compose.homolog.yml` mapeia `WhatsApp__*` ← `${WHATSAPP_*}` (PhoneNumberId, AccessToken, ApiVersion, AppSecret, WebhookVerifyToken, MarcarComoTeste [default `true` em hmg], RedirecionarDestinatariosPara, AllowlistTelefones) → setar no `/opt/forzion/.env`. `docker-compose.yml` (local dev) mantém só PhoneNumberId/AccessToken/ApiVersion comentadas. Local sem Docker: User Secrets. Chaves documentadas em `.env.example`.
 
 ## COMPONENTES
 - `MetaWhatsAppCloudNotifier` / `NullWhatsAppNotifier` / `EnvironmentWhatsAppDecorator`.
@@ -90,6 +90,30 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 - Templates (snake_case): aluno `cobranca_disponivel`,`cobranca_falhou`,`pagamento_estornado`,`assinatura_inadimplente`,`assinatura_reativada`,`assinatura_cancelada`,`bem_vindo_aluno`,`assinatura_criada`,`aluno_inativado`,`vinculo_aprovado`; treinador `treinador_aprovado`,`treinador_reprovado`,`treinador_inativado`,`aluno_cancelou_assinatura`,`pagamento_em_disputa`,`novo_aluno_pendente`.
 - Brasil base (USD/msg, ~2026): marketing ~$0.0625 · auth ~$0.0315 · utility menor + volume. Confirmar rate card no WhatsApp Manager.
 
+## TEMPLATES — COPY pt_BR P/ APROVAÇÃO META
+Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUTÁVEL — `SendTemplateAsync` envia N params posicionais; divergir qtd/ordem → Meta rejeita). Todos **categoria Utility**, idioma **Português (BR) / `pt_BR`**, sem header/botões. ⚠️ `Money()` devolve só o número (`149,90`, sem `R$`) → texto inclui `R$ ` antes da var. `metodo` já vem palavra (`cartão de crédito`/`Pix`). Copy é editável; qtd/ordem de vars NÃO.
+
+| # | template | vars (ordem) | body proposto | samples |
+|---|----------|--------------|---------------|---------|
+| 1 | `cobranca_disponivel` | nome, valor, método, link | `Olá {{1}}! Sua cobrança de R$ {{2}} já está disponível para pagamento via {{3}}. Acesse: {{4}}` | João · 149,90 · Pix · https://forzion.tech/portal |
+| 2 | `cobranca_falhou` | nome, valor, tentativas, link | `Olá {{1}}, não conseguimos processar seu pagamento de R$ {{2}} (tentativa {{3}}). Regularize em: {{4}}` | João · 149,90 · 2 · https://forzion.tech/portal |
+| 3 | `pagamento_estornado` | nome, valor, link | `Olá {{1}}, seu pagamento de R$ {{2}} foi estornado. Detalhes em: {{3}}` | João · 149,90 · https://forzion.tech/portal |
+| 4 | `assinatura_inadimplente` | nome, link | `Olá {{1}}, sua assinatura está com pagamento em atraso e foi marcada como inadimplente. Regularize para manter o acesso: {{2}}` | João · https://forzion.tech/portal |
+| 5 | `assinatura_cancelada` | nome, link | `Olá {{1}}, sua assinatura foi cancelada. Caso queira reativar, acesse: {{2}}` | João · https://forzion.tech/portal |
+| 6 | `assinatura_reativada` | nome, link | `Olá {{1}}, sua assinatura foi reativada e seu acesso está liberado novamente. Acesse: {{2}}` | João · https://forzion.tech/portal |
+| 7 | `bem_vindo_aluno` | nome | `Bem-vindo(a) à forzion.tech, {{1}}! Sua conta de aluno foi criada com sucesso.` | João |
+| 8 | `assinatura_criada` | nome, pacote, valor | `Olá {{1}}, sua assinatura do pacote {{2}} no valor de R$ {{3}} foi criada com sucesso.` | João · Plano Mensal · 149,90 |
+| 9 | `aluno_inativado` | nome | `Olá {{1}}, sua conta de aluno na forzion.tech foi inativada. Em caso de dúvida, fale com seu treinador.` | João |
+| 10 | `vinculo_aprovado` | nome | `Olá {{1}}, seu vínculo com o treinador foi aprovado. Você já pode acessar seus treinos na forzion.tech!` | João |
+| 11 | `treinador_aprovado` | nomeTreinador | `Olá {{1}}, seu cadastro de treinador na forzion.tech foi aprovado. Bem-vindo(a)!` | Carlos |
+| 12 | `treinador_reprovado` | nomeTreinador | `Olá {{1}}, seu cadastro de treinador na forzion.tech não foi aprovado neste momento.` | Carlos |
+| 13 | `treinador_inativado` | nomeTreinador | `Olá {{1}}, sua conta de treinador na forzion.tech foi inativada.` | Carlos |
+| 14 | `aluno_cancelou_assinatura` | nomeTreinador, nomeAluno, valor | `Olá {{1}}, o aluno {{2}} cancelou a assinatura de R$ {{3}}.` | Carlos · João · 149,90 |
+| 15 | `pagamento_em_disputa` | nomeTreinador, nomeAluno, valor | `Olá {{1}}, o pagamento do aluno {{2}} no valor de R$ {{3}} entrou em disputa. Acompanhe o caso.` | Carlos · João · 149,90 |
+| 16 | `novo_aluno_pendente` | nomeTreinador, nomeAluno | `Olá {{1}}, o aluno {{2}} solicitou vínculo e está aguardando sua aprovação na forzion.tech.` | Carlos · João |
+
+- Gotchas Meta: template não pode ser só-variável nem var colada no início/fim sem texto (bodies acima ok). Evitar vars fora de ordem sequencial no texto (template 15 reescrito p/ {{2}} antes de {{3}}).
+
 ## SEGURANÇA
 - `AccessToken`/`PhoneNumberId`/`AppSecret`/`WebhookVerifyToken` backend-only (env/secret), nunca frontend.
 - `PhoneNumberNormalizer` aplica E.164 (DDI BR 55). ⚠️ Ainda SEM fallback de telefone: `contas` não tem coluna `telefone` (só `alunos`/`treinadores`) → telefone ausente = no-op. Fallback exigiria `contas.telefone` (migration; fora deste escopo).
@@ -104,7 +128,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 Paridade email→WhatsApp **FECHADA** (todos os eventos de e-mail relevantes têm WhatsApp; verify/reset e health-report admin permanecem N/A por serem channel-bound/internos). Itens estruturais FECHADOS: type:template, `EnvironmentWhatsAppDecorator`, padronização event-handlers, `Habilitado`, catálogo central, E.164, webhook de status.
 
 Pendências (NÃO de código):
-- **Aprovar os 15 templates no Meta Business Manager** (ops) — pré-requisito de entrega real.
+- **Aprovar os 16 templates no Meta Business Manager** (ops) — pré-requisito de entrega real. Copy pronta em § TEMPLATES — COPY pt_BR.
 - **Fallback de telefone**: requer coluna `contas.telefone` (migration + UI cadastro) — escopo separado se desejado.
 
 ## DICAS / GOTCHAS

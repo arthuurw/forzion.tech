@@ -15,13 +15,14 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 
 ## STACKS COMPOSE
 - **`docker-compose.homolog.yml`** — ATIVO (hmg). Build-on-VM. Serviços: `backend`(build Api/Dockerfile, `ASPNETCORE_ENVIRONMENT=Homolog`, env via `${...}`, healthcheck `GET /health:8080`), `frontend`(build, `depends_on backend healthy`), `nginx`(80/443, bind-mount `nginx.conf`+`certbot` ro), `certbot`(loop renew 12h), `pact-postgres`+`pact-broker`(:9292). Env ← `/opt/forzion/.env`.
-- **`docker-compose.yml`** — LOCAL dev. `postgres`(postgres:16, schema `homolog` via Search Path) + `backend`(build, `Development`, :8080) + `frontend`(:3001→3000). Alternativa SEM Docker: `dotnet run` → User Secrets → **Supabase REMOTO** (não local; ⚠️ migra/seeda remoto — ver [specification-db]).
+- **`docker-compose.yml`** — LOCAL dev. `postgres`(postgres:16, schema `develop` via Search Path; criado no init por `scripts/init-develop-schema.sql`) + `backend`(build, `Development`, :8080) + `frontend`(:3001→3000). Alternativa SEM Docker: `dotnet run` → User Secrets → **Supabase REMOTO** (não local; ⚠️ migra/seeda remoto — ver [specification-db]).
 - **`docker-compose.server.yml`** — PREPARADO/NÃO-ATIVO. Deploy por imagem de registry (`${REGISTRY}/forzion/{backend,frontend}:${TAG}`). Hoje NÃO há CI que builde/pushe imagem; caminho previsto p/ prod.
 
 ## NGINX / ROTEAMENTO
 - `nginx/nginx.conf` (bind-mount ro). `:80` → 301 https (+ `/.well-known/acme-challenge/` p/ ACME). `:443` TLS (Let's Encrypt).
 - `location /webhooks/` → `http://backend:8080` (ANTES de `location /`). Necessário p/ headers `svix-*` crus (webhooks **Stripe** `/webhooks/stripe` E **Resend** `/webhooks/resend`). NÃO usar proxy SPA `/api/backend` p/ webhook (descarta headers). Ver [specification-email].
 - `location /` → `http://frontend:3000` (proxy + ws upgrade). Backend NÃO tem outra rota pública (só via Next `/api/backend/[...path]` e `/api/auth/*`).
+- **X-Forwarded-* / ForwardedHeaders**: nginx envia `X-Forwarded-For`/`-Proto`; o backend confia via `app.UseForwardedHeaders` (Homolog/Production, `RouteBuilderExtensions.cs`, antes de Auth/RateLimiter). `KnownNetworks`/`KnownProxies` limpos + `ForwardLimit=1` — confia no único hop porque o backend só é alcançável via nginx (rede docker isolada, sem porta publicada). Premissa de segurança: se o backend passar a ter porta exposta, isto vira vetor de spoofing de IP — restringir a `KnownNetworks` então. Afeta rate-limit (IP real do cliente) e scheme em reconstrução de URL. Ver [specification-security] §4.
 - Server `pact.homologacao.forzion.tech:443` → `pact-broker:9292` (usa cert do domínio principal até `certbot --expand`).
 - **X-Robots-Tag (homolog)**: server block `homologacao.forzion.tech:443` injeta `add_header X-Robots-Tag "noindex, nofollow" always;` — homolog é host público; evita indexação por buscadores. NÃO replicar no server de produção (forzion.tech, futuro). Defesa em profundidade com `robots.ts` env-gated no frontend. Ver [specification-security] §3 / [specification-seo] §4.1.
 
