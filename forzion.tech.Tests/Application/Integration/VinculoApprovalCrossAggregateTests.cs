@@ -76,7 +76,7 @@ public class VinculoApprovalCrossAggregateTests
 
         _criarAssinaturaHandler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
             _vinculoRepo.Object, _pacoteRepo.Object, _assinaturaRepo.Object,
-            _contaRecebimentoRepo.Object, _unitOfWork.Object,
+            _contaRecebimentoRepo.Object, _treinadorRepo.Object, _unitOfWork.Object,
             Mock.Of<ILogger<VinculoAprovadoCriarAssinaturaAlunoHandler>>());
     }
 
