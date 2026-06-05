@@ -10,11 +10,11 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - Ao mudar contagem de tabelas/migrations, atualizar os números nas seções relevantes.
 
 ## STACK & SCHEMAS
-- PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. App = ASP.NET Core 8, DDD.
+- PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. Stack macro da app em AGENTS.md §STACK.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema. `MigrationsHistoryTable("__EFMigrationsHistory")` sem schema (segue search_path).
 - Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 31 tabelas cada (30 EF + ai_token_usage).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 28 migrations EF aplicadas. Tabela de controle `__EFMigrationsHistory` por schema.
+- 29 migrations EF aplicadas (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarBillingTreinadorEModoPagamento`). Tabela de controle `__EFMigrationsHistory` por schema.
 
 ## CONVENÇÕES
 - PK: `id` uuid gerado na app (Guid.NewGuid), não pelo banco. Exceção: `tokens_revogados` PK=`jti`.
@@ -25,29 +25,30 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - Tokens (password_reset/email_verification): armazenam SHA-256 hex(64) do token; cru só no e-mail; `conta_id` SEM FK física (só índice).
 - UQ parciais impõem regra de negócio (pagamentos 1 Pendente/assinatura; treino_alunos 1 Ativo/treino).
 
-## ENUMS (text)
-- TipoConta (contas.tipo_conta): SystemAdmin|Treinador|Aluno
-- SystemRole (system_users.role): SuperAdmin|Support|Operator
-- UsuarioStatus (system_users.status): Ativo|Inativo
-- TreinadorStatus (treinadores.status): AguardandoAprovacao|Ativo|Inativo|AguardandoPagamento
-- AlunoStatus (alunos.status): AguardandoAprovacao|Ativo|Inativo
-- VinculoStatus (vinculos_treinador_aluno.status): AguardandoAprovacao|Ativo|Inativo
-- TierPlano (planos_plataforma.tier): Free|Basic|Pro|ProPlus|Elite
-- TreinoAlunoStatus (treino_alunos.status): Ativo|Inativo
-- ObjetivoTreino (treinos.objetivo): Hipertrofia|Forca|Resistencia|Emagrecimento|Reabilitacao
-- DificuldadeTreino (treinos.dificuldade, default Iniciante): Iniciante|Intermediario|Avancado
-- FinalidadeTreino (alunos.finalidade): Hipertrofia|Emagrecimento|CondicionamentoFisico|Saude|PerformanceEsportiva|Reabilitacao|Outro
-- NivelCondicionamento (alunos.nivel_condicionamento): Sedentario|Iniciante|Intermediario|Avancado
-- TempoDisponivel (alunos.tempo_disponivel_minutos, int): 30|45|60|90|120
-- AssinaturaAlunoStatus (assinaturas_aluno.status): Pendente|Ativa|Inadimplente|Cancelada
-- PagamentoStatus (pagamentos.status): Pendente|Pago|Expirado|Falhou|Estornado|EmDisputa
-- MetodoPagamento (pagamentos.metodo_pagamento, default Pix): Pix|Cartao
-- ModoPagamentoAluno (treinadores.modo_pagamento_aluno, default Plataforma): Plataforma|Externo
-- AssinaturaTreinadorStatus (assinaturas_treinador.status): Pendente|Ativa|Inadimplente|Cancelada
-- FinalidadePagamentoTreinador (pagamentos_treinador.finalidade): Cadastro|Renovacao|TrocaPlano
-- TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador|ExclusaoTreinador|ExportacaoDados|AnonimizacaoConta
-- StatusSaude (health_snapshots.status_geral): Ok|Degradado|Falha
-- TipoGrupoMuscular (enum; seed de grupos_musculares; não é coluna — entidade `GrupoMuscular` é distinta): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
+## ENUMS — BINDING DE COLUNA
+Valores e semântica em [specification-model] §4. Aqui: só o vínculo enum→coluna + nota db-specific (persistência/default/tipo). Persistidos como `text` via `HasConversion<string>` (valor = nome do enum), salvo `TempoDisponivel` (`int`).
+- TipoConta → contas.tipo_conta
+- SystemRole → system_users.role
+- UsuarioStatus → system_users.status
+- TreinadorStatus → treinadores.status
+- AlunoStatus → alunos.status
+- VinculoStatus → vinculos_treinador_aluno.status
+- TierPlano → planos_plataforma.tier
+- TreinoAlunoStatus → treino_alunos.status
+- ObjetivoTreino → treinos.objetivo
+- DificuldadeTreino → treinos.dificuldade (default `Iniciante`)
+- FinalidadeTreino → alunos.finalidade
+- NivelCondicionamento → alunos.nivel_condicionamento
+- TempoDisponivel → alunos.tempo_disponivel_minutos (**int**; valor = minutos)
+- AssinaturaAlunoStatus → assinaturas_aluno.status
+- PagamentoStatus → pagamentos.status E pagamentos_treinador.status
+- MetodoPagamento → pagamentos.metodo_pagamento E pagamentos_treinador.metodo_pagamento (default `Pix`)
+- ModoPagamentoAluno → treinadores.modo_pagamento_aluno (default `Plataforma`)
+- AssinaturaTreinadorStatus → assinaturas_treinador.status
+- FinalidadePagamentoTreinador → pagamentos_treinador.finalidade
+- TipoAcaoAprovacao → logs_aprovacao.tipo_acao
+- StatusSaude → health_snapshots.status_geral
+- TipoGrupoMuscular → NÃO é coluna (só seed de grupos_musculares; entidade `GrupoMuscular` é distinta)
 
 ## TABELAS
 

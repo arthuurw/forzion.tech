@@ -110,7 +110,7 @@ Pipeline distinto do `/health`: coleta profunda (DB connect real, KPIs, entregab
 - Gate LGPD: replay/RUM no browser exige consentimento analytics. Ver [specification-lgpd].
 
 ### CSP (Sentry)
-- `next.config.ts` `buildCsp`: `connect-src 'self' https://api.stripe.com https://*.sentry.io` (ingest erros/replay/tracing; no-op sem DSN); `worker-src 'self' blob:` (worker do Session Replay). `CSP_REPORT_ONLY=true` em homolog → header report-only adicional. Demais headers de segurança: ver [specification-frontend].
+- CSP completo + 3 camadas de headers: CANÔNICO em [specification-security] §3 (`next.config.ts buildCsp`, inclui `font-src 'self'`). Diretivas Sentry-relevantes: `connect-src 'self' https://api.stripe.com https://*.sentry.io` (ingest erros/replay/tracing; no-op sem DSN) + `worker-src 'self' blob:` (worker do Session Replay). `CSP_REPORT_ONLY=true` em homolog → header report-only adicional.
 
 ## 5. PERFORMANCE BUDGETS (Lighthouse CI)
 ### Budgets (`frontend/lighthouserc.json`)
@@ -142,10 +142,10 @@ Pipeline distinto do `/health`: coleta profunda (DB connect real, KPIs, entregab
 - **Alerting**: `Infrastructure/Notifications/Alerts/PagamentoEmDisputaAlertHandler.cs` (`IDomainEventHandler<PagamentoEmDisputaEvent>`). Loga chargeback em `LogLevel.Critical` com campos estruturados (`PagamentoId`, `AssinaturaAlunoId`, `Valor`, `MotivoDisputa`). Decisão documentada no código: alerting via log estruturado (Sentry/Loki/agregador faz pickup) em vez de GitHub-issue direto pelo backend. Ver [specification-stripe].
 - Tracing frontend: Sentry browser tracing + replay (§4). É o único tracing existente.
 
-### GAPS (o que falta para observabilidade madura)
-- **Sem OpenTelemetry / APM backend**: nenhum `AddOpenTelemetry`/`ActivitySource`/exporter (confirmado: 0 ocorrências no repo). Sem distributed tracing backend↔frontend↔Stripe.
-- **Sem métricas**: nenhum Prometheus/`/metrics`/contador/histograma. KPIs só via relatório diário por e-mail (§3), não série temporal.
-- **Sem correlation/request id**: nenhum `X-Request-Id`/`X-Correlation-Id`/middleware de correlação (confirmado: 0 ocorrências). Logs não correlacionáveis por request entre camadas.
+### GAPS (o que falta para observabilidade madura) — itens marcados `0-rep` = 0 ocorrências no repo
+- **Sem OpenTelemetry / APM backend** (`0-rep`): nenhum `AddOpenTelemetry`/`ActivitySource`/exporter. Sem distributed tracing backend↔frontend↔Stripe.
+- **Sem métricas** (`0-rep`): nenhum Prometheus/`/metrics`/contador/histograma. KPIs só via relatório diário por e-mail (§3), não série temporal.
+- **Sem correlation/request id** (`0-rep`): nenhum `X-Request-Id`/`X-Correlation-Id`/middleware de correlação. Logs não correlacionáveis por request entre camadas.
 - **Readiness DB: RESOLVIDO** (§2): `/health/ready` expõe `DbContextCheck` (`db`, tag `ready`) via `AddDbContextCheck<AppDbContext>`; `/health` permanece liveness puro. Gap REMANESCENTE: sem checks de readiness para Stripe/Resend/WhatsApp registrados em `AddHealthChecks` (essas verificações existem APENAS no relatório diário, §3, não no endpoint).
 - **Sink ERROR fire-and-forget**: `_ = PersistirAsync` pode perder gravações sob shutdown/back-pressure; sem buffer/retry/flush.
 - **Alerting reativo só por log**: chargeback depende de o agregador externo (Sentry) estar configurado p/ alertar; sem regra de alerta versionada no repo. Sem alertas para 500s, DB down, fila de e-mail.

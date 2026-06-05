@@ -40,7 +40,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - **property** (`*.property.test.ts`, fast-check — excluídos da cobertura), **contract** (Pact consumer, `npm run test:contract`), **E2E Playwright** (`e2e/specs/`: smoke/critical/security/lgpd/multi-tab/network/a11y/visual; 5 projects browser+mobile; `auth.setup` gera storage-state por papel; snapshots por-OS `*-{platform}.png`), **storybook** (+ a11y addon).
 
 ## 4. CONTAGEM / RASTREIO (baseline 2026-05-29)
-- Backend: **1668** testes (unit + integração/Testcontainers) — verde. Frontend: **377** (vitest 3 projects) — verde. Playwright E2E: ~16 smoke+critical rodados ao vivo (suíte maior; alguns specs com brittleness de seletor — ver [.specs/qa]).
+- Backend: **1668** testes (unit + integração/Testcontainers) — verde. Frontend: **377** (vitest 3 projects) — verde. Playwright E2E: suíte completa só roda no CI Linux (creds `E2E_*` + browsers); validação local cobriu smoke+critical públicos/admin (público 4/4, admin 3/3 — [specification-local-ci-repro] §4); aluno/treinador bloqueados local. Alguns specs com seletor frágil — ver `.specs/qa`.
 - Regra: a contagem NÃO regride sem decisão humana. Teste que falha **fica** (vermelho visível) até ser corrigido pelo código — não some. Cobertura por piso protege contra suíte parar de rodar (§7).
 
 ## 5. CO-LOCALIZAÇÃO (mapa)
@@ -55,11 +55,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 
 ## 7. ENFORCEMENT — GATES (comando · bloqueante · onde) ⟵ VERIFICAÇÃO VISÍVEL
 ### Local — hook pre-commit (`frontend/.husky/pre-commit`, por área staged; `--no-verify` PROIBIDO)
-| Área | Passos (todos bloqueantes) |
-|------|----------------------------|
-| Backend (`.cs/.csproj/.slnx/Directory.Build.props/.editorconfig`) | `dotnet format --verify-no-changes` → `dotnet build -c Release` → `dotnet test --filter Category!=Integration` |
-| Frontend (`frontend/`) | `npm run typecheck` → `lint-staged` → `npm test` (vitest) |
-- commit-msg (`.husky/commit-msg`): **commitlint** (Conventional + header ≤100). 
+- Sequência canônica de passos (backend format→build→test; frontend typecheck→lint-staged→vitest) e commit-msg/commitlint: ver [specification-git] §PRE-COMMIT HOOK + §CONVENTIONAL COMMITS (não duplicar). Resumo: cada área staged roda seu gate, todos bloqueantes.
 
 ### CI — `.github/workflows/ci.yml` (job `gate` = required check, agrega os obrigatórios)
 | Job | Gate | Bloqueante |
@@ -86,7 +82,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - Frontend: `npm test` (3 projects) · `test:unit|integration|api` · `test:coverage` · `test:property` · `test:contract` · `test:mutation`. E2E: `npm run e2e` (precisa app rodando + `E2E_*` creds; `e2e:install` 1x; `e2e:smoke`/`:security`/`:lgpd`; `e2e:update-snapshots` SÓ no CI Linux). Storybook: `storybook:build`/`:test`.
 
 ## 10. GOTCHAS
-- **CRLF (Windows)**: `dotnet format --verify-no-changes` rejeita LF — rodar `dotnet format` antes de commitar (sub-agents tendem a gravar LF). Ver [specification-git].
+- **CRLF / SonarAnalyzer (Windows)**: ver [specification-git] §EDGE CASES (CANÔNICO) — ENDOFLINE, S3267, sequência de fix.
 - **Docker obrigatório** p/ integração/Testcontainers e p/ stack local E2E. Sem Docker: só unit + vitest. Backend em Development migra/seeda o REMOTO — usar docker-compose local (schema `develop`).
 - **Visual snapshots Playwright**: baseline por-OS; gerados no CI (Linux). Local Windows/macOS diverge — NÃO commitar baseline local; excluir `e2e/visual` em runs locais.
 - **vitest projects**: alguns testes em `src/lib/**` que tocam DOM rodam no project `integration` (lista de include/exclude explícita) — respeitar ao adicionar testes.

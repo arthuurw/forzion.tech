@@ -1,12 +1,6 @@
 # specification-seo — SEO & metadata (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade de SEO/metadata do frontend (metadata por rota, OpenGraph, crawl control, structured data). Base implementada (T5): metadataBase/title-template/OG dinâmica/robots/sitemap/JSON-LD/canonical/noindex. Aspiracional restante: perfil público de treinador + promoção do gate SEO `warn`→`error`. Formato denso, agent-oriented. Cross-ref: [specification-frontend] (rotas/grupos de layout/App Router), [specification-frontend-ui] (landing/componentes), [specification-observability] (lighthouse perf budgets/cadência), [specification-tests] (gate lighthouse no CI).
-
-## MANUTENÇÃO DESTE ARQUIVO
-- Manter atualizado NA MESMA TAREFA ao: adicionar/alterar `metadata`/`generateMetadata` em rotas, criar `sitemap.ts`/`robots.ts`, adicionar OpenGraph/JSON-LD, mudar `lang`/`metadataBase`, ou alterar threshold SEO no lighthouse.
-- Rótulos OBRIGATÓRIOS: cada afirmação marcada `[ATUAL]` (existe no código hoje) ou `[REC]`/`[GAP]` (recomendação/ausência confirmada).
-- Vive em `specs/` (versionado; commitar). NÃO duplicar rotas/headers — referenciar [specification-frontend].
-- Ao implementar um `[REC]`/`[GAP]`, reclassificar para `[ATUAL]` e citar o path.
+DOC AGENTES (denso). Fonte de verdade de SEO/metadata frontend (metadata por rota, OpenGraph, crawl control, structured data). Base impl (T5): metadataBase/title-template/OG dinâmica/robots/sitemap/JSON-LD/canonical/noindex. Aberto: perfil público de treinador + gate SEO `warn`→`error`. Atualizar NA MESMA TAREFA ao mudar `metadata`/`generateMetadata`/`sitemap.ts`/`robots.ts`/OG/JSON-LD/`lang`/`metadataBase`/threshold SEO lighthouse. Rótulos OBRIGATÓRIOS por afirmação: `[ATUAL]` (existe hoje) / `[REC]`/`[GAP]` (recomendação/ausência); ao implementar `[REC]`/`[GAP]` reclassificar p/ `[ATUAL]` + path. Vive em `specs/` (commitar); NÃO duplicar rotas/headers — referenciar [specification-frontend]. Cross-ref: [specification-frontend-ui] (landing/componentes), [specification-observability] (perf budgets), [specification-tests] (gate lighthouse CI).
 
 ## 1. ESTADO ATUAL
 
@@ -22,9 +16,9 @@ DOC PARA AGENTES. Fonte de verdade de SEO/metadata do frontend (metadata por rot
 | `viewport` | `width=device-width, initialScale=1, viewportFit=cover` (export `Viewport` separado) |
 | `<html lang>` | `"pt-BR"` `[ATUAL]` |
 
-OG image resolvida por CONVENÇÃO de arquivo `frontend/src/app/opengraph-image.tsx` (`next/og` `ImageResponse`, 1200×630, `runtime="nodejs"`) — não listada em `openGraph.images`. `[ATUAL]` (T5)
-Env: `NEXT_PUBLIC_SITE_URL` documentada em `frontend/.env.example` (default `https://forzion.tech`). `[ATUAL]` (T5)
-Metadata por rota agora existe via `layout.tsx` server por rota (ver §2.2). Nenhuma rota usa `generateMetadata` ainda (só `export const metadata` estático).
+OG image por CONVENÇÃO de arquivo `frontend/src/app/opengraph-image.tsx` (`next/og` `ImageResponse`, 1200×630, `runtime="nodejs"`) — não listada em `openGraph.images`. ÚNICA referência canônica desta convenção (demais seções só apontam aqui). `[ATUAL]` (T5)
+Env `NEXT_PUBLIC_SITE_URL` (default `https://forzion.tech`, documentada em `frontend/.env.example`) é a base de `metadataBase`/`sitemap`/`robots`/JSON-LD — fonte única deste default. `[ATUAL]` (T5)
+Metadata por rota via `layout.tsx` server por rota (§2.2). Nenhuma rota usa `generateMetadata` ainda (só `export const metadata` estático).
 
 ### Lighthouse SEO — `[ATUAL]`
 `frontend/lighthouserc.json`:
@@ -71,7 +65,7 @@ title: {
 },
 metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech"),
 ```
-- `metadataBase` é PRÉ-REQUISITO para canonical/OG absolutos. `NEXT_PUBLIC_SITE_URL` documentada em `frontend/.env.example` (default `https://forzion.tech`). `[ATUAL]` (T5)
+- `metadataBase` é PRÉ-REQUISITO para canonical/OG absolutos (`NEXT_PUBLIC_SITE_URL` — ver §1).
 
 ### 2.2 `metadata` por página pública — `[ATUAL]` (T5)
 | Rota | title (vira `… | forzion.tech`) | canonical | robots | Onde |
@@ -90,12 +84,9 @@ NOTA: as 7 páginas `(public)/*` são Client Components (forms RHF) → `export 
 
 ## 3. OPENGRAPH / SOCIAL CARDS — `[ATUAL]` (T5)
 
-IMPLEMENTADO: `openGraph`/`twitter` no root `layout.tsx`; OG image dinâmica em `app/opengraph-image.tsx` (next/og `ImageResponse`, fundo `#1A1A1A`, nome em `#F5C400`, tagline "Gestão para Personal Trainers", 1200×630, fontes default sem fetch de binário, `runtime="nodejs"` p/ compat com `output:"standalone"`). Build gera rota `/opengraph-image`. Referência histórica de design abaixo.
+`openGraph`/`twitter` no root `layout.tsx`; OG image em `app/opengraph-image.tsx` (ver §1: fundo `#1A1A1A`, nome `#F5C400`, tagline "Gestão para Personal Trainers", fontes default sem fetch, `runtime="nodejs"` p/ `output:"standalone"`). Relevância B2C: previews em WhatsApp/LinkedIn/Instagram (canal de aquisição).
 
-
-Relevância B2C: links compartilhados em WhatsApp/LinkedIn/Instagram (canal primário de aquisição de personal trainers). Sem OG → preview sem imagem/título = baixa CTR.
-
-Root `layout.tsx` `metadata.openGraph` (herda p/ todas as rotas, override por página):
+Root `layout.tsx` `metadata.openGraph` (const `SITE_DESCRIPTION`; herda p/ todas as rotas, override por página):
 ```ts
 openGraph: {
   type: "website",
@@ -103,13 +94,13 @@ openGraph: {
   locale: "pt_BR",
   url: "/",
   title: "forzion.tech — Gestão para Personal Trainers",
-  description: "Da prescrição ao acompanhamento — controle, histórico e estrutura centralizados.",
+  description: SITE_DESCRIPTION, // "Plataforma de gestão de treinos para personal trainers"
 },
 twitter: { card: "summary_large_image" },
 ```
-- Imagem: `1200x630`. SEM campo `openGraph.images` explícito — a OG image é resolvida pela **file convention** do App Router via `app/opengraph-image.tsx` (geração dinâmica `next/og` `ImageResponse`, rota `/opengraph-image`). IMPLEMENTADO (não é gap).
-- `og:description` deve refletir o hero da landing (`page.tsx` linha 116: "Da prescrição ao acompanhamento — com controle, histórico e estrutura centralizados.").
-- CSP impacto: `next/og` runtime edge — sem impacto no CSP de runtime do cliente. OG image é servida same-origin (`img-src 'self'` já cobre). Ver [specification-frontend] §headers.
+- OG image: ver §1 (file convention `app/opengraph-image.tsx`, sem `openGraph.images`).
+- `[REC]` alinhar `og:description` ao hero da landing (`LandingPage` hero `Typography h6`: "Da prescrição ao acompanhamento — com controle, histórico e estrutura centralizados.") — hoje reusa `SITE_DESCRIPTION`.
+- CSP: `next/og` runtime nodejs — sem impacto no CSP do cliente; OG servida same-origin (`img-src 'self'`). Ver [specification-frontend] §headers.
 
 ## 4. CRAWL CONTROL — `[ATUAL]` (T5)
 
@@ -124,13 +115,10 @@ const indexable = process.env.NEXT_PUBLIC_INDEXABLE === "true";
 - **Defesa em profundidade (A1)**: além do env-gate, o nginx do host de homolog (`homologacao.forzion.tech`) injeta `X-Robots-Tag: noindex, nofollow` (ver [specification-security] §3 / [specification-infrastructure] nginx). `NEXT_PUBLIC_INDEXABLE=true` só no ambiente de produção.
 
 ### 4.2 index vs noindex por grupo — `[ATUAL]` (T5)
-| Grupo de rota | Política | Como |
-|---------------|----------|------|
-| `(public)` cadastro/login | `index, follow` | `metadata.robots` no `layout.tsx` por rota (§2.2) |
-| `(public)` forgot/reset/verify/resend | `noindex, follow` | `metadata.robots` no `layout.tsx` por rota (§2.2) |
-| `(admin)`, `(treinador)`, `(aluno)`, `/perfil` | `noindex, nofollow` | `export const metadata = { robots: { index:false, follow:false } }` no layout do grupo (todos server) + disallow robots.txt |
+- `(public)` index/noindex por rota: ver tabela §2.2 (cadastro/login = index; forgot/reset/verify/resend = noindex).
+- `(admin)`/`(treinador)`/`(aluno)`/`/perfil` = `noindex, nofollow` via `export const metadata = { robots:{ index:false, follow:false } }` no layout do grupo (server) + disallow robots.txt.
 
-NOTA defesa-em-profundidade: áreas autenticadas já protegidas por middleware (redirect `/login` sem token — [specification-frontend] §middleware). robots.txt/noindex é camada adicional (crawlers não logam, mas evita vazamento de URLs em SERP).
+NOTA defesa-em-profundidade: áreas autenticadas já protegidas por middleware (redirect `/login` sem token — [specification-frontend] §middleware); robots/noindex é camada adicional contra vazamento de URLs em SERP.
 
 ### 4.3 `sitemap.ts` — `[ATUAL]` (T5)
 `src/app/sitemap.ts` lista SÓ rotas públicas indexáveis:
@@ -146,13 +134,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
 ## 5. STRUCTURED DATA (schema.org JSON-LD) — `[REC]`
 
 ### 5.1 Organization (landing) — `[ATUAL]` (T5)
-Injetado em `src/app/page.tsx` (Server Component) via `<script type="application/ld+json">` com `dangerouslySetInnerHTML`:
+Injetado na landing (`LandingPage`, Server Component) via `<script type="application/ld+json">` com `dangerouslySetInnerHTML` (const `organizationJsonLd`):
 ```tsx
-<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-  "@context": "https://schema.org", "@type": "Organization",
-  name: "forzion.tech", url: "https://forzion.tech",
-  description: "Plataforma de gestão de treinos para personal trainers",
-}) }} />
+{ "@context": "https://schema.org", "@type": "Organization",
+  name: "forzion.tech", url: SITE_URL, // NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech"
+  description: "Plataforma de gestão de treinos para personal trainers" }
 ```
 - CSP: `script-src 'self' 'unsafe-inline'` ([specification-frontend] §headers) já permite JSON-LD inline. SEM mudança de CSP necessária.
 - Alternativa SoftwareApplication/Service (SaaS) — avaliar; Organization é o mínimo seguro.
@@ -161,8 +147,8 @@ Injetado em `src/app/page.tsx` (Server Component) via `<script type="application
 INAPLICÁVEL hoje: não há página pública de treinador (ver §1). SE for criada rota `/treinadores/[id]` (perfil público compartilhável), aí sim:
 - `generateMetadata({ params })` → title/OG dinâmicos (nome do treinador + OG image personalizada).
 - JSON-LD `Person` (treinador) ou `Service` (pacotes oferecidos).
-- Atualizar `sitemap.ts` para gerar entradas dinâmicas (fetch lista de treinadores aprovados).
-- Forte alavanca B2C (link de treinador compartilhável em redes). Marcar como oportunidade de produto, não dívida.
+- Atualizar `sitemap.ts` para gerar entradas dinâmicas (fetch treinadores aprovados).
+- Oportunidade de produto (link de treinador compartilhável), não dívida técnica.
 
 ## 6. ENFORCEMENT — `[ATUAL]` + `[GAP]`
 
@@ -171,11 +157,6 @@ INAPLICÁVEL hoje: não há página pública de treinador (ver §1). SE for cria
 - `[REC]` Após implementar §2-4 (canonical, robots, metadata descriptions), promover `categories:seo` de `warn` → `error` com `minScore` ≥ `0.9` para travar regressões. Atualizar [specification-tests] no mesmo PR.
 - `[REC]` Adicionar auditoria de structured data fora do Lighthouse (ex.: validação manual via Rich Results Test) — não há audit automatizado de JSON-LD no CI hoje `[GAP]`.
 
-## RESUMO DE PRIORIZAÇÃO (impacto SEO B2C)
-1. `metadataBase` + `NEXT_PUBLIC_SITE_URL` (pré-req de tudo) — `[ATUAL]` (T5)
-2. OpenGraph + OG image dinâmica (CTR em WhatsApp/LinkedIn) — `[ATUAL]` (T5)
-3. `robots.ts` + `sitemap.ts` (indexação correta; noindex áreas auth) — `[ATUAL]` (T5)
-4. title template + canonical/noindex por página — `[ATUAL]` (T5)
-5. JSON-LD Organization na landing — `[ATUAL]` (T5)
-6. Promover gate SEO `warn`→`error` — `[GAP]` (follow-up; ver §6)
-7. (Futuro produto) rota pública de treinador + metadata/JSON-LD dinâmicos — `[REC FUTURO]`
+## ITENS ABERTOS (base T5 toda `[ATUAL]` — ver §1 Artefatos)
+- Promover gate SEO `warn`→`error` (`minScore ≥0.9`) — `[GAP]` (§6).
+- (Futuro produto) rota pública de treinador `/treinadores/[id]` + `generateMetadata`/JSON-LD dinâmicos — `[REC FUTURO]` (§5.2).

@@ -27,22 +27,8 @@ Aliases opcionais (não setados por default):
 - `git config --global alias.lg "log --oneline --graph --decorate -20"` — vista compacta.
 
 ## WORKFLOW BRANCH (caminho feliz)
-```
-git checkout -b feature/x      # nova branch local
-# ... edita ...
-git add ...; git commit -m "feat(scope): ..."
-git push                       # autoSetupRemote cria upstream — sem flag
-# (CI roda no remoto)
-# PR via gh OU UI:
-gh pr create --fill --base homolog
-```
-Após merge no remoto:
-```
-git checkout homolog
-git pull                       # rebase auto (pull.rebase=true)
-git branch -d feature/x        # cleanup local
-git fetch --prune              # remove ref de feature/x do origin/ (também automático com fetch.prune)
-```
+- Criar+editar: `git checkout -b feature/x` → commit `feat(scope): ...` → `git push` (autoSetupRemote cria upstream, sem `-u`) → `gh pr create --fill --base homolog`.
+- Pós-merge: `git checkout homolog && git pull` (rebase auto) → `git branch -d feature/x` (cleanup; `fetch.prune` remove ref do origin no próximo fetch).
 
 ## WORKTREE vs MULTI-CLONE
 | Critério | Multi-clone (N pastas, N `.git`) | Worktree (1 `.git`, N pastas) |
@@ -68,8 +54,9 @@ git worktree prune                                             # limpa refs órf
 ## CONVENTIONAL COMMITS
 - **Format:** `type(scope): subject` (subject minúsculo após `:`, commitlint enforça).
 - **Types comuns:** `feat`, `fix`, `refactor`, `chore`, `test`, `docs`, `style`, `perf`, `ci`, `build`.
-- **Scopes válidos** (vindos do AGENTS.md `CONVENÇÕES-CHAVE`): `frontend | backend | infra | ci | deps | tests | docs`.
-- **Subject:** ≤72 chars idealmente. Imperativo ("add X", não "added X").
+- **Scopes válidos** (`commitlint.config.mjs` `scope-enum`, do AGENTS.md `CONVENÇÕES-CHAVE`): `frontend | backend | infra | ci | deps | tests | docs` + `""` (escopo VAZIO permitido — `type: subject` sem `(scope)` passa).
+- **Limites commitlint**: `header-max-length` 100 (erro); `body-max-line-length` 200 (warning).
+- **Subject:** ≤72 chars idealmente (header total ≤100, enforçado). Imperativo ("add X", não "added X").
 - **Body:** quando o "porquê" não cabe no subject. Linha em branco entre subject e body.
 - **Footer:** `Closes #N` pra issue; `BREAKING CHANGE:` pra incompatibilidade.
 - **Granularidade:** 1 commit = 1 mudança lógica. Não misture refactor + feature.
@@ -103,29 +90,18 @@ docs(infra): add git workflow spec + setup script
 ## EDGE CASES
 - **Branch protection bloqueia push direto** (não é o caso hoje, mas pode passar a ser): use `gh pr create` direto sem push manual `gh` resolve.
 - **Rebase agressivo (WIP)** — trabalhar em `feature/x-wip` local sem track; promover via `git push origin feature/x-wip:feature/x` quando estável.
-- **CRLF em arquivos `.cs` (Windows) — gotcha recorrente de agents** — `dotnet format --verify-no-changes` exige CRLF. Arquivos criados via Write tool em sessões de agent no Windows saem com LF → hook pre-commit falha com `error ENDOFLINE: Fix end of line marker` em CADA linha. Fix canônico antes de qualquer `git add` de arquivos `.cs` novos:
-  ```
-  dotnet format forzion.tech.slnx
-  ```
-  Isso converte LF → CRLF em todos os arquivos do projeto. Rodar ANTES de `git add` pra o stage já pegar CRLF. Se rodado depois, re-stage os arquivos (`git add` de novo). O hook `--verify-no-changes` confirma que o resultado está limpo. **NÃO usar** o workaround Python (frágil; dotnet format também aplica style/whitespace corrections além de ENDOFLINE). Configurar `core.autocrlf=true` no cliente (ver §CONFIGS) previne na maioria dos casos mas não é suficiente quando o Write tool bypassa git.
-
-- **SonarAnalyzer warnings como bloqueantes do pre-commit** — `dotnet format --verify-no-changes` pode falhar com warnings de SonarAnalyzer (ex.: `S3267: Loop should be simplified by calling Select(...)`) quando o analyzer detecta uma violação que *poderia* ter um fix mas o `dotnet format` reporta sem conseguir aplicar. Esses warnings causam exit code 1 no hook. Fix: corrigir o código para remover a violação (aplicar a sugestão do analyzer). NÃO suprimir com `#pragma warning disable` — isso bypassaria o gate. Exemplos recorrentes:
-  - `S3267`: `foreach (var x in col) { use x.Prop }` → refatorar para `foreach (var prop in col.Select(x => x.Prop)) { ... }` quando só a propriedade é usada no corpo do loop.
+- **CRLF em `.cs` (Windows) — gotcha recorrente de agents** (CANÔNICO) — `dotnet format --verify-no-changes` exige CRLF; arquivos criados via Write tool saem com LF → hook falha `error ENDOFLINE` em cada linha. Fix canônico ANTES de `git add` de `.cs` novos: `dotnet format forzion.tech.slnx` (converte LF→CRLF + aplica style/whitespace). Se rodado depois, re-`git add`. `core.autocrlf=true` (§CONFIGS) cobre a maioria, mas não quando o Write tool bypassa git. NÃO usar workaround Python (frágil; só ENDOFLINE).
+- **SonarAnalyzer bloqueia o pre-commit** (CANÔNICO) — `dotnet format --verify-no-changes` pode sair `1` com warning de Sonar que ele reporta mas não aplica. Fix: corrigir o código (aplicar a sugestão); NÃO `#pragma warning disable` (bypassaria o gate). Ex. recorrente `S3267`: `foreach (var x in col) { use x.Prop }` → `foreach (var prop in col.Select(x => x.Prop))` quando só a propriedade é usada.
 - **Lint-staged corrompendo arquivos** — `playwright/prefer-web-first-assertions` reescreve `await el.getAttribute(...)` em `expect malformado`. Workaround: usar `el.evaluate((e) => e.getAttribute(...))` (rule não match).
 - **Reapply stash após rebase falho** — `rebase.autoStash=true` faz pop automático no fim. Se conflito durante pop, resolver manualmente (`git status` mostra UU).
 - **Sync após force push em outro clone** (raro) — `git fetch && git reset --hard origin/<branch>` se a branch local NÃO tem trabalho não pushado.
 
 ## SETUP NOVO CLONE / NOVA MÁQUINA
-1. Clone: `git clone <url>` (configs `--global` já valem se setup-git rodado antes).
-2. Se primeira máquina, rodar setup-git:
-   ```
-   .\scripts\setup-git.ps1            # Windows, --global
-   bash scripts/setup-git.sh           # POSIX, --global
-   .\scripts\setup-git.ps1 -Local      # OU restringir ao clone
-   ```
-3. Instalar deps frontend (instala husky hooks): `cd frontend && npm install`.
-4. Build backend: `dotnet build forzion.tech.slnx`.
-5. Smoke: `git checkout -b chore/setup-smoke && echo x > smoke.txt && git add smoke.txt && git commit -m "chore: smoke" && git push` → upstream criado sem `-u`. Depois deletar branch.
+1. `git clone <url>` (configs `--global` já valem se setup-git rodou antes).
+2. 1ª máquina: setup-git (`scripts/setup-git.ps1` Win / `setup-git.sh` POSIX; `-Local`/`--local` restringe ao clone vs default `--global`).
+3. `cd frontend && npm install` (instala husky hooks).
+4. `dotnet build forzion.tech.slnx`.
+5. Smoke (opcional): branch throwaway + commit + `git push` → confirma upstream sem `-u`; deletar depois.
 
 ## REFERÊNCIAS
 - AGENTS.md `CONVENÇÕES-CHAVE` (scopes).
