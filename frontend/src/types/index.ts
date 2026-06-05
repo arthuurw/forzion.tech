@@ -277,6 +277,37 @@ export interface OnboardingStatusResponse {
   contaConfigurada: boolean;
 }
 
+export type AssinaturaTreinadorStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
+export type TipoTrocaPlano = "Upgrade" | "Downgrade" | "InadimplenteRegularizacao" | "UpgradeImediato";
+
+export interface AssinaturaTreinadorResponse {
+  assinaturaId: string;
+  status: AssinaturaTreinadorStatus;
+  valor: number;
+  planoPlataformaId: string;
+  dataProximaCobranca: string;
+  planoPlataformaIdAgendado: string | null;
+}
+
+export interface TrocarPlanoTreinadorResponse {
+  tipo: TipoTrocaPlano;
+  pagamentoId: string | null;
+  valorPagamento: number | null;
+  metodoPagamento: MetodoPagamento | null;
+  pixQrCode: string | null;
+  pixQrCodeUrl: string | null;
+  pixExpiracao: string | null;
+  clientSecret: string | null;
+  dataEfetivacao: string | null;
+}
+
+export interface PagamentoTreinadorStatusResponse {
+  pagamentoId: string;
+  status: PagamentoStatus;
+  valor: number;
+  metodo: MetodoPagamento;
+}
+
 // Erro RFC 7807
 export interface ProblemDetails {
   title: string;
