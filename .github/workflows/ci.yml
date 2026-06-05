@@ -16,6 +16,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # ─── DETECÇÃO DE ÁREAS ALTERADAS (path-filter) ───────────────────────────────
+  # Decide quais jobs rodam: mudança só-frontend pula jobs backend e vice-versa.
+  # Mudança em workflows OU no script de cobertura roda TUDO (safety).
+  changes:
+    name: Áreas alteradas
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      ci: ${{ steps.filter.outputs.ci }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'forzion.tech.Domain/**'
+              - 'forzion.tech.Application/**'
+              - 'forzion.tech.Infrastructure/**'
+              - 'forzion.tech.Api/**'
+              - 'forzion.tech.Tests/**'
+              - '*.slnx'
+              - 'Directory.*.props'
+              - 'nuget.config'
+            frontend:
+              - 'frontend/**'
+            ci:
+              - '.github/workflows/**'
+              - 'scripts/check-coverage.sh'
+
   # ─── HIGIENE ───────────────────────────────────────────────────────────────
   commitlint:
     name: Commitlint (PR)
@@ -47,6 +81,8 @@ jobs:
   # ao excluir os de integração. Os 5 RepositoryTests (Testcontainers) ficam fora.
   test-backend-unit:
     name: Backend — testes unit
+    needs: [changes]
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,84 +100,34 @@ jobs:
       - name: Format — verifica estilo (.editorconfig)
         run: dotnet format forzion.tech.slnx --verify-no-changes --no-restore
 
-      - name: Coverage — Domain (75% branch)
+      # ─── Cobertura consolidada: roda os testes UMA vez e avalia TODOS os
+      # thresholds de um único relatório (ReportGenerator JsonSummary) via
+      # scripts/check-coverage.sh. Antes, cada gate re-rodava `dotnet test` (6x).
+      # Gates PRESERVADOS: Domain branch75/line85/method85; Application idem;
+      # Api line85/method70 (exclui Migrations/Program). Baseline medido (unit-only):
+      # Domain l95.0/b93.5/m94.1 · Application l94.8/b84.4/m97.1 · Api l87.9/m79.0.
+      - name: Test + cobertura (1x)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
           --filter "Category!=Integration"
           --logger "console;verbosity=minimal"
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Domain]*
-          /p:Threshold=75
-          /p:ThresholdType=branch
-          /p:ThresholdStat=Total
+          /p:CoverletOutput=./coverage/
+          "/p:Exclude=[*]*.Migrations.*%2c[*]Program%2c[forzion.tech.Tests]*"
 
-      - name: Coverage — Application (75% branch)
-        run: >
-          dotnet test forzion.tech.Tests --no-build -c Release
-          --filter "Category!=Integration"
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Application]*
-          /p:Threshold=75
-          /p:ThresholdType=branch
-          /p:ThresholdStat=Total
+      - name: ReportGenerator (JsonSummary)
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.3.11 || true
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          reportgenerator -reports:forzion.tech.Tests/coverage/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:JsonSummary
 
-      # ─── F9: endurecimento de cobertura — thresholds de line/method + Api ────────
-      # Os gates de branch acima (75/75) ficam INTACTOS. Abaixo só ADICIONAMOS
-      # eixos novos (line/method) e gates dedicados de Api. Valores iniciais ficam
-      # abaixo do baseline medido (sem nunca abaixar nada):
-      #   Domain  line 95.6% branch 94.2% method 92.7%
-      #   Applic. line 93.0% branch 96.4% method 93.1%
-      #   Api     line 96.8% branch 91.0% method 77.6%
-      - name: Coverage — Domain (line/method 85%)
+      - name: Gates de cobertura (Domain / Application / Api)
         run: >
-          dotnet test forzion.tech.Tests --no-build -c Release
-          --filter "Category!=Integration"
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Domain]*
-          /p:Threshold=85
-          /p:ThresholdType=line%2cmethod
-          /p:ThresholdStat=Total
-
-      - name: Coverage — Application (line/method 85%)
-        run: >
-          dotnet test forzion.tech.Tests --no-build -c Release
-          --filter "Category!=Integration"
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Application]*
-          /p:Threshold=85
-          /p:ThresholdType=line%2cmethod
-          /p:ThresholdStat=Total
-
-      # Api: gateamos line (base 96.8%) e method (base 77.6%). Branch fica fora do
-      # gate dedicado porque depende dos testes de integração (Docker) — o branch
-      # do Api já é coberto pelo gate global de branch no job de integração.
-      - name: Coverage — Api (line 85)
-        run: >
-          dotnet test forzion.tech.Tests --no-build -c Release
-          --filter "Category!=Integration"
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Api]*
-          "/p:Exclude=[*]*.Migrations.*%2c[*]Program"
-          /p:Threshold=85
-          /p:ThresholdType=line
-          /p:ThresholdStat=Total
-
-      - name: Coverage — Api (method 70)
-        run: >
-          dotnet test forzion.tech.Tests --no-build -c Release
-          --filter "Category!=Integration"
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Api]*
-          "/p:Exclude=[*]*.Migrations.*%2c[*]Program"
-          /p:Threshold=70
-          /p:ThresholdType=method
-          /p:ThresholdStat=Total
+          bash scripts/check-coverage.sh coverage-report/Summary.json
+          "forzion.tech.Domain:branch=75,line=85,method=85"
+          "forzion.tech.Application:branch=75,line=85,method=85"
+          "forzion.tech.Api:line=85,method=70"
 
   # ─── TESTES BACKEND — integração (Docker / Testcontainers) ───────────────────
   # F2: roda a suíte COMPLETA (sem filtro). Os RepositoryTests sobem um Postgres
@@ -152,6 +138,8 @@ jobs:
   # pararem de rodar em silêncio (cairia abaixo de 35 e falharia — sinal desejado).
   test-backend-integration:
     name: Backend — testes integração
+    needs: [changes]
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -166,33 +154,31 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Test (global — 50% branch)
+      # ─── Cobertura consolidada: roda a suíte COMPLETA UMA vez; gates avaliados
+      # de um único relatório (ReportGenerator JsonSummary) via check-coverage.sh.
+      # Antes rodava `dotnet test` 2x (global + Infra). Gates PRESERVADOS:
+      # global branch50; Infrastructure branch35 (exclui Migrations). O gate Infra
+      # também guarda contra os testes de integração pararem de rodar em silêncio.
+      - name: Test + cobertura (1x, suíte completa)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
           --logger "console;verbosity=minimal"
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=./coverage/
-          /p:Threshold=50
-          /p:ThresholdType=branch
-          /p:ThresholdStat=Total
           "/p:Exclude=[forzion.tech.Tests]*%2C[*]*.Migrations.*%2C[*]Program"
 
-      # Infra é coberta pelos testes de integração (Testcontainers / Docker).
-      # Excluindo Migrations/Snapshot do EF Core (que diluem a métrica), o baseline
-      # real é line 50.2% / branch 51.9% / method 34.5%. Gateamos branch num piso
-      # de 35: guarda contra regressão e contra os testes de integração pararem de
-      # rodar silenciosamente (cairia abaixo de 35 e falharia — sinal desejado).
-      - name: Coverage — Infrastructure (branch 35, exclui Migrations)
+      - name: ReportGenerator (JsonSummary)
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.3.11 || true
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          reportgenerator -reports:forzion.tech.Tests/coverage/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:JsonSummary
+
+      - name: Gates de cobertura (global + Infrastructure)
         run: >
-          dotnet test forzion.tech.Tests --no-build -c Release
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:Include=[forzion.tech.Infrastructure]*
-          "/p:Exclude=[*]*.Migrations.*"
-          /p:Threshold=35
-          /p:ThresholdType=branch
-          /p:ThresholdStat=Total
+          bash scripts/check-coverage.sh coverage-report/Summary.json
+          "__overall__:branch=50"
+          "forzion.tech.Infrastructure:branch=35"
 
       - name: Coverage summary (backend)
         if: always()
@@ -236,6 +222,8 @@ jobs:
 
   test-frontend:
     name: Frontend — lint + type check + testes
+    needs: [changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -272,6 +260,8 @@ jobs:
 
   build-frontend:
     name: Frontend — build + storybook
+    needs: [changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -302,6 +292,8 @@ jobs:
   # ─── SEGURANÇA / SUPPLY CHAIN (BACKEND .NET) ──────────────────────────────────
   security-backend:
     name: Security backend — vuln NuGet + SBOM
+    needs: [changes]
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -346,8 +338,14 @@ jobs:
           if-no-files-found: error
 
   # ─── SEGURANÇA / SUPPLY CHAIN (FRONTEND) ──────────────────────────────────────
+  # Roda em QUALQUER mudança de código (não só frontend): o step Gitleaks varre a
+  # árvore inteira por segredos — pular em PR backend-only abriria buraco de
+  # detecção. Os steps npm (audit/license/sbom) são frontend, mas o custo extra
+  # num PR backend-only é aceitável frente à cobertura de segredos.
   security:
     name: Security — gitleaks + osv + audit + license + sbom
+    needs: [changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -400,12 +398,26 @@ jobs:
           if-no-files-found: error
 
   # ─── GATE (required check) ─────────────────────────────────────────────────────
+  # `if: always()` para rodar mesmo com jobs PULADOS pelo path-filter. Um job
+  # pulado (result 'skipped') NÃO reprova; só 'failure'/'cancelled' reprovam o gate.
   gate:
     name: Gate
-    needs: [test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend]
+    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Todos os checks obrigatórios passaram."
+      - name: Agrega resultados dos jobs necessários
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Resultados dos jobs: $results"
+          for r in $results; do
+            case "$r" in
+              failure|cancelled)
+                echo "::error::Um job necessário terminou como '$r'."
+                exit 1;;
+            esac
+          done
+          echo "Todos os checks necessários passaram (sucesso ou pulados por path-filter)."
 
   # ─── DEPLOY HOMOLOG ──────────────────────────────────────────────────────────
   deploy-homolog:
