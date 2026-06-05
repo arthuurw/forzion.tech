@@ -76,6 +76,7 @@ using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
 using forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
+using forzion.tech.Application.UseCases.Treinadores.IniciarPagamentoPlano;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno;
@@ -216,6 +217,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ProcessarWebhookResendHandler>();
         services.AddScoped<forzion.tech.Infrastructure.Notifications.WhatsApp.ProcessarWebhookWhatsAppHandler>();
         services.AddScoped<RegistrarTreinadorHandler>();
+        services.AddScoped<IniciarPagamentoPlanoHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();
 

@@ -23,6 +23,7 @@ public class AgendamentoCobrancaTemporalTests
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<IPagamentoTreinadorRepository> _pagamentoTreinadorRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _logger = new();
@@ -33,7 +34,7 @@ public class AgendamentoCobrancaTemporalTests
     {
         _handler = new ProcessarWebhookStripeHandler(
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _time, _logger.Object);
+            _pagamentoTreinadorRepo.Object, _stripeService.Object, _unitOfWork.Object, _time, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
             .ReturnsAsync(true);

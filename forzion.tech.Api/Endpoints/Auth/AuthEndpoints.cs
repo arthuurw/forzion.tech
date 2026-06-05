@@ -10,6 +10,7 @@ using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
 using forzion.tech.Application.UseCases.Planos;
 using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
+using forzion.tech.Application.UseCases.Treinadores.IniciarPagamentoPlano;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadoresPublicos;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
 using forzion.tech.Infrastructure.Notifications.Email;
@@ -80,6 +81,26 @@ public static class AuthEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/treinador/{treinadorId:guid}/pagamento", async (
+            Guid treinadorId,
+            IniciarPagamentoPlanoRequest request,
+            [FromServices] IniciarPagamentoPlanoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new IniciarPagamentoPlanoCommand(treinadorId, request.Metodo), cancellationToken);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("auth")
+        .WithSummary("Inicia o pagamento do plano da plataforma durante o cadastro do treinador")
+        .Produces<IniciarPagamentoPlanoResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/forgot-password", async (
@@ -186,6 +207,7 @@ public static class AuthEndpoints
 public record LoginRequest(string Email, string Senha);
 public record RegistrarTreinadorRequest(string Email, string Senha, string Nome, Guid PlanoPlataformaId, ModoPagamentoAluno ModoPagamentoAluno, string? Telefone = null);
 public record RegistrarAlunoRequest(string Email, string Senha, string Nome, Guid TreinadorId, Guid PacoteId, string? Telefone = null);
+public record IniciarPagamentoPlanoRequest(MetodoPagamento Metodo);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NovaSenha);
 public record VerifyEmailRequest(string Token);
