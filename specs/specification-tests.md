@@ -77,12 +77,12 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - `semgrep.yml`, `zap.yml` — SAST + DAST. `lighthouse.yml` — perf/a11y (LHCI). `hygiene.yml` — `knip` (dead code) + `madge` (ciclos). `smoke.yml` — Playwright smoke pós-deploy homolog.
 
 ## 8. THRESHOLDS DE COBERTURA (detectado — NÃO abaixar sem aprovação humana)
-- **Backend (Coverlet, por assembly, em CI)**: Domain branch 75 / line+method 85; Application branch 75 / line+method 85; Api line 85 / method 70; global branch 50; Infrastructure branch 35 (exclui Migrations). Baselines reais acima dos pisos (ver comentários no `ci.yml`) — pisos guardam regressão + execução silenciosa.
+- **Backend (Coverlet → ReportGenerator JsonSummary → `scripts/check-coverage.sh`, por assembly, em CI)**: Domain branch 75 / line+method 85; Application branch 75 / line+method 85; Api line 85 / method 70; global branch 50; Infrastructure branch 35 (exclui Migrations). Baselines reais acima dos pisos (ver comentários no `ci.yml`) — pisos guardam regressão + execução silenciosa. Avaliação de TODOS os thresholds num único relatório (1 `dotnet test` por job; não mais `/p:Threshold` por assembly).
 - **Frontend (vitest, por glob, ENFORCED em `vitest run --coverage` = exit≠0)**: `src/lib/**` 95/90/95/95 (l/b/f/s); `src/hooks/**` 90/85/90/90; `src/components/**` 85/75/85/85; `src/app/api/**` 90/85/90/90; `src/app/**` 70/60/55/65. Excluídos: `src/test/**`, `src/types/**`, `*.config.*`, `*.stories.tsx`, `*.property.test.ts`, `__tests__/`, `e2e/`.
 - **Mutation (Stryker.NET)**: break 40 / low 60 / high 80 (Domain+Application; ignora Migrations).
 
 ## 9. COMO RODAR (comandos)
-- Backend unit (sem Docker): `dotnet test forzion.tech.Tests --filter "Category!=Integration"`. Integração (Docker up): `--filter "Category=Integration"`. Tudo: sem filtro. Cobertura: flags `/p:CollectCoverage=true /p:Threshold=...` (ver ci.yml). Mutation: `dotnet stryker` (ou matriz `--project`).
+- Backend unit (sem Docker): `dotnet test forzion.tech.Tests --filter "Category!=Integration"`. Integração (Docker up): `--filter "Category=Integration"`. Tudo: sem filtro. Cobertura no CI: 1 `dotnet test ... /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura` por job → `reportgenerator -reporttypes:JsonSummary` → `bash scripts/check-coverage.sh` (thresholds; ver ci.yml). Mutation: `dotnet stryker` (ou matriz `--project`).
 - Frontend: `npm test` (3 projects) · `test:unit|integration|api` · `test:coverage` · `test:property` · `test:contract` · `test:mutation`. E2E: `npm run e2e` (precisa app rodando + `E2E_*` creds; `e2e:install` 1x; `e2e:smoke`/`:security`/`:lgpd`; `e2e:update-snapshots` SÓ no CI Linux). Storybook: `storybook:build`/`:test`.
 
 ## 10. GOTCHAS
@@ -91,7 +91,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - **Visual snapshots Playwright**: baseline por-OS; gerados no CI (Linux). Local Windows/macOS diverge — NÃO commitar baseline local; excluir `e2e/visual` em runs locais.
 - **vitest projects**: alguns testes em `src/lib/**` que tocam DOM rodam no project `integration` (lista de include/exclude explícita) — respeitar ao adicionar testes.
 - **E2E fail-loud**: `auth.setup` exige `E2E_{ADMIN,ALUNO,TREINADOR}_{EMAIL,PASSWORD}` e os specs checam `e2e/.auth/<role>.json` em tempo de coleta → rodar `--project=setup` primeiro. Seletores `getByLabel` ancorados são frágeis (preferir `data-testid`/exact).
-- **Coverlet por-assembly**: `Threshold` aplica ao filtro `Include`; rodar steps separados por assembly (não misturar).
+- **Cobertura consolidada (CI)**: 1 `dotnet test` por job → `reportgenerator -reporttypes:JsonSummary` → `scripts/check-coverage.sh` avalia thresholds por assembly de UM relatório. NÃO re-rodar `dotnet test` por assembly/threshold. `check-coverage.sh` exige `jq` (presente no ubuntu-latest). Path-filter (`changes` job) pula jobs por área — gate usa `if: always()` + agregação `needs.*.result` (pulado ≠ falha).
 
 ## 11. REFERÊNCIAS
 [specification-backend] (camadas/handlers), [specification-db] (Testcontainers/schemas), [specification-git] (CRLF/format/commits), [specification-stripe] (FakeStripeService/webhook), [specification-email]/[specification-whatsapp] (Null* + decorators de teste), [specification-security] (semgrep/zap/dep-scan gates), [specification-observability] (lighthouse budgets), [specification-frontend-ui] (harness a11y), [specification-local-ci-repro] (reproduzir gates local + gotchas; achado Application coverage <85 RESOLVIDO — method 95.86%, commit 947ff91). Relatório de validação ao vivo + gaps: `.specs/qa/validation-report-2026-05-29.md`.
