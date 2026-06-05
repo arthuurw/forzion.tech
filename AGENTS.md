@@ -50,8 +50,8 @@ Toda alteração de código DEVE, antes do PR: (1) build completo (frontend + ba
 ## REGRAS (só alteráveis mediante aprovação do usuário)
 1. CONTEXTO MACRO: carregar APENAS este `AGENTS.md`. Cada `specification-*` (em `specs/`) carregar SOB DEMANDA quando a tarefa tocar a área.
 2. Antes de alteração relevante numa área coberta por `specification-*`, LER o arquivo antes de planejar/alterar (ex.: banco → `specs/specification-db.md`).
-3. `specification-*` é AGENT-ORIENTED (denso, notação compacta). Criar/alterar: exige revisão (não às cegas), manter atualizado na mesma tarefa, criar SEMPRE em `specs/` (commitado; NUNCA `.specs/`), usar a skill `technical-design-doc-creator` como framework de cobertura (output denso, não TDD verboso).
-4. Tarefa com ALTERAÇÃO DE ESCOPO (feature, mudança de comportamento) DEVE usar a skill `tlc-spec-driven` (tasks atômicas + state file). Não se aplica a ajustes triviais.
+3. `specification-*` é AGENT-ORIENTED (denso, notação compacta). Criar/alterar: exige revisão (não às cegas), manter atualizado na mesma tarefa, criar SEMPRE em `specs/` (pasta EXCLUSIVA para arquivos `specification-*.md`; commitado), usar a skill `technical-design-doc-creator` como framework de cobertura (output denso, não TDD verboso).
+4. Tarefa com ALTERAÇÃO DE ESCOPO (feature, mudança de comportamento) DEVE usar a skill `tlc-spec-driven` (tasks atômicas + state file). Os artefatos de quebra (`spec.md`/`tasks.md`/`STATE.md`) vivem em `.specs/` (gitignored; NÃO em `specs/`, reservada a `specification-*.md`). Não se aplica a ajustes triviais.
 5. README segue os princípios do `docs-writer` (precisão no código, voz ativa, consistência, verificação de links).
 6. Skill citada ausente no projeto: procurar, baixar e instalar antes de usar.
 7. PARALELISMO: escopos isolados (análises, implementações sem conflito, tests em arquivos distintos) → delegar a sub-agents em PARALELO (Agent tool), 1 por escopo, batch num turno. Principal coordena: identifica dependências, lança o não-conflitante, agrega, integra (DI/commit). Sub-agents devolvem só sumário. Subordinada à regra 4 (`[P]` em tasks paralelas).
