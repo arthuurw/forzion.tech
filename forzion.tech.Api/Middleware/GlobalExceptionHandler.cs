@@ -37,8 +37,15 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             Instance = httpContext.Request.Path
         };
 
-        if (exception is EmailNaoVerificadoException)
-            problem.Extensions["code"] = EmailNaoVerificadoException.Codigo;
+        var code = exception switch
+        {
+            EmailNaoVerificadoException => EmailNaoVerificadoException.Codigo,
+            TreinadorAguardandoAprovacaoException => TreinadorAguardandoAprovacaoException.Codigo,
+            TreinadorInativoException => TreinadorInativoException.Codigo,
+            _ => null
+        };
+        if (code is not null)
+            problem.Extensions["code"] = code;
 
         httpContext.Response.StatusCode = statusCode;
 
@@ -90,6 +97,8 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             AlunoInativoException ex => (StatusCodes.Status403Forbidden, "Inativo", ex.Message),
             AcessoNegadoException ex => (StatusCodes.Status403Forbidden, "Acesso negado", ex.Message),
             EmailNaoVerificadoException ex => (StatusCodes.Status403Forbidden, "E-mail não verificado", ex.Message),
+            TreinadorAguardandoAprovacaoException ex => (StatusCodes.Status403Forbidden, "Aguardando aprovação", ex.Message),
+            TreinadorInativoException ex => (StatusCodes.Status403Forbidden, "Conta inativa", ex.Message),
 
             EmailJaCadastradoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
             AlunoJaVinculadoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
