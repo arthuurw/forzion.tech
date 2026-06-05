@@ -47,6 +47,9 @@ Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
 ## FLUXO DE ALTERAÇÃO DE CÓDIGO
 Toda alteração de código DEVE, antes do PR: (1) build completo (frontend + backend); (2) avaliar necessidade de novos testes e criá-los se faltarem; (3) rodar TODOS os testes — confirmar que nada quebrou e se algo precisa ser complementado (integração/E2E exigem Docker; sem Docker local, o CI os roda no PR); (4) confirmar PR → `homolog` (ou → `master` se a alteração foi feita direto na branch `homolog`).
 
+## ANTES DE QUALQUER OPERAÇÃO GIT/GITHUB
+Ler `specs/specification-git.md` SEMPRE antes de commit, push, PR ou qualquer interação com git. Sem exceção. Foco obrigatório em: §PRE-COMMIT HOOK (sequência correta) e §EDGE CASES (CRLF — gotcha recorrente de agents que causa retrabalho: rodar `dotnet format forzion.tech.slnx` ANTES de `git add` em arquivos `.cs` novos).
+
 ## REGRAS (só alteráveis mediante aprovação do usuário)
 1. CONTEXTO MACRO: carregar APENAS este `AGENTS.md`. Cada `specification-*` (em `specs/`) carregar SOB DEMANDA quando a tarefa tocar a área.
 2. Antes de alteração relevante numa área coberta por `specification-*`, LER o arquivo antes de planejar/alterar (ex.: banco → `specs/specification-db.md`).

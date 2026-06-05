@@ -89,6 +89,10 @@ docs(infra): add git workflow spec + setup script
 - **Frontend gate**: `npm run typecheck` → `npx lint-staged` (eslint --fix nos staged) → `npm test` (vitest).
 - Filter `Category!=Integration` (trait-based) pula tests que exigem Docker. Sem isso, hook falhava localmente sem Docker rodando.
 - **NUNCA `--no-verify`**. Política do repo (regra implícita pelo `husky` instalado). Se hook falha, conserte a causa.
+- **Sequência obrigatória antes de `git add` em arquivos `.cs` novos** (CRLF gotcha — ver §EDGE CASES):
+  1. `dotnet format forzion.tech.slnx` — normaliza CRLF + aplica style fixes
+  2. `git add <arquivos>` — stage pós-format
+  3. `git commit` — hook passa no `--verify-no-changes`
 
 ## PUSH / PR
 - Branch local mesmo nome do remoto (convenção). `git push` sem args = pusha branch atual pro mesmo nome em `origin`.
@@ -99,14 +103,14 @@ docs(infra): add git workflow spec + setup script
 ## EDGE CASES
 - **Branch protection bloqueia push direto** (não é o caso hoje, mas pode passar a ser): use `gh pr create` direto sem push manual `gh` resolve.
 - **Rebase agressivo (WIP)** — trabalhar em `feature/x-wip` local sem track; promover via `git push origin feature/x-wip:feature/x` quando estável.
-- **CRLF em arquivos `.cs` (Windows)** — pre-commit `dotnet format --verify-no-changes` exige CRLF. Se PowerShell falhar pra normalizar (visto em sessões), use:
+- **CRLF em arquivos `.cs` (Windows) — gotcha recorrente de agents** — `dotnet format --verify-no-changes` exige CRLF. Arquivos criados via Write tool em sessões de agent no Windows saem com LF → hook pre-commit falha com `error ENDOFLINE: Fix end of line marker` em CADA linha. Fix canônico antes de qualquer `git add` de arquivos `.cs` novos:
   ```
-  python -c "
-  f='caminho/arquivo.cs'
-  d=open(f,'rb').read().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n')
-  open(f,'wb').write(d)
-  "
+  dotnet format forzion.tech.slnx
   ```
+  Isso converte LF → CRLF em todos os arquivos do projeto. Rodar ANTES de `git add` pra o stage já pegar CRLF. Se rodado depois, re-stage os arquivos (`git add` de novo). O hook `--verify-no-changes` confirma que o resultado está limpo. **NÃO usar** o workaround Python (frágil; dotnet format também aplica style/whitespace corrections além de ENDOFLINE). Configurar `core.autocrlf=true` no cliente (ver §CONFIGS) previne na maioria dos casos mas não é suficiente quando o Write tool bypassa git.
+
+- **SonarAnalyzer warnings como bloqueantes do pre-commit** — `dotnet format --verify-no-changes` pode falhar com warnings de SonarAnalyzer (ex.: `S3267: Loop should be simplified by calling Select(...)`) quando o analyzer detecta uma violação que *poderia* ter um fix mas o `dotnet format` reporta sem conseguir aplicar. Esses warnings causam exit code 1 no hook. Fix: corrigir o código para remover a violação (aplicar a sugestão do analyzer). NÃO suprimir com `#pragma warning disable` — isso bypassaria o gate. Exemplos recorrentes:
+  - `S3267`: `foreach (var x in col) { use x.Prop }` → refatorar para `foreach (var prop in col.Select(x => x.Prop)) { ... }` quando só a propriedade é usada no corpo do loop.
 - **Lint-staged corrompendo arquivos** — `playwright/prefer-web-first-assertions` reescreve `await el.getAttribute(...)` em `expect malformado`. Workaround: usar `el.evaluate((e) => e.getAttribute(...))` (rule não match).
 - **Reapply stash após rebase falho** — `rebase.autoStash=true` faz pop automático no fim. Se conflito durante pop, resolver manualmente (`git status` mostra UU).
 - **Sync após force push em outro clone** (raro) — `git fetch && git reset --hard origin/<branch>` se a branch local NÃO tem trabalho não pushado.
