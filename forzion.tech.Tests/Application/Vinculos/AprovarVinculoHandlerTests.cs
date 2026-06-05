@@ -17,6 +17,7 @@ public class AprovarVinculoHandlerTests
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
@@ -40,11 +41,15 @@ public class AprovarVinculoHandlerTests
         contaOnboarded.ConfirmarOnboarding(DateTime.UtcNow);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(contaOnboarded);
+        var treinadorPlataforma = Treinador.Criar(Guid.NewGuid(), "Treinador", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(treinadorPlataforma);
         _handler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
             _treinoAlunoRepo.Object,
             _treinoRepo.Object,
             _alunoRepo.Object,
+            _treinadorRepo.Object,
             _contaRecebimentoRepo.Object,
             _limiteService.Object,
             _logRepo.Object,
@@ -69,6 +74,38 @@ public class AprovarVinculoHandlerTests
         result.Error!.Code.Should().Be("treinador_sem_onboarding");
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ModoExterno_SemOnboarding_Aprova()
+    {
+        var treinadorId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        var treinadorExterno = Treinador.Criar(Guid.NewGuid(), "Externo", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Externo).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinadorExterno);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(vinculo.AlunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
+        _limiteService.Setup(s => s.ValidarAsync(treinadorId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, Guid.NewGuid()));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(VinculoStatus.Ativo);
+        _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorNaoEncontrado_LancaException()
+    {
+        var treinadorId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
+
+        var act = async () => await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, Guid.NewGuid()));
+        await act.Should().ThrowAsync<TreinadorNaoEncontradoException>();
     }
 
     [Fact]

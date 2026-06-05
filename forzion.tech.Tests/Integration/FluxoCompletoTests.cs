@@ -138,7 +138,7 @@ public class FluxoCompletoTests
 
         var handler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
-            _alunoRepo.Object, contaRecebimentoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
+            _alunoRepo.Object, _treinadorRepo.Object, contaRecebimentoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
             mockTxProvider.Object, TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
