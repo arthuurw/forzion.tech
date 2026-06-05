@@ -13,4 +13,5 @@ public static class TreinadorErrors
     public static Error PlanoTreinadorInativo => new("treinador.plano_treinador_inativo", "Não é possível atribuir plano a um treinador inativo.");
     public static Error ExclusaoApenasInativos => new("treinador.exclusao_apenas_inativos", "Apenas treinadores inativos podem ser excluídos permanentemente.");
     public static Error NomeVazio => new("treinador.nome_vazio", "O nome não pode ser vazio.");
+    public static Error NaoAguardandoPagamento => Error.Conflict("treinador.nao_aguardando_pagamento", "Apenas treinadores aguardando pagamento podem ter o pagamento confirmado.");
 }

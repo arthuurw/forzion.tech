@@ -17,6 +17,7 @@ public class Treinador : IHasDomainEvents
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
     public Guid? PlanoPlataformaId { get; private set; }
+    public ModoPagamentoAluno ModoPagamentoAluno { get; private set; }
     public TreinadorStatus Status { get; private set; }
     public string? Telefone { get; private set; }
     public Guid? AprovadoPorId { get; private set; }
@@ -26,7 +27,14 @@ public class Treinador : IHasDomainEvents
 
     private Treinador() { }
 
-    public static Result<Treinador> Criar(Guid contaId, string nome, DateTime agora, string? telefone = null)
+    public static Result<Treinador> Criar(
+        Guid contaId,
+        string nome,
+        DateTime agora,
+        string? telefone = null,
+        Guid? planoPlataformaId = null,
+        ModoPagamentoAluno modoPagamentoAluno = ModoPagamentoAluno.Plataforma,
+        bool aguardandoPagamento = false)
     {
         if (contaId == Guid.Empty)
             return Result.Failure<Treinador>(TreinadorErrors.ContaIdInvalido);
@@ -41,11 +49,23 @@ public class Treinador : IHasDomainEvents
             ContaId = contaId,
             Nome = nome.Trim(),
             Telefone = string.IsNullOrWhiteSpace(telefone) ? null : telefone.Trim(),
-            Status = TreinadorStatus.AguardandoAprovacao,
+            PlanoPlataformaId = planoPlataformaId,
+            ModoPagamentoAluno = modoPagamentoAluno,
+            Status = aguardandoPagamento ? TreinadorStatus.AguardandoPagamento : TreinadorStatus.AguardandoAprovacao,
             CreatedAt = agora
         };
 
         return Result.Success(treinador);
+    }
+
+    public Result ConfirmarPagamentoPlano(DateTime agora)
+    {
+        if (Status != TreinadorStatus.AguardandoPagamento)
+            return Result.Failure(TreinadorErrors.NaoAguardandoPagamento);
+
+        Status = TreinadorStatus.AguardandoAprovacao;
+        UpdatedAt = agora;
+        return Result.Success();
     }
 
     public Result Aprovar(Guid aprovadoPorId, DateTime agora)
