@@ -55,6 +55,7 @@ git worktree prune                                             # limpa refs órf
 - **Format:** `type(scope): subject` (subject minúsculo após `:`, commitlint enforça).
 - **Types comuns:** `feat`, `fix`, `refactor`, `chore`, `test`, `docs`, `style`, `perf`, `ci`, `build`.
 - **Scopes válidos** (`commitlint.config.mjs` `scope-enum`, do AGENTS.md `CONVENÇÕES-CHAVE`): `frontend | backend | infra | ci | deps | tests | docs` + `""` (escopo VAZIO permitido — `type: subject` sem `(scope)` passa).
+- **GOTCHA scope = ÁREA, não tópico** (recorrente): o scope é a área do repo, NÃO o arquivo/assunto editado. Mexer em `specification-git.md`/`-stripe.md`/`-model.md` é `docs:` (ou escopo vazio), NÃO `docs(git)`/`docs(stripe)`/`docs(model)` — esses falham `scope-enum`. Spec de área coberta usa o scope da área se aplicável (ex.: regra de teste → `docs(tests)`), senão `docs:`.
 - **Limites commitlint**: `header-max-length` 100 (erro); `body-max-line-length` 200 (warning).
 - **Subject:** ≤72 chars idealmente (header total ≤100, enforçado). Imperativo ("add X", não "added X").
 - **Body:** quando o "porquê" não cabe no subject. Linha em branco entre subject e body.
