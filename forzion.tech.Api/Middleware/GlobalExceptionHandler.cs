@@ -42,6 +42,7 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             EmailNaoVerificadoException => EmailNaoVerificadoException.Codigo,
             TreinadorAguardandoAprovacaoException => TreinadorAguardandoAprovacaoException.Codigo,
             TreinadorInativoException => TreinadorInativoException.Codigo,
+            TreinadorPagamentoPendenteException => TreinadorPagamentoPendenteException.Codigo,
             _ => null
         };
         if (code is not null)
@@ -99,6 +100,7 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             EmailNaoVerificadoException ex => (StatusCodes.Status403Forbidden, "E-mail não verificado", ex.Message),
             TreinadorAguardandoAprovacaoException ex => (StatusCodes.Status403Forbidden, "Aguardando aprovação", ex.Message),
             TreinadorInativoException ex => (StatusCodes.Status403Forbidden, "Conta inativa", ex.Message),
+            TreinadorPagamentoPendenteException ex => (StatusCodes.Status403Forbidden, "Pagamento pendente", ex.Message),
 
             EmailJaCadastradoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
             AlunoJaVinculadoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),

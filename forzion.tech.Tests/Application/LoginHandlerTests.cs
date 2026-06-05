@@ -229,6 +229,25 @@ public class LoginHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_TreinadorAguardandoPagamento_LancaTreinadorPagamentoPendenteException()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
+        var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow, null, Guid.NewGuid(), ModoPagamentoAluno.Plataforma, aguardandoPagamento: true).Value;
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(treinador);
+
+        var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
+
+        await act.Should().ThrowAsync<TreinadorPagamentoPendenteException>();
+        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_TreinadorInativo_LancaTreinadorInativoException()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;

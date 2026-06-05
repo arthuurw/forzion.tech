@@ -62,12 +62,30 @@ public class GlobalExceptionHandlerTests
     [Theory]
     [InlineData(typeof(AlunoInativoException))]
     [InlineData(typeof(AcessoNegadoException))]
+    [InlineData(typeof(EmailNaoVerificadoException))]
+    [InlineData(typeof(TreinadorAguardandoAprovacaoException))]
+    [InlineData(typeof(TreinadorInativoException))]
+    [InlineData(typeof(TreinadorPagamentoPendenteException))]
     public async Task TryHandleAsync_ForbiddenExceptions_Retorna403(Type exceptionType)
     {
         var exception = (Exception)Activator.CreateInstance(exceptionType)!;
         var context = CriarHttpContext();
         await _handler.TryHandleAsync(context, exception, default);
         context.Response.StatusCode.Should().Be(403);
+    }
+
+    [Theory]
+    [InlineData(typeof(EmailNaoVerificadoException), "EMAIL_NAO_VERIFICADO")]
+    [InlineData(typeof(TreinadorAguardandoAprovacaoException), "TREINADOR_AGUARDANDO_APROVACAO")]
+    [InlineData(typeof(TreinadorInativoException), "TREINADOR_INATIVO")]
+    [InlineData(typeof(TreinadorPagamentoPendenteException), "TREINADOR_PAGAMENTO_PENDENTE")]
+    public async Task TryHandleAsync_ExcecoesComCode_CorpoExpoeCode(Type exceptionType, string codeEsperado)
+    {
+        var exception = (Exception)Activator.CreateInstance(exceptionType)!;
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, exception, default);
+        var body = await LerCorpo(context);
+        body.GetProperty("code").GetString().Should().Be(codeEsperado);
     }
 
     [Theory]

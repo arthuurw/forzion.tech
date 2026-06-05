@@ -159,6 +159,10 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             Mock.Of<IPagamentoRepository>(),
             Mock.Of<IAssinaturaAlunoRepository>(),
             Mock.Of<IContaRecebimentoRepository>(),
+            Mock.Of<IPagamentoTreinadorRepository>(),
+            Mock.Of<IAssinaturaTreinadorRepository>(),
+            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IContaRepository>(),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<ProcessarWebhookStripeHandler>>());

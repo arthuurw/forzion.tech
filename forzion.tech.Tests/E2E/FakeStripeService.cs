@@ -24,6 +24,18 @@ public sealed class FakeStripeService : IStripeService
             PaymentIntentId: $"pi_fake_{pagamentoId:N}",
             ClientSecret: $"pi_fake_{pagamentoId:N}_secret_fake"));
 
+    public Task<PixPaymentResult> CriarPixPlataformaPaymentIntentAsync(decimal valor, Guid pagamentoTreinadorId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new PixPaymentResult(
+            PaymentIntentId: $"pi_fake_treinador_{pagamentoTreinadorId:N}",
+            QrCode: "00020126fake-pix-qr-code",
+            QrCodeUrl: "https://fake.stripe/qr.png",
+            Expiracao: DateTime.UtcNow.AddMinutes(30)));
+
+    public Task<CartaoPaymentResult> CriarCartaoPlataformaPaymentIntentAsync(decimal valor, Guid pagamentoTreinadorId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new CartaoPaymentResult(
+            PaymentIntentId: $"pi_fake_treinador_{pagamentoTreinadorId:N}",
+            ClientSecret: $"pi_fake_treinador_{pagamentoTreinadorId:N}_secret_fake"));
+
     public Task<bool> ContaEstaAtivadaAsync(string stripeAccountId, CancellationToken cancellationToken = default) =>
         Task.FromResult(true);
 
