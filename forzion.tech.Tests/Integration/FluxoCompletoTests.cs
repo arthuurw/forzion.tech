@@ -43,13 +43,16 @@ public class FluxoCompletoTests
     [Fact]
     public async Task RegistrarTreinador_DadosValidos_CriaTreinadorAguardandoAprovacao()
     {
+        var planoFree = PlanoPlataforma.Criar("Free", TierPlano.Free, 10, 0m, DateTime.UtcNow).Value;
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoFree.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoFree);
+
         var handler = new RegistrarTreinadorHandler(
-            _contaRepo.Object, _treinadorRepo.Object, _passwordHasher.Object,
-            _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), TimeProvider.System,
+            _contaRepo.Object, _treinadorRepo.Object, _planoRepo.Object, Mock.Of<IAssinaturaTreinadorRepository>(),
+            _passwordHasher.Object, _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarTreinadorHandler>>());
 
         var result = await handler.HandleAsync(
-            new RegistrarTreinadorCommand("treinador@teste.com", "Senha123", "Carlos"));
+            new RegistrarTreinadorCommand("treinador@teste.com", "Senha123", "Carlos", planoFree.Id, ModoPagamentoAluno.Plataforma));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
