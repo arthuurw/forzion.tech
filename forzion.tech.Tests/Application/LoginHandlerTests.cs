@@ -212,7 +212,6 @@ public class LoginHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorAguardandoAprovacao_LancaTreinadorAguardandoAprovacaoException()
     {
-        // E-mail verificado NÃO basta: treinador só acessa após aprovação do admin.
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         conta.MarcarEmailVerificado(DateTime.UtcNow);
         var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value; // AguardandoAprovacao
