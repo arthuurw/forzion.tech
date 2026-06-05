@@ -35,6 +35,9 @@ export const treinadorHandlers: HttpHandler[] = [
   http.get("*/treinador/onboarding", unauthorized),
   http.post("*/treinador/onboarding/iniciar", unauthorized),
   http.get("*/treinador/onboarding/verificar", unauthorized),
+  // 200 "completo" por padrão (não 401): o apiClient redireciona p/ /login em qualquer 401.
+  http.get("*/treinador/onboarding/status", () =>
+    HttpResponse.json({ onboardingCompleto: true, contaConfigurada: true })),
   http.get("*/treinador/pagamentos", unauthorized),
   http.post("*/treinador/pagamentos/cobrar/:assinaturaId", unauthorized),
 ];
