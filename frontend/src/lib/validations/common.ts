@@ -42,6 +42,8 @@ export const cadastroTreinadorSchema = z
     telefone: telefoneSchema,
     password: registerPasswordSchema,
     confirmPassword: z.string().min(1, "Confirmação obrigatória"),
+    planoPlataformaId: z.string().min(1, "Selecione um plano"),
+    modoPagamentoAluno: z.enum(["Plataforma", "Externo"]),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: "As senhas não coincidem",

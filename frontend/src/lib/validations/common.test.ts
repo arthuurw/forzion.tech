@@ -96,7 +96,10 @@ describe("loginSchema", () => {
 });
 
 describe("cadastroTreinadorSchema", () => {
-  const base = { nome: "Carlos", email: "c@t.com", password: "Senha123", confirmPassword: "Senha123" };
+  const base = {
+    nome: "Carlos", email: "c@t.com", password: "Senha123", confirmPassword: "Senha123",
+    planoPlataformaId: "plano-1", modoPagamentoAluno: "Plataforma" as const,
+  };
 
   it("aceita dados válidos", () => {
     expect(cadastroTreinadorSchema.safeParse(base).success).toBe(true);
@@ -106,6 +109,9 @@ describe("cadastroTreinadorSchema", () => {
   });
   it("rejeita senha sem maiúscula", () => {
     expect(cadastroTreinadorSchema.safeParse({ ...base, password: "senha123", confirmPassword: "senha123" }).success).toBe(false);
+  });
+  it("rejeita sem plano selecionado", () => {
+    expect(cadastroTreinadorSchema.safeParse({ ...base, planoPlataformaId: "" }).success).toBe(false);
   });
 });
 
