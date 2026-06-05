@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Handlers;
 using FluentAssertions;
@@ -15,6 +16,7 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
     private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<VinculoAprovadoCriarAssinaturaAlunoHandler>> _logger = new();
     private readonly VinculoAprovadoCriarAssinaturaAlunoHandler _handler;
@@ -24,9 +26,11 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
 
     public VinculoAprovadoCriarAssinaturaAlunoHandlerTests()
     {
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Treinador.Criar(Guid.NewGuid(), "Treinador", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value);
         _handler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
             _vinculoRepo.Object, _pacoteRepo.Object, _assinaturaRepo.Object,
-            _contaRecebimentoRepo.Object, _unitOfWork.Object, _logger.Object);
+            _contaRecebimentoRepo.Object, _treinadorRepo.Object, _unitOfWork.Object, _logger.Object);
     }
 
     private static ContaRecebimento ContaOnboarded(Guid treinadorId)
@@ -65,6 +69,23 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
         await _handler.HandleAsync(Evento);
 
         _assinaturaRepo.Verify(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorModoExterno_NaoCriaAssinaturaAluno()
+    {
+        var pacoteId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(Evento.TreinadorId, Evento.AlunoId, DateTime.UtcNow).Value;
+        vinculo.Aprovar(Evento.TreinadorId, pacoteId, DateTime.UtcNow);
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(Evento.VinculoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(vinculo);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(Evento.TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Treinador.Criar(Guid.NewGuid(), "Externo", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Externo).Value);
+
+        await _handler.HandleAsync(Evento);
+
+        _assinaturaRepo.Verify(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()), Times.Never);
+        _pacoteRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
