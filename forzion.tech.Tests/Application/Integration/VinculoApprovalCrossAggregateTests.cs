@@ -160,6 +160,31 @@ public class VinculoApprovalCrossAggregateTests
     }
 
     [Fact]
+    public async Task AprovarVinculo_ModoExterno_AceitaSemOnboarding_NaoGeraBillingNemNotificacao()
+    {
+        var treinadorId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(treinadorId, "Basic", 99m, DateTime.UtcNow).Value;
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Treinador.Criar(Guid.NewGuid(), "Externo", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Externo).Value);
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
+        _limiteService.Setup(s => s.ValidarAsync(treinadorId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync((ContaRecebimento?)null);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var result = await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
+        result.IsSuccess.Should().BeTrue("modo Externo dispensa onboarding Stripe");
+
+        var evento = vinculo.DomainEvents.OfType<VinculoAprovadoEvent>().Single();
+        await _criarAssinaturaHandler.HandleAsync(evento);
+
+        _assinaturasCriadas.Should().BeEmpty("sem AssinaturaAluno não há AssinaturaAlunoCriadaEvent/Pagamento — nenhuma notificação de pagamento dispara");
+    }
+
+    [Fact]
     public async Task AprovarVinculo_PacoteSumido_DownstreamHandler_NaoCriaAssinatura()
     {
         // Race rara: vinculo aprovado, pacote deletado entre dispatch e handle.
