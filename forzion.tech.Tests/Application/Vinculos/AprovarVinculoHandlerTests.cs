@@ -17,6 +17,7 @@ public class AprovarVinculoHandlerTests
     private readonly Mock<ITreinoAlunoRepository> _treinoAlunoRepo = new();
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -34,17 +35,40 @@ public class AprovarVinculoHandlerTests
         _transactionProvider
             .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockTx.Object);
+        var contaOnboarded = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow).Value;
+        contaOnboarded.ConfigurarStripeConnect("acct_123", DateTime.UtcNow);
+        contaOnboarded.ConfirmarOnboarding(DateTime.UtcNow);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaOnboarded);
         _handler = new AprovarVinculoHandler(
             _vinculoRepo.Object,
             _treinoAlunoRepo.Object,
             _treinoRepo.Object,
             _alunoRepo.Object,
+            _contaRecebimentoRepo.Object,
             _limiteService.Object,
             _logRepo.Object,
             _unitOfWork.Object,
             _transactionProvider.Object,
             TimeProvider.System,
             _logger.Object);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorSemOnboarding_FalhaSemAprovar()
+    {
+        var treinadorId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
+
+        var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treinador_sem_onboarding");
+        _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

@@ -22,6 +22,7 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
             return;
         }
 
+        // Defense-in-depth: gate primário é em AprovarVinculoHandler; aqui cobre evento legado/reprocessado.
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(domainEvent.TreinadorId, cancellationToken).ConfigureAwait(false);
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
         {
