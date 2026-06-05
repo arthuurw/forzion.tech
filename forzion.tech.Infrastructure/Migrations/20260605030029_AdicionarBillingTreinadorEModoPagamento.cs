@@ -89,6 +89,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
+                        name: "fk_pagamentos_treinador_planos_plataforma_plano_alvo_id",
+                        column: x => x.plano_alvo_id,
+                        principalTable: "planos_plataforma",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
                         name: "fk_pagamentos_treinador_treinadores_treinador_id",
                         column: x => x.treinador_id,
                         principalTable: "treinadores",
@@ -122,6 +128,16 @@ namespace forzion.tech.Infrastructure.Migrations
                 column: "assinatura_treinador_id",
                 unique: true,
                 filter: "status = 'Pendente'");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_pagamentos_treinador_assinatura_id_status",
+                table: "pagamentos_treinador",
+                columns: new[] { "assinatura_treinador_id", "status" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_pagamentos_treinador_plano_alvo_id",
+                table: "pagamentos_treinador",
+                column: "plano_alvo_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_pagamentos_treinador_stripe_payment_intent_id",
