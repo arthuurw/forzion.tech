@@ -37,6 +37,7 @@ public class VinculoApprovalCrossAggregateTests
     private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -63,9 +64,12 @@ public class VinculoApprovalCrossAggregateTests
             .Callback<AssinaturaAluno, CancellationToken>((a, _) => _assinaturasCriadas.Add(a))
             .Returns(Task.CompletedTask);
 
+        var treinadorPlataforma = Treinador.Criar(Guid.NewGuid(), "Treinador", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(treinadorPlataforma);
+
         _aprovarHandler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
-            _alunoRepo.Object, _contaRecebimentoRepo.Object, _limiteService.Object, _logRepo.Object,
+            _alunoRepo.Object, _treinadorRepo.Object, _contaRecebimentoRepo.Object, _limiteService.Object, _logRepo.Object,
             _unitOfWork.Object, _transactionProvider.Object,
             TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
