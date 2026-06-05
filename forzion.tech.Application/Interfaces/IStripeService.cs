@@ -6,6 +6,11 @@ public interface IStripeService
     Task<string> GerarLinkOnboardingAsync(string stripeAccountId, string urlRetorno, string urlCancelamento, CancellationToken cancellationToken = default);
     Task<PixPaymentResult> CriarPixPaymentIntentAsync(decimal valor, string stripeAccountId, Guid pagamentoId, decimal taxaPlataformaPercent, CancellationToken cancellationToken = default);
     Task<CartaoPaymentResult> CriarCartaoPaymentIntentAsync(decimal valor, string stripeAccountId, Guid pagamentoId, decimal taxaPlataformaPercent, CancellationToken cancellationToken = default);
+
+    // Pagamento do plano do treinador: valor cheio para a conta da plataforma (sem Connect/fee split).
+    Task<PixPaymentResult> CriarPixPlataformaPaymentIntentAsync(decimal valor, Guid pagamentoTreinadorId, CancellationToken cancellationToken = default);
+    Task<CartaoPaymentResult> CriarCartaoPlataformaPaymentIntentAsync(decimal valor, Guid pagamentoTreinadorId, CancellationToken cancellationToken = default);
+
     Task<bool> ContaEstaAtivadaAsync(string stripeAccountId, CancellationToken cancellationToken = default);
     Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe);
 

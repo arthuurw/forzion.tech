@@ -55,6 +55,8 @@ public class LoginHandler(
                 var treinador = await treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false)
                     ?? throw new InvalidOperationException("Perfil de treinador não encontrado para esta conta.");
                 // Treinador só acessa após aprovação do admin (e-mail verificado não basta).
+                if (treinador.Status == Domain.Enums.TreinadorStatus.AguardandoPagamento)
+                    throw new TreinadorPagamentoPendenteException();
                 if (treinador.Status == Domain.Enums.TreinadorStatus.AguardandoAprovacao)
                     throw new TreinadorAguardandoAprovacaoException();
                 if (treinador.Status == Domain.Enums.TreinadorStatus.Inativo)

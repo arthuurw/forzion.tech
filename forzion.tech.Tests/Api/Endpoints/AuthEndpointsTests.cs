@@ -263,6 +263,8 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
         public Mock<RegistrarTreinadorHandler> RegistrarTreinadorHandlerMock { get; } = new(
             Mock.Of<IContaRepository>(),
             Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IPlanoPlataformaRepository>(),
+            Mock.Of<IAssinaturaTreinadorRepository>(),
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IValidator<RegistrarTreinadorCommand>>(), TimeProvider.System,

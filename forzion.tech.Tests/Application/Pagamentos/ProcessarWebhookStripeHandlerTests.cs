@@ -4,6 +4,8 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
+using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -15,6 +17,10 @@ public class ProcessarWebhookStripeHandlerTests
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<IPagamentoTreinadorRepository> _pagamentoTreinadorRepo = new();
+    private readonly Mock<IAssinaturaTreinadorRepository> _assinaturaTreinadorRepo = new();
+    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _logger = new();
@@ -26,6 +32,7 @@ public class ProcessarWebhookStripeHandlerTests
     {
         _handler = new ProcessarWebhookStripeHandler(
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
+            _pagamentoTreinadorRepo.Object, _assinaturaTreinadorRepo.Object, _treinadorRepo.Object, _contaRepo.Object,
             _stripeService.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
@@ -40,6 +47,37 @@ public class ProcessarWebhookStripeHandlerTests
 
     private static string AccountPayload(string accountId, bool chargesEnabled) =>
         "{\"type\":\"account.updated\",\"account\":\"" + accountId + "\",\"data\":{\"object\":{\"charges_enabled\":" + (chargesEnabled ? "true" : "false") + "}}}";
+
+    private static string PaymentIntentTreinadorPayload(string type, string paymentIntentId) =>
+        "{\"type\":\"" + type + "\",\"data\":{\"object\":{\"id\":\"" + paymentIntentId + "\",\"metadata\":{\"tipo\":\"plano_treinador\"}}}}";
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_PlanoTreinadorCadastro_FinalizaCadastroAtomico()
+    {
+        var conta = Conta.Criar(Email.Criar("t@x.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow, emitirRegistro: false).Value;
+        var planoId = Guid.NewGuid();
+        var treinador = Treinador.Criar(conta.Id, "Carlos", DateTime.UtcNow, null, planoId, ModoPagamentoAluno.Plataforma, aguardandoPagamento: true).Value;
+        var assinatura = AssinaturaTreinador.Criar(treinador.Id, planoId, 50m, DateTime.UtcNow).Value;
+        var pagamento = PagamentoTreinador.Criar(treinador.Id, assinatura.Id, 50m, FinalidadePagamentoTreinador.Cadastro, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_treinador", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_treinador", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.succeeded", "pi_treinador"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa);
+        assinatura.DataProximaCobranca.Should().BeAfter(assinatura.DataInicio, "renovação agendada para o próximo ciclo");
+        treinador.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
+        conta.DomainEvents.OfType<ContaRegistradaEvent>().Should().ContainSingle("verificação só após o pagamento");
+        _pagamentoRepo.Verify(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once, "tudo num único commit (atômico)");
+    }
 
     [Fact]
     public async Task HandleAsync_AssinaturaAlunoInvalida_RetornaFailure()
