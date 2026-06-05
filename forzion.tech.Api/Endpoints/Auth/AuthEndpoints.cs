@@ -1,4 +1,5 @@
 using forzion.tech.Api.Extensions;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
@@ -47,7 +48,7 @@ public static class AuthEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new RegistrarTreinadorCommand(request.Email, request.Senha, request.Nome, request.Telefone), cancellationToken);
+                new RegistrarTreinadorCommand(request.Email, request.Senha, request.Nome, request.PlanoPlataformaId, request.ModoPagamentoAluno, request.Telefone), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Created($"/treinador/perfil", result.Value);
@@ -183,7 +184,7 @@ public static class AuthEndpoints
 }
 
 public record LoginRequest(string Email, string Senha);
-public record RegistrarTreinadorRequest(string Email, string Senha, string Nome, string? Telefone = null);
+public record RegistrarTreinadorRequest(string Email, string Senha, string Nome, Guid PlanoPlataformaId, ModoPagamentoAluno ModoPagamentoAluno, string? Telefone = null);
 public record RegistrarAlunoRequest(string Email, string Senha, string Nome, Guid TreinadorId, Guid PacoteId, string? Telefone = null);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NovaSenha);
