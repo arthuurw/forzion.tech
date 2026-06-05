@@ -22,7 +22,8 @@ public class AssinaturaTreinadorRepository(AppDbContext context) : IAssinaturaTr
     public async Task<IReadOnlyList<AssinaturaTreinador>> ListarParaRenovarAsync(DateTime ate, CancellationToken cancellationToken = default) =>
         await context.AssinaturasTreinador
             .AsNoTracking()
-            .Where(a => a.Status == AssinaturaTreinadorStatus.Ativa && a.DataProximaCobranca <= ate)
+            .Where(a => (a.Status == AssinaturaTreinadorStatus.Ativa || a.Status == AssinaturaTreinadorStatus.Inadimplente)
+                        && a.DataProximaCobranca <= ate)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

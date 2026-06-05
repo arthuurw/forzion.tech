@@ -162,6 +162,13 @@ public class AssinaturaTreinador : IHasDomainEvents
         return Result.Success();
     }
 
+    public void LimparPlanoAgendado(DateTime agora)
+    {
+        if (PlanoPlataformaIdAgendado is null) return;
+        PlanoPlataformaIdAgendado = null;
+        UpdatedAt = agora;
+    }
+
     public Result AplicarPlanoAgendado(decimal novoValor, DateTime agora)
     {
         if (PlanoPlataformaIdAgendado is null)
