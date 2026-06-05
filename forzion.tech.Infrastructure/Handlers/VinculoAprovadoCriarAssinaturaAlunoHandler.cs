@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +11,7 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
     IPacoteRepository pacoteRepository,
     IAssinaturaAlunoRepository assinaturaRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
+    ITreinadorRepository treinadorRepository,
     IUnitOfWork unitOfWork,
     ILogger<VinculoAprovadoCriarAssinaturaAlunoHandler> logger) : IDomainEventHandler<VinculoAprovadoEvent>
 {
@@ -19,6 +21,13 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
         if (vinculo?.PacoteId is null)
         {
             logger.LogDebug("Vínculo {VinculoId} sem pacote — assinatura não criada.", domainEvent.VinculoId);
+            return;
+        }
+
+        var treinador = await treinadorRepository.ObterPorIdAsync(domainEvent.TreinadorId, cancellationToken).ConfigureAwait(false);
+        if (treinador?.ModoPagamentoAluno == ModoPagamentoAluno.Externo)
+        {
+            logger.LogDebug("Treinador {TreinadorId} no modo Externo — assinatura não criada.", domainEvent.TreinadorId);
             return;
         }
 
