@@ -9,11 +9,13 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 
 ## STACK & GATE
 - SDK: Stripe.net `51.1.0` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
-- `IStripeService` (Application/Interfaces): 7 métodos:
+- `IStripeService` (Application/Interfaces): 9 métodos:
   - `CriarContaConnectAsync(email, nome, ct)` → `accountId`
   - `GerarLinkOnboardingAsync(accountId, urlRetorno, urlCancelamento, ct)` → URL
-  - `CriarPixPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `PixPaymentResult(intentId, qrCode, qrCodeUrl, expiracao)`
-  - `CriarCartaoPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `CartaoPaymentResult(intentId, clientSecret)`
+  - `CriarPixPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `PixPaymentResult(intentId, qrCode, qrCodeUrl, expiracao)` (fluxo aluno — Connect + fee split)
+  - `CriarCartaoPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `CartaoPaymentResult(intentId, clientSecret)` (fluxo aluno — Connect + fee split)
+  - `CriarPixPlataformaPaymentIntentAsync(valor, pagamentoTreinadorId, ct)` → `PixPaymentResult` — **plano do treinador**: valor CHEIO p/ conta da plataforma (sem `accountId`/`TransferData`/`ApplicationFeeAmount`/`taxaPercent`). Idempotency key `pagamento-{guid_n}`.
+  - `CriarCartaoPlataformaPaymentIntentAsync(valor, pagamentoTreinadorId, ct)` → `CartaoPaymentResult` — idem, cartão.
   - `ContaEstaAtivadaAsync(accountId, ct)` → `bool` (poll `account.ChargesEnabled`)
   - `ValidarWebhookAsync(payload, assinaturaHeader)` → `bool` (`EventUtility.ConstructEvent` HMAC-SHA256)
   - `ListarEventosDesdeAsync(desdeUtc, ct)` → `IReadOnlyList<StripeEventSummary>` (reconciliação — ver §RECONCILIAÇÃO)
@@ -41,14 +43,23 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 ## COMPONENTES
 - `StripeService` (Infrastructure/Services) — implementa `IStripeService`. Wrapper fino sobre Stripe.net SDK; sem retry custom.
 - `MoneyCentavos` (Application/UseCases/Pagamentos) — `ToCentavos(valor)`, `CalcularTaxaCentavos(valorCentavos, taxaPercent)`, `ValorETaxaCentavos(valor, taxaPercent)`. Truncamento deliberado (`(long)`), 8 invariantes em property tests (F16).
-- `ProcessarWebhookStripeHandler` (Application/UseCases/Pagamentos/ProcessarWebhookStripe) — eventos: `payment_intent.succeeded` → MarcarPago + AssinaturaAluno.Ativar() + AgendarProximaCobranca(+1mês); `payment_intent.payment_failed` → MarcarFalhou; `payment_intent.canceled` → MarcarExpirado (Stripe envia auto após `ExpiresAfterSeconds=3600` no Pix); `account.updated` (chargesEnabled=true) → ContaRecebimento.ConfirmarOnboarding; `charge.refunded` → MarcarEstornado (refund manual treinador via Dashboard); `charge.dispute.created` → MarcarEmDisputa + assinatura Ativa → Inadimplente. Default → log + ignore.
-- `StripeWebhookParser` (Application/UseCases/Pagamentos/ProcessarWebhookStripe) — parse JsonDocument: type, paymentIntentId, accountId, chargesEnabled, amountRefundedCents (charge.refunded), motivoDisputa (charge.dispute.created). Para `charge.refunded`/`charge.dispute.created`, `paymentIntentId` é lido de `data.object.payment_intent` (Charge/Dispute apontam pro PI subjacente).
+- `ProcessarWebhookStripeHandler` (Application/UseCases/Pagamentos/ProcessarWebhookStripe) — os 3 `payment_intent.*` BIFURCAM por `evento.TipoMetadata == "plano_treinador"` (metadata `tipo`): plano do treinador → `ProcessarPagamentoTreinador{Pago,Falhou,Transicao}Async` (sem cross-account); aluno → caminho Connect abaixo. **Aluno**: `payment_intent.succeeded` → MarcarPago + RegistrarPagamentoRegularizado + (se Pendente) Ativar() + AgendarProximaCobranca(+1mês); `payment_intent.payment_failed` → MarcarFalhou + AssinaturaAluno.RegistrarPagamentoFalho; `payment_intent.canceled` → MarcarExpirado (Stripe envia auto após `ExpiresAfterSeconds=3600` no Pix). **Plano treinador**: succeeded → `PagamentoTreinador.MarcarPago` + (se `Finalidade==Cadastro`) `FinalizarCadastroAsync` no MESMO commit (AssinaturaTreinador.Ativar + AgendarProximaCobranca + Treinador.ConfirmarPagamentoPlano + `Conta.EmitirRegistro` que dispara a verificação de e-mail adiada); failed → MarcarFalhou + AssinaturaTreinador.RegistrarPagamentoFalho; canceled → MarcarExpirado. Comuns aos dois fluxos: `account.updated` (chargesEnabled=true) → ContaRecebimento.ConfirmarOnboarding; `charge.refunded` → MarcarEstornado (refund manual treinador via Dashboard); `charge.dispute.created` → MarcarEmDisputa + assinatura Ativa → Inadimplente. Default → log + ignore. Retorna `ProcessarEventoResultado` (Aplicado/JaConsistente/Ignorado) p/ reconciliação.
+- `StripeWebhookParser` (Application/UseCases/Pagamentos/ProcessarWebhookStripe) — parse `JsonNode`: type, paymentIntentId, accountId, chargesEnabled, amountRefundedCents (charge.refunded), motivoDisputa (charge.dispute.created), **tipoMetadata** (`data.object.metadata.tipo`, só p/ `payment_intent.*` — discrimina plano-treinador). Para `charge.refunded`/`charge.dispute.created`, `paymentIntentId` é lido de `data.object.payment_intent` (Charge/Dispute apontam pro PI subjacente).
 - `IniciarOnboardingTreinadorHandler` (Application/UseCases/Treinadores/IniciarOnboarding) — idempotente: cria ContaRecebimento se ausente, cria Stripe Connect account se StripeConnectAccountId vazio, gera link onboarding sempre.
 - `VerificarOnboardingTreinadorHandler` (Application/UseCases/Treinadores/VerificarOnboarding) — short-circuit se OnboardingCompleto; senão poll `account.ChargesEnabled` + ConfirmarOnboarding local. Retorna `OnboardingStatusResponse(OnboardingCompleto, ContaConfigurada)`.
 - `GerarCobrancaMensalHandler` (Application/UseCases/Pagamentos/GerarCobrancaMensal) — **F12 protege race**. Wrap em `IsolationLevel.Serializable` tx: SELECT pendente → se pendente.StripePaymentIntentId não-null → retorna idempotente; senão MarcarFalhou + Pagamento.Criar + commit. Fora tx: chama StripeService.CriarPix/CartaoPaymentIntent + DefinirDadosPix/Cartao + commit. Catch → MarcarFalhou + rethrow.
 - `Pagamento` (Domain/Entities) — agregado: Status (Pendente → Pago/Falhou/Expirado; Pago → Estornado/EmDisputa, transições guard'd via DomainException); `DefinirDadosPix`/`DefinirDadosCartao` setam StripePaymentIntentId; PixExpiracao info-only (não auto-marca Expirado — vem do webhook). `MarcarEstornado()` preserva `DataPagamento` + dispara `PagamentoEstornadoEvent` (e-mail + WhatsApp pro aluno). `MarcarEmDisputa(motivo)` preserva `DataPagamento` + dispara `PagamentoEmDisputaEvent` (e-mail urgente + alert log Critical pro treinador; aluno NÃO notificado — já sabe). Refund NÃO cascateia em cancelamento de assinatura; disputa **força** Ativa → Inadimplente via `AssinaturaAluno.MarcarInadimplentePorDisputa` (congelamento imediato, não espera contador).
 - `AssinaturaAluno` (Domain/Entities) — agregado: Status (Pendente → Ativa → Inadimplente/Cancelada), `DataProximaCobranca`. `Ativar()` e `AgendarProximaCobranca(novaData, agora)` chamadas no webhook payment_intent.succeeded. `MarcarInadimplentePorDisputa(agora)` força Ativa → Inadimplente com `TentativasFalhasConsecutivas = LimiteTentativasFalhas` (sinalização) — chamado em `charge.dispute.created` (fraude/desistência drástica do aluno).
 - `ContaRecebimento` (Domain/Entities) — agregado por treinador: StripeConnectAccountId + OnboardingCompleto. `ConfigurarStripeConnect(accountId)` + `ConfirmarOnboarding()` idempotentes.
+
+### Plano do treinador (billing direto-plataforma — commits dbf0074/9cc27e4)
+Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO usa Connect; valor cheio vai pra plataforma. Entidade e fluxo separados do billing do aluno.
+- `PagamentoTreinador` (Domain/Entities) — agregado: Status (Pendente → Pago/Falhou/Expirado), `Finalidade` (enum `FinalidadePagamentoTreinador`: `Cadastro=0`/`Renovacao=1`/`TrocaPlano=2`), `Metodo`, `StripePaymentIntentId`. `Criar(treinadorId, assinaturaTreinadorId, valor, finalidade, agora, metodo)`; `DefinirDadosPix`/`DefinirDadosCartao`; `MarcarPago`/`MarcarFalhou`/`MarcarExpirado`. `MarcarPago` dispara `PagamentoTreinadorPagoEvent`.
+- `IPagamentoTreinadorRepository` (Application/Interfaces/Repositories) — `ObterPorStripePaymentIntentIdAsync`, `ObterPendentePorAssinaturaAsync`, `AdicionarAsync`. Impl `PagamentoTreinadorRepository` (Infrastructure).
+- `IniciarPagamentoPlanoHandler` (Application/UseCases/Treinadores/IniciarPagamentoPlano) — fluxo CADASTRO: gate `Treinador.Status==AguardandoPagamento` + AssinaturaTreinador Pendente. Tx serializable (mesma estratégia G-PAY-1 do GerarCobrancaMensal): re-uso de pendente OU marca zumbi Falhou + `PagamentoTreinador.Criar(Cadastro)`; chama `CriarPix/CartaoPlataformaPaymentIntentAsync(valor, pagamento.Id)` + DefinirDados; single commit. Valor vem da assinatura (nunca do caller).
+- `GerarCobrancaPlanoTreinadorHandler` (Application/UseCases/Treinadores/GerarCobrancaPlanoTreinador) — RENOVAÇÃO mensal: chamado pelo cron `/internal/processar-renovacoes-treinador` por assinatura de treinador a vencer. Cria `PagamentoTreinador(Renovacao)` + PaymentIntent plataforma.
+- `TrocarPlanoTreinadorHandler` (Application/UseCases/Treinadores/TrocarPlanoTreinador) — TROCA de plano: gera `PagamentoTreinador(TrocaPlano)` p/ o novo plano. Frontend `treinador/plano/page.tsx`.
+- `PagamentoTreinadorPagoHandler` (Infrastructure/Handlers) — handler de `PagamentoTreinadorPagoEvent`.
 
 ## FLUXOS
 
@@ -75,7 +86,8 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 - `POST /webhooks/stripe` — público, rate limit `webhook`. LimitedStream 64KB DoS guard.
 - Header `Stripe-Signature` validado via `EventUtility.ConstructEvent` (HMAC-SHA256 com `Stripe:WebhookSecret`).
 - 6 eventos relevantes: `payment_intent.{succeeded,payment_failed,canceled}` + `account.updated` + `charge.refunded` + `charge.dispute.created`. Outros → 200 log+ignore.
-- **Idempotência**: cada handler curto-circuita por estado terminal — `Pagamento.Status != Pendente` para os 3 `payment_intent.*`; `Status == Estornado` para `charge.refunded`; `Status == EmDisputa` para `charge.dispute.created`. Stripe entrega at-least-once. `ConfirmarOnboarding` curto-circuita se já `OnboardingCompleto=true`.
+- **Gate plano-treinador**: os 3 `payment_intent.*` ramificam por `metadata.tipo == "plano_treinador"` (parser extrai como `TipoMetadata`) → `ProcessarPagamentoTreinador*Async` (sobre `PagamentoTreinador`, sem cross-account); ausente/outro → fluxo aluno (Connect). Plano-treinador NÃO tem `account` (direto-plataforma).
+- **Idempotência**: cada handler curto-circuita por estado terminal — `Status != Pendente` para os 3 `payment_intent.*` (vale p/ Pagamento e PagamentoTreinador); `Status == Estornado` para `charge.refunded`; `Status == EmDisputa` para `charge.dispute.created`. Stripe entrega at-least-once. `ConfirmarOnboarding` curto-circuita se já `OnboardingCompleto=true`.
 - **Cross-account defense**: `ValidarConnectAccountAsync` compara `event.AccountId` vs `ContaRecebimento.StripeConnectAccountId` do treinador dono da assinatura. Mismatch → log warning + ignore (defesa contra replay de webhook de outro account assinado pelo mesmo secret). Não aplicada em `charge.refunded`/`charge.dispute.created` (sem vetor útil — refund/dispute invertem dinheiro do próprio destino).
 
 ## ENDPOINTS
@@ -86,18 +98,18 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 | POST /treinador/pagamentos/cobrar/{id}?metodo=Pix\|Cartao | Treinador | GerarCobrancaMensalHandler | 200 `PagamentoResponse` (treinador, sem ClientSecret) | 403, 404, 409, 422, 500 |
 | GET /aluno/pagamentos/{id} | Aluno | ObterStatusPagamentoHandler | 200 `PagamentoResponse` (aluno, COM ClientSecret) | 403, 404 |
 | GET /aluno/pagamentos/assinatura/{id} | Aluno | ListarPagamentosAssinaturaAlunoHandler | 200 `PagamentoResponse[]` | 403, 404 |
-| POST /internal/processar-renovacoes | X-Internal-Key | inline `PagamentosEndpoints.cs:79` | 200 `{processadas, falhas}` | 401 |
+| POST /internal/processar-renovacoes | X-Internal-Key | inline lambda em `PagamentosEndpoints` (loop GerarCobrancaMensalHandler) | 200 `{processadas, falhas}` | 401 |
+| POST /internal/processar-renovacoes-treinador | X-Internal-Key | inline lambda em `PagamentosEndpoints` (loop GerarCobrancaPlanoTreinadorHandler) | 200 `{processadas, falhas}` | 401 |
 | POST /webhooks/stripe | nenhum (Stripe-Signature) | ProcessarWebhookStripeHandler | 200 (ok/ignorado) | 400 (assinatura inválida ou payload >64KB) |
 
-⚠ `DomainException` → **422** (UnprocessableEntity, `GlobalExceptionHandler`), NÃO 400. Só `ValidationException` (FluentValidation, formato) → 400.
+⚠ Mapa de status `DomainException`→422 / `ValidationException`→400 (`GlobalExceptionHandler`): canônico em [specification-email] §ENDPOINTS.
 
 ## INFRA / ROTEAMENTO
-- nginx (`nginx/nginx.conf:55`): `location /webhooks/ { proxy_pass http://backend:8080; }` ANTES do `location /` (frontend). Necessário pra header `Stripe-Signature` cru no backend.
-- ⚠ NÃO usar `/api/backend/[...path]` (proxy SPA) pra webhook — esse só repassa `content-type`/`accept` e injeta Bearer. Webhook Stripe deve apontar pra `https://<host>/webhooks/stripe`.
+- Roteamento nginx do bloco `location /webhooks/` → backend (ANTES de `location /`): canônico em [specification-email] §INFRA/ROTEAMENTO. Aplica igual ao Stripe — necessário pra header `Stripe-Signature` cru. Webhook Stripe aponta pra `https://<host>/webhooks/stripe` (NUNCA `/api/backend/[...path]`, que descarta o header e injeta Bearer).
 - compose homolog (`docker-compose.homolog.yml`) + local (`docker-compose.yml`/`.env.example`) mapeiam `Stripe__*` + `Internal__ApiKey`. NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY no container do frontend.
 
 ### Stripe Test Mode vs Live Mode (chaves por ambiente)
-Stripe não tem sandbox compartilhada — diferencia por chave. Cada ambiente usa um par próprio:
+**Canônico**: Stripe não tem sandbox/mode-flag — `sk_test_*` vs `sk_live_*` discrimina; cada ambiente usa par próprio + WebhookSecret por-endpoint (hmg≠prod obrigatório).
 
 | Ambiente | Mode | SecretKey prefix | PublishableKey prefix | Webhook endpoint | Webhook signing secret |
 |----------|------|------------------|------------------------|------------------|------------------------|
@@ -105,9 +117,7 @@ Stripe não tem sandbox compartilhada — diferencia por chave. Cada ambiente us
 | **Homolog** | Test | `sk_test_*` | `pk_test_*` | `https://homologacao.forzion.tech/webhooks/stripe` | painel Stripe → Test → Webhooks → endpoint hmg |
 | **Prod** | Live | `sk_live_*` | `pk_live_*` | `https://app.forzion.tech/webhooks/stripe` | painel Stripe → Live → Webhooks → endpoint prod |
 
-**Test mode em hmg cobra ZERO** — cartões `4242 4242 4242 4242` funcionam end-to-end, PaymentIntent + webhook fluem, Connect Express test accounts liberam sem KYC real. Refunds não necessários.
-
-**⚠ NUNCA usar `sk_live_*` em hmg** — pagamentos viram cobrança real, onboarding exige KYC real, reverter requer refund manual.
+**Test mode em hmg cobra ZERO** (cartões `4242…` e2e, PaymentIntent+webhook fluem, Connect Express test sem KYC). **⚠ NUNCA `sk_live_*` em hmg** (cobrança real + KYC real + reverter exige refund manual).
 
 ### Setup webhook (per ambiente, hmg e prod)
 1. Login Stripe → toggle **Test mode** (hmg) ou **Live mode** (prod) no canto superior direito do painel.
@@ -150,6 +160,7 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 - `INTERNAL_API_KEY` deve casar exato com env `Internal:ApiKey` do backend.
 - Sem fallback interno (não há `IHostedService`/`BackgroundService` pra renovação) — se workflow morre, renovação para.
 - **Monitoring:** step `if: failure()` cria GitHub Issue automática com label `billing-renewal-failed` (via `actions/github-script@v7`). GitHub notifica Arthur por e-mail/Slack se inscrito.
+- **Plano do treinador**: workflow paralelo `billing-renewal-treinador.yml` (cron `0 8 * * *` UTC) → `POST /internal/processar-renovacoes-treinador` → loop `GerarCobrancaPlanoTreinadorHandler`. Mesmo padrão X-Internal-Key + Issue on failure.
 
 ## RECONCILIAÇÃO PERIÓDICA (safety net webhook)
 - Workflow `.github/workflows/billing-reconciliation.yml` — cron `0 4 * * 1` UTC (Segunda 04:00 UTC, weekly); `workflow_dispatch` com input `desde_utc`.
@@ -207,7 +218,7 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
   - `PagamentoEmDisputaEmailTreinadorHandler` (Infrastructure/Notifications/Email) — resolve `Assinatura → Treinador → Conta.Email`, envia e-mail **URGENTE** via `EmailTemplates.PagamentoEmDisputa(nomeTreinador, nomeAluno, valor, motivo)`. CTA aponta para `https://dashboard.stripe.com/disputes` (Stripe não tem API para responder dispute — UI deles obrigatória).
   - `PagamentoEmDisputaAlertHandler` (Infrastructure/Notifications/Alerts) — `LogLevel.Critical` com campos estruturados (`PagamentoId`, `AssinaturaAlunoId`, `Valor`, `MotivoDisputa`). Arthur acompanha via agregador de log.
 - **Aluno NÃO é notificado**: cliente que abriu disputa já sabe (foi ele que iniciou). Spammar com e-mail redundante adiciona ruído sem valor.
-- Treinador tem **7-21 dias** para responder a disputa no Stripe Dashboard com evidências (provas de entrega de fichas, registros de execução do aluno, prints de WhatsApp). Sem resposta no prazo → Stripe devolve o valor ao cliente + cobra fee de chargeback (~US$ 15). Não temos UI própria pra essa etapa.
+- Treinador responde a disputa em **7-21d** no Stripe Dashboard c/ evidências (entrega de fichas, execuções, prints WhatsApp); sem resposta no prazo → reversão do valor + fee ~US$15. Sem UI própria.
 - Reconciliação: `ListarEventosDesdeAsync` inclui `charge.dispute.created` no filtro — disputa nunca passa despercebida se webhook morrer.
 - Pós-disputa: se treinador ganha (evidências aceitas), valor permanece, mas estado `Pagamento.EmDisputa` é terminal (sem auto-volta para Pago). Operação de "fechar disputa" deve ser feita manualmente no admin se for relevante para histórico — não há fluxo automatizado por enquanto.
 
@@ -236,5 +247,5 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 - ApiKey passada explícita em `RequestOptions` por chamada — evita poluição global se múltiplos accounts no futuro.
 - `intent.NextAction?.PixDisplayQrCode` lança `InvalidOperationException` se Stripe não retornar dados Pix (geralmente conta sem capability `pix` aprovada). Caller (GerarCobrancaMensalHandler) catch + MarcarFalhou.
 - Pix `ExpiresAfterSeconds=3600` (1h). Stripe envia `payment_intent.canceled` ao expirar — único caminho pra MarcarExpirado.
-- Sem cleanup proativo de pagamentos zombie (pendente sem StripePaymentIntentId após crash). `GerarCobrancaMensal` re-uso de pendente lida com isso: marca Falhou + cria novo na próxima tentativa (idempotente via tx serializable).
-- TestMode vs Live: Stripe não tem "mode flag" — chave `sk_test_*` vs `sk_live_*` discrimina. Cada ambiente tem chave separada. WebhookSecret é POR-endpoint (homolog≠prod obrigatório).
+- Sem cleanup proativo de pagamentos zombie (pendente sem StripePaymentIntentId após crash). `GerarCobrancaMensal`/`IniciarPagamentoPlano` re-uso de pendente lida com isso: marca Falhou + cria novo na próxima tentativa (idempotente via tx serializable).
+- Test/Live + WebhookSecret por-endpoint: ver §Stripe Test Mode vs Live Mode (canônico).

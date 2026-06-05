@@ -1,9 +1,5 @@
 # specification-frontend-ui — design system & acessibilidade (forzion.tech)
-DOC PARA AGENTES. Fonte de verdade de design tokens, inventário de componentes UI/forms reutilizáveis, governance de componentes e conformance de acessibilidade. Formato denso, agent-oriented. Cross-ref: [specification-frontend] (App Router/forms/validação/TEMA MUI básico/RESPONSIVIDADE — NÃO duplicar), [specification-tests] (harness a11y), [specification-lgpd] (ConsentBanner), [specification-observability] (lighthouse a11y).
-
-## MANUTENÇÃO DESTE ARQUIVO
-Atualizar QUANDO a tarefa tocar: tema/design tokens (`src/lib/theme/index.ts`), componentes em `src/components/ui/*` ou `src/components/forms/*` (criar/alterar/remover), padrões de a11y (aria, foco, keyboard nav, reduced-motion), conformance WCAG/harness a11y, responsividade (breakpoints/BottomNav/input fontSize), ou divergência F18 (color-contrast).
-Regras: vive em `specs/` versionado/commitado (NUNCA `.specs/`). NÃO duplicar o TEMA MUI básico de [specification-frontend] (§TEMA MUI) nem §RESPONSIVIDADE — aqui se EXPANDE (tokens exatos, taxonomy, governance, conformance) e se REFERENCIA. Notação compacta; toda afirmação ancorada em path real. Ao criar/alterar componente, este doc + story + a11y test são atualizados na MESMA tarefa (ver §GOVERNANCE).
+DOC AGENTES (denso). Fonte de verdade de design tokens, inventário de componentes UI/forms, governance e conformance a11y. Atualizar NA MESMA TAREFA ao tocar tema/tokens (`src/lib/theme/index.ts`), `src/components/{ui,forms}/*`, padrões a11y (aria/foco/keyboard/reduced-motion), conformance WCAG/harness, responsividade, ou F18 (color-contrast); + story + a11y test (ver §GOVERNANCE). Vive em `specs/` (commitar; NUNCA `.specs/`). EXPANDE e REFERENCIA, NÃO duplica o TEMA MUI básico / §RESPONSIVIDADE de [specification-frontend]; toda afirmação ancorada em path real. Cross-ref: [specification-frontend], [specification-tests] (harness a11y), [specification-lgpd] (ConsentBanner), [specification-observability] (lighthouse a11y).
 
 ## DESIGN TOKENS (`src/lib/theme/index.ts`)
 Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` aplicado (paginação, datas, validações MUI em pt-BR).
@@ -107,7 +103,7 @@ NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/form
 
 ### CONFORMANCE WCAG 2.1 AA — color-contrast (F18 RESOLVIDO)
 - **Conformance real**: WCAG 2.1 AA pleno, **incluindo 1.4.3 contraste**. `color-contrast` gateia no `runAxe` default (`e2e/utils/axe.ts`), aplicado por `e2e/specs/a11y/all-pages-axe.spec.ts` (`expect(violations).toEqual([])`) sobre rotas públicas + autenticadas.
-- **Fix de tema** (`src/lib/theme/index.ts`): `text.secondary` `#6B7280`→`#4B5563` (gray-600; 7.6:1 #FFF / 7.1:1 #F7F8FA — antes ≈4.6:1 em #F7F8FA, fonte das violações: secondary, placeholder, disabled, helperText herdam disto); `error.main` `#D32F2F`→`#C62828` (5.6:1 / 5.3:1; branco-sobre-error em botão = 5.6:1 AA). `text.primary #111827` e `primary.contrastText #1A1A1A` sobre `primary #F5C400` (10.6:1) já passavam.
+- **Fix de tema** (`src/lib/theme/index.ts`): `text.secondary` `#6B7280`→`#4B5563`, `error.main` `#D32F2F`→`#C62828` (ratios/AA na §Paleta). Secondary era fonte das violações (placeholder/disabled/helperText herdam dele). `text.primary` e `primary.contrastText` sobre `primary` já passavam.
 - **Removido**: ratchet spec `color-contrast-ratchet.spec.ts` e helper `runAxeStrict` (não havia outro uso). Gate hard ON — sem mitigação por ratchet.
 - **Lighthouse**: a11y 0.95 (que inclui contraste) agora alinhado ao axe E2E — fontes de verdade convergentes.
 

@@ -13,7 +13,7 @@ Atualizar quando: mudar matriz de versões CI (node/dotnet), surgir novo gate/wo
 | OS | Linux | Windows + Docker Desktop | CRLF, MSYS path-mangling, fsync de volume glacial. |
 
 ## 1. REPRODUÇÃO POR GATE (comando local · rodável? · caveat)
-Gate `ci.yml` = `[test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend]`. Workflows extra em PR homolog: `semgrep`, `openapi-drift`, `hygiene`, `contract`.
+Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8. Workflows extra em PR homolog: `semgrep`, `openapi-drift`, `hygiene`, `contract`.
 
 | Gate/check | Comando local | Rodável Win? | Caveat |
 |---|---|---|---|
@@ -46,13 +46,13 @@ Gate `ci.yml` = `[test-backend-unit, test-backend-integration, test-frontend, bu
 - **gitleaks ruído local**: sem `--no-git` ignorar .gitignore? não — gitleaks `--no-git` escaneia TUDO presente (inclui `.next`/`node_modules` que o CI não tem). Remover `.next` p/ espelhar o checkout do CI.
 
 ## 3. COVERAGE BACKEND — números reais medidos (unit, `Category!=Integration`)
-Medido 2026-05-30 (idêntico SDK 8 e 10 → não é artefato de SDK):
-| Módulo | Line | Branch | Method | Gate CI | Status |
-|---|---|---|---|---|---|
-| Domain | 94.76% | 93.09% | 93.77% | branch 75 / line+method 85 | ✅ |
-| Application | 94.77% | 84.51% | **95.86%** | branch 75 / line+method 85 | ✅ (resolvido — commit 947ff91) |
-| Api | 87.74% | 55.95% | 79.03% | line 85 / method 70 | ✅ |
-| Infrastructure | 6.2% | 67.15% | 34.87% | (só gate na suíte de integração: branch 35) | n/a unit |
+Medido 2026-05-30 (idêntico SDK 8 e 10 → não é artefato de SDK). Gates (pisos) por módulo: CANÔNICO em [specification-tests] §8 — aqui só os reais:
+| Módulo | Line | Branch | Method | Status vs gate |
+|---|---|---|---|---|
+| Domain | 94.76% | 93.09% | 93.77% | ✅ |
+| Application | 94.77% | 84.51% | **95.86%** | ✅ (resolvido — commit 947ff91) |
+| Api | 87.74% | 55.95% | 79.03% | ✅ |
+| Infrastructure | 6.2% | 67.15% | 34.87% | n/a unit (branch 35 só na suíte de integração) |
 - ✅ **ACHADO RESOLVIDO (commit 947ff91)**: o gate `test-backend-unit > Coverage Application (line/method 85)` chegou a FALHAR (`-p:ThresholdType="line,method"` exige AMBOS ≥85; method estava 84.51 — features LGPD/WhatsApp/admin-stats adicionaram handlers sem cobertura de método). RESOLUÇÃO aplicada: +51 testes unit cobrindo métodos/DTOs/lambdas descobertos (LGPD/admin/treinos/pagamentos) → Application agora line 94.77% / branch 84.51% / **method 95.86%**, gate verde. O comentário de baseline conservador no `ci.yml` (method 93.1%) continua abaixo do real (95.86%) — piso intacto, não abaixado ([specification-tests] §8).
 - Reproduzir 1 gate: `dotnet test forzion.tech.Tests --no-build -c Release --filter "Category!=Integration" -p:CollectCoverage=true -p:Include="[forzion.tech.Application]*" -p:Threshold=85 -p:ThresholdType="line,method" -p:ThresholdStat=Total` (rebuild antes; não encadear vários).
 

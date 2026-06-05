@@ -1,10 +1,6 @@
 # specification-frontend — frontend (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, agent-oriented. Consultar antes de qualquer alteração de rota, auth, layout, API proxy, testes ou segurança. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums), [specification-frontend-ui] (design tokens/componentes/a11y), [specification-seo] (metadata/OG/crawl), [specification-observability] (RUM Web Vitals/Sentry), [specification-security] (CSP/headers/rate-limit frontend).
-
-## MANUTENÇÃO DESTE ARQUIVO
-- Manter atualizado NA MESMA TAREFA de mudança relevante em: rotas, grupos de layout, auth, API proxy, componentes estruturais, strategy de testes, deps críticas, headers de segurança.
-- Vive em `specs/` (versionado; commitar). NÃO duplicar infra/DB — referenciar specs próprios.
+DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESMA TAREFA ao mudar rota/layout/auth/API-proxy/componente-estrutural/testes/dep-crítica/header-segurança. Vive em `specs/` (commitar); NÃO duplicar infra/DB/tokens — referenciar. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums), [specification-frontend-ui] (design tokens/componentes/a11y), [specification-seo] (metadata/OG/crawl), [specification-observability] (RUM/Sentry), [specification-security] (CSP/headers/rate-limit).
 
 ## STACK
 - Next.js 16 (App Router) + React 19 + TypeScript 6. `frontend/`.
@@ -14,7 +10,6 @@ DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, ag
 - JWT client-side: `jose` (verificação no Route Handler `/api/auth/me`).
 - Pagamentos: `@stripe/react-stripe-js` + `@stripe/stripe-js`.
 - Relatórios: `exceljs` (geração de planilhas cliente).
-- Estado global: Zustand (disponível; uso pontual).
 - Datas: `dayjs`.
 - Observabilidade: Sentry (`@sentry/nextjs`) via `withSentryConfig` em `next.config.ts`.
 
@@ -193,14 +188,11 @@ interceptor resposta:
 - **Inatividade**: `useInactivity` — warn aos N minutos, logout automático aos 20 min.
 
 ## TEMA MUI (`src/lib/theme/index.ts`)
-- `primary`: #F5C400 (amarelo), `secondary`: #1A1A1A. `background.default`: #F7F8FA.
-- Font: Inter (Google Fonts, pesos 400/500/600/700, `display: swap`).
-- `borderRadius`: 12 (global), 16 (Card/Paper), 10 (Button/Input).
-- `ptBR` locale aplicado.
-- Input `fontSize: 1rem` em mobile → previne zoom automático iOS Safari.
+Básico aqui; tokens exatos (paleta/radius/tipografia/component-defaults/anti-zoom) em [specification-frontend-ui] §DESIGN TOKENS — NÃO duplicar.
+- Marca: `primary` amarelo, `secondary` quase-preto, `background.default` cinza claro. Font Inter (Google Fonts, `display:swap`). `ptBR` locale.
 
 ## RESPONSIVIDADE
-- Breakpoints MUI (`xs/sm/md/lg`): layout adapta em `<md` para mobile.
+- Breakpoints MUI default; layout adapta em `<md` para mobile (detalhes/tokens em [specification-frontend-ui] §RESPONSIVIDADE).
 - `viewportFit: "cover"` + `env(safe-area-inset-bottom)` para iPhone notch.
 - BottomNavigation com `showLabels: navItems.length <= 4`.
 - Padding do main: `p: {xs:2.5, md:3.5}`, `pb: {xs:"calc(72px+safe-area)", md:3.5}`.
@@ -293,12 +285,11 @@ Backend rejeita `AtribuirPlano` com tier=Elite → `PlanoPlataformaErrors.EliteI
 - **ErrorBoundary** global em root layout + por grupo de rota. `global-error.tsx` para erros fora do layout.
 
 ## DICAS / GOTCHAS
-- `legacy-peer-deps=true` em `.npmrc`: necessário para `npm install` com madge@8 + TS6. NÃO remover sem atualizar madge.
+- `legacy-peer-deps=true` em `.npmrc` (madge@8 + TS6) — ver §TYPESCRIPT; NÃO remover sem atualizar madge.
 - npm override `"@pact-foundation/pact": { "https-proxy-agent": "^7.0.6" }`: pact v16 bundla `https-proxy-agent@9` (ESM puro); override força CJS-compatível. NÃO remover ao atualizar pact.
 - jsdom mantido em `^26` (não `^27`): jsdom 27 tem dep `@csstools/css-calc` ESM-only que quebra vitest pool `forks` (Node 20 sem `--experimental-require-module`).
 - `SBOM` usa `--ignore-npm-errors` para tolerar `typescript@6 invalid` (peer dep madge) e pacotes `@emnapi/*`/`@napi-rs/*` extraneous (deps opcionais NAPI-RS do pact v16).
-- AppLayout detecta auth via `useAuth`; se `!user` chama `/api/auth/logout` antes de redirecionar para /login (evita loop: middleware veria cookie válido e redirecionaria de volta).
-- Middleware NÃO interceta `/api/*` (ver `matcher`). Auth das API routes é responsabilidade dos próprios Route Handlers.
-- `NEXT_PUBLIC_API_BASE_URL` não definido em prod → apiClient usa `/api/backend` (proxy Next.js) — correto para produção onde não há acesso direto ao backend.
-- `API_BASE_URL` é server-side (sem NEXT_PUBLIC) → NÃO exposto ao browser; usado apenas nos Route Handlers.
+- AppLayout-logout-antes-de-redirect (evita loop com middleware): ver §APPLAYOUT.
+- Middleware NÃO interceta `/api/*`; auth das API routes é dos próprios Route Handlers: ver §MIDDLEWARE.
+- `API_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL` (server vs client, proxy `/api/backend` em prod): ver §ENV + §API PROXY.
 - Rate limit é em memória por processo; em deploy multi-instância (horizontal) não é compartilhado — aceitável para homolog/prod single-instance.

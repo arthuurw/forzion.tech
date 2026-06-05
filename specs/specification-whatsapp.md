@@ -8,7 +8,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 - Mudança de tabela → [specification-db]. Novo domain event → [specification-model]. Handler de e-mail correlato → [specification-email].
 
 ## STACK & GATE
-- Provedor: **Meta WhatsApp Cloud API** (Graph API), integração DIRETA (sem BSP → sem markup).
+- Meta Cloud API (ver AGENTS.md STACK): detalhe = Graph API, integração DIRETA sem BSP (sem markup).
 - `IWhatsAppNotifier` (Application/Interfaces):
   - `bool Habilitado` — true no Meta, false no Null (simetria com `IEmailService`; handlers gateiam cedo).
   - `Task SendAsync(phone, message, ct)` — texto livre (sessão; só entrega dentro da janela 24h).
@@ -81,14 +81,14 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 - Endpoint em `Api/Endpoints/Pagamentos/WebhookEndpoints.cs` (AllowAnonymous + rate-limit "webhook"). nginx já roteia `/webhooks/` → backend (ver [specification-email]).
 
 ## SEPARAÇÃO POR AMBIENTE
-- `EnvironmentWhatsAppDecorator` (análogo a `EnvironmentEmailDecorator`). Discriminador `WhatsAppSettings.MarcarComoTeste`: `false` (prod) → passthrough; `true` (não-prod) → `ResolverDestinatario`: se `RedirecionarDestinatariosPara` vazio OU telefone ∈ `AllowlistTelefones` (comparação só-dígitos) → mantém; senão redireciona p/ 1º alvo + log. Aplica a text e template.
-- ⚠️ Meta Cloud API não tem sandbox de entrega real; alternativa adicional = usar test number Meta (limitado a destinatários pré-cadastrados) no AccessToken de hmg.
+- `EnvironmentWhatsAppDecorator` = mesmo mecanismo de `EnvironmentEmailDecorator` (discriminador `MarcarComoTeste`, `ResolverDestinatario`, redirect/allowlist) — ver [specification-email] §SEPARAÇÃO. **Deltas**: alvo é telefone (não e-mail); `AllowlistTelefones` compara **só-dígitos**; aplica a text E template. Sem banner (só redirect).
+- ⚠️ Meta Cloud API não tem sandbox de entrega real; alternativa = test number Meta (destinatários pré-cadastrados) no AccessToken de hmg.
 
 ## CUSTO & MODELO META (per-message)
 - Desde 01/07/2025: por mensagem, cobra quando *template* é entregue. Categorias marketing / utility / authentication / service. Utility grátis na janela 24h; service grátis.
 - Notifier usa `type:template` → entrega **fora da janela** (corrigido vs `type:text` anterior). ⚠️ **DEPENDÊNCIA EXTERNA**: cada template (16 nomes abaixo) precisa ser **criado e aprovado no Meta Business Manager** (categoria utility/auth, idioma pt_BR, body com variáveis posicionais na ordem do catálogo). Sem aprovação, a Meta rejeita o envio. Ação manual de ops — não automatizável via código.
 - Templates (snake_case): aluno `cobranca_disponivel`,`cobranca_falhou`,`pagamento_estornado`,`assinatura_inadimplente`,`assinatura_reativada`,`assinatura_cancelada`,`bem_vindo_aluno`,`assinatura_criada`,`aluno_inativado`,`vinculo_aprovado`; treinador `treinador_aprovado`,`treinador_reprovado`,`treinador_inativado`,`aluno_cancelou_assinatura`,`pagamento_em_disputa`,`novo_aluno_pendente`.
-- Brasil base (USD/msg, ~2026): marketing ~$0.0625 · auth ~$0.0315 · utility menor + volume. Confirmar rate card no WhatsApp Manager.
+- Brasil base (USD/msg, valores ilustrativos ~2026): marketing $0.0625 · auth $0.0315 · utility menor + volume. Confirmar rate card atual no WhatsApp Manager.
 
 ## TEMPLATES — COPY pt_BR P/ APROVAÇÃO META
 Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUTÁVEL — `SendTemplateAsync` envia N params posicionais; divergir qtd/ordem → Meta rejeita). Todos **categoria Utility**, idioma **Português (BR) / `pt_BR`**, sem header/botões. ⚠️ `Money()` devolve só o número (`149,90`, sem `R$`) → texto inclui `R$ ` antes da var. `metodo` já vem palavra (`cartão de crédito`/`Pix`). Copy é editável; qtd/ordem de vars NÃO.
@@ -122,7 +122,7 @@ Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUT
 
 ## TESTES
 - Unit (xUnit, sem Docker): `MetaWhatsAppCloudNotifierTests`, `NullWhatsAppNotifierTests`, `ProcessarWebhookWhatsAppHandlerTests`, `WhatsAppDeliveryLogTests`, e handler tests dos 5 adaptados + 10 novos (Infrastructure/Notifications/WhatsApp/ e Email/). Cobrem: Habilitado false no-op, entidade não encontrada, telefone null, happy path (assert template Name + body params).
-- Suite não-integração: 1481 testes verdes. E2E/Infra (Testcontainers) exigem Docker → CI.
+- Suíte não-integração: verde. E2E/Infra (Testcontainers) exigem Docker → CI.
 
 ## GAPS / ROADMAP — status
 Paridade email→WhatsApp **FECHADA** (todos os eventos de e-mail relevantes têm WhatsApp; verify/reset e health-report admin permanecem N/A por serem channel-bound/internos). Itens estruturais FECHADOS: type:template, `EnvironmentWhatsAppDecorator`, padronização event-handlers, `Habilitado`, catálogo central, E.164, webhook de status.
@@ -132,7 +132,7 @@ Pendências (NÃO de código):
 - **Fallback de telefone**: requer coluna `contas.telefone` (migration + UI cadastro) — escopo separado se desejado.
 
 ## DICAS / GOTCHAS
-- Sem warning "Serviço de WhatsApp não configurado" no startup = real ativo (Null loga no ctor).
+- Gate Null/real: sem warning no startup = real ativo (Null loga no ctor). Simétrico ao e-mail [specification-email].
 - Mensagem some sem erro? (1) telefone null → skip debug; (2) template não aprovado/idioma errado na Meta → `LogWarning` com body Meta; (3) gate caiu p/ Null.
 - Webhook não chega? Conferir `WebhookVerifyToken` (handshake) e `AppSecret` (assinatura) + rota nginx `/webhooks/`.
 - Referências: [specification-model] (evento `VinculoPendenteCriadoEvent`), [specification-backend] (dispatch), [specification-email] (paralelo + handler reverso), [specification-stripe] (eventos pagamento), [specification-db] (`whatsapp_delivery_logs`, `telefone`).
