@@ -35,7 +35,7 @@ Gate `ci.yml` = `[test-backend-unit, test-backend-integration, test-frontend, bu
 | **E2E Playwright (a11y/color-contrast hard-gate)** | ver §4 | ⚠️ parcial | precisa app no ar + browsers + creds. Público+admin OK local; aluno/treinador bloqueados (§4). |
 
 ## 2. GOTCHAS DE AMBIENTE (Windows/Docker/git-bash)
-- **CRLF**: `dotnet format --verify` rejeita LF. Sub-agents gravam LF → rodar `dotnet format <proj>` antes de commitar. Hook pre-commit pega (ver [specification-git]).
+- **CRLF / SonarAnalyzer warnings**: ver [specification-git] §EDGE CASES e §PRE-COMMIT HOOK — documentação completa está lá (ENDOFLINE, S3267, sequência fix).
 - **MSYS path-mangling (git-bash)**: `docker run -v "$PWD:/repo" … /repo` vira `C:/Program Files/Git/repo` dentro do container ("no such file"). Prefixar `MSYS_NO_PATHCONV=1`.
 - **`/p:` no git-bash**: `dotnet test /p:X=Y` → MSBuild vê `p:X` como 2º projeto (MSB1008). Usar `-p:X=Y`.
 - **coverlet `--no-build` repetido**: rodar várias sessões coverlet seguidas no Windows → merge/lock dos assemblies instrumentados → números poluídos / rc=1 espúrio. Rodar UMA vez (tabela por módulo) ou processos separados.
