@@ -818,4 +818,83 @@ public class ProcessarWebhookStripeHandlerTests
         pagamento.Status.Should().Be(PagamentoStatus.Pendente);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // ── payment_intent.payment_failed treinador (inadimplência) ──────────────────
+
+    [Fact]
+    public async Task HandleAsync_PaymentFailed_PlanoTreinador_MarcaFalhouERegistraFalha()
+    {
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_treinador_fail", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_treinador_fail", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.payment_failed", "pi_treinador_fail"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Falhou);
+        assinatura.TentativasFalhasConsecutivas.Should().Be(1);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentFailed_PlanoTreinador_TerceiraFalha_MarcaInadimplente()
+    {
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow); // 1ª falha
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow); // 2ª falha
+        assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa, "2 falhas ainda não tornam inadimplente");
+
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_treinador_fail3", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_treinador_fail3", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.payment_failed", "pi_treinador_fail3"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        assinatura.TentativasFalhasConsecutivas.Should().Be(3);
+        assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Inadimplente, "3ª falha deve tornar inadimplente");
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentFailed_PlanoTreinador_PagamentoNaoEncontrado_JaConsistente()
+    {
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PagamentoTreinador?)null);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.payment_failed", "pi_nao_existe"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentFailed_PlanoTreinador_PagamentoJaFalhou_Idempotente()
+    {
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_ja_falhou", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        pagamento.MarcarFalhou(DateTime.UtcNow);
+
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_ja_falhou", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.payment_failed", "pi_ja_falhou"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

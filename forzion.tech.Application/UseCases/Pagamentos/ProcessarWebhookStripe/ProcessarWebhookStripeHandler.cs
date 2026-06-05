@@ -64,7 +64,7 @@ public class ProcessarWebhookStripeHandler(
 
             case "payment_intent.payment_failed":
                 return evento.TipoMetadata == TipoPlanoTreinador
-                    ? await ProcessarPagamentoTreinadorTransicaoAsync(evento.PaymentIntentId!, p => p.MarcarFalhou(timeProvider.GetUtcNow().UtcDateTime), cancellationToken).ConfigureAwait(false)
+                    ? await ProcessarPagamentoTreinadorFalhouAsync(evento.PaymentIntentId!, cancellationToken).ConfigureAwait(false)
                     : await ProcessarPagamentoFalhouAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
 
             case "payment_intent.canceled":
@@ -433,6 +433,36 @@ public class ProcessarWebhookStripeHandler(
         }
         // Dispara a verificação de e-mail (ContaRegistradaEmailHandler) — adiada até o pagamento.
         conta.EmitirRegistro(agora);
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarPagamentoTreinadorFalhouAsync(string paymentIntentId, CancellationToken ct)
+    {
+        var pagamento = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
+        if (pagamento is null) return ProcessarEventoResultado.JaConsistente;
+
+        if (pagamento.Status != PagamentoStatus.Pendente)
+        {
+            logger.LogDebug("PagamentoTreinador PaymentIntent {PaymentIntentId} já processado (status: {Status}). Ignorando re-entrega.", paymentIntentId, pagamento.Status);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var marcarFalhouResult = pagamento.MarcarFalhou(agora);
+        if (marcarFalhouResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PagamentoTreinador {PaymentIntentId} como falhou: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarFalhouResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        // G-PAY-2 (treinador): mesmo padrão do aluno — muta pagamento + assinatura num único commit.
+        // RegistrarPagamentoFalho pode disparar Ativa→Inadimplente ao atingir o threshold.
+        var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+        assinatura?.RegistrarPagamentoFalho(agora);
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como falhou.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
     }
 
     private async Task<ProcessarEventoResultado> ProcessarPagamentoTreinadorTransicaoAsync(string paymentIntentId, Func<PagamentoTreinador, Result> transicao, CancellationToken ct)

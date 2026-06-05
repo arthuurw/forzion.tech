@@ -5,6 +5,9 @@ using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStripe;
+using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
+using forzion.tech.Application.UseCases.Treinadores.IniciarPagamentoPlano;
+using forzion.tech.Application.UseCases.Treinadores.TrocarPlanoTreinador;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -76,6 +79,142 @@ public static class PagamentosEndpoints
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
+        var treinadorPlanoGroup = endpoints.MapGroup("/treinador/plano")
+            .WithTags("Pagamentos")
+            .RequireAuthorization("Treinador")
+            .RequireRateLimiting("write");
+
+        treinadorPlanoGroup.MapGet("/assinatura", async (
+            [FromServices] IAssinaturaTreinadorRepository assinaturaTreinadorRepository,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var assinatura = await assinaturaTreinadorRepository
+                .ObterAtualPorTreinadorAsync(userContext.PerfilId, cancellationToken).ConfigureAwait(false);
+            if (assinatura is null) return Results.NotFound();
+            return Results.Ok(new
+            {
+                assinaturaId = assinatura.Id,
+                status = assinatura.Status.ToString(),
+                valor = assinatura.Valor,
+                planoPlataformaId = assinatura.PlanoPlataformaId,
+                dataProximaCobranca = assinatura.DataProximaCobranca,
+                planoPlataformaIdAgendado = assinatura.PlanoPlataformaIdAgendado
+            });
+        })
+        .WithSummary("Retorna a assinatura de plano ativa do treinador")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        treinadorPlanoGroup.MapGet("/pagamento/{pagamentoId:guid}", async (
+            Guid pagamentoId,
+            [FromServices] IPagamentoTreinadorRepository pagamentoTreinadorRepository,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var pagamento = await pagamentoTreinadorRepository
+                .ObterPorIdAsync(pagamentoId, cancellationToken).ConfigureAwait(false);
+            if (pagamento is null || pagamento.TreinadorId != userContext.PerfilId)
+                return Results.NotFound();
+            return Results.Ok(new
+            {
+                pagamentoId = pagamento.Id,
+                status = pagamento.Status.ToString(),
+                valor = pagamento.Valor,
+                metodo = pagamento.MetodoPagamento.ToString()
+            });
+        })
+        .WithSummary("Retorna status de pagamento de plano do treinador")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        treinadorPlanoGroup.MapPost("/trocar", async (
+            [FromBody] TrocarPlanoRequest body,
+            [FromServices] TrocarPlanoTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new TrocarPlanoTreinadorCommand(userContext.PerfilId, body.PlanoPlataformaId, body.Metodo), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Troca o plano do treinador (upgrade/downgrade/regularização)")
+        .Produces<TrocarPlanoTreinadorResponse>()
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        treinadorPlanoGroup.MapPost("/cobrar", async (
+            [FromQuery] MetodoPagamento metodo,
+            [FromServices] GerarCobrancaPlanoTreinadorHandler handler,
+            [FromServices] IAssinaturaTreinadorRepository assinaturaTreinadorRepository,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var assinatura = await assinaturaTreinadorRepository
+                .ObterAtualPorTreinadorAsync(userContext.PerfilId, cancellationToken).ConfigureAwait(false);
+            if (assinatura is null)
+                return Results.NotFound();
+            var result = await handler.HandleAsync(
+                new GerarCobrancaPlanoTreinadorCommand(assinatura.Id, metodo), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure)
+            {
+                if (result.Error?.Code == "plano_free_assinatura_cancelada")
+                    return Results.Ok(new { mensagem = result.Error.Message });
+                return result.ToProblemResult();
+            }
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Gera cobrança de renovação do plano do treinador (metodo: Pix ou Cartao)")
+        .Produces<IniciarPagamentoPlanoResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        endpoints.MapPost("/internal/processar-renovacoes-treinador", async (
+            HttpContext httpContext,
+            [FromServices] GerarCobrancaPlanoTreinadorHandler gerarHandler,
+            [FromServices] IAssinaturaTreinadorRepository assinaturaTreinadorRepository,
+            [FromServices] ILogger<Program> logger,
+            [FromServices] TimeProvider timeProvider,
+            IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            if (!ChaveInternaValida(httpContext, configuration))
+                return Results.Unauthorized();
+
+            var assinaturas = await assinaturaTreinadorRepository
+                .ListarParaRenovarAsync(timeProvider.GetUtcNow().UtcDateTime, cancellationToken).ConfigureAwait(false);
+
+            var falhas = 0;
+            foreach (var assinaturaId in assinaturas.Select(a => a.Id))
+            {
+                var result = await gerarHandler.HandleAsync(
+                    new GerarCobrancaPlanoTreinadorCommand(assinaturaId), cancellationToken).ConfigureAwait(false);
+                if (result.IsFailure)
+                {
+                    if (result.Error?.Code == "plano_free_assinatura_cancelada")
+                    {
+                        logger.LogInformation("Assinatura de treinador {AssinaturaTreinadorId} encerrada por downgrade para Free.",
+                            assinaturaId);
+                    }
+                    else
+                    {
+                        falhas++;
+                        logger.LogWarning("Falha ao renovar assinatura de treinador {AssinaturaTreinadorId}: {Erro}.",
+                            assinaturaId, result.Error?.Message);
+                    }
+                }
+            }
+
+            return Results.Ok(new { processadas = assinaturas.Count, falhas });
+        })
+        .WithTags("Internal")
+        .WithSummary("Processa renovações mensais de planos de treinadores (requer X-Internal-Key)")
+        .AllowAnonymous()
+        .RequireRateLimiting("internal")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status401Unauthorized);
+
         endpoints.MapPost("/internal/processar-renovacoes", async (
             HttpContext httpContext,
             [FromServices] GerarCobrancaMensalHandler gerarHandler,
@@ -85,16 +224,7 @@ public static class PagamentosEndpoints
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
-            var apiKey = configuration["Internal:ApiKey"];
-            var headerKey = httpContext.Request.Headers["X-Internal-Key"].FirstOrDefault() ?? string.Empty;
-
-            // Constant-time comparison para evitar timing attack na chave.
-            // Verificar comprimento antes de FixedTimeEquals (que lança ArgumentException em spans de tamanhos diferentes).
-            var headerBytes = Encoding.UTF8.GetBytes(headerKey);
-            var keyBytes = Encoding.UTF8.GetBytes(apiKey ?? string.Empty);
-            if (string.IsNullOrEmpty(apiKey)
-                || headerBytes.Length != keyBytes.Length
-                || !CryptographicOperations.FixedTimeEquals(headerBytes, keyBytes))
+            if (!ChaveInternaValida(httpContext, configuration))
                 return Results.Unauthorized();
 
             var assinaturas = await assinaturaRepository
@@ -130,15 +260,7 @@ public static class PagamentosEndpoints
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
-            var apiKey = configuration["Internal:ApiKey"];
-            var headerKey = httpContext.Request.Headers["X-Internal-Key"].FirstOrDefault() ?? string.Empty;
-
-            // Mesma defesa do endpoint de renovações: constant-time compare + checagem de tamanho.
-            var headerBytes = Encoding.UTF8.GetBytes(headerKey);
-            var keyBytes = Encoding.UTF8.GetBytes(apiKey ?? string.Empty);
-            if (string.IsNullOrEmpty(apiKey)
-                || headerBytes.Length != keyBytes.Length
-                || !CryptographicOperations.FixedTimeEquals(headerBytes, keyBytes))
+            if (!ChaveInternaValida(httpContext, configuration))
                 return Results.Unauthorized();
 
             var command = new ReconciliarPagamentosStripeCommand(body?.DesdeUtc);
@@ -162,4 +284,19 @@ public static class PagamentosEndpoints
     /// o handler usa janela default de 7 dias a partir do <see cref="TimeProvider"/>.
     /// </summary>
     public sealed record ReconciliarPagamentosStripeRequest(DateTime? DesdeUtc);
+
+    public sealed record TrocarPlanoRequest(Guid PlanoPlataformaId, MetodoPagamento Metodo = MetodoPagamento.Pix);
+
+    // Constant-time comparison para evitar timing attack na chave interna.
+    // FixedTimeEquals lança ArgumentException em spans de tamanhos diferentes — verificar comprimento antes.
+    private static bool ChaveInternaValida(HttpContext ctx, IConfiguration cfg)
+    {
+        var apiKey = cfg["Internal:ApiKey"];
+        var headerKey = ctx.Request.Headers["X-Internal-Key"].FirstOrDefault() ?? string.Empty;
+        var headerBytes = Encoding.UTF8.GetBytes(headerKey);
+        var keyBytes = Encoding.UTF8.GetBytes(apiKey ?? string.Empty);
+        return !string.IsNullOrEmpty(apiKey)
+            && headerBytes.Length == keyBytes.Length
+            && CryptographicOperations.FixedTimeEquals(headerBytes, keyBytes);
+    }
 }
