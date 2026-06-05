@@ -166,18 +166,15 @@ public class AssinaturaTreinador : IHasDomainEvents
     {
         if (PlanoPlataformaIdAgendado is null)
             return Result.Success();
-
-        var alvo = PlanoPlataformaIdAgendado.Value;
-        PlanoPlataformaIdAgendado = null;
-
         if (novoValor <= 0)
-            return Cancelar(agora);
+            return Result.Failure(AssinaturaTreinadorErrors.ValorInvalido);
 
         var anterior = PlanoPlataformaId;
-        PlanoPlataformaId = alvo;
+        PlanoPlataformaId = PlanoPlataformaIdAgendado.Value;
         Valor = novoValor;
+        PlanoPlataformaIdAgendado = null;
         UpdatedAt = agora;
-        _domainEvents.Add(new AssinaturaTreinadorPlanoTrocadoEvent(Id, TreinadorId, anterior, alvo, agora));
+        _domainEvents.Add(new AssinaturaTreinadorPlanoTrocadoEvent(Id, TreinadorId, anterior, PlanoPlataformaId, agora));
         return Result.Success();
     }
 }

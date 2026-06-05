@@ -224,16 +224,15 @@ public class AssinaturaTreinadorTests
     }
 
     [Fact]
-    public void AplicarPlanoAgendado_Free_CancelaAssinatura()
+    public void AplicarPlanoAgendado_ValorNaoPositivo_Falha_SemAplicar()
     {
         var a = Ativa(100m);
-        a.AgendarDowngrade(Guid.NewGuid(), Agora);
-        a.ClearDomainEvents();
+        var alvo = Guid.NewGuid();
+        a.AgendarDowngrade(alvo, Agora);
 
-        a.AplicarPlanoAgendado(0m, Agora).IsSuccess.Should().BeTrue();
-
-        a.Status.Should().Be(AssinaturaTreinadorStatus.Cancelada);
-        a.DomainEvents.OfType<AssinaturaTreinadorCanceladaEvent>().Should().ContainSingle();
+        a.AplicarPlanoAgendado(0m, Agora).IsFailure.Should().BeTrue();
+        a.Status.Should().Be(AssinaturaTreinadorStatus.Ativa);
+        a.PlanoPlataformaIdAgendado.Should().Be(alvo, "valor inválido não consome o agendamento");
     }
 
     [Fact]

@@ -42,6 +42,11 @@ public class PagamentoTreinadorConfiguration : IEntityTypeConfiguration<Pagament
             .IsRequired();
 
         builder.Property(p => p.PlanoAlvoId);
+        builder.HasOne<PlanoPlataforma>()
+            .WithMany()
+            .HasForeignKey(p => p.PlanoAlvoId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
 
         builder.Property(p => p.ClientSecret).HasMaxLength(500);
 
@@ -60,6 +65,9 @@ public class PagamentoTreinadorConfiguration : IEntityTypeConfiguration<Pagament
 
         builder.HasIndex(p => p.AssinaturaTreinadorId)
             .HasDatabaseName("ix_pagamentos_treinador_assinatura_id");
+
+        builder.HasIndex(p => new { p.AssinaturaTreinadorId, p.Status })
+            .HasDatabaseName("ix_pagamentos_treinador_assinatura_id_status");
 
         // Previne cobrança dupla concorrente: no máx 1 pagamento Pendente por assinatura.
         builder.HasIndex(p => p.AssinaturaTreinadorId)

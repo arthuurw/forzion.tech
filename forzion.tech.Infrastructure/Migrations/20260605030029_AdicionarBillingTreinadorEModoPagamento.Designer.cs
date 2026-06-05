@@ -12,7 +12,7 @@ using forzion.tech.Infrastructure.Persistence;
 namespace forzion.tech.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260605024525_AdicionarBillingTreinadorEModoPagamento")]
+    [Migration("20260605030029_AdicionarBillingTreinadorEModoPagamento")]
     partial class AdicionarBillingTreinadorEModoPagamento
     {
         /// <inheritdoc />
@@ -1050,12 +1050,18 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_pagamentos_treinador_assinatura_id_pendente_unique")
                         .HasFilter("status = 'Pendente'");
 
+                    b.HasIndex("PlanoAlvoId")
+                        .HasDatabaseName("ix_pagamentos_treinador_plano_alvo_id");
+
                     b.HasIndex("StripePaymentIntentId")
                         .IsUnique()
                         .HasDatabaseName("ix_pagamentos_treinador_stripe_payment_intent_id");
 
                     b.HasIndex("TreinadorId")
                         .HasDatabaseName("ix_pagamentos_treinador_treinador_id");
+
+                    b.HasIndex("AssinaturaTreinadorId", "Status")
+                        .HasDatabaseName("ix_pagamentos_treinador_assinatura_id_status");
 
                     b.ToTable("pagamentos_treinador", (string)null);
                 });
@@ -1731,6 +1737,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_pagamentos_treinador_assinaturas_treinador_assinatura_trein");
+
+                    b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
+                        .WithMany()
+                        .HasForeignKey("PlanoAlvoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_pagamentos_treinador_planos_plataforma_plano_alvo_id");
 
                     b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
                         .WithMany()
