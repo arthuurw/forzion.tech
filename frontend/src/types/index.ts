@@ -1,7 +1,7 @@
 export type TipoConta = "SystemAdmin" | "Treinador" | "Aluno";
 
 export type AlunoStatus = "AguardandoAprovacao" | "Ativo" | "Inativo";
-export type TreinadorStatus = "AguardandoAprovacao" | "Ativo" | "Inativo";
+export type TreinadorStatus = "AguardandoPagamento" | "AguardandoAprovacao" | "Ativo" | "Inativo";
 export type VinculoStatus = "AguardandoAprovacao" | "Ativo" | "Inativo";
 export type TreinoAlunoStatus = "Ativo" | "Inativo";
 export type ObjetivoTreino =
