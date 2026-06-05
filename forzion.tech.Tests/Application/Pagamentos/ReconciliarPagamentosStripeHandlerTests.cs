@@ -17,6 +17,7 @@ public class ReconciliarPagamentosStripeHandlerTests
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<IPagamentoTreinadorRepository> _pagamentoTreinadorRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _webhookLogger = new();
     private readonly Mock<ILogger<ReconciliarPagamentosStripeHandler>> _reconciliarLogger = new();
@@ -31,7 +32,7 @@ public class ReconciliarPagamentosStripeHandlerTests
         // Isso garante que a reconciliação compartilha o mesmo código do webhook live.
         _webhookHandler = new ProcessarWebhookStripeHandler(
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _time, _webhookLogger.Object);
+            _pagamentoTreinadorRepo.Object, _stripeService.Object, _unitOfWork.Object, _time, _webhookLogger.Object);
 
         _handler = new ReconciliarPagamentosStripeHandler(
             _stripeService.Object, _webhookHandler, _time, _reconciliarLogger.Object);

@@ -15,6 +15,7 @@ public class ProcessarWebhookStripeHandlerTests
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<IPagamentoTreinadorRepository> _pagamentoTreinadorRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _logger = new();
@@ -26,7 +27,7 @@ public class ProcessarWebhookStripeHandlerTests
     {
         _handler = new ProcessarWebhookStripeHandler(
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
+            _pagamentoTreinadorRepo.Object, _stripeService.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
             .ReturnsAsync(true);
@@ -40,6 +41,26 @@ public class ProcessarWebhookStripeHandlerTests
 
     private static string AccountPayload(string accountId, bool chargesEnabled) =>
         "{\"type\":\"account.updated\",\"account\":\"" + accountId + "\",\"data\":{\"object\":{\"charges_enabled\":" + (chargesEnabled ? "true" : "false") + "}}}";
+
+    private static string PaymentIntentTreinadorPayload(string type, string paymentIntentId) =>
+        "{\"type\":\"" + type + "\",\"data\":{\"object\":{\"id\":\"" + paymentIntentId + "\",\"metadata\":{\"tipo\":\"plano_treinador\"}}}}";
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_PlanoTreinador_RoteiaParaPagamentoTreinador()
+    {
+        var pagamento = PagamentoTreinador.Criar(Guid.NewGuid(), Guid.NewGuid(), 50m, FinalidadePagamentoTreinador.Cadastro, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_treinador", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_treinador", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.succeeded", "pi_treinador"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        _pagamentoRepo.Verify(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never, "pagamento de treinador não passa pelo fluxo de aluno");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 
     [Fact]
     public async Task HandleAsync_AssinaturaAlunoInvalida_RetornaFailure()
