@@ -22,7 +22,6 @@ public class AssinaturaTreinador : IHasDomainEvents
     public DateTime DataProximaCobranca { get; private set; }
     public DateTime? DataCancelamento { get; private set; }
     public int TentativasFalhasConsecutivas { get; private set; }
-    // Downgrade pendente: aplicado na próxima renovação (null = sem troca agendada).
     public Guid? PlanoPlataformaIdAgendado { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -133,7 +132,6 @@ public class AssinaturaTreinador : IHasDomainEvents
         UpdatedAt = agora;
     }
 
-    // Upgrade: aplica o novo plano/valor imediatamente (após pagamento da proração).
     public Result TrocarPlanoImediato(Guid novoPlanoId, decimal novoValor, DateTime agora)
     {
         if (Status is not (AssinaturaTreinadorStatus.Ativa or AssinaturaTreinadorStatus.Inadimplente))
@@ -152,7 +150,6 @@ public class AssinaturaTreinador : IHasDomainEvents
         return Result.Success();
     }
 
-    // Downgrade: guarda o plano-alvo para aplicar na próxima renovação (sem cobrança agora).
     public Result AgendarDowngrade(Guid novoPlanoId, DateTime agora)
     {
         if (Status != AssinaturaTreinadorStatus.Ativa)
@@ -165,7 +162,6 @@ public class AssinaturaTreinador : IHasDomainEvents
         return Result.Success();
     }
 
-    // Aplica o downgrade agendado na renovação. novoValor<=0 (Free) → cancela a assinatura paga.
     public Result AplicarPlanoAgendado(decimal novoValor, DateTime agora)
     {
         if (PlanoPlataformaIdAgendado is null)
