@@ -22,6 +22,7 @@ export default function LoginPage() {
   const [emailNaoVerificado, setEmailNaoVerificado] = useState<string | null>(null);
   const [reenviando, setReenviando] = useState(false);
   const [reenviado, setReenviado] = useState(false);
+  const [bloqueio, setBloqueio] = useState<{ titulo: string; mensagem: string } | null>(null);
   const methods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -39,6 +40,7 @@ export default function LoginPage() {
     setError("");
     setEmailNaoVerificado(null);
     setReenviado(false);
+    setBloqueio(null);
     setLoading(true);
     try {
       const res = await fetch("/api/auth", {
@@ -56,6 +58,16 @@ export default function LoginPage() {
           const problem: ProblemDetails = await res.json();
           if (res.status === 403 && problem.code === "EMAIL_NAO_VERIFICADO") {
             setEmailNaoVerificado(data.email);
+          } else if (res.status === 403 && problem.code === "TREINADOR_AGUARDANDO_APROVACAO") {
+            setBloqueio({
+              titulo: "Cadastro em análise",
+              mensagem: "Seu cadastro de treinador está em análise. Aguarde a aprovação do administrador para acessar.",
+            });
+          } else if (res.status === 403 && problem.code === "TREINADOR_INATIVO") {
+            setBloqueio({
+              titulo: "Conta inativa",
+              mensagem: "Sua conta de treinador está inativa. Entre em contato com o suporte.",
+            });
           } else {
             setError(problem.title ?? "Erro ao fazer login.");
           }
@@ -132,6 +144,26 @@ export default function LoginPage() {
               Reenviar verificação
             </Button>
           )}
+        </Box>
+      )}
+
+      {bloqueio && (
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: 1,
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
+            border: "1px solid",
+            borderColor: "primary.main",
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+            {bloqueio.titulo}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {bloqueio.mensagem}
+          </Typography>
         </Box>
       )}
 

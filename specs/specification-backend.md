@@ -35,7 +35,7 @@ Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`.
 - Registro MANUAL no DI (`Api/Extensions/DependencyInjectionExtensions.AddApplicationHandlers`), todos `AddScoped<THandler>()`. NÃO há mediator/auto-scan de handlers.
 
 Áreas (`UseCases/`) e use cases notáveis:
-- **Auth**: `Login` (gera JWT; resposta genérica anti-enumeração; exige `EmailVerificado`), `RedefinirSenha`, `VerificarEmail`.
+- **Auth**: `Login` (gera JWT; resposta genérica anti-enumeração; exige `EmailVerificado`; treinador exige `Status==Ativo` — `AguardandoAprovacao`/`Inativo` → 403, e-mail verificado NÃO basta), `RedefinirSenha`, `VerificarEmail`.
 - **Conta**: `ObterPerfil`, `AtualizarPerfil`, `AlterarSenha`, `Logout` (revoga jti); `Conta/Lgpd/ExportarDadosPessoais` (`GET /conta/lgpd/exportar` — portabilidade: export versionado só do titular, nunca PII de terceiros) e `Conta/Lgpd/AnonimizarConta` (`DELETE /conta/lgpd` — self exige reconfirmação de senha BCrypt; anonimiza Conta/Aluno|Treinador + read model Assinante + delivery logs por email/telefone; idempotente; treinador com vínculos ativos rejeitado → `conta.offboarding_necessario`; registra `LogAprovacao` LGPD). Grupo `/conta/lgpd` autenticado + rate-limit "write".
 - **Alunos**: `RegistrarAluno` (self-signup), `CadastrarAluno`, `AtualizarAluno`, `AlterarStatusAluno`, `ListarAlunos`, `ObterAluno`, `ListarFichasAluno`/`ObterFichaAluno`, `ListarExecucoesAluno`, `ObterProgressaoAluno`/`ObterMinhaProgressao`.
 - **Treinadores**: `RegistrarTreinador`, `AprovarTreinador`/`ReprovarTreinador`/`InativarTreinador`/`ExcluirTreinador`, `AtribuirPlano` (**rejeita tier=Elite** → `Result.Failure(PlanoPlataformaErrors.EliteIndisponivel)`), `IniciarOnboarding`/`VerificarOnboarding` (Stripe Connect), `ListarTreinadores`/`ListarTreinadoresPublicos`/`ObterTreinador`.
@@ -105,7 +105,7 @@ Registro via extensões `MapXxxEndpoints` agregadas em `RouteBuilderExtensions.M
 ### Middleware / error mapping
 `GlobalExceptionHandler` (`IExceptionHandler`, RFC7807 ProblemDetails):
 - `ValidationException` (FluentValidation) → 400 `ValidationProblemDetails` com erros agrupados por propriedade (camelCase).
-- Mapa de exceções de domínio → HTTP: `CredenciaisInvalidasException`→401; `*NaoEncontradaException`→404; `AlunoInativoException`/`AcessoNegadoException`/`EmailNaoVerificadoException`→403; `EmailJaCadastradoException`/`AlunoJaVinculadoException`→409; `DomainException`→422; demais→500 (mensagem genérica). `EmailNaoVerificadoException` adiciona `code` extension (cross-ref [specification-email]).
+- Mapa de exceções de domínio → HTTP: `CredenciaisInvalidasException`→401; `*NaoEncontradaException`→404; `AlunoInativoException`/`AcessoNegadoException`/`EmailNaoVerificadoException`/`TreinadorAguardandoAprovacaoException`/`TreinadorInativoException`→403; `EmailJaCadastradoException`/`AlunoJaVinculadoException`→409; `DomainException`→422; demais→500 (mensagem genérica). `EmailNaoVerificadoException` (`EMAIL_NAO_VERIFICADO`), `TreinadorAguardandoAprovacaoException` (`TREINADOR_AGUARDANDO_APROVACAO`) e `TreinadorInativoException` (`TREINADOR_INATIVO`) adicionam `code` extension consumido pelo frontend (login).
 - Log: >=500 Error; <500 Warning.
 - `Results` de falha de negócio com `Result` pattern usam `ResultExtensions.ToProblemResult()` → 422.
 
