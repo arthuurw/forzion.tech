@@ -68,7 +68,7 @@ public class IniciarPagamentoPlanoHandler(
                     return Result.Failure<IniciarPagamentoPlanoResponse>(marcarZumbiResult.Error!);
             }
 
-            // Valor vem da assinatura — nunca do caller (endpoint é pré-login/AllowAnonymous).
+            // Valor vem da assinatura — nunca do caller.
             var pagamentoResult = PagamentoTreinador.Criar(
                 treinador.Id, assinatura.Id, assinatura.Valor,
                 FinalidadePagamentoTreinador.Cadastro, timeProvider.GetUtcNow().UtcDateTime, command.Metodo);

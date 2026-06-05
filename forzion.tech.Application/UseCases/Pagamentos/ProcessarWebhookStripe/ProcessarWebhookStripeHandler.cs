@@ -12,6 +12,9 @@ public class ProcessarWebhookStripeHandler(
     IAssinaturaAlunoRepository assinaturaRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
     IPagamentoTreinadorRepository pagamentoTreinadorRepository,
+    IAssinaturaTreinadorRepository assinaturaTreinadorRepository,
+    ITreinadorRepository treinadorRepository,
+    IContaRepository contaRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
@@ -393,14 +396,43 @@ public class ProcessarWebhookStripeHandler(
         if (pagamento.Status != PagamentoStatus.Pendente)
             return ProcessarEventoResultado.JaConsistente;
 
-        if (pagamento.MarcarPago(timeProvider.GetUtcNow().UtcDateTime).IsFailure)
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        if (pagamento.MarcarPago(agora).IsFailure)
             return ProcessarEventoResultado.JaConsistente;
 
-        // PagamentoTreinadorPagoEvent (emitido em MarcarPago) finaliza o fluxo no handler de evento
-        // (ativa assinatura, confirma cadastro / reativa / aplica troca).
+        // Cadastro: finaliza tudo no MESMO commit que marca o pagamento pago (atomicidade —
+        // evita treinador travado pago se um passo de finalização falhasse em commit separado).
+        // Renovacao/TrocaPlano: Fase 2/2B.
+        if (pagamento.Finalidade == FinalidadePagamentoTreinador.Cadastro)
+            await FinalizarCadastroAsync(pagamento, agora, ct).ConfigureAwait(false);
+
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como pago.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
+    }
+
+    private async Task FinalizarCadastroAsync(PagamentoTreinador pagamento, DateTime agora, CancellationToken ct)
+    {
+        var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+        var treinador = await treinadorRepository.ObterPorIdAsync(pagamento.TreinadorId, ct).ConfigureAwait(false);
+        if (assinatura is null || treinador is null)
+        {
+            logger.LogWarning("Cadastro pago sem assinatura/treinador (pagamento {PagamentoId}).", pagamento.Id);
+            return;
+        }
+
+        if (assinatura.Ativar(agora).IsFailure) return;
+        assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
+        if (treinador.ConfirmarPagamentoPlano(agora).IsFailure) return;
+
+        var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, ct).ConfigureAwait(false);
+        if (conta is null)
+        {
+            logger.LogWarning("Conta {ContaId} do treinador {TreinadorId} não encontrada — verificação não enviada.", treinador.ContaId, treinador.Id);
+            return;
+        }
+        // Dispara a verificação de e-mail (ContaRegistradaEmailHandler) — adiada até o pagamento.
+        conta.EmitirRegistro(agora);
     }
 
     private async Task<ProcessarEventoResultado> ProcessarPagamentoTreinadorTransicaoAsync(string paymentIntentId, Func<PagamentoTreinador, Result> transicao, CancellationToken ct)
