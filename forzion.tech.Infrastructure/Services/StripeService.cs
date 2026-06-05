@@ -147,6 +147,78 @@ public class StripeService(
         return new CartaoPaymentResult(intent.Id, intent.ClientSecret);
     }
 
+    private RequestOptions PagamentoTreinadorRequestOptions(Guid pagamentoTreinadorId) => new()
+    {
+        ApiKey = _settings.SecretKey,
+        IdempotencyKey = $"pagamento-treinador-{pagamentoTreinadorId:N}"
+    };
+
+    public async Task<PixPaymentResult> CriarPixPlataformaPaymentIntentAsync(
+        decimal valor,
+        Guid pagamentoTreinadorId,
+        CancellationToken cancellationToken = default)
+    {
+        var (valorCentavos, _) = MoneyCentavos.ValorETaxaCentavos(valor, 0m);
+
+        var service = new PaymentIntentService();
+        var options = new PaymentIntentCreateOptions
+        {
+            Amount = valorCentavos,
+            Currency = "brl",
+            PaymentMethodTypes = ["pix"],
+            PaymentMethodOptions = new PaymentIntentPaymentMethodOptionsOptions
+            {
+                Pix = new PaymentIntentPaymentMethodOptionsPixOptions
+                {
+                    ExpiresAfterSeconds = 3600,
+                },
+            },
+            Metadata = new Dictionary<string, string>
+            {
+                ["pagamento_treinador_id"] = pagamentoTreinadorId.ToString(),
+                ["tipo"] = "plano_treinador",
+            },
+        };
+
+        var intent = await service.CreateAsync(options, requestOptions: PagamentoTreinadorRequestOptions(pagamentoTreinadorId), cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        var pix = intent.NextAction?.PixDisplayQrCode
+            ?? throw new InvalidOperationException("Stripe não retornou dados Pix.");
+
+        var expiracao = DateTime.UtcNow.AddSeconds(3600);
+
+        logger.LogInformation("PaymentIntent Pix plano-treinador {IntentId} criado.", intent.Id);
+
+        return new PixPaymentResult(intent.Id, pix.Data, pix.ImageUrlPng, expiracao);
+    }
+
+    public async Task<CartaoPaymentResult> CriarCartaoPlataformaPaymentIntentAsync(
+        decimal valor,
+        Guid pagamentoTreinadorId,
+        CancellationToken cancellationToken = default)
+    {
+        var (valorCentavos, _) = MoneyCentavos.ValorETaxaCentavos(valor, 0m);
+
+        var service = new PaymentIntentService();
+        var options = new PaymentIntentCreateOptions
+        {
+            Amount = valorCentavos,
+            Currency = "brl",
+            PaymentMethodTypes = ["card"],
+            Metadata = new Dictionary<string, string>
+            {
+                ["pagamento_treinador_id"] = pagamentoTreinadorId.ToString(),
+                ["tipo"] = "plano_treinador",
+            },
+        };
+
+        var intent = await service.CreateAsync(options, requestOptions: PagamentoTreinadorRequestOptions(pagamentoTreinadorId), cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("PaymentIntent Cartão plano-treinador {IntentId} criado.", intent.Id);
+
+        return new CartaoPaymentResult(intent.Id, intent.ClientSecret);
+    }
+
     public async Task<bool> ContaEstaAtivadaAsync(string stripeAccountId, CancellationToken cancellationToken = default)
     {
         var service = new AccountService();
