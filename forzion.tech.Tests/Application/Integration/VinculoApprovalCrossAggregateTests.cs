@@ -65,7 +65,7 @@ public class VinculoApprovalCrossAggregateTests
 
         _aprovarHandler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
-            _alunoRepo.Object, _limiteService.Object, _logRepo.Object,
+            _alunoRepo.Object, _contaRecebimentoRepo.Object, _limiteService.Object, _logRepo.Object,
             _unitOfWork.Object, _transactionProvider.Object,
             TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
@@ -133,7 +133,7 @@ public class VinculoApprovalCrossAggregateTests
     }
 
     [Fact]
-    public async Task AprovarVinculo_SemOnboardingStripe_DownstreamHandler_NaoCriaAssinatura()
+    public async Task AprovarVinculo_SemOnboardingStripe_BloqueiaAprovacao()
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
@@ -147,14 +147,11 @@ public class VinculoApprovalCrossAggregateTests
         // Sem conta de recebimento (onboarding nao iniciado).
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync((ContaRecebimento?)null);
 
-        await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
+        var result = await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
 
-        var evento = vinculo.DomainEvents.OfType<VinculoAprovadoEvent>().Single();
-        await _criarAssinaturaHandler.HandleAsync(evento);
-
-        // Sem onboarding → handler aborta SEM criar assinatura. Cobre uma das
-        // guards mais importantes da plataforma (evita cobrar antes do treinador
-        // ter conta Stripe ativa).
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treinador_sem_onboarding");
+        vinculo.DomainEvents.OfType<VinculoAprovadoEvent>().Should().BeEmpty();
         _assinaturasCriadas.Should().BeEmpty("assinatura nao deve ser criada sem onboarding completo");
     }
 

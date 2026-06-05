@@ -732,6 +732,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<ITreinoAlunoRepository>(),
             Mock.Of<ITreinoRepository>(),
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<ILimiteTreinadorService>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
