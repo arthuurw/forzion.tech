@@ -32,6 +32,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IDomainEventDi
     public DbSet<WhatsAppDeliveryLog> WhatsAppDeliveryLogs => Set<WhatsAppDeliveryLog>();
     public DbSet<AssinaturaAluno> AssinaturaAlunos => Set<AssinaturaAluno>();
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
+    public DbSet<AssinaturaTreinador> AssinaturasTreinador => Set<AssinaturaTreinador>();
+    public DbSet<PagamentoTreinador> PagamentosTreinador => Set<PagamentoTreinador>();
     public DbSet<Assinante> Assinantes => Set<Assinante>();
     public DbSet<ContaRecebimento> ContasRecebimento => Set<ContaRecebimento>();
     public DbSet<HealthReportConfig> HealthReportConfigs => Set<HealthReportConfig>();
