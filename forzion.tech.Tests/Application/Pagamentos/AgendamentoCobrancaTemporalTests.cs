@@ -34,7 +34,8 @@ public class AgendamentoCobrancaTemporalTests
     {
         _handler = new ProcessarWebhookStripeHandler(
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
-            _pagamentoTreinadorRepo.Object, _stripeService.Object, _unitOfWork.Object, _time, _logger.Object);
+            _pagamentoTreinadorRepo.Object, Mock.Of<IAssinaturaTreinadorRepository>(), Mock.Of<ITreinadorRepository>(), Mock.Of<IContaRepository>(),
+            _stripeService.Object, _unitOfWork.Object, _time, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
             .ReturnsAsync(true);
