@@ -127,9 +127,15 @@ public class FluxoCompletoTests
 
         var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, _planoRepo.Object, _vinculoRepo.Object);
 
+        var contaRecebimentoRepo = new Mock<IContaRecebimentoRepository>();
+        var contaOnboarded = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow).Value;
+        contaOnboarded.ConfigurarStripeConnect("acct_123", DateTime.UtcNow);
+        contaOnboarded.ConfirmarOnboarding(DateTime.UtcNow);
+        contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(contaOnboarded);
+
         var handler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
-            _alunoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
+            _alunoRepo.Object, contaRecebimentoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
             mockTxProvider.Object, TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 

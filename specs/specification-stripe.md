@@ -59,6 +59,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 4. Treinador completa form na Stripe → Stripe redireciona pra `urlRetorno` (frontend `/treinador/onboarding/retorno`).
 5. Pagina retorno: `GET /treinador/onboarding/status` → `VerificarOnboardingTreinadorHandler` → mostra "Cadastro concluído!" se OnboardingCompleto.
 6. Em paralelo: webhook `account.updated` com `chargesEnabled=true` marca OnboardingCompleto idempotente (defesa-em-depth).
+- **Gate de onboarding (OnboardingCompleto)** bloqueia o caminho de dinheiro em 3 pontos: `AprovarVinculoHandler` (aceitar aluno → `treinador_sem_onboarding`, gate PRIMÁRIO antes de qualquer efeito), `CriarAssinaturaAlunoHandler` e `GerarCobrancaMensalHandler` (`treinador_sem_conta_stripe`). `VinculoAprovadoCriarAssinaturaAlunoHandler` mantém skip como defense-in-depth. Sem onboarding o treinador loga/usa o app mas NÃO aceita alunos nem cobra.
 
 ### Cobrança (treinador inicia OU cron renova)
 1. **Manual treinador**: `POST /treinador/pagamentos/cobrar/{assinaturaId}?metodo=Pix|Cartao` (default Pix).
