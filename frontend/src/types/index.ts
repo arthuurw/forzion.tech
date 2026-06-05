@@ -308,6 +308,21 @@ export interface PagamentoTreinadorStatusResponse {
   metodo: MetodoPagamento;
 }
 
+export type ModoPagamentoAluno = "Plataforma" | "Externo";
+
+export interface IniciarPagamentoPlanoResponse {
+  pagamentoId: string;
+  valor: number;
+  status: PagamentoStatus;
+  metodoPagamento: MetodoPagamento;
+  stripePaymentIntentId: string | null;
+  pixQrCode: string | null;
+  pixQrCodeUrl: string | null;
+  pixExpiracao: string | null;
+  clientSecret: string | null;
+  createdAt: string;
+}
+
 // Erro RFC 7807
 export interface ProblemDetails {
   title: string;
