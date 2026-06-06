@@ -357,7 +357,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.VerificarOnboardingHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<VerificarOnboardingTreinadorQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(new OnboardingStatusResponse(true, true)));
+            .ReturnsAsync(Result.Success(new OnboardingStatusResponse(true, true, ModoPagamentoAluno.Plataforma)));
 
         var response = await CriarClienteTreinador().GetAsync("/treinador/onboarding/status");
 
