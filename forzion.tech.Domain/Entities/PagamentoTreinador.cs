@@ -120,4 +120,24 @@ public class PagamentoTreinador : IHasDomainEvents
         UpdatedAt = agora;
         return Result.Success();
     }
+
+    public Result MarcarEstornado(DateTime agora)
+    {
+        if (Status != PagamentoStatus.Pago)
+            return Result.Failure(PagamentoTreinadorErrors.ApenasPagosEstornados);
+
+        Status = PagamentoStatus.Estornado;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result MarcarEmDisputa(DateTime agora)
+    {
+        if (Status != PagamentoStatus.Pago)
+            return Result.Failure(PagamentoTreinadorErrors.ApenasPagosEmDisputa);
+
+        Status = PagamentoStatus.EmDisputa;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
 }
