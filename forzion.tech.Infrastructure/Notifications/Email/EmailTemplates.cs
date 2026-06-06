@@ -464,6 +464,75 @@ internal static class EmailTemplates
             </p>
             """);
 
+    public static string CobrancaPlanoFalhou(string nomeTreinador, decimal valor, int tentativasFalhas, string linkPortal)
+    {
+        var valorFormatado = valor.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"));
+        var (titulo, mensagem, corEnfase) = tentativasFalhas switch
+        {
+            <= 1 => (
+                "Cobrança do seu plano não processada",
+                "Não conseguimos processar a cobrança do seu plano forzion.tech. Verifique seu método de pagamento.",
+                "#ef6c00"),
+            2 => (
+                "Segunda tentativa de cobrança falhou",
+                "A segunda tentativa de cobrar seu plano falhou. Regularize para evitar restrição de acesso.",
+                "#ef6c00"),
+            _ => (
+                "Última tentativa antes da restrição de acesso",
+                "Esta é a última tentativa antes de sua conta ser marcada como inadimplente e ter acesso restrito.",
+                "#c62828")
+        };
+        return Layout(
+            titulo,
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              <strong style="color:{corEnfase}">{mensagem}</strong>
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valorFormatado}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Tentativas</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{tentativasFalhas}</td>
+              </tr>
+            </table>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Atualizar pagamento
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, entre em contato com o suporte forzion.tech.
+            </p>
+            """);
+    }
+
+    public static string PlanoInadimplente(string nomeTreinador, int tentativasFalhas, string linkPortal) =>
+        Layout(
+            "Acesso restrito por inadimplência",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Seu acesso ao forzion.tech está <strong style="color:#c62828">restrito por inadimplência</strong>
+              no plano. Regularize o pagamento para restaurar o acesso completo.
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Tentativas falhas</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{tentativasFalhas}</td>
+              </tr>
+            </table>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Regularizar agora
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, entre em contato com o suporte forzion.tech.
+            </p>
+            """);
+
     public static string RelatorioSaude(HealthReport report)
     {
         var ambiente = WebUtility.HtmlEncode(report.Ambiente);

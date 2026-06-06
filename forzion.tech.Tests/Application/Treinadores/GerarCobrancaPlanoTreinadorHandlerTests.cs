@@ -1,12 +1,12 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Tests.E2E;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Treinadores;
@@ -36,14 +36,18 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
         _transactionProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NoopTransaction());
 
-        _handler = new GerarCobrancaPlanoTreinadorHandler(
-            _assinaturaRepo.Object, _pagamentoRepo.Object, _planoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _transactionProvider.Object,
-            TimeProvider.System, _logger.Object);
-
         _stripeService.Setup(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PixResult);
+
+        var criarPagamentoService = new CriarPagamentoComIntentService(
+            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            Mock.Of<ILogger<CriarPagamentoComIntentService>>());
+
+        _handler = new GerarCobrancaPlanoTreinadorHandler(
+            _assinaturaRepo.Object, _pagamentoRepo.Object, _planoRepo.Object,
+            _stripeService.Object, _unitOfWork.Object, criarPagamentoService,
+            TimeProvider.System, _logger.Object);
     }
 
     private static AssinaturaTreinador CriarAssinaturaAtiva()
@@ -139,7 +143,6 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
     {
         var assinatura = CriarAssinaturaAtiva();
         var zumbi = PagamentoTreinador.Criar(assinatura.TreinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
-        // sem DefinirDadosPix — zumbi sem intent id
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
@@ -243,9 +246,12 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
             .ReturnsAsync((PagamentoTreinador?)null);
 
         var fakeStripe = new FakeStripeService();
+        var criarPagamentoService = new CriarPagamentoComIntentService(
+            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            Mock.Of<ILogger<CriarPagamentoComIntentService>>());
         var handler = new GerarCobrancaPlanoTreinadorHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, _planoRepo.Object,
-            fakeStripe, _unitOfWork.Object, _transactionProvider.Object,
+            fakeStripe, _unitOfWork.Object, criarPagamentoService,
             TimeProvider.System, _logger.Object);
 
         PagamentoTreinador? pagamentoAdicionado = null;
@@ -256,7 +262,6 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         pagamentoAdicionado.Should().NotBeNull();
-        // FakeStripeService: PaymentIntentId = $"pi_fake_treinador_{pagamentoTreinadorId:N}"
         pagamentoAdicionado!.StripePaymentIntentId.Should().Be($"pi_fake_treinador_{pagamentoAdicionado.Id:N}",
             "o intent id deve ser derivado do PagamentoId para garantir idempotência em retries");
     }

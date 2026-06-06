@@ -1,6 +1,6 @@
-using System.Data;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -17,7 +17,7 @@ public class TrocarPlanoTreinadorHandler(
     IPagamentoTreinadorRepository pagamentoRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
-    IDbContextTransactionProvider transactionProvider,
+    CriarPagamentoComIntentService criarPagamentoService,
     TimeProvider timeProvider,
     ILogger<TrocarPlanoTreinadorHandler> logger)
 {
@@ -85,63 +85,49 @@ public class TrocarPlanoTreinadorHandler(
             return Result.Success(TrocarPlanoTreinadorResponse.UpgradeImediato(agora));
         }
 
-        PagamentoTreinador pagamento;
-        await using (var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false))
-        {
-            var pendente = await pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct).ConfigureAwait(false);
-            if (pendente is not null)
+        var params_ = new CriarPagamentoComIntentParams<PagamentoTreinador>(
+            ObterPendente: ct2 => pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct2),
+            VerificarIdempotencia: pendente =>
+                pendente.Finalidade == FinalidadePagamentoTreinador.TrocaPlano
+                && pendente.PlanoAlvoId == novoPlano.Id
+                && pendente.StripePaymentIntentId is not null
+                    ? pendente : null,
+            CriarPagamento: () => PagamentoTreinador.Criar(
+                assinatura.TreinadorId, assinatura.Id, valorProracao,
+                FinalidadePagamentoTreinador.TrocaPlano, agora, metodo, novoPlano.Id),
+            AplicarIntentPix: async (pag, ct2) =>
             {
-                // Idempotência: mesma troca em curso — reutiliza o intent existente.
-                if (pendente.Finalidade == FinalidadePagamentoTreinador.TrocaPlano
-                    && pendente.PlanoAlvoId == novoPlano.Id
-                    && pendente.StripePaymentIntentId is not null)
-                {
-                    await tx.CommitAsync(ct).ConfigureAwait(false);
-                    return Result.Success(TrocarPlanoTreinadorResponse.Upgrade(pendente));
-                }
-
-                // Zumbi (sem intent) ou troca para plano diferente: marca Falhou.
-                // Se havia intent Stripe ativo para plano distinto, o webhook payment_intent.succeeded
-                // encontrará Status != Pendente e retornará JaConsistente — sem risco de aplicar plano errado.
+                var r = await stripeService.CriarPixPlataformaPaymentIntentAsync(valorProracao, pag.Id, ct2).ConfigureAwait(false);
+                return pag.DefinirDadosPix(r.PaymentIntentId, r.QrCode, r.QrCodeUrl, r.Expiracao, agora);
+            },
+            AplicarIntentCartao: async (pag, ct2) =>
+            {
+                var r = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(valorProracao, pag.Id, ct2).ConfigureAwait(false);
+                return pag.DefinirDadosCartao(r.PaymentIntentId, r.ClientSecret, agora);
+            },
+            AdicionarAsync: (pag, ct2) => pagamentoRepository.AdicionarAsync(pag, ct2),
+            Metodo: metodo
+        )
+        {
+            // Webhook tardio para o intent descartado encontrará Status != Pendente → JaConsistente.
+            MarcarFalhou = (pendente, dataAgora) =>
+            {
                 if (pendente.StripePaymentIntentId is not null)
                     logger.LogWarning("PagamentoTreinador ativo {PagamentoId} para plano {PlanoAlvoId} descartado em favor de nova troca para {NovoPlanoId}.",
                         pendente.Id, pendente.PlanoAlvoId, novoPlano.Id);
                 else
                     logger.LogWarning("PagamentoTreinador zumbi {PagamentoId} na troca de plano. Marcando como Falhou.", pendente.Id);
-
-                var marcarResult = pendente.MarcarFalhou(agora);
-                if (marcarResult.IsFailure)
-                    return Result.Failure<TrocarPlanoTreinadorResponse>(marcarResult.Error!);
+                return pendente.MarcarFalhou(dataAgora);
             }
+        };
 
-            var pagamentoResult = PagamentoTreinador.Criar(
-                assinatura.TreinadorId, assinatura.Id, valorProracao,
-                FinalidadePagamentoTreinador.TrocaPlano, agora, metodo, novoPlano.Id);
-            if (pagamentoResult.IsFailure)
-                return Result.Failure<TrocarPlanoTreinadorResponse>(pagamentoResult.Error!);
-            pagamento = pagamentoResult.Value;
-
-            if (metodo == MetodoPagamento.Cartao)
-            {
-                var cartaoResult = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(valorProracao, pagamento.Id, ct).ConfigureAwait(false);
-                var definir = pagamento.DefinirDadosCartao(cartaoResult.PaymentIntentId, cartaoResult.ClientSecret, agora);
-                if (definir.IsFailure) return Result.Failure<TrocarPlanoTreinadorResponse>(definir.Error!);
-            }
-            else
-            {
-                var pixResult = await stripeService.CriarPixPlataformaPaymentIntentAsync(valorProracao, pagamento.Id, ct).ConfigureAwait(false);
-                var definir = pagamento.DefinirDadosPix(pixResult.PaymentIntentId, pixResult.QrCode, pixResult.QrCodeUrl, pixResult.Expiracao, agora);
-                if (definir.IsFailure) return Result.Failure<TrocarPlanoTreinadorResponse>(definir.Error!);
-            }
-
-            await pagamentoRepository.AdicionarAsync(pagamento, ct).ConfigureAwait(false);
-            await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
-            await tx.CommitAsync(ct).ConfigureAwait(false);
-        }
+        var result = await criarPagamentoService.ExecutarAsync(params_, ct).ConfigureAwait(false);
+        if (result.IsFailure)
+            return Result.Failure<TrocarPlanoTreinadorResponse>(result.Error!);
 
         logger.LogInformation("Upgrade proração {Valor} gerado para treinador {TreinadorId}, plano alvo {PlanoId}.",
             valorProracao, assinatura.TreinadorId, novoPlano.Id);
-        return Result.Success(TrocarPlanoTreinadorResponse.Upgrade(pagamento));
+        return Result.Success(TrocarPlanoTreinadorResponse.Upgrade(result.Value));
     }
 
     private async Task<Result<TrocarPlanoTreinadorResponse>> ProcessarDowngradeAsync(
@@ -160,56 +146,45 @@ public class TrocarPlanoTreinadorHandler(
     private async Task<Result<TrocarPlanoTreinadorResponse>> ProcessarInadimplenteAsync(
         AssinaturaTreinador assinatura, PlanoPlataforma novoPlano, MetodoPagamento metodo, DateTime agora, CancellationToken ct)
     {
-        PagamentoTreinador pagamento;
-        await using (var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false))
-        {
-            var pendente = await pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct).ConfigureAwait(false);
-            if (pendente is not null)
+        var params_ = new CriarPagamentoComIntentParams<PagamentoTreinador>(
+            ObterPendente: ct2 => pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct2),
+            VerificarIdempotencia: pendente =>
+                pendente.Finalidade == FinalidadePagamentoTreinador.TrocaPlano
+                && pendente.PlanoAlvoId == novoPlano.Id
+                && pendente.StripePaymentIntentId is not null
+                    ? pendente : null,
+            CriarPagamento: () => PagamentoTreinador.Criar(
+                assinatura.TreinadorId, assinatura.Id, novoPlano.Preco,
+                FinalidadePagamentoTreinador.TrocaPlano, agora, metodo, novoPlano.Id),
+            AplicarIntentPix: async (pag, ct2) =>
             {
-                if (pendente.Finalidade == FinalidadePagamentoTreinador.TrocaPlano
-                    && pendente.PlanoAlvoId == novoPlano.Id
-                    && pendente.StripePaymentIntentId is not null)
-                {
-                    await tx.CommitAsync(ct).ConfigureAwait(false);
-                    return Result.Success(TrocarPlanoTreinadorResponse.Regularizacao(pendente));
-                }
-
+                var r = await stripeService.CriarPixPlataformaPaymentIntentAsync(novoPlano.Preco, pag.Id, ct2).ConfigureAwait(false);
+                return pag.DefinirDadosPix(r.PaymentIntentId, r.QrCode, r.QrCodeUrl, r.Expiracao, agora);
+            },
+            AplicarIntentCartao: async (pag, ct2) =>
+            {
+                var r = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(novoPlano.Preco, pag.Id, ct2).ConfigureAwait(false);
+                return pag.DefinirDadosCartao(r.PaymentIntentId, r.ClientSecret, agora);
+            },
+            AdicionarAsync: (pag, ct2) => pagamentoRepository.AdicionarAsync(pag, ct2),
+            Metodo: metodo
+        )
+        {
+            MarcarFalhou = (pendente, dataAgora) =>
+            {
                 if (pendente.StripePaymentIntentId is not null)
                     logger.LogWarning("PagamentoTreinador ativo {PagamentoId} para plano {PlanoAlvoId} descartado (inadimplente trocando para {NovoPlanoId}).",
                         pendente.Id, pendente.PlanoAlvoId, novoPlano.Id);
-
-                var marcarResult = pendente.MarcarFalhou(agora);
-                if (marcarResult.IsFailure)
-                    return Result.Failure<TrocarPlanoTreinadorResponse>(marcarResult.Error!);
+                return pendente.MarcarFalhou(dataAgora);
             }
+        };
 
-            var pagamentoResult = PagamentoTreinador.Criar(
-                assinatura.TreinadorId, assinatura.Id, novoPlano.Preco,
-                FinalidadePagamentoTreinador.TrocaPlano, agora, metodo, novoPlano.Id);
-            if (pagamentoResult.IsFailure)
-                return Result.Failure<TrocarPlanoTreinadorResponse>(pagamentoResult.Error!);
-            pagamento = pagamentoResult.Value;
-
-            if (metodo == MetodoPagamento.Cartao)
-            {
-                var cartaoResult = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(novoPlano.Preco, pagamento.Id, ct).ConfigureAwait(false);
-                var definir = pagamento.DefinirDadosCartao(cartaoResult.PaymentIntentId, cartaoResult.ClientSecret, agora);
-                if (definir.IsFailure) return Result.Failure<TrocarPlanoTreinadorResponse>(definir.Error!);
-            }
-            else
-            {
-                var pixResult = await stripeService.CriarPixPlataformaPaymentIntentAsync(novoPlano.Preco, pagamento.Id, ct).ConfigureAwait(false);
-                var definir = pagamento.DefinirDadosPix(pixResult.PaymentIntentId, pixResult.QrCode, pixResult.QrCodeUrl, pixResult.Expiracao, agora);
-                if (definir.IsFailure) return Result.Failure<TrocarPlanoTreinadorResponse>(definir.Error!);
-            }
-
-            await pagamentoRepository.AdicionarAsync(pagamento, ct).ConfigureAwait(false);
-            await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
-            await tx.CommitAsync(ct).ConfigureAwait(false);
-        }
+        var result = await criarPagamentoService.ExecutarAsync(params_, ct).ConfigureAwait(false);
+        if (result.IsFailure)
+            return Result.Failure<TrocarPlanoTreinadorResponse>(result.Error!);
 
         logger.LogInformation("Regularização de inadimplente via troca de plano {PlanoId} para treinador {TreinadorId}.",
             novoPlano.Id, assinatura.TreinadorId);
-        return Result.Success(TrocarPlanoTreinadorResponse.Regularizacao(pagamento));
+        return Result.Success(TrocarPlanoTreinadorResponse.Regularizacao(result.Value));
     }
 }

@@ -77,6 +77,16 @@ public class AssinaturaTreinador : IHasDomainEvents
         return Result.Success();
     }
 
+    public void MarcarInadimplentePorDisputa(DateTime agora)
+    {
+        if (Status is AssinaturaTreinadorStatus.Cancelada or AssinaturaTreinadorStatus.Inadimplente)
+            return;
+
+        TentativasFalhasConsecutivas = LimiteTentativasFalhas;
+        Status = AssinaturaTreinadorStatus.Inadimplente;
+        UpdatedAt = agora;
+    }
+
     public Result Cancelar(DateTime agora)
     {
         if (Status == AssinaturaTreinadorStatus.Cancelada)
@@ -106,6 +116,9 @@ public class AssinaturaTreinador : IHasDomainEvents
 
         TentativasFalhasConsecutivas++;
         UpdatedAt = agora;
+
+        _domainEvents.Add(new AssinaturaTreinadorPagamentoFalhouEvent(
+            Id, TreinadorId, TentativasFalhasConsecutivas, agora));
 
         if (TentativasFalhasConsecutivas >= LimiteTentativasFalhas
             && Status == AssinaturaTreinadorStatus.Ativa)

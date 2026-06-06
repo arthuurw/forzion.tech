@@ -35,7 +35,7 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
 ### Treino / Exercício / Execução
 - **GrupoMuscular** — catálogo seedado. `Criar(nome, agora)`; `Atualizar(nome)`. Inv: nome 1..50. (Entidade ≠ enum `TipoGrupoMuscular`, §4.)
 - **Exercicio** — global (`TreinadorId=null`) ou do treinador. `Criar(nome, grupoMuscularId, agora, treinadorId?=null, descricao?)`; `Atualizar(nome?, grupoMuscularId?, descricao?)`. Prop derivada `IsGlobal` (= TreinadorId null). Inv: nome 1..100; grupoMuscularId≠Empty; descricao ≤500.
-- **Treino** (aggregate root) — ficha de treino + exercícios ordenados. `Criar(nome, objetivo, treinadorId, agora, dificuldade=Iniciante, dataInicio?, dataFim?)`. Métodos: `Atualizar(nome?, objetivo?, dificuldade?, dataInicio?, dataFim?, limparDataInicio, limparDataFim)`; `AdicionarExercicio(exercicioId)` (cria `TreinoExercicio` ordem=count+1); `RemoverExercicio(treinoExercicioId)` (remove + reordena); `Duplicar(agora)` (cópia mesmo treinador, nome+" (cópia)"); `DuplicarPara(novoTreinadorId, agora)` (clona p/ outro treinador, mantém nome); guard estático `ValidarMutabilidade(bool foiExecutado)` (lança `TreinoExecutadoException`; gateia TODA mutação de ficha já executada — incluindo `Atualizar` de cabeçalho nome/objetivo/dificuldade/datas, além de adicionar/remover/editar exercício e excluir). Inv: nome 1..100; treinadorId≠Empty; dataFim≥dataInicio. `Atualizar` valida invariantes ANTES de mutar (validate-then-mutate; falha não deixa estado parcial). Sem eventos.
+- **Treino** (aggregate root) — ficha de treino + exercícios ordenados. `Criar(nome, objetivo, treinadorId, agora, dificuldade=Iniciante, dataInicio?, dataFim?)`. Métodos: `Atualizar(nome?, objetivo?, dificuldade?, dataInicio?, dataFim?, limparDataInicio, limparDataFim)`; `AdicionarExercicio(exercicioId)` (cria `TreinoExercicio` ordem=count+1); `RemoverExercicio(treinoExercicioId)` (remove + reordena); `Duplicar(agora)` (cópia mesmo treinador, nome+" (cópia)"); `DuplicarPara(novoTreinadorId, agora)` (clona p/ outro treinador, mantém nome); guard estático `ValidarMutabilidade(bool foiExecutado)` (lança `TreinoExecutadoException`; gateia TODA mutação de ficha já executada — incluindo `Atualizar` de cabeçalho nome/objetivo/dificuldade/datas, além de adicionar/remover/editar exercício e excluir). `foiExecutado` = resultado de `IExecucaoTreinoRepository.ExisteParaTreinoComAlunoAtivoAsync` — retorna `true` somente se existe execução E o `TreinoAluno` do aluno executor está `Ativo`; aluno inativado/desvinculado (`TreinoAlunoStatus.Inativo`) NÃO trava — treino volta a ser mutável. Inv: nome 1..100; treinadorId≠Empty; dataFim≥dataInicio. `Atualizar` valida invariantes ANTES de mutar (validate-then-mutate; falha não deixa estado parcial). Sem eventos.
 - **TreinoExercicio** (filho de Treino) — exercício na ficha + séries. Factory `internal Criar(treinoId, exercicioId, ordem)`. Métodos: `AdicionarSerie(...)` (ordem=count+1); `AtualizarSeries(lista)` (≥1 grupo, recria); `AtualizarObservacao(obs?)` (≤500); `internal AlterarOrdem(int)`. Inv: ids≠Empty.
 - **SerieConfig** (filho de TreinoExercicio) — config de séries. Factory `internal Criar(treinoExercicioId, quantidade, repeticoesMin, repeticoesMax?, descricao?, carga?, descanso?, ordem)`. Inv: quantidade≥1; repeticoesMin≥1; repeticoesMax≥min; carga≥0; descanso≥0. Sem mutação.
 - **TreinoAluno** — atribuição de ficha a aluno. `Criar(treinoId, alunoId, agora)` → `Status=Ativo`. `AlterarStatus(status)`. Inv: ids≠Empty. Sem eventos.
@@ -67,7 +67,8 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
   - `MarcarInadimplente(agora)` — só de Ativa. SEM evento (manual; automático via `RegistrarPagamentoFalho`).
   - `Cancelar(agora)` — →Cancelada, set DataCancelamento, emite `AssinaturaTreinadorCanceladaEvent` (falha se já Cancelada).
   - `AgendarProximaCobranca(data, agora)` — data futura. SEM evento.
-  - `RegistrarPagamentoFalho(agora)` — `void`. Cancelada→no-op; incrementa contador; se contador≥3 E Ativa → Inadimplente + emite `AssinaturaTreinadorMarcadaInadimplenteEvent`. (NÃO emite evento de "falhou" por tentativa — diverge de `AssinaturaAluno`.)
+  - `RegistrarPagamentoFalho(agora)` — `void`. Cancelada→no-op; incrementa contador; SEMPRE emite `AssinaturaTreinadorPagamentoFalhouEvent`; se contador≥3 E Ativa → Inadimplente + emite `AssinaturaTreinadorMarcadaInadimplenteEvent` (paridade com `AssinaturaAluno`).
+  - `MarcarInadimplentePorDisputa(agora)` — só de Ativa (T4); no-op idempotente se já Inadimplente/outro status não-Ativa. →Inadimplente imediato, equipara contador a `LimiteTentativasFalhas`. SEM evento distinto (congelamento por chargeback/estorno; paridade com `AssinaturaAluno.MarcarInadimplentePorDisputa`). Chamado pelo handler `ProcessarEstornoTreinadorAsync` e `ProcessarDisputaTreinadorAsync`.
   - `RegistrarPagamentoRegularizado(agora)` — `void`. Cancelada→no-op; zera contador; se Inadimplente→Ativa emite `AssinaturaTreinadorReativadaEvent`. Idempotente.
   - `TrocarPlanoImediato(novoPlanoId, novoValor, agora)` — só de Ativa/Inadimplente; set plano+valor, limpa plano agendado, emite `AssinaturaTreinadorPlanoTrocadoEvent(…, PlanoAnteriorId, PlanoNovoId, …)`. (Usado em upgrade/regularização.)
   - `AgendarDowngrade(novoPlanoId, agora)` — só de Ativa; set `PlanoPlataformaIdAgendado` (aplicado na próxima renovação). SEM evento.
@@ -77,8 +78,10 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
 - **PagamentoTreinador*** — cobrança do plano do treinador (PaymentIntent direto-plataforma, SEM Connect; ver [specification-stripe]). `Criar(treinadorId, assinaturaTreinadorId, valor, FinalidadePagamentoTreinador, agora, metodo=Pix, planoAlvoId?=null)` → `Status=Pendente`. Inv (factory): ids≠Empty; valor>0. Métodos:
   - `DefinirDadosPix(paymentIntentId, qrCode, qrCodeUrl, expiracao, agora)` / `DefinirDadosCartao(paymentIntentId, clientSecret, agora)` — set dados Stripe (validam não-vazio). SEM evento.
   - `MarcarPago(agora)` — só de Pendente, set DataPagamento, emite `PagamentoTreinadorPagoEvent(…, Finalidade, PlanoAlvoId, …)` (handler orquestra renovação/troca — [specification-backend]).
-  - `MarcarFalhou(agora)` / `MarcarExpirado(agora)` — só de Pendente. SEM evento. (Sem `MarcarEstornado`/`MarcarEmDisputa`.)
-  - Props: `Finalidade` (Cadastro/Renovacao/TrocaPlano), `PlanoAlvoId` (nullable, plano da troca). Reusa `PagamentoStatus`/`MetodoPagamento`.
+  - `MarcarFalhou(agora)` / `MarcarExpirado(agora)` — só de Pendente. SEM evento.
+  - `MarcarEstornado(agora)` — só de Pago (T4). SEM evento. Handler `ProcessarEstornoTreinadorAsync` chama adicionalmente `AssinaturaTreinador.MarcarInadimplentePorDisputa` para congelar acesso.
+  - `MarcarEmDisputa(agora)` — só de Pago (T4). SEM evento. Handler `ProcessarDisputaTreinadorAsync` idem.
+  - Props: `Finalidade` (Cadastro/Renovacao/TrocaPlano), `PlanoAlvoId` (nullable, plano da troca). Reusa `PagamentoStatus`/`MetodoPagamento`. Máquina de estado: Pendente → Pago/Falhou/Expirado; Pago → Estornado/EmDisputa (terminais).
 
 ### Projeção / Observabilidade
 - **Assinante** — read model derivado de Aluno (sync via domain events; ver [specification-db]). `Criar(alunoId, nome, email?, agora)` (sem validação); `Sincronizar(nome, email?)`. Sem eventos.
@@ -140,13 +143,15 @@ Todos `sealed record : IDomainEvent`. Handlers (e-mail/WhatsApp/projeção) em [
 | PagamentoEmDisputaEvent | Pagamento.MarcarEmDisputa | PagamentoId, AssinaturaAlunoId, Valor, MotivoDisputa, OcorridoEm | e-mail URGENTE treinador + log Critical |
 | AssinaturaTreinadorCriadaEvent | AssinaturaTreinador.Criar | AssinaturaTreinadorId, TreinadorId, PlanoPlataformaId, Valor, OcorridoEm | (sem handler registrado — ver [specification-backend]) |
 | AssinaturaTreinadorCanceladaEvent | AssinaturaTreinador.Cancelar | AssinaturaTreinadorId, TreinadorId, OcorridoEm | (sem handler registrado) |
-| AssinaturaTreinadorMarcadaInadimplenteEvent | AssinaturaTreinador.RegistrarPagamentoFalho (cruza limite) | AssinaturaTreinadorId, TreinadorId, TentativasFalhasConsecutivas, OcorridoEm | (sem handler registrado) |
+| AssinaturaTreinadorPagamentoFalhouEvent | AssinaturaTreinador.RegistrarPagamentoFalho (toda tentativa) | AssinaturaTreinadorId, TreinadorId, TentativasFalhasConsecutivas, OcorridoEm | e-mail treinador (progressivo 1/2/3+) — `AssinaturaTreinadorPagamentoFalhouEmailHandler` |
+| AssinaturaTreinadorMarcadaInadimplenteEvent | AssinaturaTreinador.RegistrarPagamentoFalho (cruza limite) | AssinaturaTreinadorId, TreinadorId, TentativasFalhasConsecutivas, OcorridoEm | e-mail treinador — `AssinaturaTreinadorMarcadaInadimplenteEmailHandler` |
 | AssinaturaTreinadorReativadaEvent | AssinaturaTreinador.RegistrarPagamentoRegularizado (Inadimplente→Ativa) | AssinaturaTreinadorId, TreinadorId, OcorridoEm | (sem handler registrado) |
 | AssinaturaTreinadorPlanoTrocadoEvent | AssinaturaTreinador.TrocarPlanoImediato / AplicarPlanoAgendado | AssinaturaTreinadorId, TreinadorId, PlanoAnteriorId, PlanoNovoId, OcorridoEm | (sem handler registrado) |
 | PagamentoTreinadorPagoEvent | PagamentoTreinador.MarcarPago | PagamentoTreinadorId, TreinadorId, AssinaturaTreinadorId, Finalidade, PlanoAlvoId?, OcorridoEm | orquestra renovação/troca de plano ([specification-backend]) |
 
 ⚠️ `PagamentoFalhouEvent` carrega `AssinaturaAlunoId` (1º campo) e é emitido pela `AssinaturaAluno`, NÃO pelo `Pagamento`. `PagamentoCriadoEvent`/`PagamentoEstornadoEvent`/`PagamentoEmDisputaEvent` são emitidos pelo `Pagamento`.
-⚠️ Os 5 eventos `AssinaturaTreinador*` são emitidos mas NÃO têm handler registrado no DI (efeito de billing do treinador é orquestrado direto pelo handler de `PagamentoTreinadorPagoEvent` + use cases). Só `PagamentoTreinadorPagoEvent` tem handler.
+⚠️ `AssinaturaTreinadorPagamentoFalhouEvent` é emitido a CADA falha (análogo ao `PagamentoFalhouEvent` do aluno). Na 3ª falha, `AssinaturaTreinadorMarcadaInadimplenteEvent` é emitido ADICIONALMENTE (dois eventos no mesmo `RegistrarPagamentoFalho`). Ambos têm handler de e-mail registrado.
+⚠️ `AssinaturaTreinadorCriadaEvent`, `AssinaturaTreinadorCanceladaEvent`, `AssinaturaTreinadorReativadaEvent`, `AssinaturaTreinadorPlanoTrocadoEvent` — sem handler registrado. Só `PagamentoTreinadorPagoEvent` tem handler de orquestração.
 
 ## 6. MÁQUINAS DE ESTADO
 Trigger = método. `[*]` = factory.
@@ -219,7 +224,7 @@ stateDiagram-v2
   %% AssinaturaTreinador (Ativar falha se Inadimplente — usar regularização)
   [*] --> Pendente : Criar
   Pendente --> Ativa : Ativar
-  Ativa --> Inadimplente : RegistrarPagamentoFalho (contador>=3) / MarcarInadimplente
+  Ativa --> Inadimplente : RegistrarPagamentoFalho (contador>=3) / MarcarInadimplente / MarcarInadimplentePorDisputa
   Inadimplente --> Ativa : RegistrarPagamentoRegularizado
   Pendente --> Cancelada : Cancelar
   Ativa --> Cancelada : Cancelar
@@ -250,7 +255,7 @@ Base `DomainException : Exception` (ctors: vazio / message / message+inner). Tod
 | GrupoMuscularNaoEncontrado | lookup de grupo muscular falhou |
 | TreinoNaoEncontrado | lookup de treino falhou |
 | LimiteAlunosAtingido | treinador no limite de alunos do plano (`ICapacidadePlano.MaxAlunos`) |
-| TreinoExecutado | tentativa de alterar treino já executado (via `Treino.ValidarMutabilidade`) |
+| TreinoExecutado | tentativa de alterar treino executado por aluno ativo (via `Treino.ValidarMutabilidade`) |
 
 ## 8. INTERFACES DE DOMÍNIO
 - **IDomainEvent** (Events) — `DateTime OcorridoEm`. Contrato base de evento.
