@@ -157,7 +157,8 @@ public class ResponseDtoSnapshots
     [Fact]
     public Task OnboardingStatusResponse() => Verify(new OnboardingStatusResponse(
         OnboardingCompleto: true,
-        ContaConfigurada: true));
+        ContaConfigurada: true,
+        ModoPagamentoAluno: ModoPagamentoAluno.Plataforma));
 
     [Fact]
     public Task HealthSnapshotResponse() => Verify(new HealthSnapshotResponse(
