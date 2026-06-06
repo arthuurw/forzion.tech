@@ -9,6 +9,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import AlertBanner from "@/components/ui/AlertBanner";
+import SemVinculoAtivoBanner from "@/components/aluno/SemVinculoAtivoBanner";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { alunoApi } from "@/lib/api/aluno";
@@ -101,6 +102,8 @@ export default function HistoricoAlunoPage() {
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>Histórico de Sessões</Typography>
+
+      <SemVinculoAtivoBanner />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
