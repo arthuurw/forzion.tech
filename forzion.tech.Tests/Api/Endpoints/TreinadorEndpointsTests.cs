@@ -800,8 +800,10 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IPagamentoRepository>(),
             Mock.Of<IContaRecebimentoRepository>(),
             Mock.Of<IStripeService>(),
-            Mock.Of<IUnitOfWork>(),
-            Mock.Of<IDbContextTransactionProvider>(),
+            new forzion.tech.Application.Services.CriarPagamentoComIntentService(
+                Mock.Of<IUnitOfWork>(), Mock.Of<IDbContextTransactionProvider>(),
+                TimeProvider.System,
+                Mock.Of<ILogger<forzion.tech.Application.Services.CriarPagamentoComIntentService>>()),
             Microsoft.Extensions.Options.Options.Create(new PaymentSettings()), TimeProvider.System,
             Mock.Of<ILogger<GerarCobrancaMensalHandler>>());
 

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Application.Settings;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Domain.Entities;
@@ -39,9 +40,13 @@ public class GerarCobrancaMensalHandlerTests
         _transactionProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NoopTransaction());
 
+        var criarPagamentoService = new CriarPagamentoComIntentService(
+            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            Mock.Of<ILogger<CriarPagamentoComIntentService>>());
+
         _handler = new GerarCobrancaMensalHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, _contaRecebimentoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _transactionProvider.Object,
+            _stripeService.Object, criarPagamentoService,
             paymentSettings, TimeProvider.System, _logger.Object);
 
         _stripeService.Setup(s => s.CriarPixPaymentIntentAsync(
@@ -106,7 +111,6 @@ public class GerarCobrancaMensalHandlerTests
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamentoPendente);
-        // Conta Stripe verificada antes da tx (early-exit para treinador sem onboarding)
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));
 
@@ -122,10 +126,9 @@ public class GerarCobrancaMensalHandlerTests
     [Fact]
     public async Task HandleAsync_PagamentoZumbi_MarcaFalhouECriaNovoCharge()
     {
-        // Zumbi: Pendente sem StripePaymentIntentId — Stripe falhou em tentativa anterior
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
-        var zumbi = Pagamento.Criar(assinatura.Id, assinatura.Valor, DateTime.UtcNow).Value; // sem DefinirDadosPix
+        var zumbi = Pagamento.Criar(assinatura.Id, assinatura.Valor, DateTime.UtcNow).Value;
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
@@ -146,8 +149,6 @@ public class GerarCobrancaMensalHandlerTests
     [Fact]
     public async Task HandleAsync_StripeFalha_PropagaExcecaoSemPersistirPagamento()
     {
-        // G-PAY-1: Stripe é chamado ANTES do commit. Se falhar, nenhum Pagamento é
-        // gravado no banco (rollback implícito) → sem zumbi, sem slot ocupado.
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
@@ -163,7 +164,6 @@ public class GerarCobrancaMensalHandlerTests
         var act = async () => await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
         await act.Should().ThrowAsync<InvalidOperationException>();
 
-        // AdicionarAsync nunca foi chamado — Stripe falhou antes do commit
         _pagamentoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Pagamento>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -217,8 +217,6 @@ public class GerarCobrancaMensalHandlerTests
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
-    // --- Método Cartão ---
-
     private static readonly CartaoPaymentResult CartaoResult = new("pi_cartao_123", "secret_abc");
 
     [Fact]
@@ -250,8 +248,6 @@ public class GerarCobrancaMensalHandlerTests
     [Fact]
     public async Task HandleAsync_MetodoCartao_StripeFalha_PropagaExcecaoSemPersistirPagamento()
     {
-        // G-PAY-1: Stripe Cartão é chamado ANTES do commit. Se falhar, nenhum Pagamento é
-        // gravado no banco (rollback implícito) → sem zumbi, sem slot ocupado.
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
 
@@ -269,7 +265,6 @@ public class GerarCobrancaMensalHandlerTests
             new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id, MetodoPagamento.Cartao));
         await act.Should().ThrowAsync<InvalidOperationException>();
 
-        // AdicionarAsync nunca foi chamado — Stripe falhou antes do commit
         _pagamentoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Pagamento>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -298,14 +293,9 @@ public class GerarCobrancaMensalHandlerTests
             It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // ── G-PAY-1: testes de atomicidade ───────────────────────────────────────────
-
     [Fact]
     public async Task HandleAsync_HappyPath_PersistePagamentoComIntentId()
     {
-        // (a) Happy path: único CommitAsync persiste Pagamento já com StripePaymentIntentId.
-        // Garante que a janela de zumbi foi eliminada: nenhum commit acontece antes de
-        // termos o intent id do Stripe.
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
 
@@ -323,29 +313,17 @@ public class GerarCobrancaMensalHandlerTests
 
         result.IsSuccess.Should().BeTrue();
 
-        // Pagamento foi entregue ao repositório já com StripePaymentIntentId preenchido
         pagamentoAdicionado.Should().NotBeNull();
         pagamentoAdicionado!.StripePaymentIntentId.Should().NotBeNullOrEmpty(
             because: "o Pagamento só deve ser persistido após o Stripe retornar o intent id (G-PAY-1)");
         pagamentoAdicionado.Status.Should().Be(PagamentoStatus.Pendente);
 
-        // Apenas um CommitAsync — sem janela de dois commits
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task HandleAsync_Idempotencia_StripeRecebeIdempotencyKeyDerivadaDoPagamentoId()
     {
-        // (b) Idempotency: FakeStripeService (espelhando o comportamento do StripeService real)
-        // deriva o PaymentIntentId do pagamentoId. Verificamos que o intent id retornado
-        // pelo Stripe é construído com o mesmo Guid do Pagamento — provando que retries
-        // com o mesmo Pagamento.Id reutilizariam o mesmo intent (no StripeService real,
-        // via IdempotencyKey = "pagamento-{guid:N}").
-        //
-        // O FakeStripeService usa a convenção: PaymentIntentId = $"pi_fake_{pagamentoId:N}".
-        // Ao inspecionar o StripePaymentIntentId persistido, confirmamos que ele foi
-        // construído com o Guid correto — qualquer retry com o mesmo Guid (mesma
-        // idempotency key) receberia o mesmo intent do Stripe real.
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
 
@@ -355,11 +333,13 @@ public class GerarCobrancaMensalHandlerTests
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));
 
-        // Use FakeStripeService directly to mirror E2E pipeline behavior
         var fakeStripe = new FakeStripeService();
+        var criarPagamentoService = new CriarPagamentoComIntentService(
+            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            Mock.Of<ILogger<CriarPagamentoComIntentService>>());
         var handler = new GerarCobrancaMensalHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, _contaRecebimentoRepo.Object,
-            fakeStripe, _unitOfWork.Object, _transactionProvider.Object,
+            fakeStripe, criarPagamentoService,
             Options.Create(new PaymentSettings { TaxaPlataformaPercent = 5m }),
             TimeProvider.System, _logger.Object);
 
@@ -372,10 +352,6 @@ public class GerarCobrancaMensalHandlerTests
         result.IsSuccess.Should().BeTrue();
         pagamentoAdicionado.Should().NotBeNull();
 
-        // FakeStripeService: PaymentIntentId = $"pi_fake_{pagamentoId:N}"
-        // O intent id deve conter o Guid do Pagamento que foi passado ao Stripe.
-        // Isso confirma que o mesmo Pagamento.Id → mesma idempotency key → mesmo intent
-        // no StripeService real (idempotent retry seguro).
         var expectedIntentPrefix = $"pi_fake_{pagamentoAdicionado!.Id:N}";
         pagamentoAdicionado.StripePaymentIntentId.Should().Be(expectedIntentPrefix,
             because: "o StripePaymentIntentId deve ser derivado do Pagamento.Id para garantir idempotência em retries");
@@ -384,11 +360,6 @@ public class GerarCobrancaMensalHandlerTests
     [Fact]
     public async Task HandleAsync_FalhaNoCommit_StripeJaFoiChamado_ExcecaoPropagaSemZumbi()
     {
-        // (b) Retry safety: se o único CommitAsync falhar depois que Stripe já retornou,
-        // a exceção propaga (caller/job pode fazer retry). O Pagamento nunca foi gravado,
-        // então não existe zumbi no banco. Um retry chamaria Stripe com um NOVO Guid
-        // (Pagamento.Criar gera novo Id) — no StripeService real, nova idempotency key →
-        // novo intent. O intent anterior fica órfão e expira (sem captura de dinheiro).
         var treinador = CriarTreinadorComOnboarding();
         var assinatura = CriarAssinaturaAluno(treinador.Id);
 
@@ -398,8 +369,6 @@ public class GerarCobrancaMensalHandlerTests
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ContaOnboarded(treinador.Id));
 
-        // Stripe succeeds (intent returned)
-        // CommitAsync throws — simulates DB failure after Stripe call
         _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("DB commit failure"));
 
@@ -413,11 +382,8 @@ public class GerarCobrancaMensalHandlerTests
         var act = async () => await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("DB commit failure");
 
-        // Stripe foi chamado antes do commit (design correto do G-PAY-1)
         stripeCalledWithPagamentoId.Should().NotBeNull();
 
-        // Pagamento foi passado ao repo, mas o commit nunca completou → sem row no banco
-        // (NoopTransaction não valida, mas o contrato é: se CommitAsync joga, o caller retenta)
         _pagamentoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Pagamento>(), It.IsAny<CancellationToken>()), Times.Once,
             "AdicionarAsync foi chamado, mas CommitAsync lançou — o Pagamento nunca foi gravado");
     }

@@ -108,4 +108,56 @@ public class PagamentoTreinadorTests
         p.MarcarExpirado(Agora).IsSuccess.Should().BeTrue();
         p.Status.Should().Be(PagamentoStatus.Expirado);
     }
+
+    [Fact]
+    public void MarcarEstornado_DePago_Ok()
+    {
+        var p = Novo();
+        p.MarcarPago(Agora);
+        p.MarcarEstornado(Agora).IsSuccess.Should().BeTrue();
+        p.Status.Should().Be(PagamentoStatus.Estornado);
+    }
+
+    [Fact]
+    public void MarcarEstornado_DePendente_Falha()
+    {
+        var p = Novo();
+        p.MarcarEstornado(Agora).IsFailure.Should().BeTrue();
+        p.Status.Should().Be(PagamentoStatus.Pendente);
+    }
+
+    [Fact]
+    public void MarcarEstornado_JaEstornado_Falha()
+    {
+        var p = Novo();
+        p.MarcarPago(Agora);
+        p.MarcarEstornado(Agora);
+        p.MarcarEstornado(Agora).IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void MarcarEmDisputa_DePago_Ok()
+    {
+        var p = Novo();
+        p.MarcarPago(Agora);
+        p.MarcarEmDisputa(Agora).IsSuccess.Should().BeTrue();
+        p.Status.Should().Be(PagamentoStatus.EmDisputa);
+    }
+
+    [Fact]
+    public void MarcarEmDisputa_DePendente_Falha()
+    {
+        var p = Novo();
+        p.MarcarEmDisputa(Agora).IsFailure.Should().BeTrue();
+        p.Status.Should().Be(PagamentoStatus.Pendente);
+    }
+
+    [Fact]
+    public void MarcarEmDisputa_JaEmDisputa_Falha()
+    {
+        var p = Novo();
+        p.MarcarPago(Agora);
+        p.MarcarEmDisputa(Agora);
+        p.MarcarEmDisputa(Agora).IsFailure.Should().BeTrue();
+    }
 }
