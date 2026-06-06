@@ -23,40 +23,51 @@ public static class StripeWebhookParser
 
         // charge.refunded: data.object é Charge — `payment_intent` aponta pro PI subjacente.
         // charge.dispute.created: data.object é Dispute — também traz `payment_intent` direto.
-        // Outros payment_intent.* eventos: data.object.id já é o próprio PI.
+        // Stripe pode expandir `payment_intent` como objeto; TryGetStringValue retorna null
+        // nesses casos em vez de lançar, evitando poison-retry (400 em loop).
         var paymentIntentId = type switch
         {
-            "charge.refunded" => data?["payment_intent"]?.GetValue<string>(),
-            "charge.dispute.created" => data?["payment_intent"]?.GetValue<string>(),
-            _ when type.StartsWith("payment_intent.", StringComparison.Ordinal) => data?["id"]?.GetValue<string>(),
+            "charge.refunded" => TryGetStringValue(data?["payment_intent"]),
+            "charge.dispute.created" => TryGetStringValue(data?["payment_intent"]),
+            _ when type.StartsWith("payment_intent.", StringComparison.Ordinal) => TryGetStringValue(data?["id"]),
             _ => null,
         };
 
-        // Eventos Connect (payment_intent.* + account.updated + charge.*) trazem `account` no root.
-        // Extrair sempre que presente — handler usa pra validar Connect account de origem.
-        var accountId = root["account"]?.GetValue<string>();
+        var accountId = TryGetStringValue(root["account"]);
 
         var chargesEnabled = type == "account.updated" &&
             (data?["charges_enabled"]?.GetValue<bool>() ?? false);
 
-        // amount_refunded em centavos, presente em charge.refunded.
-        // G-PAY-5: usado para distinguir refund total vs parcial — só refund total muda status.
+        // G-PAY-5: distingue refund total vs parcial — só refund total muda status.
         var amountRefundedCents = type == "charge.refunded"
-            ? data?["amount_refunded"]?.GetValue<long>()
+            ? TryGetLongValue(data?["amount_refunded"])
             : null;
 
-        // reason vem do Dispute object — valores comuns: "fraudulent", "duplicate",
-        // "subscription_canceled", "product_not_received", etc. Exposto pro template
-        // de e-mail urgente que vai pro treinador (precisa saber o motivo pra responder).
+        // reason vem do Dispute object. Valores comuns: "fraudulent", "duplicate",
+        // "subscription_canceled", "product_not_received". Exposto pro template de e-mail
+        // urgente que vai pro treinador (precisa do motivo pra responder no Stripe Dashboard).
         var motivoDisputa = type == "charge.dispute.created"
-            ? data?["reason"]?.GetValue<string>()
+            ? TryGetStringValue(data?["reason"])
             : null;
 
-        // metadata.tipo distingue pagamento do plano do treinador (direto-plataforma) do fluxo de aluno.
         var tipoMetadata = type.StartsWith("payment_intent.", StringComparison.Ordinal)
-            ? data?["metadata"]?["tipo"]?.GetValue<string>()
+            ? TryGetStringValue(data?["metadata"]?["tipo"])
             : null;
 
         return new StripeWebhookEvento(type, paymentIntentId, accountId, chargesEnabled, amountRefundedCents, motivoDisputa, tipoMetadata);
+    }
+
+    private static string? TryGetStringValue(JsonNode? node)
+    {
+        if (node is JsonValue jsonValue && jsonValue.TryGetValue<string>(out var s))
+            return s;
+        return null;
+    }
+
+    private static long? TryGetLongValue(JsonNode? node)
+    {
+        if (node is JsonValue jsonValue && jsonValue.TryGetValue<long>(out var l))
+            return l;
+        return null;
     }
 }

@@ -1,36 +1,21 @@
 using forzion.tech.Application.Interfaces;
-using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Api.Filters;
 
-public sealed class RequireAssinaturaTreinadorAtivaFilter : IEndpointFilter
+public sealed class RequireAssinaturaTreinadorAtivaFilter : RequireAssinaturaAtivaFilterBase
 {
-    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    protected override string CodigoErro => "ASSINATURA_TREINADOR_INADIMPLENTE";
+
+    protected override Task<bool> EstaInadimplenteAsync(
+        IServiceProvider services,
+        IUserContext userContext,
+        CancellationToken ct)
     {
-        var services = context.HttpContext.RequestServices;
-        var userContext = services.GetRequiredService<IUserContext>();
-
         if (userContext.TipoConta != TipoConta.Treinador)
-            return await next(context);
+            return Task.FromResult(false);
 
-        var assinaturaRepository = services.GetRequiredService<IAssinaturaTreinadorRepository>();
-        var assinatura = await assinaturaRepository
-            .ObterAtualPorTreinadorAsync(userContext.PerfilId, context.HttpContext.RequestAborted)
-            .ConfigureAwait(false);
-
-        if (assinatura?.Status == AssinaturaTreinadorStatus.Inadimplente)
-        {
-            return Results.Problem(
-                statusCode: StatusCodes.Status403Forbidden,
-                title: "Assinatura inadimplente",
-                detail: "Regularize seu pagamento para continuar usando esta funcionalidade.",
-                extensions: new Dictionary<string, object?>
-                {
-                    ["code"] = "ASSINATURA_TREINADOR_INADIMPLENTE"
-                });
-        }
-
-        return await next(context);
+        // Quando billing do treinador for implementado, consultar IAssinaturaTreinadorRepository aqui.
+        return Task.FromResult(false);
     }
 }
