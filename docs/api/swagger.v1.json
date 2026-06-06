@@ -2189,6 +2189,77 @@
         }
       }
     },
+    "/auth/treinador/{treinadorId}/pagamento": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Inicia o pagamento do plano da plataforma durante o cadastro do treinador",
+        "parameters": [
+          {
+            "name": "treinadorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IniciarPagamentoPlanoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IniciarPagamentoPlanoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/forgot-password": {
       "post": {
         "tags": [
@@ -2783,6 +2854,34 @@
         }
       }
     },
+    "/internal/processar-renovacoes-treinador": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Processa renovações mensais de planos de treinadores (requer X-Internal-Key)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/processar-renovacoes": {
       "post": {
         "tags": [
@@ -2983,6 +3082,173 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/plano/assinatura": {
+      "get": {
+        "tags": [
+          "Pagamentos"
+        ],
+        "summary": "Retorna a assinatura de plano ativa do treinador",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/plano/pagamento/{pagamentoId}": {
+      "get": {
+        "tags": [
+          "Pagamentos"
+        ],
+        "summary": "Retorna status de pagamento de plano do treinador",
+        "parameters": [
+          {
+            "name": "pagamentoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/plano/trocar": {
+      "post": {
+        "tags": [
+          "Pagamentos"
+        ],
+        "summary": "Troca o plano do treinador (upgrade/downgrade/regularização)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocarPlanoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrocarPlanoTreinadorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/plano/cobrar": {
+      "post": {
+        "tags": [
+          "Pagamentos"
+        ],
+        "summary": "Gera cobrança de renovação do plano do treinador (metodo: Pix ou Cartao)",
+        "parameters": [
+          {
+            "name": "metodo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/MetodoPagamento"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IniciarPagamentoPlanoResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5997,6 +6263,60 @@
         },
         "additionalProperties": false
       },
+      "IniciarPagamentoPlanoRequest": {
+        "type": "object",
+        "properties": {
+          "metodo": {
+            "$ref": "#/components/schemas/MetodoPagamento"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IniciarPagamentoPlanoResponse": {
+        "type": "object",
+        "properties": {
+          "pagamentoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "valor": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PagamentoStatus"
+          },
+          "metodoPagamento": {
+            "$ref": "#/components/schemas/MetodoPagamento"
+          },
+          "stripePaymentIntentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "pixQrCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "pixQrCodeUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "pixExpiracao": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "clientSecret": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "ListarAlunosResponse": {
         "type": "object",
         "properties": {
@@ -6215,6 +6535,14 @@
         "type": "integer",
         "format": "int32"
       },
+      "ModoPagamentoAluno": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "NivelCondicionamento": {
         "enum": [
           0,
@@ -6256,6 +6584,9 @@
           },
           "contaConfigurada": {
             "type": "boolean"
+          },
+          "modoPagamentoAluno": {
+            "$ref": "#/components/schemas/ModoPagamentoAluno"
           }
         },
         "additionalProperties": false
@@ -6786,6 +7117,13 @@
             "type": "string",
             "nullable": true
           },
+          "planoPlataformaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modoPagamentoAluno": {
+            "$ref": "#/components/schemas/ModoPagamentoAluno"
+          },
           "telefone": {
             "type": "string",
             "nullable": true
@@ -6955,6 +7293,16 @@
         "type": "integer",
         "format": "int32"
       },
+      "TipoTrocaPlano": {
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "TreinadorExportDto": {
         "type": "object",
         "properties": {
@@ -7020,7 +7368,8 @@
         "enum": [
           0,
           1,
-          2
+          2,
+          3
         ],
         "type": "integer",
         "format": "int32"
@@ -7184,6 +7533,63 @@
           },
           "nomeAluno": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrocarPlanoRequest": {
+        "type": "object",
+        "properties": {
+          "planoPlataformaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metodo": {
+            "$ref": "#/components/schemas/MetodoPagamento"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrocarPlanoTreinadorResponse": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "$ref": "#/components/schemas/TipoTrocaPlano"
+          },
+          "pagamentoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "valorPagamento": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "metodoPagamento": {
+            "$ref": "#/components/schemas/MetodoPagamento"
+          },
+          "pixQrCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "pixQrCodeUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "pixExpiracao": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "clientSecret": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataEfetivacao": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
