@@ -118,6 +118,7 @@ export default function ExecutarFichaPage() {
         const problem = err.response.data as ProblemDetails;
         if (problem.status === 404) setError("Ficha não encontrada.");
         else if (problem.status === 422) setError(problem.detail ?? "Dados inválidos para registrar o treino.");
+        else if (problem.status === 403) setError("Você não tem um treinador ativo. Não é possível registrar novos treinos.");
         else setError("Erro ao registrar treino. Tente novamente.");
       } else {
         setError("Erro ao registrar treino.");
