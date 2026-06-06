@@ -18,7 +18,7 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 | Gate/check | Comando local | Rodável Win? | Caveat |
 |---|---|---|---|
 | backend build+format | `dotnet build -c Release` ; `dotnet format forzion.tech.slnx --verify-no-changes` | ✅ | format exige CRLF (§2). `.slnx` precisa SDK ≥9/10. |
-| backend unit (1668) | `dotnet test forzion.tech.Tests --filter "Category!=Integration"` | ✅ | — |
+| backend unit (1843) | `dotnet test forzion.tech.Tests --filter "Category!=Integration"` | ✅ | — |
 | **backend coverage gates** | ver §3 | ⚠️ | NÃO rodar 6× `--no-build` em sequência no Windows (merge/lock → números errados/rc=1). Rodar 1× sem Include e ler a tabela por módulo. |
 | backend integração (Testcontainers) | `dotnet test forzion.tech.Tests --filter "Category=Integration"` | ✅ (Docker) | 96 testes; sobe Postgres efêmero. |
 | backend vuln/SBOM | `dotnet list forzion.tech.slnx package --vulnerable --include-transitive` | ✅ | — |
@@ -48,12 +48,12 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 - **Broker Pact (homolog) trava o `contract`/`pact-provider` (CANÔNICO)**: ambos dependem do broker self-hosted na VM homolog (`https://pact.homologacao.forzion.tech`, containers `pact-broker`+`pact-postgres`). A borda (nginx) responde `401` mesmo com o broker app/DB degradado; o step "Aguarda broker disponivel" faz `curl` heartbeat **autenticado SEM `--max-time`** → se o broker app/DB não responde, o curl **PENDURA** (não falha em ~3min; runs de 20min+). App NÃO é afetado (DB do app é separado do `pact-postgres`; `can-i-deploy` já é `continue-on-error`). Diagnóstico: app `homologacao.forzion.tech`=200 + broker=`401` (borda viva) mas heartbeat autenticado pendura → broker interno. Remediação (VM): `docker compose -f docker-compose.homolog.yml ps` / `restart pact-broker pact-postgres`. Hardening: add `--max-time` no `curl` do `contract.yml`/`pact-provider.yml` p/ falhar rápido em vez de pendurar.
 
 ## 3. COVERAGE BACKEND — números reais medidos (unit, `Category!=Integration`)
-Medido 2026-05-30 (idêntico SDK 8 e 10 → não é artefato de SDK). Gates (pisos) por módulo: CANÔNICO em [specification-tests] §8 — aqui só os reais:
-| Módulo | Line | Branch | Method | Status vs gate |
+Medido 2026-06-06 (pós-billing treinador + raise de cobertura; SDK 8/10 idênticos → não é artefato de SDK). Gates (pisos) por módulo: CANÔNICO em [specification-tests] §8 — aqui só os reais:
+| Módulo | Line | Branch | Method | Status vs gate (b75/l85/m85; Api l85/m70) |
 |---|---|---|---|---|
-| Domain | 94.76% | 93.09% | 93.77% | ✅ |
-| Application | 94.77% | 84.51% | **95.86%** | ✅ (resolvido — commit 947ff91) |
-| Api | 87.74% | 55.95% | 79.03% | ✅ |
+| Domain | 95.22% | 92.67% | 94.85% | ✅ |
+| Application | 94.82% | 84.55% | 96.14% | ✅ |
+| Api | 86.36% | 56.72% | 77.34% | ✅ (line 86.36 ≥ 85 — margem fina; endpoints billing baixaram de 87.74) |
 | Infrastructure | 6.2% | 67.15% | 34.87% | n/a unit (branch 35 só na suíte de integração) |
 - ✅ **ACHADO RESOLVIDO (commit 947ff91)**: o gate `test-backend-unit > Coverage Application (line/method 85)` chegou a FALHAR (`-p:ThresholdType="line,method"` exige AMBOS ≥85; method estava 84.51 — features LGPD/WhatsApp/admin-stats adicionaram handlers sem cobertura de método). RESOLUÇÃO aplicada: +51 testes unit cobrindo métodos/DTOs/lambdas descobertos (LGPD/admin/treinos/pagamentos) → Application agora line 94.77% / branch 84.51% / **method 95.86%**, gate verde. O comentário de baseline conservador no `ci.yml` (method 93.1%) continua abaixo do real (95.86%) — piso intacto, não abaixado ([specification-tests] §8).
 - Reproduzir 1 gate: `dotnet test forzion.tech.Tests --no-build -c Release --filter "Category!=Integration" -p:CollectCoverage=true -p:Include="[forzion.tech.Application]*" -p:Threshold=85 -p:ThresholdType="line,method" -p:ThresholdStat=Total` (rebuild antes; não encadear vários).
@@ -66,6 +66,14 @@ Medido 2026-05-30 (idêntico SDK 8 e 10 → não é artefato de SDK). Gates (pis
 - ⚠️ **BLOQUEIO aluno/treinador local**: login exige `EmailVerificado`; contas novas via cadastro não verificam (sem Resend → `NullEmailService`) → sem token → não logam → sem storage state. Seed só cria admin. Opções: seed de contas de teste pré-verificadas, ou cirurgia no DB. Hoje aluno/treinador a11y só validam no CI (que provê `E2E_*`).
 - ⚠️ **Flakiness em máquina lenta**: o describe completo de admin pode falhar por timeout de render/scan (cold + parallel), mas cada página passa ISOLADA (`-g "axe em /admin/treinadores"`). Falha no batch ≠ violação real — confirmar isolado antes de tratar como a11y bug.
 - Resultado 2026-05-30: público 4/4 ✅ (após fix contraste landing), admin 3/3 ✅ (isolado). Tokens de tema iguais nas demais áreas → CI cobre aluno/treinador.
+
+## 5b. ACHADOS DA VALIDAÇÃO PRÉ-PR BILLING (2026-06-06) & status
+- ✅ **Regressão pega antes do PR**: testes E2E (`FluxosCriticosE2ETests`/`ConcurrentBillingRaceTests`) cadastravam treinador com payload antigo (sem `planoPlataformaId`/`modoPagamentoAluno`) → 400 na validação; latente pq o gate de integração nunca rodou em `fix/code-review` (sem PR a homolog até então). Fix: helper `ObterPlanoFreeIdAsync` (plano Free → AguardandoAprovacao). 96 integração verdes.
+- ✅ **openapi-drift**: swagger defasado (faltavam endpoints billing das Fases 1-2B + campo `modoPagamentoAluno`) → regenerado (`scripts/gen-swagger.sh`) + commitado (+407 linhas).
+- ✅ **Vulns npm** (npm audit): critical (libxmljs2) + 4 high (tar/node-gyp) via `npm audit fix`; 2 moderate (qs) via override `^6.15.2`; 6 low residuais (elliptic via @storybook, dev-only) aceitas — ver tasks.md da feature. NÃO rodar `npm audit fix --force`.
+- ✅ **Cobertura subida** (a pedido): +47 testes billing → Api 85.6→86.4, Application method 95.2→96.1, Domain method 92.2→94.8 (§3).
+- ⚠️ **Pact provider quebrou em homolog** (compile drift do `PactVerification` fora da `.slnx`): ver §2 (gotcha CANÔNICO). Fix existe em `fix/code-review` (PR #76 FECHADO — não levado a homolog por decisão do dono); broker Pact degradado na VM (separado).
+- ✅ verde local: semgrep 0, gitleaks 0 (allowlist por commit dos 3 segredos dev mortos), 1843 unit, 96 integração, 631 vitest, contract 16, license, deadcode, build prod (frontend) + Release (backend).
 
 ## 5. ACHADOS DESTA VALIDAÇÃO (2026-05-30) & status
 - ✅ corrigido: openapi-drift (swagger +8 endpoints), vitest `testTimeout` 20000 (timeouts sob coverage), gitleaks allowlist `forzion.tech.Tests/**.cs`, color-contrast landing (`HowItWorks` eyebrow `#7a6300`, números `#808080`).
