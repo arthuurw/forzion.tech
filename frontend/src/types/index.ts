@@ -275,6 +275,7 @@ export interface PagamentoResponse {
 export interface OnboardingStatusResponse {
   onboardingCompleto: boolean;
   contaConfigurada: boolean;
+  modoPagamentoAluno: ModoPagamentoAluno;
 }
 
 export type AssinaturaTreinadorStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
