@@ -153,12 +153,20 @@ Trigger = método. `[*]` = factory.
 
 ```mermaid
 stateDiagram-v2
-  %% Treinador
-  [*] --> AguardandoAprovacao : Criar
+  %% Treinador (free pula pagamento: Criar aguardandoPagamento=false → AguardandoAprovacao)
+  [*] --> AguardandoPagamento : Criar (aguardandoPagamento=true, plano pago)
+  [*] --> AguardandoAprovacao : Criar (aguardandoPagamento=false, plano Free)
+  AguardandoPagamento --> AguardandoAprovacao : ConfirmarPagamentoPlano (webhook plano pago)
   AguardandoAprovacao --> Ativo : Aprovar
   AguardandoAprovacao --> Inativo : Reprovar
   Ativo --> Inativo : Inativar
 ```
+**Fluxo de cadastro do treinador PAGO** (orquestração end-to-end; gate Free vs pago em `TierPlanoExtensions`/[specification-stripe]):
+1. `Treinador.Criar(... planoPlataformaId, modoPagamentoAluno, aguardandoPagamento=true)` → `Status=AguardandoPagamento`; `AssinaturaTreinador.Criar(Pendente)`; **`ContaRegistradaEvent` NÃO disparado ainda** (verificação de e-mail adiada até o pagamento — `Conta` criada sem `EmitirRegistro`). Login bloqueado por `TreinadorPagamentoPendenteException`.
+2. Treinador paga o plano (`IniciarPagamentoPlanoHandler`, finalidade `Cadastro`) → PaymentIntent direto-plataforma ([specification-stripe]).
+3. Webhook `payment_intent.succeeded` (`tipo=plano_treinador`) → `PagamentoTreinador.MarcarPago` + **finalização ATÔMICA inline** (mesmo commit, `FinalizarCadastroAsync`): `AssinaturaTreinador.Ativar` + `AgendarProximaCobranca(+1mês)` + `Treinador.ConfirmarPagamentoPlano` (→AguardandoAprovacao) + `Conta.EmitirRegistro` (dispara `ContaRegistradaEvent` → e-mail de verificação adiado).
+4. Treinador verifica e-mail → admin `Aprovar` → `Status=Ativo` (libera login/app).
+- **Free** (`TierPlano.Free` ou sem plano pago): `Criar(aguardandoPagamento=false)` pula passos 1-3; nasce `AguardandoAprovacao` com `ContaRegistradaEvent` imediato; segue verificação→aprovação direto.
 ```mermaid
 stateDiagram-v2
   %% Aluno  (Ativar lança se já Ativo; Inativar lança se já Inativo)
