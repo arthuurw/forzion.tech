@@ -35,4 +35,12 @@ regexes = [
   '''049d65fb-2c12-483c-b56e-cb753632d11f''',
 ]
 
-commits = []
+# Commits históricos com segredos de DEV já mortos (senha Postgres local + JwtSecret
+# dev) e 1 falso-positivo ("Treinador=100k" em doc). Arquivos atuais já limpos; valores
+# rotacionados/descartados; repo privado. Allowlist POR COMMIT (não por valor) p/ não
+# cegar detecções futuras. Sem rewrite de história (decisão do dono).
+commits = [
+  "99d6b3fc9cd6983a3a6066d9ae104ad494648c67",
+  "a8994b68cb8e2196c72a179da107108d36e91d25",
+  "4c66c7a4d9160e170b408cfae04e3c30a6de69f3",
+]
