@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
+import SemVinculoAtivoBanner from "@/components/aluno/SemVinculoAtivoBanner";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 import { getWeekLabel } from "@/lib/utils/formatting";
@@ -75,6 +76,8 @@ export default function DashboardAlunoPage() {
   return (
     <Box>
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+
+      <SemVinculoAtivoBanner />
 
       {/* Stat cards */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" }, gap: 2, mb: 4 }}>
