@@ -419,9 +419,18 @@ public class ProcessarWebhookStripeHandler(
 
     private async Task<ProcessarEventoResultado> ProcessarContaAtualizadaAsync(string accountId, bool chargesEnabled, CancellationToken ct)
     {
-        if (!chargesEnabled) return ProcessarEventoResultado.JaConsistente;
-
         var contaRecebimento = await contaRecebimentoRepository.ObterPorStripeAccountIdAsync(accountId, ct).ConfigureAwait(false);
+
+        if (!chargesEnabled)
+        {
+            // chargesEnabled=false é normal durante onboarding; só é incidente se a conta JÁ estava operante.
+            if (contaRecebimento?.OnboardingCompleto == true)
+                logger.LogCritical(
+                    "Conta Connect {AccountId} do treinador {TreinadorId} perdeu charges_enabled após onboarding concluído. Pagamentos do treinador estão bloqueados.",
+                    accountId, contaRecebimento.TreinadorId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
         if (contaRecebimento is null || contaRecebimento.OnboardingCompleto) return ProcessarEventoResultado.JaConsistente;
 
         var confirmarResult = contaRecebimento.ConfirmarOnboarding(timeProvider.GetUtcNow().UtcDateTime);
