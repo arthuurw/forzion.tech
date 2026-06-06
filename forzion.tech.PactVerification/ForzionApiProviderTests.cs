@@ -188,10 +188,10 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
     private static IContaRepository BuildContaRepositoryMock()
     {
         var conta = Conta.Criar(
-            Email.Criar("arthur@forzion.tech"),
+            Email.Criar("arthur@forzion.tech").Value,
             "pact-test-hash",
             TipoConta.Aluno,
-            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)).Value;
 
         var mock = new Mock<IContaRepository>();
         mock.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -209,13 +209,13 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
             TestContaId,
             "Arthur Webster",
             new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc),
-            email: "arthur@forzion.tech");
+            email: "arthur@forzion.tech").Value;
 
         var alunoAdmin = Aluno.Criar(
             Guid.NewGuid(),
             "Joao Silva",
             new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc),
-            email: "joao@exemplo.com");
+            email: "joao@exemplo.com").Value;
 
         var mock = new Mock<IAlunoRepository>();
         IReadOnlyList<Aluno> lista = new[] { alunoAdmin };
@@ -236,7 +236,7 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
         var treinador = Treinador.Criar(
             Guid.NewGuid(),
             "Coach Silva",
-            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)).Value;
 
         var mock = new Mock<ITreinadorRepository>();
         mock.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -256,8 +256,9 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
         var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId,
+            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)).Value;
+        vinculo.Aprovar(Guid.NewGuid(), Guid.NewGuid(),
             new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
-        vinculo.Aprovar(Guid.NewGuid(), Guid.NewGuid());
 
         var mock = new Mock<IVinculoTreinadorAlunoRepository>();
         mock.Setup(r => r.ObterAtivoPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -274,9 +275,9 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
             "Treino A - Superiores",
             ObjetivoTreino.Hipertrofia,
             Guid.NewGuid(),
-            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)).Value;
         var treinoAluno = TreinoAluno.Criar(treino.Id, Guid.NewGuid(),
-            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)).Value;
         var detalhe = new TreinoAlunoDetalhe(treinoAluno, treino);
 
         var mock = new Mock<ITreinoAlunoRepository>();
