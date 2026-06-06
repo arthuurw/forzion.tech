@@ -356,6 +356,73 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_AccountUpdatedChargesFalse_OnboardingCompleto_LogCritical()
+    {
+        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_live", TestData.Agora);
+        contaRecebimento.ConfirmarOnboarding(TestData.Agora);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_live", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(AccountPayload("acct_live", false), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AccountUpdatedChargesFalse_OnboardingIncompleto_SemCritical()
+    {
+        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_onboarding", TestData.Agora);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_onboarding", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(AccountPayload("acct_onboarding", false), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AccountUpdatedChargesFalse_ContaInexistente_SemCritical()
+    {
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_ghost", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(AccountPayload("acct_ghost", false), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_PaymentIntentNaoEncontrado_RetornaSucessoSemCommit()
     {
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
