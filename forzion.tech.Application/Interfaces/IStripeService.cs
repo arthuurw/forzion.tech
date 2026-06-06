@@ -20,6 +20,10 @@ public interface IStripeService
     // Reembolso é sempre total (Amount não enviado).
     Task CriarReembolsoAsync(string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default);
 
+    // Anexa evidências automáticas a um chargeback (R9). Stripe exige disputeId, não chargeId
+    // (Dispute.Update). Sem resposta no prazo (~7d) o chargeback é perdido + fee.
+    Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Lista eventos Stripe criados a partir de <paramref name="desdeUtc"/>, filtrando
     /// pelos tipos relevantes para reconciliação de pagamentos e onboarding Connect.
@@ -38,6 +42,14 @@ public record PixPaymentResult(
 public record CartaoPaymentResult(
     string PaymentIntentId,
     string ClientSecret);
+
+// Evidências coletáveis sem nova coluna (D9): email da conta, data de ativação (ServiceDate),
+// última atividade/uso e data do último pagamento — usadas pra contestar o chargeback no Stripe.
+public record DisputaEvidencia(
+    string? EmailCliente,
+    DateTime? DataAtivacao,
+    DateTime? DataUltimaAtividade,
+    DateTime? DataUltimoPagamento);
 
 /// <summary>
 /// Snapshot de um evento Stripe retornado por <c>Events.List</c>, no formato que o

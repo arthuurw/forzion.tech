@@ -1,3 +1,4 @@
+using System.Globalization;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Pagamentos;
 using Microsoft.Extensions.Logging;
@@ -241,6 +242,39 @@ public class StripeService(
         logger.LogInformation(
             "Reembolso {RefundId} criado para PaymentIntent {PaymentIntentId} (reverterTransferencia={Reverter}).",
             refund.Id, paymentIntentId, reverterTransferencia);
+    }
+
+    public async Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(evidencias);
+
+        var evidence = new DisputeEvidenceOptions
+        {
+            CustomerEmailAddress = evidencias.EmailCliente,
+            ServiceDate = evidencias.DataAtivacao?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            UncategorizedText = MontarTextoEvidencia(evidencias),
+        };
+
+        var service = new DisputeService();
+        await service.UpdateAsync(
+            disputeId,
+            new DisputeUpdateOptions { Evidence = evidence },
+            requestOptions: RequestOptions,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Evidência de disputa enviada para dispute {DisputeId}.", disputeId);
+    }
+
+    private static string MontarTextoEvidencia(DisputaEvidencia e)
+    {
+        var partes = new List<string>();
+        if (e.DataAtivacao is { } ativacao)
+            partes.Add($"Serviço ativado em {ativacao:yyyy-MM-dd}.");
+        if (e.DataUltimaAtividade is { } atividade)
+            partes.Add($"Última atividade do cliente em {atividade:yyyy-MM-dd}.");
+        if (e.DataUltimoPagamento is { } pagamento)
+            partes.Add($"Último pagamento confirmado em {pagamento:yyyy-MM-dd}.");
+        return string.Join(" ", partes);
     }
 
     public Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe)

@@ -138,6 +138,7 @@ public class StripeWebhookParserTests
         result.Type.Should().Be("charge.dispute.created");
         result.PaymentIntentId.Should().Be("pi_disputed");
         result.MotivoDisputa.Should().Be("fraudulent");
+        result.DisputeId.Should().Be("dp_123");
     }
 
     [Fact]
