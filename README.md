@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 1668 testes backend (unit + integração com Docker) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | Result<T> pattern (erros de negócio sem exceção) | JWT próprio | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação, inadimplência) | WhatsApp Meta Cloud API (paridade com e-mail + webhook de status) | E-mail transacional Resend (verificação de conta, reset de senha, webhook de entrega via Svix) | LGPD (exportação, anonimização, consentimento de cookies) | Health report | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
+**Status**: ✅ 1939 testes backend (1843 unit + 96 integração com Docker) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | Result<T> pattern (erros de negócio sem exceção) | JWT próprio | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação, inadimplência) | WhatsApp Meta Cloud API (paridade com e-mail + webhook de status) | E-mail transacional Resend (verificação de conta, reset de senha, webhook de entrega via Svix) | LGPD (exportação, anonimização, consentimento de cookies) | Health report | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
 
 ---
 
@@ -57,6 +57,7 @@ forzion.tech/
 ├── forzion.tech.Domain/       # Entidades, Value Objects, Events, exceções
 ├── forzion.tech.Infrastructure/ # EF Core, repositórios, migrations, serviços
 ├── forzion.tech.Tests/        # xUnit + Moq + FluentAssertions + WebApplicationFactory
+├── forzion.tech.PactVerification/ # Pact provider verification (contrato consumer↔provider)
 ├── frontend/                  # Next.js 16 — ver frontend/README.md
 ├── nginx/                     # nginx.conf + nginx-init.conf (HTTPS + proxy)
 ├── scripts/                   # setup-vm.sh, init-ssl.sh, gen-swagger.sh
