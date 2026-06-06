@@ -9,7 +9,8 @@ public record StripeWebhookEvento(
     bool ChargesEnabled,
     long? AmountRefundedCents = null,
     string? MotivoDisputa = null,
-    string? TipoMetadata = null);
+    string? TipoMetadata = null,
+    string? DisputeId = null);
 
 public static class StripeWebhookParser
 {
@@ -54,7 +55,13 @@ public static class StripeWebhookParser
             ? TryGetStringValue(data?["metadata"]?["tipo"])
             : null;
 
-        return new StripeWebhookEvento(type, paymentIntentId, accountId, chargesEnabled, amountRefundedCents, motivoDisputa, tipoMetadata);
+        // charge.dispute.created: data.object é o Dispute — data.object.id é o disputeId que a
+        // Dispute.Update API exige para anexar evidências (R9). Distinto do payment_intent.
+        var disputeId = type == "charge.dispute.created"
+            ? TryGetStringValue(data?["id"])
+            : null;
+
+        return new StripeWebhookEvento(type, paymentIntentId, accountId, chargesEnabled, amountRefundedCents, motivoDisputa, tipoMetadata, disputeId);
     }
 
     private static string? TryGetStringValue(JsonNode? node)

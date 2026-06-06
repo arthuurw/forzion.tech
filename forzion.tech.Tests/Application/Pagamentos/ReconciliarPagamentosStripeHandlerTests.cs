@@ -32,7 +32,8 @@ public class ReconciliarPagamentosStripeHandlerTests
         // Isso garante que a reconciliação compartilha o mesmo código do webhook live.
         _webhookHandler = new ProcessarWebhookStripeHandler(
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
-            _pagamentoTreinadorRepo.Object, Mock.Of<IAssinaturaTreinadorRepository>(), Mock.Of<ITreinadorRepository>(), Mock.Of<IContaRepository>(),
+            _pagamentoTreinadorRepo.Object, Mock.Of<IAssinaturaTreinadorRepository>(), Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IAlunoRepository>(), Mock.Of<IContaRepository>(),
             _stripeService.Object, _unitOfWork.Object, _time, _webhookLogger.Object);
 
         _handler = new ReconciliarPagamentosStripeHandler(

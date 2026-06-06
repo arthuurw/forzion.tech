@@ -14,6 +14,7 @@ public class ProcessarWebhookStripeHandler(
     IPagamentoTreinadorRepository pagamentoTreinadorRepository,
     IAssinaturaTreinadorRepository assinaturaTreinadorRepository,
     ITreinadorRepository treinadorRepository,
+    IAlunoRepository alunoRepository,
     IContaRepository contaRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
@@ -69,7 +70,7 @@ public class ProcessarWebhookStripeHandler(
                 return await ProcessarChargeReembolsadoAsync(evento.PaymentIntentId, evento.AmountRefundedCents, cancellationToken).ConfigureAwait(false);
 
             case "charge.dispute.created":
-                return await ProcessarDisputaCriadaAsync(evento.PaymentIntentId, evento.MotivoDisputa, cancellationToken).ConfigureAwait(false);
+                return await ProcessarDisputaCriadaAsync(evento.PaymentIntentId, evento.MotivoDisputa, evento.DisputeId, cancellationToken).ConfigureAwait(false);
 
             default:
                 logger.LogDebug("Evento Stripe ignorado: {EventType}.", evento.Type);
@@ -330,7 +331,7 @@ public class ProcessarWebhookStripeHandler(
         return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task<ProcessarEventoResultado> ProcessarDisputaCriadaAsync(string? paymentIntentId, string? motivoDisputa, CancellationToken ct)
+    private async Task<ProcessarEventoResultado> ProcessarDisputaCriadaAsync(string? paymentIntentId, string? motivoDisputa, string? disputeId, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(paymentIntentId))
         {
@@ -343,7 +344,7 @@ public class ProcessarWebhookStripeHandler(
         {
             var pagamentoTreinador = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
             if (pagamentoTreinador is not null)
-                return await ProcessarDisputaTreinadorAsync(pagamentoTreinador, ct).ConfigureAwait(false);
+                return await ProcessarDisputaTreinadorAsync(pagamentoTreinador, disputeId, ct).ConfigureAwait(false);
 
             logger.LogWarning("charge.dispute.created para PaymentIntent {PaymentIntentId} não encontrado.", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
@@ -380,13 +381,42 @@ public class ProcessarWebhookStripeHandler(
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
 
+        await EnviarEvidenciaDisputaAlunoAsync(disputeId, assinatura, pagamento, ct).ConfigureAwait(false);
+
         logger.LogInformation(
             "Pagamento {PagamentoId} marcado em disputa (motivo={Motivo}).",
             pagamento.Id, motivoDisputa ?? "unknown");
         return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task<ProcessarEventoResultado> ProcessarDisputaTreinadorAsync(PagamentoTreinador pagamento, CancellationToken ct)
+    private async Task EnviarEvidenciaDisputaAlunoAsync(string? disputeId, AssinaturaAluno? assinatura, Pagamento pagamento, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(disputeId) || assinatura is null) return;
+
+        try
+        {
+            string? email = null;
+            var aluno = await alunoRepository.ObterPorIdAsync(assinatura.AlunoId, ct).ConfigureAwait(false);
+            if (aluno is not null)
+            {
+                var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, ct).ConfigureAwait(false);
+                email = conta?.Email.Value ?? aluno.Email?.Value;
+            }
+
+            await stripeService.EnviarEvidenciaDisputaAsync(
+                disputeId,
+                new DisputaEvidencia(email, assinatura.DataInicio, pagamento.DataPagamento, pagamento.DataPagamento),
+                ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Falha ao enviar evidência da disputa {DisputeId} (pagamento {PagamentoId}). Disputa já marcada; responder manualmente no Stripe.",
+                disputeId, pagamento.Id);
+        }
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarDisputaTreinadorAsync(PagamentoTreinador pagamento, string? disputeId, CancellationToken ct)
     {
         if (pagamento.Status == PagamentoStatus.EmDisputa)
         {
@@ -413,8 +443,38 @@ public class ProcessarWebhookStripeHandler(
         assinatura?.MarcarInadimplentePorDisputa(agora);
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+
+        await EnviarEvidenciaDisputaTreinadorAsync(disputeId, assinatura, pagamento, ct).ConfigureAwait(false);
+
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado em disputa.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
+    }
+
+    private async Task EnviarEvidenciaDisputaTreinadorAsync(string? disputeId, AssinaturaTreinador? assinatura, PagamentoTreinador pagamento, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(disputeId)) return;
+
+        try
+        {
+            var treinador = await treinadorRepository.ObterPorIdAsync(pagamento.TreinadorId, ct).ConfigureAwait(false);
+            string? email = null;
+            if (treinador is not null)
+            {
+                var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, ct).ConfigureAwait(false);
+                email = conta?.Email.Value;
+            }
+
+            await stripeService.EnviarEvidenciaDisputaAsync(
+                disputeId,
+                new DisputaEvidencia(email, assinatura?.DataInicio, pagamento.DataPagamento, pagamento.DataPagamento),
+                ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Falha ao enviar evidência da disputa {DisputeId} (pagamento treinador {PagamentoId}). Disputa já marcada; responder manualmente no Stripe.",
+                disputeId, pagamento.Id);
+        }
     }
 
     private async Task<ProcessarEventoResultado> ProcessarContaAtualizadaAsync(string accountId, bool chargesEnabled, CancellationToken ct)
