@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Application.UseCases.Treinadores.TrocarPlanoTreinador;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -38,12 +39,20 @@ public class TrocarPlanoTreinadorHandlerTests
             It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PixResult);
 
+        var criarPagamentoService = new CriarPagamentoComIntentService(
+            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            Mock.Of<ILogger<CriarPagamentoComIntentService>>());
+
         _handler = new TrocarPlanoTreinadorHandler(
             _treinadorRepo.Object, _assinaturaRepo.Object, _planoRepo.Object,
             _pagamentoRepo.Object, _stripeService.Object, _unitOfWork.Object,
-            _transactionProvider.Object, TimeProvider.System,
+            criarPagamentoService, TimeProvider.System,
             Mock.Of<ILogger<TrocarPlanoTreinadorHandler>>());
     }
+
+    private CriarPagamentoComIntentService BuildService() =>
+        new(_unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
     private static Treinador CriarTreinador(Guid? planoId = null)
     {
@@ -97,7 +106,6 @@ public class TrocarPlanoTreinadorHandlerTests
         var planoNovo = CriarPlano(100m, TierPlano.Pro);
         var assinatura = AssinaturaTreinador.Criar(treinador.Id, planoAtual.Id, 50m, DateTime.UtcNow).Value;
         assinatura.Ativar(DateTime.UtcNow);
-        // DataProximaCobranca = agora (0 dias restantes)
         assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddSeconds(1), DateTime.UtcNow);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -188,8 +196,6 @@ public class TrocarPlanoTreinadorHandlerTests
             It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
-
-    // ── Inadimplente ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_Inadimplente_CobraPlanoCheioPararRegularizar()
@@ -308,7 +314,7 @@ public class TrocarPlanoTreinadorHandlerTests
         var agora = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var assinatura = AssinaturaTreinador.Criar(treinador.Id, planoAtual.Id, 30m, agora).Value;
         assinatura.Ativar(agora);
-        assinatura.AgendarProximaCobranca(agora.AddDays(15), agora); // 15 dias restantes — (90-30)*15/30 = R$30
+        assinatura.AgendarProximaCobranca(agora.AddDays(15), agora);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
@@ -320,7 +326,7 @@ public class TrocarPlanoTreinadorHandlerTests
         var handler = new TrocarPlanoTreinadorHandler(
             _treinadorRepo.Object, _assinaturaRepo.Object, _planoRepo.Object,
             _pagamentoRepo.Object, _stripeService.Object, _unitOfWork.Object,
-            _transactionProvider.Object, fakeTime,
+            BuildService(), fakeTime,
             Mock.Of<ILogger<TrocarPlanoTreinadorHandler>>());
 
         PagamentoTreinador? pagamentoAdicionado = null;

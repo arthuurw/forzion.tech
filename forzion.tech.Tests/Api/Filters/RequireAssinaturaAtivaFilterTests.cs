@@ -13,21 +13,19 @@ namespace forzion.tech.Tests.Api.Filters;
 
 public class RequireAssinaturaAtivaFilterTests
 {
-    private static readonly DateTime Agora = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
     private static (EndpointFilterInvocationContext ctx, RequireAssinaturaAtivaFilter filter, EndpointFilterDelegate next, Action<bool> assertNextCalled)
         Cenario(
             TipoConta tipoConta,
+            string method = "POST",
             Aluno? aluno = null,
             AssinaturaAluno? assinatura = null)
     {
         var contaId = Guid.NewGuid();
-        var perfilId = aluno?.Id ?? Guid.NewGuid();
 
         var userContext = new Mock<IUserContext>();
         userContext.SetupGet(u => u.TipoConta).Returns(tipoConta);
         userContext.SetupGet(u => u.ContaId).Returns(contaId);
-        userContext.SetupGet(u => u.PerfilId).Returns(perfilId);
+        userContext.SetupGet(u => u.PerfilId).Returns(aluno?.Id ?? Guid.NewGuid());
 
         var alunoRepository = new Mock<IAlunoRepository>();
         alunoRepository
@@ -38,8 +36,10 @@ public class RequireAssinaturaAtivaFilterTests
         if (aluno is not null)
         {
             assinaturaRepository
-                .Setup(r => r.ObterAtualPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(assinatura);
+                .Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(assinatura is not null
+                    ? (IReadOnlyList<AssinaturaAluno>)[assinatura]
+                    : []);
         }
 
         var services = new ServiceCollection();
@@ -49,6 +49,7 @@ public class RequireAssinaturaAtivaFilterTests
         var provider = services.BuildServiceProvider();
 
         var httpContext = new DefaultHttpContext { RequestServices = provider };
+        httpContext.Request.Method = method;
         var ctx = new DefaultEndpointFilterInvocationContext(httpContext);
 
         var called = false;
@@ -61,57 +62,47 @@ public class RequireAssinaturaAtivaFilterTests
         return (ctx, new RequireAssinaturaAtivaFilter(), next, expected => called.Should().Be(expected));
     }
 
-    private static AssinaturaAluno CriarAssinaturaComStatus(Guid alunoId, AssinaturaAlunoStatus status)
-    {
-        var assinatura = AssinaturaAluno.Criar(
-            vinculoId: Guid.NewGuid(),
-            pacoteId: Guid.NewGuid(),
-            treinadorId: Guid.NewGuid(),
-            alunoId: alunoId,
-            valor: 100m,
-            agora: Agora).Value;
+    private static Aluno CriarAluno() =>
+        Aluno.Criar(Guid.NewGuid(), "Aluno Teste", DateTime.UtcNow).Value;
 
+    private static AssinaturaAluno CriarAssinatura(Guid alunoId, AssinaturaAlunoStatus status)
+    {
+        var agora = DateTime.UtcNow;
+        var a = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 100m, agora).Value;
         switch (status)
         {
-            case AssinaturaAlunoStatus.Pendente:
-                break;
             case AssinaturaAlunoStatus.Ativa:
-                assinatura.Ativar(Agora);
+                a.Ativar(agora);
                 break;
             case AssinaturaAlunoStatus.Inadimplente:
-                assinatura.Ativar(Agora);
-                assinatura.MarcarInadimplente(Agora);
+                a.Ativar(agora);
+                a.MarcarInadimplente(agora);
                 break;
             case AssinaturaAlunoStatus.Cancelada:
-                assinatura.Cancelar(Agora);
+                a.Cancelar(agora);
                 break;
         }
-
-        return assinatura;
+        return a;
     }
 
-    private static Aluno CriarAluno() =>
-        Aluno.Criar(Guid.NewGuid(), "Aluno Teste", Agora).Value;
-
     [Fact]
-    public async Task Aluno_ComAssinaturaAtiva_ChamaNext()
+    public async Task Get_AlunoInadimplente_PassaDireto()
     {
         var aluno = CriarAluno();
-        var assinatura = CriarAssinaturaComStatus(aluno.Id, AssinaturaAlunoStatus.Ativa);
-        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, aluno, assinatura);
+        var assinatura = CriarAssinatura(aluno.Id, AssinaturaAlunoStatus.Inadimplente);
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, "GET", aluno, assinatura);
 
-        var result = await filter.InvokeAsync(ctx, next);
+        await filter.InvokeAsync(ctx, next);
 
         assertCalled(true);
-        result.Should().BeAssignableTo<IResult>();
     }
 
     [Fact]
-    public async Task Aluno_ComAssinaturaInadimplente_Retorna403ComCode()
+    public async Task Post_AlunoInadimplente_Retorna403ComCode()
     {
         var aluno = CriarAluno();
-        var assinatura = CriarAssinaturaComStatus(aluno.Id, AssinaturaAlunoStatus.Inadimplente);
-        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, aluno, assinatura);
+        var assinatura = CriarAssinatura(aluno.Id, AssinaturaAlunoStatus.Inadimplente);
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, "POST", aluno, assinatura);
 
         var result = await filter.InvokeAsync(ctx, next);
 
@@ -124,22 +115,51 @@ public class RequireAssinaturaAtivaFilterTests
     }
 
     [Fact]
-    public async Task Aluno_ComAssinaturaCancelada_BypassaENaoBloqueia()
+    public async Task Put_AlunoInadimplente_Retorna403()
     {
         var aluno = CriarAluno();
-        // ObterAtualPorAlunoAsync exclui Cancelada — simula retornando null
-        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, aluno, assinatura: null);
+        var assinatura = CriarAssinatura(aluno.Id, AssinaturaAlunoStatus.Inadimplente);
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, "PUT", aluno, assinatura);
 
-        await filter.InvokeAsync(ctx, next);
+        var result = await filter.InvokeAsync(ctx, next);
 
-        assertCalled(true);
+        assertCalled(false);
+        result.Should().BeOfType<ProblemHttpResult>()
+            .Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
     }
 
     [Fact]
-    public async Task Aluno_SemAssinatura_Bypassa()
+    public async Task Delete_AlunoInadimplente_Retorna403()
     {
         var aluno = CriarAluno();
-        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, aluno, assinatura: null);
+        var assinatura = CriarAssinatura(aluno.Id, AssinaturaAlunoStatus.Inadimplente);
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, "DELETE", aluno, assinatura);
+
+        var result = await filter.InvokeAsync(ctx, next);
+
+        assertCalled(false);
+        result.Should().BeOfType<ProblemHttpResult>()
+            .Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+    }
+
+    [Fact]
+    public async Task Post_AlunoComAssinaturaAtiva_ChamaNext()
+    {
+        var aluno = CriarAluno();
+        var assinatura = CriarAssinatura(aluno.Id, AssinaturaAlunoStatus.Ativa);
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, "POST", aluno, assinatura);
+
+        var result = await filter.InvokeAsync(ctx, next);
+
+        assertCalled(true);
+        result.Should().BeAssignableTo<IResult>();
+    }
+
+    [Fact]
+    public async Task Post_AlunoSemAssinatura_Bypassa()
+    {
+        var aluno = CriarAluno();
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, "POST", aluno, assinatura: null);
 
         await filter.InvokeAsync(ctx, next);
 
@@ -147,9 +167,9 @@ public class RequireAssinaturaAtivaFilterTests
     }
 
     [Fact]
-    public async Task Aluno_SemRegistroDeAluno_Bypassa()
+    public async Task Post_AlunoNaoRegistrado_Bypassa()
     {
-        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, aluno: null);
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Aluno, "POST", aluno: null);
 
         await filter.InvokeAsync(ctx, next);
 
@@ -157,9 +177,9 @@ public class RequireAssinaturaAtivaFilterTests
     }
 
     [Fact]
-    public async Task Treinador_Bypassa()
+    public async Task Post_Treinador_Bypassa()
     {
-        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Treinador);
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.Treinador, "POST");
 
         await filter.InvokeAsync(ctx, next);
 
@@ -167,9 +187,9 @@ public class RequireAssinaturaAtivaFilterTests
     }
 
     [Fact]
-    public async Task SystemAdmin_Bypassa()
+    public async Task Post_SystemAdmin_Bypassa()
     {
-        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.SystemAdmin);
+        var (ctx, filter, next, assertCalled) = Cenario(TipoConta.SystemAdmin, "POST");
 
         await filter.InvokeAsync(ctx, next);
 
@@ -177,9 +197,8 @@ public class RequireAssinaturaAtivaFilterTests
     }
 
     [Fact]
-    public async Task Aluno_AssinaturaAtiva_NaoConsultaQuandoTipoNaoEhAluno()
+    public async Task Post_TipoNaoAluno_NaoConsultaRepositorios()
     {
-        // Garante que para tipo != Aluno o filtro nem consulta repositórios
         var alunoRepoMock = new Mock<IAlunoRepository>(MockBehavior.Strict);
         var assinaturaRepoMock = new Mock<IAssinaturaAlunoRepository>(MockBehavior.Strict);
 
@@ -194,6 +213,7 @@ public class RequireAssinaturaAtivaFilterTests
         var provider = services.BuildServiceProvider();
 
         var httpContext = new DefaultHttpContext { RequestServices = provider };
+        httpContext.Request.Method = "POST";
         var ctx = new DefaultEndpointFilterInvocationContext(httpContext);
 
         var called = false;
