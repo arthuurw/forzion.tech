@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 1939 testes backend (1843 unit + 96 integração com Docker) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | Result<T> pattern (erros de negócio sem exceção) | JWT próprio | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação, inadimplência) | WhatsApp Meta Cloud API (paridade com e-mail + webhook de status) | E-mail transacional Resend (verificação de conta, reset de senha, webhook de entrega via Svix) | LGPD (exportação, anonimização, consentimento de cookies) | Health report | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
+**Status**: ✅ 1939 testes backend (1843 unit + 96 integração com Docker) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | Result<T> pattern (erros de negócio sem exceção) | JWT próprio | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação, inadimplência) | Billing recorrente treinador↔plataforma (assinatura de plano, troca, renovação) | WhatsApp Meta Cloud API (paridade com e-mail + webhook de status) | E-mail transacional Resend (verificação de conta, reset de senha, webhook de entrega via Svix) | LGPD (exportação, anonimização, consentimento de cookies) | Health report | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
 
 ---
 
@@ -228,7 +228,8 @@ forzion.tech.Application/
     ├── Exercicios/
     ├── Pacotes/
     ├── Pagamentos/                # GerarCobrancaMensal, ObterStatusPagamento,
-    │                              # ListarPagamentosAssinatura, ProcessarWebhookStripe
+    │                              # ListarPagamentosAssinatura, ProcessarWebhookStripe,
+    │                              # GerarCobrancaPlanoTreinador, TrocarPlanoTreinador (billing treinador)
     ├── Planos/
     ├── Treinadores/               # inclui IniciarOnboarding, VerificarOnboarding
     ├── Treinos/
@@ -240,20 +241,23 @@ forzion.tech.Domain/
 │                         # ExecucaoTreino, ExecucaoExercicio, LogAprovacao,
 │                         # PlanoPlataforma, Pacote, GrupoMuscular, ContaRecebimento,
 │                         # AssinaturaAluno, Assinante, Pagamento, SystemUser, TokenRevogado,
+│                         # AssinaturaTreinador, PagamentoTreinador (billing treinador↔plataforma),
 │                         # EmailVerificationToken, PasswordResetToken, EmailDeliveryLog,
-│                         # WhatsAppDeliveryLog, HealthSnapshot, HealthReportConfig, ErrorLogEntry (28 no total)
-├── Shared/               # Result, Result<T>, Error, ErrorType + Errors/*Errors.cs (19 agregados de erro tipado)
+│                         # WhatsAppDeliveryLog, HealthSnapshot, HealthReportConfig, ErrorLogEntry (30 no total)
+├── Shared/               # Result, Result<T>, Error, ErrorType + Errors/*Errors.cs (21 agregados de erro tipado)
 │                         # — erros de negócio retornam Result; exceções só infra/auth (refactor W0)
 ├── Enums/                # TipoConta, TreinadorStatus, AlunoStatus,
 │                         # VinculoStatus, ObjetivoTreino, DificuldadeTreino,
-│                         # TipoGrupoMuscular, status de assinatura/pagamento, MetodoPagamento,
+│                         # TipoGrupoMuscular, status de assinatura/pagamento (aluno + treinador), MetodoPagamento,
+│                         # ModoPagamentoAluno (Plataforma/Externo), FinalidadePagamentoTreinador,
 │                         # TierPlano (Free, Basic, Pro, ProPlus, Elite)
-├── Events/               # IDomainEvent, IHasDomainEvents + 18 eventos concretos:
+├── Events/               # IDomainEvent, IHasDomainEvents + 25 eventos concretos:
 │                         # ContaRegistrada (verificação de e-mail), ContaAnonimizada (LGPD),
 │                         # TreinadorAprovado/Reprovado/Inativado, VinculoPendenteCriado, VinculoAprovado,
 │                         # AlunoRegistrado, AlunoAtualizado, AlunoInativado,
 │                         # AssinaturaAlunoCriada/Cancelada/Reativada/MarcadaInadimplente,
-│                         # PagamentoCriado/Falhou/Estornado/EmDisputa
+│                         # AssinaturaTreinadorCriada/Cancelada/Reativada/MarcadaInadimplente/PagamentoFalhou/PlanoTrocado,
+│                         # PagamentoCriado/Falhou/Estornado/EmDisputa, PagamentoTreinadorPago
 ├── Exceptions/           # Exceções de domínio tipadas (DomainException base) — só infra/auth
 └── ValueObjects/         # Email
 
@@ -262,7 +266,8 @@ forzion.tech.Infrastructure/
 │   └── InfrastructureExtensions.cs
 ├── Migrations/           # EF Core migrations (schema-agnostic; ver specs/specification-db.md)
 ├── Handlers/             # Handlers de domain events em Infra: cria AssinaturaAluno no
-│                         # VinculoAprovado; sincroniza projeção Assinante (billing)
+│                         # VinculoAprovado; renova/troca plano do treinador no PagamentoTreinadorPago;
+│                         # sincroniza projeção Assinante (billing)
 ├── Notifications/
 │   ├── Email/            # EmailTemplates + ~18 handlers de domain events (Resend); verificação de
 │   │                     # e-mail (EmailVerificationSender/ReenviarVerificacaoHandler),
@@ -274,7 +279,7 @@ forzion.tech.Infrastructure/
 │   └── PlanoNotificationPolicy.cs  # Gate de canais de notificação por tier de plano
 ├── Persistence/
 │   ├── AppDbContext.cs   # DbContext + IUnitOfWork
-│   ├── Configurations/   # Fluent API por entidade (28 arquivos)
+│   ├── Configurations/   # Fluent API por entidade (30 arquivos)
 │   ├── Repositories/     # Implementações concretas
 │   └── Seeders/          # DataSeeder — conta admin no startup (Dev/Homolog)
 └── Services/
@@ -310,7 +315,7 @@ forzion.tech.Tests/
 |----------|-----------|
 | `Conta` | Auth unificada. E-mail + PasswordHash (BCrypt). `TipoConta`: `SystemAdmin`, `Treinador`, `Aluno`. `EmailVerificado` + `VerificadoEm` (verificação de e-mail no cadastro). Emite `ContaRegistradaEvent` ao criar. |
 | `SystemUser` | Perfil de admin vinculado a uma `Conta` do tipo `SystemAdmin`. |
-| `Treinador` | Perfil de treinador. Possui `PlanoPlataformaId`. Status: `AguardandoAprovacao → Ativo → Inativo`. Dados de Stripe Connect foram extraídos para `ContaRecebimento` (contexto Billing). |
+| `Treinador` | Perfil de treinador. Possui `PlanoPlataformaId` e `ModoPagamentoAluno` (`Plataforma` = aluno paga via plataforma / `Externo` = aluno paga o treinador fora da plataforma). Status: `AguardandoAprovacao → Ativo → Inativo` (em plano pago, registro nasce `AguardandoPagamento` até a 1ª cobrança ser paga). Dados de Stripe Connect foram extraídos para `ContaRecebimento` (contexto Billing). |
 | `Aluno` | Perfil de aluno vinculado a uma `Conta`. Email armazenado como `Email` VO. Máquina de estados: `AguardandoAprovacao → Ativo ⇌ Inativo` via `Ativar()`/`Inativar()`. |
 | `VinculoTreinadorAluno` | Relação entre treinador e aluno. Carrega `PacoteId`. Status: `AguardandoAprovacao → Ativo → Inativo`. |
 | `PlanoPlataforma` | Plano global (gerido pelo admin; ex-`PlanoTreinador`). Define `Tier` (Free/Basic/Pro/ProPlus/Elite), `MaxAlunos` por treinador e `Descricao` opcional com as funcionalidades incluídas. |
@@ -326,6 +331,8 @@ forzion.tech.Tests/
 | `TokenRevogado` | JTI de tokens revogados (logout). Sem RLS. Limpo automaticamente ao expirar. |
 | `ContaRecebimento` | Conta de recebimentos do treinador no Stripe Connect (`StripeConnectAccountId`, `OnboardingCompleto`). Extraída de `Treinador` (contexto Billing). |
 | `AssinaturaAluno` | Cobrança recorrente mensal de um aluno (ex-`Assinatura`). Vinculada ao `VinculoTreinadorAluno` e ao `Pacote`. Status: `Pendente → Ativa → Inadimplente → Cancelada`. |
+| `AssinaturaTreinador` | Assinatura recorrente do **treinador → plataforma** (cobra o plano `PlanoPlataforma`). Status: `Pendente → Ativa → Inadimplente → Cancelada`. Carrega `DataProximaCobranca` e `PlanoPlataformaIdAgendado` (troca de plano agendada para o próximo ciclo). Downgrade para Free cancela a assinatura. |
+| `PagamentoTreinador` | Tentativa de cobrança do treinador à plataforma (Pix ou cartão). `Finalidade`: `Cadastro` (1ª cobrança ativa a conta), `Renovacao`, `TrocaPlano`. Status análogo a `Pagamento`. |
 | `Assinante` | Projeção de billing read-side do aluno (nome/email/alunoId). Sincronizada por eventos de domínio (`AlunoRegistrado`/`AlunoAtualizado`). Unique por `AlunoId`. |
 | `Pagamento` | Tentativa de cobrança individual. Armazena `StripePaymentIntentId`, QR Code Pix ou `ClientSecret` para cartão. Status: `Pendente → Pago / Expirado / Falhou`. |
 | `EmailVerificationToken` | Token de verificação de e-mail no cadastro. SHA-256 hex(64) armazenado; cru só no e-mail. Expiração 24h. `conta_id` sem FK física. |
@@ -336,7 +343,7 @@ forzion.tech.Tests/
 
 ### Domain Events
 
-`Conta`, `Treinador`, `VinculoTreinadorAluno`, `Aluno`, `AssinaturaAluno` e `Pagamento` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada). Cada evento é consumido em paralelo por e-mail (Resend) **e** WhatsApp (Meta), seguindo o gate de canal por tier (`PlanoNotificationPolicy`):
+`Conta`, `Treinador`, `VinculoTreinadorAluno`, `Aluno`, `AssinaturaAluno`, `Pagamento`, `AssinaturaTreinador` e `PagamentoTreinador` implementam `IHasDomainEvents` e disparam eventos em operações de negócio via `IDomainEventDispatcher` (sem reflection — interface genérica tipada). Cada evento é consumido em paralelo por e-mail (Resend) **e** WhatsApp (Meta), seguindo o gate de canal por tier (`PlanoNotificationPolicy`):
 
 | Evento | Levantado em | Consumido por |
 |--------|-------------|---------------|
@@ -358,6 +365,13 @@ forzion.tech.Tests/
 | `PagamentoFalhouEvent` | webhook `payment_intent.payment_failed` | e-mail + WhatsApp |
 | `PagamentoEstornadoEvent` | webhook `charge.refunded` | e-mail + WhatsApp |
 | `PagamentoEmDisputaEvent` | webhook `charge.dispute.*` | e-mail + WhatsApp + alerta ao treinador |
+| `AssinaturaTreinadorCriadaEvent` | `AssinaturaTreinador.Criar()` (registro em plano pago) | — (sem consumidor hoje) |
+| `AssinaturaTreinadorCanceladaEvent` | cancelamento / downgrade para Free | — (sem consumidor hoje) |
+| `AssinaturaTreinadorReativadaEvent` | reativação após regularização | — (sem consumidor hoje) |
+| `AssinaturaTreinadorMarcadaInadimplenteEvent` | falha de cobrança recorrente do plano | e-mail ao treinador |
+| `AssinaturaTreinadorPagamentoFalhouEvent` | cobrança do plano falhou | e-mail ao treinador |
+| `AssinaturaTreinadorPlanoTrocadoEvent` | upgrade/downgrade aplicado | — (sem consumidor hoje) |
+| `PagamentoTreinadorPagoEvent` | webhook confirma pagamento do plano | finaliza cadastro / renova / aplica troca de plano |
 
 Eventos são despachados **após** `SaveChangesAsync` e **antes** disso os eventos da entidade são limpos (snapshot + `ClearDomainEvents` antes do dispatch). Isso evita re-entrância: um handler que chama `CommitAsync` de novo (ex.: a projeção `Assinante`) não re-despacha os mesmos eventos. Handlers são in-process, resolvidos no mesmo escopo de DI (compartilham o `AppDbContext`).
 
@@ -402,7 +416,7 @@ Fixed Window por IP:
 | `auth` | 10 req | 1 min | `/auth/login`, `/auth/register/*`, `/auth/planos`, `/auth/treinadores`, `/auth/treinadores/{id}/pacotes` |
 | `write` | 60 req | 1 min | `/alunos/*`, `/treinos/*`, `/treinador/*`, `/aluno/*`, `/conta/*`, `/admin/*` |
 | `read` | 120 req | 1 min | `/aluno/pagamentos/*` |
-| `internal` | 5 req | 1 min | `/internal/processar-renovacoes` |
+| `internal` | 5 req | 1 min | `/internal/processar-renovacoes`, `/internal/processar-renovacoes-treinador`, `/internal/reconciliar-pagamentos` |
 | `webhook` | 300 req | 1 min | `/webhooks/stripe` |
 
 Exceder retorna **429 Too Many Requests**.
@@ -462,6 +476,8 @@ Notificações disparadas por domain events:
 | `PagamentoFalhouEvent` | aluno | "Falha no pagamento" |
 | `PagamentoEstornadoEvent` | aluno | "Pagamento estornado" |
 | `PagamentoEmDisputaEvent` | treinador | "Pagamento em disputa" |
+| `AssinaturaTreinadorPagamentoFalhouEvent` | treinador | "Cobrança do plano não processada — forzion.tech" |
+| `AssinaturaTreinadorMarcadaInadimplenteEvent` | treinador | "Acesso restrito — inadimplência no plano forzion.tech" |
 
 Fluxos sob demanda (não-evento): **verificação de e-mail** (`/auth/verify-email` + `/auth/resend-verification`) e **reset de senha** (`/auth/forgot-password` → e-mail com link 1h → `/auth/reset-password`). Login bloqueia com **403 `EMAIL_NAO_VERIFICADO`** até a conta verificar.
 
@@ -502,7 +518,8 @@ Antes da revisão do app pela Meta, só é possível enviar para até **5 númer
 | Método | Rota | Body | Resposta |
 |--------|------|------|----------|
 | `POST` | `/auth/login` | `{ email, senha }` | `{ token, tipoConta, contaId, perfilId }` |
-| `POST` | `/auth/register/treinador` | `{ nome, email, senha, telefone? }` | `201 TreinadorResponse` |
+| `POST` | `/auth/register/treinador` | `{ nome, email, senha, planoPlataformaId, modoPagamentoAluno, telefone? }` | `201 TreinadorResponse` (plano pago → status `AguardandoPagamento`) |
+| `POST` | `/auth/treinador/{treinadorId}/pagamento` | `{ metodo }` | `200 IniciarPagamentoPlanoResponse` (1ª cobrança do plano no cadastro) · rate: `auth` |
 | `POST` | `/auth/register/aluno` | `{ nome, email, senha, treinadorId, pacoteId, telefone?, ... }` | `201 AlunoResponse` |
 | `POST` | `/auth/verify-email` | `{ token }` | `200` · 422 token inválido/expirado · 400 formato |
 | `POST` | `/auth/resend-verification` | `{ email }` | `200` (sempre — não vaza existência) |
@@ -583,6 +600,11 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 | `POST` | `/treinador/onboarding` | `{ urlRetorno, urlCancelamento }` | `200 { url }` |
 | `GET` | `/treinador/onboarding/status` | — | `OnboardingStatusResponse` |
 | `POST` | `/treinador/pagamentos/cobrar/{assinaturaId}` | `?metodo=Pix\|Cartao` | `200 PagamentoResponse` · rate: `write` |
+| **Plano (billing treinador↔plataforma)** | | | |
+| `GET` | `/treinador/plano/assinatura` | — | assinatura de plano ativa (status, valor, próxima cobrança, plano agendado) · 404 se inexistente |
+| `GET` | `/treinador/plano/pagamento/{pagamentoId}` | — | status do pagamento do plano (status, valor, método) · 404 |
+| `POST` | `/treinador/plano/trocar` | `{ planoPlataformaId, metodo }` | `200 TrocarPlanoTreinadorResponse` (upgrade/downgrade/regularização) · 422 · 404 |
+| `POST` | `/treinador/plano/cobrar` | `?metodo=Pix\|Cartao` | `200 IniciarPagamentoPlanoResponse` (renovação) · 404 · 422 |
 
 #### Pagamentos Aluno — `/aluno/pagamentos` (política `Aluno`)
 
@@ -604,7 +626,8 @@ Todos os endpoints paginados validam `pagina` e `tamanhoPagina` via `PaginacaoFi
 
 | Método | Rota | Body | Resposta |
 |--------|------|------|----------|
-| `POST` | `/internal/processar-renovacoes` | — | `{ processadas, falhas }` · rate: `internal` |
+| `POST` | `/internal/processar-renovacoes` | — | `{ processadas, falhas }` · renovações de assinaturas de alunos · rate: `internal` |
+| `POST` | `/internal/processar-renovacoes-treinador` | — | `{ processadas, falhas }` · renovações de assinaturas de plano dos treinadores · rate: `internal` |
 | `POST` | `/internal/reconciliar-pagamentos` | `?janelaDias=` (default 7) | `{ reconciliados, ... }` · reconcilia eventos Stripe · rate: `internal` |
 
 #### Treinos — `/treinos` (JWT obrigatório)
@@ -699,6 +722,17 @@ Toda aprovação, reprovação e inativação registra um `LogAprovacao` com `En
 | `LimiteTreinadorService` | `PlanoPlataforma.MaxAlunos` vs alunos ativos do treinador | Ao aprovar vínculo | `LimiteAlunosAtingidoException` → 422 |
 
 `Pacote` não tem mais limite de fichas — campo `MaxFichas` foi removido. Controle é feito via `Descricao` livre.
+
+#### Billing do Treinador (treinador → plataforma)
+
+O treinador assina um `PlanoPlataforma` e paga a plataforma de forma recorrente (separado da cobrança aluno→treinador):
+
+1. **Cadastro em plano pago** (`Preco > 0`): o treinador nasce `AguardandoPagamento` e uma `AssinaturaTreinador` `Pendente` é criada; a verificação de e-mail é adiada. A 1ª cobrança (`Finalidade=Cadastro`) é confirmada via webhook Stripe e **finaliza o cadastro inline** (ativa a conta). Plano `Elite` é bloqueado no cadastro; plano `Free` segue o fluxo normal sem assinatura.
+2. **Renovação mensal**: `POST /internal/processar-renovacoes-treinador` gera cobranças das assinaturas vencidas; o pagamento confirmado (`Finalidade=Renovacao`) reativa e agenda a próxima cobrança.
+3. **Troca de plano** (`POST /treinador/plano/trocar`): upgrade/downgrade/regularização. Downgrade para `Free` **cancela** a assinatura (`plano_free_assinatura_cancelada`). A troca efetiva é aplicada no pagamento confirmado (`Finalidade=TrocaPlano`); `PlanoPlataformaIdAgendado` guarda a troca pendente.
+4. **Inadimplência**: falha de cobrança recorrente marca `Inadimplente` e dispara e-mail ao treinador.
+
+`Treinador.ModoPagamentoAluno` (`Plataforma`/`Externo`) define se o aluno paga via plataforma (Stripe Connect) ou diretamente ao treinador fora dela.
 
 #### Cascata de Inativação
 
@@ -905,8 +939,9 @@ Confere logs do backend: `ProcessarWebhookStripeHandler` deve marcar `Pagamento.
 | `AdicionarTentativasFalhasConsecutivas` | Contador de falhas consecutivas em `assinaturas_aluno` (state de inadimplência) |
 | `AdicionarWhatsAppDeliveryLogs` | Tabela `whatsapp_delivery_logs` (auditoria de entrega — webhook Meta) |
 | `AdicionarAnonimizadaEmContas` | Colunas de anonimização (flag/timestamp) em `contas` (LGPD — exclusão por anonimização) |
+| `AdicionarBillingTreinadorEModoPagamento` | Tabelas `assinaturas_treinador` + `pagamentos_treinador` (billing treinador↔plataforma); coluna `modo_pagamento_aluno` em `treinadores` |
 
-> **Migrations são SCHEMA-AGNOSTIC** — `AppDbContext` sem `HasDefaultSchema`; o schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). As MESMAS migrations aplicam em `homolog`/`develop`/`public`. `MigrationsHistoryTable` sem schema (segue o search_path). Total: 28 migrations. Ver [`specs/specification-db.md`](specs/specification-db.md).
+> **Migrations são SCHEMA-AGNOSTIC** — `AppDbContext` sem `HasDefaultSchema`; o schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). As MESMAS migrations aplicam em `homolog`/`develop`/`public`. `MigrationsHistoryTable` sem schema (segue o search_path). Total: 29 migrations. Ver [`specs/specification-db.md`](specs/specification-db.md).
 
 ---
 
