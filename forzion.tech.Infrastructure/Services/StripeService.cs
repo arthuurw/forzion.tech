@@ -226,6 +226,23 @@ public class StripeService(
         return account.ChargesEnabled;
     }
 
+    public async Task CriarReembolsoAsync(string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default)
+    {
+        var service = new RefundService();
+        var options = new RefundCreateOptions { PaymentIntent = paymentIntentId };
+
+        if (reverterTransferencia)
+        {
+            options.ReverseTransfer = true;
+            options.RefundApplicationFee = true;
+        }
+
+        var refund = await service.CreateAsync(options, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+        logger.LogInformation(
+            "Reembolso {RefundId} criado para PaymentIntent {PaymentIntentId} (reverterTransferencia={Reverter}).",
+            refund.Id, paymentIntentId, reverterTransferencia);
+    }
+
     public Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe)
     {
         try

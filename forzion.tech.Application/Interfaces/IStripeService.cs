@@ -14,6 +14,12 @@ public interface IStripeService
     Task<bool> ContaEstaAtivadaAsync(string stripeAccountId, CancellationToken cancellationToken = default);
     Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe);
 
+    // reverterTransferencia=true (charge destino do aluno): reverte a transferência ao treinador
+    // e a application fee — sem isso o refund deixa o dinheiro no treinador e pode falhar
+    // balance_insufficient. false (charge direto na plataforma, ex. plano do treinador): refund simples.
+    // Reembolso é sempre total (Amount não enviado).
+    Task CriarReembolsoAsync(string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Lista eventos Stripe criados a partir de <paramref name="desdeUtc"/>, filtrando
     /// pelos tipos relevantes para reconciliação de pagamentos e onboarding Connect.

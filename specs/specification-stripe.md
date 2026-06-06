@@ -9,7 +9,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 
 ## STACK & GATE
 - SDK: Stripe.net `51.1.0` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
-- `IStripeService` (Application/Interfaces): 9 métodos:
+- `IStripeService` (Application/Interfaces): 10 métodos:
   - `CriarContaConnectAsync(email, nome, ct)` → `accountId`
   - `GerarLinkOnboardingAsync(accountId, urlRetorno, urlCancelamento, ct)` → URL
   - `CriarPixPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `PixPaymentResult(intentId, qrCode, qrCodeUrl, expiracao)` (fluxo aluno — Connect + fee split)
@@ -19,6 +19,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
   - `ContaEstaAtivadaAsync(accountId, ct)` → `bool` (poll `account.ChargesEnabled`)
   - `ValidarWebhookAsync(payload, assinaturaHeader)` → `bool` (`EventUtility.ConstructEvent` HMAC-SHA256)
   - `ListarEventosDesdeAsync(desdeUtc, ct)` → `IReadOnlyList<StripeEventSummary>` (reconciliação — ver §RECONCILIAÇÃO)
+  - `CriarReembolsoAsync(paymentIntentId, reverterTransferencia, ct)` → reembolso total (CDC 7d — ver §CANCELAMENTO/REEMBOLSO). `reverterTransferencia=true` ⇒ `RefundCreateOptions{ PaymentIntent, ReverseTransfer=true, RefundApplicationFee=true }` (charge destino do aluno); `false` ⇒ só `{ PaymentIntent }` (charge direto-plataforma do treinador). `Amount` não enviado = total.
 - Impl única: `StripeService` (Infrastructure/Services). Sem `NullStripeService` — `StripeSettings.ValidateOnStart` exige `SecretKey`/`WebhookSecret` não-vazios (boot falha sem config).
 - `RequestOptions { ApiKey }` passada em cada chamada (sem estado global).
 - Métodos `Create*PaymentIntent`: usam `MoneyCentavos.ValorETaxaCentavos(valor, taxaPercent)` (Application/UseCases/Pagamentos) — extração de F16 (truncamento via `(long)`; sum preservation ≤1 centavo). NÃO usar Math.Round / banker's rounding.
@@ -212,6 +213,12 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 
 ### Recuperação (regularização)
 - Aluno acessa `/aluno/pagamentos` (sempre liberado), paga pendente. Webhook `payment_intent.succeeded` → handler chama `RegistrarPagamentoRegularizado` → zera contador + status volta pra Ativa → banner some no próximo load + endpoints liberam.
+
+## CANCELAMENTO / REEMBOLSO (CDC art. 49 — 7 dias)
+- `CancelarMinhaAssinaturaAlunoHandler` (Application/UseCases/AssinaturaAlunos) injeta `IStripeService` + `IPagamentoRepository` (além de assinaturaRepo/uow/timeProvider/logger). Após `assinatura.Cancelar(agora)`, se `(agora - assinatura.DataInicio).TotalDays ≤ 7` (1ª contratação, prazo de arrependimento): busca `ListarPorAssinaturaAlunoAsync` → 1º `Status==Pago` com `StripePaymentIntentId` ordenado por `CreatedAt` (mais antigo) → `CriarReembolsoAsync(intentId, reverterTransferencia: true, ct)`.
+- **G1 (destination charge):** pagamento do aluno é criado na plataforma com `TransferData.Destination=contaTreinador` + `ApplicationFeeAmount`. Refund simples (só `PaymentIntent`) deixaria o dinheiro no treinador e poderia falhar `balance_insufficient` → por isso `reverterTransferencia: true` ⇒ `ReverseTransfer=true` + `RefundApplicationFee=true`. (Plano do treinador é charge direto-plataforma → refund simples, `false`.)
+- **Falha Stripe NÃO bloqueia o cancelamento**: `try/catch` → `LogCritical` + prossegue (CDC garante o cancelamento; reembolso manual se Stripe falhar). > 7 dias → cancela sem reembolso (não busca pagamentos).
+- Status `Estornado` é **assíncrono**: o refund dispara `charge.refunded` → webhook `MarcarEstornado` → `PagamentoEstornadoEvent`. O handler de cancelamento NÃO muta `Pagamento.Status` síncrono.
 
 ## CHARGEBACKS / DISPUTAS
 - Disputa (chargeback) = aluno (ou plataforma) contesta cobrança junto ao banco do cartão. Stripe envia `charge.dispute.created` ao backend.
