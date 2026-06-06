@@ -342,4 +342,94 @@ public class AssinaturaTreinadorTests
         ev.PlanoNovoId.Should().Be(alvo);
         ev.OcorridoEm.Should().Be(Agora);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void RegistrarPagamentoFalho_EmitePagamentoFalhouEventEmCadaTentativa(int tentativas)
+    {
+        var a = Ativa();
+
+        for (var i = 0; i < tentativas; i++)
+            a.RegistrarPagamentoFalho(Agora);
+
+        a.DomainEvents.OfType<AssinaturaTreinadorPagamentoFalhouEvent>()
+            .Should().HaveCount(tentativas);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoFalho_NaTerceiraVez_EmiteAmbasEventos()
+    {
+        var a = Ativa();
+
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+
+        a.DomainEvents.OfType<AssinaturaTreinadorPagamentoFalhouEvent>().Should().HaveCount(3);
+        a.DomainEvents.OfType<AssinaturaTreinadorMarcadaInadimplenteEvent>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void RegistrarPagamentoFalho_Cancelada_NaoEmiteEventos()
+    {
+        var a = Ativa();
+        a.Cancelar(Agora);
+        a.ClearDomainEvents();
+
+        a.RegistrarPagamentoFalho(Agora);
+
+        a.DomainEvents.OfType<AssinaturaTreinadorPagamentoFalhouEvent>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RegistrarPagamentoFalho_PagamentoFalhouEventCarregaPropriedadesCorretas()
+    {
+        var a = Ativa();
+
+        a.RegistrarPagamentoFalho(Agora);
+
+        var ev = a.DomainEvents.OfType<AssinaturaTreinadorPagamentoFalhouEvent>().Single();
+        ev.AssinaturaTreinadorId.Should().Be(a.Id);
+        ev.TreinadorId.Should().Be(a.TreinadorId);
+        ev.TentativasFalhasConsecutivas.Should().Be(1);
+        ev.OcorridoEm.Should().Be(Agora);
+    }
+
+    [Fact]
+    public void MarcarInadimplentePorDisputa_Ativa_TransicionaComLimiteContador()
+    {
+        var a = Ativa();
+
+        a.MarcarInadimplentePorDisputa(Agora);
+
+        a.Status.Should().Be(AssinaturaTreinadorStatus.Inadimplente);
+        a.TentativasFalhasConsecutivas.Should().Be(AssinaturaTreinador.LimiteTentativasFalhas);
+    }
+
+    [Fact]
+    public void MarcarInadimplentePorDisputa_Inadimplente_NoOp()
+    {
+        var a = Ativa();
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+        a.Status.Should().Be(AssinaturaTreinadorStatus.Inadimplente);
+
+        a.MarcarInadimplentePorDisputa(Agora);
+
+        a.Status.Should().Be(AssinaturaTreinadorStatus.Inadimplente);
+    }
+
+    [Fact]
+    public void MarcarInadimplentePorDisputa_Cancelada_NoOp()
+    {
+        var a = Ativa();
+        a.Cancelar(Agora);
+
+        a.MarcarInadimplentePorDisputa(Agora);
+
+        a.Status.Should().Be(AssinaturaTreinadorStatus.Cancelada);
+    }
 }

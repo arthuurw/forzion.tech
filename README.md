@@ -912,7 +912,7 @@ Confere logs do backend: `ProcessarWebhookStripeHandler` deve marcar `Pagamento.
 ### Testes
 
 ```
-1617 testes unit (rápidos, sem Docker) + integração (Testcontainers) | 0 falhas
+1843 testes unit (rápidos, sem Docker) + 96 integração (Testcontainers) | 0 falhas
 
 Domain/                  → entidades, value objects, domain events, exceções, máquina de estados
 Domain/Properties/       → property-based (CsCheck): Email VO, Result<T>, invariantes de entidade
@@ -938,7 +938,7 @@ E2E/                     → pipeline real: WebApplicationFactory + Postgres rea
 Comandos úteis:
 
 ```bash
-dotnet test forzion.tech.Tests --filter "Category!=Integration"   # rápido, sem Docker (~1617 unit)
+dotnet test forzion.tech.Tests --filter "Category!=Integration"   # rápido, sem Docker (~1843 unit)
 dotnet test forzion.tech.Tests                                    # suíte inteira, exige Docker (unit + integração)
 ```
 

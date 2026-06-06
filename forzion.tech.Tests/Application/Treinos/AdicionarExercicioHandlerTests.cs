@@ -145,4 +145,41 @@ public class AdicionarExercicioHandlerTests
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
+
+    // ExisteParaTreinoComAlunoAtivoAsync retorna false quando o aluno executor
+    // foi inativado/desvinculado (TreinoAlunoStatus.Inativo) — treino volta a ser mutável.
+    [Fact]
+    public async Task HandleAsync_AlunoInativoExecutou_TreinoMutavel()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = CriarTreino(treinadorId);
+        var exercicioId = Guid.NewGuid();
+
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _execucaoRepo
+            .Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _exercicioRepo.Setup(r => r.ExisteAsync(exercicioId, treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var result = await _handler.HandleAsync(new AdicionarExercicioCommand(treino.Id, exercicioId, SerieValida));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlunoAtivoExecutou_TreinoImutavel()
+    {
+        var treino = CriarTreino(Guid.NewGuid());
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _execucaoRepo
+            .Setup(r => r.ExisteParaTreinoComAlunoAtivoAsync(treino.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _handler.HandleAsync(new AdicionarExercicioCommand(treino.Id, Guid.NewGuid(), SerieValida));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treino.ja_executado");
+    }
 }

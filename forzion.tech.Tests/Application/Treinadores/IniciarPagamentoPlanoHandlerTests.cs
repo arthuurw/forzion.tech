@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Application.UseCases.Treinadores.IniciarPagamentoPlano;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -42,9 +43,13 @@ public class IniciarPagamentoPlanoHandlerTests
             It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CartaoResult);
 
+        var criarPagamentoService = new CriarPagamentoComIntentService(
+            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            Mock.Of<ILogger<CriarPagamentoComIntentService>>());
+
         _handler = new IniciarPagamentoPlanoHandler(
             _treinadorRepo.Object, _assinaturaRepo.Object, _pagamentoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _transactionProvider.Object,
+            _stripeService.Object, criarPagamentoService,
             TimeProvider.System, _logger.Object);
     }
 
@@ -111,7 +116,7 @@ public class IniciarPagamentoPlanoHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorNaoAguardandoPagamento_RetornaFailureSemChamarStripe()
     {
-        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value; // AguardandoAprovacao
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var result = await _handler.HandleAsync(new IniciarPagamentoPlanoCommand(treinador.Id));
@@ -189,7 +194,7 @@ public class IniciarPagamentoPlanoHandlerTests
         var treinador = TreinadorAguardandoPagamento();
         var assinatura = AssinaturaPendente(treinador.Id);
         var zumbi = PagamentoTreinador.Criar(
-            treinador.Id, assinatura.Id, assinatura.Valor, FinalidadePagamentoTreinador.Cadastro, DateTime.UtcNow).Value; // sem DefinirDadosPix
+            treinador.Id, assinatura.Id, assinatura.Valor, FinalidadePagamentoTreinador.Cadastro, DateTime.UtcNow).Value;
         Arrange(treinador, assinatura, zumbi);
 
         var result = await _handler.HandleAsync(new IniciarPagamentoPlanoCommand(treinador.Id));

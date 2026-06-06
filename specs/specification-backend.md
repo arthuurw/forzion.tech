@@ -64,6 +64,7 @@ Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`.
 
 ### Services / Settings
 - `Application/Services/LimiteTreinadorService` (`ILimiteTreinadorService`): valida que treinador tem plano e que `vínculos ativos < plano.MaxAlunos`; senão lança `LimiteAlunosAtingidoException`. Usa `ICapacidadePlano` (domínio).
+- `Application/Services/CriarPagamentoComIntentService` — application service que centraliza a coreografia **G-PAY-1** (T7). Genérico `<TPagamento>`. Recebe `CriarPagamentoComIntentParams<TPagamento>` (record) com delegates: `ObterPendente`, `VerificarIdempotencia`, `CriarPagamento`, `AplicarIntentPix`, `AplicarIntentCartao`, `AdicionarAsync`, `MarcarFalhou`, `Metodo`. Fluxo em `ExecutarAsync`: (1) tx serializable; (2) SELECT pendente → idempotência: reutiliza se `VerificarIdempotencia` retorna não-null (intent já presente); (3) zumbi: pendente irrecuperável → `MarcarFalhou` + recria; (4) `AplicarIntentPix/Cartao` (Stripe ANTES do commit — falha Stripe = rollback, sem zumbi); (5) `AdicionarAsync` + `CommitAsync` + `tx.CommitAsync` (single-write). Usado por `IniciarPagamentoPlanoHandler`, `GerarCobrancaMensalHandler`, `GerarCobrancaPlanoTreinadorHandler`, `TrocarPlanoTreinadorHandler`. Registrado `AddScoped` em `AddApplicationHandlers`.
 - `Application/Settings/` (POCOs bound por DI): `AppSettings` (`FrontendBaseUrl`; bind `App`), `EmailSettings` (bind `Email`; cross-ref [specification-email]), `PaymentSettings` (`TaxaPlataformaPercent=5`; configurado a partir de `StripeSettings`).
 - `Infrastructure/Services/StripeSettings` (bind `Stripe`): `SecretKey`/`PublishableKey`/`WebhookSecret`/`TaxaPlataformaPercent`/`UrlBase`. **ValidateOnStart**: SecretKey e WebhookSecret não-vazios + `0 < TaxaPlataformaPercent <= 100` (falha o boot se ausente).
 
@@ -100,8 +101,9 @@ Registro via extensões `MapXxxEndpoints` agregadas em `RouteBuilderExtensions.M
 ### Filters (`Api/Filters/`, `IEndpointFilter`)
 - `PerfilIdRequiredFilter`: rejeita (401) requisições autenticadas sem claim `perfil_id` (`PerfilId == Guid.Empty`). Aplicado em nível de grupo.
 - `PaginacaoFilter`: valida query `pagina >= 1` e `1 <= tamanhoPagina <= 100`; senão 400.
-- `RequireAssinaturaAtivaFilter` (transient, registrado explicitamente): se `TipoConta==Aluno` e assinatura atual `Inadimplente` → 403 com `code=ASSINATURA_INADIMPLENTE`. Tipos não-Aluno passam direto; sem aluno/assinatura passa direto. Bloqueia só fluxos de consumo/escrita (GET de leitura permanecem liberados — visibilidade LGPD). Cross-ref [specification-stripe]/[specification-frontend].
-- `RequireAssinaturaTreinadorAtivaFilter` (transient): análogo p/ treinador — se `TipoConta==Treinador` e `AssinaturaTreinador` atual `Inadimplente` → 403 com `code=ASSINATURA_TREINADOR_INADIMPLENTE`. Não-Treinador / sem assinatura passam direto.
+- `RequireAssinaturaAtivaFilterBase` (abstract, T8) — base compartilhada `IEndpointFilter` para filtros de inadimplência. **GETs liberados** (sem checar assinatura — preserva leitura/histórico em inadimplência; princípio LGPD/CDC). Implementações injetam `IUserContext`, delegam checagem a `EstaInadimplenteAsync(services, userContext, ct)` e retornam 403 ProblemDetails com `code=CodigoErro` (abstract) se inadimplente.
+- `RequireAssinaturaAtivaFilter : RequireAssinaturaAtivaFilterBase` (transient): impl aluno — `code=ASSINATURA_INADIMPLENTE`. `TipoConta != Aluno` → pass-through. Consulta `IAlunoRepository` + `IAssinaturaAlunoRepository` (última não-Cancelada). Cross-ref [specification-stripe]/[specification-frontend].
+- `RequireAssinaturaTreinadorAtivaFilter : RequireAssinaturaAtivaFilterBase` (transient): impl treinador — `code=ASSINATURA_TREINADOR_INADIMPLENTE`. `TipoConta != Treinador` → pass-through. Atualmente retorna false (placeholder; enforcement efetivo pendente de integração com `IAssinaturaTreinadorRepository`). Não-Treinador / sem assinatura passam direto.
 
 ### Middleware / error mapping
 `GlobalExceptionHandler` (`IExceptionHandler`, RFC7807 ProblemDetails):
@@ -135,7 +137,7 @@ Políticas FixedWindow (rejeição 429). Em ambiente `Test` todas viram NoLimite
 - (Ambos pulados em ambiente `Test`.)
 
 ### DI wiring (resumo)
-- `Api/Extensions/DependencyInjectionExtensions`: `AddApiServices` (exception handler, ProblemDetails, rate limiter, Swagger, JWT, CORS, HealthChecks, JSON enum-as-string, `IUserContext`, `RequireAssinaturaAtivaFilter`, e — fora de Test — `AddInfrastructure` + hosted services + `ErrorLogDbSinkProvider`). `AddApplicationHandlers` (validators auto-scan, `ILimiteTreinadorService`, `AppSettings`, e os handlers — registro manual/scoped descrito em §2).
+- `Api/Extensions/DependencyInjectionExtensions`: `AddApiServices` (exception handler, ProblemDetails, rate limiter, Swagger, JWT, CORS, HealthChecks, JSON enum-as-string, `IUserContext`, `RequireAssinaturaAtivaFilter`, `RequireAssinaturaTreinadorAtivaFilter`, e — fora de Test — `AddInfrastructure` + hosted services + `ErrorLogDbSinkProvider`). `AddApplicationHandlers` (validators auto-scan, `ILimiteTreinadorService`, `CriarPagamentoComIntentService`, `AppSettings`, e os handlers — registro manual/scoped descrito em §2).
 - CORS `AllowFrontend`: origens de `Cors:AllowedOrigins` (`;`-separado), filtra inválidas/curingas; métodos GET/POST/PUT/DELETE/PATCH/OPTIONS; `AllowCredentials`.
 
 ## 5. INFRASTRUCTURE LAYER

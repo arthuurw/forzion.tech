@@ -39,16 +39,6 @@ public class ProcessarWebhookStripeHandler(
         return Result.Success();
     }
 
-    /// <summary>
-    /// Núcleo de processamento de evento Stripe — invariante à origem (webhook live ou reconciliação
-    /// via <c>Events.List</c>). Idempotente em todos os ramos via cheques de estado
-    /// (<c>Pagamento.Status != Pendente</c>, <c>ContaRecebimento.OnboardingCompleto</c>).
-    /// </summary>
-    /// <remarks>
-    /// Retorna o tipo de transição aplicada — útil pro reconciliador classificar
-    /// entre <c>Replayed</c> (mudou estado), <c>JaConsistentes</c> (no-op por idempotência ou
-    /// payload sem alvo na base) e <c>Ignorados</c> (tipo desconhecido).
-    /// </remarks>
     public virtual async Task<ProcessarEventoResultado> ProcessarEventoAsync(
         StripeWebhookEvento evento,
         CancellationToken cancellationToken = default)
@@ -87,36 +77,43 @@ public class ProcessarWebhookStripeHandler(
         }
     }
 
-    /// <summary>
-    /// Defesa cross-account: se o evento Stripe traz `account`, valida que esse Connect
-    /// account é exatamente o configurado para o treinador dono da assinatura. Sem isso,
-    /// um payment_intent.* replicado de outro account assinado pelo mesmo webhook secret
-    /// marcaria o pagamento errado como pago.
-    /// </summary>
-    private async Task<bool> ValidarConnectAccountAsync(Guid assinaturaAlunoId, string? eventAccountId, string paymentIntentId, CancellationToken ct)
+    // null StripeConnectAccountId = drift de configuração → lança para forçar 500 e retry do Stripe
+    // (diferente de mismatch legítimo que retorna false/JaConsistente).
+    // Retorna a AssinaturaAluno carregada para reutilização pelo caller (evita segundo round-trip).
+    private async Task<(bool Valido, AssinaturaAluno? Assinatura)> ValidarConnectAccountAsync(
+        Guid assinaturaAlunoId, string? eventAccountId, string paymentIntentId, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(eventAccountId))
-            return true; // evento direto (sem Connect routing) — nada a validar
+            return (true, null);
 
         var assinatura = await assinaturaRepository.ObterPorIdAsync(assinaturaAlunoId, ct).ConfigureAwait(false);
-        if (assinatura is null) return false;
+        if (assinatura is null) return (false, null);
 
         var conta = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(assinatura.TreinadorId, ct).ConfigureAwait(false);
+
+        if (conta is not null && conta.StripeConnectAccountId is null)
+        {
+            // Conta existe mas sem Connect account: drift de dados (nunca deveria chegar aqui com account no evento).
+            // Lança para forçar retry — não pode silenciar pois aluno pode ter pago e payment ficaria Pendente.
+            throw new InvalidOperationException(
+                $"PaymentIntent {paymentIntentId}: treinador {assinatura.TreinadorId} tem ContaRecebimento sem StripeConnectAccountId. Verificar onboarding.");
+        }
+
         if (conta?.StripeConnectAccountId is null)
         {
             logger.LogWarning("PaymentIntent {PaymentIntentId} recebido com account {AccountId} mas treinador {TreinadorId} sem Connect account.",
                 paymentIntentId, eventAccountId, assinatura.TreinadorId);
-            return false;
+            return (false, null);
         }
 
         if (!string.Equals(conta.StripeConnectAccountId, eventAccountId, StringComparison.Ordinal))
         {
             logger.LogWarning("PaymentIntent {PaymentIntentId} recebido com account {EventAccountId} ≠ Connect account do treinador {ExpectedAccountId}. Ignorado.",
                 paymentIntentId, eventAccountId, conta.StripeConnectAccountId);
-            return false;
+            return (false, null);
         }
 
-        return true;
+        return (true, assinatura);
     }
 
     private async Task<ProcessarEventoResultado> ProcessarPagamentoPagoAsync(string paymentIntentId, string? eventAccountId, CancellationToken ct)
@@ -128,10 +125,10 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        if (!await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false))
+        var (valido, assinaturaCarregada) = await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false);
+        if (!valido)
             return ProcessarEventoResultado.JaConsistente;
 
-        // Idempotência: Stripe entrega at-least-once; segundo disparo não deve retornar 500
         if (pagamento.Status != PagamentoStatus.Pendente)
         {
             logger.LogDebug("PaymentIntent {PaymentIntentId} já processado (status: {Status}). Ignorando re-entrega.", paymentIntentId, pagamento.Status);
@@ -147,12 +144,13 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
+        // reutiliza assinatura já carregada em ValidarConnect (evita segundo round-trip).
+        var assinatura = assinaturaCarregada
+            ?? await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
+
         if (assinatura is not null)
         {
-            // Zera contador de falhas e reativa se estava Inadimplente.
             assinatura.RegistrarPagamentoRegularizado(agoraPago);
-            // Só transiciona Pendente → Ativa via Ativar (Inadimplente já virou Ativa acima; Ativa permanece Ativa).
             if (assinatura.Status == AssinaturaAlunoStatus.Pendente)
             {
                 var ativarResult = assinatura.Ativar(agoraPago);
@@ -182,7 +180,8 @@ public class ProcessarWebhookStripeHandler(
         var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
         if (pagamento is null) return ProcessarEventoResultado.JaConsistente;
 
-        if (!await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false))
+        var (valido, assinaturaCarregada) = await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false);
+        if (!valido)
             return ProcessarEventoResultado.JaConsistente;
 
         if (pagamento.Status != PagamentoStatus.Pendente)
@@ -200,10 +199,9 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        // G-PAY-2: carrega assinatura ANTES do commit e muta ambos (pagamento + assinatura)
-        // numa única transação. Evita dessincronismo se crash ocorrer entre os dois commits.
-        // RegistrarPagamentoFalho pode disparar transição Ativa → Inadimplente (threshold).
-        var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
+        // T3: reutiliza assinatura já carregada em ValidarConnect.
+        var assinatura = assinaturaCarregada
+            ?? await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         assinatura?.RegistrarPagamentoFalho(agoraFalhou);
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
@@ -217,8 +215,12 @@ public class ProcessarWebhookStripeHandler(
         var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
         if (pagamento is null) return ProcessarEventoResultado.JaConsistente;
 
-        if (!await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false))
-            return ProcessarEventoResultado.JaConsistente;
+        if (!string.IsNullOrEmpty(eventAccountId))
+        {
+            var (valido, _) = await ValidarConnectAccountAsync(pagamento.AssinaturaAlunoId, eventAccountId, paymentIntentId, ct).ConfigureAwait(false);
+            if (!valido)
+                return ProcessarEventoResultado.JaConsistente;
+        }
 
         if (pagamento.Status != PagamentoStatus.Pendente)
         {
@@ -240,8 +242,6 @@ public class ProcessarWebhookStripeHandler(
 
     private async Task<ProcessarEventoResultado> ProcessarChargeReembolsadoAsync(string? paymentIntentId, long? amountRefundedCents, CancellationToken ct)
     {
-        // charge.refunded sem payment_intent — refund de charge avulso fora do nosso fluxo
-        // (nunca cobramos sem PaymentIntent). Log e ignora.
         if (string.IsNullOrEmpty(paymentIntentId))
         {
             logger.LogWarning("charge.refunded recebido sem payment_intent. Ignorado.");
@@ -251,16 +251,14 @@ public class ProcessarWebhookStripeHandler(
         var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
         if (pagamento is null)
         {
+            var pagamentoTreinador = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
+            if (pagamentoTreinador is not null)
+                return await ProcessarEstornoTreinadorAsync(pagamentoTreinador, ct).ConfigureAwait(false);
+
             logger.LogWarning("charge.refunded para PaymentIntent {PaymentIntentId} não encontrado.", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        // Cross-account check não se aplica: refund parte do MESMO Connect account do treinador
-        // (Stripe Dashboard dele), e não há vetor de replay útil — refund inverte dinheiro do
-        // próprio destino, não há ganho pra atacante.
-
-        // Idempotência: at-least-once. Se já Estornado, segunda entrega é no-op silencioso.
-        // Pendente/Falhou/Expirado é estado inconsistente (refund de algo não-pago) — log warn + no-op.
         if (pagamento.Status == PagamentoStatus.Estornado)
         {
             logger.LogDebug("PaymentIntent {PaymentIntentId} já estornado. Ignorando re-entrega.", paymentIntentId);
@@ -275,9 +273,7 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        // G-PAY-5: só transiciona para Estornado em refund TOTAL.
-        // Refund parcial é operação rara (ajuste manual do treinador); não há status parcial
-        // no modelo — log + no-op é a opção de menor risco (não corrompe contabilidade).
+        // só transiciona para Estornado em refund total — parcial deixa em Pago.
         var valorPagamentoCents = (long)Math.Round(pagamento.Valor * 100m, MidpointRounding.AwayFromZero);
         if (amountRefundedCents.HasValue && amountRefundedCents.Value < valorPagamentoCents)
         {
@@ -303,9 +299,39 @@ public class ProcessarWebhookStripeHandler(
         return ProcessarEventoResultado.Aplicado;
     }
 
+    private async Task<ProcessarEventoResultado> ProcessarEstornoTreinadorAsync(PagamentoTreinador pagamento, CancellationToken ct)
+    {
+        if (pagamento.Status == PagamentoStatus.Estornado)
+        {
+            logger.LogDebug("PagamentoTreinador {PaymentIntentId} já estornado. Ignorando re-entrega.", pagamento.StripePaymentIntentId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        if (pagamento.Status != PagamentoStatus.Pago)
+        {
+            logger.LogWarning("charge.refunded para PagamentoTreinador {PaymentIntentId} em status inesperado {Status}. Ignorado.",
+                pagamento.StripePaymentIntentId, pagamento.Status);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var result = pagamento.MarcarEstornado(agora);
+        if (result.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PagamentoTreinador como estornado: {Erro}.", result.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+        assinatura?.MarcarInadimplentePorDisputa(agora);
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como estornado.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
+    }
+
     private async Task<ProcessarEventoResultado> ProcessarDisputaCriadaAsync(string? paymentIntentId, string? motivoDisputa, CancellationToken ct)
     {
-        // charge.dispute.created sem payment_intent — disputa de charge avulso fora do nosso fluxo.
         if (string.IsNullOrEmpty(paymentIntentId))
         {
             logger.LogWarning("charge.dispute.created recebido sem payment_intent. Ignorado.");
@@ -315,23 +341,20 @@ public class ProcessarWebhookStripeHandler(
         var pagamento = await pagamentoRepository.ObterPorPaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
         if (pagamento is null)
         {
+            var pagamentoTreinador = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
+            if (pagamentoTreinador is not null)
+                return await ProcessarDisputaTreinadorAsync(pagamentoTreinador, ct).ConfigureAwait(false);
+
             logger.LogWarning("charge.dispute.created para PaymentIntent {PaymentIntentId} não encontrado.", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        // Cross-account check não se aplica: disputa parte do Connect account do treinador
-        // (Stripe roteia evento direto). Sem vetor útil de replay cross-account aqui.
-
-        // Idempotência: at-least-once. Se já EmDisputa, segunda entrega é no-op silencioso.
         if (pagamento.Status == PagamentoStatus.EmDisputa)
         {
             logger.LogDebug("PaymentIntent {PaymentIntentId} já em disputa. Ignorando re-entrega.", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        // Disputa sobre estado diferente de Pago é incoerente (não há cobrança capturada
-        // para disputar). Log warn + no-op — não lança DomainException para não derrubar
-        // o pipeline de webhook em payload anômalo.
         if (pagamento.Status != PagamentoStatus.Pago)
         {
             logger.LogWarning(
@@ -349,9 +372,6 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        // Força transição da assinatura Ativa → Inadimplente (drástico) — disputa é
-        // sinal forte de fraude ou desistência; congela acesso já. RegistrarPagamentoFalho
-        // (incrementa contador gradual) NÃO se aplica aqui.
         var assinatura = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         if (assinatura is not null)
         {
@@ -363,6 +383,37 @@ public class ProcessarWebhookStripeHandler(
         logger.LogInformation(
             "Pagamento {PagamentoId} marcado em disputa (motivo={Motivo}).",
             pagamento.Id, motivoDisputa ?? "unknown");
+        return ProcessarEventoResultado.Aplicado;
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarDisputaTreinadorAsync(PagamentoTreinador pagamento, CancellationToken ct)
+    {
+        if (pagamento.Status == PagamentoStatus.EmDisputa)
+        {
+            logger.LogDebug("PagamentoTreinador {PaymentIntentId} já em disputa. Ignorando re-entrega.", pagamento.StripePaymentIntentId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        if (pagamento.Status != PagamentoStatus.Pago)
+        {
+            logger.LogWarning("charge.dispute.created para PagamentoTreinador {PaymentIntentId} em status inesperado {Status}. Ignorado.",
+                pagamento.StripePaymentIntentId, pagamento.Status);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var result = pagamento.MarcarEmDisputa(agora);
+        if (result.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PagamentoTreinador em disputa: {Erro}.", result.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+        assinatura?.MarcarInadimplentePorDisputa(agora);
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        logger.LogInformation("PagamentoTreinador {PagamentoId} marcado em disputa.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
     }
 
@@ -400,9 +451,6 @@ public class ProcessarWebhookStripeHandler(
         if (pagamento.MarcarPago(agora).IsFailure)
             return ProcessarEventoResultado.JaConsistente;
 
-        // Cadastro: finaliza tudo no MESMO commit que marca o pagamento pago (atomicidade —
-        // evita treinador travado pago se um passo de finalização falhasse em commit separado).
-        // Renovacao/TrocaPlano: Fase 2/2B.
         if (pagamento.Finalidade == FinalidadePagamentoTreinador.Cadastro)
             await FinalizarCadastroAsync(pagamento, agora, ct).ConfigureAwait(false);
 
@@ -411,6 +459,8 @@ public class ProcessarWebhookStripeHandler(
         return ProcessarEventoResultado.Aplicado;
     }
 
+    // Lança InvalidOperationException em falha para impedir CommitAsync e forçar 500 → Stripe retenta.
+    // Sem throw, mutação parcial (pagamento Pago, assinatura Pendente) ficaria persistida.
     private async Task FinalizarCadastroAsync(PagamentoTreinador pagamento, DateTime agora, CancellationToken ct)
     {
         var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
@@ -418,20 +468,26 @@ public class ProcessarWebhookStripeHandler(
         if (assinatura is null || treinador is null)
         {
             logger.LogWarning("Cadastro pago sem assinatura/treinador (pagamento {PagamentoId}).", pagamento.Id);
-            return;
+            throw new InvalidOperationException($"Assinatura ou treinador não encontrado para pagamento {pagamento.Id}. Retry necessário.");
         }
 
-        if (assinatura.Ativar(agora).IsFailure) return;
+        var ativarResult = assinatura.Ativar(agora);
+        if (ativarResult.IsFailure)
+            throw new InvalidOperationException($"Falha ao ativar AssinaturaTreinador {assinatura.Id}: {ativarResult.Error!.Message}");
+
         assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
-        if (treinador.ConfirmarPagamentoPlano(agora).IsFailure) return;
+
+        var confirmarResult = treinador.ConfirmarPagamentoPlano(agora);
+        if (confirmarResult.IsFailure)
+            throw new InvalidOperationException($"Falha ao confirmar pagamento do treinador {treinador.Id}: {confirmarResult.Error!.Message}");
 
         var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, ct).ConfigureAwait(false);
         if (conta is null)
         {
             logger.LogWarning("Conta {ContaId} do treinador {TreinadorId} não encontrada — verificação não enviada.", treinador.ContaId, treinador.Id);
-            return;
+            throw new InvalidOperationException($"Conta {treinador.ContaId} não encontrada para treinador {treinador.Id}. Retry necessário.");
         }
-        // Dispara a verificação de e-mail (ContaRegistradaEmailHandler) — adiada até o pagamento.
+
         conta.EmitirRegistro(agora);
     }
 
@@ -455,8 +511,6 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        // G-PAY-2 (treinador): mesmo padrão do aluno — muta pagamento + assinatura num único commit.
-        // RegistrarPagamentoFalho pode disparar Ativa→Inadimplente ao atingir o threshold.
         var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
         assinatura?.RegistrarPagamentoFalho(agora);
 
@@ -479,19 +533,9 @@ public class ProcessarWebhookStripeHandler(
     }
 }
 
-/// <summary>
-/// Classificação do resultado de <see cref="ProcessarWebhookStripeHandler.ProcessarEventoAsync"/>.
-/// Usado pelo reconciliador para contar replays vs. no-ops sem precisar inspecionar o estado
-/// de cada pagamento.
-/// </summary>
 public enum ProcessarEventoResultado
 {
-    /// <summary>Mudou estado (Pagamento Pendente→Pago/Falhou/Expirado ou Onboarding confirmado).</summary>
     Aplicado,
-
-    /// <summary>No-op: já estava no estado correto, alvo não existe, ou cross-account rejeitado.</summary>
     JaConsistente,
-
-    /// <summary>Tipo de evento não tratado pela plataforma.</summary>
     Ignorado,
 }

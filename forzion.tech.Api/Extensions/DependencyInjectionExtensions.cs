@@ -208,6 +208,7 @@ public static class DependencyInjectionExtensions
         services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
 
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
+        services.AddScoped<forzion.tech.Application.Services.CriarPagamentoComIntentService>();
 
         services.AddOptions<AppSettings>().BindConfiguration("App");
 

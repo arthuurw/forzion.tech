@@ -125,7 +125,7 @@ export default function PlanoTreinadorPage() {
     ? planos.find((p) => p.planoId === assinatura.planoPlataformaId)
     : null;
 
-  const calcularProracao = (novoPlano: PlanoPlataformaResponse) => {
+  const estimarProracao = (novoPlano: PlanoPlataformaResponse) => {
     if (!assinatura || !planoAtual) return null;
     const diasRestantes = Math.max(
       0,
@@ -204,7 +204,7 @@ export default function PlanoTreinadorPage() {
         {planos
           .filter((p) => p.planoId !== assinatura?.planoPlataformaId)
           .map((plano) => {
-            const proracao = calcularProracao(plano);
+            const proracao = estimarProracao(plano);
             const eUpgrade = planoAtual && plano.preco > planoAtual.preco;
             return (
               <Card key={plano.planoId} variant="outlined">
@@ -255,14 +255,9 @@ export default function PlanoTreinadorPage() {
               {erro && <Alert severity="error">{erro}</Alert>}
               <Typography variant="body2">
                 {planoAtual && planoSelecionado.preco > planoAtual.preco
-                  ? `Upgrade para ${planoSelecionado.nome}. O valor de proração será cobrado agora via Pix.`
+                  ? `Upgrade para ${planoSelecionado.nome}. O valor exato de proração será confirmado após processar.`
                   : `Downgrade para ${planoSelecionado.nome}. O plano muda na próxima renovação.`}
               </Typography>
-              {planoAtual && planoSelecionado.preco > planoAtual.preco && calcularProracao(planoSelecionado) !== null && (
-                <Typography variant="body2" color="primary.main" sx={{ fontWeight: "bold" }}>
-                  Valor: R$ {calcularProracao(planoSelecionado)!.toFixed(2)}
-                </Typography>
-              )}
               <Divider />
               <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
                 <Button onClick={fecharDialog} disabled={processando}>Cancelar</Button>
@@ -279,6 +274,11 @@ export default function PlanoTreinadorPage() {
 
           {etapa === "pagando" && trocaResp && (
             <Stack spacing={2} sx={{ mt: 1 }}>
+              {trocaResp.valorPagamento !== null && trocaResp.valorPagamento !== undefined && (
+                <Typography variant="body2" color="primary.main" sx={{ fontWeight: "bold" }}>
+                  Valor: R$ {trocaResp.valorPagamento.toFixed(2)}
+                </Typography>
+              )}
               {trocaResp.pixQrCode && (
                 <>
                   <Typography variant="body2">

@@ -1,6 +1,6 @@
-using System.Data;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -14,8 +14,7 @@ public class IniciarPagamentoPlanoHandler(
     IAssinaturaTreinadorRepository assinaturaRepository,
     IPagamentoTreinadorRepository pagamentoRepository,
     IStripeService stripeService,
-    IUnitOfWork unitOfWork,
-    IDbContextTransactionProvider transactionProvider,
+    CriarPagamentoComIntentService criarPagamentoService,
     TimeProvider timeProvider,
     ILogger<IniciarPagamentoPlanoHandler> logger)
 {
@@ -44,65 +43,36 @@ public class IniciarPagamentoPlanoHandler(
             return Result.Failure<IniciarPagamentoPlanoResponse>(
                 Error.Business("assinatura_treinador_invalida", "Não há assinatura de treinador pendente para pagamento."));
 
-        PagamentoTreinador pagamento;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
 
-        // Atomicidade (mesma estratégia do GerarCobrancaMensal/G-PAY-1): Stripe ANTES do único
-        // commit (single-write). O Guid de PagamentoTreinador.Criar() vira a idempotency key do
-        // Stripe; a tx serializable protege contra dois callers concorrentes criando em paralelo.
-        await using (var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken).ConfigureAwait(false))
-        {
-            var pendente = await pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
-            if (pendente is not null)
-            {
-                if (pendente.StripePaymentIntentId is not null)
-                {
-                    await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
-                    return Result.Success(IniciarPagamentoPlanoResponse.De(pendente));
-                }
-
-                // Zumbi: Pendente sem intent (falha de commit anterior) — marca Falhou para
-                // liberar o slot único antes de recriar.
-                logger.LogWarning("PagamentoTreinador zumbi {PagamentoId} detectado para assinatura {AssinaturaTreinadorId}. Marcando como Falhou.", pendente.Id, assinatura.Id);
-                var marcarZumbiResult = pendente.MarcarFalhou(timeProvider.GetUtcNow().UtcDateTime);
-                if (marcarZumbiResult.IsFailure)
-                    return Result.Failure<IniciarPagamentoPlanoResponse>(marcarZumbiResult.Error!);
-            }
-
-            // Valor vem da assinatura — nunca do caller.
-            var pagamentoResult = PagamentoTreinador.Criar(
+        var params_ = new CriarPagamentoComIntentParams<PagamentoTreinador>(
+            ObterPendente: ct => pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct),
+            VerificarIdempotencia: pendente => pendente.StripePaymentIntentId is not null ? pendente : null,
+            CriarPagamento: () => PagamentoTreinador.Criar(
                 treinador.Id, assinatura.Id, assinatura.Valor,
-                FinalidadePagamentoTreinador.Cadastro, timeProvider.GetUtcNow().UtcDateTime, command.Metodo);
-            if (pagamentoResult.IsFailure)
-                return Result.Failure<IniciarPagamentoPlanoResponse>(pagamentoResult.Error!);
-            pagamento = pagamentoResult.Value;
-
-            if (command.Metodo == MetodoPagamento.Cartao)
+                FinalidadePagamentoTreinador.Cadastro, now, command.Metodo),
+            AplicarIntentPix: async (pag, ct) =>
             {
-                var cartaoResult = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(
-                    assinatura.Valor, pagamento.Id, cancellationToken).ConfigureAwait(false);
-
-                var definirCartaoResult = pagamento.DefinirDadosCartao(cartaoResult.PaymentIntentId, cartaoResult.ClientSecret, timeProvider.GetUtcNow().UtcDateTime);
-                if (definirCartaoResult.IsFailure)
-                    return Result.Failure<IniciarPagamentoPlanoResponse>(definirCartaoResult.Error!);
-            }
-            else
+                var r = await stripeService.CriarPixPlataformaPaymentIntentAsync(assinatura.Valor, pag.Id, ct).ConfigureAwait(false);
+                return pag.DefinirDadosPix(r.PaymentIntentId, r.QrCode, r.QrCodeUrl, r.Expiracao, now);
+            },
+            AplicarIntentCartao: async (pag, ct) =>
             {
-                var pixResult = await stripeService.CriarPixPlataformaPaymentIntentAsync(
-                    assinatura.Valor, pagamento.Id, cancellationToken).ConfigureAwait(false);
+                var r = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(assinatura.Valor, pag.Id, ct).ConfigureAwait(false);
+                return pag.DefinirDadosCartao(r.PaymentIntentId, r.ClientSecret, now);
+            },
+            AdicionarAsync: (pag, ct) => pagamentoRepository.AdicionarAsync(pag, ct),
+            Metodo: command.Metodo
+        )
+        { MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
 
-                var definirPixResult = pagamento.DefinirDadosPix(pixResult.PaymentIntentId, pixResult.QrCode, pixResult.QrCodeUrl, pixResult.Expiracao, timeProvider.GetUtcNow().UtcDateTime);
-                if (definirPixResult.IsFailure)
-                    return Result.Failure<IniciarPagamentoPlanoResponse>(definirPixResult.Error!);
-            }
-
-            await pagamentoRepository.AdicionarAsync(pagamento, cancellationToken).ConfigureAwait(false);
-            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
-        }
+        var result = await criarPagamentoService.ExecutarAsync(params_, cancellationToken).ConfigureAwait(false);
+        if (result.IsFailure)
+            return Result.Failure<IniciarPagamentoPlanoResponse>(result.Error!);
 
         logger.LogInformation("Pagamento {Metodo} do plano iniciado para treinador {TreinadorId}, pagamento {PagamentoId}.",
-            command.Metodo, treinador.Id, pagamento.Id);
+            command.Metodo, treinador.Id, result.Value.Id);
 
-        return Result.Success(IniciarPagamentoPlanoResponse.De(pagamento));
+        return Result.Success(IniciarPagamentoPlanoResponse.De(result.Value));
     }
 }

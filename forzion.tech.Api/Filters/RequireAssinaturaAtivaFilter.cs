@@ -4,48 +4,35 @@ using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Api.Filters;
 
-/// <summary>
-/// Bloqueia endpoints de "consumo" do aluno quando sua assinatura atual está
-/// Inadimplente. Retorna 403 com code <c>ASSINATURA_INADIMPLENTE</c>.
-/// Tipos de conta que não sejam <see cref="TipoConta.Aluno"/> passam direto
-/// (somente fluxos de consumo do aluno são bloqueados). GET endpoints (leitura)
-/// permanecem liberados — bloquear apenas escrita preserva visibilidade LGPD.
-/// </summary>
-public sealed class RequireAssinaturaAtivaFilter : IEndpointFilter
+public sealed class RequireAssinaturaAtivaFilter : RequireAssinaturaAtivaFilterBase
 {
-    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
-    {
-        var services = context.HttpContext.RequestServices;
-        var userContext = services.GetRequiredService<IUserContext>();
+    protected override string CodigoErro => "ASSINATURA_INADIMPLENTE";
 
+    protected override async Task<bool> EstaInadimplenteAsync(
+        IServiceProvider services,
+        IUserContext userContext,
+        CancellationToken ct)
+    {
         if (userContext.TipoConta != TipoConta.Aluno)
-            return await next(context);
+            return false;
 
         var alunoRepository = services.GetRequiredService<IAlunoRepository>();
         var aluno = await alunoRepository
-            .ObterPorContaIdAsync(userContext.ContaId, context.HttpContext.RequestAborted)
+            .ObterPorContaIdAsync(userContext.ContaId, ct)
             .ConfigureAwait(false);
 
         if (aluno is null)
-            return await next(context);
+            return false;
 
         var assinaturaRepository = services.GetRequiredService<IAssinaturaAlunoRepository>();
-        var assinatura = await assinaturaRepository
-            .ObterAtualPorAlunoAsync(aluno.Id, context.HttpContext.RequestAborted)
+        var assinaturas = await assinaturaRepository
+            .ListarPorAlunoAsync(aluno.Id, ct)
             .ConfigureAwait(false);
 
-        if (assinatura?.Status == AssinaturaAlunoStatus.Inadimplente)
-        {
-            return Results.Problem(
-                statusCode: StatusCodes.Status403Forbidden,
-                title: "Assinatura inadimplente",
-                detail: "Regularize seu pagamento para continuar usando esta funcionalidade.",
-                extensions: new Dictionary<string, object?>
-                {
-                    ["code"] = "ASSINATURA_INADIMPLENTE"
-                });
-        }
+        var assinaturaAtual = assinaturas
+            .Where(a => a.Status != AssinaturaAlunoStatus.Cancelada)
+            .MaxBy(a => a.DataInicio);
 
-        return await next(context);
+        return assinaturaAtual?.Status == AssinaturaAlunoStatus.Inadimplente;
     }
 }
