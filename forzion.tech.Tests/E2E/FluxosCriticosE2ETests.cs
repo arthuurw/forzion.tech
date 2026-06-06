@@ -110,11 +110,21 @@ public class FluxosCriticosE2ETests(RealPipelineFixture fixture)
 
     private readonly Dictionary<Guid, string> _emailPorTreinador = new();
 
+    private async Task<Guid> ObterPlanoFreeIdAsync()
+    {
+        var planos = await fixture.CreateClient().GetFromJsonAsync<JsonElement>("/auth/planos");
+        return planos.EnumerateArray()
+            .First(p => p.GetProperty("nome").GetString() == "Free")
+            .GetProperty("planoId").GetGuid();
+    }
+
     private async Task<(Guid treinadorId, string email)> RegistrarTreinadorAsync()
     {
         var email = $"t{Guid.NewGuid():N}@e2e.test";
+        var planoFreeId = await ObterPlanoFreeIdAsync();
         var response = await fixture.CreateClient().PostAsJsonAsync(
-            "/auth/register/treinador", new { email, senha = SenhaPadrao, nome = "Treinador E2E" });
+            "/auth/register/treinador",
+            new { email, senha = SenhaPadrao, nome = "Treinador E2E", planoPlataformaId = planoFreeId, modoPagamentoAluno = "Plataforma" });
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         var treinadorId = body.GetProperty("treinadorId").GetGuid();
@@ -142,11 +152,7 @@ public class FluxosCriticosE2ETests(RealPipelineFixture fixture)
         (await admin.PostAsJsonAsync($"/admin/treinadores/{treinadorId}/aprovar", new { }))
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var planos = await fixture.CreateClient().GetFromJsonAsync<JsonElement>("/auth/planos");
-        var freeId = planos.EnumerateArray()
-            .First(p => p.GetProperty("nome").GetString() == "Free")
-            .GetProperty("planoId").GetGuid();
-
+        var freeId = await ObterPlanoFreeIdAsync();
         (await admin.PatchAsJsonAsync($"/admin/treinadores/{treinadorId}/plano", new { planoId = freeId }))
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
