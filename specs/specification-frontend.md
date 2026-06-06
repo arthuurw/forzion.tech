@@ -241,7 +241,7 @@ Componente ANÔNIMO, props-driven `{ pagamento: IniciarPagamentoPlanoResponse, o
 ### Troca de plano (`(treinador)/treinador/plano/page.tsx`)
 Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinaturaTreinador`) + chip status (Ativa=success, Inadimplente=error, Cancelada=default, demais=warning) + lista de planos (`listarPlanosPlataforma`, exclui `Elite`/inativos). Dialog de troca (`pagamentoApi.trocarPlano`):
 - `Downgrade`/`UpgradeImediato` → aplica direto, recarrega.
-- Upgrade c/ proração via Pix → exibe QR + **polling** 5s (`obterStatusPagamentoTreinador` até `Pago`) → sucesso. Proração estimada calculada client-side (dias restantes × diferença de preço / 30).
+- Upgrade c/ proração via Pix → exibe QR + **polling** 5s (`obterStatusPagamentoTreinador` até `Pago`) → sucesso. **Proração (T9)**: `estimarProracao` (renomeado de `calcularProracao`) calcula `(novoPlano.preco - planoAtual.preco) * diasRestantes / 30` client-side — exibida como **estimativa** (label "Proração estimada: R$ X") nos cards de plano para UX de preview. O **valor autoritativo** é o que o backend retorna em `TrocarPlanoTreinadorResponse.valorPagamento` após `confirmarTroca()` — exibido no dialog de pagamento. O frontend nunca envia o valor calculado ao backend (só `novoPlanoId`).
 - Inadimplente → Alert no card + regularização via mesma lista.
 
 ### Dashboard treinador (`(treinador)/treinador/page.tsx`)
