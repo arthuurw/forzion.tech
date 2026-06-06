@@ -1,4 +1,5 @@
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -33,6 +34,11 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
             .HasForeignKey(t => t.PlanoPlataformaId)
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
+
+        builder.Property(t => t.ModoPagamentoAluno)
+            .HasConversion<string>()
+            .HasDefaultValue(ModoPagamentoAluno.Plataforma)
+            .IsRequired();
 
         builder.Property(t => t.Status)
             .HasConversion<string>()

@@ -8,7 +8,8 @@ public record StripeWebhookEvento(
     string? AccountId,
     bool ChargesEnabled,
     long? AmountRefundedCents = null,
-    string? MotivoDisputa = null);
+    string? MotivoDisputa = null,
+    string? TipoMetadata = null);
 
 public static class StripeWebhookParser
 {
@@ -51,6 +52,11 @@ public static class StripeWebhookParser
             ? data?["reason"]?.GetValue<string>()
             : null;
 
-        return new StripeWebhookEvento(type, paymentIntentId, accountId, chargesEnabled, amountRefundedCents, motivoDisputa);
+        // metadata.tipo distingue pagamento do plano do treinador (direto-plataforma) do fluxo de aluno.
+        var tipoMetadata = type.StartsWith("payment_intent.", StringComparison.Ordinal)
+            ? data?["metadata"]?["tipo"]?.GetValue<string>()
+            : null;
+
+        return new StripeWebhookEvento(type, paymentIntentId, accountId, chargesEnabled, amountRefundedCents, motivoDisputa, tipoMetadata);
     }
 }

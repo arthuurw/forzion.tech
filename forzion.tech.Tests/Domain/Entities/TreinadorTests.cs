@@ -265,4 +265,47 @@ public class TreinadorTests
         var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora, "   ").Value;
         t.Telefone.Should().BeNull();
     }
+
+    // --- Plano + modo de pagamento (signup) ---
+
+    [Fact]
+    public void Criar_Default_AguardandoAprovacao_ModoPlataforma()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        t.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
+        t.ModoPagamentoAluno.Should().Be(ModoPagamentoAluno.Plataforma);
+        t.PlanoPlataformaId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Criar_PlanoPago_AguardandoPagamentoComPlanoEModo()
+    {
+        var planoId = Guid.NewGuid();
+
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora, null, planoId, ModoPagamentoAluno.Externo, aguardandoPagamento: true).Value;
+
+        t.Status.Should().Be(TreinadorStatus.AguardandoPagamento);
+        t.PlanoPlataformaId.Should().Be(planoId);
+        t.ModoPagamentoAluno.Should().Be(ModoPagamentoAluno.Externo);
+    }
+
+    [Fact]
+    public void ConfirmarPagamentoPlano_AguardandoPagamento_VaiParaAguardandoAprovacao()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora, null, Guid.NewGuid(), ModoPagamentoAluno.Plataforma, aguardandoPagamento: true).Value;
+
+        t.ConfirmarPagamentoPlano(TestData.Agora).IsSuccess.Should().BeTrue();
+        t.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
+
+        t.Aprovar(Guid.NewGuid(), TestData.Agora).IsSuccess.Should().BeTrue();
+        t.Status.Should().Be(TreinadorStatus.Ativo);
+    }
+
+    [Fact]
+    public void ConfirmarPagamentoPlano_NaoAguardandoPagamento_Falha()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.ConfirmarPagamentoPlano(TestData.Agora).IsFailure.Should().BeTrue();
+    }
 }

@@ -37,6 +37,7 @@ public class VinculoApprovalCrossAggregateTests
     private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -63,16 +64,19 @@ public class VinculoApprovalCrossAggregateTests
             .Callback<AssinaturaAluno, CancellationToken>((a, _) => _assinaturasCriadas.Add(a))
             .Returns(Task.CompletedTask);
 
+        var treinadorPlataforma = Treinador.Criar(Guid.NewGuid(), "Treinador", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(treinadorPlataforma);
+
         _aprovarHandler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
-            _alunoRepo.Object, _limiteService.Object, _logRepo.Object,
+            _alunoRepo.Object, _treinadorRepo.Object, _contaRecebimentoRepo.Object, _limiteService.Object, _logRepo.Object,
             _unitOfWork.Object, _transactionProvider.Object,
             TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         _criarAssinaturaHandler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
             _vinculoRepo.Object, _pacoteRepo.Object, _assinaturaRepo.Object,
-            _contaRecebimentoRepo.Object, _unitOfWork.Object,
+            _contaRecebimentoRepo.Object, _treinadorRepo.Object, _unitOfWork.Object,
             Mock.Of<ILogger<VinculoAprovadoCriarAssinaturaAlunoHandler>>());
     }
 
@@ -133,7 +137,7 @@ public class VinculoApprovalCrossAggregateTests
     }
 
     [Fact]
-    public async Task AprovarVinculo_SemOnboardingStripe_DownstreamHandler_NaoCriaAssinatura()
+    public async Task AprovarVinculo_SemOnboardingStripe_BloqueiaAprovacao()
     {
         var treinadorId = Guid.NewGuid();
         var alunoId = Guid.NewGuid();
@@ -147,15 +151,37 @@ public class VinculoApprovalCrossAggregateTests
         // Sem conta de recebimento (onboarding nao iniciado).
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync((ContaRecebimento?)null);
 
-        await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
+        var result = await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treinador_sem_onboarding");
+        vinculo.DomainEvents.OfType<VinculoAprovadoEvent>().Should().BeEmpty();
+        _assinaturasCriadas.Should().BeEmpty("assinatura nao deve ser criada sem onboarding completo");
+    }
+
+    [Fact]
+    public async Task AprovarVinculo_ModoExterno_AceitaSemOnboarding_NaoGeraBillingNemNotificacao()
+    {
+        var treinadorId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(treinadorId, "Basic", 99m, DateTime.UtcNow).Value;
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Treinador.Criar(Guid.NewGuid(), "Externo", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Externo).Value);
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
+        _limiteService.Setup(s => s.ValidarAsync(treinadorId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync((ContaRecebimento?)null);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var result = await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
+        result.IsSuccess.Should().BeTrue("modo Externo dispensa onboarding Stripe");
 
         var evento = vinculo.DomainEvents.OfType<VinculoAprovadoEvent>().Single();
         await _criarAssinaturaHandler.HandleAsync(evento);
 
-        // Sem onboarding → handler aborta SEM criar assinatura. Cobre uma das
-        // guards mais importantes da plataforma (evita cobrar antes do treinador
-        // ter conta Stripe ativa).
-        _assinaturasCriadas.Should().BeEmpty("assinatura nao deve ser criada sem onboarding completo");
+        _assinaturasCriadas.Should().BeEmpty("sem AssinaturaAluno não há AssinaturaAlunoCriadaEvent/Pagamento — nenhuma notificação de pagamento dispara");
     }
 
     [Fact]

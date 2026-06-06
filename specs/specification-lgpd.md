@@ -24,10 +24,10 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 ## FLUXO DE EXCLUSÃO (`AnonimizarContaHandler`, transação única)
 1. Carrega conta (NotFound se ausente; idempotente se já anonimizada).
 2. Resolve perfil. **Treinador com vínculos ativos → `Error.Business("offboarding_necessario")`, aborta.**
-3. Captura email/telefone antigos (p/ scrub de logs).
-4. `conta.Anonimizar` + `aluno|treinador.Anonimizar` + anonimiza read-model `assinantes` (`IAssinanteRepository.AnonimizarPorAlunoIdAsync`).
-5. Scrub recipient dos delivery logs: `IEmailDeliveryLogRepository.AnonimizarPorEmailAsync(email)` + `IWhatsAppDeliveryLogRepository.AnonimizarPorTelefoneAsync(phone)` (UPDATE recipient → placeholder; payload mantido p/ auditoria de entrega).
-6. Sessão: `PasswordHash` vazio + `AnonimizadaEm` impedem login FUTURO (re-autenticação impossível). Tokens JWT já emitidos permanecem válidos até a expiração natural (stateless) — NÃO há revogação imediata de sessão; logout forçado exige revogar o `jti` corrente à parte (fora do escopo deste handler — `AnonimizarContaHandler.cs:126-130`).
+3. Captura email/telefone antigos (scrub de logs).
+4. `conta.Anonimizar` + `aluno|treinador.Anonimizar` + read-model `assinantes` (`IAssinanteRepository.AnonimizarPorAlunoIdAsync`).
+5. Scrub recipient dos delivery logs: `IEmailDeliveryLogRepository.AnonimizarPorEmailAsync` + `IWhatsAppDeliveryLogRepository.AnonimizarPorTelefoneAsync` (recipient → placeholder; payload mantido p/ auditoria).
+6. `PasswordHash` vazio + `AnonimizadaEm` bloqueiam login FUTURO. JWTs já emitidos seguem válidos até expirar (stateless) — sem revogação imediata de sessão; logout forçado exige revogar o `jti` à parte (fora deste handler).
 7. `LogAprovacao.Registrar(AnonimizacaoConta, ...)`.
 8. `CommitAsync` único (despacha `ContaAnonimizadaEvent`). **RETÉM** pagamentos/assinaturas/logs (sem PII direto).
 

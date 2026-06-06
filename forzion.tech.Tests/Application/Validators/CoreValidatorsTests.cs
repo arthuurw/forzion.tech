@@ -157,7 +157,7 @@ public class RegistrarTreinadorCommandValidatorTests
         string email = "t@x.com",
         string senha = "Senha123",
         string nome = "Coach",
-        string? tel = null) => new(email, senha, nome, tel);
+        string? tel = null) => new(email, senha, nome, Guid.NewGuid(), forzion.tech.Domain.Enums.ModoPagamentoAluno.Plataforma, tel);
 
     [Fact]
     public void Valido_QuandoTudoOk() => _validator.Validate(Cmd()).IsValid.Should().BeTrue();

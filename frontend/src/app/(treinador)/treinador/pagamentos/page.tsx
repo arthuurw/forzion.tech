@@ -43,6 +43,27 @@ export default function PagamentosTreinadorPage() {
 
   if (loading) return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
 
+  if (status?.modoPagamentoAluno === "Externo") {
+    return (
+      <Box sx={{ p: 4, maxWidth: 600 }}>
+        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>Recebimentos</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Você recebe seus alunos por fora da plataforma.
+        </Typography>
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Stack spacing={1.5}>
+            <Chip label="Pagamento externo" color="default" size="small" sx={{ alignSelf: "flex-start" }} />
+            <Typography variant="body2" color="text.secondary">
+              Não há cobrança automática nem cadastro Stripe neste modo. Combine o valor direto com
+              cada aluno e gerencie o acesso manualmente: ao desvincular um aluno, ele mantém apenas
+              o histórico (somente leitura) até um novo vínculo.
+            </Typography>
+          </Stack>
+        </Paper>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 4, maxWidth: 600 }}>
       <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>Recebimentos</Typography>

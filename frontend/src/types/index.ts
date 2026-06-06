@@ -1,7 +1,7 @@
 export type TipoConta = "SystemAdmin" | "Treinador" | "Aluno";
 
 export type AlunoStatus = "AguardandoAprovacao" | "Ativo" | "Inativo";
-export type TreinadorStatus = "AguardandoAprovacao" | "Ativo" | "Inativo";
+export type TreinadorStatus = "AguardandoPagamento" | "AguardandoAprovacao" | "Ativo" | "Inativo";
 export type VinculoStatus = "AguardandoAprovacao" | "Ativo" | "Inativo";
 export type TreinoAlunoStatus = "Ativo" | "Inativo";
 export type ObjetivoTreino =
@@ -275,6 +275,53 @@ export interface PagamentoResponse {
 export interface OnboardingStatusResponse {
   onboardingCompleto: boolean;
   contaConfigurada: boolean;
+  modoPagamentoAluno: ModoPagamentoAluno;
+}
+
+export type AssinaturaTreinadorStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
+export type TipoTrocaPlano = "Upgrade" | "Downgrade" | "InadimplenteRegularizacao" | "UpgradeImediato";
+
+export interface AssinaturaTreinadorResponse {
+  assinaturaId: string;
+  status: AssinaturaTreinadorStatus;
+  valor: number;
+  planoPlataformaId: string;
+  dataProximaCobranca: string;
+  planoPlataformaIdAgendado: string | null;
+}
+
+export interface TrocarPlanoTreinadorResponse {
+  tipo: TipoTrocaPlano;
+  pagamentoId: string | null;
+  valorPagamento: number | null;
+  metodoPagamento: MetodoPagamento | null;
+  pixQrCode: string | null;
+  pixQrCodeUrl: string | null;
+  pixExpiracao: string | null;
+  clientSecret: string | null;
+  dataEfetivacao: string | null;
+}
+
+export interface PagamentoTreinadorStatusResponse {
+  pagamentoId: string;
+  status: PagamentoStatus;
+  valor: number;
+  metodo: MetodoPagamento;
+}
+
+export type ModoPagamentoAluno = "Plataforma" | "Externo";
+
+export interface IniciarPagamentoPlanoResponse {
+  pagamentoId: string;
+  valor: number;
+  status: PagamentoStatus;
+  metodoPagamento: MetodoPagamento;
+  stripePaymentIntentId: string | null;
+  pixQrCode: string | null;
+  pixQrCodeUrl: string | null;
+  pixExpiracao: string | null;
+  clientSecret: string | null;
+  createdAt: string;
 }
 
 // Erro RFC 7807

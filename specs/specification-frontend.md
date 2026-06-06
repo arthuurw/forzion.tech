@@ -1,10 +1,6 @@
 # specification-frontend — frontend (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, agent-oriented. Consultar antes de qualquer alteração de rota, auth, layout, API proxy, testes ou segurança. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums), [specification-frontend-ui] (design tokens/componentes/a11y), [specification-seo] (metadata/OG/crawl), [specification-observability] (RUM Web Vitals/Sentry), [specification-security] (CSP/headers/rate-limit frontend).
-
-## MANUTENÇÃO DESTE ARQUIVO
-- Manter atualizado NA MESMA TAREFA de mudança relevante em: rotas, grupos de layout, auth, API proxy, componentes estruturais, strategy de testes, deps críticas, headers de segurança.
-- Vive em `specs/` (versionado; commitar). NÃO duplicar infra/DB — referenciar specs próprios.
+DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESMA TAREFA ao mudar rota/layout/auth/API-proxy/componente-estrutural/testes/dep-crítica/header-segurança. Vive em `specs/` (commitar); NÃO duplicar infra/DB/tokens — referenciar. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums), [specification-frontend-ui] (design tokens/componentes/a11y), [specification-seo] (metadata/OG/crawl), [specification-observability] (RUM/Sentry), [specification-security] (CSP/headers/rate-limit), [specification-stripe] (billing treinador/Pix/onboarding/webhook), [specification-model] (modos de pagamento/máquinas de estado).
 
 ## STACK
 - Next.js 16 (App Router) + React 19 + TypeScript 6. `frontend/`.
@@ -14,7 +10,6 @@ DOC PARA AGENTES. Fonte de verdade da arquitetura do frontend. Formato denso, ag
 - JWT client-side: `jose` (verificação no Route Handler `/api/auth/me`).
 - Pagamentos: `@stripe/react-stripe-js` + `@stripe/stripe-js`.
 - Relatórios: `exceljs` (geração de planilhas cliente).
-- Estado global: Zustand (disponível; uso pontual).
 - Datas: `dayjs`.
 - Observabilidade: Sentry (`@sentry/nextjs`) via `withSentryConfig` em `next.config.ts`.
 
@@ -68,10 +63,11 @@ src/
     global-error.tsx   — error boundary global
     not-found.tsx
   components/
+    aluno/             — SemVinculoAtivoBanner (aviso aluno sem vínculo ativo)
     forms/             — FormTextField, FormSelect, PasswordField
     layout/            — AppLayout, AppHeader, PublicLayout, NavConfig
     observability/     — WebVitals
-    pagamento/         — PagamentoCartao, PagamentoPix
+    pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
     treinador/         — componentes específicos do treinador
     ui/                — componentes compartilhados (ErrorBoundary, SnackbarProvider, LoadingSpinner, DataList, etc.)
   hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent
@@ -161,8 +157,10 @@ POST /api/auth/logout
 | `/api/auth` | POST | Login → seta cookies httpOnly |
 | `/api/auth/me` | GET | Verifica JWT → retorna SessionUser |
 | `/api/auth/logout` | POST | Invalida backend + limpa cookies |
-| `/api/auth/register/treinador` | POST | Cadastro treinador (rate limit, proxy) |
+| `/api/auth/register/treinador` | POST | Cadastro treinador (rate limit, proxy). Body inclui `planoPlataformaId`+`modoPagamentoAluno` |
 | `/api/auth/register/aluno` | POST | Cadastro aluno (rate limit, proxy) |
+| `/api/auth/planos` | GET | Planos da plataforma p/ wizard de cadastro (proxy `/auth/planos`, `cache: "no-store"`, sem rate limit) |
+| `/api/auth/treinador/[treinadorId]/pagamento` | POST | Inicia pagamento do plano no signup (rate limit, proxy `/auth/treinador/{id}/pagamento`). Body `{ metodo }` |
 | `/api/auth/verify-email` | POST | Verificação de e-mail |
 | `/api/auth/forgot-password` | POST | Solicita reset |
 | `/api/auth/reset-password` | POST | Executa reset |
@@ -193,14 +191,11 @@ interceptor resposta:
 - **Inatividade**: `useInactivity` — warn aos N minutos, logout automático aos 20 min.
 
 ## TEMA MUI (`src/lib/theme/index.ts`)
-- `primary`: #F5C400 (amarelo), `secondary`: #1A1A1A. `background.default`: #F7F8FA.
-- Font: Inter (Google Fonts, pesos 400/500/600/700, `display: swap`).
-- `borderRadius`: 12 (global), 16 (Card/Paper), 10 (Button/Input).
-- `ptBR` locale aplicado.
-- Input `fontSize: 1rem` em mobile → previne zoom automático iOS Safari.
+Básico aqui; tokens exatos (paleta/radius/tipografia/component-defaults/anti-zoom) em [specification-frontend-ui] §DESIGN TOKENS — NÃO duplicar.
+- Marca: `primary` amarelo, `secondary` quase-preto, `background.default` cinza claro. Font Inter (Google Fonts, `display:swap`). `ptBR` locale.
 
 ## RESPONSIVIDADE
-- Breakpoints MUI (`xs/sm/md/lg`): layout adapta em `<md` para mobile.
+- Breakpoints MUI default; layout adapta em `<md` para mobile (detalhes/tokens em [specification-frontend-ui] §RESPONSIVIDADE).
 - `viewportFit: "cover"` + `env(safe-area-inset-bottom)` para iPhone notch.
 - BottomNavigation com `showLabels: navItems.length <= 4`.
 - Padding do main: `p: {xs:2.5, md:3.5}`, `pb: {xs:"calc(72px+safe-area)", md:3.5}`.
@@ -213,6 +208,12 @@ interceptor resposta:
 - `PaginatedResponse<T>`: `{ items, total, pagina, tamanhoPagina }`
 - Responses de domínio: `AlunoResponse`, `TreinadorResponse`, `VinculoResponse`, `TreinoResponse`, `ExercicioResponse`, `PlanoPlataformaResponse`, `GrupoMuscularResponse`, `PacoteResponse`, `AssinaturaAlunoResponse`, `PagamentoResponse`, `ExecucaoTreinoResponse`, etc.
 - Enums: `AlunoStatus`, `TreinadorStatus`, `VinculoStatus`, `TreinoAlunoStatus`, `ObjetivoTreino`, `DificuldadeTreino`, `FinalidadeTreino`, `NivelCondicionamento`, `TempoDisponivel`, `AssinaturaAlunoStatus`, `PagamentoStatus`, `MetodoPagamento`, `TierPlano`.
+- Billing treinador / modo de pagamento (cross-ref [specification-stripe], [specification-model]):
+  - `TreinadorStatus`: `AguardandoPagamento | AguardandoAprovacao | Ativo | Inativo` (`AguardandoPagamento` = plano pago aguardando pagamento no signup).
+  - `ModoPagamentoAluno`: `Plataforma | Externo` (como o aluno paga o treinador).
+  - `IniciarPagamentoPlanoResponse`: `{ pagamentoId, valor, status, metodoPagamento, stripePaymentIntentId?, pixQrCode?, pixQrCodeUrl?, pixExpiracao?, clientSecret?, createdAt }` — payload do signup (Pix ou Cartão).
+  - `OnboardingStatusResponse`: `{ onboardingCompleto, contaConfigurada, modoPagamentoAluno }`.
+  - `AssinaturaTreinadorResponse` (`status: AssinaturaTreinadorStatus = Pendente|Ativa|Inadimplente|Cancelada`), `TrocarPlanoTreinadorResponse` (`tipo: TipoTrocaPlano = Upgrade|Downgrade|InadimplenteRegularizacao|UpgradeImediato`), `PagamentoTreinadorStatusResponse`.
 
 ## ELITE "EM BREVE"
 Plano tier=Elite indisponível para seleção/atribuição. Três pontos de aplicação:
@@ -220,6 +221,41 @@ Plano tier=Elite indisponível para seleção/atribuição. Três pontos de apli
 - **Admin — planos** (`(admin)/planos`): dropdown `TierPlano` com opção `Elite` `disabled` (visível mas não selecionável).
 - **Admin — treinadores** (`(admin)/treinadores`): formulário de atribuição de plano exclui `Elite` das opções listadas.
 Backend rejeita `AtribuirPlano` com tier=Elite → `PlanoPlataformaErrors.EliteIndisponivel` (422). Cross-ref [specification-model].
+
+## BILLING TREINADOR + MODO DE PAGAMENTO DO ALUNO
+Fluxos de cadastro/cobrança e como o `modoPagamentoAluno` muda a UI. Regra de negócio/webhook/Pix em [specification-stripe]; máquinas de estado em [specification-model]. Aqui só o frontend.
+
+### Wizard de cadastro do treinador (`(public)/cadastro/treinador/page.tsx`)
+2 passos client-side (estado `step: 1|2`, sem rota nova):
+- **Passo 1** — form (react-hook-form + Zod `cadastroTreinadorSchema`): dados + plano (radio, `GET /api/auth/planos` filtrando `isAtivo !== false`) + `modoPagamentoAluno` (radio Plataforma/Externo, default `Plataforma`). Submit → `POST /api/auth/register/treinador` com `planoPlataformaId`+`modoPagamentoAluno`.
+  - Resposta `status === "AguardandoPagamento"` (plano pago) → guarda `treinadorId`, vai p/ passo 2.
+  - Senão (Free → `AguardandoAprovacao`) → tela final `"analise"` ("cadastro em análise").
+- **Passo 2** — escolhe Pix/Cartão → `POST /api/auth/treinador/{id}/pagamento` `{ metodo }` → recebe `IniciarPagamentoPlanoResponse` → renderiza `<PagamentoSignup>`. Pix marca tela final imediata; Cartão marca final via callback `onPagoCartao`.
+- Telas finais (`finalizado: analise|pix|cartao`): card com CTA "Ir para o login". Pix embute `<PagamentoSignup>` (sem polling); Cartão/analise mostram mensagem ("verifique e-mail" / "em análise").
+
+### `PagamentoSignup` (`components/pagamento/PagamentoSignup.tsx`)
+Componente ANÔNIMO, props-driven `{ pagamento: IniciarPagamentoPlanoResponse, onPagoCartao }` — NÃO usa `apiClient` autenticado (signup pré-conta).
+- **Pix**: QR (`pixQrCodeUrl`) + copia-e-cola (`pixQrCode`, botão copiar) + expiração. SEM polling — webhook backend finaliza e dispara e-mail de verificação (Alert informa).
+- **Cartão**: Stripe `<Elements>` com `clientSecret` + `<PaymentElement>` → `stripe.confirmPayment({ redirect: "if_required" })` → `onPagoCartao()`. Sem `clientSecret` → Alert de erro. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (ausente → `stripePromise=null`).
+
+### Troca de plano (`(treinador)/treinador/plano/page.tsx`)
+Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinaturaTreinador`) + chip status (Ativa=success, Inadimplente=error, Cancelada=default, demais=warning) + lista de planos (`listarPlanosPlataforma`, exclui `Elite`/inativos). Dialog de troca (`pagamentoApi.trocarPlano`):
+- `Downgrade`/`UpgradeImediato` → aplica direto, recarrega.
+- Upgrade c/ proração via Pix → exibe QR + **polling** 5s (`obterStatusPagamentoTreinador` até `Pago`) → sucesso. Proração estimada calculada client-side (dias restantes × diferença de preço / 30).
+- Inadimplente → Alert no card + regularização via mesma lista.
+
+### Dashboard treinador (`(treinador)/treinador/page.tsx`)
+- Banner onboarding Stripe ("Configure seus recebimentos" → `/treinador/pagamentos`): só quando `onboardingPendente && !modoExterno`. `modoExterno` = `OnboardingStatusResponse.modoPagamentoAluno === "Externo"` (via `verificarOnboarding`); modo Externo NÃO exige Stripe → banner oculto.
+- Banner "regularizar pagamento" (erro): quando `obterAssinaturaTreinador().status === "Inadimplente"` → CTA `/treinador/plano`.
+
+### Recebimentos (`(treinador)/treinador/pagamentos/page.tsx`)
+Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
+- **Externo**: orientação de controle manual (sem Stripe; combinar valor direto, gerenciar acesso por vínculo). Chip "Pagamento externo".
+- **Plataforma**: onboarding Stripe (chip status: Ativo/Cadastro incompleto/Não configurado; `iniciarOnboarding` redireciona p/ URL Stripe).
+
+### Aluno sem vínculo ativo
+- `components/aluno/SemVinculoAtivoBanner.tsx`: lê `GET /aluno/vinculo` (`alunoApi.getMeuVinculo`). Estado `ativo` (oculto) | `pendente` (aguardando aprovação) | `sem-vinculo`. Mensagem: histórico consultável, registro de novos treinos bloqueado. Renderizado no dashboard (`(aluno)/aluno/page.tsx`) e no histórico (`(aluno)/aluno/historico/page.tsx`).
+- Execução (`(aluno)/aluno/fichas/[fichaId]/executar/page.tsx`): trata `403` do registro com mensagem clara ("Você não tem um treinador ativo. Não é possível registrar novos treinos.").
 
 ## TESTES (`vitest.config.mts`)
 3 projects vitest:
@@ -293,12 +329,11 @@ Backend rejeita `AtribuirPlano` com tier=Elite → `PlanoPlataformaErrors.EliteI
 - **ErrorBoundary** global em root layout + por grupo de rota. `global-error.tsx` para erros fora do layout.
 
 ## DICAS / GOTCHAS
-- `legacy-peer-deps=true` em `.npmrc`: necessário para `npm install` com madge@8 + TS6. NÃO remover sem atualizar madge.
+- `legacy-peer-deps=true` em `.npmrc` (madge@8 + TS6) — ver §TYPESCRIPT; NÃO remover sem atualizar madge.
 - npm override `"@pact-foundation/pact": { "https-proxy-agent": "^7.0.6" }`: pact v16 bundla `https-proxy-agent@9` (ESM puro); override força CJS-compatível. NÃO remover ao atualizar pact.
 - jsdom mantido em `^26` (não `^27`): jsdom 27 tem dep `@csstools/css-calc` ESM-only que quebra vitest pool `forks` (Node 20 sem `--experimental-require-module`).
 - `SBOM` usa `--ignore-npm-errors` para tolerar `typescript@6 invalid` (peer dep madge) e pacotes `@emnapi/*`/`@napi-rs/*` extraneous (deps opcionais NAPI-RS do pact v16).
-- AppLayout detecta auth via `useAuth`; se `!user` chama `/api/auth/logout` antes de redirecionar para /login (evita loop: middleware veria cookie válido e redirecionaria de volta).
-- Middleware NÃO interceta `/api/*` (ver `matcher`). Auth das API routes é responsabilidade dos próprios Route Handlers.
-- `NEXT_PUBLIC_API_BASE_URL` não definido em prod → apiClient usa `/api/backend` (proxy Next.js) — correto para produção onde não há acesso direto ao backend.
-- `API_BASE_URL` é server-side (sem NEXT_PUBLIC) → NÃO exposto ao browser; usado apenas nos Route Handlers.
+- AppLayout-logout-antes-de-redirect (evita loop com middleware): ver §APPLAYOUT.
+- Middleware NÃO interceta `/api/*`; auth das API routes é dos próprios Route Handlers: ver §MIDDLEWARE.
+- `API_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL` (server vs client, proxy `/api/backend` em prod): ver §ENV + §API PROXY.
 - Rate limit é em memória por processo; em deploy multi-instância (horizontal) não é compartilhado — aceitável para homolog/prod single-instance.

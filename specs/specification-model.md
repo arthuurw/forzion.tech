@@ -8,7 +8,8 @@ DOC PARA AGENTES. Fonte de verdade do modelo tático DDD (entidades, VOs, evento
 
 ## 1. PRINCÍPIOS DDD
 - **Factory `Criar(...)`**: toda entidade tem ctor privado vazio (`private X() { }`, p/ EF materializar) + factory estática pública que valida invariantes e gera `Id = Guid.NewGuid()`. Variações de nome: `LogAprovacao.Registrar`, `Conta.Criar(Email,...)`. Factories `internal` em sub-objetos de agregado (`SerieConfig.Criar`, `TreinoExercicio.Criar`, `ExecucaoExercicio.Criar`) — só criados via o aggregate root.
-- **MODELO DE ERRO = Result pattern** (não exception): factory `Criar`/`Registrar` retorna `Result<T>`; métodos de mutação com invariante retornam `Result` (ou `Result<T>`). `Result`/`Result<T>`/`Error(Code,Message)` vivem em `forzion.tech.Domain.Shared` (Domain não depende de Application). Catálogos de erro por agregado em `forzion.tech.Domain/Shared/Errors/*.cs` (`Error` com `code` estável `<agg>.<motivo>` + message pt-BR). Invariante violada → `Result.Failure(XErrors.Y)`. Sub-agregado retorna `Result<T>`; root propaga (`if (r.IsFailure) return Result.Failure<...>(r.Error!)`).
+- **MODELO DE ERRO = Result pattern** (não exception): factory `Criar`/`Registrar` retorna `Result<T>`; métodos de mutação com invariante retornam `Result` (ou `Result<T>`). `Result`/`Result<T>`/`Error` vivem em `forzion.tech.Domain.Shared` (Domain não depende de Application). Catálogos de erro por agregado em `forzion.tech.Domain/Shared/Errors/*.cs` (`Error` com `code` estável `<agg>.<motivo>` + message pt-BR). Invariante violada → `Result.Failure(XErrors.Y)`. Sub-agregado retorna `Result<T>`; root propaga (`if (r.IsFailure) return Result.Failure<...>(r.Error!)`).
+- **`Error(Code, Message, ErrorType=Business)`** — `ErrorType` {Business, Validation, NotFound, Conflict} discrimina a falha de negócio p/ mapeamento HTTP. Factories: `Error.Business(msg)` (code `"business_error"`) / `Error.Business(code,msg)` / `Error.Validation(code,msg)` / `Error.NotFound(code,msg)` / `Error.Conflict(code,msg)`. Mapeamento Type→HTTP no Api (`ResultExtensions`, ver [specification-backend]): NotFound→404, Conflict→409, Validation→400, Business (default)→422.
 - **Exception SÓ p/ infra/programação**: `ArgumentNullException.ThrowIfNull` (arg nulo = erro de programador) permanece exception. `DomainException`-derivadas de NÃO-invariante (lookup miss `*NaoEncontradoException`, authz `AcessoNegadoException`) são lançadas na Application/handler (control-flow), NÃO no domínio; mapeadas pelo `GlobalExceptionHandler` ([specification-backend]). O domínio NÃO lança `DomainException` para invariante de negócio.
 - **Encapsulamento**: setters `private`; coleções expostas como `IReadOnlyList<>` sobre `List<>` privada (`Treino.Exercicios`, `TreinoExercicio.Series`, `ExecucaoTreino.Exercicios`). Mutação só via métodos do root.
 - **Domain events**: `IDomainEvent { DateTime OcorridoEm }`. Entidades que emitem implementam `IHasDomainEvents { IReadOnlyList<IDomainEvent> DomainEvents; void ClearDomainEvents(); }` — acumulam em `List<IDomainEvent> _domainEvents`, despachados no `UnitOfWork.CommitAsync` (mecânica/re-entrância em [specification-backend]). Eventos são `sealed record`.
@@ -60,6 +61,25 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
   - `MarcarEmDisputa(motivoDisputa)` — só de Pago (`charge.dispute.created`), DataPagamento preservada, motivo default "unknown", emite `PagamentoEmDisputaEvent`.
   - Inv: valor>0; transições guardadas por status.
 
+### Billing treinador↔plataforma (assinatura do treinador ao seu plano)
+- **AssinaturaTreinador*** — assinatura recorrente treinador→plataforma (state machine + contador + plano agendado). Const `LimiteTentativasFalhas=3`. `Criar(treinadorId, planoPlataformaId, valor, agora)` → `Status=Pendente`, `DataInicio=DataProximaCobranca=agora`, emite `AssinaturaTreinadorCriadaEvent`. Inv (factory): treinadorId/planoId≠Empty; valor>0. Métodos (todos retornam `Result` salvo nota; `agora` injetado):
+  - `Ativar(agora)` — →Ativa (falha se Cancelada; falha se Inadimplente → deve usar regularização). SEM evento.
+  - `MarcarInadimplente(agora)` — só de Ativa. SEM evento (manual; automático via `RegistrarPagamentoFalho`).
+  - `Cancelar(agora)` — →Cancelada, set DataCancelamento, emite `AssinaturaTreinadorCanceladaEvent` (falha se já Cancelada).
+  - `AgendarProximaCobranca(data, agora)` — data futura. SEM evento.
+  - `RegistrarPagamentoFalho(agora)` — `void`. Cancelada→no-op; incrementa contador; se contador≥3 E Ativa → Inadimplente + emite `AssinaturaTreinadorMarcadaInadimplenteEvent`. (NÃO emite evento de "falhou" por tentativa — diverge de `AssinaturaAluno`.)
+  - `RegistrarPagamentoRegularizado(agora)` — `void`. Cancelada→no-op; zera contador; se Inadimplente→Ativa emite `AssinaturaTreinadorReativadaEvent`. Idempotente.
+  - `TrocarPlanoImediato(novoPlanoId, novoValor, agora)` — só de Ativa/Inadimplente; set plano+valor, limpa plano agendado, emite `AssinaturaTreinadorPlanoTrocadoEvent(…, PlanoAnteriorId, PlanoNovoId, …)`. (Usado em upgrade/regularização.)
+  - `AgendarDowngrade(novoPlanoId, agora)` — só de Ativa; set `PlanoPlataformaIdAgendado` (aplicado na próxima renovação). SEM evento.
+  - `LimparPlanoAgendado(agora)` — `void`. Zera plano agendado (no-op se já null).
+  - `AplicarPlanoAgendado(novoValor, agora)` — se sem plano agendado → `Result.Success` no-op; senão promove agendado→atual, limpa, emite `AssinaturaTreinadorPlanoTrocadoEvent`.
+  - Props: `PlanoPlataformaIdAgendado` (nullable, downgrade pendente). Status enum `AssinaturaTreinadorStatus` (§4).
+- **PagamentoTreinador*** — cobrança do plano do treinador (PaymentIntent direto-plataforma, SEM Connect; ver [specification-stripe]). `Criar(treinadorId, assinaturaTreinadorId, valor, FinalidadePagamentoTreinador, agora, metodo=Pix, planoAlvoId?=null)` → `Status=Pendente`. Inv (factory): ids≠Empty; valor>0. Métodos:
+  - `DefinirDadosPix(paymentIntentId, qrCode, qrCodeUrl, expiracao, agora)` / `DefinirDadosCartao(paymentIntentId, clientSecret, agora)` — set dados Stripe (validam não-vazio). SEM evento.
+  - `MarcarPago(agora)` — só de Pendente, set DataPagamento, emite `PagamentoTreinadorPagoEvent(…, Finalidade, PlanoAlvoId, …)` (handler orquestra renovação/troca — [specification-backend]).
+  - `MarcarFalhou(agora)` / `MarcarExpirado(agora)` — só de Pendente. SEM evento. (Sem `MarcarEstornado`/`MarcarEmDisputa`.)
+  - Props: `Finalidade` (Cadastro/Renovacao/TrocaPlano), `PlanoAlvoId` (nullable, plano da troca). Reusa `PagamentoStatus`/`MetodoPagamento`.
+
 ### Projeção / Observabilidade
 - **Assinante** — read model derivado de Aluno (sync via domain events; ver [specification-db]). `Criar(alunoId, nome, email?, agora)` (sem validação); `Sincronizar(nome, email?)`. Sem eventos.
 - **HealthReportConfig** — config runtime do relatório diário de saúde. `Criar(ativo, horaEnvioUtc, destinatarios, incluirLiveness, incluirKpis, incluirEntregabilidade, incluirErros, agora)`; `Atualizar(...)` (mesmos args); `MarcarEnviado(agora)`; `ObterDestinatarios()` (split CSV). Inv: destinatários normalizados via `Email.Criar` (lowercase, dedup); config ativa exige ≥1 destinatário.
@@ -75,7 +95,7 @@ Significado/transições de domínio (mapeamento de coluna em [specification-db]
 - **TipoConta** {SystemAdmin, Treinador, Aluno} — discrimina raiz de identidade (1 Conta : 1 perfil).
 - **SystemRole** {SuperAdmin, Support, Operator} — nível de acesso admin plataforma.
 - **UsuarioStatus** {Ativo, Inativo} — ciclo de SystemUser.
-- **TreinadorStatus** {AguardandoAprovacao, Ativo, Inativo} — §6.
+- **TreinadorStatus** {AguardandoAprovacao, Ativo, Inativo, AguardandoPagamento} — §6. `AguardandoPagamento`: cadastro aprovado mas plano pago pendente (gateia login → `TreinadorPagamentoPendenteException`; `IniciarPagamentoPlano` exige este status).
 - **AlunoStatus** {AguardandoAprovacao, Ativo, Inativo} — §6.
 - **VinculoStatus** {AguardandoAprovacao, Ativo, Inativo} — §6.
 - **TierPlano** {Free, Basic, Pro, ProPlus, Elite} — faixa do plano de plataforma. **`TierPlanoExtensions`** (Domain/Enums): `PermiteEmail()` → tier≥Pro; `PermiteWhatsApp()` → tier≥ProPlus. Free/Basic/sem-plano = só notificação na plataforma. Elite **indisponível**: `AtribuirPlanoHandler` rejeita tier=Elite com `PlanoPlataformaErrors.EliteIndisponivel`.
@@ -88,6 +108,9 @@ Significado/transições de domínio (mapeamento de coluna em [specification-db]
 - **AssinaturaAlunoStatus** {Pendente, Ativa, Inadimplente, Cancelada} — §6.
 - **PagamentoStatus** {Pendente, Pago, Expirado, Falhou, Estornado, EmDisputa} — §6. EmDisputa só transiciona de Pago.
 - **MetodoPagamento** {Pix, Cartao} — método da cobrança (default Pix).
+- **ModoPagamentoAluno** {Plataforma, Externo} (default Plataforma) — como o treinador cobra seus alunos (via plataforma/Stripe Connect ou por fora).
+- **AssinaturaTreinadorStatus** {Pendente, Ativa, Inadimplente, Cancelada} — ciclo da assinatura treinador→plataforma (mesma forma de `AssinaturaAlunoStatus`; máquina em §6).
+- **FinalidadePagamentoTreinador** {Cadastro, Renovacao, TrocaPlano} — discrimina o que o `PagamentoTreinador` cobra; o handler do `PagamentoTreinadorPagoEvent` ramifica por este valor.
 - **TipoAcaoAprovacao** {AprovacaoTreinador, ReprovacaoTreinador, InativacaoTreinador, AprovacaoVinculo, ReprovacaoVinculo, InativacaoVinculo, AtribuicaoPlanTreinador, ExclusaoTreinador, ExportacaoDados, AnonimizacaoConta} — tipo registrado em LogAprovacao (ExportacaoDados/AnonimizacaoConta = trilha LGPD).
 - **StatusSaude** {Ok, Degradado, Falha} — status geral do HealthSnapshot.
 - **TipoGrupoMuscular** {Peito, Costas, Ombro, Biceps, Triceps, Pernas, Gluteos, Core, FullBody} — ⚠️ enum no namespace Enums chamado `TipoGrupoMuscular` (não `GrupoMuscular`); a entidade catálogo é `GrupoMuscular`. Usado p/ seed dos 9 grupos; não é coluna ([specification-db]).
@@ -115,20 +138,35 @@ Todos `sealed record : IDomainEvent`. Handlers (e-mail/WhatsApp/projeção) em [
 | PagamentoFalhouEvent | AssinaturaAluno.RegistrarPagamentoFalho | AssinaturaAlunoId, AlunoId, TentativasFalhasConsecutivas, OcorridoEm | notificação progressiva (1/2+/3+) |
 | PagamentoEstornadoEvent | Pagamento.MarcarEstornado | PagamentoId, AssinaturaAlunoId, Valor, OcorridoEm | e-mail aluno (não cascateia cancelamento) |
 | PagamentoEmDisputaEvent | Pagamento.MarcarEmDisputa | PagamentoId, AssinaturaAlunoId, Valor, MotivoDisputa, OcorridoEm | e-mail URGENTE treinador + log Critical |
+| AssinaturaTreinadorCriadaEvent | AssinaturaTreinador.Criar | AssinaturaTreinadorId, TreinadorId, PlanoPlataformaId, Valor, OcorridoEm | (sem handler registrado — ver [specification-backend]) |
+| AssinaturaTreinadorCanceladaEvent | AssinaturaTreinador.Cancelar | AssinaturaTreinadorId, TreinadorId, OcorridoEm | (sem handler registrado) |
+| AssinaturaTreinadorMarcadaInadimplenteEvent | AssinaturaTreinador.RegistrarPagamentoFalho (cruza limite) | AssinaturaTreinadorId, TreinadorId, TentativasFalhasConsecutivas, OcorridoEm | (sem handler registrado) |
+| AssinaturaTreinadorReativadaEvent | AssinaturaTreinador.RegistrarPagamentoRegularizado (Inadimplente→Ativa) | AssinaturaTreinadorId, TreinadorId, OcorridoEm | (sem handler registrado) |
+| AssinaturaTreinadorPlanoTrocadoEvent | AssinaturaTreinador.TrocarPlanoImediato / AplicarPlanoAgendado | AssinaturaTreinadorId, TreinadorId, PlanoAnteriorId, PlanoNovoId, OcorridoEm | (sem handler registrado) |
+| PagamentoTreinadorPagoEvent | PagamentoTreinador.MarcarPago | PagamentoTreinadorId, TreinadorId, AssinaturaTreinadorId, Finalidade, PlanoAlvoId?, OcorridoEm | orquestra renovação/troca de plano ([specification-backend]) |
 
 ⚠️ `PagamentoFalhouEvent` carrega `AssinaturaAlunoId` (1º campo) e é emitido pela `AssinaturaAluno`, NÃO pelo `Pagamento`. `PagamentoCriadoEvent`/`PagamentoEstornadoEvent`/`PagamentoEmDisputaEvent` são emitidos pelo `Pagamento`.
+⚠️ Os 5 eventos `AssinaturaTreinador*` são emitidos mas NÃO têm handler registrado no DI (efeito de billing do treinador é orquestrado direto pelo handler de `PagamentoTreinadorPagoEvent` + use cases). Só `PagamentoTreinadorPagoEvent` tem handler.
 
 ## 6. MÁQUINAS DE ESTADO
 Trigger = método. `[*]` = factory.
 
 ```mermaid
 stateDiagram-v2
-  %% Treinador
-  [*] --> AguardandoAprovacao : Criar
+  %% Treinador (free pula pagamento: Criar aguardandoPagamento=false → AguardandoAprovacao)
+  [*] --> AguardandoPagamento : Criar (aguardandoPagamento=true, plano pago)
+  [*] --> AguardandoAprovacao : Criar (aguardandoPagamento=false, plano Free)
+  AguardandoPagamento --> AguardandoAprovacao : ConfirmarPagamentoPlano (webhook plano pago)
   AguardandoAprovacao --> Ativo : Aprovar
   AguardandoAprovacao --> Inativo : Reprovar
   Ativo --> Inativo : Inativar
 ```
+**Fluxo de cadastro do treinador PAGO** (orquestração end-to-end; gate Free vs pago em `TierPlanoExtensions`/[specification-stripe]):
+1. `Treinador.Criar(... planoPlataformaId, modoPagamentoAluno, aguardandoPagamento=true)` → `Status=AguardandoPagamento`; `AssinaturaTreinador.Criar(Pendente)`; **`ContaRegistradaEvent` NÃO disparado ainda** (verificação de e-mail adiada até o pagamento — `Conta` criada sem `EmitirRegistro`). Login bloqueado por `TreinadorPagamentoPendenteException`.
+2. Treinador paga o plano (`IniciarPagamentoPlanoHandler`, finalidade `Cadastro`) → PaymentIntent direto-plataforma ([specification-stripe]).
+3. Webhook `payment_intent.succeeded` (`tipo=plano_treinador`) → `PagamentoTreinador.MarcarPago` + **finalização ATÔMICA inline** (mesmo commit, `FinalizarCadastroAsync`): `AssinaturaTreinador.Ativar` + `AgendarProximaCobranca(+1mês)` + `Treinador.ConfirmarPagamentoPlano` (→AguardandoAprovacao) + `Conta.EmitirRegistro` (dispara `ContaRegistradaEvent` → e-mail de verificação adiado).
+4. Treinador verifica e-mail → admin `Aprovar` → `Status=Ativo` (libera login/app).
+- **Free** (`TierPlano.Free` ou sem plano pago): `Criar(aguardandoPagamento=false)` pula passos 1-3; nasce `AguardandoAprovacao` com `ContaRegistradaEvent` imediato; segue verificação→aprovação direto.
 ```mermaid
 stateDiagram-v2
   %% Aluno  (Ativar lança se já Ativo; Inativar lança se já Inativo)
@@ -176,6 +214,18 @@ stateDiagram-v2
   Pago --> EmDisputa : MarcarEmDisputa
   note right of Estornado : terminais; demais transições lançam DomainException
 ```
+```mermaid
+stateDiagram-v2
+  %% AssinaturaTreinador (Ativar falha se Inadimplente — usar regularização)
+  [*] --> Pendente : Criar
+  Pendente --> Ativa : Ativar
+  Ativa --> Inadimplente : RegistrarPagamentoFalho (contador>=3) / MarcarInadimplente
+  Inadimplente --> Ativa : RegistrarPagamentoRegularizado
+  Pendente --> Cancelada : Cancelar
+  Ativa --> Cancelada : Cancelar
+  Inadimplente --> Cancelada : Cancelar
+  note right of Cancelada : terminal; RegistrarPagamentoFalho/Regularizado = no-op
+```
 
 ## 7. EXCEÇÕES DE DOMÍNIO
 Base `DomainException : Exception` (ctors: vazio / message / message+inner). Toda derivada → HTTP **422** no `GlobalExceptionHandler` ([specification-backend]); só `ValidationException` (FluentValidation) → 400. Factories/métodos lançam `DomainException` cru para invariantes; as derivadas abaixo dão semântica de caso de uso (lançadas majoritariamente na Application).
@@ -186,6 +236,9 @@ Base `DomainException : Exception` (ctors: vazio / message / message+inner). Tod
 | CredenciaisInvalidas | login: e-mail/senha inválidos (não vaza qual) |
 | EmailJaCadastrado | cadastro com e-mail já existente |
 | EmailNaoVerificado | login antes de verificar e-mail (const `Codigo="EMAIL_NAO_VERIFICADO"`, 403 — ver [specification-email]) |
+| TreinadorAguardandoAprovacao | login de treinador ainda em análise (const `Codigo="TREINADOR_AGUARDANDO_APROVACAO"`, 403) |
+| TreinadorInativo | login de treinador inativo (const `Codigo="TREINADOR_INATIVO"`, 403) |
+| TreinadorPagamentoPendente | login de treinador `AguardandoPagamento` (const `Codigo="TREINADOR_PAGAMENTO_PENDENTE"`, 403) |
 | AlunoInativo | operação sobre aluno inativo |
 | AlunoJaVinculado | criar vínculo p/ aluno já com vínculo ativo em outro treinador |
 | AlunoNaoEncontrado | lookup de aluno falhou |
@@ -201,5 +254,5 @@ Base `DomainException : Exception` (ctors: vazio / message / message+inner). Tod
 
 ## 8. INTERFACES DE DOMÍNIO
 - **IDomainEvent** (Events) — `DateTime OcorridoEm`. Contrato base de evento.
-- **IHasDomainEvents** (Events) — `IReadOnlyList<IDomainEvent> DomainEvents; void ClearDomainEvents();`. Implementado por: Conta (emite `ContaRegistradaEvent` + `ContaAnonimizadaEvent`), Aluno, Treinador, VinculoTreinadorAluno, AssinaturaAluno, Pagamento.
+- **IHasDomainEvents** (Events) — `IReadOnlyList<IDomainEvent> DomainEvents; void ClearDomainEvents();`. Implementado por: Conta (emite `ContaRegistradaEvent` + `ContaAnonimizadaEvent`), Aluno, Treinador, VinculoTreinadorAluno, AssinaturaAluno, Pagamento, AssinaturaTreinador, PagamentoTreinador.
 - **ICapacidadePlano** (Interfaces) — `int MaxAlunos`. Implementado por `PlanoPlataforma`; abstrai a regra de capacidade usada na validação de `LimiteAlunosAtingidoException`.

@@ -10,11 +10,11 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - Ao mudar contagem de tabelas/migrations, atualizar os números nas seções relevantes.
 
 ## STACK & SCHEMAS
-- PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. App = ASP.NET Core 8, DDD.
+- PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. Stack macro da app em AGENTS.md §STACK.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema. `MigrationsHistoryTable("__EFMigrationsHistory")` sem schema (segue search_path).
-- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 29 tabelas cada (28 EF + ai_token_usage).
+- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 31 tabelas cada (30 EF + ai_token_usage).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 28 migrations EF aplicadas. Tabela de controle `__EFMigrationsHistory` por schema.
+- 29 migrations EF aplicadas (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarBillingTreinadorEModoPagamento`). Tabela de controle `__EFMigrationsHistory` por schema.
 
 ## CONVENÇÕES
 - PK: `id` uuid gerado na app (Guid.NewGuid), não pelo banco. Exceção: `tokens_revogados` PK=`jti`.
@@ -25,26 +25,30 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - Tokens (password_reset/email_verification): armazenam SHA-256 hex(64) do token; cru só no e-mail; `conta_id` SEM FK física (só índice).
 - UQ parciais impõem regra de negócio (pagamentos 1 Pendente/assinatura; treino_alunos 1 Ativo/treino).
 
-## ENUMS (text)
-- TipoConta (contas.tipo_conta): SystemAdmin|Treinador|Aluno
-- SystemRole (system_users.role): SuperAdmin|Support|Operator
-- UsuarioStatus (system_users.status): Ativo|Inativo
-- TreinadorStatus (treinadores.status): AguardandoAprovacao|Ativo|Inativo
-- AlunoStatus (alunos.status): AguardandoAprovacao|Ativo|Inativo
-- VinculoStatus (vinculos_treinador_aluno.status): AguardandoAprovacao|Ativo|Inativo
-- TierPlano (planos_plataforma.tier): Free|Basic|Pro|ProPlus|Elite
-- TreinoAlunoStatus (treino_alunos.status): Ativo|Inativo
-- ObjetivoTreino (treinos.objetivo): Hipertrofia|Forca|Resistencia|Emagrecimento|Reabilitacao
-- DificuldadeTreino (treinos.dificuldade, default Iniciante): Iniciante|Intermediario|Avancado
-- FinalidadeTreino (alunos.finalidade): Hipertrofia|Emagrecimento|CondicionamentoFisico|Saude|PerformanceEsportiva|Reabilitacao|Outro
-- NivelCondicionamento (alunos.nivel_condicionamento): Sedentario|Iniciante|Intermediario|Avancado
-- TempoDisponivel (alunos.tempo_disponivel_minutos, int): 30|45|60|90|120
-- AssinaturaAlunoStatus (assinaturas_aluno.status): Pendente|Ativa|Inadimplente|Cancelada
-- PagamentoStatus (pagamentos.status): Pendente|Pago|Expirado|Falhou|Estornado|EmDisputa
-- MetodoPagamento (pagamentos.metodo_pagamento, default Pix): Pix|Cartao
-- TipoAcaoAprovacao (logs_aprovacao.tipo_acao): AprovacaoTreinador|ReprovacaoTreinador|InativacaoTreinador|AprovacaoVinculo|ReprovacaoVinculo|InativacaoVinculo|AtribuicaoPlanTreinador|ExclusaoTreinador|ExportacaoDados|AnonimizacaoConta
-- StatusSaude (health_snapshots.status_geral): Ok|Degradado|Falha
-- TipoGrupoMuscular (enum; seed de grupos_musculares; não é coluna — entidade `GrupoMuscular` é distinta): Peito|Costas|Ombro|Biceps|Triceps|Pernas|Gluteos|Core|FullBody
+## ENUMS — BINDING DE COLUNA
+Valores e semântica em [specification-model] §4. Aqui: só o vínculo enum→coluna + nota db-specific (persistência/default/tipo). Persistidos como `text` via `HasConversion<string>` (valor = nome do enum), salvo `TempoDisponivel` (`int`).
+- TipoConta → contas.tipo_conta
+- SystemRole → system_users.role
+- UsuarioStatus → system_users.status
+- TreinadorStatus → treinadores.status
+- AlunoStatus → alunos.status
+- VinculoStatus → vinculos_treinador_aluno.status
+- TierPlano → planos_plataforma.tier
+- TreinoAlunoStatus → treino_alunos.status
+- ObjetivoTreino → treinos.objetivo
+- DificuldadeTreino → treinos.dificuldade (default `Iniciante`)
+- FinalidadeTreino → alunos.finalidade
+- NivelCondicionamento → alunos.nivel_condicionamento
+- TempoDisponivel → alunos.tempo_disponivel_minutos (**int**; valor = minutos)
+- AssinaturaAlunoStatus → assinaturas_aluno.status
+- PagamentoStatus → pagamentos.status E pagamentos_treinador.status
+- MetodoPagamento → pagamentos.metodo_pagamento E pagamentos_treinador.metodo_pagamento (default `Pix`)
+- ModoPagamentoAluno → treinadores.modo_pagamento_aluno (default `Plataforma`)
+- AssinaturaTreinadorStatus → assinaturas_treinador.status
+- FinalidadePagamentoTreinador → pagamentos_treinador.finalidade
+- TipoAcaoAprovacao → logs_aprovacao.tipo_acao
+- StatusSaude → health_snapshots.status_geral
+- TipoGrupoMuscular → NÃO é coluna (só seed de grupos_musculares; entidade `GrupoMuscular` é distinta)
 
 ## TABELAS
 
@@ -69,7 +73,7 @@ planos_plataforma — planos de assinatura do treinador. id(uuid,NN); nome(varch
 conta_recebimento — Stripe Connect do treinador. id(uuid,NN); treinador_id(uuid,NN); stripe_connect_account_id(varchar,null); onboarding_completo(bool,NN,default false); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,CASCADE) UQ(treinador_id).
 
 ### Treinadores, Pacotes, Vínculos
-treinadores — perfil treinador. id(uuid,NN); conta_id(uuid,NN); nome(varchar,NN); plano_plataforma_id(uuid,null); status(text,NN,TreinadorStatus); aprovado_por_id(uuid,null,sem FK); aprovado_em(tstz,null); telefone(varchar,null); created_at(NN); updated_at(null). PK(id) FK(conta_id→contas,RESTRICT) FK(plano_plataforma_id→planos_plataforma,RESTRICT) UQ(conta_id).
+treinadores — perfil treinador. id(uuid,NN); conta_id(uuid,NN); nome(varchar,NN); plano_plataforma_id(uuid,null); modo_pagamento_aluno(text,NN,default Plataforma,ModoPagamentoAluno); status(text,NN,TreinadorStatus); aprovado_por_id(uuid,null,sem FK); aprovado_em(tstz,null); telefone(varchar,null); created_at(NN); updated_at(null). PK(id) FK(conta_id→contas,RESTRICT) FK(plano_plataforma_id→planos_plataforma,RESTRICT) UQ(conta_id).
 
 pacotes — serviços oferecidos pelo treinador. id(uuid,NN); treinador_id(uuid,NN); nome(varchar,NN); preco(numeric,NN); is_ativo(bool,NN); descricao(varchar,null); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,RESTRICT).
 
@@ -101,6 +105,10 @@ execucoes_exercicio — detalhe por exercício da execução. id(uuid,NN); execu
 assinaturas_aluno — assinatura recorrente. id(uuid,NN); vinculo_id(uuid,NN); pacote_id(uuid,NN); treinador_id(uuid,NN); aluno_id(uuid,NN); valor(numeric,NN); status(text,NN,AssinaturaAlunoStatus); tentativas_falhas_consecutivas(int,NN,default 0); data_inicio(tstz,NN); data_proxima_cobranca(tstz,NN); data_cancelamento(tstz,null); created_at(NN); updated_at(null). PK(id) FK(vinculo_id→vinculos_treinador_aluno,RESTRICT) FK(pacote_id→pacotes,RESTRICT) FK(treinador_id→treinadores,RESTRICT) FK(aluno_id→alunos,RESTRICT) UQ(vinculo_id).
 
 pagamentos — cobranças da assinatura. id(uuid,NN); assinatura_aluno_id(uuid,NN); valor(numeric,NN); status(text,NN,PagamentoStatus); metodo_pagamento(text,NN,default Pix,MetodoPagamento); stripe_payment_intent_id(varchar,null); client_secret(varchar,null); pix_qr_code(text,null); pix_qr_code_url(varchar,null); pix_expiracao(tstz,null); data_pagamento(tstz,null); created_at(NN); updated_at(null). PK(id) FK(assinatura_aluno_id→assinaturas_aluno,RESTRICT) UQ(stripe_payment_intent_id) UQ(assinatura_aluno_id WHERE status='Pendente').
+
+assinaturas_treinador — assinatura recorrente do plano da plataforma (treinador→plataforma). id(uuid,NN); treinador_id(uuid,NN); plano_plataforma_id(uuid,NN); plano_plataforma_id_agendado(uuid,null,downgrade p/ próxima renovação); valor(numeric,NN); status(text,NN,AssinaturaTreinadorStatus); tentativas_falhas_consecutivas(int,NN,default 0); data_inicio(tstz,NN); data_proxima_cobranca(tstz,NN); data_cancelamento(tstz,null); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,RESTRICT) FK(plano_plataforma_id→planos_plataforma,RESTRICT) FK(plano_plataforma_id_agendado→planos_plataforma,RESTRICT).
+
+pagamentos_treinador — cobranças do plano do treinador (PaymentIntent direto-plataforma, sem Connect). id(uuid,NN); treinador_id(uuid,NN); assinatura_treinador_id(uuid,NN); valor(numeric,NN); status(text,NN,PagamentoStatus); metodo_pagamento(text,NN,default Pix,MetodoPagamento); finalidade(text,NN,FinalidadePagamentoTreinador); plano_alvo_id(uuid,null,plano da troca); stripe_payment_intent_id(varchar,null); client_secret(varchar,null); pix_qr_code(text,null); pix_qr_code_url(varchar,null); pix_expiracao(tstz,null); data_pagamento(tstz,null); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,RESTRICT) FK(assinatura_treinador_id→assinaturas_treinador,RESTRICT) UQ(stripe_payment_intent_id) UQ(assinatura_treinador_id WHERE status='Pendente').
 
 ### Projeção / IA
 assinantes — read model derivado de Aluno (sync via domain events). id(uuid,NN); aluno_id(uuid,NN); nome(varchar,NN); email(varchar,null); created_at(NN); updated_at(null). PK(id) UQ(aluno_id) [sem FK física].

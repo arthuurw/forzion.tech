@@ -6,7 +6,7 @@
  *   GET /aluno/fichas/:id  -> alunoApi.getFicha
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import type { TreinoExercicioResponse, SerieConfigResponse } from "@/types";
@@ -91,5 +91,21 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     // O span com title contendo "média" deve existir
     const infoIcon = document.querySelector('[title*="média"]');
     expect(infoIcon).not.toBeNull();
+  });
+
+  it("registro sem treinador ativo (403) exibe mensagem clara de bloqueio", async () => {
+    respondFicha();
+    server.use(
+      http.post("*/aluno/execucoes", () =>
+        HttpResponse.json({ status: 403, title: "Acesso negado" }, { status: 403 }),
+      ),
+    );
+    render(<ExecutarFichaPage />);
+
+    await screen.findByText("Supino");
+    fireEvent.click(screen.getByRole("button", { name: /Finalizar treino/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Confirmar registro/ }));
+
+    expect(await screen.findByText(/não tem um treinador ativo/i)).toBeInTheDocument();
   });
 });

@@ -24,7 +24,7 @@ public class Conta : IHasDomainEvents
 
     private Conta() { }
 
-    public static Result<Conta> Criar(Email email, string passwordHash, TipoConta tipoConta, DateTime agora)
+    public static Result<Conta> Criar(Email email, string passwordHash, TipoConta tipoConta, DateTime agora, bool emitirRegistro = true)
     {
         ArgumentNullException.ThrowIfNull(email);
 
@@ -41,9 +41,16 @@ public class Conta : IHasDomainEvents
             CreatedAt = agora
         };
 
-        conta._domainEvents.Add(new ContaRegistradaEvent(conta.Id, email.Value, agora));
+        // Treinador de plano pago: verificação só é enviada após o pagamento (emite o evento depois).
+        if (emitirRegistro)
+            conta._domainEvents.Add(new ContaRegistradaEvent(conta.Id, email.Value, agora));
 
         return Result.Success(conta);
+    }
+
+    public void EmitirRegistro(DateTime agora)
+    {
+        _domainEvents.Add(new ContaRegistradaEvent(Id, Email.Value, agora));
     }
 
     public Result AtualizarSenha(string novoHash, DateTime agora)

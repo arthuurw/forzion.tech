@@ -43,22 +43,35 @@ public class LoginHandler(
 
         // Conta verificada sem perfil correspondente é inconsistência de dados (não regra de
         // negócio): mapeia p/ 500, não 422 (DomainException). Idem TipoConta inválido.
-        var perfilId = conta.TipoConta switch
+        Guid perfilId;
+        switch (conta.TipoConta)
         {
-            Domain.Enums.TipoConta.Aluno =>
-                (await alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
-                ?? throw new InvalidOperationException("Perfil de aluno não encontrado para esta conta."),
+            case Domain.Enums.TipoConta.Aluno:
+                perfilId = (await alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
+                    ?? throw new InvalidOperationException("Perfil de aluno não encontrado para esta conta.");
+                break;
 
-            Domain.Enums.TipoConta.Treinador =>
-                (await treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
-                ?? throw new InvalidOperationException("Perfil de treinador não encontrado para esta conta."),
+            case Domain.Enums.TipoConta.Treinador:
+                var treinador = await treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false)
+                    ?? throw new InvalidOperationException("Perfil de treinador não encontrado para esta conta.");
+                // Treinador só acessa após aprovação do admin (e-mail verificado não basta).
+                if (treinador.Status == Domain.Enums.TreinadorStatus.AguardandoPagamento)
+                    throw new TreinadorPagamentoPendenteException();
+                if (treinador.Status == Domain.Enums.TreinadorStatus.AguardandoAprovacao)
+                    throw new TreinadorAguardandoAprovacaoException();
+                if (treinador.Status == Domain.Enums.TreinadorStatus.Inativo)
+                    throw new TreinadorInativoException();
+                perfilId = treinador.Id;
+                break;
 
-            Domain.Enums.TipoConta.SystemAdmin =>
-                (await systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
-                ?? throw new InvalidOperationException("Perfil de administrador não encontrado para esta conta."),
+            case Domain.Enums.TipoConta.SystemAdmin:
+                perfilId = (await systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
+                    ?? throw new InvalidOperationException("Perfil de administrador não encontrado para esta conta.");
+                break;
 
-            _ => throw new InvalidOperationException("Tipo de conta inválido.")
-        };
+            default:
+                throw new InvalidOperationException("Tipo de conta inválido.");
+        }
 
         var token = jwtService.GerarToken(conta, perfilId);
 

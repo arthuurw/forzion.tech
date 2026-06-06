@@ -84,6 +84,8 @@ public static class InfrastructureExtensions
         services.AddScoped<IPlanoNotificationPolicy, Notifications.PlanoNotificationPolicy>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
+        services.AddScoped<IAssinaturaTreinadorRepository, AssinaturaTreinadorRepository>();
+        services.AddScoped<IPagamentoTreinadorRepository, PagamentoTreinadorRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
         services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
         services.AddScoped<IHealthReportConfigRepository, HealthReportConfigRepository>();
@@ -160,6 +162,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoReativadaEvent>, AssinaturaAlunoReativadaEmailAlunoHandler>();
 
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, PagamentoTreinadorPagoHandler>();
 
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
