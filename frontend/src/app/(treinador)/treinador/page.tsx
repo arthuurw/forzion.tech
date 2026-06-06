@@ -49,6 +49,8 @@ export default function DashboardTreinadorPage() {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [onboardingPendente, setOnboardingPendente] = useState(false);
+  const [modoExterno, setModoExterno] = useState(false);
+  const [planoInadimplente, setPlanoInadimplente] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -113,8 +115,17 @@ export default function DashboardTreinadorPage() {
 
   useEffect(() => {
     pagamentoApi.verificarOnboarding()
-      .then((res) => setOnboardingPendente(!res.data.onboardingCompleto))
+      .then((res) => {
+        setModoExterno(res.data.modoPagamentoAluno === "Externo");
+        setOnboardingPendente(!res.data.onboardingCompleto);
+      })
       .catch(() => setOnboardingPendente(false));
+  }, []);
+
+  useEffect(() => {
+    pagamentoApi.obterAssinaturaTreinador()
+      .then((res) => setPlanoInadimplente(res.data.status === "Inadimplente"))
+      .catch(() => setPlanoInadimplente(false));
   }, []);
 
   const handleAprovar = async (vinculo: VinculoDetalheResponse) => {
@@ -152,7 +163,30 @@ export default function DashboardTreinadorPage() {
     <Box>
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
-      {onboardingPendente && (
+      {planoInadimplente && (
+        <Paper
+          sx={{
+            p: 2.5,
+            mb: 3,
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "error.main",
+            bgcolor: (theme) => alpha(theme.palette.error.main, 0.08),
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Assinatura da plataforma em atraso
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Regularize o pagamento do seu plano para manter o acesso completo.
+          </Typography>
+          <Button variant="contained" color="error" size="small" onClick={() => router.push("/treinador/plano")}>
+            Regularizar pagamento
+          </Button>
+        </Paper>
+      )}
+
+      {onboardingPendente && !modoExterno && (
         <Paper
           sx={{
             p: 2.5,
