@@ -333,4 +333,152 @@ public class TrocarPlanoTreinadorHandlerTests
         pagamentoAdicionado.Should().NotBeNull();
         pagamentoAdicionado!.Valor.Should().Be(30.00m, "proração de 15/30 dias com diferença R$60");
     }
+
+    [Fact]
+    public async Task HandleAsync_Upgrade_MetodoCartao_GeraCartaoERetornaClientSecret()
+    {
+        var treinador = CriarTreinador();
+        var planoAtual = CriarPlano(50m, TierPlano.Basic);
+        var planoNovo = CriarPlano(100m, TierPlano.Pro);
+        var assinatura = CriarAssinaturaAtiva(treinador.Id, planoAtual.Id, 50m);
+
+        var cartaoResult = new CartaoPaymentResult("pi_cartao_troca", "secret_troca");
+        _stripeService.Setup(s => s.CriarCartaoPlataformaPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cartaoResult);
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PagamentoTreinador?)null);
+
+        var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, planoNovo.Id, MetodoPagamento.Cartao));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Tipo.Should().Be(TipoTrocaPlano.Upgrade);
+        result.Value.ClientSecret.Should().Be("secret_troca");
+        result.Value.PixQrCode.Should().BeNull();
+        _stripeService.Verify(s => s.CriarCartaoPlataformaPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+        _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Inadimplente_MetodoCartao_GeraCartaoERetornaClientSecret()
+    {
+        var treinador = CriarTreinador();
+        var planoAtual = CriarPlano(50m, TierPlano.Basic);
+        var planoNovo = CriarPlano(80m, TierPlano.Pro);
+        var assinatura = CriarAssinaturaAtiva(treinador.Id, planoAtual.Id, 50m);
+        assinatura.MarcarInadimplente(DateTime.UtcNow);
+
+        var cartaoResult = new CartaoPaymentResult("pi_cartao_inadimplente", "secret_inadimplente");
+        _stripeService.Setup(s => s.CriarCartaoPlataformaPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cartaoResult);
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PagamentoTreinador?)null);
+
+        var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, planoNovo.Id, MetodoPagamento.Cartao));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Tipo.Should().Be(TipoTrocaPlano.InadimplenteRegularizacao);
+        result.Value.ClientSecret.Should().Be("secret_inadimplente");
+        _stripeService.Verify(s => s.CriarCartaoPlataformaPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Upgrade_PendenteParaMesmoPlanoComIntent_Idempotente()
+    {
+        var treinador = CriarTreinador();
+        var planoAtual = CriarPlano(50m, TierPlano.Basic);
+        var planoNovo = CriarPlano(100m, TierPlano.Pro);
+        var assinatura = CriarAssinaturaAtiva(treinador.Id, planoAtual.Id, 50m);
+        var pendenteExistente = PagamentoTreinador.Criar(
+            treinador.Id, assinatura.Id, 50m, FinalidadePagamentoTreinador.TrocaPlano,
+            DateTime.UtcNow, MetodoPagamento.Pix, planoNovo.Id).Value;
+        pendenteExistente.DefinirDadosPix("pi_existente", "qr_old", "url_old", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteExistente);
+
+        var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, planoNovo.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PagamentoId.Should().Be(pendenteExistente.Id, "idempotência: reutiliza o intent em curso");
+        _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _pagamentoRepo.Verify(r => r.AdicionarAsync(It.IsAny<PagamentoTreinador>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Inadimplente_PendenteParaMesmoPlanoComIntent_Idempotente()
+    {
+        var treinador = CriarTreinador();
+        var planoAtual = CriarPlano(50m, TierPlano.Basic);
+        var planoNovo = CriarPlano(80m, TierPlano.Pro);
+        var assinatura = CriarAssinaturaAtiva(treinador.Id, planoAtual.Id, 50m);
+        assinatura.MarcarInadimplente(DateTime.UtcNow);
+        var pendenteExistente = PagamentoTreinador.Criar(
+            treinador.Id, assinatura.Id, 80m, FinalidadePagamentoTreinador.TrocaPlano,
+            DateTime.UtcNow, MetodoPagamento.Pix, planoNovo.Id).Value;
+        pendenteExistente.DefinirDadosPix("pi_inad_existente", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteExistente);
+
+        var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, planoNovo.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Tipo.Should().Be(TipoTrocaPlano.InadimplenteRegularizacao);
+        result.Value.PagamentoId.Should().Be(pendenteExistente.Id);
+        _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PlanoInativo_RetornaFailure()
+    {
+        var treinador = CriarTreinador();
+        var planoInativo = PlanoPlataforma.Criar("Plano Inativo", TierPlano.Basic, 50, 50m, DateTime.UtcNow).Value;
+        planoInativo.Inativar(DateTime.UtcNow);
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoInativo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoInativo);
+
+        var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, planoInativo.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("plano_plataforma_inativo");
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemAssinatura_RetornaFailure()
+    {
+        var treinador = CriarTreinador();
+        var plano = CriarPlano(50m);
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AssinaturaTreinador?)null);
+
+        var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, plano.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("assinatura_treinador_nao_encontrada");
+    }
 }

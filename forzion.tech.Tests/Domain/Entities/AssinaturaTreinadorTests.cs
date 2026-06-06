@@ -242,4 +242,104 @@ public class AssinaturaTreinadorTests
         a.AplicarPlanoAgendado(50m, Agora).IsSuccess.Should().BeTrue();
         a.Valor.Should().Be(100m);
     }
+
+    [Fact]
+    public void Criar_DisparaEventoComTodasAsPropriedades()
+    {
+        var treinadorId = Guid.NewGuid();
+        var planoId = Guid.NewGuid();
+        const decimal valor = 75m;
+
+        var a = AssinaturaTreinador.Criar(treinadorId, planoId, valor, Agora).Value;
+        var ev = a.DomainEvents.OfType<AssinaturaTreinadorCriadaEvent>().Single();
+
+        ev.AssinaturaTreinadorId.Should().Be(a.Id);
+        ev.TreinadorId.Should().Be(treinadorId);
+        ev.PlanoPlataformaId.Should().Be(planoId);
+        ev.Valor.Should().Be(valor);
+        ev.OcorridoEm.Should().Be(Agora);
+    }
+
+    [Fact]
+    public void MarcarInadimplente_DisparaEventoComTentativasEPropriedades()
+    {
+        var a = Ativa();
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+
+        var ev = a.DomainEvents.OfType<AssinaturaTreinadorMarcadaInadimplenteEvent>().Single();
+
+        ev.AssinaturaTreinadorId.Should().Be(a.Id);
+        ev.TreinadorId.Should().Be(a.TreinadorId);
+        ev.TentativasFalhasConsecutivas.Should().Be(3);
+        ev.OcorridoEm.Should().Be(Agora);
+    }
+
+    [Fact]
+    public void Cancelar_DisparaEventoComPropriedades()
+    {
+        var a = Ativa();
+        a.Cancelar(Agora);
+
+        var ev = a.DomainEvents.OfType<AssinaturaTreinadorCanceladaEvent>().Single();
+
+        ev.AssinaturaTreinadorId.Should().Be(a.Id);
+        ev.TreinadorId.Should().Be(a.TreinadorId);
+        ev.OcorridoEm.Should().Be(Agora);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoRegularizado_DisparaReativadaEventoComPropriedades()
+    {
+        var a = Ativa();
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+        a.ClearDomainEvents();
+
+        a.RegistrarPagamentoRegularizado(Agora);
+
+        var ev = a.DomainEvents.OfType<AssinaturaTreinadorReativadaEvent>().Single();
+
+        ev.AssinaturaTreinadorId.Should().Be(a.Id);
+        ev.TreinadorId.Should().Be(a.TreinadorId);
+        ev.OcorridoEm.Should().Be(Agora);
+    }
+
+    [Fact]
+    public void TrocarPlanoImediato_DisparaEventoComPropriedades()
+    {
+        var a = Ativa(50m);
+        var planoAnterior = a.PlanoPlataformaId;
+        var novoPlano = Guid.NewGuid();
+
+        a.TrocarPlanoImediato(novoPlano, 100m, Agora);
+
+        var ev = a.DomainEvents.OfType<AssinaturaTreinadorPlanoTrocadoEvent>().Single();
+
+        ev.AssinaturaTreinadorId.Should().Be(a.Id);
+        ev.TreinadorId.Should().Be(a.TreinadorId);
+        ev.PlanoAnteriorId.Should().Be(planoAnterior);
+        ev.PlanoNovoId.Should().Be(novoPlano);
+        ev.OcorridoEm.Should().Be(Agora);
+    }
+
+    [Fact]
+    public void AplicarPlanoAgendado_DisparaPlanoTrocadoEventoComPropriedades()
+    {
+        var a = Ativa(100m);
+        var planoAnterior = a.PlanoPlataformaId;
+        var alvo = Guid.NewGuid();
+        a.AgendarDowngrade(alvo, Agora);
+        a.ClearDomainEvents();
+
+        a.AplicarPlanoAgendado(50m, Agora);
+
+        var ev = a.DomainEvents.OfType<AssinaturaTreinadorPlanoTrocadoEvent>().Single();
+
+        ev.PlanoAnteriorId.Should().Be(planoAnterior);
+        ev.PlanoNovoId.Should().Be(alvo);
+        ev.OcorridoEm.Should().Be(Agora);
+    }
 }

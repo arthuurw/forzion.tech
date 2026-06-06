@@ -232,4 +232,110 @@ public class AprovarVinculoHandlerTests
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_TrocaDeTreinador_InativaVinculoAnteriorEFichasAntigas()
+    {
+        var treinadorAntigoId = Guid.NewGuid();
+        var treinadorNovoId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+
+        var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorNovoId, alunoId, TestData.Agora).Value;
+        var vinculoAnterior = VinculoTreinadorAluno.Criar(treinadorAntigoId, alunoId, TestData.Agora).Value;
+        vinculoAnterior.Aprovar(treinadorAntigoId, Guid.NewGuid(), TestData.Agora);
+
+        var fichaAntiga = TreinoAluno.Criar(Guid.NewGuid(), alunoId, TestData.Agora).Value;
+
+        var treinadorNovo = Treinador.Criar(treinadorNovoId, "Novo", TestData.Agora, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorNovoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinadorNovo);
+
+        var contaOnboarded = ContaRecebimento.Criar(treinadorNovoId, TestData.Agora).Value;
+        contaOnboarded.ConfigurarStripeConnect("acct_novo", TestData.Agora);
+        contaOnboarded.ConfirmarOnboarding(TestData.Agora);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorNovoId, It.IsAny<CancellationToken>())).ReturnsAsync(contaOnboarded);
+
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculoPendente.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAnterior);
+        _treinoAlunoRepo.Setup(r => r.ListarAtivosPorParAsync(treinadorAntigoId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TreinoAluno> { fichaAntiga }.AsReadOnly() as IReadOnlyList<TreinoAluno>);
+        _limiteService.Setup(s => s.ValidarAsync(treinadorNovoId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculoPendente.Id, treinadorNovoId, Guid.NewGuid()));
+
+        result.IsSuccess.Should().BeTrue();
+        vinculoAnterior.Status.Should().Be(VinculoStatus.Inativo, "vínculo anterior deve ser inativado na troca");
+        fichaAntiga.Status.Should().Be(TreinoAlunoStatus.Inativo, "fichas do treinador anterior são inativadas");
+    }
+
+    [Fact]
+    public async Task HandleAsync_TrocaDeTreinador_ComTrarFichas_DuplicaFichasParaNovoTreinador()
+    {
+        var treinadorAntigoId = Guid.NewGuid();
+        var treinadorNovoId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+
+        var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorNovoId, alunoId, TestData.Agora).Value;
+        var vinculoAnterior = VinculoTreinadorAluno.Criar(treinadorAntigoId, alunoId, TestData.Agora).Value;
+        vinculoAnterior.Aprovar(treinadorAntigoId, Guid.NewGuid(), TestData.Agora);
+
+        var treinoOrigem = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorAntigoId, TestData.Agora).Value;
+        var fichaAntiga = TreinoAluno.Criar(treinoOrigem.Id, alunoId, TestData.Agora).Value;
+
+        var treinadorNovo = Treinador.Criar(treinadorNovoId, "Novo", TestData.Agora, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorNovoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinadorNovo);
+
+        var contaOnboarded = ContaRecebimento.Criar(treinadorNovoId, TestData.Agora).Value;
+        contaOnboarded.ConfigurarStripeConnect("acct_novo2", TestData.Agora);
+        contaOnboarded.ConfirmarOnboarding(TestData.Agora);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorNovoId, It.IsAny<CancellationToken>())).ReturnsAsync(contaOnboarded);
+
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculoPendente.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAnterior);
+        _treinoAlunoRepo.Setup(r => r.ListarAtivosPorParAsync(treinadorAntigoId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TreinoAluno> { fichaAntiga }.AsReadOnly() as IReadOnlyList<TreinoAluno>);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treinoOrigem.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinoOrigem);
+        _limiteService.Setup(s => s.ValidarAsync(treinadorNovoId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculoPendente.Id, treinadorNovoId, Guid.NewGuid(), TrarFichas: true));
+
+        result.IsSuccess.Should().BeTrue();
+        _treinoRepo.Verify(r => r.ObterPorIdAsync(treinoOrigem.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _treinoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treino>(), It.IsAny<CancellationToken>()), Times.Once);
+        _treinoAlunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<TreinoAluno>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TrocaDeTreinador_TrarFichas_TreinoOrigemNulo_IgnoraEProssegue()
+    {
+        var treinadorAntigoId = Guid.NewGuid();
+        var treinadorNovoId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+
+        var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorNovoId, alunoId, TestData.Agora).Value;
+        var vinculoAnterior = VinculoTreinadorAluno.Criar(treinadorAntigoId, alunoId, TestData.Agora).Value;
+        vinculoAnterior.Aprovar(treinadorAntigoId, Guid.NewGuid(), TestData.Agora);
+
+        var fichaOrfã = TreinoAluno.Criar(Guid.NewGuid(), alunoId, TestData.Agora).Value;
+
+        var treinadorNovo = Treinador.Criar(treinadorNovoId, "Novo", TestData.Agora, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorNovoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinadorNovo);
+
+        var contaOnboarded = ContaRecebimento.Criar(treinadorNovoId, TestData.Agora).Value;
+        contaOnboarded.ConfigurarStripeConnect("acct_novo3", TestData.Agora);
+        contaOnboarded.ConfirmarOnboarding(TestData.Agora);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorNovoId, It.IsAny<CancellationToken>())).ReturnsAsync(contaOnboarded);
+
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculoPendente.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoPendente);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculoAnterior);
+        _treinoAlunoRepo.Setup(r => r.ListarAtivosPorParAsync(treinadorAntigoId, alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TreinoAluno> { fichaOrfã }.AsReadOnly() as IReadOnlyList<TreinoAluno>);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(fichaOrfã.TreinoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Treino?)null);
+        _limiteService.Setup(s => s.ValidarAsync(treinadorNovoId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculoPendente.Id, treinadorNovoId, Guid.NewGuid(), TrarFichas: true));
+
+        result.IsSuccess.Should().BeTrue("treino origem nulo é ignorado e o fluxo continua");
+        _treinoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Treino>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
