@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +11,7 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
     IPacoteRepository pacoteRepository,
     IAssinaturaAlunoRepository assinaturaRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
+    ITreinadorRepository treinadorRepository,
     IUnitOfWork unitOfWork,
     ILogger<VinculoAprovadoCriarAssinaturaAlunoHandler> logger) : IDomainEventHandler<VinculoAprovadoEvent>
 {
@@ -22,6 +24,14 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
             return;
         }
 
+        var treinador = await treinadorRepository.ObterPorIdAsync(domainEvent.TreinadorId, cancellationToken).ConfigureAwait(false);
+        if (treinador?.ModoPagamentoAluno == ModoPagamentoAluno.Externo)
+        {
+            logger.LogDebug("Treinador {TreinadorId} no modo Externo — assinatura não criada.", domainEvent.TreinadorId);
+            return;
+        }
+
+        // Defense-in-depth: gate primário é em AprovarVinculoHandler; aqui cobre evento legado/reprocessado.
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(domainEvent.TreinadorId, cancellationToken).ConfigureAwait(false);
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
         {

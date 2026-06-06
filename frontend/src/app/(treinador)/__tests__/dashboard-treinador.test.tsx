@@ -157,6 +157,62 @@ describe("DashboardTreinadorPage — null pacoteId redirect (G-FE-2)", () => {
   });
 });
 
+function onboardingHandler(modo: "Plataforma" | "Externo", onboardingCompleto: boolean) {
+  server.use(
+    http.get("*/treinador/onboarding/status", () =>
+      HttpResponse.json({ onboardingCompleto, contaConfigurada: onboardingCompleto, modoPagamentoAluno: modo }),
+    ),
+  );
+}
+
+function assinaturaHandler(status: "Ativa" | "Inadimplente") {
+  server.use(
+    http.get("*/treinador/plano/assinatura", () =>
+      HttpResponse.json({
+        assinaturaId: "ass-1", status, valor: 50, planoPlataformaId: "p-1",
+        dataProximaCobranca: new Date().toISOString(), planoPlataformaIdAgendado: null,
+      }),
+    ),
+  );
+}
+
+describe("DashboardTreinadorPage — T4.2 modo e regularização", () => {
+  it("modo Externo não exibe o banner de onboarding", async () => {
+    setupDashboardHandlers([]);
+    onboardingHandler("Externo", false);
+    assinaturaHandler("Ativa");
+
+    const { default: Page } = await import("@/app/(treinador)/treinador/page");
+    render(<Page />);
+
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+    expect(screen.queryByText("Configure seus recebimentos")).not.toBeInTheDocument();
+  });
+
+  it("modo Plataforma com onboarding pendente exibe o banner de onboarding", async () => {
+    setupDashboardHandlers([]);
+    onboardingHandler("Plataforma", false);
+    assinaturaHandler("Ativa");
+
+    const { default: Page } = await import("@/app/(treinador)/treinador/page");
+    render(<Page />);
+
+    expect(await screen.findByText("Configure seus recebimentos")).toBeInTheDocument();
+  });
+
+  it("plano inadimplente exibe o banner de regularização", async () => {
+    setupDashboardHandlers([]);
+    onboardingHandler("Plataforma", true);
+    assinaturaHandler("Inadimplente");
+
+    const { default: Page } = await import("@/app/(treinador)/treinador/page");
+    render(<Page />);
+
+    expect(await screen.findByText("Assinatura da plataforma em atraso")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Regularizar pagamento/ })).toBeInTheDocument();
+  });
+});
+
 describe("DashboardTreinadorPage — load error shows backend detail (G-FE-1)", () => {
   it("shows backend detail message from ProblemDetails when load fails", async () => {
     server.use(

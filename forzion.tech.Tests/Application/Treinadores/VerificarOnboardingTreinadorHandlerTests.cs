@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -96,6 +97,19 @@ public class VerificarOnboardingTreinadorHandlerTests
         result.Value.ContaConfigurada.Should().BeTrue();
         contaRecebimento.OnboardingCompleto.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ModoExterno_RefleteModoNaResposta()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Externo).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
+
+        var result = await _handler.HandleAsync(new VerificarOnboardingTreinadorQuery(treinador.Id));
+
+        result.Value.ModoPagamentoAluno.Should().Be(ModoPagamentoAluno.Externo);
     }
 
     [Fact]

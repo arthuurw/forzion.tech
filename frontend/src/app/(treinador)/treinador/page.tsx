@@ -3,9 +3,11 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Box, Typography, Paper, Stack, Divider, Button,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import CheckIcon from "@mui/icons-material/Check";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import { useRouter } from "next/navigation";
+import { pagamentoApi } from "@/lib/api/pagamento";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Legend,
@@ -46,6 +48,9 @@ export default function DashboardTreinadorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [onboardingPendente, setOnboardingPendente] = useState(false);
+  const [modoExterno, setModoExterno] = useState(false);
+  const [planoInadimplente, setPlanoInadimplente] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -108,6 +113,21 @@ export default function DashboardTreinadorPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    pagamentoApi.verificarOnboarding()
+      .then((res) => {
+        setModoExterno(res.data.modoPagamentoAluno === "Externo");
+        setOnboardingPendente(!res.data.onboardingCompleto);
+      })
+      .catch(() => setOnboardingPendente(false));
+  }, []);
+
+  useEffect(() => {
+    pagamentoApi.obterAssinaturaTreinador()
+      .then((res) => setPlanoInadimplente(res.data.status === "Inadimplente"))
+      .catch(() => setPlanoInadimplente(false));
+  }, []);
+
   const handleAprovar = async (vinculo: VinculoDetalheResponse) => {
     if (!vinculo.pacoteId) {
       // Redirect to /treinador/alunos where the trainer can pick a package.
@@ -142,6 +162,52 @@ export default function DashboardTreinadorPage() {
   return (
     <Box>
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+
+      {planoInadimplente && (
+        <Paper
+          sx={{
+            p: 2.5,
+            mb: 3,
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "error.main",
+            bgcolor: (theme) => alpha(theme.palette.error.main, 0.08),
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Assinatura da plataforma em atraso
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Regularize o pagamento do seu plano para manter o acesso completo.
+          </Typography>
+          <Button variant="contained" color="error" size="small" onClick={() => router.push("/treinador/plano")}>
+            Regularizar pagamento
+          </Button>
+        </Paper>
+      )}
+
+      {onboardingPendente && !modoExterno && (
+        <Paper
+          sx={{
+            p: 2.5,
+            mb: 3,
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "primary.main",
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Configure seus recebimentos
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Conclua a configuração de recebimentos (Stripe) para aceitar alunos e receber pagamentos.
+          </Typography>
+          <Button variant="contained" color="primary" size="small" onClick={() => router.push("/treinador/pagamentos")}>
+            Configurar recebimentos
+          </Button>
+        </Paper>
+      )}
 
       {/* Stat cards */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" }, gap: 2, mb: 4 }}>

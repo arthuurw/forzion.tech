@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -10,11 +11,17 @@ public class ProcessarWebhookStripeHandler(
     IPagamentoRepository pagamentoRepository,
     IAssinaturaAlunoRepository assinaturaRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
+    IPagamentoTreinadorRepository pagamentoTreinadorRepository,
+    IAssinaturaTreinadorRepository assinaturaTreinadorRepository,
+    ITreinadorRepository treinadorRepository,
+    IContaRepository contaRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     ILogger<ProcessarWebhookStripeHandler> logger)
 {
+    private const string TipoPlanoTreinador = "plano_treinador";
+
     public virtual async Task<Result> HandleAsync(
         ProcessarWebhookStripeCommand command,
         CancellationToken cancellationToken = default)
@@ -51,13 +58,19 @@ public class ProcessarWebhookStripeHandler(
         switch (evento.Type)
         {
             case "payment_intent.succeeded":
-                return await ProcessarPagamentoPagoAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
+                return evento.TipoMetadata == TipoPlanoTreinador
+                    ? await ProcessarPagamentoTreinadorPagoAsync(evento.PaymentIntentId!, cancellationToken).ConfigureAwait(false)
+                    : await ProcessarPagamentoPagoAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
 
             case "payment_intent.payment_failed":
-                return await ProcessarPagamentoFalhouAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
+                return evento.TipoMetadata == TipoPlanoTreinador
+                    ? await ProcessarPagamentoTreinadorFalhouAsync(evento.PaymentIntentId!, cancellationToken).ConfigureAwait(false)
+                    : await ProcessarPagamentoFalhouAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
 
             case "payment_intent.canceled":
-                return await ProcessarPagamentoExpiradoAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
+                return evento.TipoMetadata == TipoPlanoTreinador
+                    ? await ProcessarPagamentoTreinadorTransicaoAsync(evento.PaymentIntentId!, p => p.MarcarExpirado(timeProvider.GetUtcNow().UtcDateTime), cancellationToken).ConfigureAwait(false)
+                    : await ProcessarPagamentoExpiradoAsync(evento.PaymentIntentId!, evento.AccountId, cancellationToken).ConfigureAwait(false);
 
             case "account.updated":
                 return await ProcessarContaAtualizadaAsync(evento.AccountId!, evento.ChargesEnabled, cancellationToken).ConfigureAwait(false);
@@ -369,6 +382,99 @@ public class ProcessarWebhookStripeHandler(
         }
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("Onboarding confirmado via webhook para treinador {TreinadorId}.", contaRecebimento.TreinadorId);
+        return ProcessarEventoResultado.Aplicado;
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarPagamentoTreinadorPagoAsync(string paymentIntentId, CancellationToken ct)
+    {
+        var pagamento = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
+        if (pagamento is null)
+        {
+            logger.LogWarning("PaymentIntent de plano de treinador {PaymentIntentId} não encontrado.", paymentIntentId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+        if (pagamento.Status != PagamentoStatus.Pendente)
+            return ProcessarEventoResultado.JaConsistente;
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        if (pagamento.MarcarPago(agora).IsFailure)
+            return ProcessarEventoResultado.JaConsistente;
+
+        // Cadastro: finaliza tudo no MESMO commit que marca o pagamento pago (atomicidade —
+        // evita treinador travado pago se um passo de finalização falhasse em commit separado).
+        // Renovacao/TrocaPlano: Fase 2/2B.
+        if (pagamento.Finalidade == FinalidadePagamentoTreinador.Cadastro)
+            await FinalizarCadastroAsync(pagamento, agora, ct).ConfigureAwait(false);
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como pago.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
+    }
+
+    private async Task FinalizarCadastroAsync(PagamentoTreinador pagamento, DateTime agora, CancellationToken ct)
+    {
+        var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+        var treinador = await treinadorRepository.ObterPorIdAsync(pagamento.TreinadorId, ct).ConfigureAwait(false);
+        if (assinatura is null || treinador is null)
+        {
+            logger.LogWarning("Cadastro pago sem assinatura/treinador (pagamento {PagamentoId}).", pagamento.Id);
+            return;
+        }
+
+        if (assinatura.Ativar(agora).IsFailure) return;
+        assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
+        if (treinador.ConfirmarPagamentoPlano(agora).IsFailure) return;
+
+        var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, ct).ConfigureAwait(false);
+        if (conta is null)
+        {
+            logger.LogWarning("Conta {ContaId} do treinador {TreinadorId} não encontrada — verificação não enviada.", treinador.ContaId, treinador.Id);
+            return;
+        }
+        // Dispara a verificação de e-mail (ContaRegistradaEmailHandler) — adiada até o pagamento.
+        conta.EmitirRegistro(agora);
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarPagamentoTreinadorFalhouAsync(string paymentIntentId, CancellationToken ct)
+    {
+        var pagamento = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
+        if (pagamento is null) return ProcessarEventoResultado.JaConsistente;
+
+        if (pagamento.Status != PagamentoStatus.Pendente)
+        {
+            logger.LogDebug("PagamentoTreinador PaymentIntent {PaymentIntentId} já processado (status: {Status}). Ignorando re-entrega.", paymentIntentId, pagamento.Status);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var marcarFalhouResult = pagamento.MarcarFalhou(agora);
+        if (marcarFalhouResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PagamentoTreinador {PaymentIntentId} como falhou: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarFalhouResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        // G-PAY-2 (treinador): mesmo padrão do aluno — muta pagamento + assinatura num único commit.
+        // RegistrarPagamentoFalho pode disparar Ativa→Inadimplente ao atingir o threshold.
+        var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+        assinatura?.RegistrarPagamentoFalho(agora);
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como falhou.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarPagamentoTreinadorTransicaoAsync(string paymentIntentId, Func<PagamentoTreinador, Result> transicao, CancellationToken ct)
+    {
+        var pagamento = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
+        if (pagamento is null || pagamento.Status != PagamentoStatus.Pendente)
+            return ProcessarEventoResultado.JaConsistente;
+
+        if (transicao(pagamento).IsFailure)
+            return ProcessarEventoResultado.JaConsistente;
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         return ProcessarEventoResultado.Aplicado;
     }
 }

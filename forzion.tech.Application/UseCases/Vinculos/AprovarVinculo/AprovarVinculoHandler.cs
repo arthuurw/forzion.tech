@@ -14,6 +14,8 @@ public class AprovarVinculoHandler(
     ITreinoAlunoRepository treinoAlunoRepository,
     ITreinoRepository treinoRepository,
     IAlunoRepository alunoRepository,
+    ITreinadorRepository treinadorRepository,
+    IContaRecebimentoRepository contaRecebimentoRepository,
     ILimiteTreinadorService limiteTreinadorService,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
@@ -38,6 +40,17 @@ public class AprovarVinculoHandler(
 
         if (vinculo.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
+
+        var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
+            ?? throw new TreinadorNaoEncontradoException();
+
+        // Modo Externo dispensa Connect/onboarding: aluno paga o treinador fora da app.
+        if (treinador.ModoPagamentoAluno == ModoPagamentoAluno.Plataforma)
+        {
+            var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
+            if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
+                return Result.Failure<VinculoResponse>(Error.Business("treinador_sem_onboarding", "Configure seus recebimentos (Stripe) antes de aceitar alunos."));
+        }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 

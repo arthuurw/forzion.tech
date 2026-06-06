@@ -232,6 +232,78 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("assinaturas_aluno", (string)null);
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.AssinaturaTreinador", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DataCancelamento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_cancelamento");
+
+                    b.Property<DateTime>("DataInicio")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_inicio");
+
+                    b.Property<DateTime>("DataProximaCobranca")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_proxima_cobranca");
+
+                    b.Property<Guid>("PlanoPlataformaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plano_plataforma_id");
+
+                    b.Property<Guid?>("PlanoPlataformaIdAgendado")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plano_plataforma_id_agendado");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TentativasFalhasConsecutivas")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("tentativas_falhas_consecutivas");
+
+                    b.Property<Guid>("TreinadorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("treinador_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id")
+                        .HasName("pk_assinaturas_treinador");
+
+                    b.HasIndex("PlanoPlataformaId")
+                        .HasDatabaseName("ix_assinaturas_treinador_plano_plataforma_id");
+
+                    b.HasIndex("PlanoPlataformaIdAgendado")
+                        .HasDatabaseName("ix_assinaturas_treinador_plano_plataforma_id_agendado");
+
+                    b.HasIndex("TreinadorId")
+                        .HasDatabaseName("ix_assinaturas_treinador_treinador_id");
+
+                    b.HasIndex("Status", "DataProximaCobranca")
+                        .HasDatabaseName("ix_assinaturas_treinador_status_data_proxima_cobranca");
+
+                    b.ToTable("assinaturas_treinador", (string)null);
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.Conta", b =>
                 {
                     b.Property<Guid>("Id")
@@ -892,6 +964,105 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("pagamentos", (string)null);
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.PagamentoTreinador", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AssinaturaTreinadorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assinatura_treinador_id");
+
+                    b.Property<string>("ClientSecret")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("client_secret");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DataPagamento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_pagamento");
+
+                    b.Property<string>("Finalidade")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("finalidade");
+
+                    b.Property<string>("MetodoPagamento")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Pix")
+                        .HasColumnName("metodo_pagamento");
+
+                    b.Property<DateTime?>("PixExpiracao")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pix_expiracao");
+
+                    b.Property<string>("PixQrCode")
+                        .HasColumnType("text")
+                        .HasColumnName("pix_qr_code");
+
+                    b.Property<string>("PixQrCodeUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pix_qr_code_url");
+
+                    b.Property<Guid?>("PlanoAlvoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plano_alvo_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("stripe_payment_intent_id");
+
+                    b.Property<Guid>("TreinadorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("treinador_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pagamentos_treinador");
+
+                    b.HasIndex("AssinaturaTreinadorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pagamentos_treinador_assinatura_id_pendente_unique")
+                        .HasFilter("status = 'Pendente'");
+
+                    b.HasIndex("PlanoAlvoId")
+                        .HasDatabaseName("ix_pagamentos_treinador_plano_alvo_id");
+
+                    b.HasIndex("StripePaymentIntentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pagamentos_treinador_stripe_payment_intent_id");
+
+                    b.HasIndex("TreinadorId")
+                        .HasDatabaseName("ix_pagamentos_treinador_treinador_id");
+
+                    b.HasIndex("AssinaturaTreinadorId", "Status")
+                        .HasDatabaseName("ix_pagamentos_treinador_assinatura_id_status");
+
+                    b.ToTable("pagamentos_treinador", (string)null);
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.PasswordResetToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1119,6 +1290,13 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("ModoPagamentoAluno")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Plataforma")
+                        .HasColumnName("modo_pagamento_aluno");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -1445,6 +1623,29 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasConstraintName("fk_assinaturas_aluno_vinculos_treinador_aluno_vinculo_id");
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.AssinaturaTreinador", b =>
+                {
+                    b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
+                        .WithMany()
+                        .HasForeignKey("PlanoPlataformaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_assinaturas_treinador_planos_plataforma_plano_plataforma_id");
+
+                    b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
+                        .WithMany()
+                        .HasForeignKey("PlanoPlataformaIdAgendado")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_assinaturas_treinador_planos_plataforma_plano_plataforma_id1");
+
+                    b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
+                        .WithMany()
+                        .HasForeignKey("TreinadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_assinaturas_treinador_treinadores_treinador_id");
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.ContaRecebimento", b =>
                 {
                     b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
@@ -1523,6 +1724,29 @@ namespace forzion.tech.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_pagamentos_assinaturas_aluno_assinatura_aluno_id");
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.PagamentoTreinador", b =>
+                {
+                    b.HasOne("forzion.tech.Domain.Entities.AssinaturaTreinador", null)
+                        .WithMany()
+                        .HasForeignKey("AssinaturaTreinadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pagamentos_treinador_assinaturas_treinador_assinatura_trein");
+
+                    b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
+                        .WithMany()
+                        .HasForeignKey("PlanoAlvoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_pagamentos_treinador_planos_plataforma_plano_alvo_id");
+
+                    b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
+                        .WithMany()
+                        .HasForeignKey("TreinadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pagamentos_treinador_treinadores_treinador_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.SerieConfig", b =>

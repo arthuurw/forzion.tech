@@ -43,13 +43,16 @@ public class FluxoCompletoTests
     [Fact]
     public async Task RegistrarTreinador_DadosValidos_CriaTreinadorAguardandoAprovacao()
     {
+        var planoFree = PlanoPlataforma.Criar("Free", TierPlano.Free, 10, 0m, DateTime.UtcNow).Value;
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoFree.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoFree);
+
         var handler = new RegistrarTreinadorHandler(
-            _contaRepo.Object, _treinadorRepo.Object, _passwordHasher.Object,
-            _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), TimeProvider.System,
+            _contaRepo.Object, _treinadorRepo.Object, _planoRepo.Object, Mock.Of<IAssinaturaTreinadorRepository>(),
+            _passwordHasher.Object, _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarTreinadorHandler>>());
 
         var result = await handler.HandleAsync(
-            new RegistrarTreinadorCommand("treinador@teste.com", "Senha123", "Carlos"));
+            new RegistrarTreinadorCommand("treinador@teste.com", "Senha123", "Carlos", planoFree.Id, ModoPagamentoAluno.Plataforma));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
@@ -127,9 +130,15 @@ public class FluxoCompletoTests
 
         var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, _planoRepo.Object, _vinculoRepo.Object);
 
+        var contaRecebimentoRepo = new Mock<IContaRecebimentoRepository>();
+        var contaOnboarded = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow).Value;
+        contaOnboarded.ConfigurarStripeConnect("acct_123", DateTime.UtcNow);
+        contaOnboarded.ConfirmarOnboarding(DateTime.UtcNow);
+        contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(contaOnboarded);
+
         var handler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
-            _alunoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
+            _alunoRepo.Object, _treinadorRepo.Object, contaRecebimentoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
             mockTxProvider.Object, TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
