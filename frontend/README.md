@@ -189,6 +189,7 @@ frontend/
 │   │   │       ├── exercicios/         # Biblioteca pessoal + copiar global
 │   │   │       ├── pacotes/            # CRUD pacotes (nome + descrição + preço)
 │   │   │       ├── pagamentos/         # Stripe Connect onboarding + status da conta
+│   │   │       ├── plano/              # Assinatura do plano da plataforma: status, troca, renovação (Pix/cartão)
 │   │   │       └── onboarding/
 │   │   │           └── retorno/        # Retorno pós-onboarding Stripe (verifica status)
 │   │   │
@@ -228,6 +229,8 @@ frontend/
 │   │   │   │   ├── resend-verification/route.ts # POST — reenvia verificação (sempre 200)
 │   │   │   │   ├── forgot-password/route.ts     # POST — solicita reset (sempre 200)
 │   │   │   │   ├── reset-password/route.ts      # POST — redefine senha via token
+│   │   │   │   ├── treinador/
+│   │   │   │   │   └── [treinadorId]/pagamento/route.ts # POST — 1ª cobrança do plano no cadastro
 │   │   │   │   └── treinadores/
 │   │   │   │       ├── route.ts        # GET — lista treinadores ativos (público)
 │   │   │   │       └── [treinadorId]/pacotes/route.ts
@@ -322,7 +325,7 @@ frontend/
 |------|--------|-----------|
 | `/` | público | Landing page — hero, planos (com tier, preço e `descricao` vindos da API), como funciona, CTA de cadastro |
 | `/login` | público | Formulário de login (403 `EMAIL_NAO_VERIFICADO` → orienta verificar e-mail) |
-| `/cadastro/treinador` | público | Cadastro de treinador (seleciona plano) |
+| `/cadastro/treinador` | público | Cadastro de treinador (seleciona plano + modo de pagamento do aluno); plano pago abre pagamento Pix/cartão inline (status `AguardandoPagamento`) antes de ativar a conta |
 | `/cadastro/aluno` | público | Cadastro de aluno (seleciona treinador + pacote) |
 | `/verify-email` | público | Verifica e-mail via `?token=`; em erro/expirado, botão "Reenviar verificação" |
 | `/resend-verification` | público | Reenvia link de verificação (informa e-mail; sucesso silencioso) |
@@ -345,6 +348,7 @@ frontend/
 | `/treinador/exercicios` | Treinador | Biblioteca pessoal + copiar exercícios globais |
 | `/treinador/pacotes` | Treinador | CRUD pacotes (nome, descrição, preço) |
 | `/treinador/pagamentos` | Treinador | Stripe Connect onboarding — configura conta de recebimentos |
+| `/treinador/plano` | Treinador | Assinatura do plano da plataforma — status, troca (upgrade/downgrade), renovação via Pix/cartão com polling |
 | `/treinador/onboarding/retorno` | Treinador | Retorno pós-onboarding Stripe — verifica e exibe status |
 | `/aluno` | Aluno | Dashboard |
 | `/aluno/fichas` | Aluno | Lista fichas ativas vinculadas ao aluno |
@@ -789,7 +793,7 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 | `lib/api/admin.ts` | `listTreinadores`, `aprovarTreinador`, `reprovarTreinador`, `inativarTreinador`, `excluirTreinador`, `atribuirPlano`, `listPlanos`, `criarPlano`, `atualizarPlano`, `excluirPlano`, `listGruposMusculares`, `criarGrupo`, `atualizarGrupo`, `excluirGrupo`, `listExerciciosGlobais`, `criarExercicioGlobal`, `atualizarExercicioGlobal`, `excluirExercicioGlobal` — **visibilidade admin:** `listAlunos`, `getAluno`, `getAlunoVinculo`, `getAlunoFichas`, `getFichaDetalhe`, `getAlunoExecucoes`, `getAlunoProgressao`, `getTreinadorAlunos`, `getTreinadorVinculos`, `getTreinadorTreinos`, `getTreino`, `getTreinadorPacotes` — **dashboard/saúde:** stats dashboard, health-report config/snapshots — **LGPD:** `exportarDadosConta`, `anonimizarConta` |
 | `lib/api/treinador.ts` | `listarAlunos`, `obterAluno`, `atualizarAluno`, `listarVinculos`, `aprovarVinculo`, `desvincularAluno`, `listarTreinos`, `listarExercicios`, `criarExercicio`, `atualizarExercicio`, `excluirExercicio`, `copiarExercicioGlobal`, `listarPacotes`, `criarPacote`, `atualizarPacote` |
 | `lib/api/aluno.ts` | `listarFichas`, `obterFicha`, `listarExecucoes`, `registrarExecucao`, `obterVinculo`, `solicitarTrocaTreinador` |
-| `lib/api/pagamento.ts` | `iniciarOnboarding`, `verificarOnboarding`, `gerarCobranca`, `obterPagamento`, `listarPagamentosAssinatura`, `obterAssinatura` |
+| `lib/api/pagamento.ts` | `iniciarOnboarding`, `verificarOnboarding`, `gerarCobranca`, `obterPagamento`, `listarPagamentosAssinatura`, `obterMinhaAssinatura`, `cancelarMinhaAssinatura` — **billing treinador:** `obterAssinaturaTreinador`, `cobrarRenovacaoPlano`, `trocarPlano`, `obterStatusPagamentoTreinador`, `listarPlanosPlataforma` |
 | `lib/api/conta.ts` | `obterPerfil`, `atualizarPerfil`, `alterarSenha`, `logout`, `exportarDados` (LGPD; Blob JSON), `excluirConta(senha)` (LGPD; anonimização) |
 
 ---
