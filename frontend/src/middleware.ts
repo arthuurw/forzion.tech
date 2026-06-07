@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import type { TipoConta } from "@/types";
 
-const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/forgot-password", "/reset-password", "/verify-email"];
+const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/forgot-password", "/reset-password", "/verify-email", "/resend-verification"];
 
 const AREA_BY_TIPO: Record<TipoConta, string> = {
   SystemAdmin: "/admin",

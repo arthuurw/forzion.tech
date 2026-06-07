@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
-public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
+public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider) : ITreinadorRepository
 {
     private readonly AppDbContext _context = context;
 
@@ -139,7 +139,7 @@ public class TreinadorRepository(AppDbContext context) : ITreinadorRepository
                 adminId,
                 treinador.Id,
                 nameof(Treinador),
-                DateTime.UtcNow);
+                timeProvider.GetUtcNow().UtcDateTime);
             if (logResult.IsSuccess)
                 await _context.LogsAprovacao.AddAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 

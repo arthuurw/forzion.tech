@@ -86,6 +86,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be(CancelarMinhaAssinaturaAlunoHandler.AssinaturaNaoEncontradaErrorCode);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
