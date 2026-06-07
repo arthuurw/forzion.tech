@@ -101,7 +101,7 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 ## ENDPOINTS
 | Método/Rota | Auth | Handler | Sucesso | Erros |
 |-------------|------|---------|---------|-------|
-| POST /treinador/onboarding | Treinador | IniciarOnboardingTreinadorHandler | 200 `{url}` | 403, 404, 500 |
+| POST /treinador/onboarding | Treinador | IniciarOnboardingTreinadorHandler | 200 `{url}` | 400 (URL fora do domínio), 403, 404, 422, 500 (`Stripe:UrlBase` ausente = misconfig + LogError) |
 | GET /treinador/onboarding/status | Treinador | VerificarOnboardingTreinadorHandler | 200 `{onboardingCompleto, contaConfigurada}` | 403, 404 |
 | POST /treinador/pagamentos/cobrar/{id}?metodo=Pix\|Cartao | Treinador | GerarCobrancaMensalHandler | 200 `PagamentoResponse` (treinador, sem ClientSecret) | 403, 404, 409, 422, 500 |
 | GET /aluno/pagamentos/{id} | Aluno | ObterStatusPagamentoHandler | 200 `PagamentoResponse` (aluno, COM ClientSecret) | 403, 404 |

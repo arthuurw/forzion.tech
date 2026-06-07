@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { Box, Typography, Button, Chip, Stack, CircularProgress, Alert, Paper } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { isAxiosError } from "axios";
 import { pagamentoApi } from "@/lib/api/pagamento";
-import type { OnboardingStatusResponse } from "@/types";
+import type { OnboardingStatusResponse, ProblemDetails } from "@/types";
 
 export default function PagamentosTreinadorPage() {
   const [status, setStatus] = useState<OnboardingStatusResponse | null>(null);
@@ -35,8 +36,9 @@ export default function PagamentosTreinadorPage() {
         `${origin}/treinador/pagamentos`,
       );
       window.location.href = res.data.url;
-    } catch {
-      setError("Erro ao iniciar cadastro. Tente novamente.");
+    } catch (err) {
+      const detalhe = isAxiosError(err) ? (err.response?.data as ProblemDetails | undefined)?.detail : undefined;
+      setError(detalhe ?? "Erro ao iniciar cadastro. Tente novamente.");
       setIniciando(false);
     }
   };

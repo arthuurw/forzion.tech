@@ -32,6 +32,7 @@ using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Api.Endpoints.Treinador;
 
@@ -46,14 +47,20 @@ public static class TreinadorEndpoints
             [FromBody] IniciarOnboardingRequest request,
             [FromServices] IniciarOnboardingTreinadorHandler handler,
             [FromServices] IUserContext userContext,
+            [FromServices] ILogger<Program> logger,
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
-            // Valida que as URLs de retorno pertencem ao domínio configurado (prevenção de open redirect).
-            // Rejeita se Stripe:UrlBase não estiver configurado — nunca pular a validação.
+            // UrlBase ausente é misconfiguração de servidor (não request inválido): 500 + log, nunca 400.
             var urlBase = configuration["Stripe:UrlBase"];
-            if (string.IsNullOrEmpty(urlBase)
-                || !UrlValidator.IsUrlPermitida(request.UrlRetorno, urlBase)
+            if (string.IsNullOrEmpty(urlBase))
+            {
+                logger.LogError("Stripe:UrlBase não configurado — onboarding do treinador indisponível.");
+                return Results.Problem(detail: "Configuração de pagamento indisponível. Contate o suporte.", statusCode: 500);
+            }
+
+            // Valida que as URLs de retorno pertencem ao domínio configurado (prevenção de open redirect).
+            if (!UrlValidator.IsUrlPermitida(request.UrlRetorno, urlBase)
                 || !UrlValidator.IsUrlPermitida(request.UrlCancelamento, urlBase))
                 return Results.Problem(detail: "URLs de retorno fora do domínio permitido.", statusCode: 400);
 
@@ -66,8 +73,10 @@ public static class TreinadorEndpoints
         })
         .WithSummary("Inicia o onboarding Stripe Connect do treinador e retorna o link")
         .Produces<object>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound)
-        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+        .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/plano/cancelar", async (
             [FromServices] CancelarMinhaAssinaturaTreinadorHandler handler,

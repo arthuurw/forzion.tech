@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 
@@ -29,5 +29,23 @@ describe("PagamentosTreinadorPage (Recebimentos)", () => {
     render(<Page />);
 
     expect(await screen.findByRole("button", { name: /Configurar recebimentos/ })).toBeInTheDocument();
+  });
+
+  it("falha no onboarding surfaca o detalhe real do backend", async () => {
+    onboardingHandler("Plataforma", false);
+    server.use(
+      http.post("*/treinador/onboarding", () =>
+        HttpResponse.json(
+          { title: "Erro", detail: "Configuração de pagamento indisponível. Contate o suporte.", status: 500 },
+          { status: 500 },
+        ),
+      ),
+    );
+    const { default: Page } = await import("@/app/(treinador)/treinador/pagamentos/page");
+    render(<Page />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Configurar recebimentos/ }));
+
+    expect(await screen.findByText("Configuração de pagamento indisponível. Contate o suporte.")).toBeInTheDocument();
   });
 });
