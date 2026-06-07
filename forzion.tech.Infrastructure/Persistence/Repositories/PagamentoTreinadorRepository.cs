@@ -22,6 +22,15 @@ public class PagamentoTreinadorRepository(AppDbContext context) : IPagamentoTrei
             .FirstOrDefaultAsync(p => p.AssinaturaTreinadorId == assinaturaTreinadorId && p.Status == PagamentoStatus.Pendente, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<PagamentoTreinador?> ObterPagoPorAssinaturaAsync(Guid assinaturaTreinadorId, CancellationToken cancellationToken = default) =>
+        await context.PagamentosTreinador
+            .Where(p => p.AssinaturaTreinadorId == assinaturaTreinadorId
+                && p.Status == PagamentoStatus.Pago
+                && p.StripePaymentIntentId != null)
+            .OrderBy(p => p.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task AdicionarAsync(PagamentoTreinador pagamento, CancellationToken cancellationToken = default) =>
         await context.PagamentosTreinador.AddAsync(pagamento, cancellationToken).ConfigureAwait(false);
 }
