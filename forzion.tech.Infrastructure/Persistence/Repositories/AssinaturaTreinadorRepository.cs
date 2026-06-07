@@ -27,6 +27,14 @@ public class AssinaturaTreinadorRepository(AppDbContext context) : IAssinaturaTr
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<AssinaturaTreinador>> ListarParaPreAvisoAsync(DateTime inicio, DateTime fim, CancellationToken cancellationToken = default) =>
+        await context.AssinaturasTreinador
+            .AsNoTracking()
+            .Where(a => (a.Status == AssinaturaTreinadorStatus.Ativa || a.Status == AssinaturaTreinadorStatus.Inadimplente)
+                        && a.DataProximaCobranca >= inicio && a.DataProximaCobranca < fim)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task AdicionarAsync(AssinaturaTreinador assinatura, CancellationToken cancellationToken = default) =>
         await context.AssinaturasTreinador.AddAsync(assinatura, cancellationToken).ConfigureAwait(false);
 }

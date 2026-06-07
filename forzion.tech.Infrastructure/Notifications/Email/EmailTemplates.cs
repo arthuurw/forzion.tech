@@ -188,6 +188,42 @@ internal static class EmailTemplates
             """);
     }
 
+    public static string CobrancaProxima(string nome, decimal valor, DateTime dataProximaCobranca, string linkPortal)
+    {
+        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
+        var valorFormatado = valor.ToString("N2", ptBr);
+        var dataFormatada = dataProximaCobranca.ToString("dd/MM/yyyy", ptBr);
+        var dataLimite = dataProximaCobranca.AddDays(-1).ToString("dd/MM/yyyy", ptBr);
+        return Layout(
+            "Sua assinatura renova em 3 dias",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nome)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Seu plano forzion.tech renova automaticamente em <strong>3 dias</strong>.
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valorFormatado}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Data da cobrança</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{dataFormatada}</td>
+              </tr>
+            </table>
+            <p style="color:#444;line-height:1.6">
+              Se desejar, você pode cancelar até <strong>{dataLimite}</strong> pelo portal — sem nova cobrança.
+            </p>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Acessar portal
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, fale com o suporte forzion.tech.
+            </p>
+            """);
+    }
+
     public static string CobrancaFalhou(string nomeAluno, decimal valor, int tentativasFalhas, string linkPortal)
     {
         // Formatação pt-BR explícita (R$ 149,90) — independe de culture do processo.
