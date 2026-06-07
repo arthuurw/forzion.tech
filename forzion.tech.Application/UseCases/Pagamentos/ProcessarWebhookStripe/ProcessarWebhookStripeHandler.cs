@@ -352,7 +352,11 @@ public class ProcessarWebhookStripeHandler(
 
         if (pagamento.Status == PagamentoStatus.EmDisputa)
         {
-            logger.LogDebug("PaymentIntent {PaymentIntentId} já em disputa. Ignorando re-entrega.", paymentIntentId);
+            // Redelivery: Dispute.Update é overwrite-idempotente. Reenvia a evidência para
+            // recuperar de falha na 1ª entrega — não há mutação de negócio (só re-PUT no Stripe).
+            var assinaturaExistente = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
+            await EnviarEvidenciaDisputaAlunoAsync(disputeId, assinaturaExistente, pagamento, ct).ConfigureAwait(false);
+            logger.LogDebug("PaymentIntent {PaymentIntentId} já em disputa. Evidência reenviada (idempotente).", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
@@ -391,28 +395,38 @@ public class ProcessarWebhookStripeHandler(
 
     private async Task EnviarEvidenciaDisputaAlunoAsync(string? disputeId, AssinaturaAluno? assinatura, Pagamento pagamento, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(disputeId) || assinatura is null) return;
+        if (assinatura is null) return;
+
+        string? email = null;
+        var aluno = await alunoRepository.ObterPorIdAsync(assinatura.AlunoId, ct).ConfigureAwait(false);
+        if (aluno is not null)
+        {
+            var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, ct).ConfigureAwait(false);
+            email = conta?.Email.Value ?? aluno.Email?.Value;
+        }
+
+        await EnviarEvidenciaDisputaAsync(disputeId, email, assinatura.DataInicio, pagamento.DataPagamento, pagamento.Id, ct).ConfigureAwait(false);
+    }
+
+    // DataUltimaAtividade é omitida: sem sinal real de uso barato, repetir DataUltimoPagamento
+    // nos dois campos seria evidência falsa. Envia a data de pagamento uma única vez.
+    private async Task EnviarEvidenciaDisputaAsync(
+        string? disputeId, string? email, DateTime? dataAtivacao, DateTime? dataPagamento, Guid pagamentoId, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(disputeId)) return;
 
         try
         {
-            string? email = null;
-            var aluno = await alunoRepository.ObterPorIdAsync(assinatura.AlunoId, ct).ConfigureAwait(false);
-            if (aluno is not null)
-            {
-                var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, ct).ConfigureAwait(false);
-                email = conta?.Email.Value ?? aluno.Email?.Value;
-            }
-
             await stripeService.EnviarEvidenciaDisputaAsync(
                 disputeId,
-                new DisputaEvidencia(email, assinatura.DataInicio, pagamento.DataPagamento, pagamento.DataPagamento),
+                new DisputaEvidencia(email, dataAtivacao, null, dataPagamento),
                 ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             logger.LogCritical(ex,
                 "Falha ao enviar evidência da disputa {DisputeId} (pagamento {PagamentoId}). Disputa já marcada; responder manualmente no Stripe.",
-                disputeId, pagamento.Id);
+                disputeId, pagamentoId);
         }
     }
 
@@ -420,7 +434,9 @@ public class ProcessarWebhookStripeHandler(
     {
         if (pagamento.Status == PagamentoStatus.EmDisputa)
         {
-            logger.LogDebug("PagamentoTreinador {PaymentIntentId} já em disputa. Ignorando re-entrega.", pagamento.StripePaymentIntentId);
+            var assinaturaExistente = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+            await EnviarEvidenciaDisputaTreinadorAsync(disputeId, assinaturaExistente, pagamento, ct).ConfigureAwait(false);
+            logger.LogDebug("PagamentoTreinador {PaymentIntentId} já em disputa. Evidência reenviada (idempotente).", pagamento.StripePaymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
@@ -454,27 +470,15 @@ public class ProcessarWebhookStripeHandler(
     {
         if (string.IsNullOrEmpty(disputeId)) return;
 
-        try
+        string? email = null;
+        var treinador = await treinadorRepository.ObterPorIdAsync(pagamento.TreinadorId, ct).ConfigureAwait(false);
+        if (treinador is not null)
         {
-            var treinador = await treinadorRepository.ObterPorIdAsync(pagamento.TreinadorId, ct).ConfigureAwait(false);
-            string? email = null;
-            if (treinador is not null)
-            {
-                var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, ct).ConfigureAwait(false);
-                email = conta?.Email.Value;
-            }
+            var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, ct).ConfigureAwait(false);
+            email = conta?.Email.Value;
+        }
 
-            await stripeService.EnviarEvidenciaDisputaAsync(
-                disputeId,
-                new DisputaEvidencia(email, assinatura?.DataInicio, pagamento.DataPagamento, pagamento.DataPagamento),
-                ct).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Falha ao enviar evidência da disputa {DisputeId} (pagamento treinador {PagamentoId}). Disputa já marcada; responder manualmente no Stripe.",
-                disputeId, pagamento.Id);
-        }
+        await EnviarEvidenciaDisputaAsync(disputeId, email, assinatura?.DataInicio, pagamento.DataPagamento, pagamento.Id, ct).ConfigureAwait(false);
     }
 
     private async Task<ProcessarEventoResultado> ProcessarContaAtualizadaAsync(string accountId, bool chargesEnabled, CancellationToken ct)
