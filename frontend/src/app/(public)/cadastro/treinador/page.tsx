@@ -12,6 +12,7 @@ import FormTextField from "@/components/forms/FormTextField";
 import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import PagamentoSignup from "@/components/pagamento/PagamentoSignup";
+import CheckoutTermos from "@/components/ui/CheckoutTermos";
 import {
   cadastroTreinadorSchema,
   type CadastroTreinadorFormData,
@@ -154,6 +155,7 @@ export default function CadastroTreinadorPage() {
   }
 
   if (step === 2) {
+    const planoEscolhido = planos?.find((p) => p.planoId === methods.getValues("planoPlataformaId"));
     return (
       <Box>
         <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Pagamento do plano</Typography>
@@ -162,6 +164,12 @@ export default function CadastroTreinadorPage() {
         </Typography>
 
         <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+
+        {planoEscolhido && (
+          <Box sx={{ mb: 3 }}>
+            <CheckoutTermos valor={planoEscolhido.preco} />
+          </Box>
+        )}
 
         {pagamento ? (
           <PagamentoSignup pagamento={pagamento} onPagoCartao={() => setFinalizado("cartao")} />
