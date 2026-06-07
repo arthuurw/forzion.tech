@@ -19,9 +19,9 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import dayjs from "dayjs";
 import { pagamentoApi } from "@/lib/api/pagamento";
-import { contaApi } from "@/lib/api/conta";
 import { useAuth } from "@/lib/auth/context";
-import { extractApiError } from "@/lib/api/extractApiError";
+import { extractApiError, extractApiErrorInfo } from "@/lib/api/extractApiError";
+import { baixarMeusDados as baixarMeusDadosBlob } from "@/lib/utils/downloadBlob";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type {
   AssinaturaTreinadorResponse,
@@ -33,6 +33,8 @@ type Etapa = "idle" | "confirmando" | "pagando" | "sucesso";
 
 export const CANCELAR_PLANO_DESCRICAO =
   "Seu acesso será encerrado imediatamente. Ação irreversível pelo portal.";
+
+const OFFBOARDING_CODE = "assinatura_treinador.offboarding_necessario";
 
 const OFFBOARDING_MENSAGEM =
   "Encerre os vínculos com seus alunos antes de cancelar o plano.";
@@ -140,13 +142,7 @@ export default function PlanoTreinadorPage() {
     setBaixando(true);
     setErroCancelar("");
     try {
-      const res = await contaApi.exportarDados();
-      const url = URL.createObjectURL(res.data as Blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "meus-dados.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      await baixarMeusDadosBlob();
     } catch (err) {
       setErroCancelar(extractApiError(err, "Erro ao exportar dados."));
     } finally {
@@ -161,9 +157,8 @@ export default function PlanoTreinadorPage() {
       await pagamentoApi.cancelarPlanoTreinador();
       await logout();
     } catch (err) {
-      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 422 && code === "offboarding_necessario") {
+      const { code, status } = extractApiErrorInfo(err);
+      if (code === OFFBOARDING_CODE) {
         setErroCancelar(OFFBOARDING_MENSAGEM);
       } else if (status === 404) {
         setErroCancelar("Nenhuma assinatura ativa para cancelar.");
