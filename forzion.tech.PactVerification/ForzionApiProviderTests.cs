@@ -127,6 +127,7 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
             services.RemoveAll<IVinculoTreinadorAlunoRepository>();
             services.RemoveAll<ITreinoAlunoRepository>();
             services.RemoveAll<IExercicioRepository>();
+            services.RemoveAll<ISystemUserRepository>();
             services.RemoveAll<IUserContext>();
 
             services.AddScoped(_ => BuildAlunoRepositoryMock());
@@ -135,6 +136,7 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
             services.AddScoped(_ => BuildVinculoRepositoryMock());
             services.AddScoped(_ => BuildTreinoAlunoRepositoryMock());
             services.AddScoped(_ => BuildExercicioRepositoryMock());
+            services.AddScoped(_ => BuildSystemUserRepositoryMock());
             services.AddScoped(_ => BuildUserContextMock());
 
             services.AddAuthentication("Test")
@@ -294,6 +296,21 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
         var mock = new Mock<IExercicioRepository>();
         mock.Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, string>());
+        return mock.Object;
+    }
+
+    private static ISystemUserRepository BuildSystemUserRepositoryMock()
+    {
+        var systemUser = SystemUser.Criar(
+            Guid.NewGuid(),
+            "Admin Forzion",
+            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)).Value;
+
+        var mock = new Mock<ISystemUserRepository>();
+        mock.Setup(r => r.ObterPorContaIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(systemUser);
+        mock.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(systemUser);
         return mock.Object;
     }
 
