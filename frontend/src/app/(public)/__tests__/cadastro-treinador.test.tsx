@@ -94,6 +94,30 @@ describe("CadastroTreinadorPage (wizard)", () => {
     expect(screen.getByText(/00020126fake-pix/)).toBeInTheDocument();
   });
 
+  it("exibe transparência CDC art. 31 antes do CTA de pagamento (R6)", async () => {
+    planosHandler();
+    const treinador: TreinadorResponse = {
+      treinadorId: "t-9", nome: "Maria", contaId: "c-1", status: "AguardandoPagamento",
+      planoPlataformaId: "plano-basic", createdAt: new Date().toISOString(),
+    };
+    server.use(http.post("*/auth/register/treinador", () => HttpResponse.json(treinador, { status: 201 })));
+
+    const Page = await importPage();
+    render(<Page />);
+    await waitFor(() => screen.getByText(/Basic — /));
+
+    preencherDados();
+    fireEvent.click(screen.getByRole("radio", { name: /Basic/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuar/ }));
+
+    expect(await screen.findByText(/Pagamento do plano/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s?50,00/)).toBeInTheDocument();
+    expect(screen.getByText(/mensal/i)).toBeInTheDocument();
+    expect(screen.getByText(/próxima cobrança/i)).toBeInTheDocument();
+    expect(screen.getByText(/7 dias/i)).toBeInTheDocument();
+    expect(screen.getByText(/reembolso/i)).toBeInTheDocument();
+  });
+
   it("falha ao carregar planos exibe erro", async () => {
     server.use(http.get("*/auth/planos", () => HttpResponse.error()));
     const Page = await importPage();
