@@ -741,6 +741,20 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     }
 
     [Fact]
+    public async Task Post_Onboarding_UrlBaseNaoConfigurada_Retorna500()
+    {
+        // Stripe:UrlBase vazio é misconfiguração de servidor, não request inválido — deve ser 500, não 400.
+        var client = _factory.WithWebHostBuilder(b => b.UseSetting("Stripe:UrlBase", "")).CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "treinador");
+
+        var response = await client.PostAsJsonAsync("/treinador/onboarding",
+            new { UrlRetorno = "http://localhost/retorno", UrlCancelamento = "http://localhost/cancelar" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+    }
+
+    [Fact]
     public async Task Post_Onboarding_Falha_Retorna422()
     {
         _factory.IniciarOnboardingHandlerMock
