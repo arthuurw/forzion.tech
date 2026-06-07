@@ -95,15 +95,21 @@ public class RegistrarAlunoHandler(
 
         if (command.ColetaDadosSaude && command.ConsentimentoDadosSaude)
         {
+            var observacao = command.ConsentimentoDadosSaudeEm is { } reportado
+                ? $"v1; cliente reportou: {reportado.ToUniversalTime():o}"
+                : "v1";
+
             var consentLog = LogAprovacao.Registrar(
                 TipoAcaoAprovacao.ConsentimentoAnamnese,
                 realizadoPorId: conta.Id,
                 entidadeId: conta.Id,
                 entidadeTipo: "Conta",
-                command.ConsentimentoDadosSaudeEm ?? agora,
-                observacao: "v1");
-            if (consentLog.IsSuccess)
-                await logAprovacaoRepository.AdicionarAsync(consentLog.Value, cancellationToken).ConfigureAwait(false);
+                agora,
+                observacao);
+            if (consentLog.IsFailure)
+                return Result.Failure<AlunoResponse>(consentLog.Error!);
+
+            await logAprovacaoRepository.AdicionarAsync(consentLog.Value, cancellationToken).ConfigureAwait(false);
         }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

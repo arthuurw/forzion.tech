@@ -25,5 +25,6 @@ public record RegistrarAlunoCommand(
         || NivelCondicionamento is not null
         || !string.IsNullOrWhiteSpace(FocoTreino)
         || !string.IsNullOrWhiteSpace(LimitacoesFisicas)
-        || !string.IsNullOrWhiteSpace(Doencas);
+        || !string.IsNullOrWhiteSpace(Doencas)
+        || !string.IsNullOrWhiteSpace(ObservacoesAdicionais);
 }

@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -23,14 +24,12 @@ namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssina
 public class CancelarMinhaAssinaturaAlunoHandler(
     IAssinaturaAlunoRepository assinaturaRepository,
     IPagamentoRepository pagamentoRepository,
-    IStripeService stripeService,
+    ReembolsoArrependimentoService reembolsoService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     ILogger<CancelarMinhaAssinaturaAlunoHandler> logger)
 {
     public const string AssinaturaNaoEncontradaErrorCode = "assinatura_nao_encontrada";
-
-    private const int PrazoArrependimentoDias = 7;
 
     public virtual async Task<Result> HandleAsync(
         CancelarMinhaAssinaturaAlunoCommand command,
@@ -62,8 +61,7 @@ public class CancelarMinhaAssinaturaAlunoHandler(
 
         // Reembolso DEPOIS do commit: se o commit falhar, nada é estornado. Falha no estorno
         // pós-commit não reverte o cancelamento (LogCritical + reembolso manual).
-        if ((agora - assinatura.DataInicio).TotalDays <= PrazoArrependimentoDias)
-            await ReembolsarPrimeiraContratacaoAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
+        await ReembolsarPrimeiraContratacaoAsync(assinatura.Id, agora, cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation(
             "Aluno {AlunoId} cancelou a própria assinatura {AssinaturaAlunoId}.",
@@ -72,7 +70,7 @@ public class CancelarMinhaAssinaturaAlunoHandler(
         return Result.Success();
     }
 
-    private async Task ReembolsarPrimeiraContratacaoAsync(Guid assinaturaId, CancellationToken cancellationToken)
+    private async Task ReembolsarPrimeiraContratacaoAsync(Guid assinaturaId, DateTime agora, CancellationToken cancellationToken)
     {
         var pagamentos = await pagamentoRepository
             .ListarPorAssinaturaAlunoAsync(assinaturaId, cancellationToken)
@@ -83,20 +81,10 @@ public class CancelarMinhaAssinaturaAlunoHandler(
             .OrderBy(p => p.CreatedAt)
             .FirstOrDefault();
 
-        if (pago is null) return;
-
-        try
-        {
-            // Charge destino (aluno paga na plataforma com TransferData) → reverter transferência e fee.
-            // O status Estornado chega depois via webhook charge.refunded — não muta síncrono aqui.
-            await stripeService.CriarReembolsoAsync(pago.StripePaymentIntentId!, reverterTransferencia: true, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            // CDC: reembolso é direito do consumidor, mas falha no Stripe NÃO bloqueia o cancelamento.
-            logger.LogCritical(ex,
-                "Falha ao reembolsar pagamento {PaymentIntentId} da assinatura {AssinaturaAlunoId} no cancelamento de 7 dias. Cancelamento prossegue; reembolso manual necessário.",
-                pago.StripePaymentIntentId, assinaturaId);
-        }
+        // Charge destino do aluno → reverter transferência e fee (G1). Status Estornado chega
+        // depois via webhook charge.refunded — não muta síncrono aqui.
+        await reembolsoService
+            .ReembolsarSeDentroDoPrazoAsync(agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: true, cancellationToken)
+            .ConfigureAwait(false);
     }
 }
