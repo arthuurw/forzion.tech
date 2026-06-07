@@ -190,10 +190,11 @@ public class RegistrarAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_AnamneseComConsentimento_RegistraLogAprovacaoComTimestampDoCliente()
+    public async Task HandleAsync_AnamneseComConsentimento_RegistraLogComTimestampDoServidor()
     {
         var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
-        var consentidoEm = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        var antesDaChamada = DateTime.UtcNow;
+        var consentidoEmCliente = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
         LogAprovacao? logRegistrado = null;
         _logAprovacaoRepo
             .Setup(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()))
@@ -203,14 +204,52 @@ public class RegistrarAlunoHandlerTests
             "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
             Doencas: "Hipertensão",
             ConsentimentoDadosSaude: true,
-            ConsentimentoDadosSaudeEm: consentidoEm));
+            ConsentimentoDadosSaudeEm: consentidoEmCliente));
 
         result.IsSuccess.Should().BeTrue();
         logRegistrado.Should().NotBeNull();
         logRegistrado!.TipoAcao.Should().Be(TipoAcaoAprovacao.ConsentimentoAnamnese);
-        logRegistrado.CreatedAt.Should().Be(consentidoEm);
+        logRegistrado.CreatedAt.Kind.Should().Be(DateTimeKind.Utc);
+        logRegistrado.CreatedAt.Should().NotBe(consentidoEmCliente);
+        logRegistrado.CreatedAt.Should().BeOnOrAfter(antesDaChamada).And.BeOnOrBefore(DateTime.UtcNow);
+        logRegistrado.Observacao.Should().Contain("cliente reportou");
         logRegistrado.EntidadeTipo.Should().Be("Conta");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AnamneseSemTimestampCliente_RegistraLogSemObservacaoDeCliente()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+        LogAprovacao? logRegistrado = null;
+        _logAprovacaoRepo
+            .Setup(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()))
+            .Callback<LogAprovacao, CancellationToken>((l, _) => logRegistrado = l);
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            Doencas: "Hipertensão",
+            ConsentimentoDadosSaude: true));
+
+        result.IsSuccess.Should().BeTrue();
+        logRegistrado.Should().NotBeNull();
+        logRegistrado!.Observacao.Should().Be("v1");
+        logRegistrado.CreatedAt.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ObservacoesAdicionais_ExigeConsentimentoDeSaude()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            ObservacoesAdicionais: "Tenho diabetes tipo 2",
+            ConsentimentoDadosSaude: false));
+
+        await act.Should().ThrowAsync<ValidationException>()
+            .Where(e => e.Errors.Any(f => f.ErrorCode == "consentimento_saude_obrigatorio"));
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
