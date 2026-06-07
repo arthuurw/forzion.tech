@@ -18,6 +18,7 @@ public class RegistrarAlunoHandler(
     IPacoteRepository pacoteRepository,
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
+    ILogAprovacaoRepository logAprovacaoRepository,
     IValidator<RegistrarAlunoCommand> validator,
     TimeProvider timeProvider,
     ILogger<RegistrarAlunoHandler> logger)
@@ -91,6 +92,20 @@ public class RegistrarAlunoHandler(
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
         await vinculoRepository.AdicionarAsync(vinculo, cancellationToken).ConfigureAwait(false);
+
+        if (command.ColetaDadosSaude && command.ConsentimentoDadosSaude)
+        {
+            var consentLog = LogAprovacao.Registrar(
+                TipoAcaoAprovacao.ConsentimentoAnamnese,
+                realizadoPorId: conta.Id,
+                entidadeId: conta.Id,
+                entidadeTipo: "Conta",
+                command.ConsentimentoDadosSaudeEm ?? agora,
+                observacao: "v1");
+            if (consentLog.IsSuccess)
+                await logAprovacaoRepository.AdicionarAsync(consentLog.Value, cancellationToken).ConfigureAwait(false);
+        }
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Aluno {AlunoId} registrado com vínculo pendente ao treinador {TreinadorId}.", aluno.Id, command.TreinadorId);

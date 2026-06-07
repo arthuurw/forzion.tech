@@ -68,7 +68,12 @@ public static class AuthEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new RegistrarAlunoCommand(request.Email, request.Senha, request.Nome, request.TreinadorId, request.PacoteId, request.Telefone),
+                new RegistrarAlunoCommand(
+                    request.Email, request.Senha, request.Nome, request.TreinadorId, request.PacoteId,
+                    request.Telefone, request.DiasDisponiveis, request.TempoDisponivelMinutos,
+                    request.Finalidade, request.FocoTreino, request.NivelCondicionamento,
+                    request.LimitacoesFisicas, request.Doencas, request.ObservacoesAdicionais,
+                    request.ConsentimentoDadosSaude, request.ConsentimentoDadosSaudeEm),
                 cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
@@ -206,7 +211,23 @@ public static class AuthEndpoints
 
 public record LoginRequest(string Email, string Senha);
 public record RegistrarTreinadorRequest(string Email, string Senha, string Nome, Guid PlanoPlataformaId, ModoPagamentoAluno ModoPagamentoAluno, string? Telefone = null);
-public record RegistrarAlunoRequest(string Email, string Senha, string Nome, Guid TreinadorId, Guid PacoteId, string? Telefone = null);
+public record RegistrarAlunoRequest(
+    string Email,
+    string Senha,
+    string Nome,
+    Guid TreinadorId,
+    Guid PacoteId,
+    string? Telefone = null,
+    int? DiasDisponiveis = null,
+    int? TempoDisponivelMinutos = null,
+    FinalidadeTreino? Finalidade = null,
+    string? FocoTreino = null,
+    NivelCondicionamento? NivelCondicionamento = null,
+    string? LimitacoesFisicas = null,
+    string? Doencas = null,
+    string? ObservacoesAdicionais = null,
+    bool ConsentimentoDadosSaude = false,
+    DateTime? ConsentimentoDadosSaudeEm = null);
 public record IniciarPagamentoPlanoRequest(MetodoPagamento Metodo);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NovaSenha);
