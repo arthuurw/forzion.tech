@@ -111,9 +111,9 @@ describe("treinador/plano — cancelamento self-service", () => {
     await waitFor(() => expect(logoutMock).toHaveBeenCalled());
   });
 
-  it("422 offboarding_necessario mostra mensagem específica", async () => {
+  it("422 assinatura_treinador.offboarding_necessario mostra mensagem específica", async () => {
     api.cancelarPlanoTreinador.mockRejectedValue({
-      response: { status: 422, data: { code: "offboarding_necessario" } },
+      response: { status: 422, data: { code: "assinatura_treinador.offboarding_necessario" } },
     });
 
     await abrirDialogCancelar();
@@ -122,6 +122,22 @@ describe("treinador/plano — cancelamento self-service", () => {
     await waitFor(() => {
       expect(
         screen.getByText(/encerre os vínculos com seus alunos antes de cancelar o plano/i),
+      ).toBeInTheDocument();
+    });
+    expect(logoutMock).not.toHaveBeenCalled();
+  });
+
+  it("404 mostra 'Nenhuma assinatura ativa para cancelar'", async () => {
+    api.cancelarPlanoTreinador.mockRejectedValue({
+      response: { status: 404, data: {} },
+    });
+
+    await abrirDialogCancelar();
+    fireEvent.click(await screen.findByRole("button", { name: /^confirmar cancelamento$/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/nenhuma assinatura ativa para cancelar/i),
       ).toBeInTheDocument();
     });
     expect(logoutMock).not.toHaveBeenCalled();
