@@ -30,14 +30,29 @@ jobs:
             exit 0
           fi
 
-          echo "${ELEGIVEIS}" | while read -r ID; do
+          FALHAS=0
+          PRIMEIRA=1
+          # itera por substituição de processo (não pipe) p/ FALHAS persistir após o loop.
+          while read -r ID; do
             [ -z "${ID}" ] && continue
+            # rate-limit interno = 5 req/min → 1 DELETE a cada 15s. Sem sleep antes do 1º.
+            if [ "${PRIMEIRA}" -eq 1 ]; then PRIMEIRA=0; else sleep 15; fi
             echo "Anonimizando conta ${ID}"
-            curl -fsS -X DELETE \
+            STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE \
               -H "X-Internal-Key: ${KEY}" \
-              "${BASE}/internal/lgpd/contas/${ID}"
-            sleep 1
-          done
+              "${BASE}/internal/lgpd/contas/${ID}")
+            if [ "${STATUS}" -ge 200 ] && [ "${STATUS}" -lt 300 ]; then
+              echo "  ok (${STATUS})"
+            else
+              echo "  FALHA (${STATUS}) na conta ${ID}"
+              FALHAS=$((FALHAS + 1))
+            fi
+          done <<< "${ELEGIVEIS}"
+
+          if [ "${FALHAS}" -ne 0 ]; then
+            echo "Purga concluída com ${FALHAS} falha(s)."
+            exit 1
+          fi
 
       - name: Notificar falha via issue
         if: failure()
