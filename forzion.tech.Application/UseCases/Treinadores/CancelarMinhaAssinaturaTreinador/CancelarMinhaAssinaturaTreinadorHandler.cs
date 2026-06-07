@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
@@ -11,14 +12,12 @@ public class CancelarMinhaAssinaturaTreinadorHandler(
     IAssinaturaTreinadorRepository assinaturaRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IPagamentoTreinadorRepository pagamentoRepository,
-    IStripeService stripeService,
+    ReembolsoArrependimentoService reembolsoService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     ILogger<CancelarMinhaAssinaturaTreinadorHandler> logger)
 {
     public const string AssinaturaNaoEncontradaErrorCode = "assinatura_nao_encontrada";
-
-    private const int PrazoArrependimentoDias = 7;
 
     public virtual async Task<Result<CancelarMinhaAssinaturaTreinadorResponse>> HandleAsync(
         CancelarMinhaAssinaturaTreinadorCommand command,
@@ -47,8 +46,7 @@ public class CancelarMinhaAssinaturaTreinadorHandler(
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        if ((agora - assinatura.DataInicio).TotalDays <= PrazoArrependimentoDias)
-            await ReembolsarPrimeiraContratacaoAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
+        await ReembolsarPrimeiraContratacaoAsync(assinatura.Id, agora, cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation(
             "Treinador {TreinadorId} cancelou a própria assinatura {AssinaturaTreinadorId}.",
@@ -57,23 +55,14 @@ public class CancelarMinhaAssinaturaTreinadorHandler(
         return Result.Success(new CancelarMinhaAssinaturaTreinadorResponse(agora));
     }
 
-    private async Task ReembolsarPrimeiraContratacaoAsync(Guid assinaturaId, CancellationToken cancellationToken)
+    private async Task ReembolsarPrimeiraContratacaoAsync(Guid assinaturaId, DateTime agora, CancellationToken cancellationToken)
     {
         var pago = await pagamentoRepository
             .ObterPagoPorAssinaturaAsync(assinaturaId, cancellationToken)
             .ConfigureAwait(false);
 
-        if (pago?.StripePaymentIntentId is null) return;
-
-        try
-        {
-            await stripeService.CriarReembolsoAsync(pago.StripePaymentIntentId, reverterTransferencia: false, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Falha ao reembolsar pagamento {PaymentIntentId} da assinatura treinador {AssinaturaTreinadorId} no cancelamento de 7 dias. Cancelamento prossegue; reembolso manual necessário.",
-                pago.StripePaymentIntentId, assinaturaId);
-        }
+        await reembolsoService
+            .ReembolsarSeDentroDoPrazoAsync(agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: false, cancellationToken)
+            .ConfigureAwait(false);
     }
 }
