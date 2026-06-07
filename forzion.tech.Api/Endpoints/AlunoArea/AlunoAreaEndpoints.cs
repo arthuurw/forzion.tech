@@ -135,10 +135,11 @@ public static class AlunoAreaEndpoints
 
         group.MapGet("/progressao", async (
             [FromServices] ObterMinhaProgressaoHandler handler,
+            [FromServices] TimeProvider timeProvider,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var hoje = DateTime.UtcNow.Date;
+            var hoje = timeProvider.GetUtcNow().UtcDateTime.Date;
             var de = DateTime.TryParse(httpContext.Request.Query["de"], System.Globalization.CultureInfo.InvariantCulture, out var deParsed)
                 ? deParsed.Date
                 : hoje.AddDays(-90);

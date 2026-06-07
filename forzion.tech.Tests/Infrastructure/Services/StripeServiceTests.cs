@@ -22,7 +22,7 @@ public class StripeServiceTests
     private static StripeService CriarServico(string webhookSecret = WebhookSecret)
     {
         var settings = Options.Create(new StripeSettings { WebhookSecret = webhookSecret });
-        return new StripeService(settings, Mock.Of<ILogger<StripeService>>());
+        return new StripeService(settings, TimeProvider.System, Mock.Of<ILogger<StripeService>>());
     }
 
     // Stripe-Signature header: t=<unix>,v1=<lowercase hex HMACSHA256(secret, "<unix>.<payload>")>

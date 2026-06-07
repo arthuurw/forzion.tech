@@ -9,6 +9,7 @@ namespace forzion.tech.Infrastructure.Services;
 
 public class StripeService(
     IOptions<StripeSettings> settings,
+    TimeProvider timeProvider,
     ILogger<StripeService> logger) : IStripeService
 {
     private readonly StripeSettings _settings = settings.Value;
@@ -108,7 +109,7 @@ public class StripeService(
         var pix = intent.NextAction?.PixDisplayQrCode
             ?? throw new InvalidOperationException("Stripe não retornou dados Pix.");
 
-        var expiracao = DateTime.UtcNow.AddSeconds(3600);
+        var expiracao = timeProvider.GetUtcNow().UtcDateTime.AddSeconds(3600);
 
         logger.LogInformation("PaymentIntent Pix {IntentId} criado para conta {AccountId}.", intent.Id, stripeAccountId);
 
@@ -186,7 +187,7 @@ public class StripeService(
         var pix = intent.NextAction?.PixDisplayQrCode
             ?? throw new InvalidOperationException("Stripe não retornou dados Pix.");
 
-        var expiracao = DateTime.UtcNow.AddSeconds(3600);
+        var expiracao = timeProvider.GetUtcNow().UtcDateTime.AddSeconds(3600);
 
         logger.LogInformation("PaymentIntent Pix plano-treinador {IntentId} criado.", intent.Id);
 

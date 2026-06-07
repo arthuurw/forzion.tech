@@ -21,9 +21,9 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
 ### Identidade & Auth
 - **Conta*** — credenciais + tipo (raiz de identidade). `Criar(Email, passwordHash, TipoConta, agora)` → emite `ContaRegistradaEvent`; nasce `EmailVerificado=false`. Métodos: `AtualizarSenha(novoHash)`; `MarcarEmailVerificado(agora)` (idempotente: no-op se já verificado); `Anonimizar(agora)` (LGPD: idempotente — no-op se `AnonimizadaEm` já setado; troca Email por token `anon+{guid}@anonimizado.local`, zera PasswordHash, reset EmailVerificado/VerificadoEm, set `AnonimizadaEm`, emite `ContaAnonimizadaEvent`). Prop `AnonimizadaEm` (nullable). Inv: passwordHash não-vazio; email não-nulo.
 - **SystemUser** — perfil admin plataforma. `Criar(contaId, nome, agora, role=SuperAdmin)` → nasce `Status=Ativo`. Métodos: `AlterarRole`, `AlterarStatus`, `AtualizarNome`. Inv: contaId≠Empty; nome 1..100.
-- **TokenRevogado** — blacklist JWT (logout). `Criar(jti, expiraEm)`. Inv: jti≠Empty; expiraEm futuro (`> DateTime.UtcNow`). PK=Jti. Sem mutação.
-- **PasswordResetToken** — reset senha. `Criar(contaId, tokenHash, expiresAt, agora)`. `MarcarComoUsado(agora)` (lança se já usado). Inv: contaId≠Empty; hash não-vazio; expiresAt>agora.
-- **EmailVerificationToken** — verificação e-mail no cadastro. `Criar(contaId, tokenHash, expiresAt, agora)`. `MarcarComoVerificado(agora)` (lança se já usado). Mesmas inv do reset token. Fluxo em [specification-email].
+- **TokenRevogado** — blacklist JWT (logout). `Criar(jti, expiraEm, agora)` → `Result<TokenRevogado>`. Inv: jti≠Empty; expiraEm futuro (`expiraEm > agora`; sem `DateTime.UtcNow`, §1). PK=Jti. Sem mutação.
+- **PasswordResetToken** — reset senha. `Criar(contaId, tokenHash, expiresAt, agora)`. `MarcarComoUsado(agora)` → `Result` (`TokenErrors.JaUtilizado` se já usado; NÃO lança). Inv: contaId≠Empty; hash não-vazio; expiresAt>agora.
+- **EmailVerificationToken** — verificação e-mail no cadastro. `Criar(contaId, tokenHash, expiresAt, agora)`. `MarcarComoVerificado(agora)` → `Result` (`TokenErrors.JaUtilizado` se já usado; NÃO lança). Mesmas inv do reset token. Fluxo em [specification-email].
 - **EmailDeliveryLog** — auditoria entrega (webhook Resend). `Criar(resendMessageId, eventType, recipientEmail, ocorridoEm, payload, agora)`. Sem validação/mutação (log append-only).
 
 ### Treinador / Aluno / Vínculo
@@ -54,7 +54,7 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
   - `MarcarInadimplentePorDisputa(agora)` — só de Ativa (else no-op idempotente): →Inadimplente imediato, equipara contador a 3, emite `AssinaturaAlunoMarcadaInadimplenteEvent`. (Chargeback congela acesso sem esperar threshold.)
   - `RegistrarPagamentoRegularizado(agora)` — Cancelada→no-op; zera contador; se Inadimplente→Ativa (reativa) emite `AssinaturaAlunoReativadaEvent` (G-PAY-3: só na transição efetiva Inadimplente→Ativa). Idempotente (2ª chamada já Ativa = sem evento).
 - **Pagamento*** — cobrança da assinatura (state machine). `Criar(assinaturaId, valor, agora, metodo=Pix)` → `Status=Pendente`, emite `PagamentoCriadoEvent`. Métodos:
-  - `DefinirDadosPix(paymentIntentId, qrCode, qrCodeUrl, expiracao)` / `DefinirDadosCartao(paymentIntentId, clientSecret)` — set dados Stripe (validam não-vazio). SEM evento.
+  - `DefinirDadosPix(paymentIntentId, qrCode, qrCodeUrl, expiracao, agora)` / `DefinirDadosCartao(paymentIntentId, clientSecret, agora)` — set dados Stripe (validam não-vazio). SEM evento.
   - `MarcarPago()` — só de Pendente, set DataPagamento. SEM evento (⚠️ regularização da assinatura é orquestrada na Application, não cascateia daqui).
   - `MarcarFalhou()` / `MarcarExpirado()` — só de Pendente. SEM evento.
   - `MarcarEstornado()` — só de Pago (`charge.refunded`), DataPagamento preservada, emite `PagamentoEstornadoEvent`.

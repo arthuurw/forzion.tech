@@ -3,7 +3,6 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssinaturaAluno;
@@ -48,14 +47,9 @@ public class CancelarMinhaAssinaturaAlunoHandler(
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        try
-        {
-            assinatura.Cancelar(agora);
-        }
-        catch (DomainException ex)
-        {
-            return Result.Failure(Error.Business(ex.Message));
-        }
+        var cancelarResult = assinatura.Cancelar(agora);
+        if (cancelarResult.IsFailure)
+            return cancelarResult;
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
