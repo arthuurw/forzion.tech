@@ -694,6 +694,38 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ChargeDisputeCreated_Aluno_JaEmDisputa_ReenviaEvidencia()
+    {
+        var alunoId = Guid.NewGuid();
+        var assinaturaId = Guid.NewGuid();
+        var inicio = DateTime.UtcNow.AddDays(-10);
+        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, inicio).Value;
+        pagamento.DefinirDadosPix("pi_redeliver", "qr", "url", inicio.AddHours(1), inicio);
+        pagamento.MarcarPago(inicio);
+        pagamento.MarcarEmDisputa("fraudulent", inicio);
+
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 149.90m, inicio).Value;
+        assinatura.Ativar(inicio);
+        var conta = Conta.Criar(Email.Criar("aluno@x.com").Value, "hash", TipoConta.Aluno, inicio, emitirRegistro: false).Value;
+        var aluno = Aluno.Criar(conta.Id, "Joana", inicio, "aluno@x.com").Value;
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeCreatedPayload("pi_redeliver"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
+            "dp_x",
+            It.Is<DisputaEvidencia>(e => e.EmailCliente == "aluno@x.com" && e.DataUltimaAtividade == null),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task HandleAsync_ChargeDisputeCreated_PagamentoPendente_LogWarnEnoOp()
     {
         var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
@@ -1281,6 +1313,38 @@ public class ProcessarWebhookStripeHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChargeDisputeCreated_PagamentoTreinadorJaEmDisputa_ReenviaEvidencia()
+    {
+        var treinadorId = Guid.NewGuid();
+        var contaId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_t4_redeliver", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        pagamento.MarcarPago(DateTime.UtcNow);
+        pagamento.MarcarEmDisputa(DateTime.UtcNow);
+
+        var treinador = Treinador.Criar(contaId, "Carlos", DateTime.UtcNow).Value;
+        var conta = Conta.Criar(Email.Criar("treinador@x.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow, emitirRegistro: false).Value;
+
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_t4_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t4_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync((Pagamento?)null);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(treinador.ContaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeTreinadorPayload("pi_t4_redeliver"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
+            "dp_t",
+            It.Is<DisputaEvidencia>(e => e.EmailCliente == "treinador@x.com" && e.DataUltimaAtividade == null),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
