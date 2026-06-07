@@ -1,0 +1,5 @@
+namespace forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
+
+public record CancelarMinhaAssinaturaTreinadorCommand(Guid TreinadorId);
+
+public record CancelarMinhaAssinaturaTreinadorResponse(DateTime CanceladaEm);

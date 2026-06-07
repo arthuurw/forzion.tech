@@ -30,8 +30,10 @@ using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
+using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
@@ -363,6 +365,53 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    // --- POST /treinador/plano/cancelar ---
+
+    [Fact]
+    public async Task Post_CancelarPlano_Treinador_Retorna200ComCanceladaEm()
+    {
+        var canceladaEm = new DateTime(2026, 5, 24, 12, 0, 0, DateTimeKind.Utc);
+        _factory.CancelarPlanoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<CancelarMinhaAssinaturaTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(new CancelarMinhaAssinaturaTreinadorResponse(canceladaEm)));
+
+        var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/plano/cancelar", (object?)null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<CancelarPlanoResponseDto>();
+        body!.CanceladaEm.Should().Be(canceladaEm);
+    }
+
+    [Fact]
+    public async Task Post_CancelarPlano_ComVinculosAtivos_Retorna422OffboardingNecessario()
+    {
+        _factory.CancelarPlanoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<CancelarMinhaAssinaturaTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<CancelarMinhaAssinaturaTreinadorResponse>(AssinaturaTreinadorErrors.OffboardingNecessario));
+
+        var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/plano/cancelar", (object?)null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemWithCode>();
+        problem!.Code.Should().Be("offboarding_necessario");
+    }
+
+    [Fact]
+    public async Task Post_CancelarPlano_SemAssinatura_Retorna404()
+    {
+        _factory.CancelarPlanoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<CancelarMinhaAssinaturaTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<CancelarMinhaAssinaturaTreinadorResponse>(
+                new forzion.tech.Domain.Shared.Error("assinatura_nao_encontrada", "Nenhuma assinatura ativa.", forzion.tech.Domain.Shared.ErrorType.NotFound)));
+
+        var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/plano/cancelar", (object?)null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private sealed record CancelarPlanoResponseDto(DateTime CanceladaEm);
+    private sealed record ProblemWithCode(string? Code);
 
     // --- POST /treinador/pagamentos/cobrar/{id} ---
 
@@ -788,6 +837,14 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<IniciarOnboardingTreinadorHandler>>());
 
+        public Mock<CancelarMinhaAssinaturaTreinadorHandler> CancelarPlanoHandlerMock { get; } = new(
+            Mock.Of<IAssinaturaTreinadorRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(),
+            Mock.Of<IPagamentoTreinadorRepository>(),
+            Mock.Of<IStripeService>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<ILogger<CancelarMinhaAssinaturaTreinadorHandler>>());
+
         public Mock<VerificarOnboardingTreinadorHandler> VerificarOnboardingHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IContaRecebimentoRepository>(),
@@ -882,6 +939,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<AtualizarPacoteHandler>();
                 services.RemoveAll<ExcluirPacoteHandler>();
                 services.RemoveAll<IniciarOnboardingTreinadorHandler>();
+                services.RemoveAll<CancelarMinhaAssinaturaTreinadorHandler>();
                 services.RemoveAll<VerificarOnboardingTreinadorHandler>();
                 services.RemoveAll<GerarCobrancaMensalHandler>();
                 services.RemoveAll<ReativarVinculoHandler>();
@@ -907,6 +965,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.AddScoped(_ => AtualizarPacoteHandlerMock.Object);
                 services.AddScoped(_ => ExcluirPacoteHandlerMock.Object);
                 services.AddScoped(_ => IniciarOnboardingHandlerMock.Object);
+                services.AddScoped(_ => CancelarPlanoHandlerMock.Object);
                 services.AddScoped(_ => VerificarOnboardingHandlerMock.Object);
                 services.AddScoped(_ => GerarCobrancaHandlerMock.Object);
                 services.AddScoped(_ => ReativarVinculoHandlerMock.Object);
