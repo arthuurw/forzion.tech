@@ -202,6 +202,28 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_CommitFalha_NaoReembolsa()
+    {
+        var inicio = DateTime.UtcNow.AddDays(-1);
+        var assinatura = CriarAtiva(inicio);
+        var pagamento = Pagamento.Criar(assinatura.Id, 150m, inicio).Value;
+        pagamento.DefinirDadosPix("pi_commit_falha", "qr", "url", inicio.AddHours(1), inicio);
+        pagamento.MarcarPago(inicio);
+
+        _assinaturaRepo.Setup(r => r.ObterAtualPorAlunoAsync(AlunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([pagamento]);
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db down"));
+
+        var act = async () => await _handler.HandleAsync(new CancelarMinhaAssinaturaAlunoCommand(AlunoId));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_DentroDe7Dias_SemPagamentoPago_NaoReembolsa()
     {
         var inicio = DateTime.UtcNow.AddDays(-2);
