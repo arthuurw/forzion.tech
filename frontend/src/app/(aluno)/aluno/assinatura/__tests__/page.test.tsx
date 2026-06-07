@@ -10,6 +10,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { contaApi } from "@/lib/api/conta";
 import AssinaturaAlunoPage, { CANCELAR_ASSINATURA_DESCRICAO } from "../page";
 import type { AssinaturaAlunoResponse } from "@/types";
 
@@ -149,13 +150,52 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
     expect(await screen.findByText("Assinatura cancelada com sucesso.")).toBeInTheDocument();
   });
 
-  it("API retornar erro → exibe mensagem de erro e mantém botão", async () => {
+  it("Dialog exibe 'Baixar meus dados' e clique chama contaApi.exportarDados (Marco Civil art. 16)", async () => {
+    respondAssinatura(makeAssinatura({ status: "Ativa" }));
+    const exportSpy = vi
+      .spyOn(contaApi, "exportarDados")
+      .mockResolvedValue({ data: new Blob(["{}"], { type: "application/json" }) } as Awaited<ReturnType<typeof contaApi.exportarDados>>);
+    const createObjUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
+    const revokeObjUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    render(<AssinaturaAlunoPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar assinatura" }));
+
+    const baixar = await screen.findByRole("button", { name: /baixar meus dados/i });
+    fireEvent.click(baixar);
+
+    await waitFor(() => expect(exportSpy).toHaveBeenCalledTimes(1));
+
+    createObjUrl.mockRestore();
+    revokeObjUrl.mockRestore();
+    exportSpy.mockRestore();
+  });
+
+  it("API retornar erro com detail → exibe o detail do backend e mantém botão", async () => {
     server.use(
       http.get("*/aluno/assinatura", () => HttpResponse.json(makeAssinatura({ status: "Ativa" }))),
       http.get("*/aluno/pagamentos/assinatura/:id", () => HttpResponse.json([])),
       http.post("*/aluno/assinatura/cancelar", () =>
-        HttpResponse.json({ title: "fail" }, { status: 500 }),
+        HttpResponse.json({ detail: "Assinatura já cancelada." }, { status: 409 }),
       ),
+    );
+
+    render(<AssinaturaAlunoPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar assinatura" }));
+    const confirmBtns = await screen.findAllByRole("button", { name: "Cancelar assinatura" });
+    fireEvent.click(confirmBtns[confirmBtns.length - 1]);
+
+    expect(await screen.findByText("Assinatura já cancelada.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Cancelar assinatura" }).length).toBeGreaterThan(0);
+  });
+
+  it("API retornar erro sem mensagem → exibe fallback genérico", async () => {
+    server.use(
+      http.get("*/aluno/assinatura", () => HttpResponse.json(makeAssinatura({ status: "Ativa" }))),
+      http.get("*/aluno/pagamentos/assinatura/:id", () => HttpResponse.json([])),
+      http.post("*/aluno/assinatura/cancelar", () => new HttpResponse(null, { status: 500 })),
     );
 
     render(<AssinaturaAlunoPage />);

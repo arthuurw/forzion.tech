@@ -92,6 +92,7 @@ public class FluxoCompletoTests
         var handler = new RegistrarAlunoHandler(
             _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object, _treinadorRepo.Object,
             _pacoteRepo.Object, _passwordHasher.Object, _unitOfWork.Object,
+            Mock.Of<ILogAprovacaoRepository>(),
             new RegistrarAlunoCommandValidator(), TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 

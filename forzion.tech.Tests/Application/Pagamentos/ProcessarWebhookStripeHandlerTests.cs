@@ -20,6 +20,7 @@ public class ProcessarWebhookStripeHandlerTests
     private readonly Mock<IPagamentoTreinadorRepository> _pagamentoTreinadorRepo = new();
     private readonly Mock<IAssinaturaTreinadorRepository> _assinaturaTreinadorRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -32,7 +33,8 @@ public class ProcessarWebhookStripeHandlerTests
     {
         _handler = new ProcessarWebhookStripeHandler(
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
-            _pagamentoTreinadorRepo.Object, _assinaturaTreinadorRepo.Object, _treinadorRepo.Object, _contaRepo.Object,
+            _pagamentoTreinadorRepo.Object, _assinaturaTreinadorRepo.Object, _treinadorRepo.Object,
+            _alunoRepo.Object, _contaRepo.Object,
             _stripeService.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
@@ -356,6 +358,73 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_AccountUpdatedChargesFalse_OnboardingCompleto_LogCritical()
+    {
+        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_live", TestData.Agora);
+        contaRecebimento.ConfirmarOnboarding(TestData.Agora);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_live", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(AccountPayload("acct_live", false), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AccountUpdatedChargesFalse_OnboardingIncompleto_SemCritical()
+    {
+        var contaRecebimento = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow).Value;
+        contaRecebimento.ConfigurarStripeConnect("acct_onboarding", TestData.Agora);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_onboarding", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contaRecebimento);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(AccountPayload("acct_onboarding", false), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AccountUpdatedChargesFalse_ContaInexistente_SemCritical()
+    {
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_ghost", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(AccountPayload("acct_ghost", false), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_PaymentIntentNaoEncontrado_RetornaSucessoSemCommit()
     {
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -625,6 +694,38 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ChargeDisputeCreated_Aluno_JaEmDisputa_ReenviaEvidencia()
+    {
+        var alunoId = Guid.NewGuid();
+        var assinaturaId = Guid.NewGuid();
+        var inicio = DateTime.UtcNow.AddDays(-10);
+        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, inicio).Value;
+        pagamento.DefinirDadosPix("pi_redeliver", "qr", "url", inicio.AddHours(1), inicio);
+        pagamento.MarcarPago(inicio);
+        pagamento.MarcarEmDisputa("fraudulent", inicio);
+
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 149.90m, inicio).Value;
+        assinatura.Ativar(inicio);
+        var conta = Conta.Criar(Email.Criar("aluno@x.com").Value, "hash", TipoConta.Aluno, inicio, emitirRegistro: false).Value;
+        var aluno = Aluno.Criar(conta.Id, "Joana", inicio, "aluno@x.com").Value;
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeCreatedPayload("pi_redeliver"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
+            "dp_x",
+            It.Is<DisputaEvidencia>(e => e.EmailCliente == "aluno@x.com" && e.DataUltimaAtividade == null),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task HandleAsync_ChargeDisputeCreated_PagamentoPendente_LogWarnEnoOp()
     {
         var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
@@ -684,6 +785,106 @@ public class ProcessarWebhookStripeHandlerTests
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.EmDisputa);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChargeDisputeCreated_Aluno_EnviaEvidenciaComCamposD9()
+    {
+        var alunoId = Guid.NewGuid();
+        var inicio = DateTime.UtcNow.AddDays(-30);
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, inicio).Value;
+        pagamento.DefinirDadosPix("pi_ev", "qr", "url", inicio.AddHours(1), inicio);
+        pagamento.MarcarPago(inicio);
+        pagamento.ClearDomainEvents();
+
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 149.90m, inicio).Value;
+        assinatura.Ativar(inicio);
+        assinatura.ClearDomainEvents();
+
+        var conta = Conta.Criar(Email.Criar("aluno@x.com").Value, "hash", TipoConta.Aluno, inicio, emitirRegistro: false).Value;
+        var aluno = Aluno.Criar(conta.Id, "Joana", inicio, "aluno@x.com").Value;
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_ev", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+
+        await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeCreatedPayload("pi_ev"), ValidSig));
+
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
+            "dp_x",
+            It.Is<DisputaEvidencia>(e =>
+                e.EmailCliente == "aluno@x.com" &&
+                e.DataAtivacao == assinatura.DataInicio &&
+                e.DataUltimoPagamento == pagamento.DataPagamento),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChargeDisputeCreated_Aluno_FalhaNoEnvio_DisputaPermaneceMarcada()
+    {
+        var alunoId = Guid.NewGuid();
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_ev_fail", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
+        pagamento.ClearDomainEvents();
+
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 149.90m, DateTime.UtcNow).Value;
+        assinatura.Ativar(TestData.Agora);
+        assinatura.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_ev_fail", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((Aluno?)null);
+        _stripeService.Setup(s => s.EnviarEvidenciaDisputaAsync(It.IsAny<string>(), It.IsAny<DisputaEvidencia>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("stripe down"));
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeCreatedPayload("pi_ev_fail"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.EmDisputa);
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChargeDisputeCreated_Treinador_EnviaEvidenciaComDisputeId()
+    {
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        assinatura.ClearDomainEvents();
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_t_ev", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        pagamento.MarcarPago(DateTime.UtcNow);
+        pagamento.ClearDomainEvents();
+
+        var conta = Conta.Criar(Email.Criar("treinador@x.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow, emitirRegistro: false).Value;
+        var treinador = Treinador.Criar(conta.Id, "Carlos", DateTime.UtcNow, null, Guid.NewGuid(), ModoPagamentoAluno.Plataforma).Value;
+
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_t_ev", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t_ev", It.IsAny<CancellationToken>())).ReturnsAsync((Pagamento?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+
+        await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeTreinadorPayload("pi_t_ev"), ValidSig));
+
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
+            "dp_t",
+            It.Is<DisputaEvidencia>(e => e.EmailCliente == "treinador@x.com"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -1112,6 +1313,38 @@ public class ProcessarWebhookStripeHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChargeDisputeCreated_PagamentoTreinadorJaEmDisputa_ReenviaEvidencia()
+    {
+        var treinadorId = Guid.NewGuid();
+        var contaId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_t4_redeliver", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        pagamento.MarcarPago(DateTime.UtcNow);
+        pagamento.MarcarEmDisputa(DateTime.UtcNow);
+
+        var treinador = Treinador.Criar(contaId, "Carlos", DateTime.UtcNow).Value;
+        var conta = Conta.Criar(Email.Criar("treinador@x.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow, emitirRegistro: false).Value;
+
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_t4_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t4_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync((Pagamento?)null);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(treinador.ContaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeTreinadorPayload("pi_t4_redeliver"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
+            "dp_t",
+            It.Is<DisputaEvidencia>(e => e.EmailCliente == "treinador@x.com" && e.DataUltimaAtividade == null),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

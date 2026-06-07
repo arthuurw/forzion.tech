@@ -86,6 +86,7 @@ StrykerOutput/
 # Cobertura/coverlet + ReportGenerator (gerados em CI e localmente, não versionar)
 coverage/
 coverage-report/
+coverage-detail/
 **/coverage.cobertura.xml
 **/coverage.opencover.xml
 

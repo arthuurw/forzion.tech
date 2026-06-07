@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -22,6 +23,8 @@ namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssina
 /// </summary>
 public class CancelarMinhaAssinaturaAlunoHandler(
     IAssinaturaAlunoRepository assinaturaRepository,
+    IPagamentoRepository pagamentoRepository,
+    ReembolsoArrependimentoService reembolsoService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     ILogger<CancelarMinhaAssinaturaAlunoHandler> logger)
@@ -43,9 +46,11 @@ public class CancelarMinhaAssinaturaAlunoHandler(
                 AssinaturaNaoEncontradaErrorCode,
                 "Nenhuma assinatura ativa encontrada para cancelar."));
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
         try
         {
-            assinatura.Cancelar(timeProvider.GetUtcNow().UtcDateTime);
+            assinatura.Cancelar(agora);
         }
         catch (DomainException ex)
         {
@@ -54,10 +59,32 @@ public class CancelarMinhaAssinaturaAlunoHandler(
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
+        // Reembolso DEPOIS do commit: se o commit falhar, nada é estornado. Falha no estorno
+        // pós-commit não reverte o cancelamento (LogCritical + reembolso manual).
+        await ReembolsarPrimeiraContratacaoAsync(assinatura.Id, agora, cancellationToken).ConfigureAwait(false);
+
         logger.LogInformation(
             "Aluno {AlunoId} cancelou a própria assinatura {AssinaturaAlunoId}.",
             command.AlunoId, assinatura.Id);
 
         return Result.Success();
+    }
+
+    private async Task ReembolsarPrimeiraContratacaoAsync(Guid assinaturaId, DateTime agora, CancellationToken cancellationToken)
+    {
+        var pagamentos = await pagamentoRepository
+            .ListarPorAssinaturaAlunoAsync(assinaturaId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var pago = pagamentos
+            .Where(p => p.Status == PagamentoStatus.Pago && !string.IsNullOrEmpty(p.StripePaymentIntentId))
+            .OrderBy(p => p.CreatedAt)
+            .FirstOrDefault();
+
+        // Charge destino do aluno → reverter transferência e fee (G1). Status Estornado chega
+        // depois via webhook charge.refunded — não muta síncrono aqui.
+        await reembolsoService
+            .ReembolsarSeDentroDoPrazoAsync(agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: true, cancellationToken)
+            .ConfigureAwait(false);
     }
 }

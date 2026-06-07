@@ -12,8 +12,6 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace forzion.tech.Api.Endpoints.Pagamentos;
 
@@ -287,16 +285,6 @@ public static class PagamentosEndpoints
 
     public sealed record TrocarPlanoRequest(Guid PlanoPlataformaId, MetodoPagamento Metodo = MetodoPagamento.Pix);
 
-    // Constant-time comparison para evitar timing attack na chave interna.
-    // FixedTimeEquals lança ArgumentException em spans de tamanhos diferentes — verificar comprimento antes.
-    private static bool ChaveInternaValida(HttpContext ctx, IConfiguration cfg)
-    {
-        var apiKey = cfg["Internal:ApiKey"];
-        var headerKey = ctx.Request.Headers["X-Internal-Key"].FirstOrDefault() ?? string.Empty;
-        var headerBytes = Encoding.UTF8.GetBytes(headerKey);
-        var keyBytes = Encoding.UTF8.GetBytes(apiKey ?? string.Empty);
-        return !string.IsNullOrEmpty(apiKey)
-            && headerBytes.Length == keyBytes.Length
-            && CryptographicOperations.FixedTimeEquals(headerBytes, keyBytes);
-    }
+    private static bool ChaveInternaValida(HttpContext ctx, IConfiguration cfg) =>
+        InternalApiKeyValidator.ChaveInternaValida(ctx, cfg);
 }

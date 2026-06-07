@@ -13,6 +13,10 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
 }));
 
+vi.mock("@/lib/auth/context", () => ({
+  useAuth: () => ({ logout: vi.fn() }),
+}));
+
 const ASSINATURA_ATIVA: AssinaturaTreinadorResponse = {
   assinaturaId: "ass-1",
   status: "Ativa",

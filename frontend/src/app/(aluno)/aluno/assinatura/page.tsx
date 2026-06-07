@@ -5,6 +5,8 @@ import {
   CircularProgress, Alert, Divider,
 } from "@mui/material";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { extractApiError } from "@/lib/api/extractApiError";
+import { baixarMeusDados as baixarMeusDadosBlob } from "@/lib/utils/downloadBlob";
 import type { AssinaturaAlunoResponse, PagamentoResponse } from "@/types";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
@@ -30,6 +32,7 @@ export default function AssinaturaAlunoPage() {
   const [mostrarPix, setMostrarPix] = useState(false);
   const [confirmarCancelar, setConfirmarCancelar] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [baixandoDados, setBaixandoDados] = useState(false);
   const [sucesso, setSucesso] = useState("");
 
   const carregar = async () => {
@@ -63,10 +66,22 @@ export default function AssinaturaAlunoPage() {
       setSucesso("Assinatura cancelada com sucesso.");
       setConfirmarCancelar(false);
       await carregar();
-    } catch {
-      setError("Não foi possível cancelar a assinatura. Tente novamente.");
+    } catch (err) {
+      setError(extractApiError(err, "Não foi possível cancelar a assinatura. Tente novamente."));
     } finally {
       setCancelando(false);
+    }
+  };
+
+  const baixarMeusDados = async () => {
+    setBaixandoDados(true);
+    setError("");
+    try {
+      await baixarMeusDadosBlob();
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao exportar dados."));
+    } finally {
+      setBaixandoDados(false);
     }
   };
 
@@ -169,7 +184,18 @@ export default function AssinaturaAlunoPage() {
         loading={cancelando}
         onConfirm={cancelarAssinatura}
         onClose={() => { if (!cancelando) setConfirmarCancelar(false); }}
-      />
+      >
+        <Button
+          variant="text"
+          size="small"
+          onClick={baixarMeusDados}
+          disabled={baixandoDados}
+          startIcon={baixandoDados ? <CircularProgress size={14} color="inherit" /> : undefined}
+          sx={{ mt: 1 }}
+        >
+          Baixar meus dados
+        </Button>
+      </ConfirmDialog>
     </Box>
   );
 }

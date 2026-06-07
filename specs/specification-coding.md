@@ -1,0 +1,43 @@
+# specification-coding — armadilhas de correção recorrentes (forzion.tech)
+
+DOC PARA AGENTES. Padrões de CORREÇÃO transversais que reviews repetidamente pegam neste codebase — não estilo, não arquitetura macro (isso é [specification-backend]). Ler antes de escrever handler, integração externa, validação, ou mapeamento de erro — e antes de qualquer code-review (é o checklist que os reviews repetidamente precisam). Formato denso. Cada regra tem o PORQUÊ (incidente real) pra não virar dogma vazio.
+
+## MANUTENÇÃO
+- Atualizar quando um review/code-review pegar um bug de CLASSE nova (não pontual) — adicionar a regra + o incidente.
+- Vive em `specs/` (commitado). Não duplicar regras de [specification-git] (commit/worktree) nem [specification-tests].
+
+## 1. TRANSAÇÃO ↔ EFEITO EXTERNO IRREVERSÍVEL
+- **Efeito externo irreversível (refund Stripe, e-mail, WhatsApp, webhook de saída) vai DEPOIS de `CommitAsync`** — nunca antes. Ordem: mutar agregado → `CommitAsync` → efeito externo. Falha do efeito = `LogCritical` + prossegue (estado já persistido). [incidente CR#1: refund emitido antes do commit → commit falha → dinheiro estornado sem cancelamento persistido + retry tenta refund 2× = `charge_already_refunded`.]
+- Corolário: se o efeito externo PRECISA ser garantido (não pode só logar), o caminho certo é outbox/retry, não chamar pré-commit. Sem outbox no MVP → aceitar "LogCritical + ação manual" e documentar.
+- Domain events de efeito colateral despacham no `CommitAsync` (já é o padrão do `UnitOfWork`).
+
+## 2. TEMPO & AUDITORIA
+- **Timestamp de prova legal/auditoria = relógio do SERVIDOR (`TimeProvider.GetUtcNow().UtcDateTime`), NUNCA valor vindo do cliente.** Cliente pode forjar (retroativo/futuro). O valor do cliente, se útil, vai em campo informativo (`observacao`), não como o timestamp autoritativo. [incidente CR#1-revisão R8: `ConsentimentoDadosSaudeEm` do payload usado como `CreatedAt` do log de consentimento LGPD art. 11 — prova falsificável.]
+- **Janela temporal de negócio (CDC 7 dias, SLA, expiração) mede-se a partir do EVENTO DE NEGÓCIO real, não da criação do registro.** Cuidado com campos setados em `Criar` (estado Pendente) que NÃO são resetados na transição de estado. [incidente CR#3: janela CDC media de `AssinaturaTreinador.DataInicio` (setado em `Criar`, status Pendente, antes do pagamento) — `Ativar` não reseta → cancelar 9 dias após cadastro mas 3 dias após pagar negava reembolso devido. Fix: medir do `DataPagamento` do 1º pagamento Pago.]
+- Sempre UTC (`DateTimeKind.Utc`); ISO do cliente parseado pode vir `Unspecified` — normalizar.
+
+## 3. INVARIANTES & FALHAS SILENCIOSAS
+- **Não engolir `Result.IsFailure` de escrita que É a invariante que a feature garante.** `if (x.IsSuccess) {...}` sem `else` num write crítico = invariante violável em silêncio. Se a operação é o ponto da feature (ex.: registrar consentimento exigido), falha dela → `Result.Failure` (aborta) ou no mínimo `LogCritical`. [incidente CR#2: log de consentimento de saúde com `if (IsSuccess)` sem else → aluno criado com dado sensível sem registro de consentimento.]
+- `catch` que engole exceção precisa de motivo explícito (efeito externo pós-commit que não deve bloquear — §1). Caso contrário, propagar.
+
+## 4. VALIDAÇÃO & DEFENSE-IN-DEPTH
+- **Validar input relevante à segurança/compliance no SERVIDOR mesmo que o frontend já trave.** Frontend é UX, não fronteira de confiança. [incidente: consentimento exigido via FluentValidation no Application, não só checkbox no React.]
+- **Campos de texto livre podem carregar dado sensível.** Ao decidir "coleta dado de saúde?" incluir os campos livres (`ObservacoesAdicionais`), não só os estruturados. [incidente CR#5: `ColetaDadosSaude` ignorava `ObservacoesAdicionais` → "tenho diabetes" em texto livre não exigia consentimento.]
+- Gates de offboarding/bloqueio: considerar TODOS os estados que deixam órfão, não só o estado óbvio. [incidente CR#4: gate de cancelamento só bloqueava vínculo `Ativo`, não `AguardandoAprovacao` → pedidos pendentes órfãos.]
+
+## 5. ERROS & CONTRATO API
+- **Codes de erro namespaceados por agregado** (`assinatura_treinador.offboarding_necessario`, não `offboarding_necessario` cru). [incidente CR#7: code cru divergia dos irmãos e o frontend hardcodava a string.]
+- HTTP status vem do `ErrorType` (`Business`→422, `NotFound`→404) via `ToProblemResult`/`ResultExtensions` — não setar status à mão por code.
+- `code` do `Error` sai como extension member do ProblemDetails → chega na RAIZ de `response.data.code`. Frontend lê via helper central (`extractApiError`/`extractApiErrorInfo`), NUNCA leitura inline `(err as {...}).response.data.code` espalhada por página. [incidente CR#8.]
+- Contrato backend↔frontend: shape de 200/4xx + casing (camelCase) fixado nos DOIS lados; binding JSON do backend é case-insensitive (PascalCase ↔ camelCase ok).
+
+## 6. REUSO / DEDUP
+- Lógica de negócio idêntica entre dois agregados (ex.: reembolso CDC aluno vs treinador — só difere `reverterTransferencia` + repo) → UM serviço/helper de Application, não copy-paste por handler. [incidente CR#6: `ReembolsoArrependimentoService`.] Diferença pequena vira parâmetro; não generalizar a ponto de criar abstração prematura.
+- Download blob, leitura de erro, formatação monetária → helper compartilhado (`lib/utils/downloadBlob`, `MoneyCentavos`, etc.), não reimplementar por tela.
+
+## 7. PROCESSO (cross-ref)
+- Worktree de sub-agent nasce em base errada por default — SEMPRE verificar/resetar para a branch-alvo antes de codar. Ver [specification-git] §WORKTREE.
+- Commit/merge: Conventional, header ≤100, type válido (commitlint ativo). Ver [specification-git].
+- Claim cross-file ("o frontend não envia X", "isso está quebrado") → VERIFICAR lendo o arquivo real antes de agir; finders/agents erram por leitura parcial. [incidentes: 2 falsos positivos refutados por leitura direta nesta feature.]
+
+Cross-ref: [specification-backend] (Result/UnitOfWork/DI), [specification-stripe] (refund/webhook), [specification-lgpd] (consentimento/auditoria), [specification-tests], [specification-git].
