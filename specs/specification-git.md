@@ -50,6 +50,8 @@ git worktree list                                              # vê todas
 git worktree remove ../forzion-nova                            # quando termina (branch fica)
 git worktree prune                                             # limpa refs órfãos
 ```
+- **GOTCHA baseRef stale (CANÔNICO — recorrente com sub-agents)**: worktrees criadas pela automação/harness nascem da `worktree.baseRef` default (`fresh` → `origin/main`). `main` está MUITO atrás de `homolog` (centenas de commits) e de qualquer feature branch → a worktree nasce SEM o código da feature. SEMPRE, no início do trabalho num worktree de sub-agent: `git log --oneline -3` para conferir a base; se não for a branch-alvo, `git reset --hard <branch-alvo>` ANTES de qualquer alteração. Codar sobre base errada = retrabalho garantido + merge conflituoso. (Setar `git config worktree.baseRef <branch>` ajuda, mas o harness pode ignorar — a verificação+reset é a defesa confiável.)
+- **Cleanup de worktree+branch na ordem certa**: `git worktree remove <path> --force` ANTES de `git branch -D <branch>` (não dá pra deletar branch ainda checked-out num worktree). Se a worktree sumiu do disco mas a ref persiste: `git worktree prune` primeiro.
 
 ## CONVENTIONAL COMMITS
 - **Format:** `type(scope): subject` (subject minúsculo após `:`, commitlint enforça).
@@ -57,6 +59,7 @@ git worktree prune                                             # limpa refs órf
 - **Scopes válidos** (`commitlint.config.mjs` `scope-enum`, do AGENTS.md `CONVENÇÕES-CHAVE`): `frontend | backend | infra | ci | deps | tests | docs` + `""` (escopo VAZIO permitido — `type: subject` sem `(scope)` passa).
 - **GOTCHA scope = ÁREA, não tópico** (recorrente): o scope é a área do repo, NÃO o arquivo/assunto editado. Mexer em `specification-git.md`/`-stripe.md`/`-model.md` é `docs:` (ou escopo vazio), NÃO `docs(git)`/`docs(stripe)`/`docs(model)` — esses falham `scope-enum`. Spec de área coberta usa o scope da área se aplicável (ex.: regra de teste → `docs(tests)`), senão `docs:`.
 - **Limites commitlint**: `header-max-length` 100 (erro); `body-max-line-length` 200 (warning).
+- **GOTCHA merge commit também passa por commitlint** (recorrente): `git merge --no-ff -m "..."` dispara o `commit-msg` hook. `merge(...)` NÃO é type válido (`type-enum` falha) e header de merge costuma estourar 100 chars. Usar mensagem Conventional: `chore: integra X (#N)` / `feat(backend): ...` com header ≤100. Se o hook abortar o merge (fica em estado merge pendente), completar com `git commit --no-edit -m "<msg conventional>"`.
 - **Subject:** ≤72 chars idealmente (header total ≤100, enforçado). Imperativo ("add X", não "added X").
 - **Body:** quando o "porquê" não cabe no subject. Linha em branco entre subject e body.
 - **Footer:** `Closes #N` pra issue; `BREAKING CHANGE:` pra incompatibilidade.
