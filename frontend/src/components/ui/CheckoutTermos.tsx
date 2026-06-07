@@ -7,10 +7,12 @@ interface Props {
 
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-function proximaCobranca(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return d.toLocaleDateString("pt-BR");
+export function proximaCobranca(hoje: Date = new Date()): string {
+  // setMonth(+1) faz overflow em meses curtos (31/jan → 03/mar); clampa ao último dia do mês alvo.
+  const alvo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+  const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+  alvo.setDate(Math.min(hoje.getDate(), ultimoDia));
+  return alvo.toLocaleDateString("pt-BR");
 }
 
 export default function CheckoutTermos({ valor, dense }: Props) {
