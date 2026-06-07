@@ -14,6 +14,7 @@ public class ProcessarWebhookStripeHandler(
     IPagamentoTreinadorRepository pagamentoTreinadorRepository,
     IAssinaturaTreinadorRepository assinaturaTreinadorRepository,
     ITreinadorRepository treinadorRepository,
+    IAlunoRepository alunoRepository,
     IContaRepository contaRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
@@ -69,7 +70,7 @@ public class ProcessarWebhookStripeHandler(
                 return await ProcessarChargeReembolsadoAsync(evento.PaymentIntentId, evento.AmountRefundedCents, cancellationToken).ConfigureAwait(false);
 
             case "charge.dispute.created":
-                return await ProcessarDisputaCriadaAsync(evento.PaymentIntentId, evento.MotivoDisputa, cancellationToken).ConfigureAwait(false);
+                return await ProcessarDisputaCriadaAsync(evento.PaymentIntentId, evento.MotivoDisputa, evento.DisputeId, cancellationToken).ConfigureAwait(false);
 
             default:
                 logger.LogDebug("Evento Stripe ignorado: {EventType}.", evento.Type);
@@ -330,7 +331,7 @@ public class ProcessarWebhookStripeHandler(
         return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task<ProcessarEventoResultado> ProcessarDisputaCriadaAsync(string? paymentIntentId, string? motivoDisputa, CancellationToken ct)
+    private async Task<ProcessarEventoResultado> ProcessarDisputaCriadaAsync(string? paymentIntentId, string? motivoDisputa, string? disputeId, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(paymentIntentId))
         {
@@ -343,7 +344,7 @@ public class ProcessarWebhookStripeHandler(
         {
             var pagamentoTreinador = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
             if (pagamentoTreinador is not null)
-                return await ProcessarDisputaTreinadorAsync(pagamentoTreinador, ct).ConfigureAwait(false);
+                return await ProcessarDisputaTreinadorAsync(pagamentoTreinador, disputeId, ct).ConfigureAwait(false);
 
             logger.LogWarning("charge.dispute.created para PaymentIntent {PaymentIntentId} não encontrado.", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
@@ -351,7 +352,11 @@ public class ProcessarWebhookStripeHandler(
 
         if (pagamento.Status == PagamentoStatus.EmDisputa)
         {
-            logger.LogDebug("PaymentIntent {PaymentIntentId} já em disputa. Ignorando re-entrega.", paymentIntentId);
+            // Redelivery: Dispute.Update é overwrite-idempotente. Reenvia a evidência para
+            // recuperar de falha na 1ª entrega — não há mutação de negócio (só re-PUT no Stripe).
+            var assinaturaExistente = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
+            await EnviarEvidenciaDisputaAlunoAsync(disputeId, assinaturaExistente, pagamento, ct).ConfigureAwait(false);
+            logger.LogDebug("PaymentIntent {PaymentIntentId} já em disputa. Evidência reenviada (idempotente).", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
@@ -380,17 +385,58 @@ public class ProcessarWebhookStripeHandler(
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
 
+        await EnviarEvidenciaDisputaAlunoAsync(disputeId, assinatura, pagamento, ct).ConfigureAwait(false);
+
         logger.LogInformation(
             "Pagamento {PagamentoId} marcado em disputa (motivo={Motivo}).",
             pagamento.Id, motivoDisputa ?? "unknown");
         return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task<ProcessarEventoResultado> ProcessarDisputaTreinadorAsync(PagamentoTreinador pagamento, CancellationToken ct)
+    private async Task EnviarEvidenciaDisputaAlunoAsync(string? disputeId, AssinaturaAluno? assinatura, Pagamento pagamento, CancellationToken ct)
+    {
+        if (assinatura is null) return;
+
+        string? email = null;
+        var aluno = await alunoRepository.ObterPorIdAsync(assinatura.AlunoId, ct).ConfigureAwait(false);
+        if (aluno is not null)
+        {
+            var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, ct).ConfigureAwait(false);
+            email = conta?.Email.Value ?? aluno.Email?.Value;
+        }
+
+        await EnviarEvidenciaDisputaAsync(disputeId, email, assinatura.DataInicio, pagamento.DataPagamento, pagamento.Id, ct).ConfigureAwait(false);
+    }
+
+    // DataUltimaAtividade é omitida: sem sinal real de uso barato, repetir DataUltimoPagamento
+    // nos dois campos seria evidência falsa. Envia a data de pagamento uma única vez.
+    private async Task EnviarEvidenciaDisputaAsync(
+        string? disputeId, string? email, DateTime? dataAtivacao, DateTime? dataPagamento, Guid pagamentoId, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(disputeId)) return;
+
+        try
+        {
+            await stripeService.EnviarEvidenciaDisputaAsync(
+                disputeId,
+                new DisputaEvidencia(email, dataAtivacao, null, dataPagamento),
+                ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Falha ao enviar evidência da disputa {DisputeId} (pagamento {PagamentoId}). Disputa já marcada; responder manualmente no Stripe.",
+                disputeId, pagamentoId);
+        }
+    }
+
+    private async Task<ProcessarEventoResultado> ProcessarDisputaTreinadorAsync(PagamentoTreinador pagamento, string? disputeId, CancellationToken ct)
     {
         if (pagamento.Status == PagamentoStatus.EmDisputa)
         {
-            logger.LogDebug("PagamentoTreinador {PaymentIntentId} já em disputa. Ignorando re-entrega.", pagamento.StripePaymentIntentId);
+            var assinaturaExistente = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+            await EnviarEvidenciaDisputaTreinadorAsync(disputeId, assinaturaExistente, pagamento, ct).ConfigureAwait(false);
+            logger.LogDebug("PagamentoTreinador {PaymentIntentId} já em disputa. Evidência reenviada (idempotente).", pagamento.StripePaymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
@@ -413,15 +459,42 @@ public class ProcessarWebhookStripeHandler(
         assinatura?.MarcarInadimplentePorDisputa(agora);
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+
+        await EnviarEvidenciaDisputaTreinadorAsync(disputeId, assinatura, pagamento, ct).ConfigureAwait(false);
+
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado em disputa.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
     }
 
+    private async Task EnviarEvidenciaDisputaTreinadorAsync(string? disputeId, AssinaturaTreinador? assinatura, PagamentoTreinador pagamento, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(disputeId)) return;
+
+        string? email = null;
+        var treinador = await treinadorRepository.ObterPorIdAsync(pagamento.TreinadorId, ct).ConfigureAwait(false);
+        if (treinador is not null)
+        {
+            var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, ct).ConfigureAwait(false);
+            email = conta?.Email.Value;
+        }
+
+        await EnviarEvidenciaDisputaAsync(disputeId, email, assinatura?.DataInicio, pagamento.DataPagamento, pagamento.Id, ct).ConfigureAwait(false);
+    }
+
     private async Task<ProcessarEventoResultado> ProcessarContaAtualizadaAsync(string accountId, bool chargesEnabled, CancellationToken ct)
     {
-        if (!chargesEnabled) return ProcessarEventoResultado.JaConsistente;
-
         var contaRecebimento = await contaRecebimentoRepository.ObterPorStripeAccountIdAsync(accountId, ct).ConfigureAwait(false);
+
+        if (!chargesEnabled)
+        {
+            // chargesEnabled=false é normal durante onboarding; só é incidente se a conta JÁ estava operante.
+            if (contaRecebimento?.OnboardingCompleto == true)
+                logger.LogCritical(
+                    "Conta Connect {AccountId} do treinador {TreinadorId} perdeu charges_enabled após onboarding concluído. Pagamentos do treinador estão bloqueados.",
+                    accountId, contaRecebimento.TreinadorId);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
         if (contaRecebimento is null || contaRecebimento.OnboardingCompleto) return ProcessarEventoResultado.JaConsistente;
 
         var confirmarResult = contaRecebimento.ConfirmarOnboarding(timeProvider.GetUtcNow().UtcDateTime);

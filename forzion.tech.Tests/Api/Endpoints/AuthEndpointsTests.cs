@@ -278,6 +278,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<IPacoteRepository>(),
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IUnitOfWork>(),
+            Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IValidator<RegistrarAlunoCommand>>(),
             TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());

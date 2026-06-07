@@ -2949,6 +2949,144 @@
         }
       }
     },
+    "/internal/lgpd/contas-elegiveis": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Lista contas elegíveis para purga LGPD (5 anos pós-cancelamento) — requer X-Internal-Key",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/lgpd/contas/{id}": {
+      "delete": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Anonimiza conta elegível à purga LGPD (job mensal) — requer X-Internal-Key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/processar-pre-avisos": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Dispara pré-aviso de renovação 3 dias antes para assinaturas de alunos — requer X-Internal-Key",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/processar-pre-avisos-treinador": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Dispara pré-aviso de renovação 3 dias antes para planos de treinadores — requer X-Internal-Key",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/aluno/pagamentos/{pagamentoId}": {
       "get": {
         "tags": [
@@ -3286,6 +3424,44 @@
           },
           "required": true
         },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/plano/cancelar": {
+      "post": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Treinador autenticado cancela o próprio plano (CDC art. 49)",
         "responses": {
           "200": {
             "description": "OK",
@@ -6963,6 +7139,46 @@
           },
           "telefone": {
             "type": "string",
+            "nullable": true
+          },
+          "diasDisponiveis": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tempoDisponivelMinutos": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "finalidade": {
+            "$ref": "#/components/schemas/FinalidadeTreino"
+          },
+          "focoTreino": {
+            "type": "string",
+            "nullable": true
+          },
+          "nivelCondicionamento": {
+            "$ref": "#/components/schemas/NivelCondicionamento"
+          },
+          "limitacoesFisicas": {
+            "type": "string",
+            "nullable": true
+          },
+          "doencas": {
+            "type": "string",
+            "nullable": true
+          },
+          "observacoesAdicionais": {
+            "type": "string",
+            "nullable": true
+          },
+          "consentimentoDadosSaude": {
+            "type": "boolean"
+          },
+          "consentimentoDadosSaudeEm": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },

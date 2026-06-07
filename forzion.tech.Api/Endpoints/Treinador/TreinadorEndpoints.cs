@@ -2,6 +2,7 @@ using forzion.tech.Api.Extensions;
 using forzion.tech.Api.Helpers;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Application.UseCases.Alunos;
@@ -64,6 +65,22 @@ public static class TreinadorEndpoints
             return Results.Ok(new { url = result.Value });
         })
         .WithSummary("Inicia o onboarding Stripe Connect do treinador e retorna o link")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/plano/cancelar", async (
+            [FromServices] CancelarMinhaAssinaturaTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new CancelarMinhaAssinaturaTreinadorCommand(userContext.PerfilId), cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(new { canceladaEm = result.Value.CanceladaEm });
+        })
+        .WithSummary("Treinador autenticado cancela o próprio plano (CDC art. 49)")
         .Produces<object>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);

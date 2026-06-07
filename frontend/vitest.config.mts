@@ -97,6 +97,7 @@ export default defineConfig({
           exclude: [
             // Testes em src/lib/** que dependem de DOM rodam no project integration
             "src/lib/utils/excel.test.ts",
+            "src/lib/utils/downloadBlob.test.ts",
             "src/lib/api/admin.msw.test.ts",
             "src/lib/auth/context.test.tsx",
             "src/hooks/useInactivity.test.ts",
@@ -122,6 +123,7 @@ export default defineConfig({
             "src/app/**/*.client.test.tsx",
             // Tests em src/lib que mexem com DOM ou React (download, hooks RTL)
             "src/lib/utils/excel.test.ts",
+            "src/lib/utils/downloadBlob.test.ts",
             "src/lib/auth/context.test.tsx",
             "src/hooks/useInactivity.test.ts",
             "src/hooks/useConsent.test.ts",

@@ -75,6 +75,7 @@ using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Application.UseCases.Pacotes.AtualizarPacote;
 using forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;
+using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.IniciarPagamentoPlano;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
@@ -209,6 +210,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
         services.AddScoped<forzion.tech.Application.Services.CriarPagamentoComIntentService>();
+        services.AddScoped<forzion.tech.Application.Services.ReembolsoArrependimentoService>();
 
         services.AddOptions<AppSettings>().BindConfiguration("App");
 
@@ -224,6 +226,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IniciarPagamentoPlanoHandler>();
         services.AddScoped<GerarCobrancaPlanoTreinadorHandler>();
         services.AddScoped<TrocarPlanoTreinadorHandler>();
+        services.AddScoped<CancelarMinhaAssinaturaTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();
 
@@ -231,6 +234,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Admin.Stats.ObterDashboardStatsHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ExportarDadosPessoaisHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.AnonimizarContaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ListarContasElegivelPurgaLgpdHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosAlunoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosTreinadorHandler>();
 
         services.AddScoped<ObterHealthReportConfigHandler>();
         services.AddScoped<AtualizarHealthReportConfigHandler>();

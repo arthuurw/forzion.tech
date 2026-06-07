@@ -19,6 +19,10 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import dayjs from "dayjs";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { useAuth } from "@/lib/auth/context";
+import { extractApiError, extractApiErrorInfo } from "@/lib/api/extractApiError";
+import { baixarMeusDados as baixarMeusDadosBlob } from "@/lib/utils/downloadBlob";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type {
   AssinaturaTreinadorResponse,
   PlanoPlataformaResponse,
@@ -26,6 +30,14 @@ import type {
 } from "@/types";
 
 type Etapa = "idle" | "confirmando" | "pagando" | "sucesso";
+
+export const CANCELAR_PLANO_DESCRICAO =
+  "Seu acesso será encerrado imediatamente. Ação irreversível pelo portal.";
+
+const OFFBOARDING_CODE = "assinatura_treinador.offboarding_necessario";
+
+const OFFBOARDING_MENSAGEM =
+  "Encerre os vínculos com seus alunos antes de cancelar o plano.";
 
 export default function PlanoTreinadorPage() {
   const [assinatura, setAssinatura] = useState<AssinaturaTreinadorResponse | null>(null);
@@ -37,6 +49,11 @@ export default function PlanoTreinadorPage() {
   const [trocaResp, setTrocaResp] = useState<TrocarPlanoTreinadorResponse | null>(null);
   const [processando, setProcessando] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { logout } = useAuth();
+  const [confirmarCancelar, setConfirmarCancelar] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [erroCancelar, setErroCancelar] = useState("");
+  const [baixando, setBaixando] = useState(false);
 
   const carregar = useCallback(async () => {
     setErro("");
@@ -121,6 +138,44 @@ export default function PlanoTreinadorPage() {
     setErro("");
   };
 
+  const baixarMeusDados = async () => {
+    setBaixando(true);
+    setErroCancelar("");
+    try {
+      await baixarMeusDadosBlob();
+    } catch (err) {
+      setErroCancelar(extractApiError(err, "Erro ao exportar dados."));
+    } finally {
+      setBaixando(false);
+    }
+  };
+
+  const cancelarPlano = async () => {
+    setCancelando(true);
+    setErroCancelar("");
+    try {
+      await pagamentoApi.cancelarPlanoTreinador();
+      await logout();
+    } catch (err) {
+      const { code, status } = extractApiErrorInfo(err);
+      if (code === OFFBOARDING_CODE) {
+        setErroCancelar(OFFBOARDING_MENSAGEM);
+      } else if (status === 404) {
+        setErroCancelar("Nenhuma assinatura ativa para cancelar.");
+      } else {
+        setErroCancelar(extractApiError(err, "Não foi possível cancelar o plano. Tente novamente."));
+      }
+    } finally {
+      setCancelando(false);
+    }
+  };
+
+  const fecharCancelar = () => {
+    if (cancelando) return;
+    setConfirmarCancelar(false);
+    setErroCancelar("");
+  };
+
   const planoAtual = assinatura
     ? planos.find((p) => p.planoId === assinatura.planoPlataformaId)
     : null;
@@ -191,6 +246,19 @@ export default function PlanoTreinadorPage() {
               <Alert severity="error" sx={{ mt: 1.5 }}>
                 Assinatura inadimplente. Regularize escolhendo um plano abaixo.
               </Alert>
+            )}
+            {(assinatura.status === "Ativa" || assinatura.status === "Inadimplente") && (
+              <>
+                <Divider sx={{ my: 1.5 }} />
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  onClick={() => setConfirmarCancelar(true)}
+                >
+                  Cancelar plano
+                </Button>
+              </>
             )}
           </CardContent>
         </Card>
@@ -335,6 +403,33 @@ export default function PlanoTreinadorPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmarCancelar}
+        title="Cancelar plano"
+        description={CANCELAR_PLANO_DESCRICAO}
+        destructive
+        confirmLabel="Confirmar cancelamento"
+        cancelLabel="Voltar"
+        loading={cancelando}
+        onConfirm={cancelarPlano}
+        onClose={fecharCancelar}
+      >
+        <Stack spacing={1.5} sx={{ mt: 2 }}>
+          {erroCancelar && <Alert severity="error">{erroCancelar}</Alert>}
+          <Typography variant="body2" color="text.secondary">
+            Antes de cancelar, você pode baixar uma cópia dos seus dados.
+          </Typography>
+          <Button
+            variant="text"
+            onClick={baixarMeusDados}
+            disabled={baixando || cancelando}
+            sx={{ alignSelf: "flex-start" }}
+          >
+            {baixando ? "Baixando..." : "Baixar meus dados"}
+          </Button>
+        </Stack>
+      </ConfirmDialog>
     </Box>
   );
 }

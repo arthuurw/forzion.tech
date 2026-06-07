@@ -163,6 +163,8 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IDomainEventHandler<AssinaturaTreinadorPagamentoFalhouEvent>, AssinaturaTreinadorPagamentoFalhouEmailHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaTreinadorMarcadaInadimplenteEvent>, AssinaturaTreinadorMarcadaInadimplenteEmailHandler>();
+        services.AddScoped<IDomainEventHandler<CobrancaProximaAlunoEvent>, CobrancaProximaEmailAlunoHandler>();
+        services.AddScoped<IDomainEventHandler<CobrancaProximaTreinadorEvent>, CobrancaProximaEmailTreinadorHandler>();
 
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, PagamentoTreinadorPagoHandler>();

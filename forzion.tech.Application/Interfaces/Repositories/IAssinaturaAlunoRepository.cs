@@ -9,6 +9,7 @@ public interface IAssinaturaAlunoRepository
     Task<AssinaturaAluno?> ObterPorVinculoIdAsync(Guid vinculoId, CancellationToken cancellationToken = default);
     Task<AssinaturaAluno?> ObterAtualPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AssinaturaAluno>> ListarParaRenovarAsync(DateTime ate, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AssinaturaAluno>> ListarParaPreAvisoAsync(DateTime inicio, DateTime fim, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AssinaturaAluno>> ListarPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(AssinaturaAluno assinatura, CancellationToken cancellationToken = default);
     Task<int> ContarPorStatusAsync(AssinaturaAlunoStatus status, CancellationToken cancellationToken = default);

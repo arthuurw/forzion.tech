@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 8.0 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL (Supabase)
 
-**Status**: ✅ 1939 testes backend (1843 unit + 96 integração com Docker) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | Result<T> pattern (erros de negócio sem exceção) | JWT próprio | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação, inadimplência) | Billing recorrente treinador↔plataforma (assinatura de plano, troca, renovação) | WhatsApp Meta Cloud API (paridade com e-mail + webhook de status) | E-mail transacional Resend (verificação de conta, reset de senha, webhook de entrega via Svix) | LGPD (exportação, anonimização, consentimento de cookies) | Health report | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
+**Status**: ✅ 2036 testes backend (1935 unit + 101 integração com Docker) + suíte frontend (Vitest + Playwright) | Clean Architecture | DDD tático + contextos Billing/GrupoMuscular | Result<T> pattern (erros de negócio sem exceção) | JWT próprio | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação, inadimplência) | Billing recorrente treinador↔plataforma (assinatura de plano, troca, renovação) | Cancelamento self-service + compliance CDC/LGPD (reembolso 7 dias, pré-aviso de renovação, purga 5 anos) | WhatsApp Meta Cloud API (paridade com e-mail + webhook de status) | E-mail transacional Resend (verificação de conta, reset de senha, webhook de entrega via Svix) | LGPD (exportação, anonimização, consentimento de cookies) | Health report | Harness de testes completo (arch tests, property-based, mutation, snapshot, E2E real) | Auditoria de segurança OWASP
 
 ---
 
@@ -948,7 +948,7 @@ Confere logs do backend: `ProcessarWebhookStripeHandler` deve marcar `Pagamento.
 ### Testes
 
 ```
-1843 testes unit (rápidos, sem Docker) + 96 integração (Testcontainers) | 0 falhas
+1935 testes unit (rápidos, sem Docker) + 101 integração (Testcontainers) | 0 falhas
 
 Domain/                  → entidades, value objects, domain events, exceções, máquina de estados
 Domain/Properties/       → property-based (CsCheck): Email VO, Result<T>, invariantes de entidade

@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,4 +30,33 @@ public class ContaRepository(AppDbContext context) : IContaRepository
         await _context.Contas
             .CountAsync(c => c.CreatedAt >= desde, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<Guid>> ListarElegivelPurgaLgpdAsync(DateTime threshold, CancellationToken cancellationToken = default)
+    {
+        // Conta elegível: não anonimizada, teve ao menos uma assinatura (aluno OU treinador) e
+        // TODAS estão Canceladas com DataCancelamento anterior ao threshold (retenção fiscal 5 anos).
+        // Uma query via EXISTS/NOT EXISTS (Any) — sem 2º round-trip nem IN inflado.
+        var alunoIds = _context.Alunos.AsNoTracking();
+        var treinadorIds = _context.Treinadores.AsNoTracking();
+
+        return await _context.Contas.AsNoTracking()
+            .Where(c => c.AnonimizadaEm == null)
+            .Where(c =>
+                alunoIds.Any(a => a.ContaId == c.Id
+                    && _context.AssinaturaAlunos.Any(s => s.AlunoId == a.Id))
+                || treinadorIds.Any(t => t.ContaId == c.Id
+                    && _context.AssinaturasTreinador.Any(s => s.TreinadorId == t.Id)))
+            .Where(c =>
+                !alunoIds.Any(a => a.ContaId == c.Id
+                    && _context.AssinaturaAlunos.Any(s => s.AlunoId == a.Id
+                        && (s.Status != AssinaturaAlunoStatus.Cancelada
+                            || s.DataCancelamento == null || s.DataCancelamento >= threshold)))
+                && !treinadorIds.Any(t => t.ContaId == c.Id
+                    && _context.AssinaturasTreinador.Any(s => s.TreinadorId == t.Id
+                        && (s.Status != AssinaturaTreinadorStatus.Cancelada
+                            || s.DataCancelamento == null || s.DataCancelamento >= threshold))))
+            .Select(c => c.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
 }
