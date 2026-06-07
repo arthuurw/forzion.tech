@@ -30,7 +30,7 @@ public class AssinaturaTreinadorRepository(AppDbContext context) : IAssinaturaTr
     public async Task<IReadOnlyList<AssinaturaTreinador>> ListarParaPreAvisoAsync(DateTime inicio, DateTime fim, CancellationToken cancellationToken = default) =>
         await context.AssinaturasTreinador
             .AsNoTracking()
-            .Where(a => (a.Status == AssinaturaTreinadorStatus.Ativa || a.Status == AssinaturaTreinadorStatus.Inadimplente)
+            .Where(a => a.Status == AssinaturaTreinadorStatus.Ativa
                         && a.DataProximaCobranca >= inicio && a.DataProximaCobranca < fim)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
