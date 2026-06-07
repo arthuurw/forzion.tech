@@ -8,4 +8,5 @@ public interface IContaRepository
     Task<Conta?> ObterPorEmailAsync(string email, CancellationToken cancellationToken = default);
     Task AdicionarAsync(Conta conta, CancellationToken cancellationToken = default);
     Task<int> ContarCriadasDesdeAsync(DateTime desde, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Guid>> ListarElegivelPurgaLgpdAsync(DateTime threshold, CancellationToken cancellationToken = default);
 }
