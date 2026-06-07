@@ -1,6 +1,6 @@
 # specification-coding — armadilhas de correção recorrentes (forzion.tech)
 
-DOC PARA AGENTES. Padrões de CORREÇÃO transversais que reviews repetidamente pegam neste codebase — não estilo, não arquitetura macro (isso é [specification-backend]). Ler antes de escrever handler, integração externa, validação, ou mapeamento de erro. Formato denso. Cada regra tem o PORQUÊ (incidente real) pra não virar dogma vazio.
+DOC PARA AGENTES. Padrões de CORREÇÃO transversais que reviews repetidamente pegam neste codebase — não estilo, não arquitetura macro (isso é [specification-backend]). Ler antes de escrever handler, integração externa, validação, ou mapeamento de erro — e antes de qualquer code-review (é o checklist que os reviews repetidamente precisam). Formato denso. Cada regra tem o PORQUÊ (incidente real) pra não virar dogma vazio.
 
 ## MANUTENÇÃO
 - Atualizar quando um review/code-review pegar um bug de CLASSE nova (não pontual) — adicionar a regra + o incidente.
