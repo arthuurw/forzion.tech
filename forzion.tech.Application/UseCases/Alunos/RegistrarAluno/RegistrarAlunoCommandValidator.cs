@@ -28,5 +28,10 @@ public class RegistrarAlunoCommandValidator : AbstractValidator<RegistrarAlunoCo
         RuleFor(x => x.LimitacoesFisicas).MaximumLength(500).When(x => x.LimitacoesFisicas is not null);
         RuleFor(x => x.Doencas).MaximumLength(500).When(x => x.Doencas is not null);
         RuleFor(x => x.ObservacoesAdicionais).MaximumLength(1000).When(x => x.ObservacoesAdicionais is not null);
+        RuleFor(x => x.ConsentimentoDadosSaude)
+            .Equal(true)
+            .When(x => x.ColetaDadosSaude)
+            .WithErrorCode("consentimento_saude_obrigatorio")
+            .WithMessage("Consentimento explícito para tratamento de dados de saúde é obrigatório (LGPD art. 11).");
     }
 }

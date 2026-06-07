@@ -58,8 +58,14 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 ## DB / PII
 - PII por tabela e escopo de scrub → ver `.specs/features/lgpd/spec.md` + [specification-db]. Sensível (saúde): anamnese do aluno. Retidos anonimizados: pagamentos, assinaturas_aluno, logs_aprovacao, treinos/execuções (ids).
 
+## CONSENTIMENTO DE SAÚDE (art. 11 — anamnese)
+Anamnese do aluno (finalidade, foco_treino, nivel_condicionamento, limitacoes_fisicas, doencas) = dado sensível de saúde → exige consentimento específico e destacado.
+- **Backend (`RegistrarAlunoHandler`)**: quando o cadastro coleta qualquer dado de saúde (`command.ColetaDadosSaude`), o validator exige `ConsentimentoDadosSaude == true` (FluentValidation, erro `consentimento_saude_obrigatorio`). Defense-in-depth — não confia só no checkbox do frontend.
+- **Registro**: dentro da transação de cadastro grava `LogAprovacao.Registrar(TipoAcaoAprovacao.ConsentimentoAnamnese, ator=conta, alvo=conta, "Conta", timestamp = ConsentimentoDadosSaudeEm do cliente ?? agora, observacao="v1")`. Sem dado sensível no cadastro → sem consentimento exigido e sem log.
+- Sem nova coluna/migration: reusa `logs_aprovacao` (enum text). Versão do termo no campo `observacao`.
+
 ## AUDITORIA
-`logs_aprovacao` com `TipoAcaoAprovacao.ExportacaoDados` / `AnonimizacaoConta` (text enum; sem migration). Registra quem/quando/alvo.
+`logs_aprovacao` com `TipoAcaoAprovacao.ExportacaoDados` / `AnonimizacaoConta` / `ConsentimentoAnamnese` (text enum; sem migration). Registra quem/quando/alvo. `ConsentimentoAnamnese` = consentimento art. 11 no cadastro do aluno (observacao = versão do termo).
 
 ## TESTES
 - Backend: Domain (Anonimizar de Conta/Aluno/Treinador — PII some, idempotência, evento), Application (export agrega todas as seções sem terceiros; anonimização scrub + retém financeiro + bloqueio treinador-ativo + senha errada), endpoints (200/401/403). ~40 testes.
