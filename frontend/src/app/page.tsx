@@ -219,6 +219,15 @@ export default async function LandingPage() {
                             </Typography>
                           </Box>
                         )}
+                        {!isElite && plano.preco > 0 && (
+                          <Typography
+                            variant="caption"
+                            sx={{ display: "block", mt: 2, color: i === 1 ? "rgba(26,26,26,0.6)" : "rgba(255,255,255,0.45)", lineHeight: 1.4 }}
+                          >
+                            Cobrança mensal recorrente. Cancelamento gratuito com reembolso
+                            integral em até 7 dias (CDC art. 49); após, sem reembolso do período vigente.
+                          </Typography>
+                        )}
                       </CardContent>
                     </Card>
                   );
