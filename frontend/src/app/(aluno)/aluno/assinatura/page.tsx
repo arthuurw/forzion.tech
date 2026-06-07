@@ -5,8 +5,8 @@ import {
   CircularProgress, Alert, Divider,
 } from "@mui/material";
 import { pagamentoApi } from "@/lib/api/pagamento";
-import { contaApi } from "@/lib/api/conta";
 import { extractApiError } from "@/lib/api/extractApiError";
+import { baixarMeusDados as baixarMeusDadosBlob } from "@/lib/utils/downloadBlob";
 import type { AssinaturaAlunoResponse, PagamentoResponse } from "@/types";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
@@ -66,8 +66,8 @@ export default function AssinaturaAlunoPage() {
       setSucesso("Assinatura cancelada com sucesso.");
       setConfirmarCancelar(false);
       await carregar();
-    } catch {
-      setError("Não foi possível cancelar a assinatura. Tente novamente.");
+    } catch (err) {
+      setError(extractApiError(err, "Não foi possível cancelar a assinatura. Tente novamente."));
     } finally {
       setCancelando(false);
     }
@@ -77,13 +77,7 @@ export default function AssinaturaAlunoPage() {
     setBaixandoDados(true);
     setError("");
     try {
-      const res = await contaApi.exportarDados();
-      const url = URL.createObjectURL(res.data as Blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "meus-dados.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      await baixarMeusDadosBlob();
     } catch (err) {
       setError(extractApiError(err, "Erro ao exportar dados."));
     } finally {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractApiError } from "./extractApiError";
+import { extractApiError, extractApiErrorInfo } from "./extractApiError";
 
 /** Build a minimal axios-like error with response.data fields. */
 function makeAxiosError(data: Record<string, unknown>): unknown {
@@ -63,5 +63,37 @@ describe("extractApiError", () => {
   it("returns fallback when response is absent", () => {
     const err = { message: "Network Error" };
     expect(extractApiError(err, "Sem resposta.")).toBe("Sem resposta.");
+  });
+});
+
+describe("extractApiErrorInfo", () => {
+  it("exposes the root-level code extension member", () => {
+    const err = {
+      response: { status: 422, data: { detail: "x", code: "assinatura_treinador.offboarding_necessario" } },
+    };
+    expect(extractApiErrorInfo(err)).toEqual({
+      message: "x",
+      code: "assinatura_treinador.offboarding_necessario",
+      status: 422,
+    });
+  });
+
+  it("exposes status even when data has no message", () => {
+    const err = { response: { status: 404, data: {} } };
+    expect(extractApiErrorInfo(err)).toEqual({ message: null, code: null, status: 404 });
+  });
+
+  it("applies detail → title → message precedence for message", () => {
+    expect(extractApiErrorInfo({ response: { data: { title: "T", message: "M" } } }).message).toBe("T");
+    expect(extractApiErrorInfo({ response: { data: { message: "M" } } }).message).toBe("M");
+  });
+
+  it("returns all-null for non-axios errors", () => {
+    expect(extractApiErrorInfo(new Error("x"))).toEqual({ message: null, code: null, status: null });
+    expect(extractApiErrorInfo(null)).toEqual({ message: null, code: null, status: null });
+  });
+
+  it("ignores whitespace-only code", () => {
+    expect(extractApiErrorInfo({ response: { data: { code: "   " } } }).code).toBeNull();
   });
 });
