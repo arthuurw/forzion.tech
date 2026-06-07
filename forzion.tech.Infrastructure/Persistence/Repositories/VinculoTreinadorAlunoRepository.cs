@@ -30,7 +30,8 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
 
     public async Task<bool> TemVinculosAtivosAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno
-            .AnyAsync(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo, cancellationToken)
+            .AnyAsync(v => v.TreinadorId == treinadorId
+                && (v.Status == VinculoStatus.Ativo || v.Status == VinculoStatus.AguardandoAprovacao), cancellationToken)
             .ConfigureAwait(false);
 
     public async Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>

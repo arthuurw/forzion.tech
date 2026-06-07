@@ -394,7 +394,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         var problem = await response.Content.ReadFromJsonAsync<ProblemWithCode>();
-        problem!.Code.Should().Be("offboarding_necessario");
+        problem!.Code.Should().Be("assinatura_treinador.offboarding_necessario");
     }
 
     [Fact]
@@ -841,7 +841,9 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IAssinaturaTreinadorRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IPagamentoTreinadorRepository>(),
-            Mock.Of<IStripeService>(),
+            new forzion.tech.Application.Services.ReembolsoArrependimentoService(
+                Mock.Of<IStripeService>(),
+                Mock.Of<ILogger<forzion.tech.Application.Services.ReembolsoArrependimentoService>>()),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<CancelarMinhaAssinaturaTreinadorHandler>>());
 
