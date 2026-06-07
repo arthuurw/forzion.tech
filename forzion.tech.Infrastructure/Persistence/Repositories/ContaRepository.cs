@@ -33,40 +33,28 @@ public class ContaRepository(AppDbContext context) : IContaRepository
 
     public async Task<IReadOnlyList<Guid>> ListarElegivelPurgaLgpdAsync(DateTime threshold, CancellationToken cancellationToken = default)
     {
-        // Conta elegível: não anonimizada, teve ao menos uma assinatura e TODAS estão
-        // Canceladas com DataCancelamento anterior ao threshold (retenção fiscal 5 anos).
-        var contasAluno =
-            from a in _context.Alunos.AsNoTracking()
-            join s in _context.AssinaturaAlunos.AsNoTracking() on a.Id equals s.AlunoId
-            select new { a.ContaId, s.Status, s.DataCancelamento };
-
-        var contasTreinador =
-            from t in _context.Treinadores.AsNoTracking()
-            join s in _context.AssinaturasTreinador.AsNoTracking() on t.Id equals s.TreinadorId
-            select new { t.ContaId, s.Status, s.DataCancelamento };
-
-        var elegiveisAluno = contasAluno
-            .GroupBy(x => x.ContaId)
-            .Where(g => g.All(x => x.Status == AssinaturaAlunoStatus.Cancelada
-                                   && x.DataCancelamento != null && x.DataCancelamento < threshold))
-            .Select(g => g.Key);
-
-        var elegiveisTreinador = contasTreinador
-            .GroupBy(x => x.ContaId)
-            .Where(g => g.All(x => x.Status == AssinaturaTreinadorStatus.Cancelada
-                                   && x.DataCancelamento != null && x.DataCancelamento < threshold))
-            .Select(g => g.Key);
-
-        var candidatos = await elegiveisAluno
-            .Union(elegiveisTreinador)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (candidatos.Count == 0)
-            return Array.Empty<Guid>();
+        // Conta elegível: não anonimizada, teve ao menos uma assinatura (aluno OU treinador) e
+        // TODAS estão Canceladas com DataCancelamento anterior ao threshold (retenção fiscal 5 anos).
+        // Uma query via EXISTS/NOT EXISTS (Any) — sem 2º round-trip nem IN inflado.
+        var alunoIds = _context.Alunos.AsNoTracking();
+        var treinadorIds = _context.Treinadores.AsNoTracking();
 
         return await _context.Contas.AsNoTracking()
-            .Where(c => candidatos.Contains(c.Id) && c.AnonimizadaEm == null)
+            .Where(c => c.AnonimizadaEm == null)
+            .Where(c =>
+                alunoIds.Any(a => a.ContaId == c.Id
+                    && _context.AssinaturaAlunos.Any(s => s.AlunoId == a.Id))
+                || treinadorIds.Any(t => t.ContaId == c.Id
+                    && _context.AssinaturasTreinador.Any(s => s.TreinadorId == t.Id)))
+            .Where(c =>
+                !alunoIds.Any(a => a.ContaId == c.Id
+                    && _context.AssinaturaAlunos.Any(s => s.AlunoId == a.Id
+                        && (s.Status != AssinaturaAlunoStatus.Cancelada
+                            || s.DataCancelamento == null || s.DataCancelamento >= threshold)))
+                && !treinadorIds.Any(t => t.ContaId == c.Id
+                    && _context.AssinaturasTreinador.Any(s => s.TreinadorId == t.Id
+                        && (s.Status != AssinaturaTreinadorStatus.Cancelada
+                            || s.DataCancelamento == null || s.DataCancelamento >= threshold))))
             .Select(c => c.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
