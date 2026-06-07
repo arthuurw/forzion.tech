@@ -34,6 +34,9 @@ export const pagamentoApi = {
   obterAssinaturaTreinador() {
     return apiClient.get<AssinaturaTreinadorResponse>("/treinador/plano/assinatura");
   },
+  cancelarPlanoTreinador() {
+    return apiClient.post<{ canceladaEm: string }>("/treinador/plano/cancelar");
+  },
   cobrarRenovacaoPlano(metodo: MetodoPagamento = "Pix") {
     return apiClient.post<{ pagamentoId: string; pixQrCode: string | null; pixQrCodeUrl: string | null; pixExpiracao: string | null; clientSecret: string | null; valor: number; metodoPagamento: MetodoPagamento }>(`/treinador/plano/cobrar?metodo=${metodo}`);
   },

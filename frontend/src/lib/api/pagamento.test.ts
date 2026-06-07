@@ -54,4 +54,9 @@ describe("pagamentoApi", () => {
     pagamentoApi.cancelarMinhaAssinatura();
     expect(mock.post).toHaveBeenCalledWith("/aluno/assinatura/cancelar");
   });
+
+  it("cancelarPlanoTreinador POST sem body", () => {
+    pagamentoApi.cancelarPlanoTreinador();
+    expect(mock.post).toHaveBeenCalledWith("/treinador/plano/cancelar");
+  });
 });
