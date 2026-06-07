@@ -15,6 +15,8 @@ import {
   CardContent,
   Radio,
   Divider,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,6 +30,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { cadastroAlunoSchema, type CadastroAlunoFormData } from "@/lib/validations/common";
 import type { ProblemDetails, TreinadorResponse, PacoteResponse } from "@/types";
 import { DIAS_OPTIONS, TEMPO_OPTIONS, FINALIDADE_OPTIONS, NIVEL_OPTIONS } from "@/lib/constants/enrollmentOptions";
+import CheckoutTermos from "@/components/ui/CheckoutTermos";
 
 const STEPS = ["Escolher treinador", "Escolher pacote", "Seus dados", "Informações adicionais"];
 
@@ -49,6 +52,7 @@ export default function CadastroAlunoPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [consentimentoSaude, setConsentimentoSaude] = useState(false);
 
   const methods = useForm<CadastroAlunoFormData>({
     resolver: zodResolver(cadastroAlunoSchema),
@@ -122,7 +126,7 @@ export default function CadastroAlunoPage() {
   };
 
   const onSubmit = async (data: CadastroAlunoFormData) => {
-    if (!selectedTreinador || !selectedPacote) return;
+    if (!selectedTreinador || !selectedPacote || !consentimentoSaude) return;
     setError("");
     setLoading(true);
     try {
@@ -146,6 +150,8 @@ export default function CadastroAlunoPage() {
           limitacoesFisicas: data.limitacoesFisicas || null,
           doencas: data.doencas || null,
           observacoesAdicionais: data.observacoesAdicionais || null,
+          consentimentoDadosSaude: true,
+          consentimentoDadosSaudeEm: new Date().toISOString(),
         }),
       });
 
@@ -315,6 +321,8 @@ export default function CadastroAlunoPage() {
               Treinador: <strong>{selectedTreinador?.nome}</strong> | Pacote: <strong>{selectedPacote?.nome}</strong>
             </Typography>
 
+            {selectedPacote && <CheckoutTermos valor={Number(selectedPacote.preco)} dense />}
+
             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
               Disponibilidade
             </Typography>
@@ -388,13 +396,27 @@ export default function CadastroAlunoPage() {
               size="small"
             />
 
+            <Divider />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={consentimentoSaude}
+                  onChange={(e) => setConsentimentoSaude(e.target.checked)}
+                  size="small"
+                />
+              }
+              label="Concordo com o tratamento dos meus dados de saúde para fins de orientação de treino."
+              slotProps={{ typography: { variant: "body2", color: "text.secondary" } }}
+            />
+
             <Button
               type="submit"
               variant="contained"
               color="primary"
               size="large"
               fullWidth
-              disabled={loading}
+              disabled={loading || !consentimentoSaude}
               startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
             >
               Criar conta
