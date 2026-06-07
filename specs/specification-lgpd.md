@@ -12,7 +12,8 @@ DOC PARA AGENTES. Fonte de verdade dos direitos do titular (LGPD) no forzion.tec
 - **Consentimento**: essenciais (auth httpOnly) sempre; analytics (Sentry) opt-in, default OFF.
 - **Auditoria**: via `logs_aprovacao` (enum `ExportacaoDados`, `AnonimizacaoConta`).
 - **Regra**: treinador com vínculos ativos → exclusão BLOQUEADA (offboarding primeiro).
-- Pendências jurídicas (copy do banner/política, contato DPO) e retenção fiscal (~5 anos): placeholders/documentação; não bloqueiam código.
+- **D-RET (retenção fiscal, 2026-06-06)**: registros transacionais retidos por **5 anos** após `DataCancelamento` da assinatura (referência fiscal BR). Purga = ANONIMIZAÇÃO via **job mensal** (GitHub Actions `lgpd-purge.yml`, cron `0 3 1 * *`): lista elegíveis (`GET /internal/lgpd/contas-elegiveis`) → loop `DELETE /internal/lgpd/contas/{id}` (sleep 1s). Conta elegível = `AnonimizadaEm IS NULL` E teve ≥1 assinatura, TODAS Canceladas com `DataCancelamento < agora-5anos` (aluno+treinador, cross-tabela). Ambos endpoints internos: auth `INTERNAL_API_KEY` (header `X-Internal-Key`), NÃO admin-JWT — o `DELETE /admin/contas/{id}/lgpd` (admin-JWT) não é usado pelo job (CI não tem JWT admin). Anonimização reusa `AnonimizarContaHandler` (idempotente).
+- Pendências jurídicas (copy do banner/política, contato DPO): placeholders/documentação; não bloqueiam código.
 
 ## MODELO DE ANONIMIZAÇÃO (Domain)
 Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
@@ -41,6 +42,8 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 | DELETE `/conta/lgpd` | autenticado (self) | body `{senha}`; reconfirma senha (BCrypt) antes de anonimizar; rate-limit "write" |
 | GET `/admin/contas/{id}/lgpd/exportar` | SystemAdmin | export em nome do titular |
 | DELETE `/admin/contas/{id}/lgpd` | SystemAdmin | anonimiza (sem senha) |
+| GET `/internal/lgpd/contas-elegiveis` | `INTERNAL_API_KEY` (`X-Internal-Key`) | IDs elegíveis à purga (D-RET); job mensal |
+| DELETE `/internal/lgpd/contas/{id}` | `INTERNAL_API_KEY` (`X-Internal-Key`) | anonimiza elegível (job); reusa `AnonimizarContaHandler` |
 - Erros via `ToProblemResult` (`Error.NotFound`/`Business`→404/422). ⚠️ DELETE com body (`senha`) — alguns proxies removem body de DELETE; aceito por decisão.
 
 ## CONSENTIMENTO (frontend)
@@ -64,7 +67,7 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 
 ## PENDÊNCIAS / GOTCHAS
 - **Jurídico**: copy do banner + política de privacidade + contato DPO = placeholders (validar com jurídico).
-- **Retenção fiscal** (~5 anos BR) dos registros anonimizados: documentar; sem purga automática.
+- **Retenção fiscal** (5 anos BR): RESOLVIDO em D-RET (job mensal `lgpd-purge.yml`). Ver §DECISÕES.
 - **Carência/reversibilidade**: não há (anonimização imediata/irreversível). Avaliar soft-delete + purga agendada no futuro.
 - **Export e telefone**: WhatsApp delivery logs casados por telefone do perfil; se o telefone mudou, logs antigos podem não casar (limitação do modelo — logs não têm conta_id).
 - **Anonimização ≠ delete**: linha da conta permanece (anônima) — by design (fiscal + FKs RESTRICT).
