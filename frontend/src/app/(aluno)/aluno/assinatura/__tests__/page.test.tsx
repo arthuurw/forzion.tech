@@ -10,6 +10,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { contaApi } from "@/lib/api/conta";
 import AssinaturaAlunoPage, { CANCELAR_ASSINATURA_DESCRICAO } from "../page";
 import type { AssinaturaAlunoResponse } from "@/types";
 
@@ -147,6 +148,28 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
     // Após reload, status Cancelada removeu o botão de cancelar
     await waitFor(() => expect(screen.queryByRole("button", { name: "Cancelar assinatura" })).not.toBeInTheDocument());
     expect(await screen.findByText("Assinatura cancelada com sucesso.")).toBeInTheDocument();
+  });
+
+  it("Dialog exibe 'Baixar meus dados' e clique chama contaApi.exportarDados (Marco Civil art. 16)", async () => {
+    respondAssinatura(makeAssinatura({ status: "Ativa" }));
+    const exportSpy = vi
+      .spyOn(contaApi, "exportarDados")
+      .mockResolvedValue({ data: new Blob(["{}"], { type: "application/json" }) } as Awaited<ReturnType<typeof contaApi.exportarDados>>);
+    const createObjUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
+    const revokeObjUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    render(<AssinaturaAlunoPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar assinatura" }));
+
+    const baixar = await screen.findByRole("button", { name: /baixar meus dados/i });
+    fireEvent.click(baixar);
+
+    await waitFor(() => expect(exportSpy).toHaveBeenCalledTimes(1));
+
+    createObjUrl.mockRestore();
+    revokeObjUrl.mockRestore();
+    exportSpy.mockRestore();
   });
 
   it("API retornar erro → exibe mensagem de erro e mantém botão", async () => {
