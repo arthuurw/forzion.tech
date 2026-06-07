@@ -210,6 +210,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
         services.AddScoped<forzion.tech.Application.Services.CriarPagamentoComIntentService>();
+        services.AddScoped<forzion.tech.Application.Services.ReembolsoArrependimentoService>();
 
         services.AddOptions<AppSettings>().BindConfiguration("App");
 

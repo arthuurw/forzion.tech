@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Events;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssinaturaAluno;
@@ -17,14 +18,19 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<CancelarMinhaAssinaturaAlunoHandler>> _logger = new();
+    private readonly Mock<ILogger<ReembolsoArrependimentoService>> _reembolsoLogger = new();
     private readonly CancelarMinhaAssinaturaAlunoHandler _handler;
 
     private static readonly Guid AlunoId = TestData.NextGuid();
 
     public CancelarMinhaAssinaturaAlunoHandlerTests()
     {
+        _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        var reembolsoService = new ReembolsoArrependimentoService(
+            _stripeService.Object, _reembolsoLogger.Object);
         _handler = new CancelarMinhaAssinaturaAlunoHandler(
-            _assinaturaRepo.Object, _pagamentoRepo.Object, _stripeService.Object,
+            _assinaturaRepo.Object, _pagamentoRepo.Object, reembolsoService,
             _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
@@ -154,20 +160,45 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_Apos7Dias_NaoCriaReembolso()
+    public async Task HandleAsync_PagamentoPagoForaDoPrazo_NaoCriaReembolso()
     {
-        var inicio = DateTime.UtcNow.AddDays(-10);
+        var inicio = DateTime.UtcNow.AddDays(-30);
         var assinatura = CriarAtiva(inicio);
+        var pagamento = Pagamento.Criar(assinatura.Id, 150m, inicio).Value;
+        pagamento.DefinirDadosPix("pi_antigo", "qr", "url", inicio.AddHours(1), inicio);
+        pagamento.MarcarPago(inicio);
 
         _assinaturaRepo.Setup(r => r.ObterAtualPorAlunoAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([pagamento]);
 
         var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaAlunoCommand(AlunoId));
 
         result.IsSuccess.Should().BeTrue();
         assinatura.Status.Should().Be(forzion.tech.Domain.Enums.AssinaturaAlunoStatus.Cancelada);
         _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
-        _pagamentoRepo.Verify(r => r.ListarPorAssinaturaAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PagamentoPagoMasAssinaturaAntiga_JanelaContaDoPagamentoNaoDaCriacao()
+    {
+        var dataInicio = DateTime.UtcNow.AddDays(-20);
+        var dataPagamento = DateTime.UtcNow.AddDays(-2);
+        var assinatura = CriarAtiva(dataInicio);
+        var pagamento = Pagamento.Criar(assinatura.Id, 150m, dataInicio).Value;
+        pagamento.DefinirDadosPix("pi_pagamento_recente", "qr", "url", dataPagamento.AddHours(1), dataInicio);
+        pagamento.MarcarPago(dataPagamento);
+
+        _assinaturaRepo.Setup(r => r.ObterAtualPorAlunoAsync(AlunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([pagamento]);
+
+        var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaAlunoCommand(AlunoId));
+
+        result.IsSuccess.Should().BeTrue();
+        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_pagamento_recente", true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -191,7 +222,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
         result.IsSuccess.Should().BeTrue();
         assinatura.Status.Should().Be(forzion.tech.Domain.Enums.AssinaturaAlunoStatus.Cancelada);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _logger.Verify(
+        _reembolsoLogger.Verify(
             l => l.Log(
                 LogLevel.Critical,
                 It.IsAny<EventId>(),
