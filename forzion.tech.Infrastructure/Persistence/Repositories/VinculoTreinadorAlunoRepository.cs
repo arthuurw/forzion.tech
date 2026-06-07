@@ -28,6 +28,11 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             .CountAsync(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<bool> TemVinculosAtivosAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .AnyAsync(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo, cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno
             .Where(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo)
