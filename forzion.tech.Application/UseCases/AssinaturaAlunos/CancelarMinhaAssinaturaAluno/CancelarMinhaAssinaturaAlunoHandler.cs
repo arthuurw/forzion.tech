@@ -58,10 +58,12 @@ public class CancelarMinhaAssinaturaAlunoHandler(
             return Result.Failure(Error.Business(ex.Message));
         }
 
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        // Reembolso DEPOIS do commit: se o commit falhar, nada é estornado. Falha no estorno
+        // pós-commit não reverte o cancelamento (LogCritical + reembolso manual).
         if ((agora - assinatura.DataInicio).TotalDays <= PrazoArrependimentoDias)
             await ReembolsarPrimeiraContratacaoAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
-
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation(
             "Aluno {AlunoId} cancelou a própria assinatura {AssinaturaAlunoId}.",
