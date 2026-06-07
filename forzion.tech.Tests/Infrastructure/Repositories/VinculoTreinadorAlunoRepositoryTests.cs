@@ -184,6 +184,51 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         total.Should().BeGreaterThanOrEqualTo(5);
     }
 
+    // --- TemVinculosAtivosAsync (gate de offboarding) ---
+
+    [Fact]
+    public async Task TemVinculosAtivosAsync_VinculoAtivo_RetornaTrue()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinador, aluno) = await SeedParAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
+
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow).Value;
+        vinculo.Aprovar(treinador.Id, pacoteId, DateTime.UtcNow);
+        await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
+        await ctx.SaveChangesAsync();
+
+        var resultado = await Repo(ctx).TemVinculosAtivosAsync(treinador.Id);
+
+        resultado.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TemVinculosAtivosAsync_VinculoAguardandoAprovacao_RetornaTrue()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinador, aluno) = await SeedParAsync(ctx);
+
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow).Value;
+        await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
+        await ctx.SaveChangesAsync();
+
+        var resultado = await Repo(ctx).TemVinculosAtivosAsync(treinador.Id);
+
+        resultado.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TemVinculosAtivosAsync_SemVinculos_RetornaFalse()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinador, _) = await SeedParAsync(ctx);
+
+        var resultado = await Repo(ctx).TemVinculosAtivosAsync(treinador.Id);
+
+        resultado.Should().BeFalse();
+    }
+
     // --- ObterAtivoAsync ---
 
     [Fact]

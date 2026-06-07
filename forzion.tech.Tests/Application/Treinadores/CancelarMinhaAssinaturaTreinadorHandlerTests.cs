@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -25,9 +26,11 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
 
     public CancelarMinhaAssinaturaTreinadorHandlerTests()
     {
+        var reembolsoService = new ReembolsoArrependimentoService(
+            _stripeService.Object, Mock.Of<ILogger<ReembolsoArrependimentoService>>());
         _handler = new CancelarMinhaAssinaturaTreinadorHandler(
             _assinaturaRepo.Object, _vinculoRepo.Object, _pagamentoRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _timeProvider, _logger.Object);
+            reembolsoService, _unitOfWork.Object, _timeProvider, _logger.Object);
     }
 
     private AssinaturaTreinador CriarAtiva(DateTime dataInicio)
@@ -59,7 +62,7 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
         var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaTreinadorCommand(TreinadorId));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("offboarding_necessario");
+        result.Error!.Code.Should().Be("assinatura_treinador.offboarding_necessario");
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
         _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -89,15 +92,18 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ForaDoPrazo7Dias_CancelaSemReembolso()
+    public async Task HandleAsync_PagamentoPagoForaDoPrazo7Dias_CancelaSemReembolso()
     {
         var agora = _timeProvider.GetUtcNow().UtcDateTime;
         var assinatura = CriarAtiva(agora.AddDays(-30));
+        var pago = CriarPago(assinatura, agora.AddDays(-30));
 
         _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(TreinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);
         _vinculoRepo.Setup(r => r.TemVinculosAtivosAsync(TreinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _pagamentoRepo.Setup(r => r.ObterPagoPorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pago);
 
         var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaTreinadorCommand(TreinadorId));
 
@@ -105,7 +111,26 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Cancelada);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
-        _pagamentoRepo.Verify(r => r.ObterPagoPorAssinaturaAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AssinaturaAntigaMasPagamentoRecente_JanelaContaDoPagamento()
+    {
+        var agora = _timeProvider.GetUtcNow().UtcDateTime;
+        var assinatura = CriarAtiva(agora.AddDays(-20));
+        var pago = CriarPago(assinatura, agora.AddDays(-2));
+
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+        _vinculoRepo.Setup(r => r.TemVinculosAtivosAsync(TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _pagamentoRepo.Setup(r => r.ObterPagoPorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pago);
+
+        var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaTreinadorCommand(TreinadorId));
+
+        result.IsSuccess.Should().BeTrue();
+        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_treinador_pago", false, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
