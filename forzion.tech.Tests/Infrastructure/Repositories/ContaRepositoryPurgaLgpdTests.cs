@@ -51,6 +51,26 @@ public class ContaRepositoryPurgaLgpdTests(InfrastructureTestFixture fixture)
         return a;
     }
 
+    // Unique em vinculo_id: 2 assinaturas do mesmo aluno exigem vínculos distintos.
+    private static async Task<(Guid ContaId, Guid AlunoId, Guid TreinadorId, Guid PacoteId, Guid VinculoId)> SeedVinculoAdicionalAsync(
+        AppDbContext ctx, (Guid ContaId, Guid AlunoId, Guid TreinadorId, Guid PacoteId, Guid VinculoId) seed)
+    {
+        var emailT = Email.Criar($"t{Guid.NewGuid():N}@test.com").Value;
+        var contaT = Conta.Criar(emailT, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+        var pacote = Pacote.Criar(treinador.Id, $"Pac{Guid.NewGuid():N}", 99.90m, DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, seed.AlunoId, DateTime.UtcNow).Value;
+        vinculo.Aprovar(treinador.Id, pacote.Id, DateTime.UtcNow);
+
+        await ctx.Contas.AddAsync(contaT);
+        await ctx.Treinadores.AddAsync(treinador);
+        await ctx.Pacotes.AddAsync(pacote);
+        await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
+        await ctx.SaveChangesAsync();
+
+        return (seed.ContaId, seed.AlunoId, treinador.Id, pacote.Id, vinculo.Id);
+    }
+
     [Fact]
     public async Task ListarElegivelPurgaLgpd_TodasCanceladasAntesDoThreshold_RetornaConta()
     {
@@ -81,7 +101,8 @@ public class ContaRepositoryPurgaLgpdTests(InfrastructureTestFixture fixture)
         await using var ctx = fixture.CreateContext();
         var seed = await SeedAlunoAsync(ctx);
         await SeedAssinaturaAsync(ctx, seed, cancelar: true, cancelarEm: Threshold.AddDays(-1));
-        await SeedAssinaturaAsync(ctx, seed, cancelar: false, cancelarEm: default);
+        var seed2 = await SeedVinculoAdicionalAsync(ctx, seed);
+        await SeedAssinaturaAsync(ctx, seed2, cancelar: false, cancelarEm: default);
 
         var resultado = await Repo(ctx).ListarElegivelPurgaLgpdAsync(Threshold);
 
