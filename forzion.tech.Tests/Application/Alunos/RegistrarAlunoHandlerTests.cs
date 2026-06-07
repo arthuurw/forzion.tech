@@ -21,6 +21,7 @@ public class RegistrarAlunoHandlerTests
     private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logAprovacaoRepo = new();
     private readonly Mock<ILogger<RegistrarAlunoHandler>> _logger = new();
     private readonly RegistrarAlunoHandler _handler;
 
@@ -35,9 +36,24 @@ public class RegistrarAlunoHandlerTests
             _pacoteRepo.Object,
             _passwordHasher.Object,
             _unitOfWork.Object,
+            _logAprovacaoRepo.Object,
             new RegistrarAlunoCommandValidator(),
             TimeProvider.System,
             _logger.Object);
+    }
+
+    private (Guid TreinadorId, Pacote Pacote) ArrangeTreinadorAtivoComPacote()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        var pacote = Pacote.Criar(treinadorId, "Basic", 10, DateTime.UtcNow).Value;
+
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        return (treinadorId, pacote);
     }
 
     [Fact]
@@ -156,5 +172,56 @@ public class RegistrarAlunoHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Should().Contain("não pertence ao treinador");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AnamneseSemConsentimento_LancaValidationException()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            Doencas: "Hipertensão",
+            ConsentimentoDadosSaude: false));
+
+        await act.Should().ThrowAsync<ValidationException>()
+            .Where(e => e.Errors.Any(f => f.ErrorCode == "consentimento_saude_obrigatorio"));
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AnamneseComConsentimento_RegistraLogAprovacaoComTimestampDoCliente()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+        var consentidoEm = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        LogAprovacao? logRegistrado = null;
+        _logAprovacaoRepo
+            .Setup(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()))
+            .Callback<LogAprovacao, CancellationToken>((l, _) => logRegistrado = l);
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            Doencas: "Hipertensão",
+            ConsentimentoDadosSaude: true,
+            ConsentimentoDadosSaudeEm: consentidoEm));
+
+        result.IsSuccess.Should().BeTrue();
+        logRegistrado.Should().NotBeNull();
+        logRegistrado!.TipoAcao.Should().Be(TipoAcaoAprovacao.ConsentimentoAnamnese);
+        logRegistrado.CreatedAt.Should().Be(consentidoEm);
+        logRegistrado.EntidadeTipo.Should().Be("Conta");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemDadosSensiveis_NaoExigeConsentimentoNemRegistraLog()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        _logAprovacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

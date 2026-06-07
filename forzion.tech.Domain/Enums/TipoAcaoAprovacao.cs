@@ -11,5 +11,6 @@ public enum TipoAcaoAprovacao
     AtribuicaoPlanTreinador = 6,
     ExclusaoTreinador = 7,
     ExportacaoDados = 8,
-    AnonimizacaoConta = 9
+    AnonimizacaoConta = 9,
+    ConsentimentoAnamnese = 10
 }
