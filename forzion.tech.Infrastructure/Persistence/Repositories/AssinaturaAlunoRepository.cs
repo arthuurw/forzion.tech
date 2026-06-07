@@ -32,6 +32,14 @@ public class AssinaturaAlunoRepository(AppDbContext context) : IAssinaturaAlunoR
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<AssinaturaAluno>> ListarParaPreAvisoAsync(DateTime inicio, DateTime fim, CancellationToken cancellationToken = default) =>
+        await context.AssinaturaAlunos
+            .AsNoTracking()
+            .Where(a => a.Status == AssinaturaAlunoStatus.Ativa
+                        && a.DataProximaCobranca >= inicio && a.DataProximaCobranca < fim)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<AssinaturaAluno>> ListarPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
         await context.AssinaturaAlunos
             .AsNoTracking()
