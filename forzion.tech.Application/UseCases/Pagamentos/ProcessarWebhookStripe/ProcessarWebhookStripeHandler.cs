@@ -137,6 +137,14 @@ public class ProcessarWebhookStripeHandler(
         }
 
         var agoraPago = timeProvider.GetUtcNow().UtcDateTime;
+
+        // reutiliza assinatura já carregada em ValidarConnect (evita segundo round-trip).
+        var assinatura = assinaturaCarregada
+            ?? await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
+
+        if (assinatura is { Status: AssinaturaAlunoStatus.Cancelada })
+            return await ReconciliarPixDeAssinaturaCanceladaAsync(pagamento, assinatura, paymentIntentId, agoraPago, ct).ConfigureAwait(false);
+
         var marcarPagoResult = pagamento.MarcarPago(agoraPago);
         if (marcarPagoResult.IsFailure)
         {
@@ -144,10 +152,6 @@ public class ProcessarWebhookStripeHandler(
                 paymentIntentId, marcarPagoResult.Error!.Message);
             return ProcessarEventoResultado.JaConsistente;
         }
-
-        // reutiliza assinatura já carregada em ValidarConnect (evita segundo round-trip).
-        var assinatura = assinaturaCarregada
-            ?? await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
 
         if (assinatura is not null)
         {
@@ -173,6 +177,45 @@ public class ProcessarWebhookStripeHandler(
 
         await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
         logger.LogInformation("Pagamento {PagamentoId} marcado como pago.", pagamento.Id);
+        return ProcessarEventoResultado.Aplicado;
+    }
+
+    // Refund precede MarcarEstornado/commit: falha do Stripe lança e aborta o commit (idempotência no
+    // guard Status != Pendente do caller — redelivery vê Estornado e não reembolsa de novo).
+    private async Task<ProcessarEventoResultado> ReconciliarPixDeAssinaturaCanceladaAsync(
+        Pagamento pagamento, AssinaturaAluno assinatura, string paymentIntentId, DateTime agora, CancellationToken ct)
+    {
+        var marcarPagoResult = pagamento.MarcarPago(agora);
+        if (marcarPagoResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PaymentIntent {PaymentIntentId} como pago antes do estorno automático: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarPagoResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        try
+        {
+            await stripeService.CriarReembolsoAsync(paymentIntentId, reverterTransferencia: true, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Falha ao reembolsar Pix capturado para assinatura cancelada {AssinaturaId} (PaymentIntent {PaymentIntentId}). Abortando commit para forçar retry.",
+                assinatura.Id, paymentIntentId);
+            throw new InvalidOperationException(
+                $"Reembolso do Pix capturado falhou para assinatura {assinatura.Id} (PaymentIntent {paymentIntentId}). Retry necessário.", ex);
+        }
+
+        var marcarEstornadoResult = pagamento.MarcarEstornado(agora);
+        if (marcarEstornadoResult.IsFailure)
+        {
+            logger.LogWarning("Falha ao marcar PaymentIntent {PaymentIntentId} como estornado após reembolso: {Erro}. Tratando como não aplicado.",
+                paymentIntentId, marcarEstornadoResult.Error!.Message);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        logger.LogWarning("Pix capturado para assinatura cancelada {AssinaturaId} — reembolsado automático (reverse transfer).", assinatura.Id);
         return ProcessarEventoResultado.Aplicado;
     }
 

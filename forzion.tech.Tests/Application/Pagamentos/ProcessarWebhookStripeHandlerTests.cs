@@ -1365,4 +1365,74 @@ public class ProcessarWebhookStripeHandlerTests
         pagamento.Status.Should().Be(PagamentoStatus.Estornado);
         _pagamentoTreinadorRepo.Verify(r => r.ObterPorStripePaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_AssinaturaCancelada_RefundReverseTransferEMarcaEstornado()
+    {
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_x", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        assinatura.Cancelar(TestData.Agora);
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_x", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_x"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Estornado);
+        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_x", true, It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_AssinaturaCancelada_Redelivery_NaoRefundaDuasVezes()
+    {
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_x", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
+        pagamento.MarcarEstornado(TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        assinatura.Cancelar(TestData.Agora);
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_x", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_x"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_AssinaturaCancelada_RefundFalha_NaoComita()
+    {
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_x", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        assinatura.Cancelar(TestData.Agora);
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_x", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+        _stripeService.Setup(s => s.CriarReembolsoAsync("pi_x", true, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("stripe down"));
+
+        var act = async () => await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_x"), ValidSig));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

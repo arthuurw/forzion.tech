@@ -388,6 +388,19 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    [Fact]
+    public async Task AlterarModoPagamento_EnumForaDeRange_Retorna422()
+    {
+        _factory.AlterarModoPagamentoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AlterarModoPagamentoTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<AlterarModoPagamentoResponse>(TreinadorErrors.ModoPagamentoInvalido));
+
+        var corpo = new StringContent("{\"modo\":99}", System.Text.Encoding.UTF8, "application/json");
+        var response = await CriarClienteTreinador().PostAsync("/treinador/modo-pagamento", corpo);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.UnprocessableEntity, HttpStatusCode.BadRequest);
+    }
+
     // --- GET /treinador/onboarding/status ---
 
     [Fact]
@@ -898,7 +911,9 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 Mock.Of<ILogger<forzion.tech.Application.Services.CriarAssinaturaAlunoService>>()),
             Mock.Of<IStripeService>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<IDbContextTransactionProvider>(), TimeProvider.System,
+            Mock.Of<IDbContextTransactionProvider>(),
+            Mock.Of<IValidator<AlterarModoPagamentoTreinadorCommand>>(),
+            TimeProvider.System,
             Mock.Of<ILogger<AlterarModoPagamentoTreinadorHandler>>());
 
         public Mock<CancelarMinhaAssinaturaTreinadorHandler> CancelarPlanoHandlerMock { get; } = new(
