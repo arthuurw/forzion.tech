@@ -39,6 +39,8 @@ public class StripeService(
             Email = email,
             Capabilities = new AccountCapabilitiesOptions
             {
+                // BR exige card_payments junto de transfers (Stripe rejeita transfers sozinho em contas BR).
+                CardPayments = new AccountCapabilitiesCardPaymentsOptions { Requested = true },
                 Transfers = new AccountCapabilitiesTransfersOptions { Requested = true },
             },
             BusinessProfile = new AccountBusinessProfileOptions
@@ -243,6 +245,13 @@ public class StripeService(
         logger.LogInformation(
             "Reembolso {RefundId} criado para PaymentIntent {PaymentIntentId} (reverterTransferencia={Reverter}).",
             refund.Id, paymentIntentId, reverterTransferencia);
+    }
+
+    public async Task CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+    {
+        var service = new PaymentIntentService();
+        var intent = await service.CancelAsync(paymentIntentId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("PaymentIntent {PaymentIntentId} cancelado (status={Status}).", paymentIntentId, intent.Status);
     }
 
     public async Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default)
