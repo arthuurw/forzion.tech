@@ -40,6 +40,8 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
             .HasDefaultValue(ModoPagamentoAluno.Plataforma)
             .IsRequired();
 
+        builder.Property(t => t.ModoPagamentoAlunoAlteradoEm);
+
         builder.Property(t => t.Status)
             .HasConversion<string>()
             .IsRequired();

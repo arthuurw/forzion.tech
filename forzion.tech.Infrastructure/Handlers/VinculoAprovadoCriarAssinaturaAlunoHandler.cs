@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using Microsoft.Extensions.Logging;
@@ -8,10 +9,9 @@ namespace forzion.tech.Infrastructure.Handlers;
 
 public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
-    IPacoteRepository pacoteRepository,
-    IAssinaturaAlunoRepository assinaturaRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
     ITreinadorRepository treinadorRepository,
+    CriarAssinaturaAlunoService criarAssinaturaService,
     IUnitOfWork unitOfWork,
     ILogger<VinculoAprovadoCriarAssinaturaAlunoHandler> logger) : IDomainEventHandler<VinculoAprovadoEvent>
 {
@@ -39,31 +39,11 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
             return;
         }
 
-        var pacote = await pacoteRepository.ObterPorIdAsync(vinculo.PacoteId.Value, cancellationToken).ConfigureAwait(false);
-        if (pacote is null)
-        {
-            logger.LogWarning("Pacote {PacoteId} não encontrado — assinatura não criada.", vinculo.PacoteId);
+        var resultado = await criarAssinaturaService.CriarParaVinculoAsync(vinculo, domainEvent.OcorridoEm, suprimirNotificacao: false, cancellationToken).ConfigureAwait(false);
+        if (resultado != ResultadoCriacaoAssinaturaAluno.Criada)
             return;
-        }
 
-        var assinaturaResult = Domain.Entities.AssinaturaAluno.Criar(
-            vinculo.Id,
-            pacote.Id,
-            domainEvent.TreinadorId,
-            domainEvent.AlunoId,
-            pacote.Preco,
-            domainEvent.OcorridoEm);
-        if (assinaturaResult.IsFailure)
-        {
-            logger.LogWarning("AssinaturaAluno não criada para vínculo {VinculoId}: {Erro}", vinculo.Id, assinaturaResult.Error!.Message);
-            return;
-        }
-
-        var assinatura = assinaturaResult.Value;
-        await assinaturaRepository.AdicionarAsync(assinatura, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-
-        logger.LogInformation("AssinaturaAluno {AssinaturaAlunoId} criada via evento para vínculo {VinculoId}.",
-            assinatura.Id, vinculo.Id);
+        logger.LogInformation("AssinaturaAluno criada via evento para vínculo {VinculoId}.", vinculo.Id);
     }
 }

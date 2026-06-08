@@ -16,6 +16,10 @@ export const pagamentoApi = {
   verificarOnboarding() {
     return apiClient.get<OnboardingStatusResponse>("/treinador/onboarding/status");
   },
+  alterarModoPagamento(modo: "Plataforma" | "Externo") {
+    return apiClient.post<{ modo: string; alteradoEm: string; assinaturasCriadas: number; vinculosIgnorados: number }>(
+      "/treinador/modo-pagamento", { modo });
+  },
   gerarCobranca(assinaturaId: string, metodo: MetodoPagamento = "Pix") {
     return apiClient.post<PagamentoResponse>(`/treinador/pagamentos/cobrar/${assinaturaId}?metodo=${metodo}`);
   },

@@ -244,6 +244,13 @@ public class StripeService(
             refund.Id, paymentIntentId, reverterTransferencia);
     }
 
+    public async Task CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+    {
+        var service = new PaymentIntentService();
+        var intent = await service.CancelAsync(paymentIntentId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("PaymentIntent {PaymentIntentId} cancelado (status={Status}).", paymentIntentId, intent.Status);
+    }
+
     public async Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(evidencias);

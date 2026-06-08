@@ -7,6 +7,8 @@ namespace forzion.tech.Domain.Entities;
 
 public class Treinador : IHasDomainEvents
 {
+    public const int CooldownModoPagamentoDias = 90;
+
     private readonly List<IDomainEvent> _domainEvents = [];
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
@@ -18,6 +20,7 @@ public class Treinador : IHasDomainEvents
     public string Nome { get; private set; } = string.Empty;
     public Guid? PlanoPlataformaId { get; private set; }
     public ModoPagamentoAluno ModoPagamentoAluno { get; private set; }
+    public DateTime? ModoPagamentoAlunoAlteradoEm { get; private set; }
     public TreinadorStatus Status { get; private set; }
     public string? Telefone { get; private set; }
     public Guid? AprovadoPorId { get; private set; }
@@ -108,6 +111,24 @@ public class Treinador : IHasDomainEvents
         if (Status != TreinadorStatus.Ativo)
             return Result.Failure(TreinadorErrors.NaoDisponivel);
 
+        return Result.Success();
+    }
+
+    public Result AlterarModoPagamento(ModoPagamentoAluno novoModo, DateTime agora)
+    {
+        if (novoModo == ModoPagamentoAluno)
+            return Result.Failure(TreinadorErrors.ModoPagamentoInalterado);
+
+        if (ModoPagamentoAlunoAlteradoEm is { } ultima)
+        {
+            var liberadoEm = ultima.AddDays(CooldownModoPagamentoDias);
+            if (agora < liberadoEm)
+                return Result.Failure(TreinadorErrors.CooldownModoPagamento(liberadoEm));
+        }
+
+        ModoPagamentoAluno = novoModo;
+        ModoPagamentoAlunoAlteradoEm = agora;
+        UpdatedAt = agora;
         return Result.Success();
     }
 
