@@ -34,13 +34,35 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 
 ## FLUXO DE EXPORTAÇÃO (`ExportarDadosPessoaisHandler`)
 - DTO `DadosPessoaisExport` versionado (`Versao`), seções: conta, perfil (aluno OU treinador), anamnese (aluno), vínculos, assinaturas, pagamentos, pacotes (treinador), treinos/fichas, execuções, progressão, delivery logs do titular. **Só dados do titular** (zero terceiros). Agrega por `ContaId` via repos existentes. Registra `LogAprovacao(ExportacaoDados)`.
+- **Negociação de formato** via query param `?formato=xlsx|json` (default `json`). Handler reaproveitado; `LogAprovacao(ExportacaoDados)` preservado em ambos os formatos.
+  - `json`: retorna `DadosPessoaisExport` serializado (200 application/json).
+  - `xlsx`: renderizado por `IDadosPessoaisExcelRenderer` (Infrastructure, ClosedXML); retorna `FileContentResult`, `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `filename: meus-dados.xlsx`.
+
+### ESTRUTURA DO WORKBOOK EXCEL (mapa seção→aba)
+10 abas, nesta ordem:
+
+| # | Aba | Conteúdo |
+|---|-----|----------|
+| 1 | Conta | Campos da entidade `Conta` |
+| 2 | Perfil | `Aluno` (todos os campos incl. anamnese) OU `Treinador` — mutuamente exclusivos |
+| 3 | Vínculos | Vínculos aluno↔treinador do titular |
+| 4 | Assinaturas | Assinaturas do titular |
+| 5 | Pagamentos | Pagamentos do titular |
+| 6 | Pacotes | Pacotes do treinador (vazia se aluno) |
+| 7 | Treinos | Fichas de treino |
+| 8 | Execuções | Execuções de exercícios |
+| 9 | Logs E-mail | Delivery logs de e-mail |
+| 10 | Logs WhatsApp | Delivery logs de WhatsApp |
+
+- **Aba vazia**: criada com linha de cabeçalho (sem dados) — garante completude LGPD art. 18 IV.
+- **Formatação**: datas em pt-BR (`dd/MM/yyyy HH:mm`), valores monetários numéricos, GUIDs como strings.
 
 ## ENDPOINTS
 | Método/Rota | Auth | Notas |
 |-------------|------|-------|
-| GET `/conta/lgpd/exportar` | autenticado (self) | JSON dos próprios dados |
+| GET `/conta/lgpd/exportar?formato=xlsx\|json` | autenticado (self) | Exporta próprios dados; `formato` default `json`; xlsx → `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` + `meus-dados.xlsx` |
 | DELETE `/conta/lgpd` | autenticado (self) | body `{senha}`; reconfirma senha (BCrypt) antes de anonimizar; rate-limit "write" |
-| GET `/admin/contas/{id}/lgpd/exportar` | SystemAdmin | export em nome do titular |
+| GET `/admin/contas/{id}/lgpd/exportar?formato=xlsx\|json` | SystemAdmin | Exporta dados do titular; mesmo comportamento de formato |
 | DELETE `/admin/contas/{id}/lgpd` | SystemAdmin | anonimiza (sem senha) |
 | GET `/internal/lgpd/contas-elegiveis` | `INTERNAL_API_KEY` (`X-Internal-Key`) | IDs elegíveis à purga (D-RET); job mensal |
 | DELETE `/internal/lgpd/contas/{id}` | `INTERNAL_API_KEY` (`X-Internal-Key`) | anonimiza elegível (job); reusa `AnonimizarContaHandler` |
@@ -52,7 +74,7 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 - **Gate Sentry**: `instrumentation-client.ts` só inicializa `@sentry/nextjs` se `consent.analytics === true` (default OFF até aceite). `ConsentProvider` monta o banner globalmente (root layout).
 
 ## FRONTEND — ações
-- `/perfil` → seção "Privacidade (LGPD)": "Exportar meus dados" (baixa JSON), "Excluir minha conta" (ConfirmDialog + senha → DELETE → logout/redirect), "Preferências de cookies". API em `lib/api/conta.ts` (`exportarDados`, `excluirConta(senha)`).
+- `/perfil` → seção "Privacidade (LGPD)": botões "Exportar Excel" e "Exportar JSON" (`baixarMeusDados(formato)`, default `xlsx`), "Excluir minha conta" (ConfirmDialog + senha → DELETE → logout/redirect), "Preferências de cookies". API em `lib/api/conta.ts` (`baixarMeusDados(formato='xlsx')`, `excluirConta(senha)`). Página de assinatura do aluno também expõe os dois botões de download.
 - Admin (detalhe treinador/aluno, aba LGPD): exportar + anonimizar (ConfirmDialog destrutivo). `adminApi.exportarDadosConta(contaId)` / `anonimizarConta(contaId)`.
 
 ## DB / PII
