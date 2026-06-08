@@ -14,7 +14,21 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema. `MigrationsHistoryTable("__EFMigrationsHistory")` sem schema (segue search_path).
 - Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 31 tabelas cada (30 EF + ai_token_usage).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 29 migrations EF aplicadas (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarBillingTreinadorEModoPagamento`). Tabela de controle `__EFMigrationsHistory` por schema.
+- 30 migrations EF aplicadas (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarModoPagamentoAlteradoEm`). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` atual `8.0.11`).
+
+## APLICAÇÃO DE MIGRATIONS (multi-schema — descobertas operacionais)
+Projeto Supabase único: `forzion` (ref `fdpdbtiuuitndbeujcbj`, região sa-east-1). Os 3 schemas vivem no MESMO banco.
+
+- **GOTCHA — schemas DRIFTAM**: develop/homolog/public podem estar em níveis DIFERENTES de migration (já observado: public 5 atrás, develop 2 atrás, homolog 1 atrás). SEMPRE conferir antes: `select max(migration_id), count(*) from <schema>."__EFMigrationsHistory"`. NÃO assumir que estão iguais.
+- **Caminho normal (preferido)**: `dotnet ef database update` com connection `ConnectionStrings:AppConnection` + `Search Path=<schema>` (uma vez por schema). Conecta como `forzion_api` (dono em develop/homolog).
+- **Caminho via Supabase MCP** (quando sem connection local): o MCP conecta como `postgres` (NÃO superuser; tem `createrole`+`bypassrls`+`admin_option` em `forzion_api`).
+  - **OWNERSHIP DIVERGE POR SCHEMA** (gotcha central): tabelas em `develop`/`homolog` são owned por **`forzion_api`**; em `public` são owned por **`postgres`**. DDL exige ser owner.
+    - develop/homolog: `GRANT forzion_api TO postgres WITH SET TRUE;` (membership nasce com `set_option=false`) → `SET ROLE forzion_api;` → DDL → no fim reverter `GRANT forzion_api TO postgres WITH SET FALSE;`.
+    - public: rodar como `postgres` direto (já é owner); NÃO usar SET ROLE.
+  - Em todos: `SET search_path TO <schema>;` antes do DDL (migrations são schema-agnostic, sem qualificador).
+  - **`public` exige GRANT manual nas tabelas novas**: tabelas EF em public são criadas por postgres com RLS desabilitado e `GRANT ALL` para `anon, authenticated, forzion_api, service_role` (espelhar o padrão de `public.pagamentos`). Em develop/homolog isso é automático (dono = forzion_api, role da app). Sequências: N/A (PKs uuid).
+  - Gerar SQL mínimo por schema: `dotnet ef migrations script <ultimaAplicada> <alvo> --project forzion.tech.Infrastructure --startup-project forzion.tech.Api`; remover linhas `START TRANSACTION;`/`COMMIT;` e rodar tudo num `execute_sql` (atômico por schema). `--idempotent` gera guards `IF NOT EXISTS(... migration_id ...)` se preferir um script único.
+  - History: inserir `INSERT INTO "__EFMigrationsHistory" (migration_id, product_version) VALUES ('<id>','8.0.11')` por migration aplicada (o `dotnet ef migrations script` já inclui).
 
 ## CONVENÇÕES
 - PK: `id` uuid gerado na app (Guid.NewGuid), não pelo banco. Exceção: `tokens_revogados` PK=`jti`.
