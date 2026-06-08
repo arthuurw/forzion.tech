@@ -35,6 +35,32 @@ if printf '%s\n' "$STAGED" | grep -Eq '(^|/)frontend/'; then
   FRONTEND_CHANGED=1
 fi
 
+# --- Gate comentarios .cs (AGENTS.md regra 9 — subset objetivamente proibido) --
+# So linhas ADICIONADAS de .cs (exclui EF-generated). Bloqueia:
+#   - andaime/ref de task: // ... T2B.3:  // ... TCR1:  // ... T7:
+#   - divisor decorativo UNICODE: // ──  // ══  // ——  (ASCII '// --- X ---' e' permitido em teste)
+# Parafrase/comentario obvio NAO e' coberto aqui (exige julgamento) — fica pra revisao.
+CS_FILES="$(printf '%s\n' "$STAGED" | grep -E '\.cs$' | grep -vE '(Designer|ModelSnapshot)\.cs$' || true)"
+if [ -n "$CS_FILES" ]; then
+  COMMENT_VIOL=""
+  for f in $CS_FILES; do
+    hits="$(git diff --cached -U0 -- "$f" \
+      | grep -E '^\+[^+]' \
+      | grep -E '//.*\b(T[0-9][0-9A-Z.]*:|TCR[0-9]+:)|//[[:space:]]*[─━═—]{2,}' || true)"
+    if [ -n "$hits" ]; then
+      COMMENT_VIOL="$COMMENT_VIOL
+--- $f ---
+$hits"
+    fi
+  done
+  if [ -n "$COMMENT_VIOL" ]; then
+    echo "Pre-commit FAILED: comentario(s) proibido(s) em .cs staged (AGENTS.md regra 9):"
+    printf '%s\n' "$COMMENT_VIOL"
+    echo "Remova andaime de task (T2B.3:/TCR1:) e divisores decorativos unicode antes de commitar."
+    exit 1
+  fi
+fi
+
 # --- Gate backend ----------------------------------------------------------
 if [ "$BACKEND_CHANGED" -eq 1 ]; then
   if ! command -v dotnet >/dev/null 2>&1; then

@@ -11,9 +11,8 @@ public class CriarAssinaturaAlunoService(
     IAssinaturaAlunoRepository assinaturaRepository,
     ILogger<CriarAssinaturaAlunoService> logger)
 {
-    // Cria a AssinaturaAluno (Pendente) do vínculo e a adiciona ao repositório — o caller é dono do commit.
-    // Não cria para pacote ausente/inativo ou preço inválido (Criar exige valor>0).
-    // suprimirNotificacao=true descarta os eventos de domínio (bulk administrativo, sem e-mail/WhatsApp por-aluno).
+    // Adiciona ao repositório sem commitar — o caller é dono do commit.
+    // suprimirNotificacao descarta os eventos de domínio (bulk administrativo, sem notificação por-aluno).
     public virtual async Task<ResultadoCriacaoAssinaturaAluno> CriarParaVinculoAsync(
         VinculoTreinadorAluno vinculo, DateTime agora, bool suprimirNotificacao, CancellationToken cancellationToken = default)
     {
