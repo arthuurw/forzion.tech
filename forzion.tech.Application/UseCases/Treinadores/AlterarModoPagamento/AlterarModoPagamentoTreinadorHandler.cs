@@ -122,7 +122,6 @@ public class AlterarModoPagamentoTreinadorHandler(
             if (vinculo.PacoteId is null || jaCobertos.Contains(vinculo.Id))
                 continue;
 
-            // Bulk administrativo: suprime a notificação por-aluno da assinatura criada.
             var resultado = await criarAssinaturaService.CriarParaVinculoAsync(vinculo, agora, suprimirNotificacao: true, cancellationToken).ConfigureAwait(false);
             if (resultado == ResultadoCriacaoAssinaturaAluno.Criada)
                 criadas++;
