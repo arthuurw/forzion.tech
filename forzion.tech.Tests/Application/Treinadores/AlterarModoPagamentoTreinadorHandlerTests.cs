@@ -1,4 +1,5 @@
 using FluentAssertions;
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
@@ -23,6 +24,7 @@ public class AlterarModoPagamentoTreinadorHandlerTests
     private readonly Mock<IStripeService> _stripe = new();
     private readonly Mock<IUnitOfWork> _uow = new();
     private readonly Mock<IDbContextTransactionProvider> _txProvider = new();
+    private readonly Mock<ILogger<AlterarModoPagamentoTreinadorHandler>> _logger = new();
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 6, 7, 12, 0, 0, TimeSpan.Zero));
 
     public AlterarModoPagamentoTreinadorHandlerTests()
@@ -43,7 +45,8 @@ public class AlterarModoPagamentoTreinadorHandlerTests
         _vinculoRepo.Object,
         new CriarAssinaturaAlunoService(_pacoteRepo.Object, _assinaturaRepo.Object, Mock.Of<ILogger<CriarAssinaturaAlunoService>>()),
         _stripe.Object, _uow.Object, _txProvider.Object,
-        _time, Mock.Of<ILogger<AlterarModoPagamentoTreinadorHandler>>());
+        new AlterarModoPagamentoTreinadorCommandValidator(),
+        _time, _logger.Object);
 
     private void SetTreinador(Treinador treinador) =>
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -97,7 +100,7 @@ public class AlterarModoPagamentoTreinadorHandlerTests
 
         var seq = new MockSequence();
         _uow.InSequence(seq).Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        _stripe.InSequence(seq).Setup(s => s.CancelarPaymentIntentAsync("pi_seq", It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _stripe.InSequence(seq).Setup(s => s.CancelarPaymentIntentAsync("pi_seq", It.IsAny<CancellationToken>())).ReturnsAsync(CancelarPaymentIntentResultado.Cancelado);
 
         var result = await CriarHandler().HandleAsync(
             new AlterarModoPagamentoTreinadorCommand(treinador.Id, ModoPagamentoAluno.Externo));
@@ -223,5 +226,94 @@ public class AlterarModoPagamentoTreinadorHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("treinador.modo_inalterado");
+    }
+
+    [Fact]
+    public async Task EnumForaDeRange_LancaValidacao_NaoMutaNemComita()
+    {
+        var act = async () => await CriarHandler().HandleAsync(
+            new AlterarModoPagamentoTreinadorCommand(Guid.NewGuid(), (ModoPagamentoAluno)99));
+
+        await act.Should().ThrowAsync<ValidationException>();
+        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ParaExterno_PendenteSemPaymentIntent_ExpiraPagamentoNaoChamaStripe()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "T", _time.GetUtcNow().UtcDateTime, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        SetTreinador(treinador);
+        var assinatura = new AssinaturaAlunoBuilder().ComTreinadorId(treinador.Id).Build();
+        _assinaturaRepo.Setup(r => r.ListarNaoCanceladasPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([assinatura]);
+        var pagamento = Pagamento.Criar(assinatura.Id, 100m, _time.GetUtcNow().UtcDateTime).Value;
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+
+        var result = await CriarHandler().HandleAsync(
+            new AlterarModoPagamentoTreinadorCommand(treinador.Id, ModoPagamentoAluno.Externo));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Expirado);
+        _stripe.Verify(s => s.CancelarPaymentIntentAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ParaExterno_PaymentIntentJaCapturado_LogCriticalESegue()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "T", _time.GetUtcNow().UtcDateTime, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        SetTreinador(treinador);
+        var assinatura = new AssinaturaAlunoBuilder().ComTreinadorId(treinador.Id).Build();
+        _assinaturaRepo.Setup(r => r.ListarNaoCanceladasPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([assinatura]);
+        var pagamento = Pagamento.Criar(assinatura.Id, 100m, _time.GetUtcNow().UtcDateTime).Value;
+        pagamento.DefinirDadosPix("pi_cap", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1), _time.GetUtcNow().UtcDateTime);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _stripe.Setup(s => s.CancelarPaymentIntentAsync("pi_cap", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CancelarPaymentIntentResultado.JaCapturado);
+
+        var result = await CriarHandler().HandleAsync(
+            new AlterarModoPagamentoTreinadorCommand(treinador.Id, ModoPagamentoAluno.Externo));
+
+        result.IsSuccess.Should().BeTrue();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ParaExterno_PaymentIntentJaCancelado_SemLogCritical()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "T", _time.GetUtcNow().UtcDateTime, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value;
+        SetTreinador(treinador);
+        var assinatura = new AssinaturaAlunoBuilder().ComTreinadorId(treinador.Id).Build();
+        _assinaturaRepo.Setup(r => r.ListarNaoCanceladasPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([assinatura]);
+        var pagamento = Pagamento.Criar(assinatura.Id, 100m, _time.GetUtcNow().UtcDateTime).Value;
+        pagamento.DefinirDadosPix("pi_cancel", "qr", "url", _time.GetUtcNow().UtcDateTime.AddHours(1), _time.GetUtcNow().UtcDateTime);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _stripe.Setup(s => s.CancelarPaymentIntentAsync("pi_cancel", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CancelarPaymentIntentResultado.JaCancelado);
+
+        var result = await CriarHandler().HandleAsync(
+            new AlterarModoPagamentoTreinadorCommand(treinador.Id, ModoPagamentoAluno.Externo));
+
+        result.IsSuccess.Should().BeTrue();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
     }
 }
