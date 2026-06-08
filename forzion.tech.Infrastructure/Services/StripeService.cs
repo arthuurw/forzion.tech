@@ -247,11 +247,39 @@ public class StripeService(
             refund.Id, paymentIntentId, reverterTransferencia);
     }
 
-    public async Task CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+    public async Task<CancelarPaymentIntentResultado> CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default)
     {
         var service = new PaymentIntentService();
-        var intent = await service.CancelAsync(paymentIntentId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
-        logger.LogInformation("PaymentIntent {PaymentIntentId} cancelado (status={Status}).", paymentIntentId, intent.Status);
+        var intent = await service.GetAsync(paymentIntentId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        switch (intent.Status)
+        {
+            case "succeeded":
+                logger.LogWarning("PaymentIntent {PaymentIntentId} já capturado (succeeded) no momento do cancelamento.", paymentIntentId);
+                return CancelarPaymentIntentResultado.JaCapturado;
+            case "canceled":
+                logger.LogDebug("PaymentIntent {PaymentIntentId} já cancelado. No-op.", paymentIntentId);
+                return CancelarPaymentIntentResultado.JaCancelado;
+        }
+
+        try
+        {
+            var cancelado = await service.CancelAsync(paymentIntentId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+            logger.LogInformation("PaymentIntent {PaymentIntentId} cancelado (status={Status}).", paymentIntentId, cancelado.Status);
+            return CancelarPaymentIntentResultado.Cancelado;
+        }
+        // PI virou terminal entre Get e Cancel: mapeia p/ outcome, não relança como erro transitório.
+        catch (StripeException ex) when (ex.StripeError?.Code == "payment_intent_unexpected_state")
+        {
+            var statusAtual = ex.StripeError?.PaymentIntent?.Status;
+            if (statusAtual == "succeeded")
+            {
+                logger.LogWarning(ex, "PaymentIntent {PaymentIntentId} capturado durante o cancelamento (race).", paymentIntentId);
+                return CancelarPaymentIntentResultado.JaCapturado;
+            }
+            logger.LogDebug(ex, "PaymentIntent {PaymentIntentId} já em estado terminal {Status} durante o cancelamento.", paymentIntentId, statusAtual);
+            return CancelarPaymentIntentResultado.JaCancelado;
+        }
     }
 
     public async Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default)
