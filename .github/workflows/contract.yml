@@ -1,9 +1,15 @@
 name: Contract — Pact (consumer)
 
 # Gera e valida o contrato consumer-driven do frontend (forzion-frontend).
-# - pull_request: gera + valida (gate). Publish so ocorre com secret presente.
+# - pull_request: gera + valida (gate). NAO toca o broker.
 # - push (homolog): gera + valida + publica no broker.
-# - workflow_dispatch: disparo manual.
+# - workflow_dispatch: disparo manual (publica).
+#
+# O broker (pact.homologacao.forzion.tech) vive no VM homolog e nem sempre e
+# alcancavel dos runners GitHub. Por isso publish/can-i-deploy rodam SO em
+# push/dispatch — em PR seriam dependencia externa flaky que derruba o gate sem
+# relacao com o contrato. `environment: homolog` expoe os secrets tambem em PR,
+# entao o guard e o EVENTO (github.event_name), nao a presenca do secret.
 #
 # Nota: o publish espera o broker responder (heartbeat) antes de subir o pact.
 # Em push, o deploy homolog roda em paralelo e reinicia o nginx; o wait evita
@@ -75,7 +81,8 @@ jobs:
       - name: Aguarda broker disponivel
         # Em push, o deploy reinicia o nginx em paralelo; espera o heartbeat
         # responder antes de publicar (evita falha por race com o restart).
-        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        # So em push/dispatch — o broker nao e dependencia do gate de PR.
+        if: ${{ github.event_name != 'pull_request' && env.PACT_BROKER_BASE_URL != '' }}
         run: |
           for i in $(seq 1 12); do
             if curl -fsS -u "$PACT_BROKER_USERNAME:$PACT_BROKER_PASSWORD" \
@@ -87,7 +94,7 @@ jobs:
           echo "broker nao respondeu apos ~3min"; exit 1
 
       - name: Publica no broker
-        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        if: ${{ github.event_name != 'pull_request' && env.PACT_BROKER_BASE_URL != '' }}
         run: |
           docker run --rm \
             -v "$PWD/pacts:/pacts" \
@@ -98,7 +105,7 @@ jobs:
             --branch="${PACT_CONSUMER_BRANCH}"
 
       - name: can-i-deploy (consumer)
-        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        if: ${{ github.event_name != 'pull_request' && env.PACT_BROKER_BASE_URL != '' }}
         # Report-only ate o provider (backend .NET) verificar os contratos e
         # registrar deploy no environment homolog. Sem verificacao, o broker
         # corretamente responde "no" — nao deve derrubar a workflow ainda.
