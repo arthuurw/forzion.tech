@@ -237,6 +237,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ExportarDadosPessoaisHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.AnonimizarContaHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ListarContasElegivelPurgaLgpdHandler>();
+        services.AddScoped<IDadosPessoaisExcelRenderer, forzion.tech.Infrastructure.Services.DadosPessoaisExcelRenderer>();
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosAlunoHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosTreinadorHandler>();
 
