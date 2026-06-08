@@ -58,19 +58,22 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - Sequência canônica de passos (backend format→build→test; frontend typecheck→lint-staged→vitest) e commit-msg/commitlint: ver [specification-git] §PRE-COMMIT HOOK + §CONVENTIONAL COMMITS (não duplicar). Resumo: cada área staged roda seu gate, todos bloqueantes.
 
 ### CI — `.github/workflows/ci.yml` (job `gate` = required check, agrega os obrigatórios)
-| Job | Gate | Bloqueante |
-|-----|------|------------|
-| `commitlint` (PR) | conventional commits | sim |
-| `test-backend-unit` | build + `dotnet format --verify` + cobertura Coverlet: Domain branch 75 / line+method 85; Application branch 75 / line+method 85; Api line 85 / method 70 (filtro `Category!=Integration`) | sim |
-| `test-backend-integration` | suíte COMPLETA (Testcontainers): global branch 50; Infrastructure branch 35 (exclui Migrations) | sim |
-| `test-frontend` | `lint` + `tsc --noEmit` + `test:coverage` (vitest thresholds por glob, §8) | sim |
-| `build-frontend` | `next build` + `storybook:build` | sim |
-| `security` / `security-backend` | gitleaks, `npm audit --omit=dev >=high`, license-checker, OSV, SBOM; NuGet `--vulnerable` (gate manual), SBOM CycloneDX | sim |
-### CI — workflows dedicados (separados do gate principal)
+**Split por evento (economia de minutos — repo solo, sem branch protection no plano free):** a validação pesada roda em **pull_request**; o **push → homolog** (= merge) confia no PR (commit de merge ~= head do PR, sem skew) e roda só **build sanity + deploy + smoke**. `gate` usa `if: always()` → job pulado-por-evento (`skipped`) NÃO reprova.
+| Job | Gate | Quando | Bloqueante |
+|-----|------|--------|------------|
+| `commitlint` | conventional commits | PR | sim |
+| `test-backend-unit` | build + `dotnet format --verify` + cobertura Coverlet: Domain branch 75 / line+method 85; Application branch 75 / line+method 85; Api line 85 / method 70 (filtro `Category!=Integration`) | **PR-only** | sim |
+| `test-backend-integration` | suíte COMPLETA (Testcontainers): global branch 50; Infrastructure branch 35 (exclui Migrations) | **PR-only** | sim |
+| `test-frontend` | `lint` + `tsc --noEmit` + `test:coverage` (vitest thresholds por glob, §8) | **PR-only** | sim |
+| `security` / `security-backend` | gitleaks, `npm audit --omit=dev >=high`, license-checker, OSV, SBOM; NuGet `--vulnerable` (gate manual), SBOM CycloneDX | **PR-only** | sim |
+| `build-frontend` | `next build` + `storybook:build` (sanity frontend no push) | PR + push | sim |
+| `sanity-backend` | `dotnet build -c Release` (só compila — sanity antes do deploy SSH) | **push-only** | sim |
+| `deploy-homolog` | SSH + `docker compose build/up` na VM | **push-only** | — |
+### CI — workflows dedicados (separados do gate principal — NÃO gateiam o deploy)
 - `mutation.yml` — **Stryker.NET** matriz Domain+Application, `break 40` (high 80/low 60) — `stryker-config.json`.
-- `contract.yml` / `pact-provider.yml` — Pact consumer (frontend) + provider (`forzion.tech.PactVerification`).
-- `openapi-drift.yml` — `openapi:check` (tipos MSW vs OpenAPI; `git diff --exit-code`).
-- `semgrep.yml`, `zap.yml` — SAST + DAST. `lighthouse.yml` — perf/a11y (LHCI). `hygiene.yml` — `knip` (dead code) + `madge` (ciclos). `smoke.yml` — Playwright smoke pós-deploy homolog.
+- `contract.yml` — Pact consumer (frontend). PR: gera+valida. push/dispatch: publica no broker + can-i-deploy (broker só é tocado fora de PR). `pact-provider.yml` — provider (`forzion.tech.PactVerification`), push → homolog.
+- `openapi-drift.yml` — `openapi:check` (tipos MSW vs OpenAPI; `git diff --exit-code`). **PR-only** (+ dispatch).
+- `semgrep.yml` (SAST), `hygiene.yml` (`knip` dead code + `madge` ciclos) — **PR-only** (+ dispatch). `zap.yml` (DAST), `lighthouse.yml` (perf/a11y LHCI) — schedule/dispatch. `smoke.yml` — Playwright smoke pós-deploy homolog (`workflow_run`).
 
 ## 8. THRESHOLDS DE COBERTURA (detectado — NÃO abaixar sem aprovação humana)
 - **Backend (Coverlet → ReportGenerator JsonSummary → `scripts/check-coverage.sh`, por assembly, em CI)**: Domain branch 75 / line+method 85; Application branch 75 / line+method 85; Api line 85 / method 70; global branch 50; Infrastructure branch 35 (exclui Migrations). Baselines reais acima dos pisos (ver comentários no `ci.yml`) — pisos guardam regressão + execução silenciosa. Avaliação de TODOS os thresholds num único relatório (1 `dotnet test` por job; não mais `/p:Threshold` por assembly).

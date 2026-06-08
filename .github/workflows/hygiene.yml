@@ -3,15 +3,15 @@ name: Hygiene — dead code
 # Higiene de código: dependências circulares (madge, bloqueante) + código/deps
 # não usados (knip, report-only — tem falsos positivos com a config de projects
 # do Vitest 4, então informa sem derrubar o build).
+# So em pull_request: roda no PR antes do merge. NAO em push -> homolog (merge
+# ~= head do PR, repo solo) — re-rodar so queimaria minutos e nao gateia o
+# deploy do ci.yml (workflow separado).
 on:
-  push:
-    branches: [homolog]
-    paths:
-      - "frontend/**"
   pull_request:
     branches: [homolog]
     paths:
       - "frontend/**"
+  workflow_dispatch:
 
 jobs:
   hygiene:

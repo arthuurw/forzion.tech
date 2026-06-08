@@ -82,7 +82,9 @@ jobs:
   test-backend-unit:
     name: Backend — testes unit
     needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true' }}
+    # PR-only: push -> homolog confia no PR (commit de merge ~= head do PR, repo
+    # solo). No push roda so a sanity de build (sanity-backend) + deploy.
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -139,7 +141,8 @@ jobs:
   test-backend-integration:
     name: Backend — testes integração
     needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true' }}
+    # PR-only (ver test-backend-unit).
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -223,7 +226,8 @@ jobs:
   test-frontend:
     name: Frontend — lint + type check + testes
     needs: [changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true' }}
+    # PR-only (ver test-backend-unit). No push, build-frontend faz a sanity.
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -293,7 +297,8 @@ jobs:
   security-backend:
     name: Security backend — vuln NuGet + SBOM
     needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true' }}
+    # PR-only (ver test-backend-unit).
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -345,7 +350,8 @@ jobs:
   security:
     name: Security — gitleaks + osv + audit + license + sbom
     needs: [changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true' }}
+    # PR-only (ver test-backend-unit). Gitleaks/audit ja varreram o head do PR.
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -397,12 +403,33 @@ jobs:
           path: frontend/sbom.cdx.json
           if-no-files-found: error
 
+  # ─── SANITY DE BUILD (push -> homolog) ───────────────────────────────────────
+  # No push os testes pesados nao re-rodam (PR-only — o PR ja os validou). Esta
+  # sanity garante que o backend COMPILA antes do deploy SSH (que faz
+  # `docker compose build` na VM) — pega quebra de build cedo, sem o custo de
+  # testes + cobertura. Frontend tem a sanity no build-frontend (roda em push).
+  sanity-backend:
+    name: Backend — sanity build (push)
+    needs: [changes]
+    if: ${{ github.event_name == 'push' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
   # ─── GATE (required check) ─────────────────────────────────────────────────────
-  # `if: always()` para rodar mesmo com jobs PULADOS pelo path-filter. Um job
-  # pulado (result 'skipped') NÃO reprova; só 'failure'/'cancelled' reprovam o gate.
+  # `if: always()` para rodar mesmo com jobs PULADOS pelo path-filter ou por
+  # evento (testes pesados sao PR-only). Um job pulado (result 'skipped') NÃO
+  # reprova; só 'failure'/'cancelled' reprovam o gate.
   gate:
     name: Gate
-    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend]
+    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend, sanity-backend]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
