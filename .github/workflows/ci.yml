@@ -452,7 +452,13 @@ jobs:
     needs: [gate]
     runs-on: ubuntu-latest
     environment: homolog
-    if: github.event_name == 'push'
+    # GOTCHA: o `success()` IMPLÍCITO (todo `if:` sem status-function injeta um)
+    # avalia o grafo TRANSITIVO de needs. Com os testes pesados PR-only, em push
+    # eles ficam `skipped` -> `gate` passa (always()) mas o success() implícito do
+    # deploy vê ancestrais skipped e PULA o deploy mesmo com gate=success.
+    # Fix: `always()` desliga o success() implícito; exigimos gate=success + push
+    # explicitamente. Sem isto o merge em homolog NÃO deploya (regressão silenciosa).
+    if: ${{ always() && needs.gate.result == 'success' && github.event_name == 'push' }}
     steps:
       - name: Deploy na VM
         uses: appleboy/ssh-action@v1
