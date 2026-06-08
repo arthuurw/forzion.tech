@@ -2,6 +2,7 @@ using forzion.tech.Api.Extensions;
 using forzion.tech.Api.Helpers;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
@@ -107,6 +108,23 @@ public static class TreinadorEndpoints
         })
         .WithSummary("Verifica status do onboarding Stripe do treinador")
         .Produces<OnboardingStatusResponse>();
+
+        group.MapPost("/modo-pagamento", async (
+            [FromBody] AlterarModoPagamentoRequest request,
+            [FromServices] AlterarModoPagamentoTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new AlterarModoPagamentoTreinadorCommand(userContext.PerfilId, request.Modo), cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Altera o modo de pagamento do aluno (Plataforma ↔ Externo)")
+        .Produces<AlterarModoPagamentoResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPost("/vinculos/{id:guid}/aprovar", async (
             Guid id,
@@ -480,6 +498,7 @@ public static class TreinadorEndpoints
 }
 
 public record IniciarOnboardingRequest(string UrlRetorno, string UrlCancelamento);
+public record AlterarModoPagamentoRequest(ModoPagamentoAluno Modo);
 
 
 public record AprovarVinculoRequest(Guid PacoteId, bool TrarFichas = false);

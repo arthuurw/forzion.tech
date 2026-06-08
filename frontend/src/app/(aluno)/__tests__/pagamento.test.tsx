@@ -285,7 +285,7 @@ describe("PagamentosTreinadorPage", () => {
   });
 
   it("onboarding completo → exibe 'Ativo'", async () => {
-    const status: OnboardingStatusResponse = { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma" };
+    const status: OnboardingStatusResponse = { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null };
     server.use(http.get("*/treinador/onboarding/status", () => HttpResponse.json(status)));
 
     render(<PagamentosTreinadorPage />);
@@ -293,7 +293,7 @@ describe("PagamentosTreinadorPage", () => {
   });
 
   it("não configurado → exibe botão 'Configurar recebimentos'", async () => {
-    const status: OnboardingStatusResponse = { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma" };
+    const status: OnboardingStatusResponse = { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null };
     server.use(http.get("*/treinador/onboarding/status", () => HttpResponse.json(status)));
 
     render(<PagamentosTreinadorPage />);
@@ -301,7 +301,7 @@ describe("PagamentosTreinadorPage", () => {
   });
 
   it("configurado mas incompleto → exibe 'Continuar cadastro'", async () => {
-    const status: OnboardingStatusResponse = { onboardingCompleto: false, contaConfigurada: true, modoPagamentoAluno: "Plataforma" };
+    const status: OnboardingStatusResponse = { onboardingCompleto: false, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null };
     server.use(http.get("*/treinador/onboarding/status", () => HttpResponse.json(status)));
 
     render(<PagamentosTreinadorPage />);
@@ -309,7 +309,7 @@ describe("PagamentosTreinadorPage", () => {
   });
 
   it("clique em configurar → chama iniciarOnboarding", async () => {
-    const status: OnboardingStatusResponse = { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma" };
+    const status: OnboardingStatusResponse = { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null };
     let iniciarCalled = false;
     server.use(
       http.get("*/treinador/onboarding/status", () => HttpResponse.json(status)),

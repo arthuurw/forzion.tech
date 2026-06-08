@@ -212,7 +212,7 @@ Básico aqui; tokens exatos (paleta/radius/tipografia/component-defaults/anti-zo
   - `TreinadorStatus`: `AguardandoPagamento | AguardandoAprovacao | Ativo | Inativo` (`AguardandoPagamento` = plano pago aguardando pagamento no signup).
   - `ModoPagamentoAluno`: `Plataforma | Externo` (como o aluno paga o treinador).
   - `IniciarPagamentoPlanoResponse`: `{ pagamentoId, valor, status, metodoPagamento, stripePaymentIntentId?, pixQrCode?, pixQrCodeUrl?, pixExpiracao?, clientSecret?, createdAt }` — payload do signup (Pix ou Cartão).
-  - `OnboardingStatusResponse`: `{ onboardingCompleto, contaConfigurada, modoPagamentoAluno }`.
+  - `OnboardingStatusResponse`: `{ onboardingCompleto, contaConfigurada, modoPagamentoAluno, modoPagamentoPodeAlterarEm }` (`modoPagamentoPodeAlterarEm`: data em que a troca de modo volta a ser permitida — servidor já soma o cooldown de 90d; null se nunca trocou; UI só compara com a data atual).
   - `AssinaturaTreinadorResponse` (`status: AssinaturaTreinadorStatus = Pendente|Ativa|Inadimplente|Cancelada`), `TrocarPlanoTreinadorResponse` (`tipo: TipoTrocaPlano = Upgrade|Downgrade|InadimplenteRegularizacao|UpgradeImediato`), `PagamentoTreinadorStatusResponse`.
 
 ## ELITE "EM BREVE"
@@ -252,6 +252,7 @@ Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinatura
 Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 - **Externo**: orientação de controle manual (sem Stripe; combinar valor direto, gerenciar acesso por vínculo). Chip "Pagamento externo".
 - **Plataforma**: onboarding Stripe (chip status: Ativo/Cadastro incompleto/Não configurado; `iniciarOnboarding` redireciona p/ URL Stripe).
+- **Troca de modo (opt-out/opt-in)**: ambos os modos exibem ação de alternar (`alterarModoPagamento` → `POST /treinador/modo-pagamento`) com `ConfirmDialog` de consequências (→Externo cancela assinaturas dos alunos; →Plataforma cria assinaturas + exige Stripe) + aceite do cooldown. Cooldown lido direto de `OnboardingStatusResponse.modoPagamentoPodeAlterarEm` (sem constante local): se futura, ação desabilitada + "Novo ajuste disponível em <data>". Erro (422 `configure_stripe_primeiro`/`cooldown_modo_pagamento`) exibido DENTRO do dialog via `extractApiError` (dialog permanece aberto p/ retry).
 
 ### Aluno sem vínculo ativo
 - `components/aluno/SemVinculoAtivoBanner.tsx`: lê `GET /aluno/vinculo` (`alunoApi.getMeuVinculo`). Estado `ativo` (oculto) | `pendente` (aguardando aprovação) | `sem-vinculo`. Mensagem: histórico consultável, registro de novos treinos bloqueado. Renderizado no dashboard (`(aluno)/aluno/page.tsx`) e no histórico (`(aluno)/aluno/historico/page.tsx`).

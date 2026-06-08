@@ -48,6 +48,13 @@ public class AssinaturaAlunoRepository(AppDbContext context) : IAssinaturaAlunoR
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    // Tracked (sem AsNoTracking): o caller cancela cada assinatura e persiste via UnitOfWork.
+    public async Task<IReadOnlyList<AssinaturaAluno>> ListarNaoCanceladasPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await context.AssinaturaAlunos
+            .Where(a => a.TreinadorId == treinadorId && a.Status != AssinaturaAlunoStatus.Cancelada)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task AdicionarAsync(AssinaturaAluno assinatura, CancellationToken cancellationToken = default) =>
         await context.AssinaturaAlunos.AddAsync(assinatura, cancellationToken).ConfigureAwait(false);
 
