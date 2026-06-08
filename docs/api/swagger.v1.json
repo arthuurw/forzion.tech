@@ -3433,6 +3433,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -3445,6 +3455,16 @@
           },
           "422": {
             "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3507,6 +3527,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OnboardingStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/modo-pagamento": {
+      "post": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Altera o modo de pagamento do aluno (Plataforma ↔ Externo)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterarModoPagamentoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlterarModoPagamentoResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -5272,6 +5342,36 @@
         },
         "additionalProperties": false
       },
+      "AlterarModoPagamentoRequest": {
+        "type": "object",
+        "properties": {
+          "modo": {
+            "$ref": "#/components/schemas/ModoPagamentoAluno"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AlterarModoPagamentoResponse": {
+        "type": "object",
+        "properties": {
+          "modo": {
+            "$ref": "#/components/schemas/ModoPagamentoAluno"
+          },
+          "alteradoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assinaturasCriadas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "vinculosIgnorados": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "AlterarSenhaRequest": {
         "type": "object",
         "properties": {
@@ -6763,6 +6863,11 @@
           },
           "modoPagamentoAluno": {
             "$ref": "#/components/schemas/ModoPagamentoAluno"
+          },
+          "modoPagamentoPodeAlterarEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
