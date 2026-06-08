@@ -10,7 +10,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 ## STACK & GATE
 - SDK: Stripe.net `51.1.0` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
 - `IStripeService` (Application/Interfaces): 12 métodos:
-  - `CriarContaConnectAsync(email, nome, ct)` → `accountId`
+  - `CriarContaConnectAsync(email, nome, ct)` → `accountId` (conta Express, `Country=BR`, capabilities `card_payments`+`transfers` — BR exige ambas; exige Connect habilitado na conta, ver §Connect Express por ambiente)
   - `GerarLinkOnboardingAsync(accountId, urlRetorno, urlCancelamento, ct)` → URL
   - `CriarPixPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `PixPaymentResult(intentId, qrCode, qrCodeUrl, expiracao)` (fluxo aluno — Connect + fee split)
   - `CriarCartaoPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `CartaoPaymentResult(intentId, clientSecret)` (fluxo aluno — Connect + fee split)
@@ -139,6 +139,8 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 6. `docker compose -f docker-compose.<env>.yml restart` na VM pra pegar novo env.
 
 ### Connect Express por ambiente
+- **PRÉ-REQUISITO (1 vez por conta Stripe): habilitar o Connect** no Dashboard antes do 1º onboarding, senão `CriarContaConnectAsync` falha com `StripeException: You can only create new accounts if you've signed up for Connect`. Em **Test mode**: https://dashboard.stripe.com/connect → "Get started" (instantâneo). Modelo do forzion = **marketplace** (dois lados + comissão via destination charge + application fee); "platform" também habilita o Connect, mas marketplace descreve melhor.
+- **Capabilities BR (gotcha)**: contas Express em `Country=BR` exigem `card_payments` **junto** de `transfers` — pedir `transfers` sozinho falha `You cannot request the 'transfers' capability without the 'card_payments' capability for accounts in BR`. `CriarContaConnectAsync` solicita as duas.
 - Hmg (Test): test accounts liberam instant, sem KYC. Usar pra E2E checkout-stripe.spec.ts.
 - Prod (Live): Stripe exige Connect Express **profile review** (1-3 dias, aprovação humana) antes do primeiro account real. Iniciar antes do go-live.
 
