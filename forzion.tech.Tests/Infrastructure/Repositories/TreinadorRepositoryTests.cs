@@ -5,6 +5,7 @@ using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 
 namespace forzion.tech.Tests.Infrastructure.Repositories;
 
@@ -53,7 +54,7 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
         {
             var treinador = await actCtx.Treinadores.FirstAsync(t => t.Id == treinadorId);
 
-            var act = async () => await new TreinadorRepository(actCtx).ExcluirComDependenciasAsync(treinador, Guid.NewGuid());
+            var act = async () => await new TreinadorRepository(actCtx, TimeProvider.System).ExcluirComDependenciasAsync(treinador, Guid.NewGuid());
 
             await act.Should().NotThrowAsync();
         }
@@ -66,6 +67,42 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
             (await assertCtx.Pagamentos.AnyAsync(p => p.Id == pagamentoId)).Should().BeFalse();
             (await assertCtx.VinculosTreinadorAluno.AnyAsync(v => v.Id == vinculoId)).Should().BeFalse();
             (await assertCtx.Pacotes.AnyAsync(p => p.Id == pacoteId)).Should().BeFalse();
+        }
+    }
+
+    // Timestamp do log de exclusão (prova de auditoria, §2 specification-coding) usa o
+    // relógio do servidor via TimeProvider injetado, não DateTime.UtcNow.
+    [Fact]
+    public async Task ExcluirComDependenciasAsync_LogAuditoria_UsaTimestampDoTimeProvider()
+    {
+        var instante = new DateTimeOffset(2026, 6, 7, 9, 30, 0, TimeSpan.Zero);
+        var time = new FakeTimeProvider(instante);
+        Guid treinadorId, adminId = Guid.NewGuid();
+
+        await using (var seedCtx = fixture.CreateContext())
+        {
+            var contaT = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+            var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+
+            await seedCtx.Contas.AddAsync(contaT);
+            await seedCtx.Treinadores.AddAsync(treinador);
+            await seedCtx.SaveChangesAsync();
+
+            treinadorId = treinador.Id;
+        }
+
+        await using (var actCtx = fixture.CreateContext())
+        {
+            var treinador = await actCtx.Treinadores.FirstAsync(t => t.Id == treinadorId);
+            await new TreinadorRepository(actCtx, time).ExcluirComDependenciasAsync(treinador, adminId);
+        }
+
+        await using (var assertCtx = fixture.CreateContext())
+        {
+            var log = await assertCtx.LogsAprovacao
+                .FirstAsync(l => l.EntidadeId == treinadorId && l.TipoAcao == TipoAcaoAprovacao.ExclusaoTreinador);
+
+            log.CreatedAt.Should().Be(instante.UtcDateTime);
         }
     }
 }

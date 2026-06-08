@@ -2,15 +2,16 @@ name: SAST — Semgrep
 
 # SAST gratuito, roda 100% no CI (sem GitHub Advanced Security, sem upload).
 # Substitui o CodeQL (que exigia code scanning/GHAS em repo privado).
+#
+# So em pull_request: o commit de merge ~= head do PR (repo solo, sem skew),
+# entao re-rodar em push -> homolog so queimaria minutos sem gatear o deploy
+# (workflow separado do ci.yml). schedule removido: nao dispara fora da branch
+# default e o repo nao a tem aqui.
 on:
-  push:
-    branches: [homolog]
-    paths-ignore: ["**.md", "docs/**", "specs/**"]
   pull_request:
     branches: [homolog]
     paths-ignore: ["**.md", "docs/**", "specs/**"]
-  schedule:
-    - cron: "0 5 * * 1"
+  workflow_dispatch:
 
 jobs:
   semgrep:

@@ -6,12 +6,12 @@ name: OpenAPI drift (backend)
 #
 # Drift é o sinal desejado: ao mudar a API, regenere conscientemente com
 # `bash scripts/gen-swagger.sh` e commite. Espelha o `openapi:check` do frontend.
+# So em pull_request -> homolog: o drift e sinal de revisao pre-merge. NAO em
+# push (merge ~= head do PR, repo solo) nem na branch `backend` (trigger morto)
+# — re-rodar so queimaria minutos e nao gateia o deploy do ci.yml.
 on:
-  push:
-    branches: [homolog, backend]
-    paths-ignore: ["**.md", "docs/**", "specs/**"]
   pull_request:
-    branches: [homolog, backend]
+    branches: [homolog]
     paths-ignore: ["**.md", "docs/**", "specs/**"]
   workflow_dispatch:
 

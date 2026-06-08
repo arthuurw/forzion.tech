@@ -197,14 +197,36 @@ public class AnonimizarContaHandlerTests
         var contaId = Guid.NewGuid();
         var conta = CriarContaComHash(TipoConta.Treinador);
         var treinador = Treinador.Criar(contaId, "Coach Bloqueado", TestData.Agora).Value;
-        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, Guid.NewGuid(), TestData.Agora).Value;
 
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(conta);
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                       .ReturnsAsync(treinador);
-        _vinculoRepo.Setup(r => r.ListarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync([vinculo]);
+        _vinculoRepo.Setup(r => r.TemVinculosAtivosAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(true);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("conta.offboarding_necessario");
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // TemVinculosAtivosAsync também conta vínculos AguardandoAprovacao: pendentes
+    // bloqueiam a anonimização (op LGPD irreversível) para não orfanar a solicitação.
+    [Fact]
+    public async Task HandleAsync_TreinadorComVinculoPendente_RetornaBusinessError()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Treinador);
+        var treinador = Treinador.Criar(contaId, "Coach Pendente", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(treinador);
+        _vinculoRepo.Setup(r => r.TemVinculosAtivosAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(true);
 
         var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
 
@@ -224,8 +246,8 @@ public class AnonimizarContaHandlerTests
                   .ReturnsAsync(conta);
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                       .ReturnsAsync(treinador);
-        _vinculoRepo.Setup(r => r.ListarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync([]);
+        _vinculoRepo.Setup(r => r.TemVinculosAtivosAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
 
         var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
 

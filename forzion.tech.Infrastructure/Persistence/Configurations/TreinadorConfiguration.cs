@@ -12,6 +12,12 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
         builder.ToTable("treinadores");
         builder.HasKey(t => t.Id);
 
+        // Concorrência otimista via system column xmin: impede dois switches simultâneos de modo_pagamento burlarem o cooldown.
+        builder.Property<uint>("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         builder.Property(t => t.ContaId).IsRequired();
 
         builder.HasOne<Conta>()
@@ -39,6 +45,8 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
             .HasConversion<string>()
             .HasDefaultValue(ModoPagamentoAluno.Plataforma)
             .IsRequired();
+
+        builder.Property(t => t.ModoPagamentoAlunoAlteradoEm);
 
         builder.Property(t => t.Status)
             .HasConversion<string>()

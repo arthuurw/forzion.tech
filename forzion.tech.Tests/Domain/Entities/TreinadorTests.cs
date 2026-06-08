@@ -308,4 +308,54 @@ public class TreinadorTests
         var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
         t.ConfirmarPagamentoPlano(TestData.Agora).IsFailure.Should().BeTrue();
     }
+
+    // --- AlterarModoPagamento (cooldown) ---
+
+    [Fact]
+    public void AlterarModoPagamento_PrimeiraTroca_AlteraModoERegistraData()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        var r = t.AlterarModoPagamento(ModoPagamentoAluno.Externo, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        t.ModoPagamentoAluno.Should().Be(ModoPagamentoAluno.Externo);
+        t.ModoPagamentoAlunoAlteradoEm.Should().Be(TestData.Agora);
+    }
+
+    [Fact]
+    public void AlterarModoPagamento_MesmoModo_Falha()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        var r = t.AlterarModoPagamento(ModoPagamentoAluno.Plataforma, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("treinador.modo_inalterado");
+    }
+
+    [Fact]
+    public void AlterarModoPagamento_DentroDoCooldown_Falha()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.AlterarModoPagamento(ModoPagamentoAluno.Externo, TestData.Agora);
+
+        var r = t.AlterarModoPagamento(ModoPagamentoAluno.Plataforma, TestData.Agora.AddDays(89));
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("treinador.cooldown_modo_pagamento");
+        t.ModoPagamentoAluno.Should().Be(ModoPagamentoAluno.Externo);
+    }
+
+    [Fact]
+    public void AlterarModoPagamento_AposCooldown_Permite()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.AlterarModoPagamento(ModoPagamentoAluno.Externo, TestData.Agora);
+
+        var r = t.AlterarModoPagamento(ModoPagamentoAluno.Plataforma, TestData.Agora.AddDays(90));
+
+        r.IsSuccess.Should().BeTrue();
+        t.ModoPagamentoAluno.Should().Be(ModoPagamentoAluno.Plataforma);
+    }
 }

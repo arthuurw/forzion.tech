@@ -76,6 +76,7 @@ docs(infra): add git workflow spec + setup script
 ## PRE-COMMIT HOOK
 - Vive em `frontend/.husky/pre-commit` (executável). `core.hooksPath` aponta pra `frontend/.husky/`.
 - Roda **por área staged** (não global): se só backend → roda gate backend; idem frontend.
+- **Gate de comentário (.cs)**: roda ANTES do gate backend, sempre que houver `.cs` staged (exclui EF-generated `*Designer.cs`/`*ModelSnapshot.cs`). Falha o commit se uma linha ADICIONADA contiver o subset objetivamente proibido da AGENTS.md regra 9: andaime/ref de task (`// T2B.3:`, `// TCR1:`, `// T7:` — regex `T[0-9][0-9A-Z.]*:` / `TCR[0-9]+:`) ou divisor decorativo UNICODE (`// ──`/`// ══`/`// ——`, ≥2 chars `[─━═—]` logo após `//`). NÃO bloqueia: divisor ASCII `// --- X ---` (idiom de teste), em-dash `—` no meio de frase, XML doc em interface. Paráfrase/comentário óbvio o gate NÃO pega (exige julgamento) — fica pra revisão.
 - **Backend gate**: `dotnet format --verify-no-changes` → `dotnet build -c Release` → `dotnet test --filter "Category!=Integration"`.
 - **Frontend gate**: `npm run typecheck` → `npx lint-staged` (eslint --fix nos staged) → `npm test` (vitest).
 - Filter `Category!=Integration` (trait-based) pula tests que exigem Docker. Sem isso, hook falhava localmente sem Docker rodando.

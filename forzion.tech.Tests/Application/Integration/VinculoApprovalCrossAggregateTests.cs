@@ -75,8 +75,11 @@ public class VinculoApprovalCrossAggregateTests
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
         _criarAssinaturaHandler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
-            _vinculoRepo.Object, _pacoteRepo.Object, _assinaturaRepo.Object,
-            _contaRecebimentoRepo.Object, _treinadorRepo.Object, _unitOfWork.Object,
+            _vinculoRepo.Object, _contaRecebimentoRepo.Object, _treinadorRepo.Object,
+            new forzion.tech.Application.Services.CriarAssinaturaAlunoService(
+                _pacoteRepo.Object, _assinaturaRepo.Object,
+                Mock.Of<ILogger<forzion.tech.Application.Services.CriarAssinaturaAlunoService>>()),
+            _unitOfWork.Object,
             Mock.Of<ILogger<VinculoAprovadoCriarAssinaturaAlunoHandler>>());
     }
 

@@ -95,9 +95,9 @@ public class AnonimizarContaHandler(
             {
                 oldTelefone = treinador.Telefone;
 
-                var vinculosAtivos = await vinculoRepository
-                    .ListarAtivosPorTreinadorAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
-                if (vinculosAtivos.Count > 0)
+                var temVinculosAtivos = await vinculoRepository
+                    .TemVinculosAtivosAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
+                if (temVinculosAtivos)
                     return Result.Failure(Error.Business(
                         "conta.offboarding_necessario",
                         "O treinador possui vínculos ativos. Encerre todos os vínculos antes de anonimizar a conta."));

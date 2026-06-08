@@ -440,10 +440,11 @@ public static class AdminEndpoints
         group.MapGet("/alunos/{id:guid}/progressao", async (
             Guid id,
             [FromServices] ObterProgressaoAlunoHandler handler,
+            [FromServices] TimeProvider timeProvider,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            var hoje = DateTime.UtcNow.Date;
+            var hoje = timeProvider.GetUtcNow().UtcDateTime.Date;
             var de = DateTime.TryParse(httpContext.Request.Query["de"], System.Globalization.CultureInfo.InvariantCulture, out var deParsed)
                 ? deParsed.Date
                 : hoje.AddDays(-90);

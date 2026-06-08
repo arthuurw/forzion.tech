@@ -9,6 +9,7 @@ namespace forzion.tech.Infrastructure.Services;
 
 public class StripeService(
     IOptions<StripeSettings> settings,
+    TimeProvider timeProvider,
     ILogger<StripeService> logger) : IStripeService
 {
     private readonly StripeSettings _settings = settings.Value;
@@ -38,6 +39,8 @@ public class StripeService(
             Email = email,
             Capabilities = new AccountCapabilitiesOptions
             {
+                // BR exige card_payments junto de transfers (Stripe rejeita transfers sozinho em contas BR).
+                CardPayments = new AccountCapabilitiesCardPaymentsOptions { Requested = true },
                 Transfers = new AccountCapabilitiesTransfersOptions { Requested = true },
             },
             BusinessProfile = new AccountBusinessProfileOptions
@@ -108,7 +111,7 @@ public class StripeService(
         var pix = intent.NextAction?.PixDisplayQrCode
             ?? throw new InvalidOperationException("Stripe não retornou dados Pix.");
 
-        var expiracao = DateTime.UtcNow.AddSeconds(3600);
+        var expiracao = timeProvider.GetUtcNow().UtcDateTime.AddSeconds(3600);
 
         logger.LogInformation("PaymentIntent Pix {IntentId} criado para conta {AccountId}.", intent.Id, stripeAccountId);
 
@@ -186,7 +189,7 @@ public class StripeService(
         var pix = intent.NextAction?.PixDisplayQrCode
             ?? throw new InvalidOperationException("Stripe não retornou dados Pix.");
 
-        var expiracao = DateTime.UtcNow.AddSeconds(3600);
+        var expiracao = timeProvider.GetUtcNow().UtcDateTime.AddSeconds(3600);
 
         logger.LogInformation("PaymentIntent Pix plano-treinador {IntentId} criado.", intent.Id);
 
@@ -242,6 +245,41 @@ public class StripeService(
         logger.LogInformation(
             "Reembolso {RefundId} criado para PaymentIntent {PaymentIntentId} (reverterTransferencia={Reverter}).",
             refund.Id, paymentIntentId, reverterTransferencia);
+    }
+
+    public async Task<CancelarPaymentIntentResultado> CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+    {
+        var service = new PaymentIntentService();
+        var intent = await service.GetAsync(paymentIntentId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        switch (intent.Status)
+        {
+            case "succeeded":
+                logger.LogWarning("PaymentIntent {PaymentIntentId} já capturado (succeeded) no momento do cancelamento.", paymentIntentId);
+                return CancelarPaymentIntentResultado.JaCapturado;
+            case "canceled":
+                logger.LogDebug("PaymentIntent {PaymentIntentId} já cancelado. No-op.", paymentIntentId);
+                return CancelarPaymentIntentResultado.JaCancelado;
+        }
+
+        try
+        {
+            var cancelado = await service.CancelAsync(paymentIntentId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+            logger.LogInformation("PaymentIntent {PaymentIntentId} cancelado (status={Status}).", paymentIntentId, cancelado.Status);
+            return CancelarPaymentIntentResultado.Cancelado;
+        }
+        // PI virou terminal entre Get e Cancel: mapeia p/ outcome, não relança como erro transitório.
+        catch (StripeException ex) when (ex.StripeError?.Code == "payment_intent_unexpected_state")
+        {
+            var statusAtual = ex.StripeError?.PaymentIntent?.Status;
+            if (statusAtual == "succeeded")
+            {
+                logger.LogWarning(ex, "PaymentIntent {PaymentIntentId} capturado durante o cancelamento (race).", paymentIntentId);
+                return CancelarPaymentIntentResultado.JaCapturado;
+            }
+            logger.LogDebug(ex, "PaymentIntent {PaymentIntentId} já em estado terminal {Status} durante o cancelamento.", paymentIntentId, statusAtual);
+            return CancelarPaymentIntentResultado.JaCancelado;
+        }
     }
 
     public async Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default)
