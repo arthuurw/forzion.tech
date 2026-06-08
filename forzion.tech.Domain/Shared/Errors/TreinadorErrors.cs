@@ -14,4 +14,8 @@ public static class TreinadorErrors
     public static Error ExclusaoApenasInativos => new("treinador.exclusao_apenas_inativos", "Apenas treinadores inativos podem ser excluídos permanentemente.");
     public static Error NomeVazio => new("treinador.nome_vazio", "O nome não pode ser vazio.");
     public static Error NaoAguardandoPagamento => Error.Conflict("treinador.nao_aguardando_pagamento", "Apenas treinadores aguardando pagamento podem ter o pagamento confirmado.");
+    public static Error ModoPagamentoInalterado => Error.Business("treinador.modo_inalterado", "O modo de pagamento informado já está em uso.");
+    public static Error CooldownModoPagamento(DateTime liberadoEm) =>
+        Error.Business("treinador.cooldown_modo_pagamento", $"O modo de pagamento só poderá ser alterado novamente em {liberadoEm:dd/MM/yyyy}.");
+    public static Error ConfigureStripePrimeiro => Error.Business("treinador.configure_stripe_primeiro", "Configure sua conta Stripe antes de voltar a receber pela plataforma.");
 }

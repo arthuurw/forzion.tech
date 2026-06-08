@@ -45,6 +45,9 @@ public sealed class FakeStripeService : IStripeService
     public Task CriarReembolsoAsync(string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
+    public Task CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
     public Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 

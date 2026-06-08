@@ -20,6 +20,9 @@ public interface IStripeService
     // Reembolso é sempre total (Amount não enviado).
     Task CriarReembolsoAsync(string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default);
 
+    // Best-effort: lança se o intent já estiver em estado terminal — o caller decide tolerar.
+    Task CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default);
+
     // Anexa evidências automáticas a um chargeback (R9). Stripe exige disputeId, não chargeId
     // (Dispute.Update). Sem resposta no prazo (~7d) o chargeback é perdido + fee.
     Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default);

@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
@@ -28,9 +29,11 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
     {
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Treinador.Criar(Guid.NewGuid(), "Treinador", DateTime.UtcNow, modoPagamentoAluno: ModoPagamentoAluno.Plataforma).Value);
+        var criarService = new CriarAssinaturaAlunoService(
+            _pacoteRepo.Object, _assinaturaRepo.Object, Mock.Of<ILogger<CriarAssinaturaAlunoService>>());
         _handler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
-            _vinculoRepo.Object, _pacoteRepo.Object, _assinaturaRepo.Object,
-            _contaRecebimentoRepo.Object, _treinadorRepo.Object, _unitOfWork.Object, _logger.Object);
+            _vinculoRepo.Object, _contaRecebimentoRepo.Object, _treinadorRepo.Object,
+            criarService, _unitOfWork.Object, _logger.Object);
     }
 
     private static ContaRecebimento ContaOnboarded(Guid treinadorId)
