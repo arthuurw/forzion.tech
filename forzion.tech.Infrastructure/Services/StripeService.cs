@@ -38,6 +38,8 @@ public class StripeService(
             Email = email,
             Capabilities = new AccountCapabilitiesOptions
             {
+                // BR exige card_payments junto de transfers (Stripe rejeita transfers sozinho em contas BR).
+                CardPayments = new AccountCapabilitiesCardPaymentsOptions { Requested = true },
                 Transfers = new AccountCapabilitiesTransfersOptions { Requested = true },
             },
             BusinessProfile = new AccountBusinessProfileOptions
