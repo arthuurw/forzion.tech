@@ -150,7 +150,33 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
     expect(await screen.findByText("Assinatura cancelada com sucesso.")).toBeInTheDocument();
   });
 
-  it("Dialog exibe 'Baixar meus dados' e clique chama contaApi.exportarDados (Marco Civil art. 16)", async () => {
+  it("Dialog exibe botões xlsx e json; clique em xlsx chama exportarDados('xlsx') (Marco Civil art. 16)", async () => {
+    respondAssinatura(makeAssinatura({ status: "Ativa" }));
+    const exportSpy = vi
+      .spyOn(contaApi, "exportarDados")
+      .mockResolvedValue({ data: new Blob([""], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }) } as Awaited<ReturnType<typeof contaApi.exportarDados>>);
+    const createObjUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
+    const revokeObjUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    render(<AssinaturaAlunoPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar assinatura" }));
+
+    // Ambos os botões de formato devem aparecer no dialog
+    const xlsxBtn = await screen.findByRole("button", { name: /baixar meus dados \(excel\)/i });
+    expect(screen.getByRole("button", { name: /baixar como json/i })).toBeInTheDocument();
+
+    fireEvent.click(xlsxBtn);
+
+    await waitFor(() => expect(exportSpy).toHaveBeenCalledWith("xlsx"));
+    expect(exportSpy).toHaveBeenCalledTimes(1);
+
+    createObjUrl.mockRestore();
+    revokeObjUrl.mockRestore();
+    exportSpy.mockRestore();
+  });
+
+  it("Dialog: clique em 'Baixar como JSON' chama exportarDados('json')", async () => {
     respondAssinatura(makeAssinatura({ status: "Ativa" }));
     const exportSpy = vi
       .spyOn(contaApi, "exportarDados")
@@ -162,10 +188,11 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Cancelar assinatura" }));
 
-    const baixar = await screen.findByRole("button", { name: /baixar meus dados/i });
-    fireEvent.click(baixar);
+    const jsonBtn = await screen.findByRole("button", { name: /baixar como json/i });
+    fireEvent.click(jsonBtn);
 
-    await waitFor(() => expect(exportSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(exportSpy).toHaveBeenCalledWith("json"));
+    expect(exportSpy).toHaveBeenCalledTimes(1);
 
     createObjUrl.mockRestore();
     revokeObjUrl.mockRestore();

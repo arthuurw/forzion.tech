@@ -16,6 +16,9 @@ export function downloadBlob(blob: Blob, filename: string): void {
 
 export async function baixarMeusDados(formato: "xlsx" | "json" = "xlsx"): Promise<void> {
   const res = await contaApi.exportarDados(formato);
-  const blob = new Blob([res.data as BlobPart], { type: MIME[formato] });
+  const raw = res.data as Blob;
+  // slice(0, size, type) é a forma idiomática de sobrescrever o MIME de um Blob
+  // existente sem recriar o buffer — garante tipo correto independente dos headers.
+  const blob = raw.slice(0, raw.size, MIME[formato]);
   downloadBlob(blob, `meus-dados.${formato}`);
 }
