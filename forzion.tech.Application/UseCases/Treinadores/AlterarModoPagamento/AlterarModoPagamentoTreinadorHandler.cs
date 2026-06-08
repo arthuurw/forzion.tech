@@ -1,4 +1,5 @@
 using System.Data;
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
@@ -20,6 +21,7 @@ public class AlterarModoPagamentoTreinadorHandler(
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
     IDbContextTransactionProvider transactionProvider,
+    IValidator<AlterarModoPagamentoTreinadorCommand> validator,
     TimeProvider timeProvider,
     ILogger<AlterarModoPagamentoTreinadorHandler> logger)
 {
@@ -35,6 +37,11 @@ public class AlterarModoPagamentoTreinadorHandler(
         AlterarModoPagamentoTreinadorCommand command,
         CancellationToken cancellationToken)
     {
+        await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+
+        if (!Enum.IsDefined(command.NovoModo))
+            return Result.Failure<AlterarModoPagamentoResponse>(TreinadorErrors.ModoPagamentoInvalido);
+
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
@@ -77,11 +84,25 @@ public class AlterarModoPagamentoTreinadorHandler(
         {
             try
             {
-                await stripeService.CancelarPaymentIntentAsync(paymentIntentId, cancellationToken).ConfigureAwait(false);
+                var outcome = await stripeService.CancelarPaymentIntentAsync(paymentIntentId, cancellationToken).ConfigureAwait(false);
+                switch (outcome)
+                {
+                    case CancelarPaymentIntentResultado.JaCapturado:
+                        logger.LogCritical(
+                            "PaymentIntent {PaymentIntentId} já capturado na troca para Externo (treinador {TreinadorId}). Reconciliação por refund necessária.",
+                            paymentIntentId, command.TreinadorId);
+                        break;
+                    case CancelarPaymentIntentResultado.JaCancelado:
+                        logger.LogDebug("PaymentIntent {PaymentIntentId} já estava cancelado na troca para Externo.", paymentIntentId);
+                        break;
+                    default:
+                        logger.LogInformation("PaymentIntent {PaymentIntentId} cancelado na troca para Externo.", paymentIntentId);
+                        break;
+                }
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Falha ao cancelar PaymentIntent {PaymentIntentId} na troca para modo Externo.", paymentIntentId);
+                logger.LogWarning(ex, "Falha transitória ao cancelar PaymentIntent {PaymentIntentId} na troca para modo Externo.", paymentIntentId);
             }
         }
 
@@ -103,7 +124,15 @@ public class AlterarModoPagamentoTreinadorHandler(
 
             var pendente = await pagamentoRepository.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
             if (pendente?.StripePaymentIntentId is { } paymentIntentId)
+            {
+                // Deixa Pendente: webhook resolve esse PI (canceled→Expirado, succeeded→refund SEC1).
+                // Expirar aqui cegaria o refund de um Pix capturado.
                 paymentIntents.Add(paymentIntentId);
+            }
+            else
+            {
+                pendente?.MarcarExpirado(agora);
+            }
         }
         return paymentIntents;
     }
