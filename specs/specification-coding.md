@@ -40,4 +40,10 @@ DOC PARA AGENTES. Padrões de CORREÇÃO transversais que reviews repetidamente 
 - Commit/merge: Conventional, header ≤100, type válido (commitlint ativo). Ver [specification-git].
 - Claim cross-file ("o frontend não envia X", "isso está quebrado") → VERIFICAR lendo o arquivo real antes de agir; finders/agents erram por leitura parcial. [incidentes: 2 falsos positivos refutados por leitura direta nesta feature.]
 
+## 8. COMENTÁRIOS (ruído que review repete)
+Agentes tendem a over-comentar. Incluir SÓ o "porquê" não-óbvio (invariante sutil, workaround com motivo, decisão contraintuitiva, gotcha de plataforma) — NUNCA o óbvio nem paráfrase do código. Regra de ESCRITA: remover o ruído ANTES de apresentar o código, não revisão pós-fato. O subset abaixo barrado por hook; paráfrase/óbvio o hook NÃO pega → passar o olho.
+- **Barrado por hook (pre-commit)**: andaime/ref de tarefa (`// T2B.3:`, `// TCR1:`, `// T7:`); divisor decorativo unicode (`// ── X ──`, `// ══`, `// ——`). Fonte/sequência: [specification-git] §PRE-COMMIT HOOK / gate de comentário.
+- **Convenção do repo (NÃO é violação — não tentar "limpar")**: divisor ASCII `// --- X ---` permitido SÓ em arquivos de teste (idiom existente, pervasivo); PROIBIDO em produção. XML doc (`/// <summary>`, `/// <inheritdoc/>`) permitido em interface/contrato público (`I*.cs`, DTO público, migration EF gerada); em implementação/método privado PROIBIDO — lá, se precisar do "porquê", `//` de uma linha.
+- Inline em fim de linha que repete o código: proibido. Preferir nome claro a comentário.
+
 Cross-ref: [specification-backend] (Result/UnitOfWork/DI), [specification-stripe] (refund/webhook), [specification-lgpd] (consentimento/auditoria), [specification-tests], [specification-git].

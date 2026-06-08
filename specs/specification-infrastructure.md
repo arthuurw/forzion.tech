@@ -15,7 +15,7 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 
 ## STACKS COMPOSE
 - **`docker-compose.homolog.yml`** — ATIVO (hmg). Build-on-VM. Serviços: `backend`(build Api/Dockerfile, `ASPNETCORE_ENVIRONMENT=Homolog`, env via `${...}`, healthcheck `curl -f http://localhost:8080/health`), `frontend`(build, `depends_on backend healthy`), `nginx`(80/443, bind-mount `nginx.conf`+`certbot` ro), `certbot`(loop renew 12h), `pact-postgres`+`pact-broker`(:9292). Env ← `/opt/forzion/.env`.
-- **`docker-compose.yml`** — LOCAL dev. `postgres`(postgres:16, schema `develop` via Search Path; criado no init por `scripts/init-develop-schema.sql`) + `backend`(build, `Development`, :8080) + `frontend`(:3001→3000). Alternativa SEM Docker: `dotnet run` → User Secrets → **Supabase REMOTO** (não local; ⚠️ migra/seeda remoto — ver [specification-db]).
+- **`docker-compose.yml`** — LOCAL dev. `postgres`(postgres:16, schema `develop` via Search Path; criado no init por `scripts/init-develop-schema.sql`) + `backend`(build, `Development`, :8080) + `frontend`(:3001→3000). Alternativa SEM Docker: `dotnet run` → User Secrets → **Supabase REMOTO** (não local; ⚠️ migra/seeda remoto — ver [specification-db]). Receita comando-a-comando: §LOCAL-RUN.
 - **`docker-compose.server.yml`** — PREPARADO/NÃO-ATIVO. Deploy por imagem de registry (`${REGISTRY}/forzion/{backend,frontend}:${TAG}`). Hoje NÃO há CI que builde/pushe imagem; caminho previsto p/ prod.
 
 ## NGINX / ROTEAMENTO
@@ -52,17 +52,39 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 ## AMBIENTES
 | Ambiente | ASPNETCORE_ENVIRONMENT | Schema | Host | Estado |
 |----------|------------------------|--------|------|--------|
-| local-docker | Development | homolog (PG local) | localhost | dev |
-| local-run (`dotnet run`) | Development OU Homolog (profiles http/https forçam Homolog) | develop (Dev) / homolog (Homolog) — **Supabase REMOTO** | localhost | dev (⚠️ migra/seeda remoto) |
+| local-docker | Development | develop (PG local) | localhost | dev |
+| local-run (`dotnet run`) | Development (recomendado; profiles http/https forçam Homolog — §LOCAL-RUN) | **develop** (= `Search Path` do User Secret; FIXO — NÃO muda com o env) — **Supabase REMOTO** | localhost | dev (⚠️ migra/seeda remoto) |
 | homolog | Homolog | homolog | homologacao.forzion.tech (VPS Hostinger) | **ATIVO** |
 | produção | Production | public | forzion.tech/www/app | **PREPARADO/NÃO-ATIVO** |
-- Migrate + Seed no startup em Development/Homolog (`Program.cs`). Prod: `appsettings.Production.json` (AllowedHosts forzion.tech/www/app, schema `public`, CORS prod) existe, mas SEM deploy automatizado e sem CI de imagem.
+- Migrate + Seed no startup em Development/Homolog (`Program.cs` L17). Prod: `appsettings.Production.json` (AllowedHosts forzion.tech/www/app, schema `public`, CORS prod) existe, mas SEM deploy automatizado e sem CI de imagem.
+- **Schema NÃO é função do env**: vem do `Search Path` da connection. No local-run há UM só User Secret store (`ConnectionStrings:AppConnection` com `Search Path=develop`), carregado tanto em Development quanto em Homolog (`Program.cs` L8). Logo Dev vs Homolog local muda só os defaults de `appsettings.{Env}.json` (Email markers de teste, CORS, AllowedHosts) — **não** o schema. Pra apontar a outro schema, editar o `Search Path` do próprio secret.
+
+## LOCAL-RUN SEM DOCKER (receita — Development + schema develop, Supabase REMOTO)
+Caminho mais rápido p/ subir a instância p/ testar à mão (sem Docker). ⚠️ migra/seeda o Supabase REMOTO (schema `develop`) no startup — ver [specification-db].
+- **Pré**: User Secrets do projeto `forzion.tech.Api` preenchidos (`ConnectionStrings:AppConnection` com `Search Path=develop`, `Auth:JwtSecret`, `Stripe:*`, `Seed:*`) — `dotnet user-secrets list --project forzion.tech.Api`.
+- **GOTCHA launch-profile**: `dotnet run` puro pega o profile `http`/`https` do `launchSettings.json`, que **força `ASPNETCORE_ENVIRONMENT=Homolog`** (não Development). Pra rodar Development, bypassar o profile e setar env+URL na mão:
+  ```powershell
+  $env:ASPNETCORE_ENVIRONMENT="Development"; $env:ASPNETCORE_URLS="http://localhost:5230"
+  dotnet run --project forzion.tech.Api --no-launch-profile
+  ```
+  Backend sobe em `http://localhost:5230`. (HTTPS :7220 só vale via profile `https`, que é Homolog — evitar p/ não lidar com cert dev.)
+- **Frontend** precisa de `frontend/.env.local` (gitignored; NÃO commitar) — sem ele o proxy aponta p/ o default `https://localhost:7220`, que não casa com o backend HTTP:
+  ```
+  API_BASE_URL=http://localhost:5230          # proxy Next /api/backend + /api/auth/* → backend
+  JWT_SECRET=<MESMO valor de Auth:JwtSecret>  # /api/auth/me valida a assinatura do JWT
+  JWT_ISSUER=forzion.tech
+  JWT_AUDIENCE=forzion.tech
+  NEXT_PUBLIC_API_BASE_URL=/api/backend
+  ```
+  Subir: `cd frontend; npm run dev` → `:3000` (ou `npm run dev -- -p 3001` se `:3000` ocupado — `next dev` NÃO migra de porta sozinho no Next 16; falha `EADDRINUSE`).
+- **Verificar**: `/health` 200 (liveness), `/health/ready` 200 (conexão Supabase OK). Admin = `Seed:AdminEmail`/`Seed:AdminPassword` do User Secret (pré-verificado pelo seed → login direto).
+- **Cross-check Docker**: a stack `docker-compose.yml` é o caminho alternativo (PG local schema `develop`, sem tocar Supabase) — frontend :3001, ver [specification-local-ci-repro] §4.
 
 ## ENV / SECRETS
 - **VM hmg** `/opt/forzion/.env` (NÃO versionado): `APP_ENV`, `DB_CONNECTION`, `DB_SCHEMA`, `JWT_SECRET`/`ISSUER`/`AUDIENCE`, `CORS_ORIGINS`, `STRIPE_SECRET_KEY`/`WEBHOOK_SECRET`/`URL_BASE`, `RESEND_API_KEY`/`WEBHOOK_SECRET`, `APP_FRONTEND_BASE_URL`, `INTERNAL_API_KEY` (chave dos 3 endpoints internos `/internal/processar-renovacoes-treinador`, `/internal/processar-renovacoes`, `/internal/reconciliar-pagamentos`; vazio → 401), WhatsApp (opcional), `PACT_*`. Compose mapeia → `Resend__ApiKey`, `Stripe__SecretKey`, `Internal__ApiKey`, etc.
 - **GitHub Actions secrets**: `HOMOLOG_HOST`/`HOMOLOG_SSH_KEY` (deploy), `INTERNAL_API_KEY` (billing-renewal-treinador + billing-renewal + billing-reconciliation; MESMO valor do `.env` da VM — comparação constant-time no endpoint).
 - **Local**: User Secrets `forzion-prod` (`dotnet user-secrets`) — `ConnectionStrings:AppConnection` (Supabase remoto), `Auth:JwtSecret`, `Stripe:*`, `Resend:*`, `Seed:*`, `AI:Internal:*`. OU `.env` (ver `.env.example`) p/ `docker-compose.yml`.
-- `appsettings.{Env}.json`: só defaults não-secret (AllowedHosts, Cors, Database:Schema, App:FrontendBaseUrl, Resend:ApiUrl). Secrets vazios no repo.
+- `appsettings.{Env}.json`: só defaults não-secret (AllowedHosts, Cors, Email[markers de teste], App:FrontendBaseUrl, Resend:ApiUrl). Schema NÃO sai daqui — vem do `Search Path` da connection (§AMBIENTES). Secrets vazios no repo.
 - ⚠️ `Program.cs` adiciona User Secrets DEPOIS do `CreateBuilder` → secrets sobrescrevem env em RUNTIME. Ver [specification-db].
 
 ## OBSERVABILITY

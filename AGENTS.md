@@ -29,7 +29,7 @@ Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
 - `specs/specification-email.md` — Resend: envio, templates, webhook (Svix).
 - `specs/specification-whatsapp.md` — Meta Cloud API: gate Null/real, handlers/templates, custo, paridade email.
 - `specs/specification-frontend.md` — Next App Router, MUI, forms, validação, API proxy, auth.
-- `specs/specification-infrastructure.md` — Hostinger VM, docker-compose, nginx, SSL/certbot, CI/CD, env/secrets.
+- `specs/specification-infrastructure.md` — Hostinger VM, docker-compose, nginx, SSL/certbot, CI/CD, env/secrets. **Subir instância local sem Docker → §LOCAL-RUN** (receita Development+develop, gotcha launch-profile/Homolog, `.env.local` do frontend).
 - `specs/specification-git.md` — workflow git, configs, worktree, conventional commits, hooks.
 - `specs/specification-lgpd.md` — portabilidade, exclusão por anonimização, consentimento de cookies.
 - `specs/specification-tests.md` — disciplina/enforcement, tipos/isolamento, gates (hooks/CI), thresholds, mutation/contract.
@@ -44,9 +44,10 @@ Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
 ## CONVENÇÕES-CHAVE
 - DDD: entidades com factory `Criar`; domain events despachados no `UnitOfWork.CommitAsync` (re-entrância tratada). Result<T> pattern. FluentValidation auto-descoberto. Handlers registrados manualmente no DI.
 - Commits: Conventional Commits. Scopes válidos: `frontend|backend|infra|ci|deps|tests|docs`.
+- Tasks da skill (`tlc-spec-driven`): toda task que escreve código leva no "Done when" o gate de COMENTÁRIOS (regra 9 / `specs/specification-coding.md` §8) — o hook não pega paráfrase/óbvio.
 
 ## FLUXO DE ALTERAÇÃO DE CÓDIGO
-Toda alteração de código DEVE, antes do PR: (1) build completo (frontend + backend) — `dotnet build forzion.tech.slnx` inclui `forzion.tech.PactVerification` desde 2026-06-06; (2) avaliar necessidade de novos testes e criá-los se faltarem; (3) rodar TODOS os testes — confirmar que nada quebrou e se algo precisa ser complementado (integração/E2E exigem Docker; sem Docker local, o CI os roda no PR); (4) confirmar PR → `homolog` (ou → `master` se a alteração foi feita direto na branch `homolog`).
+Toda alteração de código DEVE, antes do PR: (1) build completo (frontend + backend) — `dotnet build forzion.tech.slnx` inclui `forzion.tech.PactVerification`; (2) avaliar necessidade de novos testes e criá-los se faltarem; (3) rodar TODOS os testes — confirmar que nada quebrou e se algo precisa ser complementado (integração/E2E exigem Docker; sem Docker local, o CI os roda no PR); (4) confirmar PR → `homolog` (ou → `master` se a alteração foi feita direto na branch `homolog`).
 
 ## ANTES DE QUALQUER OPERAÇÃO GIT/GITHUB
 Ler `specs/specification-git.md` SEMPRE antes de commit, push, PR ou qualquer interação com git. Sem exceção. Foco obrigatório em: §PRE-COMMIT HOOK (sequência correta) e §EDGE CASES (CRLF — gotcha recorrente de agents que causa retrabalho: rodar `dotnet format forzion.tech.slnx` ANTES de `git add` em arquivos `.cs` novos).
@@ -60,9 +61,5 @@ Ler `specs/specification-git.md` SEMPRE antes de commit, push, PR ou qualquer in
 6. Skill citada ausente no projeto: procurar, baixar e instalar antes de usar.
 7. PARALELISMO: escopos isolados (análises, implementações sem conflito, tests em arquivos distintos) → delegar a sub-agents em PARALELO (Agent tool), 1 por escopo, batch num turno. Principal coordena: identifica dependências, lança o não-conflitante, agrega, integra (DI/commit). Sub-agents devolvem só sumário. Subordinada à regra 4 (`[P]` em tasks paralelas).
 8. BUDGET DE CONTEXTO: principal ≤ ~160-170k tokens. Delegar leitura/implementação volumosa a sub-agents (sumário só — regra 7); não reler o que já está em contexto; ler trechos (offset/limit); manter no principal só orquestração/decisão/integração.
-9. COMENTÁRIOS: ao escrever qualquer linha de código (produção ou teste), incluir SÓ comentários ESTRITAMENTE necessários — o "porquê" não-óbvio (invariante sutil, workaround com motivo, decisão contraintuitiva, gotcha de plataforma). NÃO comentar o óbvio, NÃO parafrasear o código.
-   - **PROIBIDO SEMPRE (barrado pelo pre-commit — ver `specs/specification-git.md` §PRE-COMMIT HOOK / gate de comentário):** andaime/referência de tarefa (`// T2B.3:`, `// TCR1:`, `// T7:`); divisor decorativo unicode (`// ── X ──`, `// ══`, `// ——`).
-   - **Convenção do repo (NÃO é violação — não tentar "limpar"):** divisor ASCII `// --- X ---` é permitido SÓ em arquivos de teste (idiom existente, pervasivo); PROIBIDO em produção. XML doc (`/// <summary>`, `/// <inheritdoc/>`) é permitido em interface/contrato público (`I*.cs`, DTO público, migration EF gerada); em implementação/método privado é PROIBIDO — lá, se precisar do "porquê", usar `//` de uma linha.
-   - Inline comment em fim de linha que repete o código: proibido. Preferir nomes claros a comentário.
-   - O subset objetivamente proibido é bloqueado por hook; **paráfrase/óbvio o hook NÃO pega** → passar o olho e remover o ruído ANTES de apresentar o código. **Regra de escrita, não revisão pós-fato.** Agentes tendem a over-comentar.
+9. COMENTÁRIOS: só o "porquê" não-óbvio (invariante, workaround, gotcha) — NÃO o óbvio, NÃO parafrasear, NÃO inline que repete o código. Regra de ESCRITA (remover ruído ANTES de apresentar), não revisão pós-fato; agentes over-comentam. Subset barrado por hook + convenções do repo (divisor ASCII só em teste, XML doc só em contrato público): `specs/specification-coding.md` §8.
 10. Estas regras só mudam mediante aprovação do usuário.
