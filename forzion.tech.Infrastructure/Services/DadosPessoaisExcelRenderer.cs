@@ -106,7 +106,8 @@ public class DadosPessoaisExcelRenderer : IDadosPessoaisExcelRenderer
                 : string.Empty;
             ws.Cell(2, 6).Value = treinador.CreatedAt.ToString(DateTimeFormat);
         }
-        // LGPD portability requires all sections present even when empty — tab created with no rows if both null
+        // LGPD Art. 18, IV portability: recipient must be able to validate that all sections were exported;
+        // omitting a tab would make it indistinguishable from a truncated export.
     }
 
     private static void AddVinculos(XLWorkbook wb, IReadOnlyList<VinculoExportDto> vinculos)
