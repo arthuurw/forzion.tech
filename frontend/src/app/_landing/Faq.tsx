@@ -8,6 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SectionEyebrow from "./SectionEyebrow";
 
 const FAQ_ITEMS = [
   {
@@ -42,13 +43,8 @@ export default function Faq() {
     <Box sx={{ bgcolor: "background.default", py: { xs: 8, md: 12 } }}>
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: 8 }}>
-          <Typography
-            variant="overline"
-            sx={{ color: "brand.label", fontWeight: 700, letterSpacing: "0.1em" }}
-          >
-            FAQ
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
+          <SectionEyebrow label="FAQ" variant="light" />
+          <Typography variant="h4" sx={{ fontWeight: 700, mt: 2 }}>
             Perguntas frequentes
           </Typography>
         </Box>

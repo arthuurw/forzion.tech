@@ -1,5 +1,5 @@
 # specification-frontend-ui — design system & acessibilidade (forzion.tech)
-DOC AGENTES (denso). Fonte de verdade de design tokens, inventário de componentes UI/forms, governance e conformance a11y. Atualizar NA MESMA TAREFA ao tocar tema/tokens (`src/lib/theme/index.ts`), `src/components/{ui,forms}/*`, padrões a11y (aria/foco/keyboard/reduced-motion), conformance WCAG/harness, responsividade, ou F18 (color-contrast); + story + a11y test (ver §GOVERNANCE). Vive em `specs/` (commitar; NUNCA `.specs/`). EXPANDE e REFERENCIA, NÃO duplica o TEMA MUI básico / §RESPONSIVIDADE de [specification-frontend]; toda afirmação ancorada em path real. Cross-ref: [specification-frontend], [specification-tests] (harness a11y), [specification-lgpd] (ConsentBanner), [specification-observability] (lighthouse a11y).
+DOC AGENTES (denso). Fonte de verdade de design tokens, inventário de componentes UI/forms, governance e conformance a11y. Atualizar NA MESMA TAREFA ao tocar tema/tokens (`src/lib/theme/index.ts`), `src/components/{ui,forms}/*`, `src/app/_landing/*` (§LANDING), padrões a11y (aria/foco/keyboard/reduced-motion), conformance WCAG/harness, responsividade, ou F18 (color-contrast); + story + a11y test (ver §GOVERNANCE). Vive em `specs/` (commitar; NUNCA `.specs/`). EXPANDE e REFERENCIA, NÃO duplica o TEMA MUI básico / §RESPONSIVIDADE de [specification-frontend]; toda afirmação ancorada em path real. Cross-ref: [specification-frontend], [specification-tests] (harness a11y), [specification-lgpd] (ConsentBanner), [specification-observability] (lighthouse a11y).
 
 ## DESIGN TOKENS (`src/lib/theme/index.ts`)
 Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` aplicado (paginação, datas, validações MUI em pt-BR).
@@ -21,7 +21,7 @@ Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` ap
 | `text.primary` | `#111827` | 17.7:1 em #FFF / 16.7:1 em #F7F8FA (AA) |
 | `text.secondary` | `#4B5563` | gray-600; 7.6:1 em #FFF / 7.1:1 em #F7F8FA (AA) — F18 resolvido (era #6B7280 ≈4.6:1 em #F7F8FA) |
 | `divider` | `rgba(0,0,0,0.08)` | (MuiDivider override → `rgba(0,0,0,0.07)`) |
-| `brand.label` | `#7a6300` | overline accent dos labels de seção da landing (chave custom via module augmentation; fonte única — não hardcodar) |
+| `brand.label` | `#7a6300` | **LEGADO** — era overline accent dos labels de seção da landing; substituído por `SectionEyebrow` (ver §LANDING). Sobrevive só em `SocialProof` (renderiza null no beta). Chave custom via module augmentation; não hardcodar. |
 
 NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip/Snackbar herdam paleta MUI default desses severities.
 
@@ -47,6 +47,17 @@ NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip/Sna
 | `MuiChip` | `fontWeight 600`, radius 8 |
 | `MuiAppBar`/`MuiDrawer` | `backgroundImage:none` (mata gradient dark-mode MUI) |
 | `MuiDivider` | borda `rgba(0,0,0,0.07)` |
+
+## LANDING — padrão de marca (`src/app/page.tsx` + `src/app/_landing/*`)
+Identidade = **preto / amarelo / branco / cinza**. Regras p/ manter o padrão em mudanças futuras:
+
+- **Ritmo de slabs pretos**: APENAS Hero e Planos usam `secondary.main` (#1A1A1A) como fundo de seção. As demais (`HowItWorks`, `Diferenciais`, `Faq`) ficam claras (`background.default`/`paper`). NUNCA colocar dois slabs pretos adjacentes — vira massa preta (testado: `Diferenciais` preto colado a `Planos` foi revertido). `SocialProof` renderiza null no beta, então Hero é visualmente adjacente a `HowItWorks` — por isso `HowItWorks` NÃO pode ser preto.
+- **Amarelo (`primary.main` #F5C400) só passa AA sobre superfície escura** (mesma origem do `brand.label` F18). Em fundo claro, amarelo só como: (a) fundo de pill ESCURA com texto amarelo, ou (b) detalhe gráfico NÃO-semântico (ex. nº de step). Texto/ícone semântico em fundo claro = `secondary.main` (preto) ou `text.*` — nunca amarelo.
+- **`SectionEyebrow`** (`src/app/_landing/SectionEyebrow.tsx`): rótulo de seção em pill (dot 7px + label uppercase amarelo), espelha o badge do Hero. Substitui os overlines olive `brand.label`. Prop `variant` = cor do FUNDO da seção onde vive:
+  - `light` (seção clara): pill `bgcolor: secondary.main` (preto sólido) + texto/dot amarelo → amarelo sobre preto passa AA.
+  - `dark` (seção escura, ex. Hero): pill `bgcolor: rgba(245,196,0,0.08)` + borda `rgba(245,196,0,0.3)` + texto amarelo (recipe do Hero badge).
+  Usado em `HowItWorks`/`Diferenciais`/`Faq`. NÃO está em `components/ui/` (é landing-local).
+- **`Diferenciais`** (claro): check da coluna Forzion = `secondary.main` (preto) — NÃO verde `success.main` (fora da paleta + amarelo falharia contraste em fundo claro); X genéricas = `text.disabled`; header "Forzion" = `secondary.main`.
 
 ## INVENTÁRIO DE COMPONENTES UI (`src/components/ui/*`)
 Story = `*.stories.tsx`. A11y test (vitest-axe dedicado) = `*.a11y.test.tsx`. Cobertura a11y UNIT alternativa em `__tests__/a11y.test.tsx` (foco/keyboard/aria, não axe).

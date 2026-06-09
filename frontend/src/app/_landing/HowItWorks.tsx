@@ -1,5 +1,6 @@
 import { Box, Container, Typography, Grid } from "@mui/material";
 import Image from "next/image";
+import SectionEyebrow from "./SectionEyebrow";
 
 const STEPS = [
   {
@@ -33,13 +34,8 @@ export default function HowItWorks() {
     <Box sx={{ bgcolor: "background.default", py: { xs: 8, md: 12 } }}>
       <Container maxWidth="lg">
         <Box sx={{ textAlign: "center", mb: 8 }}>
-          <Typography
-            variant="overline"
-            sx={{ color: "brand.label", fontWeight: 700, letterSpacing: "0.1em" }}
-          >
-            COMO FUNCIONA
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
+          <SectionEyebrow label="COMO FUNCIONA" variant="light" />
+          <Typography variant="h4" sx={{ fontWeight: 700, mt: 2 }}>
             Uma estrutura pensada para o dia a dia
           </Typography>
         </Box>

@@ -1,6 +1,7 @@
 import { Box, Container, Typography, Grid } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import SectionEyebrow from "./SectionEyebrow";
 
 const ROWS = [
   {
@@ -30,10 +31,8 @@ export default function Diferenciais() {
     <Box sx={{ bgcolor: "background.paper", py: { xs: 8, md: 12 } }}>
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: 8 }}>
-          <Typography variant="overline" sx={{ color: "brand.label", fontWeight: 700, letterSpacing: "0.1em" }}>
-            DIFERENCIAIS
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
+          <SectionEyebrow label="DIFERENCIAIS" variant="light" />
+          <Typography variant="h4" sx={{ fontWeight: 700, mt: 2 }}>
             O que nos diferencia
           </Typography>
         </Box>
@@ -41,11 +40,12 @@ export default function Diferenciais() {
         <Grid container sx={{ mb: 1, px: { xs: 1, md: 2 } }}>
           <Grid size={{ xs: 4, md: 4 }} />
           <Grid size={{ xs: 4, md: 4 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, textAlign: "center", color: "primary.main" }}>
-              Forzion
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, textAlign: "center" }}>
+              <Box component="span" sx={{ color: "primary.main" }}>forzion</Box>
+              <Box component="span" sx={{ color: "text.primary" }}>.tech</Box>
             </Typography>
           </Grid>
-          <Grid size={{ xs: 4, md: 4 }}>
+          <Grid size={{ xs: 4, md: 4 }} sx={{ pl: { xs: 1, md: 2 } }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, textAlign: "center", color: "text.secondary" }}>
               Ferramentas genéricas
             </Typography>
@@ -73,15 +73,15 @@ export default function Diferenciais() {
               </Typography>
             </Grid>
             <Grid size={{ xs: 4, md: 4 }}>
-              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, justifyContent: "center" }}>
-                <CheckIcon sx={{ fontSize: 18, color: "success.main", flexShrink: 0, mt: "1px" }} />
+              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, justifyContent: "flex-start" }}>
+                <CheckIcon sx={{ fontSize: 18, color: "secondary.main", flexShrink: 0, mt: "1px" }} />
                 <Typography variant="body2" color="text.primary" sx={{ textAlign: "left" }}>
                   {forzion}
                 </Typography>
               </Box>
             </Grid>
-            <Grid size={{ xs: 4, md: 4 }}>
-              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, justifyContent: "center" }}>
+            <Grid size={{ xs: 4, md: 4 }} sx={{ pl: { xs: 1, md: 2 } }}>
+              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, justifyContent: "flex-start" }}>
                 <CloseIcon sx={{ fontSize: 18, color: "text.disabled", flexShrink: 0, mt: "1px" }} />
                 <Typography variant="body2" color="text.secondary" sx={{ textAlign: "left" }}>
                   {generica}
