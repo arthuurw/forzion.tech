@@ -81,7 +81,9 @@ export default function ProgressaoAluno({ alunoId }: Props) {
     for (const ex of exercicios) {
       const key = ex.grupoMuscular || "Outros";
       const vol = ex.historico.reduce(
-        (sum, p) => sum + p.seriesExecutadas * p.repeticoesExecutadas * (p.cargaMaxima ?? 1),
+        // volume = tonelagem (kg) = séries × reps × carga; sem carga (peso corporal) → 0 kg,
+        // não 1, senão poluiria o total em kg com volume que não é kg
+        (sum, p) => sum + p.seriesExecutadas * p.repeticoesExecutadas * (p.cargaMaxima ?? 0),
         0
       );
       map.set(key, (map.get(key) ?? 0) + vol);
@@ -134,30 +136,29 @@ export default function ProgressaoAluno({ alunoId }: Props) {
             <Card variant="outlined" sx={{ mb: 3 }}>
               <CardContent>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
-                  Volume por grupamento
+                  Volume por grupamento (kg)
                 </Typography>
-                <ResponsiveContainer width="100%" height={volumePorGrupo.length * 36 + 16}>
+                <ResponsiveContainer width="100%" height={260}>
                   <BarChart
-                    layout="vertical"
                     data={volumePorGrupo}
-                    margin={{ top: 0, right: 24, bottom: 0, left: 0 }}
+                    margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 10 }} stroke={CHART_COLORS.axis} />
-                    <YAxis
-                      type="category"
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} vertical={false} />
+                    <XAxis
                       dataKey="grupo"
-                      tick={{ fontSize: 11 }}
+                      type="category"
+                      interval={0}
+                      tick={{ fontSize: isMobile ? 9 : 11 }}
                       stroke={CHART_COLORS.axis}
-                      width={isMobile ? 70 : 110}
                     />
+                    <YAxis type="number" tick={{ fontSize: 10 }} stroke={CHART_COLORS.axis} width={48} />
                     <Tooltip
                       contentStyle={{ background: CHART_COLORS.tooltipBg, border: `1px solid ${CHART_COLORS.tooltipBorder}`, borderRadius: 4, fontSize: 11 }}
                       labelStyle={{ color: CHART_COLORS.tooltipLabel }}
                       itemStyle={{ color: brand }}
-                      formatter={(v) => [`${Number(v).toLocaleString("pt-BR")}`, "Volume"]}
+                      formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`, "Volume"]}
                     />
-                    <Bar dataKey="volume" fill={brand} radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="volume" fill={brand} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

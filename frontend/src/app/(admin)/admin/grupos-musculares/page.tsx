@@ -131,7 +131,7 @@ export default function GruposMuscularesAdminPage() {
             rowKey={(g) => g.id}
             renderCell={(g, i) => {
               if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{g.nome}</Typography>;
-              if (i === 1) return new Date(g.createdAt).toLocaleDateString();
+              if (i === 1) return new Date(g.createdAt).toLocaleDateString("pt-BR");
               return (
                 <>
                   <Tooltip title="Editar">

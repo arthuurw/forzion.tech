@@ -7,12 +7,11 @@ export const OBJETIVO_LABEL: Record<string, string> = {
   Emagrecimento: "Emagrecimento",
   Resistencia: "Resistência",
   Forca: "Força",
-  Flexibilidade: "Flexibilidade",
-  Condicionamento: "Condicionamento",
+  Reabilitacao: "Reabilitação",
 };
 
 export const OBJETIVOS: ObjetivoTreino[] = [
-  "Hipertrofia", "Emagrecimento", "Resistencia", "Forca", "Flexibilidade", "Condicionamento",
+  "Hipertrofia", "Emagrecimento", "Resistencia", "Forca", "Reabilitacao",
 ];
 
 export const OBJETIVOS_FILTRO: { value: string; label: string }[] = [
@@ -20,8 +19,7 @@ export const OBJETIVOS_FILTRO: { value: string; label: string }[] = [
   { value: "Emagrecimento", label: "Emagrecimento" },
   { value: "Resistencia", label: "Resistência" },
   { value: "Forca", label: "Força" },
-  { value: "Flexibilidade", label: "Flexibilidade" },
-  { value: "Condicionamento", label: "Condicionamento" },
+  { value: "Reabilitacao", label: "Reabilitação" },
 ];
 
 export const DIFICULDADES: { value: DificuldadeTreino; label: string; color: string }[] = [

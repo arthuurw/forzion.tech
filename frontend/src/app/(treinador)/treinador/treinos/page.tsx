@@ -2,8 +2,10 @@
 import { useCallback, useState } from "react";
 import {
   Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  Stack, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip, Autocomplete,
+  Stack, TextField, Select, MenuItem, FormControl, InputLabel, FormHelperText, IconButton, Tooltip,
 } from "@mui/material";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
 import AddIcon from "@mui/icons-material/Add";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import EditIcon from "@mui/icons-material/Edit";
@@ -19,14 +21,34 @@ import type { TreinoResponse, ObjetivoTreino, DificuldadeTreino, AlunoResponse }
 import { OBJETIVOS, OBJETIVOS_FILTRO, DIFICULDADES } from "@/lib/constants/labels";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { useCRUDDialog } from "@/hooks/useCRUDDialog";
+import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
+
+// DatePicker trabalha com Dayjs; o back espera ISO YYYY-MM-DD ("" = sem data / limpar)
+const toIsoDate = (d: dayjs.Dayjs | null) => (d?.isValid() ? d.format("YYYY-MM-DD") : "");
+// DatePicker renderiza PickersInputBase (não .MuiOutlinedInput-input), então o override de
+// fonte do tema não alcança — igualamos à fonte dos demais campos (0.875rem no desktop).
+const DATE_FIELD_SLOTS = {
+  textField: {
+    size: "small" as const,
+    fullWidth: true,
+    // shrink fixo: campo vazio mantém o label acima (igual aos demais, que já têm valor/foco)
+    InputLabelProps: { shrink: true },
+    sx: { "& .MuiPickersInputBase-root": { fontSize: { xs: "1rem", sm: "0.875rem" } } },
+  },
+};
 
 const COLUMNS: Column[] = [
   { label: "Nome" },
   { label: "Objetivo" },
+  { label: "Dificuldade" },
   { label: "Aluno" },
-  { label: "Exercícios" },
-  { label: "Criado em" },
-  { label: "Ações", align: "right" },
+  { label: "Exercícios", align: "center" },
+  { label: "Início", align: "center" },
+  { label: "Validade", align: "center" },
+  { label: "Criado em", align: "center" },
+  // align center p/ o header ficar sobre o meio dos 3 botões; mobileRole explícito mantém o
+  // tratamento de "ações" no card mobile, que antes vinha de align:"right"
+  { label: "Ações", align: "center", mobileRole: "actions" },
 ];
 
 export default function TreinosTreinadorPage() {
@@ -44,7 +66,7 @@ export default function TreinosTreinadorPage() {
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [alunos, setAlunos] = useState<AlunoResponse[]>([]);
-  const [selectedAluno, setSelectedAluno] = useState<AlunoResponse | null>(null);
+  const [selectedAlunoId, setSelectedAlunoId] = useState("");
   const [editNome, setEditNome] = useState("");
   const [editObjetivo, setEditObjetivo] = useState<ObjetivoTreino>("Hipertrofia");
   const [editDificuldade, setEditDificuldade] = useState<DificuldadeTreino>("Iniciante");
@@ -67,15 +89,15 @@ export default function TreinosTreinadorPage() {
     [filtroNome, filtroObjetivo, ordenarPor]
   );
   const { items: fichas, total, page, pageSize, loading, error, setPage, setPageSize, setError, reload } =
-    usePaginatedList<TreinoResponse>({ fetcher, errorMessage: "Erro ao carregar fichas." });
+    usePaginatedList<TreinoResponse>({ fetcher, errorMessage: "Erro ao carregar fichas.", initialPageSize: 25 });
 
-  const resetForm = () => { setNome(""); setObjetivo("Hipertrofia"); setDificuldade("Iniciante"); setDataInicio(""); setDataFim(""); setSelectedAluno(null); };
+  const resetForm = () => { setNome(""); setObjetivo("Hipertrofia"); setDificuldade("Iniciante"); setDataInicio(""); setDataFim(""); setSelectedAlunoId(""); };
 
   const openDialog = async () => {
     openCreate();
     if (alunos.length === 0) {
       try {
-        const res = await treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: 200 });
+        const res = await treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: MAX_PAGE_SIZE });
         setAlunos(res.data.items);
       } catch (err) {
         setError(extractApiError(err, "Erro ao carregar alunos ativos."));
@@ -88,7 +110,7 @@ export default function TreinosTreinadorPage() {
     setCreating(true);
     try {
       const res = await treinadorApi.criarFicha({
-        alunoId: selectedAluno?.alunoId ?? null,
+        alunoId: selectedAlunoId || null,
         nome: nome.trim(),
         objetivo,
         dificuldade,
@@ -189,7 +211,9 @@ export default function TreinosTreinadorPage() {
           >
             <MenuItem value="nome">Nome</MenuItem>
             <MenuItem value="objetivo">Objetivo</MenuItem>
+            <MenuItem value="dificuldade">Dificuldade</MenuItem>
             <MenuItem value="nomeAluno">Aluno</MenuItem>
+            <MenuItem value="exercicios">Nº de exercícios</MenuItem>
             <MenuItem value="createdAt">Data de criação</MenuItem>
           </Select>
         </FormControl>
@@ -209,17 +233,26 @@ export default function TreinosTreinadorPage() {
         renderCell={(f, i) => {
           if (i === 0) return <Typography variant="body2" sx={{ fontWeight: 500 }}>{f.nome}</Typography>;
           if (i === 1) return OBJETIVOS_FILTRO.find((o) => o.value === f.objetivo)?.label ?? f.objetivo;
-          if (i === 2) return (
-            <Typography variant="body2" color={f.nomeAluno ? "text.primary" : "text.disabled"}>
-              {f.nomeAluno ?? "—"}
-            </Typography>
+          if (i === 2) {
+            const d = DIFICULDADES.find((x) => x.value === f.dificuldade);
+            return <Typography variant="body2" sx={{ color: d?.color, fontWeight: 700 }}>{d?.label ?? f.dificuldade}</Typography>;
+          }
+          if (i === 3) return (
+            <Typography variant="body2">{f.nomeAluno ?? ""}</Typography>
           );
-          if (i === 3) return f.exercicios.length;
-          if (i === 4) return (
-            <Typography variant="caption">{new Date(f.createdAt).toLocaleDateString("pt-BR")}</Typography>
+          if (i === 4) return f.exercicios.length;
+          // datas ISO (date-only): dayjs parseia como local; new Date faria UTC e poderia recuar 1 dia no fuso BR
+          if (i === 5) return (
+            <Typography variant="body2">{f.dataInicio ? dayjs(f.dataInicio).format("DD/MM/YYYY") : ""}</Typography>
+          );
+          if (i === 6) return (
+            <Typography variant="body2">{f.dataFim ? dayjs(f.dataFim).format("DD/MM/YYYY") : ""}</Typography>
+          );
+          if (i === 7) return (
+            <Typography variant="body2">{new Date(f.createdAt).toLocaleDateString("pt-BR")}</Typography>
           );
           return (
-            <Box sx={{ display: "flex", gap: 0.5, justifyContent: "flex-end" }}>
+            <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
               <Tooltip title="Abrir ficha">
                 <IconButton size="small" onClick={(e) => { e.stopPropagation(); router.push(`/treinador/treinos/${f.treinoId}`); }}>
                   <OpenInNewIcon fontSize="small" />
@@ -245,21 +278,22 @@ export default function TreinosTreinadorPage() {
         <DialogTitle>Nova ficha de treino</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <Autocomplete
-              options={alunos}
-              getOptionLabel={(a) => a.nome}
-              value={selectedAluno}
-              onChange={(_, v) => setSelectedAluno(v)}
-              noOptionsText="Nenhum aluno ativo na carteira"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Aluno (opcional)"
-                  size="small"
-                  helperText="Deixe em branco para criar sem vincular. Vincule depois pela página do aluno."
-                />
-              )}
-            />
+            <FormControl size="small" fullWidth>
+              <InputLabel shrink id="aluno-label">Aluno (opcional)</InputLabel>
+              <Select
+                labelId="aluno-label"
+                value={selectedAlunoId}
+                label="Aluno (opcional)"
+                notched
+                displayEmpty
+                onChange={(e) => setSelectedAlunoId(e.target.value)}
+              >
+                {alunos.map((a) => (
+                  <MenuItem key={a.alunoId} value={a.alunoId}>{a.nome}</MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>Deixe em branco para criar sem vincular. Vincule depois pela página do aluno.</FormHelperText>
+            </FormControl>
             <TextField
               label="Nome"
               value={nome}
@@ -294,23 +328,19 @@ export default function TreinosTreinadorPage() {
               </Select>
             </FormControl>
             <Stack direction="row" spacing={1.5}>
-              <TextField
+              <DatePicker
                 label="Início (opcional)"
-                type="date"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-                size="small"
-                fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
+                format="DD/MM/YYYY"
+                value={dataInicio ? dayjs(dataInicio) : null}
+                onChange={(d) => setDataInicio(toIsoDate(d))}
+                slotProps={DATE_FIELD_SLOTS}
               />
-              <TextField
+              <DatePicker
                 label="Validade (opcional)"
-                type="date"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-                size="small"
-                fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
+                format="DD/MM/YYYY"
+                value={dataFim ? dayjs(dataFim) : null}
+                onChange={(d) => setDataFim(toIsoDate(d))}
+                slotProps={DATE_FIELD_SLOTS}
               />
             </Stack>
           </Stack>
@@ -362,23 +392,19 @@ export default function TreinosTreinadorPage() {
               </Select>
             </FormControl>
             <Stack direction="row" spacing={1.5}>
-              <TextField
+              <DatePicker
                 label="Início (opcional)"
-                type="date"
-                value={editDataInicio}
-                onChange={(e) => setEditDataInicio(e.target.value)}
-                size="small"
-                fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
+                format="DD/MM/YYYY"
+                value={editDataInicio ? dayjs(editDataInicio) : null}
+                onChange={(d) => setEditDataInicio(toIsoDate(d))}
+                slotProps={DATE_FIELD_SLOTS}
               />
-              <TextField
+              <DatePicker
                 label="Validade (opcional)"
-                type="date"
-                value={editDataFim}
-                onChange={(e) => setEditDataFim(e.target.value)}
-                size="small"
-                fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
+                format="DD/MM/YYYY"
+                value={editDataFim ? dayjs(editDataFim) : null}
+                onChange={(d) => setEditDataFim(toIsoDate(d))}
+                slotProps={DATE_FIELD_SLOTS}
               />
             </Stack>
           </Stack>

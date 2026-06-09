@@ -16,6 +16,7 @@ import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
 import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
 import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
+import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
 
 const COLS_MEUS: Column[] = [
   { label: "Nome" },
@@ -134,7 +135,7 @@ export default function ExerciciosTreinadorPage() {
 
   const loadMeusNomes = useCallback(async () => {
     try {
-      const res = await treinadorApi.listExercicios({ global: false, pagina: 1, tamanhoPagina: 500 });
+      const res = await treinadorApi.listExercicios({ global: false, pagina: 1, tamanhoPagina: MAX_PAGE_SIZE });
       setMeusNomes(new Set(res.data.items.map((e: ExercicioResponse) => e.nome.toLowerCase())));
     } catch { /* validação de duplicatas desabilitada — meusNomes permanece vazio */ }
   }, []);

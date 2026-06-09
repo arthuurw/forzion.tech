@@ -17,6 +17,7 @@ import type { ExecucaoTreinoResponse, ExercicioProgressao } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { extractApiError } from "@/lib/api/extractApiError";
 import { formatarData, periodoParaDatas } from "@/lib/utils/formatting";
+import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
 
 type Periodo = "7d" | "30d" | "60d" | "90d";
 
@@ -73,7 +74,7 @@ export default function HistoricoAlunoPage() {
 
   useEffect(() => {
     let active = true;
-    alunoApi.listExecucoes({ pagina: 1, tamanhoPagina: 200 })
+    alunoApi.listExecucoes({ pagina: 1, tamanhoPagina: MAX_PAGE_SIZE })
       .then((r) => { if (active) { setAllExecucoes(r.data.items); setAllError(""); } })
       .catch((err) => { if (active) { setAllExecucoes([]); setAllError(extractApiError(err, "Não foi possível carregar os indicadores do histórico.")); } })
       .finally(() => { if (active) setAllLoading(false); });

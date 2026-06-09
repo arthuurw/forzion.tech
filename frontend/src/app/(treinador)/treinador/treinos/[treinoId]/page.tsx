@@ -25,6 +25,7 @@ import type { TreinoResponse, TreinoExercicioResponse, ExercicioResponse, AlunoR
 import { OBJETIVO_LABEL, GRUPO_MUSCULAR_LABEL, OBJETIVOS } from "@/lib/constants/labels";
 import { formatarSeries } from "@/lib/utils/formatting";
 import { exportarFichaParaExcel } from "@/lib/utils/excel";
+import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
 
 const COLUMNS: Column[] = [
   { label: "Exercício" },
@@ -104,7 +105,7 @@ export default function DetalheFichaPage() {
     setSeriesRows([{ ...SERIE_VAZIA }]);
     if (biblioteca.length === 0) {
       try {
-        const res = await treinadorApi.listExercicios({ global: false, tamanhoPagina: 200 });
+        const res = await treinadorApi.listExercicios({ global: false, tamanhoPagina: MAX_PAGE_SIZE });
         setBiblioteca(res.data.items);
       } catch (err) {
         setError(extractApiError(err, "Erro ao carregar biblioteca de exercícios."));
@@ -185,7 +186,7 @@ export default function DetalheFichaPage() {
     setVincularOpen(true);
     if (alunos.length === 0) {
       try {
-        const res = await treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: 200 });
+        const res = await treinadorApi.listAlunos({ status: "Ativo", tamanhoPagina: MAX_PAGE_SIZE });
         setAlunos(res.data.items);
       } catch (err) {
         setError(extractApiError(err, "Erro ao carregar alunos ativos."));

@@ -163,7 +163,7 @@ export default function SaudeAdminPage() {
 
             {ultimoEnvioEm && (
               <Typography variant="caption" color="text.secondary">
-                Último envio: {new Date(ultimoEnvioEm).toLocaleString()}
+                Último envio: {new Date(ultimoEnvioEm).toLocaleString("pt-BR")}
               </Typography>
             )}
 
@@ -189,7 +189,7 @@ export default function SaudeAdminPage() {
                 <Typography variant="body2" color="text.secondary">{ultimoSnapshot.ambiente}</Typography>
               </Box>
               <Typography variant="caption" color="text.secondary">
-                {new Date(ultimoSnapshot.capturadoEm).toLocaleString()}
+                {new Date(ultimoSnapshot.capturadoEm).toLocaleString("pt-BR")}
               </Typography>
             </Stack>
           ) : snapshotIndisponivel ? (

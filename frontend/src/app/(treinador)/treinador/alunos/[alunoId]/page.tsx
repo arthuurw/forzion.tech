@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Stack, Button,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Autocomplete, TextField, IconButton, Chip,
+  Autocomplete, TextField, IconButton,
 } from "@mui/material";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -15,12 +15,13 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { treinadorApi } from "@/lib/api/treinador";
 import type {
-  AlunoResponse, TreinoAlunoResponse, TreinoResponse,
+  AlunoResponse, TreinoAlunoResponse, TreinoResponse, PacoteResponse,
   FinalidadeTreino, NivelCondicionamento, TempoDisponivel,
 } from "@/types";
 import ProgressaoAluno from "@/components/treinador/ProgressaoAluno";
 import InfoLine from "@/components/ui/InfoLine";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
+import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
 
 const FICHAS_COLS: Column[] = [
   { label: "Ficha", mobileRole: "primary" },
@@ -39,7 +40,7 @@ export default function DetalheAlunoPage() {
   const router = useRouter();
   const [aluno, setAluno] = useState<AlunoResponse | null>(null);
   const [fichas, setFichas] = useState<TreinoAlunoResponse[]>([]);
-  const [pacoteNome, setPacoteNome] = useState<string | null>(null);
+  const [pacote, setPacote] = useState<PacoteResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -55,7 +56,7 @@ export default function DetalheAlunoPage() {
       const [alunoRes, fichasRes, vinculosRes, pacotesRes] = await Promise.all([
         treinadorApi.getAluno(alunoId),
         treinadorApi.getFichasDoAluno(alunoId),
-        treinadorApi.listVinculos({ tamanhoPagina: 200 }),
+        treinadorApi.listVinculos({ tamanhoPagina: MAX_PAGE_SIZE }),
         treinadorApi.listPacotes(),
       ]);
       setAluno(alunoRes.data);
@@ -63,8 +64,7 @@ export default function DetalheAlunoPage() {
 
       const vinculo = vinculosRes.data.items.find((v) => v.alunoId === alunoId);
       if (vinculo?.pacoteId) {
-        const pacote = pacotesRes.data.find((p) => p.pacoteId === vinculo.pacoteId);
-        setPacoteNome(pacote?.nome ?? null);
+        setPacote(pacotesRes.data.find((p) => p.pacoteId === vinculo.pacoteId) ?? null);
       }
     } catch {
       setError("Erro ao carregar dados do aluno.");
@@ -104,7 +104,7 @@ export default function DetalheAlunoPage() {
   };
 
   const temPerfilTreino = aluno && (
-    aluno.finalidade || aluno.nivelCondicionamento || aluno.diasDisponiveis ||
+    aluno.finalidade || aluno.nivelCondicionamento || aluno.diasDisponiveis || aluno.tempoDisponivelMinutos ||
     aluno.focoTreino || aluno.limitacoesFisicas || aluno.doencas || aluno.observacoesAdicionais
   );
 
@@ -134,11 +134,22 @@ export default function DetalheAlunoPage() {
                 {aluno.email && <InfoLine label="E-mail" value={aluno.email} />}
                 {aluno.telefone && <InfoLine label="Celular" value={formatPhone(aluno.telefone)} />}
                 <InfoLine label="Cadastro" value={new Date(aluno.createdAt).toLocaleDateString("pt-BR")} />
-                {pacoteNome && (
-                  <Typography variant="body2">
-                    <strong>Pacote:</strong>{" "}
-                    <Chip label={pacoteNome} size="small" color="primary" sx={{ ml: 0.5, fontWeight: 600 }} />
-                  </Typography>
+                {aluno.updatedAt && <InfoLine label="Atualizado" value={new Date(aluno.updatedAt).toLocaleDateString("pt-BR")} />}
+                {pacote && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+                    <Typography variant="body2" component="span"><strong>Pacote:</strong></Typography>
+                    <Box
+                      sx={{
+                        display: "inline-flex", alignItems: "center", gap: 0.75, flexWrap: "wrap",
+                        bgcolor: "primary.main", color: "primary.contrastText", borderRadius: 2, px: 1, py: 0.25,
+                      }}
+                    >
+                      <Typography variant="body2" component="span">
+                        <strong>{pacote.nome}</strong> - R$ {pacote.preco.toFixed(2)}
+                        {pacote.descricao ? ` - ${pacote.descricao}` : ""}
+                      </Typography>
+                    </Box>
+                  </Box>
                 )}
               </Stack>
             </CardContent>
@@ -147,11 +158,10 @@ export default function DetalheAlunoPage() {
       )}
 
       {temPerfilTreino && aluno && (
-        <Card variant="outlined" sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-              Perfil de treino
-            </Typography>
+        <>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Perfil de treino</Typography>
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardContent>
             <Stack spacing={0.75}>
               {aluno.finalidade && (
                 <InfoLine label="Finalidade" value={FINALIDADE_LABEL[aluno.finalidade]} />
@@ -176,8 +186,9 @@ export default function DetalheAlunoPage() {
                 <InfoLine label="Observações" value={aluno.observacoesAdicionais} />
               )}
             </Stack>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {aluno?.status === "AguardandoAprovacao" ? (
