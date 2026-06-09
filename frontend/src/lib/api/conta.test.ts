@@ -30,12 +30,12 @@ describe("contaApi", () => {
 
   it("exportarDados GET xlsx (default)", () => {
     contaApi.exportarDados();
-    expect(mock.get).toHaveBeenCalledWith("/conta/lgpd/exportar?formato=xlsx", { responseType: "blob" });
+    expect(mock.get).toHaveBeenCalledWith("/conta/lgpd/exportar", { params: { formato: "xlsx" }, responseType: "blob" });
   });
 
   it("exportarDados GET json", () => {
     contaApi.exportarDados("json");
-    expect(mock.get).toHaveBeenCalledWith("/conta/lgpd/exportar?formato=json", { responseType: "blob" });
+    expect(mock.get).toHaveBeenCalledWith("/conta/lgpd/exportar", { params: { formato: "json" }, responseType: "blob" });
   });
 
   it("excluirConta DELETE com senha no body", () => {

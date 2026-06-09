@@ -1,4 +1,3 @@
-"use client";
 import { Box, Container, Typography, Grid } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
@@ -31,7 +30,7 @@ export default function Diferenciais() {
     <Box sx={{ bgcolor: "background.paper", py: { xs: 8, md: 12 } }}>
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: 8 }}>
-          <Typography variant="overline" sx={{ color: "#7a6300", fontWeight: 700, letterSpacing: "0.1em" }}>
+          <Typography variant="overline" sx={{ color: "brand.label", fontWeight: 700, letterSpacing: "0.1em" }}>
             DIFERENCIAIS
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>

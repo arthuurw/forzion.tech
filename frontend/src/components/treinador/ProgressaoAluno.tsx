@@ -14,6 +14,17 @@ import type { ExercicioProgressao } from "@/types";
 import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
 import { formatarData, periodoParaDatas } from "@/lib/utils/formatting";
 
+// recharts props (stroke/fill/contentStyle) take string literals, not MUI sx — so these
+// theme-adjacent hex values live as a local constant instead of theme tokens.
+const CHART_COLORS = {
+  grid: "#2a2a2a",
+  axis: "#555",
+  tooltipBg: "#1a1a1a",
+  tooltipBorder: "#333",
+  tooltipLabel: "#aaa",
+  tooltipLabelLine: "#888",
+} as const;
+
 type Periodo = "7d" | "30d" | "60d" | "90d" | "6m" | "1a" | "tudo";
 
 const PERIODOS: { value: Periodo; label: string }[] = [
@@ -32,6 +43,7 @@ interface Props {
 
 export default function ProgressaoAluno({ alunoId }: Props) {
   const theme = useTheme();
+  const brand = theme.palette.primary.main; // mirrors #F5C400; recharts needs a string, not sx
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [exercicios, setExercicios] = useState<ExercicioProgressao[]>([]);
@@ -130,22 +142,22 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                     data={volumePorGrupo}
                     margin={{ top: 0, right: 24, bottom: 0, left: 0 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 10 }} stroke="#555" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10 }} stroke={CHART_COLORS.axis} />
                     <YAxis
                       type="category"
                       dataKey="grupo"
                       tick={{ fontSize: 11 }}
-                      stroke="#555"
+                      stroke={CHART_COLORS.axis}
                       width={isMobile ? 70 : 110}
                     />
                     <Tooltip
-                      contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 4, fontSize: 11 }}
-                      labelStyle={{ color: "#aaa" }}
-                      itemStyle={{ color: "#F5C400" }}
+                      contentStyle={{ background: CHART_COLORS.tooltipBg, border: `1px solid ${CHART_COLORS.tooltipBorder}`, borderRadius: 4, fontSize: 11 }}
+                      labelStyle={{ color: CHART_COLORS.tooltipLabel }}
+                      itemStyle={{ color: brand }}
                       formatter={(v) => [`${Number(v).toLocaleString("pt-BR")}`, "Volume"]}
                     />
-                    <Bar dataKey="volume" fill="#F5C400" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="volume" fill={brand} radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -178,13 +190,13 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                           </Typography>
                           <ResponsiveContainer width="100%" height={150}>
                             <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                              <XAxis dataKey="data" tick={{ fontSize: 10 }} stroke="#555" />
-                              <YAxis tick={{ fontSize: 10 }} stroke="#555" />
+                              <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
+                              <XAxis dataKey="data" tick={{ fontSize: 10 }} stroke={CHART_COLORS.axis} />
+                              <YAxis tick={{ fontSize: 10 }} stroke={CHART_COLORS.axis} />
                               <Tooltip
-                                contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 4, fontSize: 11 }}
-                                labelStyle={{ color: "#888" }}
-                                itemStyle={{ color: "#F5C400" }}
+                                contentStyle={{ background: CHART_COLORS.tooltipBg, border: `1px solid ${CHART_COLORS.tooltipBorder}`, borderRadius: 4, fontSize: 11 }}
+                                labelStyle={{ color: CHART_COLORS.tooltipLabelLine }}
+                                itemStyle={{ color: brand }}
                                 formatter={(value, name) => {
                                   if (name === "carga") return [`${value} kg`, "Carga"];
                                   if (name === "series") return [value, "Séries"];
@@ -195,9 +207,9 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                               <Line
                                 type="monotone"
                                 dataKey="carga"
-                                stroke="#F5C400"
+                                stroke={brand}
                                 strokeWidth={2}
-                                dot={{ r: 3, fill: "#F5C400" }}
+                                dot={{ r: 3, fill: brand }}
                                 activeDot={{ r: 5 }}
                                 connectNulls
                               />

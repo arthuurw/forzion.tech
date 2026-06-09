@@ -2,6 +2,15 @@
 import { createTheme, alpha } from "@mui/material/styles";
 import { ptBR } from "@mui/material/locale";
 
+declare module "@mui/material/styles" {
+  interface Palette {
+    brand: { label: string };
+  }
+  interface PaletteOptions {
+    brand?: { label?: string };
+  }
+}
+
 const theme = createTheme(
   {
     palette: {
@@ -34,6 +43,8 @@ const theme = createTheme(
         secondary: "#4B5563",
       },
       divider: "rgba(0,0,0,0.08)",
+      // Overline accent for landing section labels; darker than primary for AA contrast on light bg.
+      brand: { label: "#7a6300" },
     },
     typography: {
       fontFamily: "'Inter', 'Roboto', sans-serif",

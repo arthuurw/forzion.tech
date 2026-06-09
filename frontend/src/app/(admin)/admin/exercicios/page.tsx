@@ -15,6 +15,7 @@ import { adminApi } from "@/lib/api/admin";
 import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { useCRUDDialog } from "@/hooks/useCRUDDialog";
+import { extractApiError } from "@/lib/api/extractApiError";
 import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
 
 const COLUMNS: Column[] = [
@@ -67,10 +68,11 @@ export default function ExerciciosAdminPage() {
         setGrupoMuscular(res.data[0].id);
         setEditGrupo(res.data[0].id);
       }
-    } catch {
-      // grupos musculares indisponíveis — formulário fica sem seleção de grupo
+    } catch (err) {
+      // sem grupos o formulário fica sem seleção de grupo: avisa em vez de falhar mudo
+      setError(extractApiError(err, "Não foi possível carregar os grupos musculares. O cadastro de exercícios fica indisponível."));
     }
-  }, []);
+  }, [setError]);
 
   useEffect(() => { loadGrupos(); }, [loadGrupos]);
 

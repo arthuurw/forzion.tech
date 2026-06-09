@@ -17,11 +17,11 @@ import {
   cadastroTreinadorSchema,
   type CadastroTreinadorFormData,
 } from "@/lib/validations/common";
+import { authApi, AuthApiError } from "@/lib/api/auth";
 import type {
   IniciarPagamentoPlanoResponse,
   MetodoPagamento,
   PlanoPlataformaResponse,
-  ProblemDetails,
   TreinadorResponse,
 } from "@/types";
 
@@ -52,9 +52,7 @@ export default function CadastroTreinadorPage() {
     let active = true;
     (async () => {
       try {
-        const res = await fetch("/api/auth/planos");
-        if (!res.ok) throw new Error();
-        const data: PlanoPlataformaResponse[] = await res.json();
+        const data = await authApi.listarPlanos();
         if (active) setPlanos(data.filter((p) => p.isAtivo !== false));
       } catch {
         if (active) setError("Não foi possível carregar os planos. Recarregue a página.");
@@ -67,37 +65,28 @@ export default function CadastroTreinadorPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register/treinador", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: data.nome,
-          email: data.email,
-          senha: data.password,
-          telefone: data.telefone || undefined,
-          planoPlataformaId: data.planoPlataformaId,
-          modoPagamentoAluno: data.modoPagamentoAluno,
-        }),
+      const treinador = await authApi.registerTreinador({
+        nome: data.nome,
+        email: data.email,
+        senha: data.password,
+        telefone: data.telefone || undefined,
+        planoPlataformaId: data.planoPlataformaId,
+        modoPagamentoAluno: data.modoPagamentoAluno,
       });
-
-      if (!res.ok) {
-        if (res.status >= 500) setError("Erro interno. Tente novamente.");
-        else {
-          const problem: ProblemDetails = await res.json();
-          setError(problem.detail ?? problem.title ?? "Erro ao criar conta.");
-        }
-        return;
-      }
-
-      const treinador: TreinadorResponse = await res.json();
       if (treinador.status === "AguardandoPagamento") {
         setTreinadorId(treinador.treinadorId);
         setStep(2);
       } else {
         setFinalizado("analise");
       }
-    } catch {
-      setError("Não foi possível conectar ao servidor.");
+    } catch (e) {
+      if (!(e instanceof AuthApiError)) {
+        setError("Não foi possível conectar ao servidor.");
+      } else if (e.status >= 500) {
+        setError("Erro interno. Tente novamente.");
+      } else {
+        setError(e.problem?.detail ?? e.problem?.title ?? "Erro ao criar conta.");
+      }
     } finally {
       setLoading(false);
     }
@@ -107,21 +96,15 @@ export default function CadastroTreinadorPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch(`/api/auth/treinador/${treinadorId}/pagamento`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ metodo }),
-      });
-      if (!res.ok) {
-        const problem: ProblemDetails = await res.json().catch(() => ({}));
-        setError(problem.detail ?? problem.title ?? "Erro ao iniciar o pagamento.");
-        return;
-      }
-      const dados: IniciarPagamentoPlanoResponse = await res.json();
+      const dados = await authApi.iniciarPagamentoTreinador(treinadorId, metodo);
       setPagamento(dados);
       if (dados.metodoPagamento === "Pix") setFinalizado("pix");
-    } catch {
-      setError("Não foi possível conectar ao servidor.");
+    } catch (e) {
+      if (e instanceof AuthApiError) {
+        setError(e.problem?.detail ?? e.problem?.title ?? "Erro ao iniciar o pagamento.");
+      } else {
+        setError("Não foi possível conectar ao servidor.");
+      }
     } finally {
       setLoading(false);
     }

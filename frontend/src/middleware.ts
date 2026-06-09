@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import type { TipoConta } from "@/types";
+import { parseTipoConta } from "@/lib/auth/jwt";
 
 const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/forgot-password", "/reset-password", "/verify-email", "/resend-verification"];
 
@@ -17,8 +18,7 @@ async function verifyTipoConta(token: string): Promise<TipoConta | null> {
       issuer: process.env.JWT_ISSUER,
       audience: process.env.JWT_AUDIENCE,
     });
-    const tipoConta = payload["tipo_conta"] as string | undefined;
-    return (tipoConta as TipoConta) ?? null;
+    return parseTipoConta(payload["tipo_conta"]);
   } catch {
     return null;
   }

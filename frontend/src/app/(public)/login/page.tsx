@@ -11,7 +11,7 @@ import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { useAuth, homeRouteFor } from "@/lib/auth/context";
 import { loginSchema, type LoginFormData } from "@/lib/validations/common";
-import type { LoginResponse, ProblemDetails } from "@/types";
+import { authApi, AuthApiError } from "@/lib/api/auth";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export default function LoginPage() {
@@ -43,43 +43,33 @@ export default function LoginPage() {
     setBloqueio(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, senha: data.password }),
-      });
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          setError("Credenciais inválidas.");
-        } else if (res.status >= 500) {
-          setError("Erro interno. Tente novamente.");
-        } else {
-          const problem: ProblemDetails = await res.json();
-          if (res.status === 403 && problem.code === "EMAIL_NAO_VERIFICADO") {
-            setEmailNaoVerificado(data.email);
-          } else if (res.status === 403 && problem.code === "TREINADOR_AGUARDANDO_APROVACAO") {
-            setBloqueio({
-              titulo: "Cadastro em análise",
-              mensagem: "Seu cadastro de treinador está em análise. Aguarde a aprovação do administrador para acessar.",
-            });
-          } else if (res.status === 403 && problem.code === "TREINADOR_INATIVO") {
-            setBloqueio({
-              titulo: "Conta inativa",
-              mensagem: "Sua conta de treinador está inativa. Entre em contato com o suporte.",
-            });
-          } else {
-            setError(problem.title ?? "Erro ao fazer login.");
-          }
-        }
-        return;
-      }
-
-      const payload: LoginResponse = await res.json();
+      const payload = await authApi.login({ email: data.email, senha: data.password });
       login(payload);
       router.push(homeRouteFor(payload.tipoConta));
-    } catch {
-      setError("Não foi possível conectar ao servidor.");
+    } catch (e) {
+      if (!(e instanceof AuthApiError)) {
+        setError("Não foi possível conectar ao servidor.");
+        return;
+      }
+      if (e.status === 401) {
+        setError("Credenciais inválidas.");
+      } else if (e.status >= 500) {
+        setError("Erro interno. Tente novamente.");
+      } else if (e.status === 403 && e.problem?.code === "EMAIL_NAO_VERIFICADO") {
+        setEmailNaoVerificado(data.email);
+      } else if (e.status === 403 && e.problem?.code === "TREINADOR_AGUARDANDO_APROVACAO") {
+        setBloqueio({
+          titulo: "Cadastro em análise",
+          mensagem: "Seu cadastro de treinador está em análise. Aguarde a aprovação do administrador para acessar.",
+        });
+      } else if (e.status === 403 && e.problem?.code === "TREINADOR_INATIVO") {
+        setBloqueio({
+          titulo: "Conta inativa",
+          mensagem: "Sua conta de treinador está inativa. Entre em contato com o suporte.",
+        });
+      } else {
+        setError(e.problem?.title ?? "Erro ao fazer login.");
+      }
     } finally {
       setLoading(false);
     }
@@ -89,11 +79,7 @@ export default function LoginPage() {
     if (!emailNaoVerificado) return;
     setReenviando(true);
     try {
-      await fetch("/api/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailNaoVerificado }),
-      });
+      await authApi.resendVerification(emailNaoVerificado);
       setReenviado(true);
     } catch {
       setError("Não foi possível reenviar o e-mail de verificação.");

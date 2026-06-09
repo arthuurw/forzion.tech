@@ -44,7 +44,7 @@ export default function Faq() {
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <Typography
             variant="overline"
-            sx={{ color: "#7a6300", fontWeight: 700, letterSpacing: "0.1em" }}
+            sx={{ color: "brand.label", fontWeight: 700, letterSpacing: "0.1em" }}
           >
             FAQ
           </Typography>
@@ -53,7 +53,13 @@ export default function Faq() {
           </Typography>
         </Box>
         {FAQ_ITEMS.map(({ question, answer }) => (
-          <Accordion key={question} disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "divider", mb: 1, borderRadius: "8px !important", "&:before": { display: "none" } }}>
+          <Accordion
+            key={question}
+            disableGutters
+            elevation={0}
+            // !important overrides MUI's first/last-child border-radius reset on Accordion (higher specificity)
+            sx={{ border: "1px solid", borderColor: "divider", mb: 1, borderRadius: "8px !important", "&:before": { display: "none" } }}
+          >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                 {question}

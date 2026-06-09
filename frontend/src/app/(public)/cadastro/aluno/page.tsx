@@ -28,7 +28,8 @@ import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { cadastroAlunoSchema, type CadastroAlunoFormData } from "@/lib/validations/common";
-import type { ProblemDetails, TreinadorResponse, PacoteResponse } from "@/types";
+import { authApi, AuthApiError } from "@/lib/api/auth";
+import type { TreinadorResponse, PacoteResponse } from "@/types";
 import { DIAS_OPTIONS, TEMPO_OPTIONS, FINALIDADE_OPTIONS, NIVEL_OPTIONS } from "@/lib/constants/enrollmentOptions";
 import CheckoutTermos from "@/components/ui/CheckoutTermos";
 
@@ -77,9 +78,7 @@ export default function CadastroAlunoPage() {
     setLoadingList(true);
     setError("");
     try {
-      const res = await fetch("/api/auth/treinadores");
-      if (!res.ok) throw new Error();
-      setTreinadores(await res.json());
+      setTreinadores(await authApi.listarTreinadores());
     } catch {
       setError("Não foi possível carregar os treinadores.");
     } finally {
@@ -91,9 +90,7 @@ export default function CadastroAlunoPage() {
     setLoadingList(true);
     setError("");
     try {
-      const res = await fetch(`/api/auth/treinadores/${treinadorId}/pacotes`);
-      if (!res.ok) throw new Error();
-      setPacotes(await res.json());
+      setPacotes(await authApi.listarPacotes(treinadorId));
     } catch {
       setError("Não foi possível carregar os pacotes.");
     } finally {
@@ -130,44 +127,35 @@ export default function CadastroAlunoPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register/aluno", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: data.nome,
-          email: data.email,
-          telefone: data.telefone || null,
-          senha: data.password,
-          treinadorId: selectedTreinador.treinadorId,
-          pacoteId: selectedPacote.pacoteId,
-          diasDisponiveis: data.diasDisponiveis ? parseInt(data.diasDisponiveis) : null,
-          tempoDisponivelMinutos: data.tempoDisponivelMinutos
-            ? parseInt(data.tempoDisponivelMinutos)
-            : null,
-          finalidade: data.finalidade || null,
-          focoTreino: data.focoTreino || null,
-          nivelCondicionamento: data.nivelCondicionamento || null,
-          limitacoesFisicas: data.limitacoesFisicas || null,
-          doencas: data.doencas || null,
-          observacoesAdicionais: data.observacoesAdicionais || null,
-          consentimentoDadosSaude: true,
-          consentimentoDadosSaudeEm: new Date().toISOString(),
-        }),
+      await authApi.registerAluno({
+        nome: data.nome,
+        email: data.email,
+        telefone: data.telefone || null,
+        senha: data.password,
+        treinadorId: selectedTreinador.treinadorId,
+        pacoteId: selectedPacote.pacoteId,
+        diasDisponiveis: data.diasDisponiveis ? parseInt(data.diasDisponiveis) : null,
+        tempoDisponivelMinutos: data.tempoDisponivelMinutos
+          ? parseInt(data.tempoDisponivelMinutos)
+          : null,
+        finalidade: data.finalidade || null,
+        focoTreino: data.focoTreino || null,
+        nivelCondicionamento: data.nivelCondicionamento || null,
+        limitacoesFisicas: data.limitacoesFisicas || null,
+        doencas: data.doencas || null,
+        observacoesAdicionais: data.observacoesAdicionais || null,
+        consentimentoDadosSaude: true,
+        consentimentoDadosSaudeEm: new Date().toISOString(),
       });
-
-      if (!res.ok) {
-        if (res.status >= 500) {
-          setError("Erro interno. Tente novamente.");
-        } else {
-          const problem: ProblemDetails = await res.json();
-          setError(problem.detail ?? problem.title ?? "Erro ao criar conta.");
-        }
-        return;
-      }
-
       setSuccess(true);
-    } catch {
-      setError("Não foi possível conectar ao servidor.");
+    } catch (e) {
+      if (!(e instanceof AuthApiError)) {
+        setError("Não foi possível conectar ao servidor.");
+      } else if (e.status >= 500) {
+        setError("Erro interno. Tente novamente.");
+      } else {
+        setError(e.problem?.detail ?? e.problem?.title ?? "Erro ao criar conta.");
+      }
     } finally {
       setLoading(false);
     }

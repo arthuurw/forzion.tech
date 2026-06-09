@@ -1,4 +1,3 @@
-"use client";
 import { Box, Container, Typography, Grid } from "@mui/material";
 import Image from "next/image";
 
@@ -36,7 +35,7 @@ export default function HowItWorks() {
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <Typography
             variant="overline"
-            sx={{ color: "#7a6300", fontWeight: 700, letterSpacing: "0.1em" }}
+            sx={{ color: "brand.label", fontWeight: 700, letterSpacing: "0.1em" }}
           >
             COMO FUNCIONA
           </Typography>

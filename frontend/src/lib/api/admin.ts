@@ -127,6 +127,8 @@ export const adminApi = {
   },
 
   alterarStatusAluno(alunoId: string, status: AlunoStatus) {
+    // Sem prefixo /admin de propósito: o backend mapeia esta rota no grupo /alunos
+    // (AlunoEndpoints), apenas com policy SystemAdmin — não no grupo /admin.
     return apiClient.patch<AlunoResponse>(`/alunos/${alunoId}/status`, { status });
   },
 

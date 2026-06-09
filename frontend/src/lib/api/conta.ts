@@ -26,7 +26,7 @@ export const contaApi = {
     return apiClient.post("/conta/senha", data);
   },
   exportarDados(formato: "xlsx" | "json" = "xlsx") {
-    return apiClient.get(`/conta/lgpd/exportar?formato=${formato}`, { responseType: "blob" });
+    return apiClient.get("/conta/lgpd/exportar", { params: { formato }, responseType: "blob" });
   },
   /**
    * LGPD — direito ao esquecimento.

@@ -21,6 +21,7 @@ Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` ap
 | `text.primary` | `#111827` | 17.7:1 em #FFF / 16.7:1 em #F7F8FA (AA) |
 | `text.secondary` | `#4B5563` | gray-600; 7.6:1 em #FFF / 7.1:1 em #F7F8FA (AA) — F18 resolvido (era #6B7280 ≈4.6:1 em #F7F8FA) |
 | `divider` | `rgba(0,0,0,0.08)` | (MuiDivider override → `rgba(0,0,0,0.07)`) |
+| `brand.label` | `#7a6300` | overline accent dos labels de seção da landing (chave custom via module augmentation; fonte única — não hardcodar) |
 
 NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip/Snackbar herdam paleta MUI default desses severities.
 

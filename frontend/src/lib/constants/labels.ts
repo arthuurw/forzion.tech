@@ -1,4 +1,6 @@
-import type { DificuldadeTreino, ObjetivoTreino } from "@/types";
+import type { DificuldadeTreino, ObjetivoTreino, PagamentoStatus } from "@/types";
+
+type MuiChipColor = "default" | "success" | "warning" | "error" | "info";
 
 export const OBJETIVO_LABEL: Record<string, string> = {
   Hipertrofia: "Hipertrofia",
@@ -63,4 +65,36 @@ export const ALUNO_STATUS_COLORS: Record<string, string> = {
   Ativos: "#4caf50",
   Aguardando: "#F5C400",
   Inativos: "#757575",
+};
+
+// Admin dashboard pie/stat colors. Trainer palette mirrors ALUNO_STATUS_COLORS
+// but keys differ ("Pendentes" vs "Aguardando"), so it is re-mapped here.
+export const TREINADOR_STATUS_COLORS: Record<string, string> = {
+  Ativos: ALUNO_STATUS_COLORS.Ativos,
+  Pendentes: ALUNO_STATUS_COLORS.Aguardando,
+  Inativos: ALUNO_STATUS_COLORS.Inativos,
+};
+
+export const ALUNO_DASHBOARD_STATUS_COLORS: Record<string, string> = {
+  Ativos: "#2196f3",
+  Pendentes: "#ff9800",
+  Inativos: "#9e9e9e",
+};
+
+export const PAGAMENTO_STATUS_COLORS: Record<PagamentoStatus, MuiChipColor> = {
+  Pago: "success",
+  Pendente: "warning",
+  Expirado: "default",
+  Falhou: "error",
+  Estornado: "info",
+  EmDisputa: "error",
+};
+
+export const PAGAMENTO_STATUS_LABEL: Record<PagamentoStatus, string> = {
+  Pago: "Pago",
+  Pendente: "Pendente",
+  Expirado: "Expirado",
+  Falhou: "Falhou",
+  Estornado: "Estornado",
+  EmDisputa: "Em disputa",
 };

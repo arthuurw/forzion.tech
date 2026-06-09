@@ -21,7 +21,7 @@ export const pagamentoApi = {
       "/treinador/modo-pagamento", { modo });
   },
   gerarCobranca(assinaturaId: string, metodo: MetodoPagamento = "Pix") {
-    return apiClient.post<PagamentoResponse>(`/treinador/pagamentos/cobrar/${assinaturaId}?metodo=${metodo}`);
+    return apiClient.post<PagamentoResponse>(`/treinador/pagamentos/cobrar/${assinaturaId}`, undefined, { params: { metodo } });
   },
   obterPagamento(pagamentoId: string) {
     return apiClient.get<PagamentoResponse>(`/aluno/pagamentos/${pagamentoId}`);
@@ -42,7 +42,7 @@ export const pagamentoApi = {
     return apiClient.post<{ canceladaEm: string }>("/treinador/plano/cancelar");
   },
   cobrarRenovacaoPlano(metodo: MetodoPagamento = "Pix") {
-    return apiClient.post<{ pagamentoId: string; pixQrCode: string | null; pixQrCodeUrl: string | null; pixExpiracao: string | null; clientSecret: string | null; valor: number; metodoPagamento: MetodoPagamento }>(`/treinador/plano/cobrar?metodo=${metodo}`);
+    return apiClient.post<{ pagamentoId: string; pixQrCode: string | null; pixQrCodeUrl: string | null; pixExpiracao: string | null; clientSecret: string | null; valor: number; metodoPagamento: MetodoPagamento }>("/treinador/plano/cobrar", undefined, { params: { metodo } });
   },
   trocarPlano(planoPlataformaId: string, metodo: MetodoPagamento = "Pix") {
     return apiClient.post<TrocarPlanoTreinadorResponse>("/treinador/plano/trocar", { planoPlataformaId, metodo });

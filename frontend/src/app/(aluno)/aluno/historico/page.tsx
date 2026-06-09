@@ -15,6 +15,7 @@ import type { Column } from "@/components/ui/ResponsiveTable";
 import { alunoApi } from "@/lib/api/aluno";
 import type { ExecucaoTreinoResponse, ExercicioProgressao } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
+import { extractApiError } from "@/lib/api/extractApiError";
 import { formatarData, periodoParaDatas } from "@/lib/utils/formatting";
 
 type Periodo = "7d" | "30d" | "60d" | "90d";
@@ -57,6 +58,8 @@ export default function HistoricoAlunoPage() {
   const [allExecucoes, setAllExecucoes] = useState<ExecucaoTreinoResponse[]>([]);
   const [allLoading, setAllLoading] = useState(true);
 
+  const [allError, setAllError] = useState("");
+
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [exercicios, setExercicios] = useState<ExercicioProgressao[]>([]);
   const [progLoading, setProgLoading] = useState(true);
@@ -71,8 +74,8 @@ export default function HistoricoAlunoPage() {
   useEffect(() => {
     let active = true;
     alunoApi.listExecucoes({ pagina: 1, tamanhoPagina: 200 })
-      .then((r) => { if (active) setAllExecucoes(r.data.items); })
-      .catch(() => { if (active) setAllExecucoes([]); })
+      .then((r) => { if (active) { setAllExecucoes(r.data.items); setAllError(""); } })
+      .catch((err) => { if (active) { setAllExecucoes([]); setAllError(extractApiError(err, "Não foi possível carregar os indicadores do histórico.")); } })
       .finally(() => { if (active) setAllLoading(false); });
     return () => { active = false; };
   }, []);
@@ -106,6 +109,7 @@ export default function HistoricoAlunoPage() {
       <SemVinculoAtivoBanner />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+      <AlertBanner open={!!allError} message={allError} onClose={() => setAllError("")} />
 
       {/* Summary chips */}
       <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: "wrap", rowGap: 1 }}>

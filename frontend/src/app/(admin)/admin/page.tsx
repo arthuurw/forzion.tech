@@ -13,6 +13,7 @@ import {
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { adminApi } from "@/lib/api/admin";
+import { TREINADOR_STATUS_COLORS, ALUNO_DASHBOARD_STATUS_COLORS } from "@/lib/constants/labels";
 import type {
   TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
 } from "@/types";
@@ -27,9 +28,6 @@ const srOnly: React.CSSProperties = {
   whiteSpace: "nowrap",
   borderWidth: 0,
 };
-
-const T_COLORS = { Ativos: "#4caf50", Pendentes: "#F5C400", Inativos: "#757575" };
-const A_COLORS = { Ativos: "#2196f3", Pendentes: "#ff9800", Inativos: "#9e9e9e" };
 
 interface StatItem { name: string; value: number; color: string }
 interface PlanoStat { planoId: string; name: string; total: number; preco: number; maxAlunos: number }
@@ -73,15 +71,15 @@ export default function DashboardAdminPage() {
       ]);
 
       setTreinadorStats([
-        { name: "Ativos", value: ativoTRes.data.total, color: T_COLORS.Ativos },
-        { name: "Pendentes", value: aguardandoTRes.data.total, color: T_COLORS.Pendentes },
-        { name: "Inativos", value: inativoTRes.data.total, color: T_COLORS.Inativos },
+        { name: "Ativos", value: ativoTRes.data.total, color: TREINADOR_STATUS_COLORS.Ativos },
+        { name: "Pendentes", value: aguardandoTRes.data.total, color: TREINADOR_STATUS_COLORS.Pendentes },
+        { name: "Inativos", value: inativoTRes.data.total, color: TREINADOR_STATUS_COLORS.Inativos },
       ]);
 
       setAlunoStats([
-        { name: "Ativos", value: ativoARes.data.total, color: A_COLORS.Ativos },
-        { name: "Pendentes", value: aguardandoARes.data.total, color: A_COLORS.Pendentes },
-        { name: "Inativos", value: inativoARes.data.total, color: A_COLORS.Inativos },
+        { name: "Ativos", value: ativoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Ativos },
+        { name: "Pendentes", value: aguardandoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Pendentes },
+        { name: "Inativos", value: inativoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Inativos },
       ]);
 
       setPendentes(aguardandoTRes.data.items);
@@ -487,9 +485,9 @@ export default function DashboardAdminPage() {
                                 : t.status === "AguardandoAprovacao" ? "#F5C40020"
                                 : "#75757520",
                             color:
-                              t.status === "Ativo" ? T_COLORS.Ativos
+                              t.status === "Ativo" ? TREINADOR_STATUS_COLORS.Ativos
                                 : t.status === "AguardandoAprovacao" ? "#b8860b"
-                                : T_COLORS.Inativos,
+                                : TREINADOR_STATUS_COLORS.Inativos,
                           }}
                         />
                         <Typography variant="caption" color="text.secondary">

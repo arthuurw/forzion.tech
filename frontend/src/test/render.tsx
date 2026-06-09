@@ -4,9 +4,12 @@
  *
  * Uso:
  *   import { renderWithProviders } from "@/test/render";
+ *   import { buildSessionUser } from "@/test/factories";
  *
  *   renderWithProviders(<MeuComponente />);
- *   renderWithProviders(<MeuComponente />, { auth: { user: buildSessionUser() } });
+ *   // skipAuth quando o teste mocka useAuth manualmente com um SessionUser:
+ *   vi.mocked(useAuth).mockReturnValue({ user: buildSessionUser(), ... });
+ *   renderWithProviders(<MeuComponente />, { skipAuth: true });
  */
 import { render, type RenderOptions, type RenderResult } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";

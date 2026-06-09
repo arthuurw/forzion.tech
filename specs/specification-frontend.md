@@ -170,6 +170,8 @@ POST /api/auth/logout
 
 **Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP. Mapa em memória por processo (não persistido entre restarts). Aplicado em login e register.
 
+**Cliente das auth routes** (`src/lib/api/auth.ts`): módulo `authApi` (wrapper `fetch` fino — NÃO `apiClient`, pois estas rotas setam cookie httpOnly e não usam Bearer). Páginas públicas (login, cadastro aluno/treinador) chamam `authApi.*` em vez de `fetch("/api/auth/...")` cru. Erros via `AuthApiError` (carrega `status` + `ProblemDetails`).
+
 ## API CLIENT (`src/lib/api/client.ts`)
 ```
 apiClient = axios.create({ baseURL: NEXT_PUBLIC_API_BASE_URL ?? "/api/backend" })
