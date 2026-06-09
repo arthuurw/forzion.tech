@@ -1213,18 +1213,18 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DadosPessoaisExport"
-                }
-              }
-            }
+            "description": "OK"
           },
           "404": {
             "description": "Not Found",
@@ -2687,16 +2687,18 @@
           "Conta"
         ],
         "summary": "Exporta os dados pessoais do titular autenticado (portabilidade LGPD)",
+        "parameters": [
+          {
+            "name": "formato",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DadosPessoaisExport"
-                }
-              }
-            }
+            "description": "OK"
           },
           "401": {
             "description": "Unauthorized"
@@ -5395,69 +5397,6 @@
         },
         "additionalProperties": false
       },
-      "AlunoExportDto": {
-        "type": "object",
-        "properties": {
-          "alunoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "nome": {
-            "type": "string",
-            "nullable": true
-          },
-          "email": {
-            "type": "string",
-            "nullable": true
-          },
-          "telefone": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "diasDisponiveis": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "tempoDisponivelMinutos": {
-            "type": "string",
-            "nullable": true
-          },
-          "finalidade": {
-            "type": "string",
-            "nullable": true
-          },
-          "focoTreino": {
-            "type": "string",
-            "nullable": true
-          },
-          "nivelCondicionamento": {
-            "type": "string",
-            "nullable": true
-          },
-          "limitacoesFisicas": {
-            "type": "string",
-            "nullable": true
-          },
-          "doencas": {
-            "type": "string",
-            "nullable": true
-          },
-          "observacoesAdicionais": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
       "AlunoFinalidadeItem": {
         "type": "object",
         "properties": {
@@ -5641,49 +5580,6 @@
         ],
         "type": "integer",
         "format": "int32"
-      },
-      "AssinaturaExportDto": {
-        "type": "object",
-        "properties": {
-          "assinaturaId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "pacoteId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "treinadorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "valor": {
-            "type": "number",
-            "format": "double"
-          },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "dataInicio": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "dataProximaCobranca": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "dataCancelamento": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
       },
       "AtribuirPlanoRequest": {
         "type": "object",
@@ -5891,36 +5787,6 @@
         },
         "additionalProperties": false
       },
-      "ContaExportDto": {
-        "type": "object",
-        "properties": {
-          "contaId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "email": {
-            "type": "string",
-            "nullable": true
-          },
-          "tipoConta": {
-            "type": "string",
-            "nullable": true
-          },
-          "emailVerificado": {
-            "type": "boolean"
-          },
-          "verificadoEm": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
       "CriarExercicioGlobalRequest": {
         "type": "object",
         "properties": {
@@ -6059,85 +5925,6 @@
         },
         "additionalProperties": false
       },
-      "DadosPessoaisExport": {
-        "type": "object",
-        "properties": {
-          "versao": {
-            "type": "string",
-            "nullable": true
-          },
-          "geradoEm": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "conta": {
-            "$ref": "#/components/schemas/ContaExportDto"
-          },
-          "aluno": {
-            "$ref": "#/components/schemas/AlunoExportDto"
-          },
-          "treinador": {
-            "$ref": "#/components/schemas/TreinadorExportDto"
-          },
-          "vinculos": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VinculoExportDto"
-            },
-            "nullable": true
-          },
-          "assinaturas": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssinaturaExportDto"
-            },
-            "nullable": true
-          },
-          "pagamentos": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PagamentoExportDto"
-            },
-            "nullable": true
-          },
-          "pacotes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PacoteExportDto"
-            },
-            "nullable": true
-          },
-          "treinos": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TreinoExportDto"
-            },
-            "nullable": true
-          },
-          "execucoes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ExecucaoExportDto"
-            },
-            "nullable": true
-          },
-          "emailDeliveryLogs": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/EmailDeliveryLogExportDto"
-            },
-            "nullable": true
-          },
-          "whatsAppDeliveryLogs": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/WhatsAppDeliveryLogExportDto"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "DashboardStatsResponse": {
         "type": "object",
         "properties": {
@@ -6190,24 +5977,6 @@
         },
         "additionalProperties": false
       },
-      "EmailDeliveryLogExportDto": {
-        "type": "object",
-        "properties": {
-          "logId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "eventType": {
-            "type": "string",
-            "nullable": true
-          },
-          "ocorridoEm": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
       "ExecucaoAlunoResponse": {
         "type": "object",
         "properties": {
@@ -6246,32 +6015,6 @@
           "totalSeries": {
             "type": "integer",
             "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ExecucaoExportDto": {
-        "type": "object",
-        "properties": {
-          "execucaoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "treinoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "dataExecucao": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "observacao": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -6799,6 +6542,10 @@
           "perfilId": {
             "type": "string",
             "format": "uuid"
+          },
+          "nome": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -6872,35 +6619,6 @@
         },
         "additionalProperties": false
       },
-      "PacoteExportDto": {
-        "type": "object",
-        "properties": {
-          "pacoteId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "nome": {
-            "type": "string",
-            "nullable": true
-          },
-          "preco": {
-            "type": "number",
-            "format": "double"
-          },
-          "descricao": {
-            "type": "string",
-            "nullable": true
-          },
-          "isAtivo": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
       "PacoteResponse": {
         "type": "object",
         "properties": {
@@ -6935,41 +6653,6 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "PagamentoExportDto": {
-        "type": "object",
-        "properties": {
-          "pagamentoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "assinaturaId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "valor": {
-            "type": "number",
-            "format": "double"
-          },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "metodoPagamento": {
-            "type": "string",
-            "nullable": true
-          },
-          "dataPagamento": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -7624,37 +7307,6 @@
         "type": "integer",
         "format": "int32"
       },
-      "TreinadorExportDto": {
-        "type": "object",
-        "properties": {
-          "treinadorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "nome": {
-            "type": "string",
-            "nullable": true
-          },
-          "telefone": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "aprovadoEm": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
       "TreinadorResponse": {
         "type": "object",
         "properties": {
@@ -7775,32 +7427,6 @@
           "observacao": {
             "type": "string",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "TreinoExportDto": {
-        "type": "object",
-        "properties": {
-          "treinoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "nome": {
-            "type": "string",
-            "nullable": true
-          },
-          "objetivo": {
-            "type": "string",
-            "nullable": true
-          },
-          "dificuldade": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -8044,42 +7670,6 @@
         },
         "additionalProperties": false
       },
-      "VinculoExportDto": {
-        "type": "object",
-        "properties": {
-          "vinculoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "treinadorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "alunoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "dataInicio": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "dataFim": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
       "VinculoResponse": {
         "type": "object",
         "properties": {
@@ -8118,24 +7708,6 @@
         ],
         "type": "integer",
         "format": "int32"
-      },
-      "WhatsAppDeliveryLogExportDto": {
-        "type": "object",
-        "properties": {
-          "logId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "eventType": {
-            "type": "string",
-            "nullable": true
-          },
-          "ocorridoEm": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
       }
     },
     "securitySchemes": {

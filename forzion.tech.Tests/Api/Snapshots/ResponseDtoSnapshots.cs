@@ -86,7 +86,8 @@ public class ResponseDtoSnapshots
         Token: "token-jwt-deterministico",
         TipoConta: TipoConta.Aluno,
         ContaId: Id1,
-        PerfilId: Id2));
+        PerfilId: Id2,
+        Nome: "Maria Aluna"));
 
     [Fact]
     public Task PagamentoResponse_Aluno_IncluiClientSecret() => Verify(new PagamentoResponse(

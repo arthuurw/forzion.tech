@@ -9,5 +9,6 @@ public interface IJwtService
     /// </summary>
     /// <param name="conta">A conta autenticada.</param>
     /// <param name="perfilId">Id do perfil vinculado (Treinador.Id, Aluno.Id ou Conta.Id para SystemAdmin).</param>
-    string GerarToken(Conta conta, Guid perfilId);
+    /// <param name="nome">Nome do perfil — exposto como claim p/ a UI exibir o usuário logado sem round-trip extra.</param>
+    string GerarToken(Conta conta, Guid perfilId, string nome);
 }

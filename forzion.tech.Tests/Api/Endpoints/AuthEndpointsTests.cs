@@ -45,7 +45,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
         Guid.NewGuid(), DateTime.UtcNow, null);
 
     private static readonly LoginResponse RespostaLogin = new(
-        "token.jwt.fake", TipoConta.Treinador, Guid.NewGuid(), TreinadorId);
+        "token.jwt.fake", TipoConta.Treinador, Guid.NewGuid(), TreinadorId, "Carlos");
 
     public AuthEndpointsTests(AuthWebFactory factory)
     {

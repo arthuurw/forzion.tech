@@ -31,7 +31,7 @@ public class JwtService : IJwtService
         _expiration = TimeSpan.FromMinutes(expirationMinutes);
     }
 
-    public string GerarToken(Conta conta, Guid perfilId)
+    public string GerarToken(Conta conta, Guid perfilId, string nome)
     {
         ArgumentNullException.ThrowIfNull(conta);
 
@@ -45,6 +45,7 @@ public class JwtService : IJwtService
             new Claim("conta_id", conta.Id.ToString()),
             new Claim("tipo_conta", conta.TipoConta.ToString()),
             new Claim("perfil_id", perfilId.ToString()),
+            new Claim("nome", nome),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 

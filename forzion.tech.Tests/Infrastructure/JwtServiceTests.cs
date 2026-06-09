@@ -35,7 +35,7 @@ public class JwtServiceTests
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
-        var token = CriarServico().GerarToken(conta, perfilId);
+        var token = CriarServico().GerarToken(conta, perfilId, "Fulano de Tal");
 
         token.Should().NotBeNullOrWhiteSpace();
     }
@@ -46,7 +46,7 @@ public class JwtServiceTests
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
-        var token = CriarServico().GerarToken(conta, perfilId);
+        var token = CriarServico().GerarToken(conta, perfilId, "Fulano de Tal");
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
@@ -55,6 +55,7 @@ public class JwtServiceTests
         jwt.Claims.Should().Contain(c => c.Type == "conta_id" && c.Value == conta.Id.ToString());
         jwt.Claims.Should().Contain(c => c.Type == "tipo_conta" && c.Value == "Treinador");
         jwt.Claims.Should().Contain(c => c.Type == "perfil_id" && c.Value == perfilId.ToString());
+        jwt.Claims.Should().Contain(c => c.Type == "nome" && c.Value == "Fulano de Tal");
     }
 
     [Fact]
@@ -63,7 +64,7 @@ public class JwtServiceTests
         var conta = Conta.Criar(Email.Criar("admin@test.com").Value, "hash", TipoConta.SystemAdmin, DateTime.UtcNow).Value;
         var perfilId = conta.Id;
 
-        var token = CriarServico().GerarToken(conta, perfilId);
+        var token = CriarServico().GerarToken(conta, perfilId, "Fulano de Tal");
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
@@ -77,7 +78,7 @@ public class JwtServiceTests
         var conta = Conta.Criar(Email.Criar("aluno@test.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         var perfilId = Guid.NewGuid();
 
-        var token = CriarServico().GerarToken(conta, perfilId);
+        var token = CriarServico().GerarToken(conta, perfilId, "Fulano de Tal");
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
@@ -88,7 +89,7 @@ public class JwtServiceTests
     [Fact]
     public void GerarToken_ContaNula_LancaArgumentNullException()
     {
-        var act = () => CriarServico().GerarToken(null!, Guid.NewGuid());
+        var act = () => CriarServico().GerarToken(null!, Guid.NewGuid(), "Fulano de Tal");
         act.Should().Throw<ArgumentNullException>();
     }
 
@@ -97,7 +98,7 @@ public class JwtServiceTests
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
 
-        var token = CriarServico().GerarToken(conta, Guid.NewGuid());
+        var token = CriarServico().GerarToken(conta, Guid.NewGuid(), "Fulano de Tal");
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
@@ -111,7 +112,7 @@ public class JwtServiceTests
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
 
-        var token = CriarServico().GerarToken(conta, Guid.NewGuid());
+        var token = CriarServico().GerarToken(conta, Guid.NewGuid(), "Fulano de Tal");
 
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
