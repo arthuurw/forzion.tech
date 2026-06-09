@@ -10,6 +10,7 @@ import type { PlanoPlataformaResponse } from "@/types";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
 import * as Sentry from "@sentry/nextjs";
+import { CDC_CANCEL_NOTICE } from "@/lib/constants/billing";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
 
@@ -286,7 +287,7 @@ export default async function LandingPage() {
                     mx: "auto",
                   }}
                 >
-                  Cobrança mensal recorrente. Cancelamento gratuito com reembolso integral em até 7 dias (CDC art. 49); após, sem reembolso do período vigente.
+                  {`Cobrança mensal recorrente. ${CDC_CANCEL_NOTICE}`}
                 </Typography>
               )}
             </Container>

@@ -1,4 +1,5 @@
 import { Box, Stack, Typography } from "@mui/material";
+import { CDC_CANCEL_NOTICE } from "@/lib/constants/billing";
 
 interface Props {
   valor: number;
@@ -34,8 +35,7 @@ export default function CheckoutTermos({ valor, dense }: Props) {
           <strong>Próxima cobrança:</strong> estimada para {proximaCobranca()}.
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          Cancelamento gratuito com reembolso integral em até 7 dias da contratação (CDC art. 49).
-          Após esse prazo, o cancelamento encerra a renovação sem reembolso do período vigente.
+          {CDC_CANCEL_NOTICE}
         </Typography>
       </Stack>
     </Box>
