@@ -1,26 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import { screen } from "@testing-library/react";
 import { buildPlano } from "@/test/factories/plano";
+import { renderLanding, setupLandingTest } from "@/test/helpers/landing";
 
-const originalFetch = global.fetch;
-
-async function renderLanding(planos: ReturnType<typeof buildPlano>[]) {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => planos,
-  });
-  const { default: LandingPage } = await import("@/app/page");
-  const jsx = await LandingPage();
-  render(jsx);
-}
-
-beforeEach(() => {
-  vi.resetModules();
-});
-
-afterEach(() => {
-  global.fetch = originalFetch;
-});
+setupLandingTest();
 
 describe("LandingPage — hero R1/R2", () => {
   it("hero tem botão 'Criar conta grátis'", async () => {
