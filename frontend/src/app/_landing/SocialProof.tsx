@@ -2,6 +2,7 @@
 import { Box, Container, Typography, Grid, Avatar } from "@mui/material";
 
 export interface Testimonial {
+  id?: string;
   text: string;
   name: string;
   city: string;
@@ -37,7 +38,7 @@ export default function SocialProof({ testimonials, count }: SocialProofProps) {
         {testimonials.length > 0 && (
           <Grid container spacing={4}>
             {testimonials.map(({ text, name, city, photo }) => (
-              <Grid key={name} size={{ xs: 12, md: 4 }}>
+              <Grid key={`${name}-${city}`} size={{ xs: 12, md: 4 }}>
                 <Box
                   sx={{
                     bgcolor: "background.default",

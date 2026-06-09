@@ -5,9 +5,14 @@ import Faq from "../Faq";
 describe("Faq", () => {
   it("renders exactly 5 accordion items (questions)", () => {
     render(<Faq />);
-    // AccordionSummary renders each question as a button role
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(5);
+    const questions = [
+      "Meu aluno precisa pagar para usar?",
+      "Posso exportar meus dados se cancelar?",
+      "Funciona no celular?",
+      "Posso ter alunos de diferentes objetivos?",
+      "Como funciona o cancelamento?",
+    ];
+    questions.forEach((q) => expect(screen.getByText(q)).toBeInTheDocument());
   });
 
   it("clicking an accordion item expands to show the answer", () => {

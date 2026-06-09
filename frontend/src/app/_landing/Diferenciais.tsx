@@ -39,7 +39,6 @@ export default function Diferenciais() {
           </Typography>
         </Box>
 
-        {/* Header row */}
         <Grid container sx={{ mb: 1, px: { xs: 1, md: 2 } }}>
           <Grid size={{ xs: 4, md: 4 }} />
           <Grid size={{ xs: 4, md: 4 }}>
