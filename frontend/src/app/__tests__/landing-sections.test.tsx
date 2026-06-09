@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { buildPlano } from "@/test/factories/plano";
 
-vi.mock("next/image", () => ({
-  default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
-}));
-
 const originalFetch = global.fetch;
 
 async function renderLanding(planos: ReturnType<typeof buildPlano>[]) {
