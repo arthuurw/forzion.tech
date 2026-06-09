@@ -71,5 +71,7 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/).*)"],
+  // `.*\..*` exclui assets estáticos do /public (ex: /screenshots/*.webp, robots.txt):
+  // sem isso o guard de auth redireciona o asset pra /login (307) e o next/image quebra (400).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/|.*\\..*).*)"],
 };
