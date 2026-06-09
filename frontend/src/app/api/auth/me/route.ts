@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
       contaId,
       tipoConta: tipoConta as TipoConta,
       perfilId,
+      // tokens antigos (pré-claim) não têm nome: não invalida a sessão, só fica vazio
+      nome: (payload["nome"] as string | undefined) ?? "",
     };
 
     return NextResponse.json(user);

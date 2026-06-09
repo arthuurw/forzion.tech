@@ -20,6 +20,7 @@ export interface LoginResponse {
   tipoConta: TipoConta;
   contaId: string;
   perfilId: string;
+  nome: string;
 }
 
 // SessionUser nunca inclui o token — o token permanece em httpOnly cookie
@@ -28,6 +29,7 @@ export interface SessionUser {
   contaId: string;
   tipoConta: TipoConta;
   perfilId: string;
+  nome: string;
 }
 
 export type FinalidadeTreino =

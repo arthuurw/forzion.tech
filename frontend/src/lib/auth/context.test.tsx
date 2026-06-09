@@ -14,6 +14,7 @@ const SESSION_USER: SessionUser = {
   contaId: "c1",
   perfilId: "p1",
   tipoConta: "Aluno",
+  nome: "Maria Aluna",
 };
 
 const LOGIN_PAYLOAD: LoginResponse = {
@@ -21,6 +22,7 @@ const LOGIN_PAYLOAD: LoginResponse = {
   contaId: "c1",
   perfilId: "p1",
   tipoConta: "Treinador",
+  nome: "Carlos Treinador",
 };
 
 function Consumer() {

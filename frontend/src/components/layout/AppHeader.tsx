@@ -93,11 +93,16 @@ export default function AppHeader({ onMenuToggle, showMenuButton = true }: AppHe
                 fontWeight: 700,
               }}
             >
-              {user?.tipoConta?.[0] ?? "?"}
+              {user?.nome?.trim()?.[0]?.toUpperCase() ?? user?.tipoConta?.[0] ?? "?"}
             </Avatar>
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.85)", fontWeight: 500, display: { xs: "none", sm: "block" } }}>
-              {TIPO_LABEL[user?.tipoConta ?? ""] ?? user?.tipoConta}
-            </Typography>
+            <Box sx={{ display: { xs: "none", sm: "flex" }, flexDirection: "column", alignItems: "flex-start", lineHeight: 1.1 }}>
+              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.95)", fontWeight: 600, lineHeight: 1.2 }}>
+                {user?.nome || (TIPO_LABEL[user?.tipoConta ?? ""] ?? user?.tipoConta)}
+              </Typography>
+              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", lineHeight: 1.2 }}>
+                {TIPO_LABEL[user?.tipoConta ?? ""] ?? user?.tipoConta}
+              </Typography>
+            </Box>
           </Box>
 
           <Menu

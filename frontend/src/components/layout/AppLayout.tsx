@@ -126,6 +126,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {!collapsed && !isMobile && (
         <Box sx={{ px: 2, pb: 2, borderTop: "1px solid", borderColor: "divider", pt: 2 }}>
+          {user?.nome && (
+            <Typography variant="body2" noWrap sx={{ fontWeight: 600 }} title={user.nome}>
+              {user.nome}
+            </Typography>
+          )}
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
             {user?.tipoConta}
           </Typography>

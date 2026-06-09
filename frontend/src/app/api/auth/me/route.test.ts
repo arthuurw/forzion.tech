@@ -67,13 +67,22 @@ describe("GET /api/auth/me", () => {
   });
 
   it("token válido → retorna SessionUser correto sem expor o token", async () => {
-    const token = await makeJwt({ conta_id: "abc", tipo_conta: "Treinador", perfil_id: "def", exp: FUTURE });
+    const token = await makeJwt({ conta_id: "abc", tipo_conta: "Treinador", perfil_id: "def", nome: "Carlos Silva", exp: FUTURE });
     const res = await GET(makeRequest({ token, session_guard: "1" }));
     const user = await res.json();
     expect(user).not.toBeNull();
     expect(user.contaId).toBe("abc");
     expect(user.tipoConta).toBe("Treinador");
     expect(user.perfilId).toBe("def");
+    expect(user.nome).toBe("Carlos Silva");
     expect(user.token).toBeUndefined();
+  });
+
+  it("token sem claim nome (legado) → nome vazio, sessão preservada", async () => {
+    const token = await makeJwt({ conta_id: "abc", tipo_conta: "Aluno", perfil_id: "def", exp: FUTURE });
+    const res = await GET(makeRequest({ token, session_guard: "1" }));
+    const user = await res.json();
+    expect(user).not.toBeNull();
+    expect(user.nome).toBe("");
   });
 });

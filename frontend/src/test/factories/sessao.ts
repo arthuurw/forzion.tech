@@ -15,6 +15,7 @@ export function buildConta(overrides: Partial<LoginResponse> = {}): LoginRespons
     tipoConta,
     contaId: faker.string.uuid(),
     perfilId: faker.string.uuid(),
+    nome: faker.person.fullName(),
     ...overrides,
   };
 }
@@ -32,6 +33,7 @@ export function buildSessionUser(overrides: Partial<SessionUser> = {}): SessionU
     contaId: faker.string.uuid(),
     tipoConta,
     perfilId: faker.string.uuid(),
+    nome: faker.person.fullName(),
     ...overrides,
   };
 }
