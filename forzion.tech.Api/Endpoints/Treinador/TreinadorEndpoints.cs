@@ -292,7 +292,7 @@ public static class TreinadorEndpoints
             var ordenarPorRaw = httpContext.Request.Query["ordenarPor"].FirstOrDefault();
 
             var ordenacaoTreinosPermitida = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "nome", "objetivo", "nomeAluno", "createdAt" };
+                { "nome", "objetivo", "nomeAluno", "createdAt", "dificuldade", "exercicios" };
             var ordenarPor = !string.IsNullOrWhiteSpace(ordenarPorRaw) && ordenacaoTreinosPermitida.Contains(ordenarPorRaw)
                 ? ordenarPorRaw
                 : null;
