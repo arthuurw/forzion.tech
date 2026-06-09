@@ -4,16 +4,16 @@ import { render, screen } from "@testing-library/react";
 import HowItWorks from "../HowItWorks";
 
 describe("HowItWorks", () => {
-  it("renders 3 step images with descriptive alt text", () => {
+  it("renders 3 step mockups with descriptive labels", () => {
     render(<HowItWorks />);
     expect(
-      screen.getByAltText("Tela de montagem de ficha de treino no painel do treinador"),
+      screen.getByRole("img", { name: "Ficha de treino: exercícios, séries e observações" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByAltText("Tela de listagem e aprovação de alunos no painel do treinador"),
+      screen.getByRole("img", { name: "Carteira de alunos com status e ações" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByAltText("Tela de histórico de execuções no painel do aluno"),
+      screen.getByRole("img", { name: "Histórico de execuções: frequência e progressão" }),
     ).toBeInTheDocument();
   });
 });

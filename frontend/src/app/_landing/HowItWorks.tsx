@@ -1,31 +1,28 @@
 import { Box, Container, Typography, Grid } from "@mui/material";
-import Image from "next/image";
 import SectionEyebrow from "./SectionEyebrow";
+import StepMockup, { type StepVariant } from "./StepMockup";
 
-const STEPS = [
+const STEPS: { step: string; title: string; description: string; variant: StepVariant }[] = [
   {
     step: "01",
     title: "Prescrição estruturada",
     description:
       "Monte fichas com exercícios, séries e cargas. Personalize por objetivo e adapte conforme a evolução de cada aluno.",
-    image: "/screenshots/ficha.webp",
-    imageAlt: "Tela de montagem de ficha de treino no painel do treinador",
+    variant: "ficha",
   },
   {
     step: "02",
     title: "Gestão da carteira de alunos",
     description:
       "Controle quem acessa o quê. Vincule, aprove e organize sua carteira com critério e agilidade.",
-    image: "/screenshots/alunos.webp",
-    imageAlt: "Tela de listagem e aprovação de alunos no painel do treinador",
+    variant: "alunos",
   },
   {
     step: "03",
     title: "Histórico de execuções",
     description:
       "Cada sessão gera dados reais. Use o histórico para ajustar protocolos e demonstrar evolução ao aluno.",
-    image: "/screenshots/historico.webp",
-    imageAlt: "Tela de histórico de execuções no painel do aluno",
+    variant: "historico",
   },
 ];
 
@@ -40,7 +37,7 @@ export default function HowItWorks() {
           </Typography>
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: { xs: 8, md: 10 } }}>
-          {STEPS.map(({ step, title, description, image, imageAlt }, i) => (
+          {STEPS.map(({ step, title, description, variant }, i) => (
             <Grid
               key={step}
               container
@@ -56,22 +53,14 @@ export default function HowItWorks() {
               <Grid size={{ xs: 12, md: 6 }}>
                 <Box
                   sx={{
-                    position: "relative",
                     width: "100%",
-                    // Screenshots captured at 1280×900 — keeps exact ratio, objectFit:cover crops on mismatch
                     aspectRatio: "1280/900",
                     borderRadius: 3,
                     overflow: "hidden",
                     boxShadow: "0 8px 40px rgba(0,0,0,0.12)",
                   }}
                 >
-                  <Image
-                    src={image}
-                    alt={imageAlt}
-                    fill
-                    style={{ objectFit: "cover" }}
-                    sizes="(max-width: 900px) 100vw, 50vw"
-                  />
+                  <StepMockup variant={variant} />
                 </Box>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
