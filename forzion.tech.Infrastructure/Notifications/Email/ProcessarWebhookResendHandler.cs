@@ -3,7 +3,9 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using Svix;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
@@ -76,7 +78,22 @@ public class ProcessarWebhookResendHandler(
             agora);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        // O ExisteAsync acima é só fast-path: entre o pré-check e o commit duas entregas
+        // concorrentes do MESMO evento (Resend é at-least-once) podem ambas passar e colidir
+        // no índice único (resend_message_id, event_type) → 23505. Isso significa já-processado:
+        // log Debug + segue, sem 500. Só 23505 é engolido; outras DbUpdateException propagam.
+        catch (DbUpdateException ex) when ((ex.InnerException as PostgresException)?.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            logger.LogDebug(ex,
+                "Evento Resend já processado (race de re-entrega; messageId: {MessageId}, type: {EventType}). Ignorando.",
+                parsed.EmailId, parsed.EventType);
+            return Result.Success();
+        }
 
         logger.LogInformation(
             "Evento Resend registrado: {EventType} para {Email} (messageId: {MessageId}).",

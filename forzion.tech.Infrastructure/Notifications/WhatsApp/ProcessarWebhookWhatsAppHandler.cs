@@ -5,7 +5,9 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 
@@ -44,8 +46,17 @@ public class ProcessarWebhookWhatsAppHandler(
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var persistiuAlgum = false;
 
+        // Um único batch da Meta pode trazer duas entries idênticas para o mesmo messageId e
+        // o mesmo eventType. Dedup intra-batch ANTES de persistir evita dois inserts que
+        // colidiriam no índice único — o ExisteAsync não os pega, pois ambos são novos no mesmo
+        // SaveChanges, com nada commitado ainda.
+        var vistosNoBatch = new HashSet<(string MessageId, string Status)>();
+
         foreach (var status in statuses)
         {
+            if (!vistosNoBatch.Add((status.MessageId, status.Status)))
+                continue;
+
             if (await logRepository.ExisteAsync(status.MessageId, status.Status, cancellationToken).ConfigureAwait(false))
             {
                 logger.LogDebug(
@@ -71,7 +82,21 @@ public class ProcessarWebhookWhatsAppHandler(
         }
 
         if (persistiuAlgum)
-            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        {
+            try
+            {
+                await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            // ExisteAsync é só fast-path: entre o pré-check e o commit, redeliveries concorrentes
+            // da Meta (at-least-once) podem colidir no índice único (meta_message_id, event_type)
+            // → 23505. Já-processado: log Debug + segue, sem 500. Só 23505 é engolido; demais propagam.
+            catch (DbUpdateException ex) when ((ex.InnerException as PostgresException)?.SqlState == PostgresErrorCodes.UniqueViolation)
+            {
+                logger.LogDebug(ex,
+                    "Evento(s) WhatsApp já processado(s) (race de re-entrega). Ignorando.");
+                return Result.Success();
+            }
+        }
 
         return Result.Success();
     }

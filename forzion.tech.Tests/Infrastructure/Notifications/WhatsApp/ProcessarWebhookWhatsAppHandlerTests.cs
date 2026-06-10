@@ -240,6 +240,61 @@ public class ProcessarWebhookWhatsAppHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ParesIdenticosNoMesmoBatch_PersisteApenasUm()
+    {
+        // Um único batch da Meta pode trazer 2 entries idênticos (mesmo id+status).
+        // ExisteAsync não os pega (nada commitado ainda) → dedup intra-batch deve gravar 1 só.
+        const string payload = """
+        {
+          "entry": [{
+            "changes": [{
+              "value": {
+                "statuses": [
+                  { "id": "wamid_dup", "status": "delivered", "recipient_id": "551100000001", "timestamp": "1748512800" },
+                  { "id": "wamid_dup", "status": "delivered", "recipient_id": "551100000001", "timestamp": "1748512800" }
+                ]
+              }
+            }]
+          }]
+        }
+        """;
+        var cmd = SignedCommand(payload);
+
+        var result = await _handler.HandleAsync(cmd, AppSecret);
+
+        result.IsSuccess.Should().BeTrue();
+        _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<WhatsAppDeliveryLog>(), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_MesmoIdStatusDiferenteNoMesmoBatch_PersisteAmbos()
+    {
+        // Mesmo metaMessageId mas eventType diferente (delivered + read) → pares distintos,
+        // ambos devem persistir (o discriminador de idempotência é o par completo).
+        const string payload = """
+        {
+          "entry": [{
+            "changes": [{
+              "value": {
+                "statuses": [
+                  { "id": "wamid_x", "status": "delivered", "recipient_id": "551100000001", "timestamp": "1748512800" },
+                  { "id": "wamid_x", "status": "read",      "recipient_id": "551100000001", "timestamp": "1748512801" }
+                ]
+              }
+            }]
+          }]
+        }
+        """;
+        var cmd = SignedCommand(payload);
+
+        var result = await _handler.HandleAsync(cmd, AppSecret);
+
+        result.IsSuccess.Should().BeTrue();
+        _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<WhatsAppDeliveryLog>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
     public async Task HandleAsync_CommandNulo_LancaArgumentNullException()
     {
         var act = async () => await _handler.HandleAsync(null!, AppSecret);
