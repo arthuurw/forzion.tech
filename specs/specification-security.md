@@ -2,7 +2,7 @@
 DOC PARA AGENTES. Fonte de verdade da postura de segurança consolidada (threat model, AuthN/AuthZ, headers/CSP em 3 camadas, rate-limit/brute-force, segredos, SAST/DAST, supply-chain, webhook signing, gaps). Formato denso, agent-oriented. Cross-ref: [specification-backend] (mecânica de JWT/rate-limit/headers/internal — §4), [specification-infrastructure] (nginx edge, ENV/SECRETS na VM, docker-compose, TLS/certbot), [specification-lgpd] (consentimento → gate Sentry, anonimização), [specification-stripe] (Stripe-Signature webhook), [specification-email] (Svix webhook Resend), [specification-tests] (gates CI, thresholds, hooks).
 
 ## MANUTENÇÃO DESTE ARQUIVO
-Atualizar quando mudar: política de auth (JWT/jti/blacklist/policies/refresh), HTTP security headers ou CSP (qualquer das 3 camadas: app/Next/nginx), rate-limit (políticas/caps/partição) ou brute-force handling, gestão de segredos (User Secrets / `.env` VM / GitHub secrets / comparação constant-time), SAST (semgrep), DAST (zap.yaml/zap.yml), webhook signing (Stripe/Svix/Meta), dependency/secret scanning (gitleaks/osv/npm-audit/license/SBOM/NuGet --vulnerable). Vive em `specs/` versionado. NÃO duplicar a mecânica detalhada de `specification-backend.md` §4 — REFERENCIAR.
+Atualizar quando mudar: política de auth (JWT/jti/blacklist/policies/refresh), HTTP security headers ou CSP (qualquer das 3 camadas: app/Next/nginx), rate-limit (políticas/caps/partição) ou brute-force handling, gestão de segredos (User Secrets / `.env` VM / GitHub secrets / comparação constant-time), SAST (semgrep), DAST (zap.yaml/zap.yml), webhook signing (Stripe/Svix/Meta), dependency/secret scanning (gitleaks/osv/npm-audit/license/SBOM/NuGet --vulnerable), rotação de segredos / cadência de upgrade de deps / enforcement de AuthZ negativo (§9). Vive em `specs/` versionado. NÃO duplicar a mecânica detalhada de `specification-backend.md` §4 — REFERENCIAR.
 
 ## 1. THREAT MODEL / SUPERFÍCIE DE ATAQUE
 Trust boundaries: `internet → nginx (edge, TLS terminate) → {frontend:3000 | backend:8080}`. Tudo atrás de nginx em rede docker interna; backend NÃO é exposto direto exceto `/webhooks/` (ver §3 edge routing). Cross-ref [specification-infrastructure].
@@ -115,3 +115,22 @@ Todos os webhooks: `AllowAnonymous` + rate `webhook` (300/min IP) + body cap **6
 - **Sentry wiring incompleto** (CONCERNS Medium): `@sentry/nextjs` instalado, gate por consentimento de cookie ([specification-lgpd]); erros prod podem cair em buracos.
 - **Branch protection do repo**: push direto a `homolog`/`master` proibido por convenção (CONCERNS:37) mas enforcement de branch protection é responsabilidade de config do repo — REFERENCIAR [specification-infrastructure]; `--no-verify` NUNCA (hooks locais, não server-side).
 - **OSV report-only** (deps dev não gateadas); gate de vuln frontend é só `npm audit --omit=dev >= high`.
+
+## 9. ROTAÇÃO DE SEGREDOS, CADÊNCIA DE DEPS & ENFORCEMENT DE AUTHZ
+Postura PROATIVA (complementa §2 AuthZ, §5 segredos, §6 scanning — que são reativos/estáticos). Várias entradas são [ALVO] (política a definir), marcadas.
+
+### 9.1 Rotação de segredos
+- [ALVO] Política de rotação POR TIPO de segredo (não rotacionado = exposição acumulada se vazar): `Auth:JwtSecret`, `Internal:ApiKey`, Stripe keys, Resend/WhatsApp tokens. Definir cadência + procedimento por tipo. §5 cobre ARMAZENAMENTO; isto cobre CICLO DE VIDA.
+- **Rotação de `Auth:JwtSecret` sem invalidar sessões válidas**: HS256 simétrico (§2) ⇒ trocar a chave invalida TODOS os JWT em voo. Rotação graciosa exige aceitar chave nova+velha durante a janela de expiração do token (validar contra ambas) OU aceitar o re-login em massa (sessional-only, sem refresh — §2 — torna isso menos doloroso: janela curta). DECIDIR e documentar antes de rotacionar.
+- `Internal:ApiKey`: rotação coordenada com os GH Actions de billing que a consomem (`vars`/`secrets`) — trocar key + secret no mesmo deploy, senão `/internal` 401 quebra renovações.
+- Vazamento confirmado (gitleaks/incidente) ⇒ rotação IMEDIATA, não agendada.
+
+### 9.2 Cadência de upgrade de dependências (proativo)
+- §6 pega vuln REATIVO (gitleaks/OSV/npm audit/NuGet `--vulnerable` no `gate`). Falta o PROATIVO: [ALVO] automação de PRs de upgrade regulares (Renovate/Dependabot) p/ não acumular débito até virar vuln gateada.
+- Upgrade MAJOR (.NET/Next/React/EF) = avaliação de breaking change + suíte completa ([specification-tests]) + atualizar specs de stack afetadas.
+- Pinagem: ferramentas de CI já pinadas (CycloneDX 6.2.0, zap actions) — manter pin + bump consciente.
+
+### 9.3 Enforcement de AuthZ (testar a NEGAÇÃO, não só o caminho feliz)
+- §2 define policies (`SystemAdmin`/`Treinador`/`Aluno`) + ownership nos handlers/filters. Lacuna de enforcement: garantir TESTE NEGATIVO por papel.
+- [ALVO/disciplina] Matriz de teste papel × recurso × ação: papel errado → **403**; ownership cross-tenant (treinador acessando aluno de OUTRO treinador; aluno lendo ficha de outro) → **403/404**, não vazamento. O gate é o teste de autorização negativo, não a policy em si (policy sem teste negativo é invariante não-verificada).
+- Cross-ref defense-in-depth: validação de segurança/compliance no SERVIDOR mesmo com trava no frontend ([specification-coding §4]).

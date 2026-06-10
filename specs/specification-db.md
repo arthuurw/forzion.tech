@@ -147,6 +147,14 @@ outbox_efeitos — fila durável de efeito externo pós-commit (entrega garantid
 - Runtime: app conecta como forzion_api. Development/Homolog → `Program.cs` roda MigrateAsync + SeedAsync no startup.
 - ⚠️ `Program.cs` adiciona User Secrets DEPOIS do CreateBuilder → secrets sobrescrevem env vars em RUNTIME. `dotnet run` em Development conecta no SUPABASE REMOTO (não local) e migra/seeda lá. `AppDbContextFactory` (design-time, `dotnet ef`) adiciona env por último → env vence (override por env funciona só no ef).
 
+## BACKFILL & MIGRAÇÃO DE DADOS (runtime — migration cobre SCHEMA, isto cobre DADO)
+Migrations criam/alteram estrutura; mudar/preencher DADO existente tem regras próprias. Lembrar: migration destrutiva/backfill roda no startup em Dev/Homolog contra o REMOTO (§ACESSOS) → afeta dado real de homolog.
+- **Expand/contract (zero-downtime + rollback-safe)** — mudança breaking em 3 passos, em DEPLOYS SEPARADOS: (1) EXPAND — add coluna nullable / nova tabela; código escreve em ambas (velha+nova); (2) BACKFILL — popular o histórico em batch; (3) CONTRACT — remover o velho só depois do código novo estável. NUNCA drop+add atômico num app vivo (quebra requests em voo + impede rollback de código).
+- **Backfill em batch idempotente** — preencher dado histórico em LOTES (não um `UPDATE` de N milhões = lock longo/timeout/bloat de WAL); re-rodável sem efeito duplo (guard por estado, ex. `WHERE col IS NULL`).
+- **Rollback de DADO ≠ rollback de schema** — código forward-compat (lê velho E novo) permite reverter o deploy de código SEM reverter a migration. É a condição que torna o deploy revertível ([specification-dr §4]). Migration destrutiva sem janela expand/contract trava rollback → exige backup verificado ANTES ([specification-dr §1]).
+- **Schema-agnostic** (search_path, §STACK) vale também p/ backfill: SQL sem qualificador de schema; aplica por schema via Search Path.
+- Concorrência durante backfill: escrita nova concorrente ao backfill não pode ser sobrescrita — backfill toca só linhas antigas (`WHERE`-guard), código novo é a fonte das linhas novas. Cross-ref [specification-concurrency].
+
 ## DICAS — ALTERAÇÕES DE BANCO
 - Nova migration: `dotnet ef migrations add <Nome>`. Manter agnóstica: NÃO inserir `schema:`/`principalSchema:`/`newSchema:` nem prefixar SQL raw com schema. Atualizar ESTE arquivo.
 - Aplicar em schema X: `dotnet ef database update` com `Search Path=X`. Schema novo: `CREATE SCHEMA IF NOT EXISTS X` antes.
