@@ -18,7 +18,11 @@ public class WhatsAppDeliveryLogConfiguration : IEntityTypeConfiguration<WhatsAp
         builder.Property(e => e.Payload).HasColumnName("payload");
         builder.Property(e => e.CreatedAt).HasColumnName("created_at");
 
-        builder.HasIndex(e => e.MetaMessageId).HasDatabaseName("ix_whatsapp_delivery_logs_meta_message_id");
+        // Único: idempotência sob redelivery concorrente de webhook — o par (mensagem, evento) identifica
+        // unicamente uma ocorrência; insert duplicado viola o índice e o handler trata a violação (T8).
+        builder.HasIndex(e => new { e.MetaMessageId, e.EventType })
+            .IsUnique()
+            .HasDatabaseName("ix_whatsapp_delivery_logs_meta_message_id_event_type");
         builder.HasIndex(e => e.EventType).HasDatabaseName("ix_whatsapp_delivery_logs_event_type");
     }
 }
