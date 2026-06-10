@@ -32,6 +32,28 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         return (treinador, aluno);
     }
 
+    private static async Task<Treinador> SeedTreinadorAsync(AppDbContext ctx)
+    {
+        var email = Email.Criar($"t{Guid.NewGuid():N}@test.com").Value;
+        var conta = Conta.Criar(email, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        var treinador = Treinador.Criar(conta.Id, "Carlos", DateTime.UtcNow).Value;
+        await ctx.Contas.AddAsync(conta);
+        await ctx.Treinadores.AddAsync(treinador);
+        await ctx.SaveChangesAsync();
+        return treinador;
+    }
+
+    private static async Task<Aluno> SeedAlunoAsync(AppDbContext ctx)
+    {
+        var email = Email.Criar($"a{Guid.NewGuid():N}@test.com").Value;
+        var conta = Conta.Criar(email, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
+        var aluno = Aluno.Criar(conta.Id, "João", DateTime.UtcNow).Value;
+        await ctx.Contas.AddAsync(conta);
+        await ctx.Alunos.AddAsync(aluno);
+        await ctx.SaveChangesAsync();
+        return aluno;
+    }
+
     private static async Task<Guid> SeedPacoteAsync(AppDbContext ctx, Guid treinadorId)
     {
         var pacote = Pacote.Criar(treinadorId, "Pacote Teste", 100m, DateTime.UtcNow).Value;
@@ -39,6 +61,24 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         await ctx.SaveChangesAsync();
         return pacote.Id;
     }
+
+    private static async Task<VinculoTreinadorAluno> AtivoAsync(AppDbContext ctx, Treinador treinador, Aluno aluno)
+    {
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow).Value;
+        vinculo.Aprovar(treinador.Id, pacoteId, DateTime.UtcNow);
+        return vinculo;
+    }
+
+    private static async Task<VinculoTreinadorAluno> InativoAsync(AppDbContext ctx, Treinador treinador, Aluno aluno)
+    {
+        var vinculo = await AtivoAsync(ctx, treinador, aluno);
+        vinculo.Inativar(DateTime.UtcNow);
+        return vinculo;
+    }
+
+    private static VinculoTreinadorAluno Pendente(Treinador treinador, Aluno aluno) =>
+        VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, DateTime.UtcNow).Value;
 
     // --- ObterAtivoPorAlunoAsync ---
 
@@ -265,5 +305,173 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         var resultado = await Repo(ctx).ObterAtivoAsync(Guid.NewGuid(), aluno.Id);
 
         resultado.Should().BeNull();
+    }
+
+    // --- ListarAtivosEPendentesPorAlunoAsync (ANON-01) ---
+
+    [Fact]
+    public async Task ListarAtivosEPendentes_RetornaApenasAtivoEAguardando_IgnoraInativo()
+    {
+        await using var ctx = fixture.CreateContext();
+        var aluno = await SeedAlunoAsync(ctx);
+
+        var pendente = Pendente(await SeedTreinadorAsync(ctx), aluno);
+        var ativo = await AtivoAsync(ctx, await SeedTreinadorAsync(ctx), aluno);
+        var inativo = await InativoAsync(ctx, await SeedTreinadorAsync(ctx), aluno);
+        await ctx.VinculosTreinadorAluno.AddRangeAsync(pendente, ativo, inativo);
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarAtivosEPendentesPorAlunoAsync(aluno.Id);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(v => v.Status == VinculoStatus.AguardandoAprovacao);
+        result.Should().Contain(v => v.Status == VinculoStatus.Ativo);
+        result.Should().NotContain(v => v.Status == VinculoStatus.Inativo);
+    }
+
+    [Fact]
+    public async Task ListarAtivosEPendentes_OutroAluno_NaoRetornaVinculosDeOutroAluno()
+    {
+        await using var ctx = fixture.CreateContext();
+        var alvo = await SeedAlunoAsync(ctx);
+        var outro = await SeedAlunoAsync(ctx);
+
+        await ctx.VinculosTreinadorAluno.AddRangeAsync(
+            Pendente(await SeedTreinadorAsync(ctx), alvo),
+            Pendente(await SeedTreinadorAsync(ctx), outro));
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarAtivosEPendentesPorAlunoAsync(alvo.Id);
+
+        result.Should().HaveCount(1);
+        result[0].AlunoId.Should().Be(alvo.Id);
+    }
+
+    // Sem AsNoTracking: handler de anonimização chama Inativar nas entidades retornadas.
+    [Fact]
+    public async Task ListarAtivosEPendentes_EntidadesTrackeadas_CallerPodeInativar()
+    {
+        await using var ctx = fixture.CreateContext();
+        var aluno = await SeedAlunoAsync(ctx);
+        var vinculo = Pendente(await SeedTreinadorAsync(ctx), aluno);
+        await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarAtivosEPendentesPorAlunoAsync(aluno.Id);
+        result[0].Inativar(DateTime.UtcNow);
+        await ctx.SaveChangesAsync();
+
+        var persisted = await ctx.VinculosTreinadorAluno.FindAsync(vinculo.Id);
+        persisted!.Status.Should().Be(VinculoStatus.Inativo);
+    }
+
+    [Fact]
+    public async Task ListarAtivosEPendentes_SemVinculos_RetornaListaVazia()
+    {
+        await using var ctx = fixture.CreateContext();
+
+        var result = await Repo(ctx).ListarAtivosEPendentesPorAlunoAsync(Guid.NewGuid());
+
+        result.Should().BeEmpty();
+    }
+
+    // --- ListarTodosPorAlunoAsync (EXP-02) ---
+
+    [Fact]
+    public async Task ListarTodosPorAluno_RetornaTodosOsStatuses()
+    {
+        await using var ctx = fixture.CreateContext();
+        var aluno = await SeedAlunoAsync(ctx);
+
+        var pendente = Pendente(await SeedTreinadorAsync(ctx), aluno);
+        var ativo = await AtivoAsync(ctx, await SeedTreinadorAsync(ctx), aluno);
+        var inativo = await InativoAsync(ctx, await SeedTreinadorAsync(ctx), aluno);
+        await ctx.VinculosTreinadorAluno.AddRangeAsync(pendente, ativo, inativo);
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarTodosPorAlunoAsync(aluno.Id);
+
+        result.Should().HaveCount(3);
+        result.Should().Contain(v => v.Status == VinculoStatus.AguardandoAprovacao);
+        result.Should().Contain(v => v.Status == VinculoStatus.Ativo);
+        result.Should().Contain(v => v.Status == VinculoStatus.Inativo);
+    }
+
+    [Fact]
+    public async Task ListarTodosPorAluno_OutroAluno_NaoRetornaVinculosDeOutroAluno()
+    {
+        await using var ctx = fixture.CreateContext();
+        var alvo = await SeedAlunoAsync(ctx);
+        var outro = await SeedAlunoAsync(ctx);
+
+        await ctx.VinculosTreinadorAluno.AddRangeAsync(
+            Pendente(await SeedTreinadorAsync(ctx), alvo),
+            Pendente(await SeedTreinadorAsync(ctx), outro));
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarTodosPorAlunoAsync(alvo.Id);
+
+        result.Should().HaveCount(1);
+        result[0].AlunoId.Should().Be(alvo.Id);
+    }
+
+    [Fact]
+    public async Task ListarTodosPorAluno_SemVinculos_RetornaListaVazia()
+    {
+        await using var ctx = fixture.CreateContext();
+
+        var result = await Repo(ctx).ListarTodosPorAlunoAsync(Guid.NewGuid());
+
+        result.Should().BeEmpty();
+    }
+
+    // --- ListarTodosPorTreinadorAsync (EXP-02) ---
+
+    [Fact]
+    public async Task ListarTodosPorTreinador_RetornaTodosOsStatuses()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinador = await SeedTreinadorAsync(ctx);
+
+        var pendente = Pendente(treinador, await SeedAlunoAsync(ctx));
+        var ativo = await AtivoAsync(ctx, treinador, await SeedAlunoAsync(ctx));
+        var inativo = await InativoAsync(ctx, treinador, await SeedAlunoAsync(ctx));
+        await ctx.VinculosTreinadorAluno.AddRangeAsync(pendente, ativo, inativo);
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarTodosPorTreinadorAsync(treinador.Id);
+
+        result.Should().HaveCount(3);
+        result.Should().Contain(v => v.Status == VinculoStatus.AguardandoAprovacao);
+        result.Should().Contain(v => v.Status == VinculoStatus.Ativo);
+        result.Should().Contain(v => v.Status == VinculoStatus.Inativo);
+    }
+
+    [Fact]
+    public async Task ListarTodosPorTreinador_OutroTreinador_NaoRetornaVinculosDeOutroTreinador()
+    {
+        await using var ctx = fixture.CreateContext();
+        var alvo = await SeedTreinadorAsync(ctx);
+        var outro = await SeedTreinadorAsync(ctx);
+
+        await ctx.VinculosTreinadorAluno.AddRangeAsync(
+            Pendente(alvo, await SeedAlunoAsync(ctx)),
+            Pendente(outro, await SeedAlunoAsync(ctx)));
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarTodosPorTreinadorAsync(alvo.Id);
+
+        result.Should().HaveCount(1);
+        result[0].TreinadorId.Should().Be(alvo.Id);
+    }
+
+    [Fact]
+    public async Task ListarTodosPorTreinador_SemVinculos_RetornaListaVazia()
+    {
+        await using var ctx = fixture.CreateContext();
+
+        var result = await Repo(ctx).ListarTodosPorTreinadorAsync(Guid.NewGuid());
+
+        result.Should().BeEmpty();
     }
 }
