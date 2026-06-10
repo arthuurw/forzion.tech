@@ -1361,7 +1361,7 @@ public class ProcessarWebhookStripeHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.Estornado);
-        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_x", true, It.IsAny<CancellationToken>()), Times.Once);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_x", true, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -1385,7 +1385,7 @@ public class ProcessarWebhookStripeHandlerTests
             new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_x"), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
-        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -1402,7 +1402,7 @@ public class ProcessarWebhookStripeHandlerTests
             .ReturnsAsync(pagamento);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);
-        _stripeService.Setup(s => s.CriarReembolsoAsync("pi_x", true, It.IsAny<CancellationToken>()))
+        _stripeService.Setup(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_x", true, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("stripe down"));
 
         var act = async () => await _handler.HandleAsync(

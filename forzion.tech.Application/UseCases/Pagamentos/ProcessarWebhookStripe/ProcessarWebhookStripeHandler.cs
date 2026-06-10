@@ -197,7 +197,7 @@ public class ProcessarWebhookStripeHandler(
 
         try
         {
-            await stripeService.CriarReembolsoAsync(paymentIntentId, reverterTransferencia: true, ct).ConfigureAwait(false);
+            await stripeService.CriarReembolsoAsync(pagamento.Id, paymentIntentId, reverterTransferencia: true, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

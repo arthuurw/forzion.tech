@@ -86,7 +86,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be(CancelarMinhaAssinaturaAlunoHandler.AssinaturaNaoEncontradaErrorCode);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         assinatura.Status.Should().Be(forzion.tech.Domain.Enums.AssinaturaAlunoStatus.Cancelada);
-        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_cdc", true, It.IsAny<CancellationToken>()), Times.Once);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_cdc", true, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -156,8 +156,8 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
 
         await _handler.HandleAsync(new CancelarMinhaAssinaturaAlunoCommand(AlunoId));
 
-        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_antigo", true, It.IsAny<CancellationToken>()), Times.Once);
-        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_recente", It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_antigo", true, It.IsAny<CancellationToken>()), Times.Once);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_recente", It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         assinatura.Status.Should().Be(forzion.tech.Domain.Enums.AssinaturaAlunoStatus.Cancelada);
-        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
         var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaAlunoCommand(AlunoId));
 
         result.IsSuccess.Should().BeTrue();
-        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_pagamento_recente", true, It.IsAny<CancellationToken>()), Times.Once);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_pagamento_recente", true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
             .ReturnsAsync(assinatura);
         _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([pagamento]);
-        _stripeService.Setup(s => s.CriarReembolsoAsync("pi_falha", true, It.IsAny<CancellationToken>()))
+        _stripeService.Setup(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_falha", true, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("stripe down"));
 
         var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaAlunoCommand(AlunoId));
@@ -252,7 +252,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
         var act = async () => await _handler.HandleAsync(new CancelarMinhaAssinaturaAlunoCommand(AlunoId));
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -271,6 +271,6 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
         var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaAlunoCommand(AlunoId));
 
         result.IsSuccess.Should().BeTrue();
-        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

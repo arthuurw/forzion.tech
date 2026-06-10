@@ -42,7 +42,7 @@ public sealed class FakeStripeService : IStripeService
     public Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe) =>
         Task.FromResult(true);
 
-    public Task CriarReembolsoAsync(string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default) =>
+    public Task CriarReembolsoAsync(Guid pagamentoId, string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
     public Task<CancelarPaymentIntentResultado> CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default) =>

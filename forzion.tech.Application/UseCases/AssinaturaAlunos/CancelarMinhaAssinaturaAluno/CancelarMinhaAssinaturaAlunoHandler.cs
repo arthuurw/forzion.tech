@@ -78,7 +78,7 @@ public class CancelarMinhaAssinaturaAlunoHandler(
         // Charge destino do aluno → reverter transferência e fee (G1). Status Estornado chega
         // depois via webhook charge.refunded — não muta síncrono aqui.
         await reembolsoService
-            .ReembolsarSeDentroDoPrazoAsync(agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: true, cancellationToken)
+            .ReembolsarSeDentroDoPrazoAsync(pago?.Id ?? Guid.Empty, agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: true, cancellationToken)
             .ConfigureAwait(false);
     }
 }
