@@ -19,7 +19,7 @@ public class EmailDeliveryLogConfiguration : IEntityTypeConfiguration<EmailDeliv
         builder.Property(e => e.CreatedAt).HasColumnName("created_at");
 
         // Único: idempotência sob redelivery concorrente de webhook — o par (mensagem, evento) identifica
-        // unicamente uma ocorrência; insert duplicado viola o índice e o handler trata a violação (T8).
+        // unicamente uma ocorrência; insert duplicado viola o índice e o handler trata a violação.
         builder.HasIndex(e => new { e.ResendMessageId, e.EventType })
             .IsUnique()
             .HasDatabaseName("ix_email_delivery_logs_resend_message_id_event_type");

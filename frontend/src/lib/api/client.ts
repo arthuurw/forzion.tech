@@ -22,8 +22,6 @@ apiClient.interceptors.response.use(
   (res) => res,
   (error) => {
     if (typeof window !== "undefined") {
-      // Lê status+code pela mesma fonte de verdade dos demais callers (helper
-      // central), em vez de cavar response.data.code inline.
       const { status, code } = extractApiErrorInfo(error);
       if (status === 401) {
         window.location.href = "/login";

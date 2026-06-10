@@ -22,8 +22,7 @@ public interface IVinculoTreinadorAlunoRepository
     Task<VinculoTreinadorAluno?> ObterPendentePorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(VinculoTreinadorAluno vinculo, CancellationToken cancellationToken = default);
 
-    /// <summary>Retorna vínculos Ativo e AguardandoAprovacao do aluno para anonimização (ANON-01).</summary>
-    /// <remarks>Sem AsNoTracking: caller precisa chamar Inativar nas entidades retornadas.</remarks>
+    /// <summary>Vínculos Ativo + AguardandoAprovacao do aluno, rastreados para anonimização (ANON-01).</summary>
     Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosEPendentesPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<VinculoTreinadorAluno>> ListarTodosPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);

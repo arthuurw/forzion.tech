@@ -37,11 +37,9 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             Instance = httpContext.Request.Path
         };
 
-        // Paridade com o caminho Result (ResultExtensions.ToProblemResult): toda exceção de
-        // domínio mapeada expõe um `code` p/ o frontend distinguir o cenário. Os 4 códigos
-        // SHOUTY_CASE são contrato já consumido pelos gates de auth/onboarding — preservados via
-        // .Codigo; os demais seguem a convenção namespaceada `agregado.code`. O 500 inesperado
-        // (`_`) fica sem code de propósito (não vaza categoria de erro interno).
+        // Os 4 códigos SHOUTY_CASE são contrato vivo dos gates de auth/onboarding (preservados
+        // via .Codigo); os demais seguem a convenção namespaceada `agregado.code`. O 500 inesperado
+        // (`_`) fica sem code de propósito — não vaza categoria de erro interno ao cliente.
         var code = exception switch
         {
             CredenciaisInvalidasException => "auth.credenciais_invalidas",
