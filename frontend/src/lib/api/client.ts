@@ -1,4 +1,5 @@
 import axios from "axios";
+import { extractApiErrorInfo } from "@/lib/api/extractApiError";
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/backend";
 
@@ -21,12 +22,12 @@ apiClient.interceptors.response.use(
   (res) => res,
   (error) => {
     if (typeof window !== "undefined") {
-      if (error.response?.status === 401) {
+      // Lê status+code pela mesma fonte de verdade dos demais callers (helper
+      // central), em vez de cavar response.data.code inline.
+      const { status, code } = extractApiErrorInfo(error);
+      if (status === 401) {
         window.location.href = "/login";
-      } else if (
-        error.response?.status === 403 &&
-        error.response?.data?.code === "ASSINATURA_INADIMPLENTE"
-      ) {
+      } else if (status === 403 && code === "ASSINATURA_INADIMPLENTE") {
         // Dispatch evento global. AppLayout (ou outro listener) renderiza toast.
         // Nao redireciona: aluno pode ja estar no portal; so notifica.
         window.dispatchEvent(
