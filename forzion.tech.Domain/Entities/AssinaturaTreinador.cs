@@ -79,12 +79,14 @@ public class AssinaturaTreinador : IHasDomainEvents
 
     public void MarcarInadimplentePorDisputa(DateTime agora)
     {
-        if (Status is AssinaturaTreinadorStatus.Cancelada or AssinaturaTreinadorStatus.Inadimplente)
-            return;
+        if (Status != AssinaturaTreinadorStatus.Ativa) return;
 
-        TentativasFalhasConsecutivas = LimiteTentativasFalhas;
         Status = AssinaturaTreinadorStatus.Inadimplente;
+        TentativasFalhasConsecutivas = LimiteTentativasFalhas;
         UpdatedAt = agora;
+
+        _domainEvents.Add(new AssinaturaTreinadorMarcadaInadimplenteEvent(
+            Id, TreinadorId, TentativasFalhasConsecutivas, agora));
     }
 
     public Result Cancelar(DateTime agora)
