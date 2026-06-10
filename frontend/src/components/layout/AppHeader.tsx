@@ -99,9 +99,12 @@ export default function AppHeader({ onMenuToggle, showMenuButton = true }: AppHe
               <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.95)", fontWeight: 600, lineHeight: 1.2 }}>
                 {user?.nome || (TIPO_LABEL[user?.tipoConta ?? ""] ?? user?.tipoConta)}
               </Typography>
-              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", lineHeight: 1.2 }}>
-                {TIPO_LABEL[user?.tipoConta ?? ""] ?? user?.tipoConta}
-              </Typography>
+              {/* caption só quando há nome na linha de cima — senão repetiria o papel (token legado) */}
+              {user?.nome && (
+                <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", lineHeight: 1.2 }}>
+                  {TIPO_LABEL[user?.tipoConta ?? ""] ?? user?.tipoConta}
+                </Typography>
+              )}
             </Box>
           </Box>
 

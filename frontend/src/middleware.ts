@@ -71,7 +71,8 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // `.*\..*` exclui assets estáticos do /public (ex: /screenshots/*.webp, robots.txt):
+  // Exclui assets estáticos do /public por EXTENSÃO conhecida (não qualquer path com ponto):
   // sem isso o guard de auth redireciona o asset pra /login (307) e o next/image quebra (400).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/|.*\\..*).*)"],
+  // Allowlist em vez de `.*\..*` p/ não vazar rota protegida que contenha ponto no path.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:webp|png|jpe?g|svg|gif|ico|txt|xml|json|webmanifest|woff2?)$).*)"],
 };
