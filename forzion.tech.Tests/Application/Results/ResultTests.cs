@@ -8,7 +8,7 @@ public class ResultTests
     [Fact]
     public void Value_ResultadoFalho_LancaInvalidOperationException()
     {
-        var result = Result.Failure<string>(Error.Business("falha"));
+        var result = Result.Failure<string>(Error.Business("test.falha", "falha"));
         var act = () => result.Value;
         act.Should().Throw<InvalidOperationException>();
     }

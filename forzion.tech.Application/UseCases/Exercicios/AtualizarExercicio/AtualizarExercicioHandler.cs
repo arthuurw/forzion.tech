@@ -41,7 +41,7 @@ public class AtualizarExercicioHandler(
             && !string.Equals(command.Nome.Trim(), exercicio.Nome, StringComparison.OrdinalIgnoreCase)
             && await exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, command.ExercicioId, cancellationToken).ConfigureAwait(false))
         {
-            return Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca."));
+            return Result.Failure<ExercicioResponse>(Error.Business("exercicio.nome_duplicado", "Já existe um exercício com este nome nesta biblioteca."));
         }
 
         if (command.GrupoMuscularId is not null

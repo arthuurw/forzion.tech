@@ -158,7 +158,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
     {
         _factory.RegistrarAlunoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<AlunoResponse>(Error.Business("Treinador indisponível.")));
+            .ReturnsAsync(Result.Failure<AlunoResponse>(Error.Business("treinador.indisponivel", "Treinador indisponível.")));
 
         var response = await _factory.CreateClient().PostAsJsonAsync("/auth/register/aluno",
             new

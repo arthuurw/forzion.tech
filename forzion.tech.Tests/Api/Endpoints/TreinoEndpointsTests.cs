@@ -89,7 +89,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     {
         _factory.CriarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarTreinoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<TreinoResponse>(Error.Business("Aluno indisponível.")));
+            .ReturnsAsync(Result.Failure<TreinoResponse>(Error.Business("aluno.indisponivel", "Aluno indisponível.")));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/treinos",
             new { alunoId = Guid.NewGuid(), nome = "Treino A", objetivo = ObjetivoTreino.Hipertrofia });

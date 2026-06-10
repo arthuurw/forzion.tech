@@ -34,7 +34,7 @@ public class ResultProperties
     {
         Gen.String[Gen.Char.AlphaNumeric, 1, 20].Sample(mensagem =>
         {
-            var erro = Error.Business(mensagem);
+            var erro = Error.Business("test.business", mensagem);
             var result = Result.Failure<int>(erro);
 
             result.IsSuccess.Should().BeFalse();
@@ -52,7 +52,7 @@ public class ResultProperties
             from msg in Gen.String[Gen.Char.AlphaNumeric, 1, 10]
             select sucesso
                 ? Result.Success(valor)
-                : Result.Failure<int>(Error.Business(msg));
+                : Result.Failure<int>(Error.Business("test.business", msg));
 
         genResult.Sample(result =>
             result.IsSuccess.Should().Be(!result.IsFailure));
@@ -63,7 +63,7 @@ public class ResultProperties
     {
         Gen.String[Gen.Char.AlphaNumeric, 1, 20].Sample(mensagem =>
         {
-            var result = Result.Failure<string>(Error.Business(mensagem));
+            var result = Result.Failure<string>(Error.Business("test.business", mensagem));
 
             var act = () => result.Value;
             act.Should().Throw<InvalidOperationException>();
@@ -81,12 +81,12 @@ public class ResultProperties
     }
 
     [Fact]
-    public void Error_Business_CodigoFixoEmensagemPreservada()
+    public void Error_Business_PreservaCodeEMessage()
     {
         Gen.String[Gen.Char.AlphaNumeric, 0, 50].Sample(mensagem =>
         {
-            var erro = Error.Business(mensagem);
-            erro.Code.Should().Be("business_error");
+            var erro = Error.Business("dominio.codigo", mensagem);
+            erro.Code.Should().Be("dominio.codigo");
             erro.Message.Should().Be(mensagem);
         });
     }

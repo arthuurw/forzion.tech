@@ -69,7 +69,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     {
         _factory.CriarHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Nome duplicado.")));
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("exercicio.nome_duplicado", "Nome duplicado.")));
 
         var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
             new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });

@@ -63,7 +63,7 @@ public class AtualizarPerfilHandler(
                     break;
                 }
             default:
-                return Result.Failure(Error.Business("Tipo de conta inválido."));
+                return Result.Failure(Error.Business("conta.tipo_invalido", "Tipo de conta inválido."));
         }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

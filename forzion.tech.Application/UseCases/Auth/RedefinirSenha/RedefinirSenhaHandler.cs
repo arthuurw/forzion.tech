@@ -55,12 +55,12 @@ public class RedefinirSenhaHandler(
         var token = await tokenRepository.BuscarPorHashAsync(hash, cancellationToken).ConfigureAwait(false);
 
         if (token is null || token.UsedAt.HasValue)
-            return Result.Failure(Error.Business("Token inválido ou já utilizado."));
+            return Result.Failure(Error.Business("auth_reset.token_invalido", "Token inválido ou já utilizado."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
         if (token.ExpiresAt < agora)
-            return Result.Failure(Error.Business("Token expirado. Solicite um novo link de redefinição."));
+            return Result.Failure(Error.Business("auth_reset.token_expirado", "Token expirado. Solicite um novo link de redefinição."));
 
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
             ?? throw new DomainException("Conta não encontrada.");

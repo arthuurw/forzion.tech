@@ -37,7 +37,7 @@ public class GerarCobrancaMensalHandler(
             throw new AcessoNegadoException();
 
         if (assinatura.Status == AssinaturaAlunoStatus.Cancelada)
-            return Result.Failure<PagamentoResponse>(Error.Business("AssinaturaAluno cancelada não pode ser cobrada."));
+            return Result.Failure<PagamentoResponse>(Error.Business("assinatura_aluno.cancelada", "AssinaturaAluno cancelada não pode ser cobrada."));
 
         // Verificação antecipada da conta Stripe: evita entrar na transação serializable
         // para descobrir um erro determinístico.

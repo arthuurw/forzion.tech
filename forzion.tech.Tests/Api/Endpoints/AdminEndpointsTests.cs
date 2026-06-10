@@ -850,7 +850,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.AprovarTreinadorHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<TreinadorResponse>(Error.Business("Treinador já aprovado.")));
+            .ReturnsAsync(Result.Failure<TreinadorResponse>(Error.Business("treinador.ja_aprovado", "Treinador já aprovado.")));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/aprovar", new { });
@@ -865,7 +865,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.InativarTreinadorHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<InativarTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("Treinador já inativo.")));
+            .ReturnsAsync(Result.Failure(Error.Business("treinador.ja_inativo", "Treinador já inativo.")));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/inativar", new { });
@@ -1019,7 +1019,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.CriarExercicioAdminHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("exercicio.nome_duplicado", "Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync("/admin/exercicios", new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
@@ -1047,7 +1047,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.AtualizarExercicioHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("exercicio.nome_duplicado", "Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/exercicios/{Guid.NewGuid()}", new { nome = "Supino" });
@@ -1075,7 +1075,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ExcluirExercicioHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("Este exercício está em uso em fichas de treino e não pode ser excluído.")));
+            .ReturnsAsync(Result.Failure(Error.Business("exercicio.em_uso", "Este exercício está em uso em fichas de treino e não pode ser excluído.")));
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/exercicios/{Guid.NewGuid()}");

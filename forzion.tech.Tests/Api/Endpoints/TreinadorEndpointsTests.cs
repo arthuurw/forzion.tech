@@ -482,7 +482,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.GerarCobrancaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<GerarCobrancaMensalCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<PagamentoResponse>(Error.Business("AssinaturaAluno cancelada não pode ser cobrada.")));
+            .ReturnsAsync(Result.Failure<PagamentoResponse>(Error.Business("assinatura_aluno.cancelada", "AssinaturaAluno cancelada não pode ser cobrada.")));
 
         var response = await CriarClienteTreinador()
             .PostAsJsonAsync($"/treinador/pagamentos/cobrar/{AssinaturaAlunoId}?metodo=Pix", (object?)null);
@@ -623,7 +623,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.CriarExercicioHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("exercicio.nome_duplicado", "Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/exercicios",
             new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
@@ -679,7 +679,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.AtualizarExercicioHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("exercicio.nome_duplicado", "Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteTreinador()
             .PatchAsJsonAsync($"/treinador/exercicios/{Guid.NewGuid()}", new { nome = "Supino" });
@@ -707,7 +707,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.ExcluirExercicioHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("Este exercício está em uso em fichas de treino e não pode ser excluído.")));
+            .ReturnsAsync(Result.Failure(Error.Business("exercicio.em_uso", "Este exercício está em uso em fichas de treino e não pode ser excluído.")));
 
         var response = await CriarClienteTreinador()
             .DeleteAsync($"/treinador/exercicios/{Guid.NewGuid()}");
@@ -768,7 +768,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.VincularFichaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<VincularFichaAoAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("Aluno não está vinculado ao treinador.")));
+            .ReturnsAsync(Result.Failure(Error.Business("vinculo.aluno_nao_vinculado", "Aluno não está vinculado ao treinador.")));
 
         var treinoId = Guid.NewGuid();
         var response = await CriarClienteTreinador()
@@ -808,7 +808,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.IniciarOnboardingHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<IniciarOnboardingTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<string>(Error.Business("Treinador não encontrado.")));
+            .ReturnsAsync(Result.Failure<string>(Error.Business("treinador.nao_encontrado", "Treinador não encontrado.")));
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/onboarding",
             new { UrlRetorno = "http://localhost/retorno", UrlCancelamento = "http://localhost/cancelar" });
@@ -823,7 +823,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.ExcluirPacoteHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirPacoteCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("Pacote em uso por assinaturas ativas.")));
+            .ReturnsAsync(Result.Failure(Error.Business("pacote.em_uso", "Pacote em uso por assinaturas ativas.")));
 
         var response = await CriarClienteTreinador().DeleteAsync($"/treinador/pacotes/{Guid.NewGuid()}");
 

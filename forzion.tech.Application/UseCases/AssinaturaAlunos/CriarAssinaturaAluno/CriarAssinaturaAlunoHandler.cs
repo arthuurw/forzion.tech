@@ -33,17 +33,17 @@ public class CriarAssinaturaAlunoHandler(
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
 
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
-            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("O treinador não concluiu a configuração de recebimentos."));
+            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("assinatura_aluno.treinador_sem_onboarding", "O treinador não concluiu a configuração de recebimentos."));
 
         // Valor é derivado de Pacote.Preco — nunca aceito do caller. Sem isso, qualquer
         // chamador autorizado conseguiria criar assinatura por R$ 0,01.
         var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false);
         if (pacote is null)
-            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("Pacote não encontrado."));
+            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("pacote.nao_encontrado", "Pacote não encontrado."));
 
         // Defesa anti cross-tenant: pacote precisa pertencer ao mesmo treinador.
         if (pacote.TreinadorId != command.TreinadorId)
-            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("Pacote não pertence ao treinador informado."));
+            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("pacote.nao_pertence_treinador", "Pacote não pertence ao treinador informado."));
 
         var assinaturaResult = AssinaturaAluno.Criar(
             command.VinculoId,

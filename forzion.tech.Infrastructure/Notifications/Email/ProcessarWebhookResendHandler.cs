@@ -40,17 +40,17 @@ public class ProcessarWebhookResendHandler(
         if (string.IsNullOrWhiteSpace(webhookSecret))
         {
             logger.LogWarning("ProcessarWebhookResendHandler: Resend:WebhookSecret não configurado.");
-            return Result.Failure(Error.Business("Webhook não configurado."));
+            return Result.Failure(Error.Business("webhook_email.nao_configurado", "Webhook não configurado."));
         }
 
         if (!VerificarAssinatura(command, webhookSecret))
-            return Result.Failure(Error.Business("Assinatura do webhook inválida."));
+            return Result.Failure(Error.Business("webhook_email.assinatura_invalida", "Assinatura do webhook inválida."));
 
         var parsed = ParsePayload(command.Payload);
         if (parsed is null)
         {
             logger.LogWarning("ProcessarWebhookResendHandler: payload inválido.");
-            return Result.Failure(Error.Business("Payload inválido."));
+            return Result.Failure(Error.Business("webhook_email.payload_invalido", "Payload inválido."));
         }
 
         if (!EventosRelevantes.Contains(parsed.EventType))

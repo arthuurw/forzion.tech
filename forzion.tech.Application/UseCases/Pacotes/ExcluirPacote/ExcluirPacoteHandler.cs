@@ -29,7 +29,7 @@ public class ExcluirPacoteHandler(
 
         var temVinculos = await pacoteRepository.ExisteVinculoComPacoteAsync(command.PacoteId, cancellationToken).ConfigureAwait(false);
         if (temVinculos)
-            return Result.Failure(Error.Business("Não é possível excluir um pacote com alunos vinculados."));
+            return Result.Failure(Error.Business("pacote.possui_alunos", "Não é possível excluir um pacote com alunos vinculados."));
 
         pacoteRepository.Remover(pacote);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

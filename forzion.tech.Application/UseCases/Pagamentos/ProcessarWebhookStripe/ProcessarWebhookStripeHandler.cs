@@ -33,7 +33,7 @@ public class ProcessarWebhookStripeHandler(
 
         var valido = await stripeService.ValidarWebhookAsync(command.Payload, command.AssinaturaAlunoStripe).ConfigureAwait(false);
         if (!valido)
-            return Result.Failure(Error.Business("AssinaturaAluno do webhook inválida."));
+            return Result.Failure(Error.Business("webhook_stripe.assinatura_invalida", "AssinaturaAluno do webhook inválida."));
 
         var evento = StripeWebhookParser.Parse(command.Payload);
 

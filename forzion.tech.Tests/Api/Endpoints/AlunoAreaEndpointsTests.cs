@@ -302,7 +302,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.SolicitarTrocaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<SolicitarTrocaTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<VinculoResponse>(Error.Business("Aluno já possui vínculo ativo.")));
+            .ReturnsAsync(Result.Failure<VinculoResponse>(Error.Business("vinculo.ja_ativo", "Aluno já possui vínculo ativo.")));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/troca-treinador",
             new { NovoTreinadorId, PacoteId = Guid.NewGuid() });
@@ -360,7 +360,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.RegistrarExecucaoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<RegistrarExecucaoResponse>(Error.Business("Treino não disponível.")));
+            .ReturnsAsync(Result.Failure<RegistrarExecucaoResponse>(Error.Business("treino.indisponivel", "Treino não disponível.")));
 
         var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/execucoes",
             new

@@ -33,7 +33,7 @@ public class ReativarVinculoHandler(
             ?? throw new AlunoNaoEncontradoException();
 
         if (aluno.Status != AlunoStatus.Ativo)
-            return Result.Failure<VinculoResponse>(Error.Business("Aluno inativo não pode ter vínculo reativado."));
+            return Result.Failure<VinculoResponse>(Error.Business("vinculo.aluno_inativo", "Aluno inativo não pode ter vínculo reativado."));
 
         var vinculoAtivo = await vinculoRepository.ObterAtivoPorAlunoAsync(command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoAtivo is not null)

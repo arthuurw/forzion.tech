@@ -29,11 +29,11 @@ public class ProcessarWebhookWhatsAppHandler(
         if (string.IsNullOrWhiteSpace(appSecret))
         {
             logger.LogWarning("ProcessarWebhookWhatsAppHandler: WhatsApp:AppSecret não configurado.");
-            return Result.Failure(Error.Business("Webhook não configurado."));
+            return Result.Failure(Error.Business("webhook_whatsapp.nao_configurado", "Webhook não configurado."));
         }
 
         if (!VerificarAssinatura(command.Payload, command.Signature, appSecret))
-            return Result.Failure(Error.Business("Assinatura inválida."));
+            return Result.Failure(Error.Business("webhook_whatsapp.assinatura_invalida", "Assinatura inválida."));
 
         var statuses = ParseStatuses(command.Payload);
         if (statuses is null)

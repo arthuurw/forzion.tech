@@ -16,8 +16,8 @@ namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssina
 ///
 /// Falhas:
 /// <list type="bullet">
-///   <item><description>Nenhuma assinatura ativa/inadimplente → <c>not_found</c> (mapeia 404 no endpoint).</description></item>
-///   <item><description>Já cancelada (race) → <c>business_error</c> (mapeia 422).</description></item>
+///   <item><description>Nenhuma assinatura ativa/inadimplente (ou já cancelada no momento do lookup) → <c>assinatura_nao_encontrada</c> (mapeia 404 no endpoint).</description></item>
+///   <item><description>Já cancelada (race pós-guard, via <c>Cancelar</c> no domínio) → <c>assinatura_aluno.ja_cancelada</c> (mapeia 422).</description></item>
 /// </list>
 /// </summary>
 public class CancelarMinhaAssinaturaAlunoHandler(

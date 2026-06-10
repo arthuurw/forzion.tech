@@ -51,7 +51,7 @@ public class RegistrarAlunoHandler(
             ?? throw new PacoteNaoEncontradoException();
 
         if (pacote.TreinadorId != command.TreinadorId)
-            return Result.Failure<AlunoResponse>(Error.Business("O pacote informado não pertence ao treinador selecionado."));
+            return Result.Failure<AlunoResponse>(Error.Business("pacote.nao_pertence_treinador", "O pacote informado não pertence ao treinador selecionado."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var emailResult = Email.Criar(command.Email);

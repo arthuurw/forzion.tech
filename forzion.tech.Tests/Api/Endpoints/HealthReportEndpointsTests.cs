@@ -163,7 +163,7 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
     {
         _factory.ExecutarMock
             .Setup(h => h.HandleAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<HealthSnapshotResponse>(Error.Business("Configuração de relatório de saúde não encontrada.")));
+            .ReturnsAsync(Result.Failure<HealthSnapshotResponse>(Error.Business("health_report.config_nao_encontrada", "Configuração de relatório de saúde não encontrada.")));
 
         var response = await ClienteAdmin().PostAsync("/admin/health-report/run", null);
 
