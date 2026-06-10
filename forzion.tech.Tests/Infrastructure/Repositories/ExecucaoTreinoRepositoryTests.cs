@@ -4,6 +4,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Tests.Infrastructure.Repositories;
 
@@ -218,5 +219,60 @@ public class ExecucaoTreinoRepositoryTests(InfrastructureTestFixture fixture)
 
         result.Should().HaveCount(1);
         result[0].CargaMaxima.Should().Be(100m); // Only alunoAlvo's data
+    }
+
+    // ── ANON-02: AnonimizarObservacoesPorAlunoIdAsync ──────────────────────
+
+    [Fact]
+    public async Task AnonimizarObservacoesPorAlunoIdAsync_ComObservacao_NullaObservacaoDoAluno()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (alunoId, treinoId, _, _, _) = await SeedProgressaoGraphAsync(ctx, "Anon1");
+        var agora = DateTime.UtcNow;
+
+        var e1 = ExecucaoTreino.Criar(treinoId, alunoId, agora, agora, "dados de saúde sensíveis").Value;
+        var e2 = ExecucaoTreino.Criar(treinoId, alunoId, agora, agora, "outra observação").Value;
+        await ctx.ExecucoesTreino.AddRangeAsync(e1, e2);
+        await ctx.SaveChangesAsync();
+
+        await Repo(ctx).AnonimizarObservacoesPorAlunoIdAsync(alunoId);
+
+        await using var ctxVerifica = fixture.CreateContext();
+        var execucoes = await ctxVerifica.ExecucoesTreino
+            .Where(e => e.AlunoId == alunoId)
+            .ToListAsync();
+
+        execucoes.Should().HaveCount(2);
+        execucoes.Should().AllSatisfy(e => e.Observacao.Should().BeNull());
+    }
+
+    [Fact]
+    public async Task AnonimizarObservacoesPorAlunoIdAsync_NaoTocaOutroAluno()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (alunoAlvo, treinoId, _, _, _) = await SeedProgressaoGraphAsync(ctx, "Anon2");
+        var agora = DateTime.UtcNow;
+
+        // Seed a second aluno whose execution must remain untouched
+        var emailAluno2 = Email.Criar($"anon2b{Guid.NewGuid():N}@test.com").Value;
+        var conta2 = Conta.Criar(emailAluno2, "hash", TipoConta.Aluno, agora).Value;
+        var aluno2 = Aluno.Criar(conta2.Id, "OutroAlunoAnon", agora).Value;
+        await ctx.Contas.AddAsync(conta2);
+        await ctx.Alunos.AddAsync(aluno2);
+        await ctx.SaveChangesAsync();
+
+        const string obsOutro = "observação do outro aluno";
+        var eAlvo = ExecucaoTreino.Criar(treinoId, alunoAlvo, agora, agora, "sensitivo").Value;
+        var eOutro = ExecucaoTreino.Criar(treinoId, aluno2.Id, agora, agora, obsOutro).Value;
+        await ctx.ExecucoesTreino.AddRangeAsync(eAlvo, eOutro);
+        await ctx.SaveChangesAsync();
+
+        await Repo(ctx).AnonimizarObservacoesPorAlunoIdAsync(alunoAlvo);
+
+        await using var ctxVerifica = fixture.CreateContext();
+        var execucaoOutro = await ctxVerifica.ExecucoesTreino
+            .FirstAsync(e => e.AlunoId == aluno2.Id);
+
+        execucaoOutro.Observacao.Should().Be(obsOutro);
     }
 }

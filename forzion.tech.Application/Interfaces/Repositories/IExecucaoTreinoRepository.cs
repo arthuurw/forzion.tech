@@ -40,4 +40,10 @@ public interface IExecucaoTreinoRepository
     /// </summary>
     Task<IReadOnlyList<ProgressaoAggRow>> ProjetarProgressaoAsync(
         Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// LGPD ANON-02: bulk-nulls Observacao for all executions of the student.
+    /// Runs a single UPDATE via ExecuteUpdateAsync — no entity hydration.
+    /// </summary>
+    Task AnonimizarObservacoesPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default);
 }
