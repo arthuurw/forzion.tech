@@ -21,9 +21,11 @@ public class HealthReportCollector(
     IPagamentoRepository pagamentoRepository,
     IAssinaturaAlunoRepository assinaturaRepository,
     IEmailDeliveryLogRepository emailDeliveryLogRepository,
-    IErrorLogRepository errorLogRepository) : IHealthReportCollector
+    IErrorLogRepository errorLogRepository,
+    IOutboxRepository outboxRepository) : IHealthReportCollector
 {
     private const int MaxAmostrasErro = 10;
+    private const int MaxAmostrasOutbox = 10;
 
     public async Task<HealthReport> ColetarAsync(HealthReportConfig config, CancellationToken cancellationToken = default)
     {
@@ -36,16 +38,50 @@ public class HealthReportCollector(
             ? await MontarEntregabilidadeAsync(agora, cancellationToken).ConfigureAwait(false)
             : null;
         var erros = config.IncluirErros ? await MontarErrosAsync(agora, cancellationToken).ConfigureAwait(false) : null;
+        // Estado do outbox segue a flag de erros: ambos são sinais de falha operacional
+        // (não há flag/coluna dedicada para evitar migração de HealthReportConfig).
+        var outbox = config.IncluirErros ? await MontarOutboxAsync(cancellationToken).ConfigureAwait(false) : null;
 
         return new HealthReport
         {
             Ambiente = ObterAmbiente(),
             CapturadoEm = agora,
-            StatusGeral = DerivarStatus(bancoAcessivel, erros),
+            StatusGeral = DerivarStatus(bancoAcessivel, erros, outbox),
             Liveness = liveness,
             Kpis = kpis,
             Entregabilidade = entregabilidade,
-            Erros = erros
+            Erros = erros,
+            Outbox = outbox
+        };
+    }
+
+    private async Task<OutboxSecao> MontarOutboxAsync(CancellationToken cancellationToken)
+    {
+        var porStatus = await outboxRepository.ContarPorStatusAsync(cancellationToken).ConfigureAwait(false);
+
+        int Contar(OutboxStatus status) => porStatus.TryGetValue(status, out var total) ? total : 0;
+
+        var falhou = Contar(OutboxStatus.Falhou);
+        var amostras = falhou > 0
+            ? await outboxRepository.ListarPorStatusAsync(OutboxStatus.Falhou, MaxAmostrasOutbox, cancellationToken).ConfigureAwait(false)
+            : [];
+
+        return new OutboxSecao
+        {
+            Pendente = Contar(OutboxStatus.Pendente),
+            Processando = Contar(OutboxStatus.Processando),
+            Concluido = Contar(OutboxStatus.Concluido),
+            Falhou = falhou,
+            FalhasAmostras = amostras
+                .Select(e => new OutboxFalhaAmostra
+                {
+                    Id = e.Id,
+                    Tipo = e.Tipo,
+                    Tentativas = e.Tentativas,
+                    CriadoEm = e.CriadoEm,
+                    UltimoErro = e.UltimoErro
+                })
+                .ToList()
         };
     }
 
@@ -144,12 +180,15 @@ public class HealthReportCollector(
     private string ObterAmbiente() =>
         configuration["ASPNETCORE_ENVIRONMENT"] ?? "Unknown";
 
-    private static StatusSaude DerivarStatus(bool bancoAcessivel, ErrosSecao? erros)
+    private static StatusSaude DerivarStatus(bool bancoAcessivel, ErrosSecao? erros, OutboxSecao? outbox)
     {
         if (!bancoAcessivel)
             return StatusSaude.Falha;
 
-        return erros is { Total: > 0 } ? StatusSaude.Degradado : StatusSaude.Ok;
+        if (erros is { Total: > 0 } || outbox is { Falhou: > 0 })
+            return StatusSaude.Degradado;
+
+        return StatusSaude.Ok;
     }
 
     private static string? ExtrairCommit(Assembly asm)

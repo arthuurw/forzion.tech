@@ -74,8 +74,12 @@ public class VinculoApprovalCrossAggregateTests
             TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
+        _assinaturaRepo
+            .Setup(r => r.ObterPorVinculoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((forzion.tech.Domain.Entities.AssinaturaAluno?)null);
+
         _criarAssinaturaHandler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
-            _vinculoRepo.Object, _contaRecebimentoRepo.Object, _treinadorRepo.Object,
+            _vinculoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object, _treinadorRepo.Object,
             new forzion.tech.Application.Services.CriarAssinaturaAlunoService(
                 _pacoteRepo.Object, _assinaturaRepo.Object,
                 Mock.Of<ILogger<forzion.tech.Application.Services.CriarAssinaturaAlunoService>>()),

@@ -29,6 +29,7 @@ public class HealthReportCollectorTests
     private readonly Mock<IAssinaturaAlunoRepository> _assinatura = new();
     private readonly Mock<IEmailDeliveryLogRepository> _emailLog = new();
     private readonly Mock<IErrorLogRepository> _errorLog = new();
+    private readonly Mock<IOutboxRepository> _outbox = new();
 
     public HealthReportCollectorTests(InfrastructureTestFixture fixture)
     {
@@ -38,12 +39,14 @@ public class HealthReportCollectorTests
             .ReturnsAsync(new Dictionary<string, int>());
         _errorLog.Setup(r => r.ListarDesdeAsync(It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<ErrorLogEntry>());
+        _outbox.Setup(r => r.ContarPorStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<OutboxStatus, int>());
     }
 
     private HealthReportCollector Criar(AppDbContext context, IConfiguration configuration) =>
         new(context, _email.Object, configuration, _time,
             _treinador.Object, _aluno.Object, _conta.Object, _pagamento.Object,
-            _assinatura.Object, _emailLog.Object, _errorLog.Object);
+            _assinatura.Object, _emailLog.Object, _errorLog.Object, _outbox.Object);
 
     private static IConfiguration Config(string? ambiente = "Homolog", bool stripe = true, bool whatsapp = true) =>
         new ConfigurationBuilder()
@@ -82,6 +85,31 @@ public class HealthReportCollectorTests
         report.Kpis.Should().NotBeNull();
         report.Entregabilidade.Should().NotBeNull();
         report.Erros.Should().NotBeNull();
+        report.Outbox.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ColetarAsync_OutboxComFalhas_StatusDegradadoComAmostras()
+    {
+        await using var ctx = _fixture.CreateContext();
+        _outbox.Setup(r => r.ContarPorStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<OutboxStatus, int>
+            {
+                [OutboxStatus.Concluido] = 8,
+                [OutboxStatus.Falhou] = 2
+            });
+        _outbox.Setup(r => r.ListarPorStatusAsync(OutboxStatus.Falhou, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                OutboxEfeito.Criar("fx:teste", "{}", $"k:{Guid.NewGuid():N}", Agora).Value
+            });
+
+        var report = await Criar(ctx, Config()).ColetarAsync(Toggles());
+
+        report.StatusGeral.Should().Be(StatusSaude.Degradado);
+        report.Outbox!.Falhou.Should().Be(2);
+        report.Outbox.Concluido.Should().Be(8);
+        report.Outbox.FalhasAmostras.Should().HaveCount(1);
     }
 
     [Fact]
@@ -125,6 +153,7 @@ public class HealthReportCollectorTests
         report.Kpis.Should().BeNull();
         report.Entregabilidade.Should().BeNull();
         report.Erros.Should().BeNull();
+        report.Outbox.Should().BeNull();
         report.StatusGeral.Should().Be(StatusSaude.Ok);
     }
 

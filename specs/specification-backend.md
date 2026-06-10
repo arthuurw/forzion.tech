@@ -71,14 +71,28 @@ Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`.
 ## 3. DOMAIN EVENT DISPATCH (mecânica) — cross-cutting CHAVE
 `AppDbContext` implementa `IUnitOfWork` + `IDbContextTransactionProvider`. `CommitAsync` (`Infrastructure/Persistence/AppDbContext.cs`):
 1. **Coleta** entidades `IHasDomainEvents` rastreadas pelo `ChangeTracker` com `DomainEvents.Count > 0` (snapshot da lista ANTES de salvar). Se `eventDispatcher` é null, lista vazia.
-2. **`SaveChangesAsync`** (persiste a transação EF).
-3. **Snapshot + clear ANTES de despachar**: copia todos os eventos para uma lista flat e chama `ClearDomainEvents()` em cada entidade. RE-ENTRÂNCIA: handlers podem chamar `CommitAsync` de novo; limpar antes garante "cada evento dispara exatamente uma vez" (sem isso o commit aninhado re-coletaria e re-despacharia — ex.: projeção `Assinante` inserida 2x → duplicate key).
-4. **Dispatch** via `IDomainEventDispatcher.DispatchAsync(events, ct)` se houver eventos.
+2. **Snapshot + clear ANTES do `SaveChanges`**: copia todos os eventos para uma lista flat e chama `ClearDomainEvents()`. RE-ENTRÂNCIA: handlers podem chamar `CommitAsync` de novo; limpar antes garante "cada evento dispara exatamente uma vez" (sem isso o commit aninhado re-coletaria — ex.: projeção `Assinante` inserida 2x → duplicate key).
+3. **Enfileira efeitos duráveis**: para cada evento cujo tipo é durável (`OutboxDurabilityRegistry.EhDuravel`), adiciona uma linha `outbox_efeitos` (`tipo=evt:<FullName>`, payload = JSON do evento, chave de idempotência do registry, `proxima_tentativa = OcorridoEm`). Vai ao `ChangeTracker` ANTES do save → atomicidade.
+4. **`SaveChangesAsync`** (persiste agregado + linhas outbox na MESMA transação EF).
+5. **Dispatch in-memory** via `IDomainEventDispatcher.DispatchAsync(events, ct)`.
 
 `DomainEventDispatcher` (`Infrastructure/Services/`): para cada evento, monta `IDomainEventHandler<TConcreteEvent>` via reflection (`MakeGenericType(evento.GetType())`), resolve TODOS os handlers via `IServiceProvider.GetServices(handlerType)` e invoca `HandleAsync` SEQUENCIALMENTE na ordem de registro no DI. `IDomainEventHandler<in T>` tem default interface method que faz cast `IDomainEvent → T`.
-- **Múltiplos handlers por evento**: suportado (ex.: `PagamentoEmDisputaEvent` → e-mail treinador + alert; `AssinaturaAlunoCanceladaEvent` → e-mail aluno + e-mail treinador + WhatsApp; `VinculoAprovadoEvent` → e-mail + criar assinatura).
+- **Partição durável**: `DispatchAsync` PULA handlers marcados duráveis no `OutboxDurabilityRegistry` (rodam no worker do outbox, §3.1) — as notificações best-effort do mesmo evento continuam in-memory. `DispatchDuravelAsync(evento)` (usado só pelo worker) faz o oposto: roda SÓ os handlers duráveis e PROPAGA exceção (→ retry).
+- **Múltiplos handlers por evento**: suportado (ex.: `PagamentoEmDisputaEvent` → e-mail treinador + alert; `AssinaturaAlunoCanceladaEvent` → e-mail aluno + e-mail treinador + WhatsApp; `VinculoAprovadoEvent` → e-mail + WhatsApp + criar assinatura [durável]).
 - **Boundary transacional**: handlers rodam APÓS `SaveChangesAsync` ter persistido. NÃO há tx que englobe save + handlers por padrão; quando o handler chama `CommitAsync` de novo, é um novo `SaveChanges` no mesmo `DbContext` scoped. Em handlers críticos (ex.: `AprovarVinculo`) o use case abre uma tx serializable explícita ao redor do `CommitAsync` + `tx.CommitAsync` — handlers de evento despachados dentro do `CommitAsync` participam dessa tx.
 - Resolução de handlers é por escopo de request (todos `AddScoped`). Detalhe de catálogo de eventos/produtores em [specification-model].
+
+## 3.1 OUTBOX DE EFEITOS DURÁVEIS (transacional) — cross-cutting
+Efeitos que NÃO podem se perder (mutação de negócio crítica, chamada a API externa) vão por outbox: persistidos na mesma transação do agregado e processados por worker com retry. Substitui o best-effort do §3 para esses casos específicos (`specification-coding §1`).
+- **Tabela** `outbox_efeitos` (`specification-db`): `tipo`, `payload jsonb`, `status` (`Pendente|Processando|Concluido|Falhou`), `tentativas`, `proxima_tentativa`, `ultimo_erro`, `chave_idempotencia` UNIQUE, `processado_em`. Entidade `OutboxEfeito` (factory `Criar` + transições com guard de máquina de estado).
+- **Dois estilos de `tipo`**: `evt:<FullName>` = re-dispatch de domain-event durável (#10, mutação); `fx:<nome>` = `IOutboxEfeitoHandler` por tipo (#8, efeito externo, ex.: evidência de disputa Stripe).
+- **Enfileiramento**: `evt:*` no `AppDbContext.CommitAsync` (§3 passo 3, automático para tipos no registry); `fx:*` via `IOutboxEnfileirador.Enfileirar(tipo, payload, chave)` chamado pela use case ANTES do `CommitAsync` (mesmo UnitOfWork). `OutboxEnfileirador` serializa + `IOutboxRepository.Enfileirar` (Add sem commit).
+- **`OutboxDurabilityRegistry`** (singleton, `BuildOutboxDurabilityRegistry` no DI): pares `(evento × handler)` duráveis + extrator de chave de idempotência por evento. Granularidade por handler (não por evento) porque um evento pode ter 1 mutação durável + N notificações best-effort.
+- **Worker**: `OutboxProcessorService : BackgroundService` (`Api/Services`, host fino, escopo por ciclo) delega a `OutboxProcessor` (`Infrastructure/Services`, lógica testável). `OutboxProcessor.ProcessarLoteAsync`: abre transação, lê lote sob lease (`IOutboxRepository.ObterProcessaveisAsync` → `FOR UPDATE SKIP LOCKED`), por item `MarcarProcessando` → `OutboxDispatcher.DespacharAsync` → `MarcarConcluido`/falha; `SaveChanges` + commit na MESMA tx (mutação do handler + avanço de status atômicos; locks soltam no commit).
+- **`OutboxDispatcher`**: roteia por prefixo — `evt:` → `ResolverTipoEvento` (restrito aos registrados) + desserializa + `DispatchDuravelAsync`; `fx:` → `IOutboxEfeitoHandler` cujo `Tipo` casa.
+- **Retry** (`OutboxOptions`, bind `Outbox`): `MaxTentativas` (5), backoff exponencial `BackoffBase·2^tentativas` (base 1min), `LotePorCiclo`, `IntervaloPolling`. Esgotado → `Falhou` + `LogCritical`. Idempotência: índice único em `chave_idempotencia` (re-enfileiramento bloqueado) + guards nos handlers (`specification-coding`).
+- **Limpeza + observabilidade**: `OutboxLimpezaService : BackgroundService` (`Api/Services`, cadência `OutboxOptions.IntervaloLimpeza`=1h, separada do polling do worker) → `OutboxProcessor.LimparConcluidosAsync` remove `Concluido` com `processado_em < agora-RetencaoConcluidos` (7d) via `ExecuteDeleteAsync` (`IOutboxRepository.LimparConcluidosAnterioresAsync`). Estado do outbox (contagem por status + amostras de `Falhou`) exposto no relatório de saúde — ver [specification-observability] §3.
+- **DI** (`InfrastructureExtensions`): registry singleton; `IOutboxEnfileirador`, `OutboxDispatcher`, `OutboxProcessor` scoped; `OutboxOptions` bind; `AppDbContext` recebe o registry. `OutboxProcessorService` + `OutboxLimpezaService` em `AddHostedService` (fora de Test).
 
 ## 4. API LAYER
 
@@ -134,7 +148,9 @@ Políticas FixedWindow (rejeição 429). Em ambiente `Test` todas viram NoLimite
 ### Background services (hosted)
 - `LimparTokensRevogadosService` (`Api/Services/`): loop horário, remove tokens revogados expirados.
 - `RelatorioSaudeDiarioService`: loop de 15 min; envia relatório de saúde diário conforme `HealthReportConfig` (`DeveEnviar`: ativo, hora >= `HoraEnvioUtc`, não enviado hoje).
-- (Ambos pulados em ambiente `Test`.)
+- `OutboxProcessorService`: loop de polling (`OutboxOptions.IntervaloPolling`); processa lote de efeitos do outbox via `OutboxProcessor` (§3.1).
+- `OutboxLimpezaService`: loop `OutboxOptions.IntervaloLimpeza` (1h); remove efeitos `Concluido` além da retenção (§3.1).
+- (Todos pulados em ambiente `Test`.)
 
 ### DI wiring (resumo)
 - `Api/Extensions/DependencyInjectionExtensions`: `AddApiServices` (exception handler, ProblemDetails, rate limiter, Swagger, JWT, CORS, HealthChecks, JSON enum-as-string, `IUserContext`, `RequireAssinaturaAtivaFilter`, `RequireAssinaturaTreinadorAtivaFilter`, e — fora de Test — `AddInfrastructure` + hosted services + `ErrorLogDbSinkProvider`). `AddApplicationHandlers` (validators auto-scan, `ILimiteTreinadorService`, `CriarPagamentoComIntentService`, `AppSettings`, e os handlers — registro manual/scoped descrito em §2).

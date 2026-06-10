@@ -165,7 +165,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IContaRepository>(),
             Mock.Of<IStripeService>(),
-            Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<IUnitOfWork>(), Mock.Of<IOutboxEnfileirador>(), TimeProvider.System,
             Mock.Of<ILogger<ProcessarWebhookStripeHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

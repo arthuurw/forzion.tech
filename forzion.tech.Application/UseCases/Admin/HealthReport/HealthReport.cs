@@ -11,6 +11,7 @@ public sealed record HealthReport
     public KpisSecao? Kpis { get; init; }
     public EntregabilidadeSecao? Entregabilidade { get; init; }
     public ErrosSecao? Erros { get; init; }
+    public OutboxSecao? Outbox { get; init; }
 }
 
 public sealed record LivenessSecao
@@ -56,4 +57,22 @@ public sealed record ErroAmostra
     public required string Nivel { get; init; }
     public required string Origem { get; init; }
     public required string Mensagem { get; init; }
+}
+
+public sealed record OutboxSecao
+{
+    public required int Pendente { get; init; }
+    public required int Processando { get; init; }
+    public required int Concluido { get; init; }
+    public required int Falhou { get; init; }
+    public required IReadOnlyList<OutboxFalhaAmostra> FalhasAmostras { get; init; }
+}
+
+public sealed record OutboxFalhaAmostra
+{
+    public required Guid Id { get; init; }
+    public required string Tipo { get; init; }
+    public required int Tentativas { get; init; }
+    public required DateTime CriadoEm { get; init; }
+    public string? UltimoErro { get; init; }
 }

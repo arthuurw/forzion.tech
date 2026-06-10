@@ -34,7 +34,7 @@ public class ReconciliarPagamentosStripeHandlerTests
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
             _pagamentoTreinadorRepo.Object, Mock.Of<IAssinaturaTreinadorRepository>(), Mock.Of<ITreinadorRepository>(),
             Mock.Of<IAlunoRepository>(), Mock.Of<IContaRepository>(),
-            _stripeService.Object, _unitOfWork.Object, _time, _webhookLogger.Object);
+            _stripeService.Object, _unitOfWork.Object, Mock.Of<IOutboxEnfileirador>(), _time, _webhookLogger.Object);
 
         _handler = new ReconciliarPagamentosStripeHandler(
             _stripeService.Object, _webhookHandler, _time, _reconciliarLogger.Object);

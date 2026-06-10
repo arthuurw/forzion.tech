@@ -1,13 +1,18 @@
 using System.Data;
+using System.Text.Json;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Events;
+using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace forzion.tech.Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options, IDomainEventDispatcher? eventDispatcher = null) : DbContext(options), IUnitOfWork, IDbContextTransactionProvider
+public class AppDbContext(
+    DbContextOptions<AppDbContext> options,
+    IDomainEventDispatcher? eventDispatcher = null,
+    OutboxDurabilityRegistry? outboxDurabilidade = null) : DbContext(options), IUnitOfWork, IDbContextTransactionProvider
 {
 
     public DbSet<Conta> Contas => Set<Conta>();
@@ -39,6 +44,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IDomainEventDi
     public DbSet<HealthReportConfig> HealthReportConfigs => Set<HealthReportConfig>();
     public DbSet<HealthSnapshot> HealthSnapshots => Set<HealthSnapshot>();
     public DbSet<ErrorLogEntry> ErrorLogs => Set<ErrorLogEntry>();
+    public DbSet<OutboxEfeito> OutboxEfeitos => Set<OutboxEfeito>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
@@ -49,12 +55,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IDomainEventDi
                 .Where(e => e.DomainEvents.Count > 0)
                 .ToList();
 
-        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        // Snapshot + limpa ANTES de despachar. Handlers podem chamar CommitAsync de
-        // novo (re-entrância); se os eventos ainda estivessem na entidade, o commit
-        // aninhado os re-coletaria e re-despacharia (ex.: projeção Assinante inserida
-        // 2x → duplicate key). Limpar antes garante "dispara cada evento uma vez".
+        // Snapshot + limpa ANTES do SaveChanges. (1) re-entrância: handler que chama
+        // CommitAsync aninhado não re-coleta os mesmos eventos (ex.: projeção Assinante
+        // inserida 2x → duplicate key). (2) durabilidade: o efeito durável precisa entrar
+        // no MESMO SaveChanges do agregado (atomicidade), por isso enfileira aqui.
         var domainEvents = new List<IDomainEvent>();
         foreach (var entity in entitiesWithEvents)
         {
@@ -62,8 +66,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IDomainEventDi
             entity.ClearDomainEvents();
         }
 
-        if (domainEvents.Count > 0)
-            await eventDispatcher!.DispatchAsync(domainEvents, cancellationToken).ConfigureAwait(false);
+        if (outboxDurabilidade is not null)
+            foreach (var evento in domainEvents.Where(e => outboxDurabilidade.EhDuravel(e.GetType())))
+                OutboxEfeitos.Add(CriarEfeitoDuravel(evento, outboxDurabilidade));
+
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        if (domainEvents.Count > 0 && eventDispatcher is not null)
+            await eventDispatcher.DispatchAsync(domainEvents, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static OutboxEfeito CriarEfeitoDuravel(IDomainEvent evento, OutboxDurabilityRegistry registry)
+    {
+        // tipo = evt:<FullName> → o worker resolve o tipo CLR pelo registry e desserializa.
+        var tipo = $"evt:{evento.GetType().FullName}";
+        var payload = JsonSerializer.Serialize(evento, evento.GetType());
+        var resultado = OutboxEfeito.Criar(tipo, payload, registry.ChaveIdempotencia(evento), evento.OcorridoEm);
+        if (resultado.IsFailure)
+            throw new InvalidOperationException($"Falha ao enfileirar efeito durável: {resultado.Error!.Message}");
+        return resultado.Value;
     }
 
     public async Task<ITransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)

@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Outbox;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Enums;
@@ -18,6 +19,7 @@ public class ProcessarWebhookStripeHandler(
     IContaRepository contaRepository,
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
+    IOutboxEnfileirador enfileirador,
     TimeProvider timeProvider,
     ILogger<ProcessarWebhookStripeHandler> logger)
 {
@@ -243,7 +245,6 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        // T3: reutiliza assinatura já carregada em ValidarConnect.
         var assinatura = assinaturaCarregada
             ?? await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         assinatura?.RegistrarPagamentoFalho(agoraFalhou);
@@ -395,11 +396,9 @@ public class ProcessarWebhookStripeHandler(
 
         if (pagamento.Status == PagamentoStatus.EmDisputa)
         {
-            // Redelivery: Dispute.Update é overwrite-idempotente. Reenvia a evidência para
-            // recuperar de falha na 1ª entrega — não há mutação de negócio (só re-PUT no Stripe).
-            var assinaturaExistente = await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
-            await EnviarEvidenciaDisputaAlunoAsync(disputeId, assinaturaExistente, pagamento, ct).ConfigureAwait(false);
-            logger.LogDebug("PaymentIntent {PaymentIntentId} já em disputa. Evidência reenviada (idempotente).", paymentIntentId);
+            // Linha fx: da 1ª disputa já garante entrega+retry via outbox; re-enfileirar
+            // seria bloqueado pela chave única. Sem mutação de negócio.
+            logger.LogDebug("PaymentIntent {PaymentIntentId} já em disputa. Outbox já enfileirado na 1ª entrega.", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
@@ -426,9 +425,13 @@ public class ProcessarWebhookStripeHandler(
             assinatura.MarcarInadimplentePorDisputa(agoraDisputa);
         }
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(disputeId))
+        {
+            var payload = await DerivarPayloadEvidenciaAlunoAsync(disputeId, assinatura, pagamento, ct).ConfigureAwait(false);
+            enfileirador.Enfileirar("fx:evidencia_disputa", payload, $"fx:evidencia_disputa:aluno:{pagamento.Id}");
+        }
 
-        await EnviarEvidenciaDisputaAlunoAsync(disputeId, assinatura, pagamento, ct).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
 
         logger.LogInformation(
             "Pagamento {PagamentoId} marcado em disputa (motivo={Motivo}).",
@@ -436,50 +439,32 @@ public class ProcessarWebhookStripeHandler(
         return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task EnviarEvidenciaDisputaAlunoAsync(string? disputeId, AssinaturaAluno? assinatura, Pagamento pagamento, CancellationToken ct)
-    {
-        if (assinatura is null) return;
-
-        string? email = null;
-        var aluno = await alunoRepository.ObterPorIdAsync(assinatura.AlunoId, ct).ConfigureAwait(false);
-        if (aluno is not null)
-        {
-            var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, ct).ConfigureAwait(false);
-            email = conta?.Email.Value ?? aluno.Email?.Value;
-        }
-
-        await EnviarEvidenciaDisputaAsync(disputeId, email, assinatura.DataInicio, pagamento.DataPagamento, pagamento.Id, ct).ConfigureAwait(false);
-    }
-
     // DataUltimaAtividade é omitida: sem sinal real de uso barato, repetir DataUltimoPagamento
     // nos dois campos seria evidência falsa. Envia a data de pagamento uma única vez.
-    private async Task EnviarEvidenciaDisputaAsync(
-        string? disputeId, string? email, DateTime? dataAtivacao, DateTime? dataPagamento, Guid pagamentoId, CancellationToken ct)
+    private async Task<EvidenciaDisputaPayload> DerivarPayloadEvidenciaAlunoAsync(
+        string disputeId, AssinaturaAluno? assinatura, Pagamento pagamento, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(disputeId)) return;
+        string? email = null;
+        if (assinatura is not null)
+        {
+            var aluno = await alunoRepository.ObterPorIdAsync(assinatura.AlunoId, ct).ConfigureAwait(false);
+            if (aluno is not null)
+            {
+                var conta = await contaRepository.ObterPorIdAsync(aluno.ContaId, ct).ConfigureAwait(false);
+                email = conta?.Email.Value ?? aluno.Email?.Value;
+            }
+        }
 
-        try
-        {
-            await stripeService.EnviarEvidenciaDisputaAsync(
-                disputeId,
-                new DisputaEvidencia(email, dataAtivacao, null, dataPagamento),
-                ct).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Falha ao enviar evidência da disputa {DisputeId} (pagamento {PagamentoId}). Disputa já marcada; responder manualmente no Stripe.",
-                disputeId, pagamentoId);
-        }
+        return new EvidenciaDisputaPayload(disputeId, email, assinatura?.DataInicio, pagamento.DataPagamento, pagamento.Id);
     }
 
     private async Task<ProcessarEventoResultado> ProcessarDisputaTreinadorAsync(PagamentoTreinador pagamento, string? disputeId, CancellationToken ct)
     {
         if (pagamento.Status == PagamentoStatus.EmDisputa)
         {
-            var assinaturaExistente = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
-            await EnviarEvidenciaDisputaTreinadorAsync(disputeId, assinaturaExistente, pagamento, ct).ConfigureAwait(false);
-            logger.LogDebug("PagamentoTreinador {PaymentIntentId} já em disputa. Evidência reenviada (idempotente).", pagamento.StripePaymentIntentId);
+            // Linha fx: da 1ª disputa já garante entrega+retry via outbox; re-enfileirar
+            // seria bloqueado pela chave única. Sem mutação de negócio.
+            logger.LogDebug("PagamentoTreinador {PaymentIntentId} já em disputa. Outbox já enfileirado na 1ª entrega.", pagamento.StripePaymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
         }
 
@@ -501,18 +486,21 @@ public class ProcessarWebhookStripeHandler(
         var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
         assinatura?.MarcarInadimplentePorDisputa(agora);
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(disputeId))
+        {
+            var payload = await DerivarPayloadEvidenciaTreinadorAsync(disputeId, assinatura, pagamento, ct).ConfigureAwait(false);
+            enfileirador.Enfileirar("fx:evidencia_disputa", payload, $"fx:evidencia_disputa:treinador:{pagamento.Id}");
+        }
 
-        await EnviarEvidenciaDisputaTreinadorAsync(disputeId, assinatura, pagamento, ct).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
 
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado em disputa.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task EnviarEvidenciaDisputaTreinadorAsync(string? disputeId, AssinaturaTreinador? assinatura, PagamentoTreinador pagamento, CancellationToken ct)
+    private async Task<EvidenciaDisputaPayload> DerivarPayloadEvidenciaTreinadorAsync(
+        string disputeId, AssinaturaTreinador? assinatura, PagamentoTreinador pagamento, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(disputeId)) return;
-
         string? email = null;
         var treinador = await treinadorRepository.ObterPorIdAsync(pagamento.TreinadorId, ct).ConfigureAwait(false);
         if (treinador is not null)
@@ -521,7 +509,7 @@ public class ProcessarWebhookStripeHandler(
             email = conta?.Email.Value;
         }
 
-        await EnviarEvidenciaDisputaAsync(disputeId, email, assinatura?.DataInicio, pagamento.DataPagamento, pagamento.Id, ct).ConfigureAwait(false);
+        return new EvidenciaDisputaPayload(disputeId, email, assinatura?.DataInicio, pagamento.DataPagamento, pagamento.Id);
     }
 
     private async Task<ProcessarEventoResultado> ProcessarContaAtualizadaAsync(string accountId, bool chargesEnabled, CancellationToken ct)

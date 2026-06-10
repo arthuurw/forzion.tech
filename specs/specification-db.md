@@ -12,9 +12,9 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 ## STACK & SCHEMAS
 - PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. Stack macro da app em AGENTS.md §STACK.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema. `MigrationsHistoryTable("__EFMigrationsHistory")` sem schema (segue search_path).
-- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 31 tabelas cada (30 EF + ai_token_usage).
+- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 32 tabelas cada (31 EF + ai_token_usage) após `AdicionarOutboxEfeitos` aplicada (migration criada; aplica nos schemas no deploy).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 31 migrations EF aplicadas (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarConcurrencyTokenTreinador`). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` atual `8.0.11`).
+- 32 migrations EF (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarOutboxEfeitos`; 31 aplicadas nos schemas, `AdicionarOutboxEfeitos` aplica no próximo deploy). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` atual `8.0.11`).
 - `AdicionarConcurrencyTokenTreinador`: mapeia o system column `xmin` de `treinadores` como concurrency token (concorrência otimista). NÃO gera DDL — o `AddColumn` no `.cs` é artefato de modelo; o SQL gerado só insere a linha de history. Aplicar é no-op estrutural (só registra a migration).
 
 ## APLICAÇÃO DE MIGRATIONS (multi-schema — descobertas operacionais)
@@ -63,6 +63,7 @@ Valores e semântica em [specification-model] §4. Aqui: só o vínculo enum→c
 - FinalidadePagamentoTreinador → pagamentos_treinador.finalidade
 - TipoAcaoAprovacao → logs_aprovacao.tipo_acao
 - StatusSaude → health_snapshots.status_geral
+- OutboxStatus → outbox_efeitos.status
 - TipoGrupoMuscular → NÃO é coluna (só seed de grupos_musculares; entidade `GrupoMuscular` é distinta)
 
 ## TABELAS
@@ -136,6 +137,9 @@ health_report_config — config runtime do relatório diário de saúde (1 linha
 health_snapshots — snapshot diário da saúde do ambiente. id(uuid,NN); capturado_em(tstz,NN); ambiente(varchar100,NN); status_geral(text,NN,StatusSaude); payload_json(text,NN,JSON das seções); created_at(NN). PK(id) idx(capturado_em).
 
 error_logs — log de ERROR/Critical (sink custom, best-effort) p/ a seção de erros. id(uuid,NN); ocorrido_em(tstz,NN); nivel(varchar20,NN); origem(varchar256,NN); mensagem(varchar4000,NN,truncada); created_at(NN). PK(id) idx(ocorrido_em).
+
+### Outbox de efeitos externos
+outbox_efeitos — fila durável de efeito externo pós-commit (entrega garantida + retry; gravada no MESMO commit do agregado de origem). id(uuid,NN); tipo(varchar200,NN, `evt:<CLR>`|`fx:<nome>`); payload(jsonb,NN); status(text,NN,OutboxStatus); tentativas(int,NN); proxima_tentativa(tstz,NN, scan do worker `<= agora`); ultimo_erro(text,null); chave_idempotencia(varchar300,NN); criado_em(tstz,NN); processado_em(tstz,null). PK(id) UQ(chave_idempotencia) idx(status,proxima_tentativa). [sem FK — desacoplado; payload carrega ids].
 
 ## ACESSOS / ROLES (Supabase)
 - forzion_api: usado em `ConnectionStrings:AppConnection` (runtime do app + `dotnet ef`). Dono dos objetos em homolog/develop. Em public: NÃO é dono (objetos do postgres) → precisa `GRANT ALL ON ALL TABLES IN SCHEMA public TO forzion_api` + USAGE/CREATE. Search Path da connection define o schema ativo.

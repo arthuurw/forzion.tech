@@ -6,6 +6,8 @@ using forzion.tech.Infrastructure.Handlers;
 using forzion.tech.Infrastructure.Notifications.Alerts;
 using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
+using forzion.tech.Infrastructure.Outbox;
+using forzion.tech.Infrastructure.Outbox.Handlers;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using forzion.tech.Infrastructure.Seed;
@@ -47,6 +49,16 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
+        // Registry de durabilidade (singleton): declara os pares evento×handler que rodam no
+        // worker do outbox com retry, em vez do dispatch best-effort in-memory. A chave de
+        // idempotência por par evita re-enfileiramento do mesmo efeito (índice único na tabela).
+        services.AddSingleton(BuildOutboxDurabilityRegistry());
+        services.AddScoped<IOutboxEnfileirador, OutboxEnfileirador>();
+        services.AddScoped<IOutboxEfeitoHandler, EvidenciaDisputaEfeitoHandler>();
+        services.AddScoped<OutboxDispatcher>();
+        services.AddScoped<OutboxProcessor>();
+        services.AddOptions<OutboxOptions>().BindConfiguration("Outbox");
+
         services.AddScoped<AppDbContext>(sp =>
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -55,7 +67,8 @@ public static class InfrastructureExtensions
                 .Options;
 
             var dispatcher = sp.GetRequiredService<IDomainEventDispatcher>();
-            return new AppDbContext(options, dispatcher);
+            var outboxDurabilidade = sp.GetRequiredService<OutboxDurabilityRegistry>();
+            return new AppDbContext(options, dispatcher, outboxDurabilidade);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
@@ -77,6 +90,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IVinculoTreinadorAlunoRepository, VinculoTreinadorAlunoRepository>();
         services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
         services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
@@ -218,4 +232,13 @@ public static class InfrastructureExtensions
 
         return services;
     }
+
+    // Pares duráveis (#10): mutação de negócio crítica re-dispatchada pelo worker com retry.
+    // As notificações best-effort dos MESMOS eventos seguem in-memory (não listadas aqui).
+    private static OutboxDurabilityRegistry BuildOutboxDurabilityRegistry() =>
+        new OutboxDurabilityRegistry()
+            .Registrar<PagamentoTreinadorPagoEvent, PagamentoTreinadorPagoHandler>(
+                e => $"evt:PagamentoTreinadorPago:{e.PagamentoTreinadorId}")
+            .Registrar<VinculoAprovadoEvent, VinculoAprovadoCriarAssinaturaAlunoHandler>(
+                e => $"evt:VinculoAprovado:{e.VinculoId}");
 }

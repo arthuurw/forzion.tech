@@ -59,9 +59,11 @@ Pipeline distinto do `/health`: coleta profunda (DB connect real, KPIs, entregab
 | KPIs | `IncluirKpis` | Treinadores/Alunos ativos, NovasContas24h, Pagamentos Pendentes/Falhos, AssinaturasAtivas — 6 COUNT sequenciais (DbContext NÃO é thread-safe → sem `Task.WhenAll`; decisão comentada no código) |
 | Entregabilidade | `IncluirEntregabilidade` | últimos 24h via `IEmailDeliveryLogRepository`: Total, Entregues (`email.delivered`), Bounces (`email.bounced`), Spam (`email.complained`/`email.spam_complaint`) — ver [specification-email] |
 | Erros | `IncluirErros` | `error_logs` últimos 24h: Total + até `MaxAmostrasErro=10` amostras (`OcorridoEm`/`Nivel`/`Origem`/`Mensagem`) — alimentado pelo sink §1 |
+| Outbox | `IncluirErros` (mesma flag) | estado do `outbox_efeitos`: contagem por status (`Pendente`/`Processando`/`Concluido`/`Falhou`) via `IOutboxRepository.ContarPorStatusAsync` + até `MaxAmostrasOutbox=10` amostras dos `Falhou` (`Id`/`Tipo`/`Tentativas`/`UltimoErro`/`CriadoEm`) via `ListarPorStatusAsync`. Reusa a flag `IncluirErros` (sinal de falha operacional) — sem coluna/flag dedicada (evita migração de `HealthReportConfig`). Ver [specification-backend] §3.1 (mecanismo outbox). |
 
 - `Ambiente` ← `ASPNETCORE_ENVIRONMENT` (`"Unknown"` fallback). `CapturadoEm` ← `TimeProvider` UTC.
-- `StatusGeral` (`DerivarStatus`): `!bancoAcessivel → Falha`; `erros.Total > 0 → Degradado`; senão `Ok` (enum `StatusSaude`).
+- `StatusGeral` (`DerivarStatus`): `!bancoAcessivel → Falha`; `erros.Total > 0` OU `outbox.Falhou > 0 → Degradado`; senão `Ok` (enum `StatusSaude`).
+- Email `EmailTemplates.RelatorioSaude` renderiza `SecaoOutbox` (tabela de contagens + lista de falhas terminais com `UltimoErro` HTML-escapado). Outbox null (flag off) → seção omitida.
 
 ### Sender
 - `Infrastructure/Health/HealthReportSender.cs` (`IHealthReportSender.EnviarAsync`). Assunto `[forzion.tech] Relatório de saúde — {Ambiente} ({StatusGeral})`; HTML via `EmailTemplates.RelatorioSaude(report)`. Itera destinatários; falha de envio individual → `LogError` (não aborta os demais). Ver [specification-email].
