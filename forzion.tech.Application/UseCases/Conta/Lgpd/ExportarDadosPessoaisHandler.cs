@@ -194,7 +194,11 @@ public class ExportarDadosPessoaisHandler(
         {
             var alunoId = alunoDto.AlunoId;
 
-            // Assinaturas e pagamentos — derive vinculos from each assinatura's VinculoId.
+            // All bonds regardless of status — a pending bond with no subscription must appear.
+            var todosVinculos = await vinculoRepository
+                .ListarTodosPorAlunoAsync(alunoId, cancellationToken).ConfigureAwait(false);
+            vinculos.AddRange(todosVinculos.Select(MapVinculo));
+
             var assinaturasAluno = await assinaturaAlunoRepository
                 .ListarPorAlunoAsync(alunoId, cancellationToken).ConfigureAwait(false);
 
@@ -205,11 +209,6 @@ public class ExportarDadosPessoaisHandler(
                 var pags = await pagamentoRepository
                     .ListarPorAssinaturaAlunoAsync(a.Id, cancellationToken).ConfigureAwait(false);
                 pagamentos.AddRange(pags.Select(MapPagamento));
-
-                var vinculo = await vinculoRepository
-                    .ObterPorIdAsync(a.VinculoId, cancellationToken).ConfigureAwait(false);
-                if (vinculo is not null && vinculos.All(v => v.VinculoId != vinculo.Id))
-                    vinculos.Add(MapVinculo(vinculo));
             }
 
             var (treinosItems, _) = await treinoRepository
@@ -224,9 +223,10 @@ public class ExportarDadosPessoaisHandler(
         {
             var treinadorId = treinadorDto.TreinadorId;
 
-            var vinculosAtivos = await vinculoRepository
-                .ListarAtivosPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
-            vinculos.AddRange(vinculosAtivos.Select(MapVinculo));
+            // All bonds regardless of status — Inativo/AguardandoAprovacao must appear.
+            var todosVinculos = await vinculoRepository
+                .ListarTodosPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+            vinculos.AddRange(todosVinculos.Select(MapVinculo));
 
             var pacotesTreinador = await pacoteRepository
                 .ListarPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
@@ -254,18 +254,19 @@ public class ExportarDadosPessoaisHandler(
             whatsAppLogs.AddRange(waLogs.Select(MapWhatsAppLog));
         }
 
+        // Audit is mandatory — a validation failure means the export must not be returned.
         var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.ExportacaoDados,
             realizadoPorId: command.ContaId,
             entidadeId: command.ContaId,
             entidadeTipo: "Conta",
             agora);
-        if (logResult.IsSuccess)
-        {
-            await logAprovacaoRepository
-                .AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
-            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-        }
+        if (logResult.IsFailure)
+            return Result.Failure<DadosPessoaisExport>(logResult.Error!);
+
+        await logAprovacaoRepository
+            .AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         var export = new DadosPessoaisExport(
             Versao: "1.0",

@@ -4,6 +4,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Tests.Builders;
 using Moq;
@@ -67,6 +68,21 @@ public class ExportarDadosPessoaisHandlerTests
         _logAprovacaoRepo.Setup(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()))
                          .Returns(Task.CompletedTask);
 
+    private void SetupAlunoBaseRepos(Aluno aluno) =>
+        _vinculoRepo.Setup(r => r.ListarTodosPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([]);
+
+    private void SetupTreinadorBaseRepos(Treinador treinador)
+    {
+        _vinculoRepo.Setup(r => r.ListarTodosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([]);
+        _pacoteRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync([]);
+        _treinoRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, 1, int.MaxValue,
+                null, null, null, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync((new List<(Treino, string?)>().AsReadOnly() as IReadOnlyList<(Treino, string?)>, 0));
+    }
+
     // ── conta not found ───────────────────────────────────────────────────────
 
     [Fact]
@@ -78,7 +94,7 @@ public class ExportarDadosPessoaisHandlerTests
         var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Type.Should().Be(forzion.tech.Domain.Shared.ErrorType.NotFound);
+        result.Error!.Type.Should().Be(ErrorType.NotFound);
     }
 
     // ── aluno export ──────────────────────────────────────────────────────────
@@ -94,6 +110,7 @@ public class ExportarDadosPessoaisHandlerTests
                   .ReturnsAsync(conta);
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(aluno);
+        SetupAlunoBaseRepos(aluno);
         _assinaturaRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
                        .ReturnsAsync([]);
         _treinoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
@@ -123,26 +140,24 @@ public class ExportarDadosPessoaisHandlerTests
     [Fact]
     public async Task HandleAsync_Aluno_NaoIncluiDadosDeTerceiros()
     {
-        // Vínculos retornam apenas o VinculoId — o nome do treinador NÃO aparece no DTO
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.Aluno);
         var aluno = Aluno.Criar(contaId, "Maria", TestData.Agora).Value;
         var treinadorId = Guid.NewGuid();
         var vinculoId = Guid.NewGuid();
         var assinatura = AssinaturaAluno.Criar(vinculoId, Guid.NewGuid(), treinadorId, aluno.Id, 100m, TestData.Agora).Value;
-
         var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, TestData.Agora).Value;
 
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(conta);
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ListarTodosPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([vinculo]);
         _assinaturaRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
                        .ReturnsAsync([assinatura]);
         _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
                       .ReturnsAsync([]);
-        _vinculoRepo.Setup(r => r.ObterPorIdAsync(assinatura.VinculoId, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(vinculo);
         _treinoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
                    .ReturnsAsync((new List<Treino>().AsReadOnly() as IReadOnlyList<Treino>, 0));
         _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
@@ -162,6 +177,42 @@ public class ExportarDadosPessoaisHandlerTests
         typeof(VinculoExportDto).GetProperty("NomeTreinador").Should().BeNull();
     }
 
+    // ── T7: aluno com vínculo pendente sem assinatura aparece no export ────────
+
+    [Fact]
+    public async Task HandleAsync_Aluno_VinculoPendenteSemAssinatura_Aparece()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Aluno, "aluno@test.com");
+        var aluno = Aluno.Criar(contaId, "Aluno Pendente", TestData.Agora).Value;
+        var treinadorId = Guid.NewGuid();
+
+        var vinculoPendente = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, TestData.Agora).Value;
+        vinculoPendente.Status.Should().Be(VinculoStatus.AguardandoAprovacao);
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ListarTodosPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([vinculoPendente]);
+        _assinaturaRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync([]);
+        _treinoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync((new List<Treino>().AsReadOnly() as IReadOnlyList<Treino>, 0));
+        _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync([]);
+        SetupEmailLogs("aluno@test.com");
+        SetupLogAprovacao();
+
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Vinculos.Should().HaveCount(1);
+        result.Value.Vinculos[0].Status.Should().Be(VinculoStatus.AguardandoAprovacao.ToString());
+        result.Value.Vinculos[0].TreinadorId.Should().Be(treinadorId);
+    }
+
     // ── treinador export ──────────────────────────────────────────────────────
 
     [Fact]
@@ -175,13 +226,7 @@ public class ExportarDadosPessoaisHandlerTests
                   .ReturnsAsync(conta);
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                       .ReturnsAsync(treinador);
-        _vinculoRepo.Setup(r => r.ListarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync([]);
-        _pacoteRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
-                   .ReturnsAsync([]);
-        _treinoRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, 1, int.MaxValue,
-                null, null, null, It.IsAny<CancellationToken>()))
-                   .ReturnsAsync((new List<(Treino, string?)>().AsReadOnly() as IReadOnlyList<(Treino, string?)>, 0));
+        SetupTreinadorBaseRepos(treinador);
         SetupEmailLogs("treinador@test.com");
         SetupLogAprovacao();
 
@@ -197,7 +242,74 @@ public class ExportarDadosPessoaisHandlerTests
         export.Treinos.Should().BeEmpty();
     }
 
-    // ── audit log ─────────────────────────────────────────────────────────────
+    // ── T7: treinador com vínculos inativos e pendentes aparece no export ─────
+
+    [Fact]
+    public async Task HandleAsync_Treinador_VinculosInativosPendentes_Aparecem()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Treinador, "coach@test.com");
+        var treinador = Treinador.Criar(contaId, "Coach", TestData.Agora).Value;
+
+        var alunoId1 = Guid.NewGuid();
+        var alunoId2 = Guid.NewGuid();
+        var vinculoInativo = VinculoTreinadorAluno.Criar(treinador.Id, alunoId1, TestData.Agora).Value;
+        vinculoInativo.Inativar(TestData.Agora);
+        var vinculoPendente = VinculoTreinadorAluno.Criar(treinador.Id, alunoId2, TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(treinador);
+        _vinculoRepo.Setup(r => r.ListarTodosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([vinculoInativo, vinculoPendente]);
+        _pacoteRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync([]);
+        _treinoRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, 1, int.MaxValue,
+                null, null, null, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync((new List<(Treino, string?)>().AsReadOnly() as IReadOnlyList<(Treino, string?)>, 0));
+        SetupEmailLogs("coach@test.com");
+        SetupLogAprovacao();
+
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Vinculos.Should().HaveCount(2);
+        result.Value.Vinculos.Should().Contain(v => v.Status == VinculoStatus.Inativo.ToString());
+        result.Value.Vinculos.Should().Contain(v => v.Status == VinculoStatus.AguardandoAprovacao.ToString());
+    }
+
+    // ── T7: falha no log de auditoria retorna Failure sem exportar dados ──────
+
+    [Fact]
+    public async Task HandleAsync_FalhaNoLog_RetornaFailureSemExport()
+    {
+        // Guid.Empty as ContaId triggers LogAprovacao.Registrar validation failure (realizadoPorId invalid).
+        var contaId = Guid.Empty;
+        var conta = CriarConta(TipoConta.Aluno, "log-fail@test.com");
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Log Fail", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ListarTodosPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([]);
+        _assinaturaRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync([]);
+        _treinoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync((new List<Treino>().AsReadOnly() as IReadOnlyList<Treino>, 0));
+        _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync([]);
+        SetupEmailLogs("log-fail@test.com");
+
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+
+        result.IsFailure.Should().BeTrue();
+        // No audit persistence and no export returned.
+        _logAprovacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 
     // ── aluno export TOTALMENTE populado — exercita todos os Map* e getters de DTO ──
 
@@ -220,10 +332,9 @@ public class ExportarDadosPessoaisHandlerTests
             observacoesAdicionais: "Treina pela manhã").Value;
 
         var treinadorId = Guid.NewGuid();
-        var vinculoId = Guid.NewGuid();
         var pacoteId = Guid.NewGuid();
-        var assinatura = AssinaturaAluno.Criar(vinculoId, pacoteId, treinadorId, aluno.Id, 149.90m, TestData.Agora).Value;
         var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, TestData.Agora).Value;
+        var assinatura = AssinaturaAluno.Criar(vinculo.Id, pacoteId, treinadorId, aluno.Id, 149.90m, TestData.Agora).Value;
 
         var pagamento = Pagamento.Criar(assinatura.Id, 149.90m, TestData.Agora, MetodoPagamento.Cartao).Value;
         pagamento.MarcarPago(TestData.Agora);
@@ -236,9 +347,9 @@ public class ExportarDadosPessoaisHandlerTests
 
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ListarTodosPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync([vinculo]);
         _assinaturaRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync([assinatura]);
         _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync([pagamento]);
-        _vinculoRepo.Setup(r => r.ObterPorIdAsync(assinatura.VinculoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
         _treinoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
                    .ReturnsAsync((new List<Treino> { treino }.AsReadOnly() as IReadOnlyList<Treino>, 1));
         _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
@@ -289,7 +400,7 @@ public class ExportarDadosPessoaisHandlerTests
         export.Pagamentos[0].MetodoPagamento.Should().Be(MetodoPagamento.Cartao.ToString());
         export.Pagamentos[0].DataPagamento.Should().Be(TestData.Agora);
 
-        // Vinculo DTO — MapVinculo
+        // Vinculo DTO — MapVinculo (via ListarTodosPorAlunoAsync)
         export.Vinculos.Should().HaveCount(1);
         export.Vinculos[0].VinculoId.Should().Be(vinculo.Id);
         export.Vinculos[0].TreinadorId.Should().Be(treinadorId);
@@ -337,7 +448,7 @@ public class ExportarDadosPessoaisHandlerTests
 
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        _vinculoRepo.Setup(r => r.ListarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync([vinculo]);
+        _vinculoRepo.Setup(r => r.ListarTodosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync([vinculo]);
         _pacoteRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync([pacote]);
         _treinoRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, 1, int.MaxValue, null, null, null, It.IsAny<CancellationToken>()))
                    .ReturnsAsync((new List<(Treino, string?)> { (treino, "Aluno X") }.AsReadOnly() as IReadOnlyList<(Treino, string?)>, 1));
@@ -377,6 +488,8 @@ public class ExportarDadosPessoaisHandlerTests
         export.WhatsAppDeliveryLogs.Should().ContainSingle().Which.EventType.Should().Be("delivered");
     }
 
+    // ── audit log gravado em sucesso ──────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_Aluno_GravaLogAuditoria()
     {
@@ -388,6 +501,7 @@ public class ExportarDadosPessoaisHandlerTests
                   .ReturnsAsync(conta);
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(aluno);
+        SetupAlunoBaseRepos(aluno);
         _assinaturaRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
                        .ReturnsAsync([]);
         _treinoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
