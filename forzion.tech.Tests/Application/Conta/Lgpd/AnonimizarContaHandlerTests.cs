@@ -17,6 +17,7 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
+    private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IAssinanteRepository> _assinanteRepo = new();
     private readonly Mock<IEmailDeliveryLogRepository> _emailLogRepo = new();
@@ -45,12 +46,17 @@ public class AnonimizarContaHandlerTests
                   .Returns(Task.CompletedTask);
         _assinanteRepo.Setup(r => r.AnonimizarPorAlunoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                       .Returns(Task.CompletedTask);
+        _vinculoRepo.Setup(r => r.ListarAtivosEPendentesPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([]);
+        _execucaoRepo.Setup(r => r.AnonimizarObservacoesPorAlunoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                     .Returns(Task.CompletedTask);
 
         _handler = new AnonimizarContaHandler(
             _contaRepo.Object,
             _alunoRepo.Object,
             _treinadorRepo.Object,
             _vinculoRepo.Object,
+            _execucaoRepo.Object,
             _assinanteRepo.Object,
             _emailLogRepo.Object,
             _waLogRepo.Object,
@@ -330,5 +336,98 @@ public class AnonimizarContaHandlerTests
             Times.Once);
 
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ── T6: bond inactivation ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task HandleAsync_AlunoComVinculosAtivosEPendentes_InativaVinculosAntesDeCommit()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Vinculado", TestData.Agora).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(Guid.NewGuid(), aluno.Id, TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ListarAtivosEPendentesPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([vinculo]);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        vinculo.Status.Should().Be(VinculoStatus.Inativo);
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlunoSemVinculos_SemErro()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Sem Vinculo", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+        // default stub returns empty list
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    // ── T6: execução observacao scrub ─────────────────────────────────────────
+
+    [Fact]
+    public async Task HandleAsync_Aluno_ScrubaObservacoesExecucaoAntesDeCommit()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "ExecAluno", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        var commitCallOrder = new List<string>();
+        _execucaoRepo.Setup(r => r.AnonimizarObservacoesPorAlunoIdAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                     .Callback(() => commitCallOrder.Add("scrub"))
+                     .Returns(Task.CompletedTask);
+        _uow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => commitCallOrder.Add("commit"))
+            .Returns(Task.CompletedTask);
+
+        await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        _execucaoRepo.Verify(r => r.AnonimizarObservacoesPorAlunoIdAsync(aluno.Id, It.IsAny<CancellationToken>()), Times.Once);
+        // scrub must precede commit
+        commitCallOrder.Should().Equal("scrub", "commit");
+    }
+
+    // ── T6: audit log fail-fast ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task HandleAsync_LogAprovacaoFalha_RetornaFailureSemCommit()
+    {
+        // LogAprovacao.Registrar only fails on invalid args; use Guid.Empty to force it.
+        var contaId = Guid.Empty;
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Fail Log", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        // ContaId == Guid.Empty → LogAprovacao.Registrar produces failure (entidadeId guard)
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsFailure.Should().BeTrue();
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -22,6 +22,7 @@ public class AnonimizarContaHandler(
     IAlunoRepository alunoRepository,
     ITreinadorRepository treinadorRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
+    IExecucaoTreinoRepository execucaoTreinoRepository,
     IAssinanteRepository assinanteRepository,
     IEmailDeliveryLogRepository emailDeliveryLogRepository,
     IWhatsAppDeliveryLogRepository whatsAppDeliveryLogRepository,
@@ -82,6 +83,19 @@ public class AnonimizarContaHandler(
                 oldTelefone = aluno.Telefone;
                 alunoIdParaAssinante = aluno.Id;
 
+                var vinculos = await vinculoRepository
+                    .ListarAtivosEPendentesPorAlunoAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                foreach (var vinculo in vinculos)
+                {
+                    // Ativo/AguardandoAprovacao expected; Inativar only fails on Inativo (guard already filtered by repo).
+                    var inativarResult = vinculo.Inativar(agora);
+                    if (inativarResult.IsFailure)
+                        return inativarResult;
+                }
+
+                await execucaoTreinoRepository
+                    .AnonimizarObservacoesPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+
                 var alunoResult = aluno.Anonimizar(agora);
                 if (alunoResult.IsFailure)
                     return alunoResult;
@@ -135,9 +149,10 @@ public class AnonimizarContaHandler(
             entidadeId: command.ContaId,
             entidadeTipo: "Conta",
             agora);
-        if (logResult.IsSuccess)
-            await logAprovacaoRepository
-                .AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+        await logAprovacaoRepository
+            .AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         // Single CommitAsync — domain events dispatched here.
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
