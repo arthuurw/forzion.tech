@@ -26,6 +26,8 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _uow = new();
     private readonly Mock<TimeProvider> _timeProvider = new();
+    private readonly Mock<IUserContext> _userContext = new();
+    private readonly Mock<ITokenRevogadoRepository> _tokenRevogadoRepo = new();
 
     private readonly AnonimizarContaHandler _handler;
 
@@ -63,7 +65,9 @@ public class AnonimizarContaHandlerTests
             _logAprovacaoRepo.Object,
             _passwordHasher.Object,
             _uow.Object,
-            _timeProvider.Object);
+            _timeProvider.Object,
+            _userContext.Object,
+            _tokenRevogadoRepo.Object);
     }
 
     private static Conta CriarContaComHash(TipoConta tipo, string email = "user@test.com") =>
@@ -429,5 +433,52 @@ public class AnonimizarContaHandlerTests
 
         result.IsFailure.Should().BeTrue();
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SelfComJtiValido_RevogaTokenAposCommit()
+    {
+        var contaId = Guid.NewGuid();
+        var jti = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Self Logout", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+        _userContext.Setup(u => u.Jti).Returns(jti);
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(TestData.Agora.AddHours(1));
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _tokenRevogadoRepo.Verify(
+            r => r.AdicionarAsync(It.Is<TokenRevogado>(t => t.Jti == jti), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AdminComJti_NaoRevogaTokenDoOperador()
+    {
+        var adminId = Guid.NewGuid();
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Target", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+        _userContext.Setup(u => u.Jti).Returns(Guid.NewGuid());
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(TestData.Agora.AddHours(1));
+
+        var result = await _handler.HandleAsync(
+            new AnonimizarContaCommand(contaId, adminId, SenhaAtual: null));
+
+        result.IsSuccess.Should().BeTrue();
+        _tokenRevogadoRepo.Verify(
+            r => r.AdicionarAsync(It.IsAny<TokenRevogado>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

@@ -29,7 +29,9 @@ public class AnonimizarContaHandler(
     ILogAprovacaoRepository logAprovacaoRepository,
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IUserContext userContext,
+    ITokenRevogadoRepository tokenRevogadoRepository)
 {
     public virtual Task<Result> HandleAsync(
         AnonimizarContaCommand command,
@@ -137,12 +139,6 @@ public class AnonimizarContaHandler(
             await whatsAppDeliveryLogRepository
                 .AnonimizarPorTelefoneAsync(oldTelefone, cancellationToken).ConfigureAwait(false);
 
-        // Session/token prevention: PasswordHash already cleared by
-        // Conta.Anonimizar — login impossible; tokens still valid until
-        // their natural expiry (JWT stateless). To force immediate logout,
-        // callers may revoke the current jti separately (outside this handler).
-        // AnonimizadaEm is checked on login if desired (middleware opt-in).
-
         var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AnonimizacaoConta,
             realizadoPorId: command.RealizadoPorId,
@@ -157,6 +153,40 @@ public class AnonimizarContaHandler(
         // Single CommitAsync — domain events dispatched here.
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
+        await RevogarTokenDoTitularSeSelfAsync(command, agora, cancellationToken).ConfigureAwait(false);
+
         return Result.Success();
+    }
+
+    // PasswordHash já foi zerado por Conta.Anonimizar (login impossível), mas o JWT é stateless
+    // e continuaria válido até expirar. Self-service: revoga o jti do próprio titular pós-commit
+    // para forçar logout imediato. Admin/sistema anonimizando outra conta não têm o jti do titular
+    // (userContext é o operador) — nada a revogar aqui.
+    private async Task RevogarTokenDoTitularSeSelfAsync(
+        AnonimizarContaCommand command, DateTime agora, CancellationToken cancellationToken)
+    {
+        if (command.RealizadoPorId != command.ContaId)
+            return;
+
+        var jti = userContext.Jti;
+        var expiraEm = userContext.TokenExpiraEm;
+        if (jti == Guid.Empty || expiraEm <= agora)
+            return;
+
+        var tokenResult = TokenRevogado.Criar(jti, expiraEm, agora);
+        if (tokenResult.IsFailure)
+            return;
+
+        try
+        {
+            await tokenRevogadoRepository.AdicionarAsync(tokenResult.Value, cancellationToken).ConfigureAwait(false);
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (
+            ex.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true ||
+            ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            // jti já revogado (logout simultâneo) — idempotente.
+        }
     }
 }

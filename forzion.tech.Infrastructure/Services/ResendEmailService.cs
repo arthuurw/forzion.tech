@@ -21,6 +21,15 @@ public sealed class ResendEmailService(HttpClient http, string apiKey, string ap
         return $"{nome} <{endereco}>";
     }
 
+    // Mantém o domínio visível (diagnóstico de entrega) e oculta o identificador (PII/LGPD).
+    private static string MascararEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return "(vazio)";
+        var arroba = email.IndexOf('@');
+        if (arroba <= 0) return "***";
+        return $"{email[0]}***@{email[(arroba + 1)..]}";
+    }
+
     public async Task EnviarAsync(string para, string assunto, string htmlBody, CancellationToken cancellationToken = default)
     {
         var payload = new
@@ -47,7 +56,7 @@ public sealed class ResendEmailService(HttpClient http, string apiKey, string ap
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "Falha ao enviar e-mail para {Para} — assunto: {Assunto}", para, assunto);
+            logger.LogError(ex, "Falha ao enviar e-mail para {Para} — assunto: {Assunto}", MascararEmail(para), assunto);
         }
     }
 }

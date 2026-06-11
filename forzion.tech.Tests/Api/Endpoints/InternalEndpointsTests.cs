@@ -29,7 +29,8 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             Mock.Of<IVinculoTreinadorAlunoRepository>(), Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IAssinanteRepository>(), Mock.Of<IEmailDeliveryLogRepository>(),
             Mock.Of<IWhatsAppDeliveryLogRepository>(), Mock.Of<ILogAprovacaoRepository>(),
-            Mock.Of<IPasswordHasher>(), Mock.Of<IUnitOfWork>(), TimeProvider.System);
+            Mock.Of<IPasswordHasher>(), Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<IUserContext>(), Mock.Of<ITokenRevogadoRepository>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

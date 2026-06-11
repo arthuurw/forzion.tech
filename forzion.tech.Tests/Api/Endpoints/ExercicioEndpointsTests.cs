@@ -28,7 +28,6 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
 {
     private readonly ExercicioWebFactory _factory;
     private static readonly Guid TreinadorId = Guid.NewGuid();
-    private static readonly Guid UserId = Guid.NewGuid();
 
     public ExercicioEndpointsTests(ExercicioWebFactory factory)
     {
@@ -39,7 +38,15 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Test", UserId.ToString());
+            new AuthenticationHeaderValue("Test", "treinador");
+        return client;
+    }
+
+    private HttpClient CriarClienteAluno()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Test", "aluno");
         return client;
     }
 
@@ -110,6 +117,21 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task Post_Criar_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().PostAsJsonAsync("/exercicios",
+            new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Get_Listar_AlunoRole_Retorna403()
+    {
+        var response = await CriarClienteAluno().GetAsync("/exercicios");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     public class ExercicioWebFactory : WebApplicationFactory<Program>
     {
         private static readonly IValidator<CriarExercicioCommand> CriarValidator =
@@ -165,8 +187,24 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
             if (string.IsNullOrEmpty(header))
                 return Task.FromResult(AuthenticateResult.Fail("Sem token"));
 
-            var userId = header.Replace("Test ", "");
-            var claims = new[] { new Claim("sub", userId) };
+            var param = header.Replace("Test ", "");
+
+            var tipoConta = param switch
+            {
+                "treinador" => "Treinador",
+                "aluno" => "Aluno",
+                "admin" => "SystemAdmin",
+                _ => null,
+            };
+            if (tipoConta is null)
+                return Task.FromResult(AuthenticateResult.Fail("Token inválido"));
+
+            var claims = new[]
+            {
+                new Claim("sub", Guid.NewGuid().ToString()),
+                new Claim("tipo_conta", tipoConta),
+                new Claim("perfil_id", TreinadorId.ToString()),
+            };
             var identity = new ClaimsIdentity(claims, "Test");
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, "Test");
