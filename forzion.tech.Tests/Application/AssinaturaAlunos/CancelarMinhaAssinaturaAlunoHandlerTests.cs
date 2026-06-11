@@ -7,6 +7,7 @@ using forzion.tech.Domain.Events;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssinaturaAluno;
 using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application.AssinaturaAlunos;
@@ -19,6 +20,10 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<CancelarMinhaAssinaturaAlunoHandler>> _logger = new();
     private readonly Mock<ILogger<ReembolsoArrependimentoService>> _reembolsoLogger = new();
+
+    // Clock fixo: a janela de arrependimento (7 dias) é (agora - DataPagamento); com relógio real
+    // um pagamento setado em agora.AddDays(-7) ficava na borda e oscilava entre dentro/fora.
+    private readonly FakeTimeProvider _time = new(new DateTimeOffset(TestData.Agora, TimeSpan.Zero));
     private readonly CancelarMinhaAssinaturaAlunoHandler _handler;
 
     private static readonly Guid AlunoId = TestData.NextGuid();
@@ -31,7 +36,7 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
             _stripeService.Object, _reembolsoLogger.Object);
         _handler = new CancelarMinhaAssinaturaAlunoHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, reembolsoService,
-            _unitOfWork.Object, TimeProvider.System, _logger.Object);
+            _unitOfWork.Object, _time, _logger.Object);
     }
 
     private static AssinaturaAluno CriarAtiva(DateTime? dataInicio = null)
@@ -116,7 +121,8 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_DentroDe7Dias_CriaReembolsoComReverterTransferencia()
     {
-        var inicio = DateTime.UtcNow.AddDays(-2);
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var inicio = agora.AddDays(-2);
         var assinatura = CriarAtiva(inicio);
         var pagamento = Pagamento.Criar(assinatura.Id, 150m, inicio).Value;
         pagamento.DefinirDadosPix("pi_cdc", "qr", "url", inicio.AddHours(1), inicio);
@@ -138,7 +144,8 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_DentroDe7Dias_ReembolsaPagamentoPagoMaisAntigo()
     {
-        var inicio = DateTime.UtcNow.AddDays(-3);
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var inicio = agora.AddDays(-3);
         var assinatura = CriarAtiva(inicio);
 
         var antigo = Pagamento.Criar(assinatura.Id, 150m, inicio).Value;
@@ -163,7 +170,8 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_PagamentoPagoForaDoPrazo_NaoCriaReembolso()
     {
-        var inicio = DateTime.UtcNow.AddDays(-30);
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var inicio = agora.AddDays(-30);
         var assinatura = CriarAtiva(inicio);
         var pagamento = Pagamento.Criar(assinatura.Id, 150m, inicio).Value;
         pagamento.DefinirDadosPix("pi_antigo", "qr", "url", inicio.AddHours(1), inicio);
@@ -184,8 +192,9 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_PagamentoPagoMasAssinaturaAntiga_JanelaContaDoPagamentoNaoDaCriacao()
     {
-        var dataInicio = DateTime.UtcNow.AddDays(-20);
-        var dataPagamento = DateTime.UtcNow.AddDays(-2);
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var dataInicio = agora.AddDays(-20);
+        var dataPagamento = agora.AddDays(-2);
         var assinatura = CriarAtiva(dataInicio);
         var pagamento = Pagamento.Criar(assinatura.Id, 150m, dataInicio).Value;
         pagamento.DefinirDadosPix("pi_pagamento_recente", "qr", "url", dataPagamento.AddHours(1), dataInicio);
@@ -205,7 +214,8 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_FalhaNoReembolso_CancelaMesmoAssim()
     {
-        var inicio = DateTime.UtcNow.AddDays(-1);
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var inicio = agora.AddDays(-1);
         var assinatura = CriarAtiva(inicio);
         var pagamento = Pagamento.Criar(assinatura.Id, 150m, inicio).Value;
         pagamento.DefinirDadosPix("pi_falha", "qr", "url", inicio.AddHours(1), inicio);
@@ -236,7 +246,8 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_CommitFalha_NaoReembolsa()
     {
-        var inicio = DateTime.UtcNow.AddDays(-1);
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var inicio = agora.AddDays(-1);
         var assinatura = CriarAtiva(inicio);
         var pagamento = Pagamento.Criar(assinatura.Id, 150m, inicio).Value;
         pagamento.DefinirDadosPix("pi_commit_falha", "qr", "url", inicio.AddHours(1), inicio);
@@ -258,7 +269,8 @@ public class CancelarMinhaAssinaturaAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_DentroDe7Dias_SemPagamentoPago_NaoReembolsa()
     {
-        var inicio = DateTime.UtcNow.AddDays(-2);
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var inicio = agora.AddDays(-2);
         var assinatura = CriarAtiva(inicio);
         var pendente = Pagamento.Criar(assinatura.Id, 150m, inicio).Value;
         pendente.DefinirDadosPix("pi_pend", "qr", "url", inicio.AddHours(1), inicio);
