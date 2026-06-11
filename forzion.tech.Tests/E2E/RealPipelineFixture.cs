@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Seed;
+using forzion.tech.Infrastructure.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -97,6 +98,17 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
         await db.Database.MigrateAsync();
         var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
         await seeder.SeedAsync();
+    }
+
+    // O worker do outbox (OutboxProcessorService) é desligado no ambiente Test, então
+    // efeitos duráveis (ex.: criar AssinaturaAluno em VinculoAprovado) ficam pendentes na
+    // tabela até alguém drenar. Os testes invocam o que o worker faria em produção; o laço
+    // cobre efeitos em cascata (um handler durável que enfileira outro).
+    public async Task DrenarOutboxAsync()
+    {
+        using var scope = Services.CreateScope();
+        var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
+        while (await processor.ProcessarLoteAsync() > 0) { }
     }
 
     async Task IAsyncLifetime.DisposeAsync()

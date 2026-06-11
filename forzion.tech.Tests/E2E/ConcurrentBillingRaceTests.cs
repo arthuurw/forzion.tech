@@ -133,6 +133,9 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
             $"/treinador/vinculos/{vinculoId}/aprovar", new { pacoteId, trarFichas = false });
         aprovar.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        // VinculoAprovado → criar assinatura é handler DURÁVEL (outbox); materializa só ao drenar.
+        await fixture.DrenarOutboxAsync();
+
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var assinatura = await db.AssinaturaAlunos.FirstAsync(a => a.AlunoId == alunoId);
