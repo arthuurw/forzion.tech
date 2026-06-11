@@ -181,7 +181,7 @@ Catálogo de eventos × produtores em [specification-model].
 Idempotente (insere só o que falta). Contagens (grupos/exercícios/planos/admin) em [specification-db] §DICAS. Notas Application: exercícios globais nascem `TreinadorId=null`; SuperAdmin via `Seed:AdminEmail` (default `admin@forzion.tech`) + `Seed:AdminPassword` obrigatório (throw se ausente; conta criada já com e-mail verificado, eventos limpos). Roda só em Development/Homolog (Program.cs).
 
 ### Outros
-- `Infrastructure/Logging/ErrorLogDbSinkProvider`: `ILoggerProvider` que persiste erros (registrado fora de Test).
+- `Infrastructure/Logging/ErrorLogDbSinkProvider`: `ILoggerProvider` que persiste erros (registrado fora de Test como singleton concreto + forward p/ `ILoggerProvider`). O dreno no shutdown é ligado por `ErrorLogDbSinkDrenoService` (`IHostedService`) via `RegistrarDrenoNoShutdown(IHostApplicationLifetime)` — NÃO no ctor (injetar lifetime no ctor de um `ILoggerProvider` fecha ciclo de DI que aborta `host.Build()`). Detalhe em [specification-observability].
 - `Infrastructure/Health/` (`HealthReportCollector`/`HealthReportSender`), `Persistence/AppDbContextFactory` (design-time para migrations).
 
 ## 6. CONVENÇÕES
