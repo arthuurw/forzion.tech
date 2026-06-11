@@ -4,7 +4,6 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança em: provedor, gate Null/real, chaves de config, payload Meta (text/template), handlers/notifiers/templates, decorator, webhook, paridade email→WhatsApp.
-- Vive em `specs/` (versionado; commitar). NÃO `.specs/`.
 - Mudança de tabela → [specification-db]. Novo domain event → [specification-model]. Handler de e-mail correlato → [specification-email].
 
 ## STACK & GATE
@@ -74,7 +73,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 - `VinculoPendenteCriadoEvent` tem TAMBÉM handler de e-mail p/ treinador (`VinculoPendenteCriadoEmailTreinadorHandler`) → fecha o gap reverso. Ver [specification-email].
 - Destinatário: `aluno.Telefone` / `treinador.Telefone`. **Sem fallback** (`contas` não tem telefone) → telefone null = skip silencioso.
 - **Gating por tier** (`IPlanoNotificationPolicy`): handlers **OPERACIONAIS** (pagamento criado/falhou/estornado/disputa, assinatura criada/cancelada×2, vínculo aprovado/pendente, inadimplência, aluno-inativado) checam `canais.WhatsApp` antes de enviar — WhatsApp só enviado se treinador tem tier≥ProPlus. **UNGATED** (sempre enviam, sem consulta a plano): `TreinadorAprovadoWhatsAppHandler`, `TreinadorReprovadoWhatsAppHandler`, `TreinadorInativadoWhatsAppHandler`, `AlunoRegistradoWhatsAppHandler` (bem-vindo). Cross-ref `TierPlanoExtensions` [specification-model], `IPlanoNotificationPolicy` [specification-backend].
-- **Gating por MODO DE PAGAMENTO (Externo = sem WhatsApp de PAGAMENTO)**: ortogonal ao gating por tier. Com `treinador.ModoPagamentoAluno == Externo`, NENHUMA `AssinaturaAluno`/`Pagamento` do aluno é criada — gate NO PONTO DE CRIAÇÃO (`VinculoAprovadoCriarAssinaturaAlunoHandler` retorna cedo se Externo; primário em `AprovarVinculoHandler`), NÃO espalhado pelos notifiers. Logo `PagamentoCriadoEvent`/`PagamentoFalhouEvent`/`PagamentoEstornadoEvent`/`PagamentoEmDisputaEvent`/`AssinaturaAlunoCriadaEvent`/`AssinaturaAlunoMarcadaInadimplenteEvent`/`AssinaturaAlunoReativadaEvent`/`AssinaturaAlunoCanceladaEvent` NUNCA são emitidos → os notifiers WhatsApp `cobranca_disponivel`/`cobranca_falhou`/`pagamento_estornado`/`pagamento_em_disputa`/`assinatura_criada`/`assinatura_inadimplente`/`assinatura_reativada`/`assinatura_cancelada`/`aluno_cancelou_assinatura` estruturalmente não disparam no Externo (par dos e-mails). NÃO afeta bem-vindo/vínculo aprovado-pendente/ciclo de conta do treinador (independem de billing). Provado por `VinculoApprovalCrossAggregateTests.AprovarVinculo_ModoExterno_AceitaSemOnboarding_NaoGeraBillingNemNotificacao`. Ver `ModoPagamentoAluno` [specification-model], paralelo (e-mail) em [specification-email].
+- **Gating por MODO DE PAGAMENTO (Externo)**: ortogonal ao gating por tier; idêntico ao e-mail. `ModoPagamentoAluno==Externo` ⇒ nenhuma `AssinaturaAluno`/`Pagamento` criada (gate no PONTO DE CRIAÇÃO) ⇒ eventos de billing nunca emitidos ⇒ notifiers WhatsApp de pagamento/assinatura estruturalmente não disparam. Não afeta bem-vindo/vínculo/ciclo de conta. Mecanismo canônico + lista de eventos + teste: [specification-email] §Gating-MODO (par WhatsApp).
 - **Verificação de conta adiada no cadastro PAGO**: o WhatsApp não tem fluxo de verificação de conta (verify é channel-bound a e-mail — ver § GAPS). Mas a regra correlata existe no e-mail: treinador plano pago só recebe a verificação após `payment_intent.succeeded`/`plano_treinador` (`ContaRegistradaEvent` adiado p/ `FinalizarCadastroAsync`). Detalhe em [specification-email] §Verificação; pagamento em [specification-stripe].
 
 ### Webhook de status (Meta → app)
@@ -89,7 +88,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 ## CUSTO & MODELO META (per-message)
 - Desde 01/07/2025: por mensagem, cobra quando *template* é entregue. Categorias marketing / utility / authentication / service. Utility grátis na janela 24h; service grátis.
 - Notifier usa `type:template` → entrega **fora da janela** (corrigido vs `type:text` anterior). ⚠️ **DEPENDÊNCIA EXTERNA**: cada template (16 nomes abaixo) precisa ser **criado e aprovado no Meta Business Manager** (categoria utility/auth, idioma pt_BR, body com variáveis posicionais na ordem do catálogo). Sem aprovação, a Meta rejeita o envio. Ação manual de ops — não automatizável via código.
-- Templates (snake_case): aluno `cobranca_disponivel`,`cobranca_falhou`,`pagamento_estornado`,`assinatura_inadimplente`,`assinatura_reativada`,`assinatura_cancelada`,`bem_vindo_aluno`,`assinatura_criada`,`aluno_inativado`,`vinculo_aprovado`; treinador `treinador_aprovado`,`treinador_reprovado`,`treinador_inativado`,`aluno_cancelou_assinatura`,`pagamento_em_disputa`,`novo_aluno_pendente`.
+- Os 16 templates (nomes + copy + ordem de vars) no §TEMPLATES — COPY pt_BR.
 - Brasil base (USD/msg, valores ilustrativos ~2026): marketing $0.0625 · auth $0.0315 · utility menor + volume. Confirmar rate card atual no WhatsApp Manager.
 
 ## TEMPLATES — COPY pt_BR P/ APROVAÇÃO META

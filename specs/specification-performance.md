@@ -3,7 +3,7 @@
 DOC PARA AGENTES. Armadilhas de PERFORMANCE no backend .NET/EF Core/PG que reviews pegam tarde (só sob carga). Perf de frontend (Web Vitals/Lighthouse/perf budgets) → [specification-observability]. Ler antes de query nova, endpoint de listagem, ou handler com I/O. Formato denso. ENFORCEMENT É FRACO hoje (poucos gates) — marcado por item; maioria é disciplina + revisão de diff.
 
 ## MANUTENÇÃO
-- Atualizar quando review pegar classe nova de gargalo (incidente real). Vive em `specs/` (commitado). NÃO duplicar índices/schema de [specification-db] — referenciar.
+- Atualizar quando review pegar classe nova de gargalo (incidente real). NÃO duplicar índices/schema de [specification-db] — referenciar.
 
 ## 1. EF CORE — ARMADILHAS
 - **N+1** — `Include` (ou projeção `Select` p/ DTO) p/ carregar relação navegada em loop; NUNCA materializar e navegar por filho dentro de iteração. Caso óbvio do domínio: listar `treinos` + `treino_exercicios` + `treino_exercicio_series` (composição 3 níveis, CASCADE) — uma query com projeção, não N consultas por exercício. [disciplina; detectável por contar SQL em teste de integração — §5]
@@ -14,6 +14,7 @@ DOC PARA AGENTES. Armadilhas de PERFORMANCE no backend .NET/EF Core/PG que revie
 ## 2. PAGINAÇÃO
 - **OBRIGATÓRIA + cap** em todo endpoint de coleção (`skip`/`take` com teto, ex. max 100). Sem cap = scan de tabela inteira sob crescimento (alunos por treinador, pagamentos por assinatura, execuções por aluno). [disciplina — propor gate: teste de contrato rejeita endpoint de lista sem paginação]
 - Ordenação estável (coluna determinística, ex. `created_at`+`id`) p/ paginação consistente.
+- **Loop de cron/billing processa em LOTES (keyset), não materializa o conjunto inteiro** — query de fundo que itera linhas com efeito por-linha (renovação = Stripe + commit por assinatura) pagina por keyset `OrderBy(Id) + Where(Id > cursor) + Take(N)` (uuid é ordenável no PG). Offset/`Skip` QUEBRA aqui: linha renovada com sucesso SAI do filtro (`DataProximaCobranca` avança) → `Skip` pularia não-processados; o cursor keyset avança mesmo em FALHA (não reprocessa no mesmo run — próximo cron pega — sem loop infinito). `ListarParaRenovarAsync` (aluno+treinador) segue isso (PERF-01). NÃO paginam (decisão consciente): pré-aviso (`ListarParaPreAvisoAsync` — janela de 1 dia, só dispatch de evento, sem efeito por-linha) e `ListarNaoCanceladasPorTreinador` (limitado às assinaturas de 1 treinador). [disciplina]
 
 ## 3. CONEXÃO / DBCONTEXT
 - `DbContext` scoped (1 por request); NUNCA capturar em singleton/campo de hosted service sem escopo próprio. Worker de outbox / hosted services (`LimparTokensRevogadosService`, renovações) criam escopo por iteração.

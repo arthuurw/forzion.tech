@@ -4,7 +4,7 @@ DOC PARA AGENTES. Fonte de verdade da arquitetura do backend (.NET 8, Clean Arch
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança em: camadas, padrão Result, UnitOfWork/dispatch de eventos, validação, DI, middleware, filtros, convenções de endpoint, repositórios, auth, rate limiting.
-- Vive em `specs/` (versionado; commitar). NÃO duplicar domínio ([specification-model]) nem schema ([specification-db]).
+- NÃO duplicar domínio ([specification-model]) nem schema ([specification-db]).
 
 ## 1. ARQUITETURA / CAMADAS
 Clean Architecture + DDD. Projetos: `forzion.tech.Domain` (núcleo + `Shared/` Result/Error), `Application` (use cases/interfaces), `Infrastructure` (EF/repos/integrações/handlers de evento), `Api` (endpoints/middleware/DI), `Tests`.
@@ -25,7 +25,7 @@ Clean Architecture + DDD. Projetos: `forzion.tech.Domain` (núcleo + `Shared/` R
 - POLÍTICA DE ERRO (regra de arquitetura — erro de NEGÓCIO usa Result; demais erros usam exception):
   1. DOMÍNIO retorna `Result`/`Result<T>` para toda invariante de negócio (NUNCA lança `DomainException` p/ regra de negócio).
   2. HANDLERS retornam `Result`/`Result<T>` (`Task<Result>`/`Task<Result<TResponse>>`) e propagam a falha de negócio do domínio direto (`return Result.Failure(...)`/`Result.Failure<T>(...)`). Não há mais handler que re-lança `DomainException` p/ traduzir falha de negócio. Endpoints desembrulham: `if (result.IsFailure) return result.ToProblemResult();` (422) senão `Results.Ok/Created(result.Value)`.
-  3. EXCEPTION só p/ NÃO-negócio (control-flow cross-cutting + infra/programação), lançada no handler/contexto e mapeada pelo `GlobalExceptionHandler`: `*NaoEncontradoException` (lookup miss → 404), `AcessoNegadoException` (authz → 403), `EmailNaoVerificadoException`/`CredenciaisInvalidasException` (401/403), `EmailJaCadastradoException`/`AlunoJaVinculadoException` (409), `LimiteAlunosAtingidoException`, `AlunoInativoException`; `ValidationException` (FluentValidation → 400); `ArgumentNullException.ThrowIfNull` (erro de programação).
+  3. EXCEPTION só p/ NÃO-negócio: control-flow cross-cutting (lookup miss `*NaoEncontradoException`, authz `AcessoNegadoException`, gates de login `EmailNaoVerificado`/`CredenciaisInvalidas`/`Treinador*`, conflito `EmailJaCadastrado`/`AlunoJaVinculado`, `LimiteAlunosAtingido`/`AlunoInativo`) + infra/programação (`ValidationException` da FluentValidation, `ArgumentNullException.ThrowIfNull`). Lançada no handler/contexto e mapeada pelo `GlobalExceptionHandler` — **mapa exceção→status HTTP é canônico no §4** (não reproduzido aqui).
 
 ### Use cases / handlers (CQRS-like)
 Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`. Pasta típica: `<X>Command.cs`/`<X>Query.cs` + `<X>Handler.cs` (+ `<X>Validator.cs`, `<X>Response.cs` opcionais). Convenções:
@@ -60,7 +60,7 @@ Um handler por use case, organizado em `Application/UseCases/<Area>/<UseCase>/`.
 - **Notificação por tier**: `IPlanoNotificationPolicy` (Application/Interfaces): `Task<CanaisNotificacao> ResolverPorTreinadorAsync(treinadorId, ct)` / `ResolverPorAlunoAsync(alunoId, ct)`. Record `CanaisNotificacao(bool Email, bool WhatsApp)` (`CanaisNotificacao.Nenhum` = `(false,false)`). Impl `PlanoNotificationPolicy` (Infrastructure/Notifications/): resolve treinador → `PlanoPlataformaId` → plano → `TierPlanoExtensions`; resolve aluno → vínculo ativo → assinatura atual → treinador → plano; sem plano = `Nenhum`. Registrado `AddScoped` no DI. Cross-ref `TierPlanoExtensions` [specification-model].
 - Health: `IHealthReportCollector`, `IHealthReportSender`.
 - App services: `ILimiteTreinadorService`.
-- Repositórios (`Interfaces/Repositories/`, 28): Conta, Aluno, Treino, Exercicio, GrupoMuscular, TreinoAluno, ExecucaoTreino, SystemUser, Treinador, PlanoPlataforma, Pacote, VinculoTreinadorAluno, LogAprovacao, TokenRevogado, PasswordResetToken, EmailVerificationToken, EmailDeliveryLog, WhatsAppDeliveryLog, AssinaturaAluno, Pagamento, AssinaturaTreinador, PagamentoTreinador, Assinante, ContaRecebimento, HealthReportConfig, HealthSnapshot, ErrorLog, AdminStats. Implementações em `Infrastructure/Persistence/Repositories`.
+- Repositórios (`Interfaces/Repositories/`, 29; contagem ancorada por `Tests/Architecture/SpecInventoryTests`): Conta, Aluno, Treino, Exercicio, GrupoMuscular, TreinoAluno, ExecucaoTreino, SystemUser, Treinador, PlanoPlataforma, Pacote, VinculoTreinadorAluno, LogAprovacao, TokenRevogado, PasswordResetToken, EmailVerificationToken, EmailDeliveryLog, WhatsAppDeliveryLog, AssinaturaAluno, Pagamento, AssinaturaTreinador, PagamentoTreinador, Assinante, ContaRecebimento, HealthReportConfig, HealthSnapshot, ErrorLog, AdminStats, Outbox. Implementações em `Infrastructure/Persistence/Repositories`.
 
 ### Services / Settings
 - `Application/Services/LimiteTreinadorService` (`ILimiteTreinadorService`): valida que treinador tem plano e que `vínculos ativos < plano.MaxAlunos`; senão lança `LimiteAlunosAtingidoException`. Usa `ICapacidadePlano` (domínio).
@@ -138,8 +138,8 @@ Políticas FixedWindow (rejeição 429). Em ambiente `Test` todas viram NoLimite
 
 ### Endpoints internos (server-to-server)
 `/internal/processar-renovacoes` (POST), `/internal/processar-renovacoes-treinador` (POST) e `/internal/reconciliar-pagamentos` (POST), anônimos + rate `internal`. Autenticação por header `X-Internal-Key` comparado a `Internal:ApiKey` com **comparação de tempo constante** (`CryptographicOperations.FixedTimeEquals`, após checar igualdade de comprimento — evita `ArgumentException` e timing attack). Sem/divergente → 401.
-- `processar-renovacoes`: renovação de assinaturas de ALUNO — lista assinaturas a renovar e chama `GerarCobrancaMensalHandler` por assinatura, conta processadas/falhas.
-- `processar-renovacoes-treinador`: renovação de assinaturas de TREINADOR (endpoint SEPARADO) — `IAssinaturaTreinadorRepository.ListarParaRenovarAsync` + `GerarCobrancaPlanoTreinadorHandler` por assinatura; code `plano_free_assinatura_cancelada` = downgrade p/ Free (não conta como falha).
+- `processar-renovacoes`: renovação de assinaturas de ALUNO — itera em LOTES keyset (`ListarParaRenovarAsync(now, cursor, N)`, [specification-performance] §2) chamando `GerarCobrancaMensalHandler` por assinatura, conta processadas/falhas.
+- `processar-renovacoes-treinador`: renovação de assinaturas de TREINADOR (endpoint SEPARADO) — mesmo loop keyset sobre `IAssinaturaTreinadorRepository.ListarParaRenovarAsync` + `GerarCobrancaPlanoTreinadorHandler` por assinatura; code `plano_free_assinatura_cancelada` = downgrade p/ Free (não conta como falha).
 - `reconciliar-pagamentos`: body opcional `{ desdeUtc }` (default janela 7d); chama `ReconciliarPagamentosStripeHandler`. Cross-ref [specification-infrastructure] (cron/chamador).
 
 ### Webhooks
@@ -159,7 +159,7 @@ Políticas FixedWindow (rejeição 429). Em ambiente `Test` todas viram NoLimite
 ## 5. INFRASTRUCTURE LAYER
 
 ### EF Core / persistência
-- `AppDbContext` schema-agnostic (sem `HasDefaultSchema`; schema vem do `Search Path` da connection), `UseSnakeCaseNamingConvention`, `MigrationsHistoryTable("__EFMigrationsHistory")`. Configs por entidade em `Persistence/Configurations` (`ApplyConfigurationsFromAssembly`). DbSets para 29 entidades EF (incl. `AssinaturaTreinador`/`PagamentoTreinador`); `TreinoExercicio`/`ExecucaoExercicio` internal (composição). Cross-ref [specification-db] (schema/migrations/enums).
+- `AppDbContext` schema-agnostic (sem `HasDefaultSchema`; schema vem do `Search Path` da connection), `UseSnakeCaseNamingConvention`, `MigrationsHistoryTable("__EFMigrationsHistory")`. Configs por entidade em `Persistence/Configurations` (`ApplyConfigurationsFromAssembly`). 30 DbSets (28 `public` + 2 `internal` `TreinoExercicio`/`ExecucaoExercicio`, composição); `TreinoExercicioSerie` é mapeada SEM DbSet (acessada por navegação) ⇒ 31 tabelas EF; +`ai_token_usage` NON-EF = 32 ([specification-db]). Contagem ancorada por `Tests/Architecture/SpecInventoryTests` (quebra força atualizar esta spec). Cross-ref [specification-db] (schema/migrations/enums).
 - Registrado scoped em `InfrastructureExtensions` montando `DbContextOptions` na hora e passando o `IDomainEventDispatcher`. `IUnitOfWork` e `IDbContextTransactionProvider` resolvem para o MESMO `AppDbContext` scoped.
 - Repositórios (`Persistence/Repositories`): classe com ctor primário `(AppDbContext context)`, métodos async; leituras de listagem usam `AsNoTracking`; paginação `(IReadOnlyList<T> Items, int Total)` com `Skip/Take`. Todos `AddScoped` em `InfrastructureExtensions`.
 
@@ -189,4 +189,4 @@ Idempotente (insere só o que falta). Contagens (grupos/exercícios/planos/admin
 - Política de erro (Result vs exception), `TimeProvider` (nunca `DateTime.UtcNow`), FluentValidation, DI manual/scoped de handlers/repos/event-handlers: canônico em §2/§3/§5 — não re-listado aqui.
 
 ## 7. TESTES (backend) — resumo
-`forzion.tech.Tests` (xUnit `2.9.3`). Frameworks: Moq, FluentAssertions, `Microsoft.AspNetCore.Mvc.Testing` (WebApplicationFactory; ambiente `Test`), Testcontainers.PostgreSql (Integration/E2E/Infra — exigem Docker), `Microsoft.Extensions.TimeProvider.Testing` (`FakeTimeProvider`), CsCheck (property-based), Verify.Xunit (snapshot), NetArchTest.Rules (arquitetura — `Architecture/LayeringTests.cs` + `ConventionTests.cs`). Pastas: `Api`, `Application`, `Architecture`, `Builders`, `Domain`, `E2E`, `Infrastructure`, `Integration`. Split por trait `Category=Integration` (`--filter "Category!=Integration"` roda os unit sem Docker, ~1000+). Cross-ref README para harness completo.
+`forzion.tech.Tests` (xUnit; versão real em `forzion.tech.Tests.csproj` — não fixar aqui p/ não driftar). Frameworks: Moq, FluentAssertions, `Microsoft.AspNetCore.Mvc.Testing` (WebApplicationFactory; ambiente `Test`), Testcontainers.PostgreSql (Integration/E2E/Infra — exigem Docker), `Microsoft.Extensions.TimeProvider.Testing` (`FakeTimeProvider`), CsCheck (property-based), Verify.Xunit (snapshot), NetArchTest.Rules (arquitetura — `Architecture/LayeringTests.cs` + `ConventionTests.cs`). Pastas: `Api`, `Application`, `Architecture`, `Builders`, `Domain`, `E2E`, `Infrastructure`, `Integration`. Split por trait `Category=Integration` (`--filter "Category!=Integration"` roda os unit sem Docker, ~1000+). Cross-ref README para harness completo.

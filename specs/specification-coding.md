@@ -4,7 +4,7 @@ DOC PARA AGENTES. Padrões de CORREÇÃO transversais que reviews repetidamente 
 
 ## MANUTENÇÃO
 - Atualizar quando um review/code-review pegar um bug de CLASSE nova (não pontual) — adicionar a regra + o incidente.
-- Vive em `specs/` (commitado). Não duplicar regras de [specification-git] (commit/worktree) nem [specification-tests].
+- Não duplicar regras de [specification-git] (commit/worktree) nem [specification-tests].
 
 ## 1. TRANSAÇÃO ↔ EFEITO EXTERNO IRREVERSÍVEL
 - **Efeito externo irreversível (refund Stripe, e-mail, WhatsApp, webhook de saída) vai DEPOIS de `CommitAsync`** — nunca antes. Ordem: mutar agregado → `CommitAsync` → efeito externo. Falha do efeito = `LogCritical` + prossegue (estado já persistido). [incidente CR#1: refund emitido antes do commit → commit falha → dinheiro estornado sem cancelamento persistido + retry tenta refund 2× = `charge_already_refunded`.]

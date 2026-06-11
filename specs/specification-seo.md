@@ -1,6 +1,6 @@
 # specification-seo — SEO & metadata (forzion.tech)
 
-DOC AGENTES (denso). Fonte de verdade de SEO/metadata frontend (metadata por rota, OpenGraph, crawl control, structured data). Base impl (T5): metadataBase/title-template/OG dinâmica/robots/sitemap/JSON-LD/canonical/noindex. Aberto: perfil público de treinador + gate SEO `warn`→`error`. Atualizar NA MESMA TAREFA ao mudar `metadata`/`generateMetadata`/`sitemap.ts`/`robots.ts`/OG/JSON-LD/`lang`/`metadataBase`/threshold SEO lighthouse. Rótulos OBRIGATÓRIOS por afirmação: `[ATUAL]` (existe hoje) / `[REC]`/`[GAP]` (recomendação/ausência); ao implementar `[REC]`/`[GAP]` reclassificar p/ `[ATUAL]` + path. Vive em `specs/` (commitar); NÃO duplicar rotas/headers — referenciar [specification-frontend]. Cross-ref: [specification-frontend-ui] (landing/componentes), [specification-observability] (perf budgets), [specification-tests] (gate lighthouse CI).
+DOC AGENTES (denso). Fonte de verdade de SEO/metadata frontend (metadata por rota, OpenGraph, crawl control, structured data). Base impl (T5): metadataBase/title-template/OG dinâmica/robots/sitemap/JSON-LD/canonical/noindex. Aberto: perfil público de treinador + gate SEO `warn`→`error`. Atualizar NA MESMA TAREFA ao mudar `metadata`/`generateMetadata`/`sitemap.ts`/`robots.ts`/OG/JSON-LD/`lang`/`metadataBase`/threshold SEO lighthouse. Rótulos OBRIGATÓRIOS por afirmação: `[ATUAL]` (existe hoje) / `[REC]`/`[GAP]` (recomendação/ausência); ao implementar `[REC]`/`[GAP]` reclassificar p/ `[ATUAL]` + path. NÃO duplicar rotas/headers — referenciar [specification-frontend]. Cross-ref: [specification-frontend-ui] (landing/componentes), [specification-observability] (perf budgets), [specification-tests] (gate lighthouse CI).
 
 ## 1. ESTADO ATUAL
 
@@ -21,11 +21,7 @@ Env `NEXT_PUBLIC_SITE_URL` (default `https://forzion.tech`, documentada em `fron
 Metadata por rota via `layout.tsx` server por rota (§2.2). Nenhuma rota usa `generateMetadata` ainda (só `export const metadata` estático).
 
 ### Lighthouse SEO — `[ATUAL]`
-`frontend/lighthouserc.json`:
-- `categories:seo`: `["warn", { "minScore": 0.8 }]` → **NÃO bloqueia CI** (warn, não error). GAP de enforcement (ver §6).
-- Outras categorias SÃO `error` (perf 0.85, a11y 0.95, best-practices 0.9).
-- URLs auditadas: `/`, `/login`, `/cadastro/aluno`, `/cadastro/treinador`.
-- Cross-ref: [specification-tests] (gates lighthouse), [specification-infrastructure].
+`frontend/lighthouserc.json`: `categories:seo` = `["warn", {minScore:0.8}]` → **NÃO bloqueia CI** (único `warn`; demais categorias são `error`). GAP de enforcement (§6). Budget completo (perf/a11y/bp + URLs + cadência): canônico em [specification-observability] §5.
 
 ### Artefatos SEO — estado pós-T5
 | Artefato | Status | Path / nota |

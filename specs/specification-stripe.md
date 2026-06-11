@@ -4,7 +4,6 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de qualquer mudança relevante em: SDK version, chaves de config, métodos do `IStripeService`, handlers, fluxos (onboarding/cobrança/webhook), endpoints, roteamento (nginx), cron de renovação, defesas de segurança (cross-account, idempotência, rate limit).
-- Vive em `specs/` (versionado; commitar). NÃO confundir com `.specs/` (gitignorado).
 - Mudança de tabela → atualizar [specification-db], não aqui.
 
 ## STACK & GATE
@@ -82,7 +81,7 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 
 ### Cobrança (treinador inicia OU cron renova)
 1. **Manual treinador**: `POST /treinador/pagamentos/cobrar/{assinaturaId}?metodo=Pix|Cartao` (default Pix).
-2. **Cron**: GH Actions `billing-renewal.yml` cron `0 8 * * *` UTC → `POST /internal/processar-renovacoes` com header `X-Internal-Key`. Loop em `AssinaturaAlunoRepository.ListarParaRenovarAsync(now)` → chama `GerarCobrancaMensalHandler` por assinatura.
+2. **Cron**: GH Actions `billing-renewal.yml` cron `0 8 * * *` UTC → `POST /internal/processar-renovacoes` com header `X-Internal-Key`. Loop em LOTES keyset sobre `AssinaturaAlunoRepository.ListarParaRenovarAsync(now, cursor, N)` ([specification-performance] §2) → chama `GerarCobrancaMensalHandler` por assinatura.
 3. Handler: tx serializable: re-uso de pendente OU MarcarFalhou+Criar novo. Fora tx: chama Stripe (CriarPix/CartaoPaymentIntent) com ApplicationFeeAmount+TransferData. Persist intent data.
 4. Response: `PagamentoResponse` — `ToResponseTreinador` (sem ClientSecret) ou `ToResponseAluno` (com ClientSecret, no fluxo do aluno).
 
@@ -113,7 +112,7 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 | POST /internal/processar-renovacoes-treinador | X-Internal-Key | inline lambda em `PagamentosEndpoints` (loop GerarCobrancaPlanoTreinadorHandler) | 200 `{processadas, falhas}` | 401 |
 | POST /webhooks/stripe | nenhum (Stripe-Signature) | ProcessarWebhookStripeHandler | 200 (ok/ignorado) | 400 (assinatura inválida ou payload >64KB) |
 
-⚠ Mapa de status `DomainException`→422 / `ValidationException`→400 (`GlobalExceptionHandler`): canônico em [specification-email] §ENDPOINTS.
+⚠ Mapa exceção→status HTTP (`GlobalExceptionHandler`): canônico em [specification-backend] §4.
 
 ## INFRA / ROTEAMENTO
 - Roteamento nginx do bloco `location /webhooks/` → backend (ANTES de `location /`): canônico em [specification-email] §INFRA/ROTEAMENTO. Aplica igual ao Stripe — necessário pra header `Stripe-Signature` cru. Webhook Stripe aponta pra `https://<host>/webhooks/stripe` (NUNCA `/api/backend/[...path]`, que descarta o header e injeta Bearer).

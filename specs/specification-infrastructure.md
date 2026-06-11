@@ -4,7 +4,7 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança relevante em: provedor de hosting, compose, nginx, SSL, workflows CI/CD, fluxo de deploy, ambientes, mapeamento de env/secret.
-- Vive em `specs/` (versionado; commitar). Não duplicar DB/e-mail — referenciar os specs próprios.
+- Não duplicar DB/e-mail — referenciar os specs próprios.
 
 ## TOPOLOGIA (hosting)
 - **VPS Hostinger** (Ubuntu + Docker + docker-compose-plugin). Provisionada UMA VEZ via `scripts/setup-vm.sh` (instala Docker, cria `/opt/forzion/{app,nginx,certbot/conf,certbot/www}`, gera `.env` template). Produção será o MESMO modelo (VPS Hostinger).
@@ -109,4 +109,4 @@ Caminho mais rápido p/ subir a instância p/ testar à mão (sem Docker). ⚠�
 - PR/merge só-docs não roda CI/CD (paths-ignore) → docs chegam na VM no próximo deploy de código (`git pull`), sem deploy próprio.
 - Supabase host direto IPv6-only → containers podem não alcançar por hostname; ver [specification-db].
 - `docker-compose.server.yml` (registry) sem CI de build/push hoje → não usar como ativo sem antes criar o pipeline de imagem.
-- Migration destrutiva/backfill roda no startup (Dev/Homolog) contra o REMOTO — validar antes (ver [specification-db]).
+- (Migration destrutiva no startup contra REMOTO: ver §STACKS/§AMBIENTES/§LOCAL-RUN — não repetir.)

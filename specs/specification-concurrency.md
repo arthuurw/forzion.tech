@@ -3,7 +3,7 @@
 DOC PARA AGENTES. CASA ÚNICA de concorrência — hoje espalhado incidente-a-incidente em [specification-coding §1]. Race, idempotência, optimistic locking, ordering transação↔efeito. Crítico onde dinheiro+webhook concorrem (Stripe redelivery, cobrança recorrente). Ler antes de webhook handler, outbox, efeito externo, contador/saldo, ou invariante "no máximo 1 X". Formato denso, incident-grounded (cada regra aponta artefato/incidente REAL do repo).
 
 ## MANUTENÇÃO
-- Atualizar quando review pegar race de classe nova. NÃO duplicar a regra de ordering de [specification-coding §1] (canônico) — referenciar. Vive em `specs/` (commitado).
+- Atualizar quando review pegar race de classe nova. NÃO duplicar a regra de ordering de [specification-coding §1] (canônico) — referenciar.
 
 ## 1. ORDERING TRANSAÇÃO ↔ EFEITO (cross-ref — canônico em coding §1)
 - Mutar agregado → `CommitAsync` → efeito externo. Efeito que PRECISA ser garantido ⇒ outbox transacional ANTES do commit (`IOutboxEnfileirador.Enfileirar`), persiste atômico, worker entrega com retry. Detalhe + incidentes (refund antes do commit, evidência de disputa) em [specification-coding §1]. Aqui só o vínculo com idempotência (§2).

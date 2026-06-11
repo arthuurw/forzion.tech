@@ -70,7 +70,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 | `sanity-backend` | `dotnet build -c Release` (só compila — sanity antes do deploy SSH) | **push-only** | sim |
 | `deploy-homolog` | SSH + `docker compose build/up` na VM | **push-only** | — |
 ### CI — workflows dedicados (separados do gate principal — NÃO gateiam o deploy)
-- `mutation.yml` — **Stryker.NET** matriz Domain+Application, `break 40` (high 80/low 60) — `stryker-config.json`.
+- `mutation.yml` — **Stryker.NET** matriz Domain+Application, `break 55` (high 80/low 60) — `stryker-config.json`.
 - `contract.yml` — Pact consumer (frontend). PR: gera+valida. push/dispatch: publica no broker + can-i-deploy (broker só é tocado fora de PR). `pact-provider.yml` — provider (`forzion.tech.PactVerification`), push → homolog.
 - `openapi-drift.yml` — `openapi:check` (tipos MSW vs OpenAPI; `git diff --exit-code`). **PR-only** (+ dispatch).
 - `semgrep.yml` (SAST), `hygiene.yml` (`knip` dead code + `madge` ciclos) — **PR-only** (+ dispatch). `zap.yml` (DAST), `lighthouse.yml` (perf/a11y LHCI) — schedule/dispatch. `smoke.yml` — Playwright smoke pós-deploy homolog (`workflow_run`).
@@ -78,7 +78,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 ## 8. THRESHOLDS DE COBERTURA (detectado — NÃO abaixar sem aprovação humana)
 - **Backend (Coverlet → ReportGenerator JsonSummary → `scripts/check-coverage.sh`, por assembly, em CI)**: Domain branch 75 / line+method 85; Application branch 75 / line+method 85; Api line 85 / method 70; global branch 50; Infrastructure branch 35 (exclui Migrations). Baselines reais acima dos pisos (ver comentários no `ci.yml`) — pisos guardam regressão + execução silenciosa. Avaliação de TODOS os thresholds num único relatório (1 `dotnet test` por job; não mais `/p:Threshold` por assembly).
 - **Frontend (vitest, por glob, ENFORCED em `vitest run --coverage` = exit≠0)**: `src/lib/**` 95/90/95/95 (l/b/f/s); `src/hooks/**` 90/85/90/90; `src/components/**` 85/75/85/85; `src/app/api/**` 90/85/90/90; `src/app/**` 70/60/55/65. Excluídos: `src/test/**`, `src/types/**`, `*.config.*`, `*.stories.tsx`, `*.property.test.ts`, `__tests__/`, `e2e/`.
-- **Mutation (Stryker.NET)**: break 40 / low 60 / high 80 (Domain+Application; ignora Migrations).
+- **Mutation (Stryker.NET)**: break 55 / low 60 / high 80 (Domain+Application; ignora Migrations).
 
 ## 9. COMO RODAR (comandos)
 - Backend unit (sem Docker): `dotnet test forzion.tech.Tests --filter "Category!=Integration"`. Integração (Docker up): `--filter "Category=Integration"`. Tudo: sem filtro. Cobertura no CI: 1 `dotnet test ... /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura` por job → `reportgenerator -reporttypes:JsonSummary` → `bash scripts/check-coverage.sh` (thresholds; ver ci.yml). Mutation: `dotnet stryker` (ou matriz `--project`).
@@ -98,7 +98,7 @@ Cobertura/threshold (§8) prova que a linha RODOU, não que o teste PRESTA. Esta
 - **AAA explícito** — Arrange/Act/Assert visíveis; um Act por teste. Múltiplos comportamentos ⇒ múltiplos testes. [disciplina]
 - **Asseverar COMPORTAMENTO, não implementação** — checar resultado/efeito observável (`Result`, estado do agregado pós-transição, evento despachado, linha persistida), NUNCA detalhe interno (ordem de chamada de método privado; contagem de invocação de mock SALVO quando a invocação É o contrato, ex. "efeito externo NÃO chamado antes do commit"). Teste acoplado a impl quebra em refactor legítimo = frágil. [disciplina]
 - **Anti assertion-free / tautologia** — teste sem `Assert`/`expect`, ou que asservera o que acabou de setar (`x=1; assert x==1`), infla cobertura e prova nada. PROIBIDO. Mutation expõe (mutante sobrevive). [disciplina + mutation gate §8]
-- **Alvo = matar mutante, não cobrir linha** — ao escrever, perguntar "que mutação na lógica este teste pegaria?". Se nenhuma, o teste é decorativo. Stryker `break 40` é piso BAIXO de partida → roadmap: subir Domain/Application gradual conforme a suíte amadurece (mudança de threshold = aprovação humana, §8). [mutation gate]
+- **Alvo = matar mutante, não cobrir linha** — ao escrever, perguntar "que mutação na lógica este teste pegaria?". Se nenhuma, o teste é decorativo. Stryker `break 55` (elevado de 40 em T10 hardening wave-1) → roadmap: subir Domain/Application gradual conforme a suíte amadurece (mudança de threshold = aprovação humana, §8). [mutation gate]
 - **Anti over-mock** — mockar SÓ a fronteira (interfaces de Infra/integração: `I*Repository`, `I*Service`, Stripe/Resend/WhatsApp via `Fake*`/`Null*`). Mockar colaborador interno do mesmo agregado/camada = testar o mock, não o código. Unit de Application usa a interface da borda (princípio 5); NÃO mockar lógica de domínio. [disciplina]
 - **Naming = intenção** — `Metodo_Condicao_ResultadoEsperado` (backend) ou narrativa equivalente (frontend). `Test1`/`DeveFuncionar` proibido — o nome é a spec executável. [disciplina]
 - **Concorrência: testar em PARALELO, não só sequencial** — idempotência/race ([specification-concurrency]) só prova sob 2 chamadas concorrentes do handler (Testcontainers), não sob retry serial. [disciplina + teste de integração]

@@ -1,6 +1,6 @@
 # specification-frontend — frontend (forzion.tech)
 
-DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESMA TAREFA ao mudar rota/layout/auth/API-proxy/componente-estrutural/testes/dep-crítica/header-segurança. Vive em `specs/` (commitar); NÃO duplicar infra/DB/tokens — referenciar. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums), [specification-frontend-ui] (design tokens/componentes/a11y), [specification-seo] (metadata/OG/crawl), [specification-observability] (RUM/Sentry), [specification-security] (CSP/headers/rate-limit), [specification-stripe] (billing treinador/Pix/onboarding/webhook), [specification-model] (modos de pagamento/máquinas de estado).
+DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESMA TAREFA ao mudar rota/layout/auth/API-proxy/componente-estrutural/testes/dep-crítica/header-segurança. NÃO duplicar infra/DB/tokens — referenciar. Cross-ref: [specification-infrastructure] (build/deploy/nginx), [specification-db] (domínio/enums), [specification-frontend-ui] (design tokens/componentes/a11y), [specification-seo] (metadata/OG/crawl), [specification-observability] (RUM/Sentry), [specification-security] (CSP/headers/rate-limit), [specification-stripe] (billing treinador/Pix/onboarding/webhook), [specification-model] (modos de pagamento/máquinas de estado).
 
 ## STACK
 - Next.js 16 (App Router) + React 19 + TypeScript 6. `frontend/`.
@@ -23,22 +23,7 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 - `JWT_SECRET` obrigatório em `NODE_ENV=production` (throw em build se ausente).
 
 ## SEGURANÇA — HEADERS HTTP
-Aplicados via `next.config.ts` em todas as rotas (`source: "/(.*)"`) com `securityHeaders`:
-
-| Header | Valor |
-|--------|-------|
-| `X-DNS-Prefetch-Control` | `on` |
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline'[+'unsafe-eval' só dev] https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.stripe.com; font-src 'self'; connect-src 'self' https://api.stripe.com https://*.sentry.io; frame-src https://js.stripe.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'` |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
-| `X-Frame-Options` | `DENY` |
-| `X-Content-Type-Options` | `nosniff` |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
-| `Content-Security-Policy-Report-Only` | igual ao CSP, só se `CSP_REPORT_ONLY=true` (homolog) |
-
-- `'unsafe-inline'` em `script-src`: necessário para hidratação Next.js sem nonce.
-- `'unsafe-eval'` em `script-src`: apenas dev (MUI Emotion + hot-reload).
-- `blob:` em `worker-src`: Sentry Session Replay.
+Headers de segurança + CSP aplicados na camada Next via `next.config.ts` (`headers()`/`buildCsp`, `source: "/(.*)"`). **Tabela completa de headers, string CSP e as 3 camadas (app/Next/edge): canônico em [specification-security] §3** — não reproduzido aqui. Específico do frontend: a CSP vive SÓ na camada Next (só o front serve HTML ao browser); `'unsafe-inline'` em script-src é exigido pela hidratação Next sem nonce, `'unsafe-eval'` só em dev (MUI/HMR), `blob:` em worker-src p/ Sentry Replay; `CSP_REPORT_ONLY=true` (homolog) adiciona header Report-Only.
 
 ## TYPESCRIPT
 - `tsconfig.json`: `target=ES2017`, `module=esnext`, `moduleResolution=bundler`, `strict=true`, `isolatedModules=true`, `jsx=react-jsx`. Path alias `@/*` → `./src/*`.
@@ -269,14 +254,7 @@ Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 | `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts` |
 | `api` | node | threads | `src/test/setup/api.ts` | `src/app/api/**/*.test.ts` |
 
-**Coverage (v8)**:
-| Camada | Lines | Branches | Functions |
-|--------|-------|----------|-----------|
-| `src/lib/**` | 95% | 90% | 95% |
-| `src/hooks/**` | 90% | 85% | 90% |
-| `src/components/**` | 85% | 75% | 85% |
-| `src/app/api/**` | 90% | 85% | 90% |
-| `src/app/**` | 70% | 60% | 55% |
+**Coverage (v8)**: thresholds por glob (l/b/f por camada) — canônico em [specification-tests] §8 (enforced em `vitest run --coverage`).
 
 **MSW** (`msw@2`): handlers em `src/test/msw/handlers/`. `public/mockServiceWorker.js` para Storybook. Tipos gerados de `openapi.json` via `openapi-typescript` → `src/test/msw/types.ts`.
 

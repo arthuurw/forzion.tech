@@ -35,6 +35,16 @@ auditoria do que foi feito; deixar em branco eh red flag em review.
 - [ ] Headers/cookies de novas rotas configurados (HttpOnly, Secure, SameSite)
 - [ ] Sanitizacao de input em proxy/forwarding
 
+## Migration de banco (se aplicavel)
+
+<!-- Ignorar se o PR nao toca schema/migrations. -->
+
+- [ ] Migration schema-agnostic (sem schema hardcoded)
+- [ ] `AddColumn NOT NULL` tem `defaultValue` na migration
+- [ ] **Se DESTRUTIVA** (drop coluna/tabela, type narrowing, rename): backup verificado + drill de restore executado antes do merge (`specification-db §MIGRATION-SAFETY`, `specification-dr §1-2`)
+- [ ] Expand/contract respeitado (CONTRACT so chega apos EXPAND+BACKFILL deployados)
+- [ ] `specification-db.md` atualizado na mesma tarefa
+
 ## Notas para o reviewer
 
 <!-- Areas que merecem atencao especial; perguntas em aberto. -->
