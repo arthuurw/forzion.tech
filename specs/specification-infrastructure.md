@@ -8,7 +8,7 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 
 ## TOPOLOGIA (hosting)
 - **VPS Hostinger** (Ubuntu + Docker + docker-compose-plugin). Provisionada UMA VEZ via `scripts/setup-vm.sh` (instala Docker, cria `/opt/forzion/{app,nginx,certbot/conf,certbot/www}`, gera `.env` template). Produção será o MESMO modelo (VPS Hostinger).
-- **Supabase**: PostgreSQL 17 gerenciado (`db.<ref>.supabase.co`). Schemas `homolog`/`develop`/`public` idênticos. Host direto IPv6-only → ops ad-hoc por host, não por container. Ver [specification-db].
+- **Supabase**: PostgreSQL 17 gerenciado (`db.<ref>.supabase.co`). Schemas `homolog`/`develop`/`public` idênticos. App conecta via **Session pooler (:5432, IPv4)** (DR-01); host direto IPv6-only = ops ad-hoc/fallback (não alcançável de container). Ver [specification-db].
 - **DNS**: Hostinger (hPanel). E-mail: Resend usa `send.forzion.tech` (SPF+MX SES) + `resend._domainkey` (DKIM). Ver [specification-email].
 - **Domínios**: `homologacao.forzion.tech` (hmg ATIVO), `pact.homologacao.forzion.tech` (Pact broker), `forzion.tech`/`www`/`app.forzion.tech` (prod PREPARADO/não-ativo).
 - **Fluxo de request**: internet → nginx:443 → `location /` → frontend:3000 · `location /webhooks/` → backend:8080 · subdomínio pact → pact-broker:9292.

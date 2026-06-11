@@ -26,7 +26,11 @@ sudo chown -R "$USER:$USER" /opt/forzion
 if [ ! -f /opt/forzion/.env ]; then
   cat > /opt/forzion/.env <<'EOF'
 APP_ENV=Homolog
-DB_CONNECTION=Host=db.xxx.supabase.co;Database=postgres;Username=forzion_api;Password=SENHA;SSL Mode=Require;Trust Server Certificate=true;Search Path=homolog
+# DB_CONNECTION: Session pooler Supabase (porta 5432, IPv4) — copiar host/user EXATOS do
+# Dashboard > Connect > Session pooler (user = forzion_api.<project-ref>). NÃO usar Transaction
+# pooler :6543 (sem prepared stmt/session var → quebra MigrateAsync no boot). Direct
+# db.<ref>.supabase.co é IPv6-only (inacessível de alguns hosts/containers).
+DB_CONNECTION=Host=aws-0-<regiao>.pooler.supabase.com;Port=5432;Database=postgres;Username=forzion_api.<project-ref>;Password=SENHA;SSL Mode=Require;Trust Server Certificate=true;Search Path=homolog
 DB_SCHEMA=homolog
 JWT_SECRET=TROQUE_POR_SECRET_FORTE_MINIMO_32_CHARS
 JWT_ISSUER=homologacao.forzion.tech

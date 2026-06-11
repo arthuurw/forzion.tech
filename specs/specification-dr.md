@@ -50,11 +50,11 @@ DOC PARA AGENTES. Continuidade: backup, restore, rollback de deploy, runbook de 
 
 ## 6. ROADMAP DE HA (ALVO — não implementado; fases serão marcadas [EXISTE] ao concluir)
 
-Estado real: 1 VPS (backend+frontend+nginx) · 1 Supabase Free, 1 região, sem replica/pooler · DNS sem failover · **Free = SEM backup gerenciado/PITR** (confirmado), drill nunca feito · RTO=manual, **RPO=∞** (nenhum backup automático).
+Estado real: 1 VPS (backend+frontend+nginx) · 1 Supabase Free, 1 região, sem replica · conexão direct IPv6 (Session pooler :5432 DECIDIDO p/ DR-01, pendente flip operacional na VM) · DNS sem failover · **Free = SEM backup gerenciado/PITR** (confirmado), drill feito 2026-06-11 (ver §DRILL LOG) · RTO=manual, **RPO=∞** (nenhum backup automático).
 Alvo SaaS financeiro: RTO<15min (processo)/<4h (VM); RPO<5min · ≥2 instâncias de app + LB · Supabase Pro+PITR+replica · drill trimestral.
 
 ### Fase 1 — Quick-wins sem downtime (1–2 dias) [parcialmente em execução — DR-01/02]
-- [ALVO/em execução] Pooler Supabase Transaction mode (:6543) em vez de conexão direta :5432 — elimina esgotamento de conexão + suporte a replica futura.
+- [DECIDIDO 2026-06-11 — DR-01] Conexão runtime via **Session pooler Supabase (:5432, IPv4)** em vez de direct (IPv6-only): pooling de conexão + IPv4, drop-in SEM código (session suporta migration/prepared stmt → `MigrateAsync` no boot intacto). Transaction :6543 descartado (quebraria migration no boot). Execução = trocar `DB_CONNECTION` na VM + verificar `/health/ready` (operacional). Detalhe canônico: [specification-db] §DICAS.
 - [ALVO/em execução] Documentar tier Supabase atual + janela/retenção real de backup em §1 desta spec.
 - [ALVO/em execução] 1º restore drill real (projeto temp Supabase · container `postgres:17` · validar `__EFMigrationsHistory`=32 + contagem `contas`) e resultado documentado (§2).
 
