@@ -15,20 +15,10 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { adminApi } from "@/lib/api/admin";
 import { TREINADOR_STATUS_COLORS, ALUNO_DASHBOARD_STATUS_COLORS } from "@/lib/constants/labels";
+import { srOnly } from "@/lib/utils/a11y";
 import type {
   TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
 } from "@/types";
-const srOnly: React.CSSProperties = {
-  position: "absolute",
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: "hidden",
-  clip: "rect(0,0,0,0)",
-  whiteSpace: "nowrap",
-  borderWidth: 0,
-};
 
 interface StatItem { name: string; value: number; color: string }
 interface PlanoStat { planoId: string; name: string; total: number; preco: number; maxAlunos: number }

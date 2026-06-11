@@ -10,6 +10,7 @@ namespace forzion.tech.Infrastructure.Services;
 public sealed class OutboxDurabilityRegistry
 {
     private readonly Dictionary<Type, Registro> _porEvento = [];
+    private readonly Dictionary<string, Type> _porFullName = [];
 
     public OutboxDurabilityRegistry Registrar<TEvent, THandler>(Func<TEvent, string> chaveIdempotencia)
         where TEvent : IDomainEvent
@@ -19,6 +20,8 @@ public sealed class OutboxDurabilityRegistry
         {
             registro = new Registro(evento => chaveIdempotencia((TEvent)evento));
             _porEvento[typeof(TEvent)] = registro;
+            if (typeof(TEvent).FullName is { } fullName)
+                _porFullName[fullName] = typeof(TEvent);
         }
 
         registro.Handlers.Add(typeof(THandler));
@@ -36,9 +39,10 @@ public sealed class OutboxDurabilityRegistry
             : throw new InvalidOperationException($"Evento {evento.GetType().Name} não é durável.");
 
     // Resolve o tipo CLR a partir do FullName embutido no `tipo` da linha outbox (evt:<FullName>).
+    // Lookup O(1) por FullName (sem varredura linear das chaves a cada linha processada).
     // Restrito aos eventos registrados — entrada desconhecida não vira desserialização arbitrária.
     public Type? ResolverTipoEvento(string fullName) =>
-        _porEvento.Keys.FirstOrDefault(t => t.FullName == fullName);
+        _porFullName.GetValueOrDefault(fullName);
 
     private sealed class Registro(Func<IDomainEvent, string> chaveIdempotencia)
     {

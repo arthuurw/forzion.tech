@@ -1,5 +1,8 @@
 import type { SerieConfigResponse } from "@/types";
 
+// Construído uma vez no módulo: instanciar Intl.NumberFormat por chamada é caro.
+const brlFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
 /**
  * formatarBRL — formats a number as Brazilian Real currency (e.g. R$ 1.234,56).
  * Zero returns "Gratuito" only when `gratuito` is true (default false), so callers
@@ -7,7 +10,7 @@ import type { SerieConfigResponse } from "@/types";
  */
 export function formatarBRL(valor: number, gratuito = false): string {
   if (gratuito && valor === 0) return "Gratuito";
-  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return brlFormatter.format(valor);
 }
 
 /**
