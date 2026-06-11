@@ -25,6 +25,7 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<ILogAprovacaoRepository> _logAprovacaoRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _uow = new();
+    private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
     private readonly Mock<TimeProvider> _timeProvider = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ITokenRevogadoRepository> _tokenRevogadoRepo = new();
@@ -53,6 +54,15 @@ public class AnonimizarContaHandlerTests
         _execucaoRepo.Setup(r => r.AnonimizarObservacoesPorAlunoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                      .Returns(Task.CompletedTask);
 
+        // tx noop: sem transação real, BeginTransactionAsync devolveria null (Moq) e o
+        // `await using` quebraria — devolve um ITransaction mockado com commit/dispose noop.
+        var mockTx = new Mock<ITransaction>();
+        mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
+        _transactionProvider
+            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
+
         _handler = new AnonimizarContaHandler(
             _contaRepo.Object,
             _alunoRepo.Object,
@@ -65,6 +75,7 @@ public class AnonimizarContaHandlerTests
             _logAprovacaoRepo.Object,
             _passwordHasher.Object,
             _uow.Object,
+            _transactionProvider.Object,
             _timeProvider.Object,
             _userContext.Object,
             _tokenRevogadoRepo.Object);
@@ -342,8 +353,6 @@ public class AnonimizarContaHandlerTests
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // ── T6: bond inactivation ─────────────────────────────────────────────────
-
     [Fact]
     public async Task HandleAsync_AlunoComVinculosAtivosEPendentes_InativaVinculosAntesDeCommit()
     {
@@ -377,14 +386,11 @@ public class AnonimizarContaHandlerTests
                   .ReturnsAsync(conta);
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(aluno);
-        // default stub returns empty list
 
         var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
 
         result.IsSuccess.Should().BeTrue();
     }
-
-    // ── T6: execução observacao scrub ─────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_Aluno_ScrubaObservacoesExecucaoAntesDeCommit()
@@ -413,8 +419,6 @@ public class AnonimizarContaHandlerTests
         commitCallOrder.Should().Equal("scrub", "commit");
     }
 
-    // ── T6: audit log fail-fast ───────────────────────────────────────────────
-
     [Fact]
     public async Task HandleAsync_LogAprovacaoFalha_RetornaFailureSemCommit()
     {
@@ -435,8 +439,11 @@ public class AnonimizarContaHandlerTests
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // JWT-01: a revogação é enfileirada ANTES do CommitAsync (mesma transação), não num
+    // commit separado pós-anonimização — fecha a janela em que o jti seguiria válido se o
+    // processo caísse entre os dois commits.
     [Fact]
-    public async Task HandleAsync_SelfComJtiValido_RevogaTokenAposCommit()
+    public async Task HandleAsync_SelfComJtiValido_EnfileiraRevogacaoAntesDoCommit()
     {
         var contaId = Guid.NewGuid();
         var jti = Guid.NewGuid();
@@ -450,12 +457,68 @@ public class AnonimizarContaHandlerTests
         _userContext.Setup(u => u.Jti).Returns(jti);
         _userContext.Setup(u => u.TokenExpiraEm).Returns(TestData.Agora.AddHours(1));
 
+        var ordem = new List<string>();
+        _tokenRevogadoRepo.Setup(r => r.AdicionarAsync(It.IsAny<TokenRevogado>(), It.IsAny<CancellationToken>()))
+                          .Callback(() => ordem.Add("revoga")).Returns(Task.CompletedTask);
+        _uow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("commit")).Returns(Task.CompletedTask);
+
         var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
 
         result.IsSuccess.Should().BeTrue();
         _tokenRevogadoRepo.Verify(
             r => r.AdicionarAsync(It.Is<TokenRevogado>(t => t.Jti == jti), It.IsAny<CancellationToken>()),
             Times.Once);
+        ordem.Should().Equal("revoga", "commit");
+    }
+
+    // JWT-01 caminho idempotente: conta já anonimizada (1ª chamada pode ter falhado só na
+    // revogação) + self + jti ativo → o retry ainda revoga e comita.
+    [Fact]
+    public async Task HandleAsync_ContaJaAnonimizada_SelfComJtiAtivo_RevogaToken()
+    {
+        var contaId = Guid.NewGuid();
+        var jti = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        conta.Anonimizar(TestData.Agora);
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _userContext.Setup(u => u.Jti).Returns(jti);
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(TestData.Agora.AddHours(1));
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _tokenRevogadoRepo.Verify(
+            r => r.AdicionarAsync(It.Is<TokenRevogado>(t => t.Jti == jti), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // JWT-01: jti já revogado (logout concorrente) → não duplica nem comita. A pré-checagem
+    // evita o unique-violation que abortaria a transação.
+    [Fact]
+    public async Task HandleAsync_ContaJaAnonimizada_JtiJaRevogado_NaoDuplica()
+    {
+        var contaId = Guid.NewGuid();
+        var jti = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        conta.Anonimizar(TestData.Agora);
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _userContext.Setup(u => u.Jti).Returns(jti);
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(TestData.Agora.AddHours(1));
+        _tokenRevogadoRepo.Setup(r => r.EstaRevogadoAsync(jti, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync(true);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _tokenRevogadoRepo.Verify(
+            r => r.AdicionarAsync(It.IsAny<TokenRevogado>(), It.IsAny<CancellationToken>()), Times.Never);
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
