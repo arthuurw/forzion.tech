@@ -52,7 +52,8 @@ public class ErrorLogDbSinkProviderTests
     {
         var (scopeFactory, dbName) = CriarScopeFactory();
         var (lifetime, stoppingCts) = CriarLifetime();
-        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System, lifetime);
+        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
+        provider.RegistrarDrenoNoShutdown(lifetime);
 
         var logger = provider.CreateLogger("TestCategory");
         logger.Log(LogLevel.Error, 0, "mensagem de erro", null, (s, _) => s);
@@ -70,7 +71,8 @@ public class ErrorLogDbSinkProviderTests
     {
         var (scopeFactory, _) = CriarScopeFactory();
         var (lifetime, stoppingCts) = CriarLifetime();
-        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System, lifetime);
+        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
+        provider.RegistrarDrenoNoShutdown(lifetime);
 
         var logger = provider.CreateLogger("WorkerService");
         for (var i = 0; i < 5; i++)
@@ -89,7 +91,8 @@ public class ErrorLogDbSinkProviderTests
     {
         var (scopeFactory, _) = CriarScopeFactory();
         var (lifetime, stoppingCts) = CriarLifetime();
-        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System, lifetime);
+        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
+        provider.RegistrarDrenoNoShutdown(lifetime);
 
         var logger = provider.CreateLogger("SomeService");
         logger.Log(LogLevel.Warning, 0, "aviso", null, (s, _) => s);
@@ -107,7 +110,8 @@ public class ErrorLogDbSinkProviderTests
     {
         var (scopeFactory, _) = CriarScopeFactory();
         var (lifetime, stoppingCts) = CriarLifetime();
-        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System, lifetime);
+        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
+        provider.RegistrarDrenoNoShutdown(lifetime);
 
         var logger = provider.CreateLogger("Microsoft.EntityFrameworkCore.Database.Command");
         logger.Log(LogLevel.Error, 0, "ef error", null, (s, _) => s);
@@ -123,13 +127,12 @@ public class ErrorLogDbSinkProviderTests
     public async Task Log_CanalCheio_ContabilizaDropSemLancarExcecao()
     {
         var (scopeFactory, _) = CriarScopeFactory();
-        var (lifetime, _) = CriarLifetime();
 
         // Usamos um DbContext que bloqueia para manter o canal cheio durante o teste.
         // Alternativa sem bloquear: criar provider com canal já cheio via subclasse.
         // Abordagem escolhida: não acionar o worker (não cancela o stopping token ainda)
         // e enviar mais itens do que a capacidade (1000 + 1).
-        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System, lifetime);
+        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
         var logger = provider.CreateLogger("OverflowCategory");
 
         // Enfileirar mais do que a capacidade para forçar pelo menos 1 drop.
@@ -157,11 +160,10 @@ public class ErrorLogDbSinkProviderTests
     public void Dispose_SemShutdownExplicito_NaoLanca()
     {
         var (scopeFactory, _) = CriarScopeFactory();
-        var (lifetime, _) = CriarLifetime();
 
         var act = () =>
         {
-            using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System, lifetime);
+            using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
             provider.CreateLogger("Cat").Log(LogLevel.Error, 0, "teste", null, (s, _) => s);
         };
 

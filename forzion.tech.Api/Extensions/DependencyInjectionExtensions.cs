@@ -204,7 +204,9 @@ public static class DependencyInjectionExtensions
             services.AddHostedService<RelatorioSaudeDiarioService>();
             services.AddHostedService<OutboxProcessorService>();
             services.AddHostedService<OutboxLimpezaService>();
-            services.AddSingleton<ILoggerProvider, ErrorLogDbSinkProvider>();
+            services.AddSingleton<ErrorLogDbSinkProvider>();
+            services.AddSingleton<ILoggerProvider>(sp => sp.GetRequiredService<ErrorLogDbSinkProvider>());
+            services.AddHostedService<ErrorLogDbSinkDrenoService>();
         }
 
         return services;

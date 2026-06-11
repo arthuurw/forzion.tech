@@ -31,10 +31,13 @@ public sealed class ErrorLogDbSinkProvider : ILoggerProvider
     private readonly Task _tarefaWorker;
     private long _dropsContados;
 
+    // WHY sem IHostApplicationLifetime no ctor: injetá-lo aqui cria dependência circular
+    // (ILoggerProvider → IHostApplicationLifetime → ILoggerFactory → IEnumerable<ILoggerProvider>),
+    // que aborta o build do host. O dreno de shutdown é registrado depois, via
+    // RegistrarDrenoNoShutdown, por um IHostedService (resolvido após o host construído).
     public ErrorLogDbSinkProvider(
         IServiceScopeFactory scopeFactory,
-        TimeProvider timeProvider,
-        IHostApplicationLifetime lifetime)
+        TimeProvider timeProvider)
     {
         _scopeFactory = scopeFactory;
         _timeProvider = timeProvider;
@@ -46,13 +49,14 @@ public sealed class ErrorLogDbSinkProvider : ILoggerProvider
             SingleWriter = false
         });
 
-        // WHY ApplicationStopping (não Stopped): drena enquanto serviços hospedados ainda
-        // estão em fase de parada graceful — após Stopped o processo pode encerrar a qualquer
-        // momento sem garantir await.
-        lifetime.ApplicationStopping.Register(DrenaNoShutdown);
-
         _tarefaWorker = Task.Run(ProcessarCanalAsync);
     }
+
+    // WHY ApplicationStopping (não Stopped): drena enquanto serviços hospedados ainda
+    // estão em fase de parada graceful — após Stopped o processo pode encerrar a qualquer
+    // momento sem garantir await.
+    public void RegistrarDrenoNoShutdown(IHostApplicationLifetime lifetime) =>
+        lifetime.ApplicationStopping.Register(DrenaNoShutdown);
 
     // Exposto para testes observarem descarte explícito.
     internal long DropsContados => Volatile.Read(ref _dropsContados);
