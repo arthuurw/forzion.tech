@@ -3,7 +3,9 @@ name: DB Backup
 # Dump lógico diário do Postgres (Supabase Free = SEM backup gerenciado → este workflow É o backup).
 # pg_dump -Fc → criptografa com age (chave PÚBLICA; privada fica offline com o dono) → upload R2 off-site.
 # Conexão pelo Session pooler (:5432, IPv4): runner do GitHub não tem rota IPv6 p/ o host direto, e
-# pg_dump exige sessão (Transaction :6543 não serve). Schema do ambiente em BACKUP_SCHEMA.
+# pg_dump exige sessão (Transaction :6543 não serve).
+# Dumpa homolog (staging, canônico hoje) + public (produção, PREPARADO): prod e staging vivem na
+# MESMA DB Supabase, só muda o schema → 1 dump cobre os 2, independente de qual branch é default.
 # Restore: ver specs/specification-dr.md §2.
 
 on:
@@ -24,7 +26,8 @@ jobs:
     name: pg_dump -> age -> R2
     runs-on: ubuntu-latest
     env:
-      BACKUP_SCHEMA: homolog
+      # homolog=staging (canônico hoje) + public=produção (PREPARADO). MESMA DB → 1 dump cobre ambos.
+      BACKUP_SCHEMAS: homolog public
     steps:
       - name: Instalar pg_dump 17 + age
         run: |
@@ -52,9 +55,12 @@ jobs:
         run: |
           set -euo pipefail
           STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-          FILE="forzion-${BACKUP_SCHEMA}-${STAMP}.dump"
+          FILE="forzion-db-${STAMP}.dump"
 
-          pg_dump "${BACKUP_DATABASE_URL}" --schema="${BACKUP_SCHEMA}" -Fc -f "${FILE}"
+          read -ra SCHEMAS <<< "${BACKUP_SCHEMAS}"
+          SCHEMA_ARGS=()
+          for s in "${SCHEMAS[@]}"; do SCHEMA_ARGS+=("--schema=${s}"); done
+          pg_dump "${BACKUP_DATABASE_URL}" "${SCHEMA_ARGS[@]}" -Fc -f "${FILE}"
 
           # dump minúsculo = falha silenciosa do pg_dump; aborta antes de subir lixo + disparar alerta.
           SIZE=$(stat -c%s "${FILE}")
