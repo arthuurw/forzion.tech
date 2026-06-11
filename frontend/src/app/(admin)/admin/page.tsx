@@ -4,6 +4,7 @@ import {
   Box, Typography, Paper, Stack, Divider, Button, Chip, Tabs, Tab,
   Table, TableHead, TableRow, TableCell, TableBody,
 } from "@mui/material";
+import { useTheme, alpha } from "@mui/material/styles";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -34,6 +35,7 @@ interface PlanoStat { planoId: string; name: string; total: number; preco: numbe
 interface DistItem { name: string; total: number }
 
 export default function DashboardAdminPage() {
+  const theme = useTheme();
   const [treinadorStats, setTreinadorStats] = useState<StatItem[]>([]);
   const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
   const [pendentes, setPendentes] = useState<TreinadorResponse[]>([]);
@@ -251,7 +253,7 @@ export default function DashboardAdminPage() {
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    <Bar dataKey="total" name="Treinadores" fill="#F5C400" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="total" name="Treinadores" fill={theme.palette.primary.main} radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </figure>
@@ -297,7 +299,7 @@ export default function DashboardAdminPage() {
                       <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                       <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12 }} />
                       <Tooltip />
-                      <Bar dataKey="total" name="Alunos" fill="#2196f3" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="total" name="Alunos" fill={theme.palette.info.main} radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </figure>
@@ -401,16 +403,16 @@ export default function DashboardAdminPage() {
         <Box>
           {/* Platform counters */}
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 2, mb: 3 }}>
-            <Paper sx={{ p: 3, borderLeft: "4px solid #7c3aed", borderRadius: 2 }}>
-              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#7c3aed" }}>{planos.length}</Typography>
+            <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.info.main}`, borderRadius: 2 }}>
+              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "info.main" }}>{planos.length}</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Planos</Typography>
             </Paper>
-            <Paper sx={{ p: 3, borderLeft: "4px solid #0891b2", borderRadius: 2 }}>
-              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#0891b2" }}>{totalExercicios}</Typography>
+            <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.success.main}`, borderRadius: 2 }}>
+              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "success.main" }}>{totalExercicios}</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Exercícios Globais</Typography>
             </Paper>
-            <Paper sx={{ p: 3, borderLeft: "4px solid #dc2626", borderRadius: 2 }}>
-              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#dc2626" }}>{totalGrupos}</Typography>
+            <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.error.main}`, borderRadius: 2 }}>
+              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "error.main" }}>{totalGrupos}</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Grupos Musculares</Typography>
             </Paper>
           </Box>
@@ -481,12 +483,12 @@ export default function DashboardAdminPage() {
                             fontSize: "0.65rem",
                             fontWeight: 600,
                             bgcolor:
-                              t.status === "Ativo" ? "#4caf5020"
-                                : t.status === "AguardandoAprovacao" ? "#F5C40020"
-                                : "#75757520",
+                              t.status === "Ativo" ? alpha(theme.palette.success.main, 0.12)
+                                : t.status === "AguardandoAprovacao" ? alpha(theme.palette.primary.main, 0.12)
+                                : alpha(theme.palette.text.disabled, 0.12),
                             color:
                               t.status === "Ativo" ? TREINADOR_STATUS_COLORS.Ativos
-                                : t.status === "AguardandoAprovacao" ? "#b8860b"
+                                : t.status === "AguardandoAprovacao" ? theme.palette.warning.dark
                                 : TREINADOR_STATUS_COLORS.Inativos,
                           }}
                         />

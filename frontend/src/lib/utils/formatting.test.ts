@@ -1,6 +1,43 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatarData, formatarSeries, getWeekLabel, periodoParaDatas } from "@/lib/utils/formatting";
+import { formatarBRL, formatarData, formatarSeries, formatarTelefone, getWeekLabel, periodoParaDatas } from "@/lib/utils/formatting";
 import type { SerieConfigResponse } from "@/types";
+
+describe("formatarBRL", () => {
+  it("formata valor positivo no estilo BRL", () => {
+    // toLocaleString in Node uses ICU — result is "R$ 1.234,56"
+    expect(formatarBRL(1234.56)).toBe("R$ 1.234,56");
+  });
+
+  it("formata zero como R$ 0,00 por padrão", () => {
+    expect(formatarBRL(0)).toBe("R$ 0,00");
+  });
+
+  it("formata zero como 'Gratuito' quando gratuito=true", () => {
+    expect(formatarBRL(0, true)).toBe("Gratuito");
+  });
+
+  it("não retorna 'Gratuito' para valor positivo mesmo com gratuito=true", () => {
+    expect(formatarBRL(99.9, true)).not.toBe("Gratuito");
+  });
+});
+
+describe("formatarTelefone", () => {
+  it("11 dígitos → celular com hífen", () => {
+    expect(formatarTelefone("11999998888")).toBe("(11) 99999-8888");
+  });
+
+  it("10 dígitos → fixo com hífen", () => {
+    expect(formatarTelefone("1133334444")).toBe("(11) 3333-4444");
+  });
+
+  it("já formatado (com DDD e parênteses) → retorna original (não é 10/11 dígitos limpos)", () => {
+    expect(formatarTelefone("(11) 99999-8888")).toBe("(11) 99999-8888");
+  });
+
+  it("comprimento inesperado → retorna sem alteração", () => {
+    expect(formatarTelefone("123")).toBe("123");
+  });
+});
 
 function makeSerie(overrides: Partial<SerieConfigResponse> = {}): SerieConfigResponse {
   return {

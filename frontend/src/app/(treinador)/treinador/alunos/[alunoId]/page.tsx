@@ -22,18 +22,12 @@ import ProgressaoAluno from "@/components/treinador/ProgressaoAluno";
 import InfoLine from "@/components/ui/InfoLine";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
 import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
+import { formatarBRL, formatarTelefone } from "@/lib/utils/formatting";
 
 const FICHAS_COLS: Column[] = [
   { label: "Ficha", mobileRole: "primary" },
   { label: "Status", mobileRole: "secondary" },
 ];
-
-function formatPhone(phone: string): string {
-  const d = phone.replace(/\D/g, "");
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return phone;
-}
 
 export default function DetalheAlunoPage() {
   const { alunoId } = useParams<{ alunoId: string }>();
@@ -132,7 +126,7 @@ export default function DetalheAlunoPage() {
             <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
                 {aluno.email && <InfoLine label="E-mail" value={aluno.email} />}
-                {aluno.telefone && <InfoLine label="Celular" value={formatPhone(aluno.telefone)} />}
+                {aluno.telefone && <InfoLine label="Celular" value={formatarTelefone(aluno.telefone)} />}
                 <InfoLine label="Cadastro" value={new Date(aluno.createdAt).toLocaleDateString("pt-BR")} />
                 {aluno.updatedAt && <InfoLine label="Atualizado" value={new Date(aluno.updatedAt).toLocaleDateString("pt-BR")} />}
                 {pacote && (
@@ -145,7 +139,7 @@ export default function DetalheAlunoPage() {
                       }}
                     >
                       <Typography variant="body2" component="span">
-                        <strong>{pacote.nome}</strong> - R$ {pacote.preco.toFixed(2)}
+                        <strong>{pacote.nome}</strong> - {formatarBRL(pacote.preco)}
                         {pacote.descricao ? ` - ${pacote.descricao}` : ""}
                       </Typography>
                     </Box>

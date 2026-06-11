@@ -4,13 +4,10 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Box, Typography, Button, CircularProgress, Alert, Paper, Stack } from "@mui/material";
 import type { IniciarPagamentoPlanoResponse } from "@/types";
+import { formatarBRL } from "@/lib/utils/formatting";
 
 const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
-
-function formatBRL(valor: number) {
-  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function PixView({ pagamento }: { pagamento: IniciarPagamentoPlanoResponse }) {
   const expiracao = pagamento.pixExpiracao ? new Date(pagamento.pixExpiracao) : null;
@@ -19,7 +16,7 @@ function PixView({ pagamento }: { pagamento: IniciarPagamentoPlanoResponse }) {
       <Stack spacing={2} sx={{ alignItems: "center" }}>
         <Typography variant="h6">Pague via Pix</Typography>
         <Typography variant="h5" color="primary" sx={{ fontWeight: "bold" }}>
-          {formatBRL(pagamento.valor)}
+          {formatarBRL(pagamento.valor)}
         </Typography>
 
         {pagamento.pixQrCodeUrl && (
@@ -105,7 +102,7 @@ function CartaoForm({ valor, onPago }: { valor: number; onPago: () => void }) {
       <Stack spacing={2}>
         <Typography variant="h6">Pagamento com cartão</Typography>
         <Typography variant="h5" color="primary" sx={{ fontWeight: "bold" }}>
-          {formatBRL(valor)}
+          {formatarBRL(valor)}
         </Typography>
         <form onSubmit={handleSubmit}>
           <Stack spacing={2}>

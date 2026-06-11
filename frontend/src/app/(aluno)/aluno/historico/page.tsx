@@ -4,6 +4,7 @@ import {
   Box, Typography, Card, CardContent, Stack, Chip, Grid, Skeleton,
   ToggleButtonGroup, ToggleButton,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import {
   BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -56,6 +57,7 @@ function sessoesPorSemana(execucoes: ExecucaoTreinoResponse[]) {
 }
 
 export default function HistoricoAlunoPage() {
+  const theme = useTheme();
   const [allExecucoes, setAllExecucoes] = useState<ExecucaoTreinoResponse[]>([]);
   const [allLoading, setAllLoading] = useState(true);
 
@@ -128,16 +130,16 @@ export default function HistoricoAlunoPage() {
           ) : (
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={weekData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#999" />
-                <YAxis tick={{ fontSize: 11 }} stroke="#999" allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke={theme.palette.text.disabled} />
+                <YAxis tick={{ fontSize: 11 }} stroke={theme.palette.text.disabled} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 4, fontSize: 11 }}
-                  labelStyle={{ color: "#aaa" }}
-                  itemStyle={{ color: "#F5C400" }}
+                  contentStyle={{ background: theme.palette.secondary.main, border: `1px solid ${theme.palette.secondary.light}`, borderRadius: 4, fontSize: 11 }}
+                  labelStyle={{ color: theme.palette.text.disabled }}
+                  itemStyle={{ color: theme.palette.primary.main }}
                   formatter={(v) => [v, "Sessões"]}
                 />
-                <Bar dataKey="sessoes" fill="#F5C400" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sessoes" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -200,13 +202,13 @@ export default function HistoricoAlunoPage() {
                       )}
                       <ResponsiveContainer width="100%" height={140}>
                         <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                          <XAxis dataKey="data" tick={{ fontSize: 10 }} stroke="#999" />
-                          <YAxis tick={{ fontSize: 10 }} stroke="#999" />
+                          <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                          <XAxis dataKey="data" tick={{ fontSize: 10 }} stroke={theme.palette.text.disabled} />
+                          <YAxis tick={{ fontSize: 10 }} stroke={theme.palette.text.disabled} />
                           <Tooltip
-                            contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 4, fontSize: 11 }}
-                            labelStyle={{ color: "#888" }}
-                            itemStyle={{ color: "#F5C400" }}
+                            contentStyle={{ background: theme.palette.secondary.main, border: `1px solid ${theme.palette.secondary.light}`, borderRadius: 4, fontSize: 11 }}
+                            labelStyle={{ color: theme.palette.text.disabled }}
+                            itemStyle={{ color: theme.palette.primary.main }}
                             formatter={(value, name) => {
                               if (name === "carga") return [`${value} kg`, "Carga"];
                               if (name === "series") return [value, "Séries"];
@@ -217,9 +219,9 @@ export default function HistoricoAlunoPage() {
                           <Line
                             type="monotone"
                             dataKey="carga"
-                            stroke="#F5C400"
+                            stroke={theme.palette.primary.main}
                             strokeWidth={2}
-                            dot={{ r: 3, fill: "#F5C400" }}
+                            dot={{ r: 3, fill: theme.palette.primary.main }}
                             activeDot={{ r: 5 }}
                             connectNulls
                           />

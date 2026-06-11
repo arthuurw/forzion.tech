@@ -24,12 +24,9 @@ import type {
   PlanoPlataformaResponse,
   TreinadorResponse,
 } from "@/types";
+import { formatarBRL } from "@/lib/utils/formatting";
 
 type Finalizado = "analise" | "pix" | "cartao";
-
-function formatBRL(valor: number) {
-  return valor === 0 ? "Grátis" : valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 export default function CadastroTreinadorPage() {
   const [error, setError] = useState("");
@@ -202,7 +199,7 @@ export default function CadastroTreinadorPage() {
                         key={p.planoId}
                         value={p.planoId}
                         control={<Radio />}
-                        label={`${p.nome} — ${formatBRL(p.preco)} · até ${p.maxAlunos} alunos`}
+                        label={`${p.nome} — ${p.preco === 0 ? "Grátis" : formatarBRL(p.preco)} · até ${p.maxAlunos} alunos`}
                       />
                     ))}
                   </RadioGroup>

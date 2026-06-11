@@ -30,6 +30,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { cadastroAlunoSchema, type CadastroAlunoFormData } from "@/lib/validations/common";
 import { authApi, AuthApiError } from "@/lib/api/auth";
 import type { TreinadorResponse, PacoteResponse } from "@/types";
+import { formatarBRL } from "@/lib/utils/formatting";
 import { DIAS_OPTIONS, TEMPO_OPTIONS, FINALIDADE_OPTIONS, NIVEL_OPTIONS } from "@/lib/constants/enrollmentOptions";
 import CheckoutTermos from "@/components/ui/CheckoutTermos";
 
@@ -262,7 +263,7 @@ export default function CadastroAlunoPage() {
                           {pacote.descricao ?? ""}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                          R$ {Number(pacote.preco).toFixed(2)}
+                          {formatarBRL(Number(pacote.preco))}
                         </Typography>
                       </Box>
                     </CardContent>

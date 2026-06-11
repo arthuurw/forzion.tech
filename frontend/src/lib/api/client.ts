@@ -18,9 +18,21 @@ export const ASSINATURA_INADIMPLENTE_EVENT = "forzion:assinatura-inadimplente";
 export const ASSINATURA_INADIMPLENTE_MESSAGE =
   "Esta acao esta bloqueada porque sua assinatura esta inadimplente. Va em Pagamentos para regularizar.";
 
+// OBS-01: guarda o X-Request-Id da ultima resposta para o beforeSend do Sentry
+// correlacionar erros de browser com logs estruturados do backend (instrumentation-client).
+function gravarRequestId(headers: unknown) {
+  if (typeof window === "undefined" || !headers) return;
+  const id = (headers as Record<string, string | undefined>)["x-request-id"];
+  if (id) (window as typeof window & { __lastRequestId?: string }).__lastRequestId = id;
+}
+
 apiClient.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    gravarRequestId(res.headers);
+    return res;
+  },
   (error) => {
+    gravarRequestId(error?.response?.headers);
     if (typeof window !== "undefined") {
       const { status, code } = extractApiErrorInfo(error);
       if (status === 401) {

@@ -13,9 +13,10 @@ import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
-import { isAxiosError } from "axios";
 import { alunoApi, type TreinoAlunoDetalheResponse, type ExecucaoExercicioData } from "@/lib/api/aluno";
-import type { ProblemDetails, TreinoExercicioResponse } from "@/types";
+import { extractApiErrorInfo } from "@/lib/api/extractApiError";
+import type { TreinoExercicioResponse } from "@/types";
+import { alpha, useTheme } from "@mui/material/styles";
 
 type SetState = { reps: string; carga: string; groupLabel?: string };
 
@@ -61,6 +62,7 @@ function buildExecPayload(
 }
 
 export default function ExecutarFichaPage() {
+  const theme = useTheme();
   const { fichaId } = useParams<{ fichaId: string }>();
   const router = useRouter();
   const [ficha, setFicha] = useState<TreinoAlunoDetalheResponse | null>(null);
@@ -114,15 +116,11 @@ export default function ExecutarFichaPage() {
       setDone(true);
       setConfirmOpen(false);
     } catch (err) {
-      if (isAxiosError(err) && err.response) {
-        const problem = err.response.data as ProblemDetails;
-        if (problem.status === 404) setError("Ficha não encontrada.");
-        else if (problem.status === 422) setError(problem.detail ?? "Dados inválidos para registrar o treino.");
-        else if (problem.status === 403) setError("Você não tem um treinador ativo. Não é possível registrar novos treinos.");
-        else setError("Erro ao registrar treino. Tente novamente.");
-      } else {
-        setError("Erro ao registrar treino.");
-      }
+      const { status, message } = extractApiErrorInfo(err);
+      if (status === 404) setError("Ficha não encontrada.");
+      else if (status === 422) setError(message ?? "Dados inválidos para registrar o treino.");
+      else if (status === 403) setError("Você não tem um treinador ativo. Não é possível registrar novos treinos.");
+      else setError("Erro ao registrar treino. Tente novamente.");
     } finally {
       setSubmitting(false);
     }
@@ -183,7 +181,7 @@ export default function ExecutarFichaPage() {
           <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
             {/* Exercise name */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
-              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: "primary.main" + "20" }}>
+              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.12) }}>
                 <FitnessCenterIcon sx={{ color: "primary.main", fontSize: 28 }} />
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 700 }}>{current.nomeExercicio}</Typography>

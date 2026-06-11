@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   Box, Typography, Paper, Stack, Divider, Button,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import Link from "next/link";
@@ -18,6 +19,7 @@ import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 import { getWeekLabel } from "@/lib/utils/formatting";
 
 export default function DashboardAlunoPage() {
+  const theme = useTheme();
   const [totalFichas, setTotalFichas] = useState(0);
   const [totalExecucoes, setTotalExecucoes] = useState(0);
   const [fichasStats, setFichasStats] = useState<{ name: string; value: number; color: string }[]>([]);
@@ -42,8 +44,8 @@ export default function DashboardAlunoPage() {
 
         const ativas = fichas.filter((f) => f.status === "Ativo");
         setFichasStats([
-          { name: "Ativas", value: ativas.length, color: "#4caf50" },
-          { name: "Inativas", value: fichas.length - ativas.length, color: "#757575" },
+          { name: "Ativas", value: ativas.length, color: theme.palette.success.main },
+          { name: "Inativas", value: fichas.length - ativas.length, color: theme.palette.text.disabled },
         ]);
         setFichasAtivas(ativas.slice(0, 5));
 
@@ -81,16 +83,16 @@ export default function DashboardAlunoPage() {
 
       {/* Stat cards */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" }, gap: 2, mb: 4 }}>
-        <Paper sx={{ p: 3, borderLeft: "4px solid #4caf50", borderRadius: 2 }}>
-          <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#4caf50" }}>
+        <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.success.main}`, borderRadius: 2 }}>
+          <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "success.main" }}>
             {totalFichas}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
             Fichas disponíveis
           </Typography>
         </Paper>
-        <Paper sx={{ p: 3, borderLeft: "4px solid #1976d2", borderRadius: 2 }}>
-          <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#1976d2" }}>
+        <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.info.main}`, borderRadius: 2 }}>
+          <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "info.main" }}>
             {totalExecucoes}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
@@ -150,7 +152,7 @@ export default function DashboardAlunoPage() {
                 <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v) => [v, "Sessões"]} />
-                <Bar dataKey="sessoes" name="Sessões" fill="#F5C400" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sessoes" name="Sessões" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

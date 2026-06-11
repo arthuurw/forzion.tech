@@ -11,6 +11,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
 import * as Sentry from "@sentry/nextjs";
 import { CDC_CANCEL_NOTICE } from "@/lib/constants/billing";
+import { formatarBRL } from "@/lib/utils/formatting";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
 
@@ -233,7 +234,7 @@ export default async function LandingPage() {
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 800, color: i === 1 ? "secondary.main" : "primary.main", mt: 1.5 }}>
                           {plano.preco > 0
-                            ? <>{`R$ ${plano.preco.toFixed(2).replace(".", ",")}`}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
+                            ? <>{formatarBRL(plano.preco)}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
                             : "Gratuito"}
                         </Typography>
                         {tierCopy && (

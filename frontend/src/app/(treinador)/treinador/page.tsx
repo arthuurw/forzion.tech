@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Box, Typography, Paper, Stack, Divider, Button,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import CheckIcon from "@mui/icons-material/Check";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import { useRouter } from "next/navigation";
@@ -37,6 +37,7 @@ interface ReceitaPacoteItem {
 }
 
 export default function DashboardTreinadorPage() {
+  const theme = useTheme();
   const router = useRouter();
   const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
   const [objetivoData, setObjetivoData] = useState<ObjetivoItem[]>([]);
@@ -227,16 +228,16 @@ export default function DashboardTreinadorPage() {
             </Typography>
           </Paper>
         ))}
-        <Paper sx={{ p: 3, borderLeft: "4px solid #1976d2", borderRadius: 2 }}>
-          <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "#1976d2" }}>
+        <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.info.main}`, borderRadius: 2 }}>
+          <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "info.main" }}>
             {totalFichas}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
             Fichas
           </Typography>
         </Paper>
-        <Paper sx={{ p: 3, borderLeft: "4px solid #388e3c", borderRadius: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.2, color: "#388e3c" }}>
+        <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.success.main}`, borderRadius: 2 }}>
+          <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.2, color: "success.main" }}>
             {mrr.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
@@ -296,7 +297,7 @@ export default function DashboardTreinadorPage() {
                 <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                 <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="total" name="Fichas" fill="#F5C400" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="total" name="Fichas" fill={theme.palette.primary.main} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -327,7 +328,7 @@ export default function DashboardTreinadorPage() {
                   return [v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), "Receita"];
                 }}
               />
-              <Bar dataKey="receita" name="receita" fill="#388e3c" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="receita" name="receita" fill={theme.palette.success.main} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Paper>

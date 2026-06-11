@@ -14,6 +14,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { treinadorApi } from "@/lib/api/treinador";
 import { extractApiError } from "@/lib/api/extractApiError";
 import type { PacoteResponse } from "@/types";
+import { formatarBRL } from "@/lib/utils/formatting";
 
 export default function PacotesTreinadorPage() {
   const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
@@ -173,7 +174,7 @@ export default function PacotesTreinadorPage() {
                     </Typography>
                   )}
                   <Typography variant="body2" color="text.secondary">
-                    R$ {p.preco.toFixed(2)}/mês
+                    {formatarBRL(p.preco)}/mês
                   </Typography>
                 </CardContent>
               </Card>

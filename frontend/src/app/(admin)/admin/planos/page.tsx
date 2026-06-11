@@ -14,6 +14,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { adminApi } from "@/lib/api/admin";
 import type { PlanoPlataformaResponse, TierPlano } from "@/types";
+import { formatarBRL } from "@/lib/utils/formatting";
 
 const TIER_OPTIONS: { value: TierPlano; label: string; disabled?: boolean }[] = [
   { value: "Free",    label: "Free" },
@@ -155,7 +156,7 @@ export default function PlanosAdminPage() {
                   </Box>
                   <Typography variant="body2" color="text.secondary">Até {p.maxAlunos} alunos</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {Number(p.preco) === 0 ? "Gratuito" : `R$ ${Number(p.preco).toFixed(2)}/mês`}
+                    {Number(p.preco) === 0 ? "Gratuito" : `${formatarBRL(Number(p.preco))}/mês`}
                   </Typography>
                   {p.descricao && (
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontStyle: "italic" }}>
