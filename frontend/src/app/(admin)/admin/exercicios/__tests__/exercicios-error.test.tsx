@@ -27,10 +27,7 @@ describe("ExerciciosAdminPage — grupos musculares indisponíveis", () => {
     );
   });
 
-  // setError vem do hook (mockado). Provar que é chamado basta: a falha de
-  // grupos deixa de ser muda e alimenta o AlertBanner real da página.
   it("listGruposMusculares falha → chama setError do hook", async () => {
-    // resposta sem detail/title/message → page recorre ao fallback honesto
     server.use(
       http.get("*/admin/grupos-musculares", () => new HttpResponse(null, { status: 500 })),
     );

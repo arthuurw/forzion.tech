@@ -88,7 +88,6 @@ public class AprovarTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_TreinadorAguardando_DespachaEventoAprovado()
     {
-        // Evento TreinadorAprovadoEvent deve ser enfileirado no agregado após Aprovar().
         var adminId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carla", DateTime.UtcNow).Value;
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);

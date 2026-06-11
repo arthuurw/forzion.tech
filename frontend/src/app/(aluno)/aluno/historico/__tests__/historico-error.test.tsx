@@ -31,7 +31,6 @@ describe("HistoricoAlunoPage — erro nos indicadores", () => {
   });
 
   it("listExecucoes (indicadores) falha → exibe AlertBanner", async () => {
-    // resposta sem detail/title/message → page recorre ao fallback honesto
     server.use(
       http.get("*/aluno/execucoes", () => new HttpResponse(null, { status: 500 })),
     );

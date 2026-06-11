@@ -162,7 +162,6 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Cancelar assinatura" }));
 
-    // Ambos os botões de formato devem aparecer no dialog
     const xlsxBtn = await screen.findByRole("button", { name: /baixar meus dados \(excel\)/i });
     expect(screen.getByRole("button", { name: /baixar como json/i })).toBeInTheDocument();
 

@@ -23,8 +23,6 @@ namespace forzion.tech.Infrastructure.Logging;
 // pela própria gravação.
 public sealed class ErrorLogDbSinkProvider : ILoggerProvider
 {
-    // Capacidade escolhida para absorver bursts sem consumo de memória ilimitado.
-    // DropWrite: item novo é descartado quando canal está cheio; TryWrite retorna false.
     private const int CapacidadeCanal = 1000;
 
     private readonly Channel<LogEntry> _canal;

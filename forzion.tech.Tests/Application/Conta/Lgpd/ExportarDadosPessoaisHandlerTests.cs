@@ -177,8 +177,6 @@ public class ExportarDadosPessoaisHandlerTests
         typeof(VinculoExportDto).GetProperty("NomeTreinador").Should().BeNull();
     }
 
-    // ── T7: aluno com vínculo pendente sem assinatura aparece no export ────────
-
     [Fact]
     public async Task HandleAsync_Aluno_VinculoPendenteSemAssinatura_Aparece()
     {
@@ -242,8 +240,6 @@ public class ExportarDadosPessoaisHandlerTests
         export.Treinos.Should().BeEmpty();
     }
 
-    // ── T7: treinador com vínculos inativos e pendentes aparece no export ─────
-
     [Fact]
     public async Task HandleAsync_Treinador_VinculosInativosPendentes_Aparecem()
     {
@@ -279,8 +275,6 @@ public class ExportarDadosPessoaisHandlerTests
         result.Value.Vinculos.Should().Contain(v => v.Status == VinculoStatus.AguardandoAprovacao.ToString());
     }
 
-    // ── T7: falha no log de auditoria retorna Failure sem exportar dados ──────
-
     [Fact]
     public async Task HandleAsync_FalhaNoLog_RetornaFailureSemExport()
     {
@@ -306,7 +300,6 @@ public class ExportarDadosPessoaisHandlerTests
         var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
 
         result.IsFailure.Should().BeTrue();
-        // No audit persistence and no export returned.
         _logAprovacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -400,7 +393,6 @@ public class ExportarDadosPessoaisHandlerTests
         export.Pagamentos[0].MetodoPagamento.Should().Be(MetodoPagamento.Cartao.ToString());
         export.Pagamentos[0].DataPagamento.Should().Be(TestData.Agora);
 
-        // Vinculo DTO — MapVinculo (via ListarTodosPorAlunoAsync)
         export.Vinculos.Should().HaveCount(1);
         export.Vinculos[0].VinculoId.Should().Be(vinculo.Id);
         export.Vinculos[0].TreinadorId.Should().Be(treinadorId);
@@ -487,8 +479,6 @@ public class ExportarDadosPessoaisHandlerTests
         export.EmailDeliveryLogs.Should().ContainSingle().Which.EventType.Should().Be("bounced");
         export.WhatsAppDeliveryLogs.Should().ContainSingle().Which.EventType.Should().Be("delivered");
     }
-
-    // ── audit log gravado em sucesso ──────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_Aluno_GravaLogAuditoria()

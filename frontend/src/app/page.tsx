@@ -180,7 +180,6 @@ export default async function LandingPage() {
         {/* Como funciona */}
         <HowItWorks />
 
-        {/* Diferenciais */}
         <Diferenciais />
 
         {/* Planos */}
@@ -295,7 +294,6 @@ export default async function LandingPage() {
           </Box>
         )}
 
-        {/* FAQ */}
         <Faq />
       </Box>
 
