@@ -14,10 +14,13 @@ public class JwtService : IJwtService
     private readonly string _issuer;
     private readonly string _audience;
     private readonly TimeSpan _expiration;
+    private readonly TimeProvider _timeProvider;
 
-    public JwtService(IConfiguration configuration)
+    public JwtService(IConfiguration configuration, TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        _timeProvider = timeProvider;
 
         _secret = configuration["Auth:JwtSecret"]
             ?? throw new InvalidOperationException("Configuração 'Auth:JwtSecret' não encontrada.");
@@ -49,12 +52,14 @@ public class JwtService : IJwtService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
+        var agora = _timeProvider.GetUtcNow().UtcDateTime;
+
         var token = new JwtSecurityToken(
             issuer: _issuer,
             audience: _audience,
             claims: claims,
-            notBefore: DateTime.UtcNow,
-            expires: DateTime.UtcNow.Add(_expiration),
+            notBefore: agora,
+            expires: agora.Add(_expiration),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

@@ -20,6 +20,7 @@ using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Infrastructure.Handlers;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -161,7 +162,7 @@ public class VinculoApprovalCrossAggregateTests
         var result = await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("treinador_sem_onboarding");
+        result.Error!.Code.Should().Be(TreinadorErrors.SemOnboarding.Code);
         vinculo.DomainEvents.OfType<VinculoAprovadoEvent>().Should().BeEmpty();
         _assinaturasCriadas.Should().BeEmpty("assinatura nao deve ser criada sem onboarding completo");
     }

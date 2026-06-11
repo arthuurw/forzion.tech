@@ -5,6 +5,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Time.Testing;
 
 namespace forzion.tech.Tests.Infrastructure;
 
@@ -14,7 +15,7 @@ public class JwtServiceTests
     private const string Issuer = "forzion.tech";
     private const string Audience = "forzion.tech";
 
-    private static JwtService CriarServico(string? secret = Secret)
+    private static JwtService CriarServico(string? secret = Secret, TimeProvider? time = null)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -26,7 +27,7 @@ public class JwtServiceTests
             })
             .Build();
 
-        return new JwtService(config);
+        return new JwtService(config, time ?? TimeProvider.System);
     }
 
     [Fact]
@@ -121,6 +122,22 @@ public class JwtServiceTests
     }
 
     [Fact]
+    public void GerarToken_ComClockFake_NotBeforeEExpiracaoDeterministicos()
+    {
+        // Instante em segundo exato: nbf/exp do JWT são unix-seconds, sem truncamento a observar.
+        var instante = new DateTimeOffset(2026, 1, 15, 10, 0, 0, TimeSpan.Zero);
+        var time = new FakeTimeProvider(instante);
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+
+        var token = CriarServico(time: time).GerarToken(conta, Guid.NewGuid(), "Fulano de Tal");
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        // notBefore e expires derivam do MESMO instante (sem skew entre duas leituras de relógio).
+        jwt.ValidFrom.Should().Be(instante.UtcDateTime);
+        jwt.ValidTo.Should().Be(instante.UtcDateTime.AddMinutes(60));
+    }
+
+    [Fact]
     public void Construtor_SecretNaoConfigurado_LancaInvalidOperationException()
     {
         var config = new ConfigurationBuilder()
@@ -130,7 +147,7 @@ public class JwtServiceTests
             })
             .Build();
 
-        var act = () => new JwtService(config);
+        var act = () => new JwtService(config, TimeProvider.System);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Auth:JwtSecret*");
     }
@@ -151,7 +168,7 @@ public class JwtServiceTests
             })
             .Build();
 
-        var act = () => new JwtService(config);
+        var act = () => new JwtService(config, TimeProvider.System);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*32 bytes*");
     }
@@ -171,7 +188,7 @@ public class JwtServiceTests
             })
             .Build();
 
-        var act = () => new JwtService(config);
+        var act = () => new JwtService(config, TimeProvider.System);
         act.Should().NotThrow();
     }
 }

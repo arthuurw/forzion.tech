@@ -2,6 +2,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -37,6 +38,11 @@ public class RegistrarAlunoHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
+        // Defense-in-depth (LGPD art. 11): o validator já barra coleta sem consentimento,
+        // mas se for contornado o handler NÃO pode persistir dados de saúde sem consentimento.
+        if (command.ColetaDadosSaude && !command.ConsentimentoDadosSaude)
+            return Result.Failure<AlunoResponse>(AlunoErrors.ConsentimentoSaudeObrigatorio);
+
         var emailExistente = await contaRepository.ObterPorEmailAsync(command.Email, cancellationToken).ConfigureAwait(false);
         if (emailExistente is not null)
             throw new EmailJaCadastradoException();
@@ -45,7 +51,7 @@ public class RegistrarAlunoHandler(
             ?? throw new TreinadorNaoEncontradoException();
 
         if (treinador.Status != TreinadorStatus.Ativo)
-            throw new DomainException("Treinador não disponível para novos alunos.");
+            return Result.Failure<AlunoResponse>(TreinadorErrors.NaoDisponivel);
 
         var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
             ?? throw new PacoteNaoEncontradoException();
@@ -93,7 +99,7 @@ public class RegistrarAlunoHandler(
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
         await vinculoRepository.AdicionarAsync(vinculo, cancellationToken).ConfigureAwait(false);
 
-        if (command.ColetaDadosSaude && command.ConsentimentoDadosSaude)
+        if (command.ColetaDadosSaude)
         {
             var observacao = command.ConsentimentoDadosSaudeEm is { } reportado
                 ? $"v1; cliente reportou: {reportado.ToUniversalTime():o}"

@@ -143,7 +143,8 @@ public static class AuthEndpoints
             [FromServices] VerificarEmailHandler handler,
             CancellationToken cancellationToken) =>
         {
-            await handler.HandleAsync(new VerificarEmailCommand(request.Token), cancellationToken);
+            var result = await handler.HandleAsync(new VerificarEmailCommand(request.Token), cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok();
         })
         .AllowAnonymous()

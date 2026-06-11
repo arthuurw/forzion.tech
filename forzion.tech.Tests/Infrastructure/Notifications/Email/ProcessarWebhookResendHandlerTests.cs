@@ -164,6 +164,30 @@ public class ProcessarWebhookResendHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_PayloadSemCreatedAt_OcorridoEmUsaRelogioInjetado()
+    {
+        // created_at ausente → fallback usa o clock injetado (TimeProvider), não DateTime.UtcNow.
+        const string payload = """
+        { "type": "email.delivered", "data": { "email_id": "msg_noca", "to": ["user@example.com"] } }
+        """;
+        var svixId = $"msg_{Guid.NewGuid():N}";
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var signature = new Webhook(Secret).Sign(svixId, DateTimeOffset.FromUnixTimeSeconds(long.Parse(timestamp, System.Globalization.CultureInfo.InvariantCulture)), payload);
+        var cmd = new ProcessarWebhookResendCommand(payload, svixId, timestamp, signature);
+
+        EmailDeliveryLog? captured = null;
+        _logRepo.Setup(r => r.AdicionarAsync(It.IsAny<EmailDeliveryLog>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailDeliveryLog, CancellationToken>((l, _) => captured = l)
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(cmd, Secret);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        captured!.OcorridoEm.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
+    }
+
+    [Fact]
     public async Task HandleAsync_CommandNulo_LancaArgumentNullException()
     {
         var act = async () => await _handler.HandleAsync(null!, Secret);

@@ -8,6 +8,7 @@ using forzion.tech.Domain.Events;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Pagamentos;
@@ -26,6 +27,8 @@ public class ProcessarWebhookStripeHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IOutboxEnfileirador> _enfileirador = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _logger = new();
+    // Relógio fixo: permite asserções exatas em datas derivadas (DataProximaCobranca = agora+1 mês).
+    private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 6, 10, 10, 0, 0, TimeSpan.Zero));
     private readonly ProcessarWebhookStripeHandler _handler;
 
     private const string ValidSig = "t=1,v1=abc";
@@ -36,7 +39,7 @@ public class ProcessarWebhookStripeHandlerTests
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
             _pagamentoTreinadorRepo.Object, _assinaturaTreinadorRepo.Object, _treinadorRepo.Object,
             _alunoRepo.Object, _contaRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _enfileirador.Object, TimeProvider.System, _logger.Object);
+            _stripeService.Object, _unitOfWork.Object, _enfileirador.Object, _timeProvider, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
             .ReturnsAsync(true);
@@ -72,10 +75,11 @@ public class ProcessarWebhookStripeHandlerTests
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.succeeded", "pi_treinador"), ValidSig));
 
+        var agoraPago = _timeProvider.GetUtcNow().UtcDateTime;
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.Pago);
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa);
-        assinatura.DataProximaCobranca.Should().BeAfter(assinatura.DataInicio, "renovação agendada para o próximo ciclo");
+        assinatura.DataProximaCobranca.Should().Be(agoraPago.AddMonths(1), "renovação agendada exatamente 1 mês após o pagamento");
         treinador.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
         conta.DomainEvents.OfType<ContaRegistradaEvent>().Should().ContainSingle("verificação só após o pagamento");
         _pagamentoRepo.Verify(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -106,13 +110,14 @@ public class ProcessarWebhookStripeHandlerTests
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);
 
+        var agoraPago = _timeProvider.GetUtcNow().UtcDateTime;
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_abc"), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.Pago);
         assinatura.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
-        assinatura.DataProximaCobranca.Should().BeAfter(DateTime.UtcNow);
+        assinatura.DataProximaCobranca.Should().Be(agoraPago.AddMonths(1));
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -285,7 +290,7 @@ public class ProcessarWebhookStripeHandlerTests
         pagamento.Status.Should().Be(PagamentoStatus.Pago);
         assinatura.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
         assinatura.TentativasFalhasConsecutivas.Should().Be(0);
-        assinatura.DataProximaCobranca.Should().BeAfter(DateTime.UtcNow);
+        assinatura.DataProximaCobranca.Should().Be(_timeProvider.GetUtcNow().UtcDateTime.AddMonths(1));
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

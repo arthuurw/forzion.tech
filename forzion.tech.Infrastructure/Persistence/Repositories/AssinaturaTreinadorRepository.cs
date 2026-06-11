@@ -19,11 +19,16 @@ public class AssinaturaTreinadorRepository(AppDbContext context) : IAssinaturaTr
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<AssinaturaTreinador>> ListarParaRenovarAsync(DateTime ate, CancellationToken cancellationToken = default) =>
+    // Keyset por Id (uuid ordenável): renovação bem-sucedida tira a linha do filtro → offset pularia
+    // não-processados. Cursor avança mesmo em falha → não reprocessa no mesmo run (próximo cron pega).
+    public async Task<IReadOnlyList<AssinaturaTreinador>> ListarParaRenovarAsync(DateTime ate, Guid? aposId, int limite, CancellationToken cancellationToken = default) =>
         await context.AssinaturasTreinador
             .AsNoTracking()
             .Where(a => (a.Status == AssinaturaTreinadorStatus.Ativa || a.Status == AssinaturaTreinadorStatus.Inadimplente)
-                        && a.DataProximaCobranca <= ate)
+                        && a.DataProximaCobranca <= ate
+                        && (aposId == null || a.Id > aposId))
+            .OrderBy(a => a.Id)
+            .Take(limite)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

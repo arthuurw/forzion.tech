@@ -4,6 +4,7 @@ using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Application.UseCases.Treinadores.IniciarPagamentoPlano;
 using Microsoft.Extensions.Logging;
 
@@ -33,13 +34,13 @@ public class GerarCobrancaPlanoTreinadorHandler(
     {
         var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaTreinadorId, cancellationToken).ConfigureAwait(false);
         if (assinatura is null)
-            return Result.Failure<IniciarPagamentoPlanoResponse>(Error.NotFound("assinatura_treinador_nao_encontrada", "AssinaturaTreinador não encontrada."));
+            return Result.Failure<IniciarPagamentoPlanoResponse>(AssinaturaTreinadorErrors.NaoEncontrada);
 
         if (assinatura.Status == AssinaturaTreinadorStatus.Cancelada)
-            return Result.Failure<IniciarPagamentoPlanoResponse>(Error.Business("assinatura_treinador_cancelada", "Assinatura cancelada não pode ser renovada."));
+            return Result.Failure<IniciarPagamentoPlanoResponse>(AssinaturaTreinadorErrors.NaoPodeRenovarCancelada);
 
         if (assinatura.Status == AssinaturaTreinadorStatus.Pendente)
-            return Result.Failure<IniciarPagamentoPlanoResponse>(Error.Business("assinatura_treinador_pendente", "Assinatura pendente não pode ser renovada."));
+            return Result.Failure<IniciarPagamentoPlanoResponse>(AssinaturaTreinadorErrors.NaoPodeRenovarPendente);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
 

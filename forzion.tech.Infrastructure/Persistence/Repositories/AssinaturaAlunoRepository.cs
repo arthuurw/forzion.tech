@@ -25,10 +25,16 @@ public class AssinaturaAlunoRepository(AppDbContext context) : IAssinaturaAlunoR
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<AssinaturaAluno>> ListarParaRenovarAsync(DateTime ate, CancellationToken cancellationToken = default) =>
+    // Keyset por Id (uuid é ordenável no Postgres): renovação bem-sucedida tira a linha do filtro,
+    // então offset/Skip pularia não-processados. Cursor avança mesmo em falha → falha não reprocessa
+    // no mesmo run (próximo cron pega), evitando loop infinito.
+    public async Task<IReadOnlyList<AssinaturaAluno>> ListarParaRenovarAsync(DateTime ate, Guid? aposId, int limite, CancellationToken cancellationToken = default) =>
         await context.AssinaturaAlunos
             .AsNoTracking()
-            .Where(a => a.Status == AssinaturaAlunoStatus.Ativa && a.DataProximaCobranca <= ate)
+            .Where(a => a.Status == AssinaturaAlunoStatus.Ativa && a.DataProximaCobranca <= ate
+                        && (aposId == null || a.Id > aposId))
+            .OrderBy(a => a.Id)
+            .Take(limite)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

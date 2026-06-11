@@ -295,6 +295,37 @@ public class ProcessarWebhookWhatsAppHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_StatusSemTimestamp_OcorridoEmUsaRelogioInjetado()
+    {
+        // status sem "timestamp" → fallback usa o clock injetado (TimeProvider), não DateTime.UtcNow.
+        const string payload = """
+        {
+          "entry": [{
+            "changes": [{
+              "value": {
+                "statuses": [
+                  { "id": "wamid_nots", "status": "delivered", "recipient_id": "551100000001" }
+                ]
+              }
+            }]
+          }]
+        }
+        """;
+        var cmd = SignedCommand(payload);
+
+        WhatsAppDeliveryLog? captured = null;
+        _logRepo.Setup(r => r.AdicionarAsync(It.IsAny<WhatsAppDeliveryLog>(), It.IsAny<CancellationToken>()))
+            .Callback<WhatsAppDeliveryLog, CancellationToken>((l, _) => captured = l)
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(cmd, AppSecret);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        captured!.OcorridoEm.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
+    }
+
+    [Fact]
     public async Task HandleAsync_CommandNulo_LancaArgumentNullException()
     {
         var act = async () => await _handler.HandleAsync(null!, AppSecret);

@@ -126,7 +126,7 @@ public class ProcessarWebhookResendHandler(
         }
     }
 
-    private static ResendEventData? ParsePayload(string payload)
+    private ResendEventData? ParsePayload(string payload)
     {
         try
         {
@@ -148,7 +148,7 @@ public class ProcessarWebhookResendHandler(
 
             var createdAt = root.TryGetProperty("created_at", out var caProp)
                 ? caProp.GetDateTime()
-                : DateTime.UtcNow;
+                : timeProvider.GetUtcNow().UtcDateTime;
 
             return new ResendEventData(eventType, emailId, recipientEmail, createdAt);
         }

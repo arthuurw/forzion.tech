@@ -194,7 +194,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
     {
         _factory.VerificarEmailHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<VerificarEmailCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await _factory.CreateClient().PostAsJsonAsync("/auth/verify-email",
             new { Token = new string('a', 64) });
@@ -207,7 +207,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
     {
         _factory.VerificarEmailHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<VerificarEmailCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Token inválido ou já utilizado."));
+            .ReturnsAsync(Result.Failure(Error.Business("auth_verify.token_invalido", "Token inválido ou já utilizado.")));
 
         var response = await _factory.CreateClient().PostAsJsonAsync("/auth/verify-email",
             new { Token = new string('a', 64) });

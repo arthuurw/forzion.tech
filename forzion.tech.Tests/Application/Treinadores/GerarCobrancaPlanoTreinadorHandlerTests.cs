@@ -5,6 +5,7 @@ using forzion.tech.Application.Services;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Tests.E2E;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -104,7 +105,7 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
         var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("assinatura_treinador_cancelada");
+        result.Error!.Code.Should().Be(AssinaturaTreinadorErrors.NaoPodeRenovarCancelada.Code);
     }
 
     [Fact]
@@ -116,7 +117,7 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
         var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("assinatura_treinador_pendente");
+        result.Error!.Code.Should().Be(AssinaturaTreinadorErrors.NaoPodeRenovarPendente.Code);
     }
 
     [Fact]
@@ -184,7 +185,7 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
         var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("assinatura_treinador_nao_encontrada");
+        result.Error!.Code.Should().Be(AssinaturaTreinadorErrors.NaoEncontrada.Code);
     }
 
     [Fact]

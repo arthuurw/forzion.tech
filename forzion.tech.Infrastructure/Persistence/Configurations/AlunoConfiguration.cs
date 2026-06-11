@@ -50,5 +50,7 @@ public class AlunoConfiguration : IEntityTypeConfiguration<Aluno>
 
         builder.Property(a => a.CreatedAt).IsRequired();
         builder.Property(a => a.UpdatedAt);
+
+        builder.Property(a => a.Anonimizado).HasDefaultValue(false);
     }
 }

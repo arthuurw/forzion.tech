@@ -124,7 +124,7 @@ public class ProcessarWebhookWhatsAppHandler(
     /// Extrai os status entries do payload Meta. Retorna null se o payload não
     /// contiver o caminho entry[].changes[].value.statuses[] (ex.: mensagem recebida).
     /// </summary>
-    private static IReadOnlyList<WhatsAppStatusEntry>? ParseStatuses(string payload)
+    private IReadOnlyList<WhatsAppStatusEntry>? ParseStatuses(string payload)
     {
         try
         {
@@ -166,7 +166,7 @@ public class ProcessarWebhookWhatsAppHandler(
                         var ocorridoEm = s.TryGetProperty("timestamp", out var tsProp)
                             && long.TryParse(tsProp.GetString(), out var unix)
                             ? DateTimeOffset.FromUnixTimeSeconds(unix).UtcDateTime
-                            : DateTime.UtcNow;
+                            : timeProvider.GetUtcNow().UtcDateTime;
 
                         result.Add(new WhatsAppStatusEntry(messageId, status, recipientId, ocorridoEm));
                     }

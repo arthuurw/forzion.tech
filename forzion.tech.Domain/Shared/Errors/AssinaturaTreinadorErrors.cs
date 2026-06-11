@@ -13,4 +13,7 @@ public static class AssinaturaTreinadorErrors
     public static Error TrocaPlanoEstadoInvalido => Error.Conflict("assinatura_treinador.troca_plano_estado_invalido", "A troca de plano só é permitida em assinatura ativa ou inadimplente.");
     public static Error PlanoAgendadoIdInvalido => new("assinatura_treinador.plano_agendado_id_invalido", "O identificador do plano agendado é inválido.");
     public static Error OffboardingNecessario => new("assinatura_treinador.offboarding_necessario", "Não é possível cancelar o plano com alunos ativos ou pendentes vinculados. Desvincule os alunos antes de cancelar.");
+    public static Error NaoEncontrada => Error.NotFound("assinatura_treinador.nao_encontrada", "AssinaturaTreinador não encontrada.");
+    public static Error NaoPodeRenovarCancelada => Error.Business("assinatura_treinador.nao_pode_renovar_cancelada", "Assinatura cancelada não pode ser renovada.");
+    public static Error NaoPodeRenovarPendente => Error.Business("assinatura_treinador.nao_pode_renovar_pendente", "Assinatura pendente não pode ser renovada.");
 }

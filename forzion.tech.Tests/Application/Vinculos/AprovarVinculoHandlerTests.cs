@@ -5,6 +5,7 @@ using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 using Moq;
 using forzion.tech.Tests.Builders;
@@ -71,7 +72,7 @@ public class AprovarVinculoHandlerTests
         var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("treinador_sem_onboarding");
+        result.Error!.Code.Should().Be(TreinadorErrors.SemOnboarding.Code);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
