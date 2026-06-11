@@ -1,5 +1,5 @@
 {
-  "_comment": "F8 (Fase 3 test remediation): scope expandido. `project` aqui e default local; .github/workflows/mutation.yml roda matriz Domain + Application via `--project`. break 40 e calibrado pelo piso (Application ~46%, Domain ~82%).",
+  "_comment": "F8 (Fase 3 test remediation): scope expandido. `project` aqui e default local; .github/workflows/mutation.yml roda matriz Domain + Application via `--project`. break 55 elevado de 40 (T10 hardening wave-1; Application ~46% baseline, subir conforme suite amadurece).",
   "stryker-config": {
     "solution": "forzion.tech.slnx",
     "project": "forzion.tech.Domain/forzion.tech.Domain.csproj",
@@ -14,7 +14,7 @@
     "thresholds": {
       "high": 80,
       "low": 60,
-      "break": 40
+      "break": 55
     },
     "reporters": [
       "progress",
