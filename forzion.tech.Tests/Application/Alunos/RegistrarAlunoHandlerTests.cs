@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FluentValidation;
+using FluentValidation.Results;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
@@ -79,7 +80,7 @@ public class RegistrarAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorInativo_LancaDomainException()
+    public async Task HandleAsync_TreinadorInativo_RetornaFailureNaoDisponivel()
     {
         var treinadorId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
@@ -89,13 +90,15 @@ public class RegistrarAlunoHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*não disponível*");
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treinador.nao_disponivel");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorAguardandoAprovacao_LancaDomainException()
+    public async Task HandleAsync_TreinadorAguardandoAprovacao_RetornaFailureNaoDisponivel()
     {
         var treinadorId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
@@ -104,9 +107,11 @@ public class RegistrarAlunoHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*não disponível*");
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treinador.nao_disponivel");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -262,5 +267,31 @@ public class RegistrarAlunoHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _logAprovacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ColetaSaudeSemConsentimento_ValidatorContornado_NaoPersiste()
+    {
+        // Defense-in-depth (LGPD art. 11): com validator no-op (contornado), o handler
+        // ainda recusa persistir dados de saúde sem consentimento — não basta o validator.
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+        var validatorNoOp = new Mock<IValidator<RegistrarAlunoCommand>>();
+        validatorNoOp
+            .Setup(v => v.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
+        var handler = new RegistrarAlunoHandler(
+            _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object, _treinadorRepo.Object,
+            _pacoteRepo.Object, _passwordHasher.Object, _unitOfWork.Object, _logAprovacaoRepo.Object,
+            validatorNoOp.Object, TimeProvider.System, _logger.Object);
+
+        var result = await handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            Doencas: "Hipertensão",
+            ConsentimentoDadosSaude: false));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("aluno.consentimento_saude_obrigatorio");
+        _alunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Aluno>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

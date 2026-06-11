@@ -7,7 +7,6 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -53,26 +52,28 @@ public class VerificarEmailHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
 
+        result.IsSuccess.Should().BeTrue();
         conta.EmailVerificado.Should().BeTrue();
         token.VerifiedAt.Should().NotBeNull();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_TokenInexistente_LancaDomainException()
+    public async Task HandleAsync_TokenInexistente_RetornaFailureTokenInvalido()
     {
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((EmailVerificationToken?)null);
 
-        var act = async () => await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
 
-        await act.Should().ThrowAsync<DomainException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_verify.token_invalido");
     }
 
     [Fact]
-    public async Task HandleAsync_TokenJaUtilizado_LancaDomainException()
+    public async Task HandleAsync_TokenJaUtilizado_RetornaFailureTokenInvalido()
     {
         var token = TokenValido(Guid.NewGuid(), Agora.AddMinutes(-5), Agora.AddHours(23));
         token.MarcarComoVerificado(Agora.AddMinutes(-1));
@@ -80,22 +81,24 @@ public class VerificarEmailHandlerTests
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(token);
 
-        var act = async () => await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
 
-        await act.Should().ThrowAsync<DomainException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_verify.token_invalido");
     }
 
     [Fact]
-    public async Task HandleAsync_TokenExpirado_LancaDomainException()
+    public async Task HandleAsync_TokenExpirado_RetornaFailureTokenExpirado()
     {
         var token = TokenValido(Guid.NewGuid(), Agora.AddHours(-25), Agora.AddHours(-1));
 
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(token);
 
-        var act = async () => await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
 
-        await act.Should().ThrowAsync<DomainException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_verify.token_expirado");
     }
 
     [Fact]

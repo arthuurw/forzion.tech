@@ -10,6 +10,7 @@ public sealed class ReembolsoArrependimentoService(
     private const int PrazoArrependimentoDias = 7;
 
     public async Task ReembolsarSeDentroDoPrazoAsync(
+        Guid pagamentoId,
         DateTime agora,
         string? paymentIntentId,
         DateTime? dataPagamento,
@@ -24,7 +25,7 @@ public sealed class ReembolsoArrependimentoService(
 
         try
         {
-            await stripeService.CriarReembolsoAsync(paymentIntentId, reverterTransferencia, cancellationToken).ConfigureAwait(false);
+            await stripeService.CriarReembolsoAsync(pagamentoId, paymentIntentId, reverterTransferencia, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

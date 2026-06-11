@@ -364,7 +364,7 @@ jobs:
       - name: Gitleaks (working tree)
         working-directory: ${{ github.workspace }}
         run: |
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             detect --source=/repo --no-git \
             --config=/repo/.gitleaks.toml --redact --no-banner
 
@@ -374,7 +374,7 @@ jobs:
         continue-on-error: true
         working-directory: ${{ github.workspace }}
         run: |
-          docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner:latest \
+          docker run --rm -v "$PWD:/src" ghcr.io/google/osv-scanner@sha256:64e86bec6df2466feea5137fc7c78fb3b7c21ec077f014d7130f64810e50676b \
             --config=/src/osv-scanner.toml \
             --lockfile=/src/frontend/package-lock.json
 
@@ -461,7 +461,7 @@ jobs:
     if: ${{ always() && needs.gate.result == 'success' && github.event_name == 'push' }}
     steps:
       - name: Deploy na VM
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.HOMOLOG_HOST }}
           username: ubuntu

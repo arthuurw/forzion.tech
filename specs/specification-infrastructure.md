@@ -4,18 +4,18 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança relevante em: provedor de hosting, compose, nginx, SSL, workflows CI/CD, fluxo de deploy, ambientes, mapeamento de env/secret.
-- Vive em `specs/` (versionado; commitar). Não duplicar DB/e-mail — referenciar os specs próprios.
+- Não duplicar DB/e-mail — referenciar os specs próprios.
 
 ## TOPOLOGIA (hosting)
 - **VPS Hostinger** (Ubuntu + Docker + docker-compose-plugin). Provisionada UMA VEZ via `scripts/setup-vm.sh` (instala Docker, cria `/opt/forzion/{app,nginx,certbot/conf,certbot/www}`, gera `.env` template). Produção será o MESMO modelo (VPS Hostinger).
-- **Supabase**: PostgreSQL 17 gerenciado (`db.<ref>.supabase.co`). Schemas `homolog`/`develop`/`public` idênticos. Host direto IPv6-only → ops ad-hoc por host, não por container. Ver [specification-db].
+- **Supabase**: PostgreSQL 17 gerenciado (`db.<ref>.supabase.co`). Schemas `homolog`/`develop`/`public` idênticos. App conecta via **Session pooler (:5432, IPv4)** (DR-01); host direto IPv6-only = ops ad-hoc/fallback (não alcançável de container). Ver [specification-db].
 - **DNS**: Hostinger (hPanel). E-mail: Resend usa `send.forzion.tech` (SPF+MX SES) + `resend._domainkey` (DKIM). Ver [specification-email].
 - **Domínios**: `homologacao.forzion.tech` (hmg ATIVO), `pact.homologacao.forzion.tech` (Pact broker), `forzion.tech`/`www`/`app.forzion.tech` (prod PREPARADO/não-ativo).
 - **Fluxo de request**: internet → nginx:443 → `location /` → frontend:3000 · `location /webhooks/` → backend:8080 · subdomínio pact → pact-broker:9292.
 
 ## STACKS COMPOSE
 - **`docker-compose.homolog.yml`** — ATIVO (hmg). Build-on-VM. Serviços: `backend`(build Api/Dockerfile, `ASPNETCORE_ENVIRONMENT=Homolog`, env via `${...}`, healthcheck `curl -f http://localhost:8080/health`), `frontend`(build, `depends_on backend healthy`), `nginx`(80/443, bind-mount `nginx.conf`+`certbot` ro), `certbot`(loop renew 12h), `pact-postgres`+`pact-broker`(:9292). Env ← `/opt/forzion/.env`.
-- **`docker-compose.yml`** — LOCAL dev. `postgres`(postgres:16, schema `develop` via Search Path; criado no init por `scripts/init-develop-schema.sql`) + `backend`(build, `Development`, :8080) + `frontend`(:3001→3000). Alternativa SEM Docker: `dotnet run` → User Secrets → **Supabase REMOTO** (não local; ⚠️ migra/seeda remoto — ver [specification-db]).
+- **`docker-compose.yml`** — LOCAL dev. `postgres`(postgres:16, schema `develop` via Search Path; criado no init por `scripts/init-develop-schema.sql`) + `backend`(build, `Development`, :8080) + `frontend`(:3001→3000). Alternativa SEM Docker: `dotnet run` → User Secrets → **Supabase REMOTO** (não local; ⚠️ migra/seeda remoto — ver [specification-db]). Receita comando-a-comando: §LOCAL-RUN.
 - **`docker-compose.server.yml`** — PREPARADO/NÃO-ATIVO. Deploy por imagem de registry (`${REGISTRY}/forzion/{backend,frontend}:${TAG}`). Hoje NÃO há CI que builde/pushe imagem; caminho previsto p/ prod.
 
 ## NGINX / ROTEAMENTO
@@ -41,7 +41,8 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
   - `billing-renewal-treinador.yml` (cron `0 8 * * *`) → `/internal/processar-renovacoes-treinador` (renovação mensal de planos de treinadores); issue labels `ops`/`billing-renewal-treinador-failed`.
   - `billing-renewal.yml` (cron `0 8 * * *`) → `/internal/processar-renovacoes` (cobrança mensal de assinaturas com `DataProximaCobranca` vencida).
   - `billing-reconciliation.yml` (cron `0 4 * * 1` — seg 04h UTC — input opcional `desde_utc`; body `{}`/`{"desdeUtc":...}`) → `/internal/reconciliar-pagamentos` (reconcilia eventos Stripe); issue labels `ops`/`billing-reconciliation-failed`.
-- Repo SEM branch protection (free tier privado) → checks NÃO-enforçados; `Gate` é agregador lógico (merge não trava por check ausente).
+- **GOTCHA CRÍTICO — `schedule`/`workflow_dispatch` SÓ disparam da branch DEFAULT** (regra GitHub). Default real = `main` (confirmado `gh repo view`), que hoje só tem `ci.yml`+CodeQL; TODOS os workflows de cron vivem em `homolog` (não-default) → **não disparam de fato** (`lgpd-purge`, `mutation`, os 3 `billing-*`; e `db-backup`, na branch de feature). Prova: `gh run list --workflow=lgpd-purge.yml` → `HTTP 404: workflow ... not found on the default branch`. Workflows de `push`/`pull_request` (ci, semgrep, contract, hygiene, openapi-drift, pact) rodam normal (o evento traz o `.yml` da própria branch homolog) — por isso aparecem "active". **IMPLICAÇÃO REAL**: renovação mensal de assinatura, purga LGPD e backup NÃO rodam agendados hoje. Fix = pôr os crons na branch default. `db-backup` é **DB-level** (prod=`public`/staging=`homolog` na mesma DB → 1 dump cobre os 2, independe da branch); `billing-*`/`lgpd-purge` são **env-level** (`curl` host específico via `HOMOLOG_HOST`) → na default precisam apontar p/ o host do ambiente certo (no cutover de prod = `main`, host de produção). Decisão de roteamento (default→homolog agora vs promover crons p/ `main`) — ver [STATE].
+- Repo SEM branch protection → checks NÃO-enforçados; `Gate` é agregador lógico (merge não trava por check ausente).
 - **DEPLOY** (`Deploy→homolog`, `if: push`): SSH (`HOMOLOG_HOST`/`HOMOLOG_SSH_KEY`) → `cd /opt/forzion/app` → `git pull origin homolog` → `docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env build && up -d --remove-orphans` → `restart nginx` (config é bind-mount; up não recria por mudança só de arquivo) → `docker image prune -f`.
 - **DEPLOY MANUAL / GOTCHAS** (quando o CI falha ou ao aplicar mudança de `.env` na mão):
   - `docker compose restart` **NÃO** relê o `.env` (reinicia o processo com env antiga). Pra carregar var nova: `up -d --force-recreate <serviço>`. Sintoma: `docker compose exec <svc> printenv VAR` vazio mesmo com a var no `/opt/forzion/.env`.
@@ -52,17 +53,40 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 ## AMBIENTES
 | Ambiente | ASPNETCORE_ENVIRONMENT | Schema | Host | Estado |
 |----------|------------------------|--------|------|--------|
-| local-docker | Development | homolog (PG local) | localhost | dev |
-| local-run (`dotnet run`) | Development OU Homolog (profiles http/https forçam Homolog) | develop (Dev) / homolog (Homolog) — **Supabase REMOTO** | localhost | dev (⚠️ migra/seeda remoto) |
+| local-docker | Development | develop (PG local) | localhost | dev |
+| local-run (`dotnet run`) | Development (recomendado; profiles http/https forçam Homolog — §LOCAL-RUN) | **develop** (= `Search Path` do User Secret; FIXO — NÃO muda com o env) — **Supabase REMOTO** | localhost | dev (⚠️ migra/seeda remoto) |
 | homolog | Homolog | homolog | homologacao.forzion.tech (VPS Hostinger) | **ATIVO** |
 | produção | Production | public | forzion.tech/www/app | **PREPARADO/NÃO-ATIVO** |
-- Migrate + Seed no startup em Development/Homolog (`Program.cs`). Prod: `appsettings.Production.json` (AllowedHosts forzion.tech/www/app, schema `public`, CORS prod) existe, mas SEM deploy automatizado e sem CI de imagem.
+- Migrate + Seed no startup em Development/Homolog (`Program.cs` L17). Prod: `appsettings.Production.json` (AllowedHosts forzion.tech/www/app, schema `public`, CORS prod) existe, mas SEM deploy automatizado e sem CI de imagem.
+- **Schema NÃO é função do env**: vem do `Search Path` da connection. No local-run há UM só User Secret store (`ConnectionStrings:AppConnection` com `Search Path=develop`), carregado tanto em Development quanto em Homolog (`Program.cs` L8). Logo Dev vs Homolog local muda só os defaults de `appsettings.{Env}.json` (Email markers de teste, CORS, AllowedHosts) — **não** o schema. Pra apontar a outro schema, editar o `Search Path` do próprio secret.
+
+## LOCAL-RUN SEM DOCKER (receita — Development + schema develop, Supabase REMOTO)
+Caminho mais rápido p/ subir a instância p/ testar à mão (sem Docker). ⚠️ migra/seeda o Supabase REMOTO (schema `develop`) no startup — ver [specification-db].
+- **Pré**: User Secrets do projeto `forzion.tech.Api` preenchidos (`ConnectionStrings:AppConnection` com `Search Path=develop`, `Auth:JwtSecret`, `Stripe:*`, `Seed:*`) — `dotnet user-secrets list --project forzion.tech.Api`.
+- **GOTCHA launch-profile**: `dotnet run` puro pega o profile `http`/`https` do `launchSettings.json`, que **força `ASPNETCORE_ENVIRONMENT=Homolog`** (não Development). Pra rodar Development, bypassar o profile e setar env+URL na mão:
+  ```powershell
+  $env:ASPNETCORE_ENVIRONMENT="Development"; $env:ASPNETCORE_URLS="http://localhost:5230"
+  dotnet run --project forzion.tech.Api --no-launch-profile
+  ```
+  Backend sobe em `http://localhost:5230`. (HTTPS :7220 só vale via profile `https`, que é Homolog — evitar p/ não lidar com cert dev.)
+- **Frontend** precisa de `frontend/.env.local` (gitignored; NÃO commitar) — sem ele o proxy aponta p/ o default `https://localhost:7220`, que não casa com o backend HTTP:
+  ```
+  API_BASE_URL=http://localhost:5230          # proxy Next /api/backend + /api/auth/* → backend
+  JWT_SECRET=<MESMO valor de Auth:JwtSecret>  # /api/auth/me valida a assinatura do JWT
+  JWT_ISSUER=forzion.tech
+  JWT_AUDIENCE=forzion.tech
+  NEXT_PUBLIC_API_BASE_URL=/api/backend
+  ```
+  Subir: `cd frontend; npm run dev` → `:3000` (ou `npm run dev -- -p 3001` se `:3000` ocupado — `next dev` NÃO migra de porta sozinho no Next 16; falha `EADDRINUSE`).
+- **Verificar**: `/health` 200 (liveness), `/health/ready` 200 (conexão Supabase OK). Admin = `Seed:AdminEmail`/`Seed:AdminPassword` do User Secret (pré-verificado pelo seed → login direto).
+- **Cross-check Docker**: a stack `docker-compose.yml` é o caminho alternativo (PG local schema `develop`, sem tocar Supabase) — frontend :3001, ver [specification-local-ci-repro] §4.
 
 ## ENV / SECRETS
 - **VM hmg** `/opt/forzion/.env` (NÃO versionado): `APP_ENV`, `DB_CONNECTION`, `DB_SCHEMA`, `JWT_SECRET`/`ISSUER`/`AUDIENCE`, `CORS_ORIGINS`, `STRIPE_SECRET_KEY`/`WEBHOOK_SECRET`/`URL_BASE`, `RESEND_API_KEY`/`WEBHOOK_SECRET`, `APP_FRONTEND_BASE_URL`, `INTERNAL_API_KEY` (chave dos 3 endpoints internos `/internal/processar-renovacoes-treinador`, `/internal/processar-renovacoes`, `/internal/reconciliar-pagamentos`; vazio → 401), WhatsApp (opcional), `PACT_*`. Compose mapeia → `Resend__ApiKey`, `Stripe__SecretKey`, `Internal__ApiKey`, etc.
 - **GitHub Actions secrets**: `HOMOLOG_HOST`/`HOMOLOG_SSH_KEY` (deploy), `INTERNAL_API_KEY` (billing-renewal-treinador + billing-renewal + billing-reconciliation; MESMO valor do `.env` da VM — comparação constant-time no endpoint).
+- **GitHub Actions secrets — `db-backup.yml`** (backup diário, [specification-dr §2]): `BACKUP_DATABASE_URL` (URI libpq do Session pooler, `postgresql://forzion_api.<ref>:<pw>@<pooler-host>:5432/postgres?sslmode=require` — URL-encode `<pw>` se tiver char especial), `BACKUP_AGE_PUBLIC_KEY` (recipient `age1…`; privada NÃO vai pro GitHub — fica offline com o dono), `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET` (Cloudflare R2, S3-compat). Fork PR não acessa secrets (sem trigger de PR + fork-pr approval ON, [go-public]).
 - **Local**: User Secrets `forzion-prod` (`dotnet user-secrets`) — `ConnectionStrings:AppConnection` (Supabase remoto), `Auth:JwtSecret`, `Stripe:*`, `Resend:*`, `Seed:*`, `AI:Internal:*`. OU `.env` (ver `.env.example`) p/ `docker-compose.yml`.
-- `appsettings.{Env}.json`: só defaults não-secret (AllowedHosts, Cors, Database:Schema, App:FrontendBaseUrl, Resend:ApiUrl). Secrets vazios no repo.
+- `appsettings.{Env}.json`: só defaults não-secret (AllowedHosts, Cors, Email[markers de teste], App:FrontendBaseUrl, Resend:ApiUrl). Schema NÃO sai daqui — vem do `Search Path` da connection (§AMBIENTES). Secrets vazios no repo.
 - ⚠️ `Program.cs` adiciona User Secrets DEPOIS do `CreateBuilder` → secrets sobrescrevem env em RUNTIME. Ver [specification-db].
 
 ## OBSERVABILITY
@@ -87,4 +111,4 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 - PR/merge só-docs não roda CI/CD (paths-ignore) → docs chegam na VM no próximo deploy de código (`git pull`), sem deploy próprio.
 - Supabase host direto IPv6-only → containers podem não alcançar por hostname; ver [specification-db].
 - `docker-compose.server.yml` (registry) sem CI de build/push hoje → não usar como ativo sem antes criar o pipeline de imagem.
-- Migration destrutiva/backfill roda no startup (Dev/Homolog) contra o REMOTO — validar antes (ver [specification-db]).
+- (Migration destrutiva no startup contra REMOTO: ver §STACKS/§AMBIENTES/§LOCAL-RUN — não repetir.)

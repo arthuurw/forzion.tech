@@ -19,4 +19,5 @@ public static class TreinadorErrors
         Error.Business("treinador.cooldown_modo_pagamento", $"O modo de pagamento só poderá ser alterado novamente em {liberadoEm:dd/MM/yyyy}.");
     public static Error ConfigureStripePrimeiro => Error.Business("treinador.configure_stripe_primeiro", "Configure sua conta Stripe antes de voltar a receber pela plataforma.");
     public static Error ModoPagamentoInvalido => Error.Business("treinador.modo_pagamento_invalido", "O modo de pagamento informado é inválido.");
+    public static Error SemOnboarding => Error.Business("treinador.sem_onboarding", "Configure seus recebimentos (Stripe) antes de aceitar alunos.");
 }

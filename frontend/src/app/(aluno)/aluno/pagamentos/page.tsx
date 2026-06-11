@@ -6,28 +6,11 @@ import {
   Chip, Button, Dialog, DialogContent, DialogTitle, IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import type { PagamentoResponse, PagamentoStatus } from "@/types";
+import type { PagamentoResponse } from "@/types";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { PAGAMENTO_STATUS_COLORS, PAGAMENTO_STATUS_LABEL } from "@/lib/constants/labels";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
-
-const statusColor: Record<PagamentoStatus, "default" | "success" | "warning" | "error" | "info"> = {
-  Pago: "success",
-  Pendente: "warning",
-  Expirado: "default",
-  Falhou: "error",
-  Estornado: "info",
-  EmDisputa: "error",
-};
-
-const statusLabel: Record<PagamentoStatus, string> = {
-  Pago: "Pago",
-  Pendente: "Pendente",
-  Expirado: "Expirado",
-  Falhou: "Falhou",
-  Estornado: "Estornado",
-  EmDisputa: "Em disputa",
-};
 
 interface Props {
   pagamentos: PagamentoResponse[];
@@ -64,8 +47,8 @@ function TabelaPagamentos({ pagamentos, loading, error, onAtualizar }: Props) {
               </TableCell>
               <TableCell>
                 <Chip
-                  label={statusLabel[p.status]}
-                  color={statusColor[p.status]}
+                  label={PAGAMENTO_STATUS_LABEL[p.status]}
+                  color={PAGAMENTO_STATUS_COLORS[p.status]}
                   size="small"
                 />
               </TableCell>

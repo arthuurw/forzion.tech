@@ -12,8 +12,12 @@ public static class ExercicioEndpoints
 {
     public static void MapExercicioEndpoints(this IEndpointRouteBuilder app)
     {
+        // Grupo treinador-only: a policy de role barra aluno/admin e o filtro exige perfil_id.
+        // Substitui os guards ad-hoc PerfilId == Guid.Empty (least-privilege, SEC-02/SEC-03).
         var group = app.MapGroup("/exercicios").WithTags("Exercícios")
-            .AddEndpointFilter<PaginacaoFilter>();
+            .RequireAuthorization("Treinador")
+            .AddEndpointFilter<PaginacaoFilter>()
+            .AddEndpointFilter<PerfilIdRequiredFilter>();
 
         group.MapPost("", async (
             [FromBody] CriarExercicioRequest request,
@@ -21,16 +25,12 @@ public static class ExercicioEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            if (userContext.PerfilId == Guid.Empty)
-                return Results.Unauthorized();
-
             var command = new CriarExercicioCommand(
                 userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao);
             var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Created($"/exercicios/{result.Value.ExercicioId}", result.Value);
         })
-        .RequireAuthorization()
         .WithSummary("Cadastra um novo exercício")
         .Produces<ExercicioResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -44,15 +44,11 @@ public static class ExercicioEndpoints
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            if (userContext.PerfilId == Guid.Empty)
-                return Results.Unauthorized();
-
             var pagination = httpContext.ObterPaginacaoDoQuery();
             var query = new ListarExerciciosQuery(userContext.PerfilId, pagination.Pagina, pagination.TamanhoPagina);
             var response = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
             return Results.Ok(response);
         })
-        .RequireAuthorization()
         .WithSummary("Lista exercícios do treinador com paginação")
         .Produces<ListarExerciciosResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)

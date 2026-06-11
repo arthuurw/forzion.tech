@@ -44,11 +44,14 @@ public class LoginHandler(
         // Conta verificada sem perfil correspondente é inconsistência de dados (não regra de
         // negócio): mapeia p/ 500, não 422 (DomainException). Idem TipoConta inválido.
         Guid perfilId;
+        string nome;
         switch (conta.TipoConta)
         {
             case Domain.Enums.TipoConta.Aluno:
-                perfilId = (await alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
+                var aluno = await alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false)
                     ?? throw new InvalidOperationException("Perfil de aluno não encontrado para esta conta.");
+                perfilId = aluno.Id;
+                nome = aluno.Nome;
                 break;
 
             case Domain.Enums.TipoConta.Treinador:
@@ -62,21 +65,24 @@ public class LoginHandler(
                 if (treinador.Status == Domain.Enums.TreinadorStatus.Inativo)
                     throw new TreinadorInativoException();
                 perfilId = treinador.Id;
+                nome = treinador.Nome;
                 break;
 
             case Domain.Enums.TipoConta.SystemAdmin:
-                perfilId = (await systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Id
+                var systemUser = await systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false)
                     ?? throw new InvalidOperationException("Perfil de administrador não encontrado para esta conta.");
+                perfilId = systemUser.Id;
+                nome = systemUser.Nome;
                 break;
 
             default:
                 throw new InvalidOperationException("Tipo de conta inválido.");
         }
 
-        var token = jwtService.GerarToken(conta, perfilId);
+        var token = jwtService.GerarToken(conta, perfilId, nome);
 
         logger.LogInformation("Login realizado — ContaId: {ContaId} TipoConta: {TipoConta}", conta.Id, conta.TipoConta);
 
-        return new LoginResponse(token, conta.TipoConta, conta.Id, perfilId);
+        return new LoginResponse(token, conta.TipoConta, conta.Id, perfilId, nome);
     }
 }

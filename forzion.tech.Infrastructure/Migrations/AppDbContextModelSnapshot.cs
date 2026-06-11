@@ -29,6 +29,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("Anonimizado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("anonimizado");
+
                     b.Property<Guid>("ContaId")
                         .HasColumnType("uuid")
                         .HasColumnName("conta_id");
@@ -444,8 +450,9 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("EventType")
                         .HasDatabaseName("ix_email_delivery_logs_event_type");
 
-                    b.HasIndex("ResendMessageId")
-                        .HasDatabaseName("ix_email_delivery_logs_resend_message_id");
+                    b.HasIndex("ResendMessageId", "EventType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_email_delivery_logs_resend_message_id_event_type");
 
                     b.ToTable("email_delivery_logs", (string)null);
                 });
@@ -835,6 +842,68 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_logs_aprovacao_realizado_por_id");
 
                     b.ToTable("logs_aprovacao", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.OutboxEfeito", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChaveIdempotencia")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("chave_idempotencia");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTime?>("ProcessadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processado_em");
+
+                    b.Property<DateTime>("ProximaTentativa")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("proxima_tentativa");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentativas");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("tipo");
+
+                    b.Property<string>("UltimoErro")
+                        .HasColumnType("text")
+                        .HasColumnName("ultimo_erro");
+
+                    b.HasKey("Id")
+                        .HasName("pk_outbox_efeitos");
+
+                    b.HasIndex("ChaveIdempotencia")
+                        .IsUnique()
+                        .HasDatabaseName("ix_outbox_efeitos_chave_idempotencia_unique");
+
+                    b.HasIndex("Status", "ProximaTentativa")
+                        .HasDatabaseName("ix_outbox_efeitos_status_proxima_tentativa");
+
+                    b.ToTable("outbox_efeitos", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Pacote", b =>
@@ -1275,6 +1344,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("Anonimizado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("anonimizado");
+
                     b.Property<DateTime?>("AprovadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("aprovado_em");
@@ -1586,8 +1661,9 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("EventType")
                         .HasDatabaseName("ix_whatsapp_delivery_logs_event_type");
 
-                    b.HasIndex("MetaMessageId")
-                        .HasDatabaseName("ix_whatsapp_delivery_logs_meta_message_id");
+                    b.HasIndex("MetaMessageId", "EventType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_whatsapp_delivery_logs_meta_message_id_event_type");
 
                     b.ToTable("whatsapp_delivery_logs", (string)null);
                 });

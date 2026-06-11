@@ -33,6 +33,18 @@ public sealed class PagamentoTreinadorPagoHandler(
 
         if (domainEvent.Finalidade == FinalidadePagamentoTreinador.Renovacao)
         {
+            // Guard de idempotência (defense-in-depth do outbox): assinatura Ativa com
+            // ProximaCobranca no futuro = ciclo já renovado (AgendarProximaCobranca avança +1 mês).
+            // Restrito a Ativa: Inadimplente pode ter ProximaCobranca futura e ainda precisar
+            // regularizar — não pode ser pulado. Compara com o clock de processamento, não
+            // OcorridoEm (que é passado → dispararia sempre).
+            if (assinatura.Status == AssinaturaTreinadorStatus.Ativa && assinatura.DataProximaCobranca > agora)
+            {
+                logger.LogInformation("Renovação do pagamento {PagamentoId} já aplicada na assinatura {AssinaturaTreinadorId}. Ignorado.",
+                    domainEvent.PagamentoTreinadorId, assinatura.Id);
+                return;
+            }
+
             assinatura.RegistrarPagamentoRegularizado(agora);
             assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -46,6 +58,14 @@ public sealed class PagamentoTreinadorPagoHandler(
             if (domainEvent.PlanoAlvoId is null)
             {
                 logger.LogWarning("TrocaPlano sem PlanoAlvoId no pagamento {PagamentoId}. Ignorado.", domainEvent.PagamentoTreinadorId);
+                return;
+            }
+
+            // Guard de idempotência: plano já foi trocado para o alvo neste evento.
+            if (assinatura.PlanoPlataformaId == domainEvent.PlanoAlvoId.Value)
+            {
+                logger.LogInformation("TrocaPlano do pagamento {PagamentoId} já aplicada na assinatura {AssinaturaTreinadorId}. Ignorado.",
+                    domainEvent.PagamentoTreinadorId, assinatura.Id);
                 return;
             }
 

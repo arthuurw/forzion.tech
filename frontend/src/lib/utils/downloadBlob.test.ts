@@ -27,11 +27,7 @@ describe("downloadBlob", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:fake");
   });
 
-  it("baixarMeusDados fetches exportarDados and downloads meus-dados.json", async () => {
-    const blob = new Blob(["{}"], { type: "application/json" });
-    const exportSpy = vi
-      .spyOn(contaApi, "exportarDados")
-      .mockResolvedValue({ data: blob } as Awaited<ReturnType<typeof contaApi.exportarDados>>);
+  function setupDownloadCapture() {
     const realCreate = document.createElement.bind(document);
     let downloadName = "";
     vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
@@ -43,10 +39,44 @@ describe("downloadBlob", () => {
       }
       return el;
     });
+    return { getDownloadName: () => downloadName };
+  }
+
+  it("baixarMeusDados('xlsx') calls exportarDados with xlsx and saves meus-dados.xlsx", async () => {
+    const blob = new Blob(["binary"], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const exportSpy = vi
+      .spyOn(contaApi, "exportarDados")
+      .mockResolvedValue({ data: blob } as Awaited<ReturnType<typeof contaApi.exportarDados>>);
+    const { getDownloadName } = setupDownloadCapture();
+
+    await baixarMeusDados("xlsx");
+
+    expect(exportSpy).toHaveBeenCalledWith("xlsx");
+    expect(getDownloadName()).toBe("meus-dados.xlsx");
+  });
+
+  it("baixarMeusDados('json') calls exportarDados with json and saves meus-dados.json", async () => {
+    const blob = new Blob(["{}"], { type: "application/json" });
+    const exportSpy = vi
+      .spyOn(contaApi, "exportarDados")
+      .mockResolvedValue({ data: blob } as Awaited<ReturnType<typeof contaApi.exportarDados>>);
+    const { getDownloadName } = setupDownloadCapture();
+
+    await baixarMeusDados("json");
+
+    expect(exportSpy).toHaveBeenCalledWith("json");
+    expect(getDownloadName()).toBe("meus-dados.json");
+  });
+
+  it("baixarMeusDados default formato is xlsx", async () => {
+    const blob = new Blob(["binary"]);
+    const exportSpy = vi
+      .spyOn(contaApi, "exportarDados")
+      .mockResolvedValue({ data: blob } as Awaited<ReturnType<typeof contaApi.exportarDados>>);
+    setupDownloadCapture();
 
     await baixarMeusDados();
 
-    expect(exportSpy).toHaveBeenCalledOnce();
-    expect(downloadName).toBe("meus-dados.json");
+    expect(exportSpy).toHaveBeenCalledWith("xlsx");
   });
 });

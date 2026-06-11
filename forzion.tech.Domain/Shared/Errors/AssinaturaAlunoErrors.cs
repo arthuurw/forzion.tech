@@ -12,4 +12,6 @@ public static class AssinaturaAlunoErrors
     public static Error JaCancelada => new("assinatura_aluno.ja_cancelada", "A assinatura já está cancelada.");
     public static Error ProximaCobrancaNaoFutura => new("assinatura_aluno.proxima_cobranca_nao_futura", "A data da próxima cobrança deve ser futura.");
     public static Error InadimplenteDeveUsarRegularizacao => Error.Conflict("assinatura_aluno.inadimplente_deve_usar_regularizacao", "Assinatura inadimplente não pode ser ativada diretamente; use RegistrarPagamentoRegularizado.");
+    public static Error NaoEncontrada => Error.NotFound("assinatura_aluno.nao_encontrada", "AssinaturaAluno não encontrada.");
+    public static Error NaoEncontradaParaCancelar => new("assinatura_aluno.nao_encontrada_para_cancelar", "Nenhuma assinatura ativa encontrada para cancelar.");
 }

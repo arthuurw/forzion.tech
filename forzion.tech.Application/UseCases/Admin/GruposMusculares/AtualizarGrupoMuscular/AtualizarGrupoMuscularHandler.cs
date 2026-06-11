@@ -27,7 +27,7 @@ public class AtualizarGrupoMuscularHandler(
 
         var existente = await repository.ObterPorNomeAsync(command.Nome, cancellationToken);
         if (existente != null && existente.Id != command.Id)
-            return Result.Failure<GrupoMuscularResponse>(Error.Business("Já existe outro grupo muscular com este nome."));
+            return Result.Failure<GrupoMuscularResponse>(Error.Business("grupo_muscular.nome_duplicado", "Já existe outro grupo muscular com este nome."));
 
         var atualizarResult = grupo.Atualizar(command.Nome, timeProvider.GetUtcNow().UtcDateTime);
         if (atualizarResult.IsFailure)

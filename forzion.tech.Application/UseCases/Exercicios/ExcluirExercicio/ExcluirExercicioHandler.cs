@@ -36,7 +36,7 @@ public class ExcluirExercicioHandler(
         }
 
         if (await exercicioRepository.EstaEmUsoAsync(command.ExercicioId, cancellationToken).ConfigureAwait(false))
-            return Result.Failure(Error.Business("Este exercício está em uso em fichas de treino e não pode ser excluído."));
+            return Result.Failure(Error.Business("exercicio.em_uso", "Este exercício está em uso em fichas de treino e não pode ser excluído."));
 
         await exercicioRepository.RemoverAsync(exercicio, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

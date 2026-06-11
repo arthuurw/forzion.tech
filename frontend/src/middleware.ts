@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import type { TipoConta } from "@/types";
+import { parseTipoConta } from "@/lib/auth/jwt";
 
 const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/forgot-password", "/reset-password", "/verify-email", "/resend-verification"];
 
@@ -17,8 +18,7 @@ async function verifyTipoConta(token: string): Promise<TipoConta | null> {
       issuer: process.env.JWT_ISSUER,
       audience: process.env.JWT_AUDIENCE,
     });
-    const tipoConta = payload["tipo_conta"] as string | undefined;
-    return (tipoConta as TipoConta) ?? null;
+    return parseTipoConta(payload["tipo_conta"]);
   } catch {
     return null;
   }
@@ -71,5 +71,8 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/).*)"],
+  // Exclui assets estáticos do /public por EXTENSÃO conhecida (não qualquer path com ponto):
+  // sem isso o guard de auth redireciona o asset pra /login (307) e o next/image quebra (400).
+  // Allowlist em vez de `.*\..*` p/ não vazar rota protegida que contenha ponto no path.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:webp|png|jpe?g|svg|gif|ico|txt|xml|json|webmanifest|woff2?)$).*)"],
 };

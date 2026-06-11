@@ -51,6 +51,7 @@ public class GlobalExceptionHandlerSnapshots
                 StatusCode = statusCode,
                 Title = body.GetProperty("title").GetString(),
                 Detail = body.GetProperty("detail").GetString(),
+                Code = body.TryGetProperty("code", out var codeEl) ? codeEl.GetString() : null,
             });
         }
 

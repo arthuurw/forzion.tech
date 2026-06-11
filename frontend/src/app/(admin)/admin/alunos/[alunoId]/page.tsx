@@ -25,7 +25,7 @@ import type {
 } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
-import { periodoParaDatas, formatarData } from "@/lib/utils/formatting";
+import { periodoParaDatas, formatarData, formatarTelefone } from "@/lib/utils/formatting";
 
 type Periodo = "7d" | "30d" | "60d" | "90d";
 
@@ -48,13 +48,6 @@ const EXEC_COLUMNS: Column[] = [
   { label: "Exercícios" },
   { label: "Observação" },
 ];
-
-function formatPhone(phone: string): string {
-  const d = phone.replace(/\D/g, "");
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return phone;
-}
 
 export default function DetalheAlunoAdminPage() {
   const { alunoId } = useParams<{ alunoId: string }>();
@@ -200,7 +193,7 @@ export default function DetalheAlunoAdminPage() {
             <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
               <Stack spacing={0.75}>
                 {aluno.email && <InfoLine label="E-mail" value={aluno.email} />}
-                {aluno.telefone && <InfoLine label="Celular" value={formatPhone(aluno.telefone)} />}
+                {aluno.telefone && <InfoLine label="Celular" value={formatarTelefone(aluno.telefone)} />}
                 <InfoLine label="Cadastro" value={new Date(aluno.createdAt).toLocaleDateString("pt-BR")} />
               </Stack>
             </CardContent>

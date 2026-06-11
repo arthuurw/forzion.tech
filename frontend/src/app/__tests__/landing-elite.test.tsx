@@ -1,31 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import { screen } from "@testing-library/react";
 import { buildPlano } from "@/test/factories/plano";
+import { renderLanding, setupLandingTest } from "@/test/helpers/landing";
 
-// The landing page is an async Server Component. We render it by awaiting the
-// JSX element directly (React 19 + jsdom supports this pattern via `act`).
-// fetch is mocked globally so the `getPlanos` helper returns our fixtures.
-
-const originalFetch = global.fetch;
-
-async function renderLanding(planos: ReturnType<typeof buildPlano>[]) {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => planos,
-  });
-
-  const { default: LandingPage } = await import("@/app/page");
-  const jsx = await LandingPage();
-  render(jsx);
-}
-
-beforeEach(() => {
-  vi.resetModules();
-});
-
-afterEach(() => {
-  global.fetch = originalFetch;
-});
+setupLandingTest();
 
 describe("LandingPage — plano Elite", () => {
   // First render pays the cold module-import cost (page.tsx + its deps) which can

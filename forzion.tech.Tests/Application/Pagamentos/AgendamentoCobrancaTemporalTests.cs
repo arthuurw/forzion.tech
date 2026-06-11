@@ -36,7 +36,7 @@ public class AgendamentoCobrancaTemporalTests
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
             _pagamentoTreinadorRepo.Object, Mock.Of<IAssinaturaTreinadorRepository>(), Mock.Of<ITreinadorRepository>(),
             Mock.Of<IAlunoRepository>(), Mock.Of<IContaRepository>(),
-            _stripeService.Object, _unitOfWork.Object, _time, _logger.Object);
+            _stripeService.Object, _unitOfWork.Object, Mock.Of<IOutboxEnfileirador>(), _time, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
             .ReturnsAsync(true);

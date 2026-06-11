@@ -45,7 +45,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
         Guid.NewGuid(), DateTime.UtcNow, null);
 
     private static readonly LoginResponse RespostaLogin = new(
-        "token.jwt.fake", TipoConta.Treinador, Guid.NewGuid(), TreinadorId);
+        "token.jwt.fake", TipoConta.Treinador, Guid.NewGuid(), TreinadorId, "Carlos");
 
     public AuthEndpointsTests(AuthWebFactory factory)
     {
@@ -158,7 +158,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
     {
         _factory.RegistrarAlunoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<RegistrarAlunoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<AlunoResponse>(Error.Business("Treinador indisponível.")));
+            .ReturnsAsync(Result.Failure<AlunoResponse>(Error.Business("treinador.indisponivel", "Treinador indisponível.")));
 
         var response = await _factory.CreateClient().PostAsJsonAsync("/auth/register/aluno",
             new
@@ -194,7 +194,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
     {
         _factory.VerificarEmailHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<VerificarEmailCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Success());
 
         var response = await _factory.CreateClient().PostAsJsonAsync("/auth/verify-email",
             new { Token = new string('a', 64) });
@@ -207,7 +207,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
     {
         _factory.VerificarEmailHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<VerificarEmailCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Token inválido ou já utilizado."));
+            .ReturnsAsync(Result.Failure(Error.Business("auth_verify.token_invalido", "Token inválido ou já utilizado.")));
 
         var response = await _factory.CreateClient().PostAsJsonAsync("/auth/verify-email",
             new { Token = new string('a', 64) });

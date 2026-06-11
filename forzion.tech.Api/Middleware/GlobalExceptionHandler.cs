@@ -37,12 +37,29 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             Instance = httpContext.Request.Path
         };
 
+        // Os 4 códigos SHOUTY_CASE são contrato vivo dos gates de auth/onboarding (preservados
+        // via .Codigo); os demais seguem a convenção namespaceada `agregado.code`. O 500 inesperado
+        // (`_`) fica sem code de propósito — não vaza categoria de erro interno ao cliente.
         var code = exception switch
         {
+            CredenciaisInvalidasException => "auth.credenciais_invalidas",
+            AlunoNaoEncontradoException => "aluno.nao_encontrado",
+            TreinadorNaoEncontradoException => "treinador.nao_encontrado",
+            TreinoNaoEncontradoException => "treino.nao_encontrado",
+            VinculoNaoEncontradoException => "vinculo.nao_encontrado",
+            ExercicioNaoEncontradoException => "exercicio.nao_encontrado",
+            PacoteNaoEncontradoException => "pacote.nao_encontrado",
+            GrupoMuscularNaoEncontradoException => "grupo_muscular.nao_encontrado",
+            PlanoPlataformaNaoEncontradoException => "plano.nao_encontrado",
+            AlunoInativoException => "aluno.inativo",
+            AcessoNegadoException => "acesso.negado",
             EmailNaoVerificadoException => EmailNaoVerificadoException.Codigo,
             TreinadorAguardandoAprovacaoException => TreinadorAguardandoAprovacaoException.Codigo,
             TreinadorInativoException => TreinadorInativoException.Codigo,
             TreinadorPagamentoPendenteException => TreinadorPagamentoPendenteException.Codigo,
+            EmailJaCadastradoException => "email.ja_cadastrado",
+            AlunoJaVinculadoException => "vinculo.aluno_ja_vinculado",
+            DomainException => "dominio.regra_violada",
             _ => null
         };
         if (code is not null)

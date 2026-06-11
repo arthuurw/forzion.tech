@@ -2,6 +2,9 @@
 
 Guia macro para agentes. Formato agent-oriented (denso, sem prosa decorativa). Para o contexto MACRO do projeto, carregar APENAS este arquivo.
 
+## FRESCOR
+Validado: 2026-06-10. STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`.
+
 ## PROJETO
 forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadastro/aprovação de treinadores, vínculo de alunos, fichas de treino (exercícios + séries), registro de execuções, assinaturas e pagamentos recorrentes.
 
@@ -21,48 +24,64 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - `frontend/` — Next.js.
 - `specs/` — docs de referência `specification-*` (versionados/commitados).
 
+## TRIGGER — QUE SPEC CARREGAR (tarefa → co-carregar)
+Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git.
+| Tocou em… | Carregar |
+|---|---|
+| handler/use-case/Result/DI         | backend |
+| entidade/VO/evento/máquina-estado  | model |
+| schema/migration/FK/enum           | db |
+| endpoint/contrato/erro API         | backend, security |
+| Stripe/refund/webhook pagamento    | stripe, security |
+| email/whatsapp                     | email · whatsapp |
+| componente/form/página             | frontend, frontend-ui |
+| auth/headers/rate-limit/segredo    | security |
+| log/health/perf-web                | observability |
+| LGPD/consentimento/exclusão        | lgpd |
+| CI/hook/gate/cobertura             | tests, local-ci-repro |
+| concorrência/lock/idempotência     | concurrency |
+| perf backend/N+1/EF/pool           | performance |
+| backup/restore/DR                  | dr, infrastructure |
+
 ## AREAS COBERTAS POR SPECIFICATION-*
-Carregar SOB DEMANDA quando tarefa toca a área (regra 2). Índice:
-- `specs/specification-model.md` — DDD tático: entidades, factories, VOs, enums, eventos, máquinas de estado, exceções.
-- `specs/specification-backend.md` — camadas Clean Arch, Result, UnitOfWork+eventos, validação, DI, middleware/filtros, endpoints, repos, auth/rate-limit.
-- `specs/specification-db.md` — schema (29 tabelas, migrations, enums, FKs).
-- `specs/specification-email.md` — Resend: envio, templates, webhook (Svix).
-- `specs/specification-whatsapp.md` — Meta Cloud API: gate Null/real, handlers/templates, custo, paridade email.
-- `specs/specification-frontend.md` — Next App Router, MUI, forms, validação, API proxy, auth.
-- `specs/specification-infrastructure.md` — Hostinger VM, docker-compose, nginx, SSL/certbot, CI/CD, env/secrets.
-- `specs/specification-git.md` — workflow git, configs, worktree, conventional commits, hooks.
-- `specs/specification-lgpd.md` — portabilidade, exclusão por anonimização, consentimento de cookies.
-- `specs/specification-tests.md` — disciplina/enforcement, tipos/isolamento, gates (hooks/CI), thresholds, mutation/contract.
-- `specs/specification-stripe.md` — Connect + PaymentIntent Pix/Cartão, webhook, billing mensal, CLI.
-- `specs/specification-security.md` — threat model, auth, headers/CSP 3 camadas, rate-limit, segredos, SAST/DAST, webhook signing.
-- `specs/specification-observability.md` — logging→DB, `/health`, relatório de saúde, RUM (Web Vitals/Sentry), perf budgets.
-- `specs/specification-frontend-ui.md` — design tokens, componentes UI/forms, governance, a11y WCAG AA (divergência F18).
-- `specs/specification-seo.md` — metadata/canonical, OpenGraph, robots/sitemap, JSON-LD (aspiracional).
-- `specs/specification-local-ci-repro.md` — reproduzir os gates do CI localmente + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet8, postgres fsync, .slnx, E2E email-block) + achados (Application coverage <85).
-- `specs/specification-coding.md` — armadilhas de correção recorrentes (transação↔efeito externo, tempo/auditoria server-side, falhas silenciosas, validação defense-in-depth, codes de erro, dedup). Ler antes de handler/integração/validação/mapeamento de erro + antes de qualquer code-review.
+Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia). Conteúdo de cada spec é auto-evidente pelo nome — abaixo SÓ os caveats não-óbvios (resto: abrir o arquivo):
+- `specification-coding.md` — checklist de incidentes; ler ANTES de handler/integração/validação/mapeamento de erro E de QUALQUER code-review.
+- `specification-concurrency.md` — ordering: `coding §1` é o canônico.
+- `specification-performance.md` — enforcement FRACO (disciplina+revisão, sem gate hard).
+- `specification-infrastructure.md` — subir local SEM Docker → §LOCAL-RUN (receita Development+develop; gotcha launch-profile/Homolog; `.env.local` do frontend).
+- `specification-frontend-ui.md` — a11y WCAG AA com divergência documentada (F18).
+- `specification-seo.md` — ASPIRACIONAL (não implementado).
+- `specification-dr.md` — boa parte ALVO/aspiracional, não o estado real.
+- `specification-local-ci-repro.md` — reproduzir gates do CI local + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet8, postgres fsync, .slnx, E2E email-block).
+- Sem caveat especial (rotear por TRIGGER): `model`, `backend`, `db`, `email`, `whatsapp`, `frontend`, `git`, `lgpd`, `tests`, `stripe`, `security`, `observability`.
 
 ## CONVENÇÕES-CHAVE
 - DDD: entidades com factory `Criar`; domain events despachados no `UnitOfWork.CommitAsync` (re-entrância tratada). Result<T> pattern. FluentValidation auto-descoberto. Handlers registrados manualmente no DI.
 - Commits: Conventional Commits. Scopes válidos: `frontend|backend|infra|ci|deps|tests|docs`.
+- Tasks da skill (`tlc-spec-driven`): toda task que escreve código leva no "Done when" o gate de COMENTÁRIOS (regra 9 / `specs/specification-coding.md` §8) — o hook não pega paráfrase/óbvio.
 
-## FLUXO DE ALTERAÇÃO DE CÓDIGO
-Toda alteração de código DEVE, antes do PR: (1) build completo (frontend + backend) — `dotnet build forzion.tech.slnx` inclui `forzion.tech.PactVerification` desde 2026-06-06; (2) avaliar necessidade de novos testes e criá-los se faltarem; (3) rodar TODOS os testes — confirmar que nada quebrou e se algo precisa ser complementado (integração/E2E exigem Docker; sem Docker local, o CI os roda no PR); (4) confirmar PR → `homolog` (ou → `master` se a alteração foi feita direto na branch `homolog`).
-
-## ANTES DE QUALQUER OPERAÇÃO GIT/GITHUB
-Ler `specs/specification-git.md` SEMPRE antes de commit, push, PR ou qualquer interação com git. Sem exceção. Foco obrigatório em: §PRE-COMMIT HOOK (sequência correta) e §EDGE CASES (CRLF — gotcha recorrente de agents que causa retrabalho: rodar `dotnet format forzion.tech.slnx` ANTES de `git add` em arquivos `.cs` novos).
+## DEFINITION OF DONE (toda alteração de código)
+1. Testes: comportamento novo/bugfix tem teste que asservera o COMPORTAMENTO, escrito JUNTO da implementação. NÃO rodar ciclo cerimonial red→green→refactor por iteração — agente escreve código+teste juntos; o valor "falharia sem o código" sai por design. Asserção real, não tautologia (`specification-tests` §11).
+2. Build completo: `dotnet build forzion.tech.slnx` (inclui `forzion.tech.PactVerification`) + frontend build.
+3. Suíte verde local (unit + vitest; integração/E2E no CI se sem Docker). Contagem NÃO regride; GREEN intocável (`specification-tests` §1.3/§4).
+4. Comportamento verificado DE FATO, não só teste verde. [`/verify` · `superpowers:verification-before-completion`]
+5. Self-review do diff contra `specification-coding` (checklist de incidentes) ANTES de pedir review. [`superpowers:requesting-code-review`]
+6. Comentários: só o "porquê" não-óbvio (regra 9).
+7. Git: LER `specs/specification-git.md` ANTES de qualquer op git (CANÔNICO — §PRE-COMMIT HOOK + §EDGE CASES/CRLF). Conventional; `dotnet format forzion.tech.slnx` ANTES de `git add` em `.cs` novos.
+8. Commit + push para a BRANCH DE TRABALHO ATUAL apenas. NÃO abrir PR automaticamente — PR (→ `homolog`/`master`) é SEMPRE solicitado manualmente pelo usuário, até segunda ordem (minutos GH Actions limitados).
+9. PRÉ-PR (quando o usuário pedir o PR — regra 8): (a) RE-LER a `specification-*` de CADA área tocada e ATUALIZAR o arquivo na MESMA branch se o código divergiu (specs versionadas = estado REAL, não aspiracional); (b) CODE REVIEW do diff alinhado ao plugin **context7** — toda afirmação que dependa de API de lib/framework (EF Core, Npgsql, Stripe.net, ASP.NET, Serilog, Next.js/React/MUI/Sentry, aws-cli/age/pg_dump) é VERIFICADA no context7 (`resolve-library-id`→`query-docs`) ANTES de confirmar/refutar achado — não alucinar API. Achado cross-file: ler o arquivo real (`coding §7`).
+BUG no caminho ⇒ `superpowers:systematic-debugging`: achar a causa, não remendar sintoma; teste vermelho FICA até o código corrigir.
 
 ## REGRAS (só alteráveis mediante aprovação do usuário)
+### SISTEMA DE SPECS (como o sistema de specs funciona)
 1. CONTEXTO MACRO: carregar APENAS este `AGENTS.md`. Cada `specification-*` (em `specs/`) carregar SOB DEMANDA quando a tarefa tocar a área.
 2. Antes de alteração relevante numa área coberta por `specification-*`, LER o arquivo antes de planejar/alterar (ex.: banco → `specs/specification-db.md`).
 3. `specification-*` é AGENT-ORIENTED (denso, notação compacta). Criar/alterar: exige revisão (não às cegas), manter atualizado na mesma tarefa, criar SEMPRE em `specs/` (pasta EXCLUSIVA para arquivos `specification-*.md`; commitado), usar a skill `technical-design-doc-creator` como framework de cobertura (output denso, não TDD verboso).
+### EXECUÇÃO (como trabalhar)
 4. Tarefa com ALTERAÇÃO DE ESCOPO (feature, mudança de comportamento) DEVE usar a skill `tlc-spec-driven` (tasks atômicas + state file). Os artefatos de quebra (`spec.md`/`tasks.md`/`STATE.md`) vivem em `.specs/` (gitignored; NÃO em `specs/`, reservada a `specification-*.md`). Não se aplica a ajustes triviais. **PORÉM**: a skill é pra VALIDAR/quebrar escopo NOVO. Se a tarefa é só EXECUTAR algo já quebrado (já existe `tasks.md`/`.specs/` da feature, validado por skill antes), seguir o `tasks.md` direto SEM reinvocar a skill — invocá-la de novo só repete trabalho já validado.
 5. README segue os princípios do `docs-writer` (precisão no código, voz ativa, consistência, verificação de links).
 6. Skill citada ausente no projeto: procurar, baixar e instalar antes de usar.
-7. PARALELISMO: escopos isolados (análises, implementações sem conflito, tests em arquivos distintos) → delegar a sub-agents em PARALELO (Agent tool), 1 por escopo, batch num turno. Principal coordena: identifica dependências, lança o não-conflitante, agrega, integra (DI/commit). Sub-agents devolvem só sumário. Subordinada à regra 4 (`[P]` em tasks paralelas).
+7. PARALELISMO: escopos isolados (análises, implementações sem conflito, tests em arquivos distintos) → delegar a sub-agents em PARALELO (Agent tool), 1 por escopo, batch num turno. Principal coordena: identifica dependências, lança o não-conflitante, agrega, integra (DI/commit). Sub-agents devolvem só sumário. Subordinada à regra 4 (`[P]` em tasks paralelas). Skill obrigatória para dispatch de sub-agents: `superpowers:subagent-driven-development`. Adendo: subagent em worktree pode ter Bash/shell NEGADO ⇒ NÃO roda gates. Principal SEMPRE re-verifica build+testes+format ao integrar — sumário do subagent não é prova.
 8. BUDGET DE CONTEXTO: principal ≤ ~160-170k tokens. Delegar leitura/implementação volumosa a sub-agents (sumário só — regra 7); não reler o que já está em contexto; ler trechos (offset/limit); manter no principal só orquestração/decisão/integração.
-9. COMENTÁRIOS: ao escrever qualquer linha de código (produção ou teste), incluir SÓ comentários ESTRITAMENTE necessários — o "porquê" não-óbvio (invariante sutil, workaround com motivo, decisão contraintuitiva, gotcha de plataforma). NÃO comentar o óbvio, NÃO parafrasear o código.
-   - **PROIBIDO SEMPRE (barrado pelo pre-commit — ver `specs/specification-git.md` §PRE-COMMIT HOOK / gate de comentário):** andaime/referência de tarefa (`// T2B.3:`, `// TCR1:`, `// T7:`); divisor decorativo unicode (`// ── X ──`, `// ══`, `// ——`).
-   - **Convenção do repo (NÃO é violação — não tentar "limpar"):** divisor ASCII `// --- X ---` é permitido SÓ em arquivos de teste (idiom existente, pervasivo); PROIBIDO em produção. XML doc (`/// <summary>`, `/// <inheritdoc/>`) é permitido em interface/contrato público (`I*.cs`, DTO público, migration EF gerada); em implementação/método privado é PROIBIDO — lá, se precisar do "porquê", usar `//` de uma linha.
-   - Inline comment em fim de linha que repete o código: proibido. Preferir nomes claros a comentário.
-   - O subset objetivamente proibido é bloqueado por hook; **paráfrase/óbvio o hook NÃO pega** → passar o olho e remover o ruído ANTES de apresentar o código. **Regra de escrita, não revisão pós-fato.** Agentes tendem a over-comentar.
+9. COMENTÁRIOS: só o "porquê" não-óbvio (invariante, workaround, gotcha) — NÃO o óbvio, NÃO parafrasear, NÃO inline que repete o código. Regra de ESCRITA (remover ruído ANTES de apresentar), não revisão pós-fato; agentes over-comentam. Subset barrado por hook + convenções do repo (divisor ASCII só em teste, XML doc só em contrato público): `specs/specification-coding.md` §8.
 10. Estas regras só mudam mediante aprovação do usuário.

@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth/context";
 import { extractApiError, extractApiErrorInfo } from "@/lib/api/extractApiError";
 import { baixarMeusDados as baixarMeusDadosBlob } from "@/lib/utils/downloadBlob";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { formatarBRL } from "@/lib/utils/formatting";
 import type {
   AssinaturaTreinadorResponse,
   PlanoPlataformaResponse,
@@ -230,7 +231,7 @@ export default function PlanoTreinadorPage() {
               />
             </Stack>
             <Typography variant="body2" color="text.secondary">
-              R$ {assinatura.valor.toFixed(2)}/mês
+              {formatarBRL(assinatura.valor)}/mês
             </Typography>
             {assinatura.status === "Ativa" && (
               <Typography variant="body2" color="text.secondary">
@@ -283,11 +284,11 @@ export default function PlanoTreinadorPage() {
                         {plano.nome}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        R$ {plano.preco.toFixed(2)}/mês · até {plano.maxAlunos} alunos
+                        {formatarBRL(plano.preco)}/mês · até {plano.maxAlunos} alunos
                       </Typography>
                       {eUpgrade && proracao !== null && proracao > 0 && (
                         <Typography variant="caption" color="text.secondary">
-                          Proração estimada: R$ {proracao.toFixed(2)}
+                          Proração estimada: {formatarBRL(proracao)}
                         </Typography>
                       )}
                       {!eUpgrade && planoAtual && (
@@ -311,13 +312,20 @@ export default function PlanoTreinadorPage() {
           })}
       </Stack>
 
-      <Dialog open={etapa !== "idle"} onClose={fecharDialog} maxWidth="xs" fullWidth>
+      <Dialog
+        open={etapa !== "idle"}
+        onClose={fecharDialog}
+        maxWidth="xs"
+        fullWidth
+        aria-describedby="troca-plano-dialog-desc"
+        slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}
+      >
         <DialogTitle>
           {etapa === "confirmando" && "Confirmar troca de plano"}
           {etapa === "pagando" && "Pagamento"}
           {etapa === "sucesso" && "Troca concluída"}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent id="troca-plano-dialog-desc">
           {etapa === "confirmando" && planoSelecionado && (
             <Stack spacing={2} sx={{ mt: 1 }}>
               {erro && <Alert severity="error">{erro}</Alert>}
@@ -344,7 +352,7 @@ export default function PlanoTreinadorPage() {
             <Stack spacing={2} sx={{ mt: 1 }}>
               {trocaResp.valorPagamento !== null && trocaResp.valorPagamento !== undefined && (
                 <Typography variant="body2" color="primary.main" sx={{ fontWeight: "bold" }}>
-                  Valor: R$ {trocaResp.valorPagamento.toFixed(2)}
+                  Valor: {formatarBRL(trocaResp.valorPagamento)}
                 </Typography>
               )}
               {trocaResp.pixQrCode && (
@@ -380,7 +388,7 @@ export default function PlanoTreinadorPage() {
           {etapa === "sucesso" && (
             <Stack spacing={2} sx={{ mt: 1, alignItems: "center", textAlign: "center" }}>
               <CheckCircleIcon sx={{ fontSize: 56, color: "success.main" }} />
-              {trocaResp?.tipo === "Downgrade" || trocaResp?.tipo === "UpgradeImediato" ? (
+              {trocaResp?.tipo === "Downgrade" ? (
                 <>
                   <Typography variant="body1" sx={{ fontWeight: "bold" }}>Downgrade agendado</Typography>
                   <Typography variant="body2" color="text.secondary">

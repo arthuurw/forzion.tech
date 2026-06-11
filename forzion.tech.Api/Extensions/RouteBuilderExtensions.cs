@@ -95,6 +95,29 @@ public static class RouteBuilderExtensions
         });
 
         app.UseCors("AllowFrontend");
+
+        // OBS-01: correlation id por request. Usa o header X-Request-Id de entrada quando
+        // presente, senão o TraceIdentifier do ASP.NET. Rastreia do frontend/Sentry até o
+        // backend sem round-trip adicional. BeginScope injeta o id nos logs do request.
+        app.Use(async (ctx, next) =>
+        {
+            var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
+                ?? ctx.TraceIdentifier;
+
+            var correlationLogger = ctx.RequestServices
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger("Correlation");
+
+            using (correlationLogger.BeginScope(new Dictionary<string, object>
+            {
+                ["RequestId"] = requestId,
+            }))
+            {
+                ctx.Response.Headers.Append("X-Request-Id", requestId);
+                await next().ConfigureAwait(false);
+            }
+        });
+
         // Ordem: Authentication antes do RateLimiter para que policies particionadas
         // por sub claim consigam identificar o usuário; sem isso a chave caía sempre
         // no fallback de IP, inutilizando a partição por usuário.
@@ -115,8 +138,10 @@ public static class RouteBuilderExtensions
             .AllowAnonymous()
             .RequireRateLimiting("read");
 
-        // READINESS: executa apenas os checks taggeados "ready" (DbContextCheck "db").
-        // 200 quando o DB responde; 503 (Unhealthy) caso contrário.
+        // READINESS: executa os checks taggeados "ready" — db (DbContextCheck), stripe e resend.
+        // Só DB Unhealthy => 503 (corta tráfego). Stripe/Resend retornam Degraded, que o ASP.NET
+        // mapeia p/ 200 por padrão: dependência externa instável não tira o pod de rotação; o
+        // corpo do relatório expõe o estado de cada check.
         endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") })
             .AllowAnonymous()
             .RequireRateLimiting("read");

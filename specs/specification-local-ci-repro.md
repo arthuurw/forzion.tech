@@ -3,7 +3,7 @@
 DOC PARA AGENTES. Fonte de verdade de COMO antecipar falhas do CI (gate homolog) rodando as validações localmente, e o catálogo de GOTCHAS de ambiente (Windows/Docker) descobertos. Formato denso, agent-oriented. Consultar antes de "rodar o CI local", debugar divergência local×CI, ou preparar um PR→homolog. Cross-ref: [specification-tests] (gates/thresholds/comandos canônicos), [specification-infrastructure] (CI/CD workflows, deploy), [specification-security] (semgrep/zap/gitleaks), [specification-frontend-ui] (a11y harness).
 
 ## MANUTENÇÃO DESTE ARQUIVO
-Atualizar quando: mudar matriz de versões CI (node/dotnet), surgir novo gate/workflow, ou descobrir novo gotcha de reprodução local. Vive em `specs/` versionado. NÃO duplicar os comandos canônicos de [specification-tests] §9 — aqui foca em REPRODUTIBILIDADE local e divergências.
+Atualizar quando: mudar matriz de versões CI (node/dotnet), surgir novo gate/workflow, ou descobrir novo gotcha de reprodução local. NÃO duplicar os comandos canônicos de [specification-tests] §9 — aqui foca em REPRODUTIBILIDADE local e divergências.
 
 ## 0. MATRIZ DE AMBIENTE (local×CI) — origem de quase toda divergência
 | Tool | CI (ubuntu) | Local típico (Windows) | Impacto |
@@ -41,10 +41,11 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 - **coverlet `--no-build` repetido**: rodar várias sessões coverlet seguidas no Windows → merge/lock dos assemblies instrumentados → números poluídos / rc=1 espúrio. Rodar UMA vez (tabela por módulo) ou processos separados.
 - **`.slnx` × SDK 8**: SDK 8 não resolve o formato `.slnx`; `dotnet build` sem arg falha (MSB1003). Targetar o projeto (`dotnet test forzion.tech.Tests`) ou usar SDK ≥9.
 - **Postgres fsync no Docker Desktop/Windows**: volume lento → crash-recovery (`syncing data directory`) leva 90–150s; healthcheck (start_period 20s) marca `unhealthy` e backend (depends_on) não sobe. Remediação: aguardar `pg_isready` aceitar (~150s) e então `docker compose up -d` p/ subir backend/frontend. NÃO dar `down` com postgres mid-shutdown (piora a recovery).
-- **Porta 3000 ocupada**: `next dev` migra p/ 3001 automaticamente (ex.: grafana em :3000). Confirmar a porta real e setar `E2E_BASE_URL` — senão Playwright escaneia o app errado (falso "pass").
+- **Porta 3000 ocupada**: no **Next 16** `next dev` NÃO migra de porta sozinho — falha `EADDRINUSE` e morre (exit 1). Subir explícito em outra porta: `npm run dev -- -p 3001`. Confirmar a porta real e setar `E2E_BASE_URL`/`API_BASE_URL` de acordo — senão Playwright escaneia o app errado (falso "pass"). (Versões antigas do Next migravam automaticamente; não mais.)
+- **local-run sem Docker (Development + develop)**: receita + gotchas (launch-profile força Homolog, `frontend/.env.local`, portas) em [specification-infrastructure] §LOCAL-RUN.
 - **`npm ci` node 22 (cold)**: reinstala ~600 deps + recompila; lento na 1ª vez + regenera `frontend/public/mockServiceWorker.js` (msw) → reverter esse arquivo se não intencional. `node_modules` reinstalado sob node 22 funciona em node 20 (deps JS puras).
 - **gitleaks ruído local**: sem `--no-git` ignorar .gitignore? não — gitleaks `--no-git` escaneia TUDO presente (inclui `.next`/`node_modules` que o CI não tem). Remover `.next` p/ espelhar o checkout do CI.
-- ✅ **`forzion.tech.PactVerification` adicionado à solution (2026-06-06 — fix definitivo)**: projeto agora está em `forzion.tech.slnx`; `dotnet build forzion.tech.slnx` o inclui. O drift latente histórico (quebrava SILENCIOSAMENTE apenas no push em homolog) foi eliminado. Histórico: refactor `Result<T>` deixou ~8 erros de compilação no provider que vazaram p/ homolog repetidamente.
+- **`forzion.tech.PactVerification` está na `.slnx`** (`dotnet build forzion.tech.slnx` o inclui): MANTER. Fora da solution, erros de compilação do provider (ex. refactor `Result<T>`) vazam SILENCIOSAMENTE só no push→homolog (drift latente).
 - **Broker Pact (homolog) trava o `contract`/`pact-provider` (CANÔNICO)**: ambos dependem do broker self-hosted na VM homolog (`https://pact.homologacao.forzion.tech`, containers `pact-broker`+`pact-postgres`). A borda (nginx) responde `401` mesmo com o broker app/DB degradado; o step "Aguarda broker disponivel" faz `curl` heartbeat **autenticado SEM `--max-time`** → se o broker app/DB não responde, o curl **PENDURA** (não falha em ~3min; runs de 20min+). App NÃO é afetado (DB do app é separado do `pact-postgres`; `can-i-deploy` já é `continue-on-error`). Diagnóstico: app `homologacao.forzion.tech`=200 + broker=`401` (borda viva) mas heartbeat autenticado pendura → broker interno. Remediação (VM): `docker compose -f docker-compose.homolog.yml ps` / `restart pact-broker pact-postgres`. Hardening: add `--max-time` no `curl` do `contract.yml`/`pact-provider.yml` p/ falhar rápido em vez de pendurar.
 
 ## 3. COVERAGE BACKEND — números reais medidos (unit, `Category!=Integration`)
@@ -55,7 +56,7 @@ Medido 2026-06-06 (pós-billing treinador + raise de cobertura; SDK 8/10 idênti
 | Application | 94.82% | 84.55% | 96.14% | ✅ |
 | Api | 86.36% | 56.72% | 77.34% | ✅ (line 86.36 ≥ 85 — margem fina; endpoints billing baixaram de 87.74) |
 | Infrastructure | 6.2% | 67.15% | 34.87% | n/a unit (branch 35 só na suíte de integração) |
-- ✅ **ACHADO RESOLVIDO (commit 947ff91)**: o gate `test-backend-unit > Coverage Application (line/method 85)` chegou a FALHAR (`-p:ThresholdType="line,method"` exige AMBOS ≥85; method estava 84.51 — features LGPD/WhatsApp/admin-stats adicionaram handlers sem cobertura de método). RESOLUÇÃO aplicada: +51 testes unit cobrindo métodos/DTOs/lambdas descobertos (LGPD/admin/treinos/pagamentos) → Application agora line 94.77% / branch 84.51% / **method 95.86%**, gate verde. O comentário de baseline conservador no `ci.yml` (method 93.1%) continua abaixo do real (95.86%) — piso intacto, não abaixado ([specification-tests] §8).
+- **Gate Application usa `ThresholdType="line,method"` → exige AMBOS line E method ≥85**: passar line mas method <85 REPROVA (já ocorreu — handlers novos sem cobertura de método). Baseline conservador no `ci.yml` fica abaixo do real; piso canônico em [specification-tests] §8.
 - Reproduzir 1 gate: `dotnet test forzion.tech.Tests --no-build -c Release --filter "Category!=Integration" -p:CollectCoverage=true -p:Include="[forzion.tech.Application]*" -p:Threshold=85 -p:ThresholdType="line,method" -p:ThresholdStat=Total` (rebuild antes; não encadear vários).
 
 ## 4. E2E A11Y LOCAL (color-contrast hard-gate)
@@ -67,16 +68,6 @@ Medido 2026-06-06 (pós-billing treinador + raise de cobertura; SDK 8/10 idênti
 - ⚠️ **Flakiness em máquina lenta**: o describe completo de admin pode falhar por timeout de render/scan (cold + parallel), mas cada página passa ISOLADA (`-g "axe em /admin/treinadores"`). Falha no batch ≠ violação real — confirmar isolado antes de tratar como a11y bug.
 - Resultado 2026-05-30: público 4/4 ✅ (após fix contraste landing), admin 3/3 ✅ (isolado). Tokens de tema iguais nas demais áreas → CI cobre aluno/treinador.
 
-## 5b. ACHADOS DA VALIDAÇÃO PRÉ-PR BILLING (2026-06-06) & status
-- ✅ **Regressão pega antes do PR**: testes E2E (`FluxosCriticosE2ETests`/`ConcurrentBillingRaceTests`) cadastravam treinador com payload antigo (sem `planoPlataformaId`/`modoPagamentoAluno`) → 400 na validação; latente pq o gate de integração nunca rodou em `fix/code-review` (sem PR a homolog até então). Fix: helper `ObterPlanoFreeIdAsync` (plano Free → AguardandoAprovacao). 96 integração verdes.
-- ✅ **openapi-drift**: swagger defasado (faltavam endpoints billing das Fases 1-2B + campo `modoPagamentoAluno`) → regenerado (`scripts/gen-swagger.sh`) + commitado (+407 linhas).
-- ✅ **Vulns npm** (npm audit): critical (libxmljs2) + 4 high (tar/node-gyp) via `npm audit fix`; 2 moderate (qs) via override `^6.15.2`; 6 low residuais (elliptic via @storybook, dev-only) aceitas — ver tasks.md da feature. NÃO rodar `npm audit fix --force`.
-- ✅ **Cobertura subida** (a pedido): +47 testes billing → Api 85.6→86.4, Application method 95.2→96.1, Domain method 92.2→94.8 (§3).
-- ✅ **Pact provider drift** (2026-06-06): `PactVerification` adicionado à `.slnx` — fix definitivo. Broker Pact na VM: acompanhar separadamente (§2 gotcha broker).
-- ✅ verde local: semgrep 0, gitleaks 0 (allowlist por commit dos 3 segredos dev mortos), 1843 unit, 96 integração, 631 vitest, contract 16, license, deadcode, build prod (frontend) + Release (backend).
-
-## 5. ACHADOS DESTA VALIDAÇÃO (2026-05-30) & status
-- ✅ corrigido: openapi-drift (swagger +8 endpoints), vitest `testTimeout` 20000 (timeouts sob coverage), gitleaks allowlist `forzion.tech.Tests/**.cs`, color-contrast landing (`HowItWorks` eyebrow `#7a6300`, números `#808080`).
-- ✅ verde local: semgrep 0, gitleaks 0 (CI-equiv), integração 96, contract 16, hygiene, audit/license/sbom, public+admin a11y.
-- ✅ resolvido (commit 947ff91): **Application coverage method 84.51% → 95.86%** (§3) — gate `test-backend-unit` verde (+51 testes unit; suíte 1617 → 1668).
-- ⏭️ deferido (CI valida): frontend coverage thresholds (node 22 não medido limpo — máquina lenta), aluno/treinador a11y (bloqueio de verificação de email).
+## 5. STATUS CORRENTE (deferidos ao CI)
+- frontend coverage thresholds: não medidos limpo local (node 22 / máquina lenta) → CI valida.
+- aluno/treinador a11y E2E: bloqueio de verificação de email local (§4) → CI valida.

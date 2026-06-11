@@ -1,16 +1,22 @@
 /**
  * renderWithProviders — wrapper de render do React Testing Library
- * que aplica os providers globais da aplicacao (Theme + Auth + Snackbar).
+ * que aplica os providers globais da aplicacao (Theme + Localization + Auth + Snackbar).
  *
  * Uso:
  *   import { renderWithProviders } from "@/test/render";
+ *   import { buildSessionUser } from "@/test/factories";
  *
  *   renderWithProviders(<MeuComponente />);
- *   renderWithProviders(<MeuComponente />, { auth: { user: buildSessionUser() } });
+ *   // skipAuth quando o teste mocka useAuth manualmente com um SessionUser:
+ *   vi.mocked(useAuth).mockReturnValue({ user: buildSessionUser(), ... });
+ *   renderWithProviders(<MeuComponente />, { skipAuth: true });
  */
 import { render, type RenderOptions, type RenderResult } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { ThemeProvider, CssBaseline } from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import "dayjs/locale/pt-br";
 import theme from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth/context";
 import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
@@ -43,7 +49,9 @@ function AllProviders({ children, skipAuth, skipSnackbar }: AllProvidersProps) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {tree}
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
+        {tree}
+      </LocalizationProvider>
     </ThemeProvider>
   );
 }

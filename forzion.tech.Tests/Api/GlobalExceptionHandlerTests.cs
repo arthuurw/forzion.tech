@@ -75,10 +75,23 @@ public class GlobalExceptionHandlerTests
     }
 
     [Theory]
+    [InlineData(typeof(CredenciaisInvalidasException), "auth.credenciais_invalidas")]
+    [InlineData(typeof(AlunoNaoEncontradoException), "aluno.nao_encontrado")]
+    [InlineData(typeof(TreinadorNaoEncontradoException), "treinador.nao_encontrado")]
+    [InlineData(typeof(TreinoNaoEncontradoException), "treino.nao_encontrado")]
+    [InlineData(typeof(VinculoNaoEncontradoException), "vinculo.nao_encontrado")]
+    [InlineData(typeof(ExercicioNaoEncontradoException), "exercicio.nao_encontrado")]
+    [InlineData(typeof(PacoteNaoEncontradoException), "pacote.nao_encontrado")]
+    [InlineData(typeof(GrupoMuscularNaoEncontradoException), "grupo_muscular.nao_encontrado")]
+    [InlineData(typeof(PlanoPlataformaNaoEncontradoException), "plano.nao_encontrado")]
+    [InlineData(typeof(AlunoInativoException), "aluno.inativo")]
+    [InlineData(typeof(AcessoNegadoException), "acesso.negado")]
     [InlineData(typeof(EmailNaoVerificadoException), "EMAIL_NAO_VERIFICADO")]
     [InlineData(typeof(TreinadorAguardandoAprovacaoException), "TREINADOR_AGUARDANDO_APROVACAO")]
     [InlineData(typeof(TreinadorInativoException), "TREINADOR_INATIVO")]
     [InlineData(typeof(TreinadorPagamentoPendenteException), "TREINADOR_PAGAMENTO_PENDENTE")]
+    [InlineData(typeof(EmailJaCadastradoException), "email.ja_cadastrado")]
+    [InlineData(typeof(AlunoJaVinculadoException), "vinculo.aluno_ja_vinculado")]
     public async Task TryHandleAsync_ExcecoesComCode_CorpoExpoeCode(Type exceptionType, string codeEsperado)
     {
         var exception = (Exception)Activator.CreateInstance(exceptionType)!;
@@ -86,6 +99,24 @@ public class GlobalExceptionHandlerTests
         await _handler.TryHandleAsync(context, exception, default);
         var body = await LerCorpo(context);
         body.GetProperty("code").GetString().Should().Be(codeEsperado);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_DomainException_CorpoExpoeCodeGenerico()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new DomainException("erro de domínio"), default);
+        var body = await LerCorpo(context);
+        body.GetProperty("code").GetString().Should().Be("dominio.regra_violada");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ExcecaoGenerica_NaoExpoeCode()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new Exception("inesperado"), default);
+        var body = await LerCorpo(context);
+        body.TryGetProperty("code", out _).Should().BeFalse();
     }
 
     [Theory]

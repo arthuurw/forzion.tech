@@ -8,6 +8,7 @@ using forzion.tech.Domain.Events;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Tests.Builders;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Pagamentos;
@@ -24,7 +25,10 @@ public class ProcessarWebhookStripeHandlerTests
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IOutboxEnfileirador> _enfileirador = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _logger = new();
+    // Relógio fixo: permite asserções exatas em datas derivadas (DataProximaCobranca = agora+1 mês).
+    private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 6, 10, 10, 0, 0, TimeSpan.Zero));
     private readonly ProcessarWebhookStripeHandler _handler;
 
     private const string ValidSig = "t=1,v1=abc";
@@ -35,7 +39,7 @@ public class ProcessarWebhookStripeHandlerTests
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
             _pagamentoTreinadorRepo.Object, _assinaturaTreinadorRepo.Object, _treinadorRepo.Object,
             _alunoRepo.Object, _contaRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
+            _stripeService.Object, _unitOfWork.Object, _enfileirador.Object, _timeProvider, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
             .ReturnsAsync(true);
@@ -71,10 +75,11 @@ public class ProcessarWebhookStripeHandlerTests
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.succeeded", "pi_treinador"), ValidSig));
 
+        var agoraPago = _timeProvider.GetUtcNow().UtcDateTime;
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.Pago);
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa);
-        assinatura.DataProximaCobranca.Should().BeAfter(assinatura.DataInicio, "renovação agendada para o próximo ciclo");
+        assinatura.DataProximaCobranca.Should().Be(agoraPago.AddMonths(1), "renovação agendada exatamente 1 mês após o pagamento");
         treinador.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
         conta.DomainEvents.OfType<ContaRegistradaEvent>().Should().ContainSingle("verificação só após o pagamento");
         _pagamentoRepo.Verify(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -105,13 +110,14 @@ public class ProcessarWebhookStripeHandlerTests
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);
 
+        var agoraPago = _timeProvider.GetUtcNow().UtcDateTime;
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_abc"), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.Pago);
         assinatura.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
-        assinatura.DataProximaCobranca.Should().BeAfter(DateTime.UtcNow);
+        assinatura.DataProximaCobranca.Should().Be(agoraPago.AddMonths(1));
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -284,7 +290,7 @@ public class ProcessarWebhookStripeHandlerTests
         pagamento.Status.Should().Be(PagamentoStatus.Pago);
         assinatura.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
         assinatura.TentativasFalhasConsecutivas.Should().Be(0);
-        assinatura.DataProximaCobranca.Should().BeAfter(DateTime.UtcNow);
+        assinatura.DataProximaCobranca.Should().Be(_timeProvider.GetUtcNow().UtcDateTime.AddMonths(1));
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -694,9 +700,8 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ChargeDisputeCreated_Aluno_JaEmDisputa_ReenviaEvidencia()
+    public async Task HandleAsync_ChargeDisputeCreated_Aluno_JaEmDisputa_NaoReenviaNemComita()
     {
-        var alunoId = Guid.NewGuid();
         var assinaturaId = Guid.NewGuid();
         var inicio = DateTime.UtcNow.AddDays(-10);
         var pagamento = Pagamento.Criar(assinaturaId, 149.90m, inicio).Value;
@@ -704,25 +709,15 @@ public class ProcessarWebhookStripeHandlerTests
         pagamento.MarcarPago(inicio);
         pagamento.MarcarEmDisputa("fraudulent", inicio);
 
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 149.90m, inicio).Value;
-        assinatura.Ativar(inicio);
-        var conta = Conta.Criar(Email.Criar("aluno@x.com").Value, "hash", TipoConta.Aluno, inicio, emitirRegistro: false).Value;
-        var aluno = Aluno.Criar(conta.Id, "Joana", inicio, "aluno@x.com").Value;
-
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
-        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
-        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(ChargeDisputeCreatedPayload("pi_redeliver"), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
-            "dp_x",
-            It.Is<DisputaEvidencia>(e => e.EmailCliente == "aluno@x.com" && e.DataUltimaAtividade == null),
-            It.IsAny<CancellationToken>()), Times.Once);
+        _enfileirador.Verify(e => e.Enfileirar(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<string>()), Times.Never);
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(It.IsAny<string>(), It.IsAny<DisputaEvidencia>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -788,7 +783,7 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ChargeDisputeCreated_Aluno_EnviaEvidenciaComCamposD9()
+    public async Task HandleAsync_ChargeDisputeCreated_Aluno_EnfileiraPayloadComCamposD9()
     {
         var alunoId = Guid.NewGuid();
         var inicio = DateTime.UtcNow.AddDays(-30);
@@ -813,52 +808,43 @@ public class ProcessarWebhookStripeHandlerTests
         await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(ChargeDisputeCreatedPayload("pi_ev"), ValidSig));
 
-        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
-            "dp_x",
-            It.Is<DisputaEvidencia>(e =>
-                e.EmailCliente == "aluno@x.com" &&
-                e.DataAtivacao == assinatura.DataInicio &&
-                e.DataUltimoPagamento == pagamento.DataPagamento),
-            It.IsAny<CancellationToken>()), Times.Once);
+        _enfileirador.Verify(e => e.Enfileirar(
+            "fx:evidencia_disputa",
+            It.Is<forzion.tech.Application.Outbox.EvidenciaDisputaPayload>(p =>
+                p.DisputeId == "dp_x" &&
+                p.Email == "aluno@x.com" &&
+                p.DataAtivacao == assinatura.DataInicio &&
+                p.DataPagamento == pagamento.DataPagamento &&
+                p.PagamentoId == pagamento.Id),
+            $"fx:evidencia_disputa:aluno:{pagamento.Id}"), Times.Once);
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(It.IsAny<string>(), It.IsAny<DisputaEvidencia>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_ChargeDisputeCreated_Aluno_FalhaNoEnvio_DisputaPermaneceMarcada()
+    public async Task HandleAsync_ChargeDisputeCreated_Aluno_SemAssinatura_EnfileiraPayloadSemEmail()
     {
-        var alunoId = Guid.NewGuid();
-        var assinaturaId = Guid.NewGuid();
-        var pagamento = Pagamento.Criar(assinaturaId, 149.90m, DateTime.UtcNow).Value;
-        pagamento.DefinirDadosPix("pi_ev_fail", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_ev_no_assin", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
         pagamento.MarcarPago(TestData.Agora);
         pagamento.ClearDomainEvents();
 
-        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 149.90m, DateTime.UtcNow).Value;
-        assinatura.Ativar(TestData.Agora);
-        assinatura.ClearDomainEvents();
-
-        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_ev_fail", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
-        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync((Aluno?)null);
-        _stripeService.Setup(s => s.EnviarEvidenciaDisputaAsync(It.IsAny<string>(), It.IsAny<DisputaEvidencia>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("stripe down"));
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_ev_no_assin", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((AssinaturaAluno?)null);
 
         var result = await _handler.HandleAsync(
-            new ProcessarWebhookStripeCommand(ChargeDisputeCreatedPayload("pi_ev_fail"), ValidSig));
+            new ProcessarWebhookStripeCommand(ChargeDisputeCreatedPayload("pi_ev_no_assin"), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.EmDisputa);
-        _logger.Verify(
-            l => l.Log(
-                LogLevel.Critical,
-                It.IsAny<EventId>(),
-                It.IsAny<It.IsAnyType>(),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Sem assinatura: enfileira com email null (sem acesso a aluno/conta).
+        _enfileirador.Verify(e => e.Enfileirar(
+            "fx:evidencia_disputa",
+            It.Is<forzion.tech.Application.Outbox.EvidenciaDisputaPayload>(p => p.Email == null && p.PagamentoId == pagamento.Id),
+            $"fx:evidencia_disputa:aluno:{pagamento.Id}"), Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_ChargeDisputeCreated_Treinador_EnviaEvidenciaComDisputeId()
+    public async Task HandleAsync_ChargeDisputeCreated_Treinador_EnfileiraPayloadComEmail()
     {
         var treinadorId = Guid.NewGuid();
         var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
@@ -881,10 +867,14 @@ public class ProcessarWebhookStripeHandlerTests
         await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(ChargeDisputeTreinadorPayload("pi_t_ev"), ValidSig));
 
-        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
-            "dp_t",
-            It.Is<DisputaEvidencia>(e => e.EmailCliente == "treinador@x.com"),
-            It.IsAny<CancellationToken>()), Times.Once);
+        _enfileirador.Verify(e => e.Enfileirar(
+            "fx:evidencia_disputa",
+            It.Is<forzion.tech.Application.Outbox.EvidenciaDisputaPayload>(p =>
+                p.DisputeId == "dp_t" &&
+                p.Email == "treinador@x.com" &&
+                p.PagamentoId == pagamento.Id),
+            $"fx:evidencia_disputa:treinador:{pagamento.Id}"), Times.Once);
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(It.IsAny<string>(), It.IsAny<DisputaEvidencia>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1316,10 +1306,9 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ChargeDisputeCreated_PagamentoTreinadorJaEmDisputa_ReenviaEvidencia()
+    public async Task HandleAsync_ChargeDisputeCreated_PagamentoTreinadorJaEmDisputa_NaoReenviaNemComita()
     {
         var treinadorId = Guid.NewGuid();
-        var contaId = Guid.NewGuid();
         var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
         assinatura.Ativar(DateTime.UtcNow);
         var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
@@ -1327,24 +1316,16 @@ public class ProcessarWebhookStripeHandlerTests
         pagamento.MarcarPago(DateTime.UtcNow);
         pagamento.MarcarEmDisputa(DateTime.UtcNow);
 
-        var treinador = Treinador.Criar(contaId, "Carlos", DateTime.UtcNow).Value;
-        var conta = Conta.Criar(Email.Criar("treinador@x.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow, emitirRegistro: false).Value;
-
         _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_t4_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t4_redeliver", It.IsAny<CancellationToken>())).ReturnsAsync((Pagamento?)null);
-        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        _contaRepo.Setup(r => r.ObterPorIdAsync(treinador.ContaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var result = await _handler.HandleAsync(
             new ProcessarWebhookStripeCommand(ChargeDisputeTreinadorPayload("pi_t4_redeliver"), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(
-            "dp_t",
-            It.Is<DisputaEvidencia>(e => e.EmailCliente == "treinador@x.com" && e.DataUltimaAtividade == null),
-            It.IsAny<CancellationToken>()), Times.Once);
+        _enfileirador.Verify(e => e.Enfileirar(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<string>()), Times.Never);
+        _stripeService.Verify(s => s.EnviarEvidenciaDisputaAsync(It.IsAny<string>(), It.IsAny<DisputaEvidencia>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1385,7 +1366,7 @@ public class ProcessarWebhookStripeHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         pagamento.Status.Should().Be(PagamentoStatus.Estornado);
-        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_x", true, It.IsAny<CancellationToken>()), Times.Once);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_x", true, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -1409,7 +1390,7 @@ public class ProcessarWebhookStripeHandlerTests
             new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_x"), ValidSig));
 
         result.IsSuccess.Should().BeTrue();
-        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -1426,7 +1407,7 @@ public class ProcessarWebhookStripeHandlerTests
             .ReturnsAsync(pagamento);
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);
-        _stripeService.Setup(s => s.CriarReembolsoAsync("pi_x", true, It.IsAny<CancellationToken>()))
+        _stripeService.Setup(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_x", true, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("stripe down"));
 
         var act = async () => await _handler.HandleAsync(

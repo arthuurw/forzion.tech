@@ -5,6 +5,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
@@ -49,7 +50,7 @@ public class AprovarVinculoHandler(
         {
             var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
             if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
-                return Result.Failure<VinculoResponse>(Error.Business("treinador_sem_onboarding", "Configure seus recebimentos (Stripe) antes de aceitar alunos."));
+                return Result.Failure<VinculoResponse>(TreinadorErrors.SemOnboarding);
         }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;

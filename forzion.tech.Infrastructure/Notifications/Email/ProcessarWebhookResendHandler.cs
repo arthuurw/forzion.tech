@@ -3,7 +3,9 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using Svix;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
@@ -38,17 +40,17 @@ public class ProcessarWebhookResendHandler(
         if (string.IsNullOrWhiteSpace(webhookSecret))
         {
             logger.LogWarning("ProcessarWebhookResendHandler: Resend:WebhookSecret não configurado.");
-            return Result.Failure(Error.Business("Webhook não configurado."));
+            return Result.Failure(Error.Business("webhook_email.nao_configurado", "Webhook não configurado."));
         }
 
         if (!VerificarAssinatura(command, webhookSecret))
-            return Result.Failure(Error.Business("Assinatura do webhook inválida."));
+            return Result.Failure(Error.Business("webhook_email.assinatura_invalida", "Assinatura do webhook inválida."));
 
         var parsed = ParsePayload(command.Payload);
         if (parsed is null)
         {
             logger.LogWarning("ProcessarWebhookResendHandler: payload inválido.");
-            return Result.Failure(Error.Business("Payload inválido."));
+            return Result.Failure(Error.Business("webhook_email.payload_invalido", "Payload inválido."));
         }
 
         if (!EventosRelevantes.Contains(parsed.EventType))
@@ -76,7 +78,22 @@ public class ProcessarWebhookResendHandler(
             agora);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        // O ExisteAsync acima é só fast-path: entre o pré-check e o commit duas entregas
+        // concorrentes do MESMO evento (Resend é at-least-once) podem ambas passar e colidir
+        // no índice único (resend_message_id, event_type) → 23505. Isso significa já-processado:
+        // log Debug + segue, sem 500. Só 23505 é engolido; outras DbUpdateException propagam.
+        catch (DbUpdateException ex) when ((ex.InnerException as PostgresException)?.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            logger.LogDebug(ex,
+                "Evento Resend já processado (race de re-entrega; messageId: {MessageId}, type: {EventType}). Ignorando.",
+                parsed.EmailId, parsed.EventType);
+            return Result.Success();
+        }
 
         logger.LogInformation(
             "Evento Resend registrado: {EventType} para {Email} (messageId: {MessageId}).",
@@ -109,7 +126,7 @@ public class ProcessarWebhookResendHandler(
         }
     }
 
-    private static ResendEventData? ParsePayload(string payload)
+    private ResendEventData? ParsePayload(string payload)
     {
         try
         {
@@ -131,7 +148,7 @@ public class ProcessarWebhookResendHandler(
 
             var createdAt = root.TryGetProperty("created_at", out var caProp)
                 ? caProp.GetDateTime()
-                : DateTime.UtcNow;
+                : timeProvider.GetUtcNow().UtcDateTime;
 
             return new ResendEventData(eventType, emailId, recipientEmail, createdAt);
         }

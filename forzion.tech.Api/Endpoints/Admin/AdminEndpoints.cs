@@ -543,17 +543,27 @@ public static class AdminEndpoints
 
         group.MapGet("/contas/{id:guid}/lgpd/exportar", async (
             Guid id,
+            string? formato,
             [FromServices] ExportarDadosPessoaisHandler handler,
+            [FromServices] IDadosPessoaisExcelRenderer excelRenderer,
             CancellationToken cancellationToken) =>
         {
             var result = await handler
                 .HandleAsync(new ExportarDadosPessoaisCommand(id), cancellationToken)
                 .ConfigureAwait(false);
             if (result.IsFailure) return result.ToProblemResult();
+
+            if (string.Equals(formato, "xlsx", StringComparison.OrdinalIgnoreCase))
+            {
+                var bytes = excelRenderer.Render(result.Value);
+                return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "meus-dados.xlsx");
+            }
+
             return Results.Ok(result.Value);
         })
         .WithSummary("Exporta dados pessoais de qualquer conta (portabilidade LGPD - admin)")
         .Produces<DadosPessoaisExport>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status200OK, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
 
         group.MapDelete("/contas/{id:guid}/lgpd", async (

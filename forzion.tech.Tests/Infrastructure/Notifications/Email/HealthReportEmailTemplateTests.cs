@@ -14,7 +14,8 @@ public class HealthReportEmailTemplateTests
         bool comLiveness = true,
         bool comKpis = true,
         bool comEntrega = true,
-        ErrosSecao? erros = null) =>
+        ErrosSecao? erros = null,
+        OutboxSecao? outbox = null) =>
         new()
         {
             Ambiente = "Homolog",
@@ -45,7 +46,8 @@ public class HealthReportEmailTemplateTests
             Entregabilidade = comEntrega
                 ? new EntregabilidadeSecao { Total = 12, Entregues = 5, Bounces = 2, Spam = 2 }
                 : null,
-            Erros = erros
+            Erros = erros,
+            Outbox = outbox
         };
 
     [Fact]
@@ -80,6 +82,37 @@ public class HealthReportEmailTemplateTests
         html.Should().NotContain("Indicadores");
         html.Should().NotContain("Entregabilidade de e-mail");
         html.Should().NotContain("Erros (24h)");
+    }
+
+    [Fact]
+    public void RelatorioSaude_OutboxComFalha_RenderizaContagensEEscapaErro()
+    {
+        var outbox = new OutboxSecao
+        {
+            Pendente = 1,
+            Processando = 0,
+            Concluido = 5,
+            Falhou = 1,
+            FalhasAmostras = new[]
+            {
+                new OutboxFalhaAmostra
+                {
+                    Id = Guid.NewGuid(),
+                    Tipo = "fx:evidencia_disputa",
+                    Tentativas = 5,
+                    CriadoEm = Agora,
+                    UltimoErro = "<b>boom</b>"
+                }
+            }
+        };
+        var report = Report(comLiveness: false, comKpis: false, comEntrega: false, outbox: outbox);
+
+        var html = EmailTemplates.RelatorioSaude(report);
+
+        html.Should().Contain("Outbox de efeitos");
+        html.Should().Contain("fx:evidencia_disputa");
+        html.Should().Contain("&lt;b&gt;boom&lt;/b&gt;");
+        html.Should().NotContain("<b>boom</b>");
     }
 
     [Fact]

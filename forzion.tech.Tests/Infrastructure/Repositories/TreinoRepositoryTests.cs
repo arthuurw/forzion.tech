@@ -36,12 +36,23 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
     }
 
     private static async Task<Treino> SeedTreinoAsync(AppDbContext ctx, Guid treinadorId,
-        string nome, ObjetivoTreino objetivo = ObjetivoTreino.Hipertrofia, DateTime? createdAt = null)
+        string nome, ObjetivoTreino objetivo = ObjetivoTreino.Hipertrofia, DateTime? createdAt = null,
+        DificuldadeTreino dificuldade = DificuldadeTreino.Iniciante)
     {
-        var treino = Treino.Criar(nome, objetivo, treinadorId, createdAt ?? DateTime.UtcNow).Value;
+        var treino = Treino.Criar(nome, objetivo, treinadorId, createdAt ?? DateTime.UtcNow, dificuldade).Value;
         await ctx.Treinos.AddAsync(treino);
         await ctx.SaveChangesAsync();
         return treino;
+    }
+
+    private static async Task<Guid> SeedExercicioAsync(AppDbContext ctx)
+    {
+        var grupo = GrupoMuscular.Criar($"G-{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+        await ctx.GruposMusculares.AddAsync(grupo);
+        var ex = Exercicio.Criar($"E-{Guid.NewGuid():N}", grupo.Id, DateTime.UtcNow).Value;
+        await ctx.Exercicios.AddAsync(ex);
+        await ctx.SaveChangesAsync();
+        return ex.Id;
     }
 
     // --- ListarPorTreinadorAsync ---
@@ -127,6 +138,42 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
         var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(tid, 1, 50, ordenarPor: "createdAt");
 
         items.First().Treino.Id.Should().NotBe(t1.Id);
+    }
+
+    [Fact]
+    public async Task ListarPorTreinadorAsync_OrdenarPorDificuldade_RetornaOrdenado()
+    {
+        await using var ctx = fixture.CreateContext();
+        var tid = await SeedTreinadorAsync(ctx);
+        await SeedTreinoAsync(ctx, tid, $"Av-{Guid.NewGuid():N}", dificuldade: DificuldadeTreino.Avancado);
+        await SeedTreinoAsync(ctx, tid, $"Ini-{Guid.NewGuid():N}", dificuldade: DificuldadeTreino.Iniciante);
+        await SeedTreinoAsync(ctx, tid, $"Int-{Guid.NewGuid():N}", dificuldade: DificuldadeTreino.Intermediario);
+
+        var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(tid, 1, 50, ordenarPor: "dificuldade");
+
+        items.Select(i => (int)i.Treino.Dificuldade).Should().BeInAscendingOrder();
+    }
+
+    [Fact]
+    public async Task ListarPorTreinadorAsync_OrdenarPorExercicios_RetornaContagemDesc()
+    {
+        await using var ctx = fixture.CreateContext();
+        var tid = await SeedTreinadorAsync(ctx);
+        var ex1 = await SeedExercicioAsync(ctx);
+        var ex2 = await SeedExercicioAsync(ctx);
+        await SeedTreinoAsync(ctx, tid, $"Vazio-{Guid.NewGuid():N}");
+        var cheio = await SeedTreinoAsync(ctx, tid, $"Cheio-{Guid.NewGuid():N}");
+        // Adiciona o filho explícito ao contexto como o handler faz (AdicionarTreinoExercicioAsync):
+        // PK Guid é ValueGeneratedOnAdd, então um filho novo descoberto só via navegação de
+        // agregado já rastreado vira UPDATE (0 linhas), não INSERT.
+        await ctx.TreinoExercicios.AddAsync(cheio.AdicionarExercicio(ex1, DateTime.UtcNow).Value);
+        await ctx.TreinoExercicios.AddAsync(cheio.AdicionarExercicio(ex2, DateTime.UtcNow).Value);
+        await ctx.SaveChangesAsync();
+
+        var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(tid, 1, 50, ordenarPor: "exercicios");
+
+        items.Select(i => i.Treino.Exercicios.Count).Should().BeInDescendingOrder();
+        items.First().Treino.Id.Should().Be(cheio.Id);
     }
 
     [Fact]

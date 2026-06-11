@@ -3,10 +3,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import HowItWorks from "./_landing/HowItWorks";
+import SocialProof from "./_landing/SocialProof";
+import Diferenciais from "./_landing/Diferenciais";
+import Faq from "./_landing/Faq";
 import type { PlanoPlataformaResponse } from "@/types";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
 import * as Sentry from "@sentry/nextjs";
+import { CDC_CANCEL_NOTICE } from "@/lib/constants/billing";
+import { formatarBRL } from "@/lib/utils/formatting";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
 
@@ -20,6 +25,14 @@ const organizationJsonLd = {
   name: "forzion.tech",
   url: SITE_URL,
   description: "Plataforma de gestão de treinos para personal trainers",
+};
+
+// Factual copy keyed by tier — no ROI projection (session price is trainer-defined, not stored)
+const TIER_COPY: Record<string, string> = {
+  Free: "Ideal para começar e testar sem compromisso",
+  Basic: "R$2 por aluno/mês na lotação",
+  Pro: "Notificações por e-mail mantêm seus alunos engajados entre sessões",
+  ProPlus: "WhatsApp integrado — seus alunos recebem tudo onde já estão",
 };
 
 async function getPlanos(): Promise<PlanoPlataformaResponse[]> {
@@ -134,29 +147,40 @@ export default async function LandingPage() {
               </Box>
             </Typography>
             <Typography variant="h6" sx={{ opacity: 0.6, mb: 5, fontWeight: 400, maxWidth: 560, mx: "auto", lineHeight: 1.7 }}>
-              Da prescrição ao acompanhamento — com controle, histórico e estrutura centralizados.
+              Pare de perder tempo com planilha e WhatsApp. Gerencie fichas, alunos e histórico num só lugar — do jeito que um profissional merece.
             </Typography>
-            <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <Link href="/cadastro/treinador" style={{ textDecoration: "none" }}>
                 <Button variant="contained" color="primary" size="large" endIcon={<ArrowForwardIcon />}>
-                  Criar conta como treinador
+                  Criar conta grátis
                 </Button>
               </Link>
               <Link href="/cadastro/aluno" style={{ textDecoration: "none" }}>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  sx={{ borderColor: "rgba(255,255,255,0.25)", color: "white", "&:hover": { borderColor: "white", bgcolor: "rgba(255,255,255,0.06)" } }}
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "rgba(255,255,255,0.45)",
+                    "&:hover": { color: "rgba(255,255,255,0.7)" },
+                    "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: "2px" },
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    transition: "color 0.2s",
+                  }}
                 >
-                  Sou aluno
-                </Button>
+                  Já foi convidado por um treinador? Acesse aqui como aluno
+                </Typography>
               </Link>
             </Box>
           </Container>
         </Box>
 
+        {/* Social proof — renders null when empty (beta: fabricating testimonials harms credibility) */}
+        <SocialProof testimonials={[]} />
+
         {/* Como funciona */}
         <HowItWorks />
+
+        <Diferenciais />
 
         {/* Planos */}
         {planos.length > 0 && (
@@ -171,6 +195,7 @@ export default async function LandingPage() {
               <Grid container spacing={3} sx={{ justifyContent: "center" }}>
                 {planos.map((plano, i) => {
                   const isElite = plano.tier === "Elite";
+                  const tierCopy = TIER_COPY[plano.tier];
                   const card = (
                     <Card
                       sx={{
@@ -208,9 +233,23 @@ export default async function LandingPage() {
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 800, color: i === 1 ? "secondary.main" : "primary.main", mt: 1.5 }}>
                           {plano.preco > 0
-                            ? <>R$ {plano.preco.toFixed(2).replace(".", ",")}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
+                            ? <>{formatarBRL(plano.preco)}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
                             : "Gratuito"}
                         </Typography>
+                        {tierCopy && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              display: "block",
+                              mt: 1.5,
+                              fontStyle: "italic",
+                              color: i === 1 ? "rgba(26,26,26,0.6)" : "rgba(255,255,255,0.55)",
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {tierCopy}
+                          </Typography>
+                        )}
                         {plano.descricao && (
                           <Box sx={{ mt: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75 }}>
                             <CheckIcon sx={{ fontSize: 15, color: i === 1 ? "secondary.main" : "primary.main", flexShrink: 0 }} />
@@ -218,15 +257,6 @@ export default async function LandingPage() {
                               {plano.descricao}
                             </Typography>
                           </Box>
-                        )}
-                        {!isElite && plano.preco > 0 && (
-                          <Typography
-                            variant="caption"
-                            sx={{ display: "block", mt: 2, color: i === 1 ? "rgba(26,26,26,0.6)" : "rgba(255,255,255,0.45)", lineHeight: 1.4 }}
-                          >
-                            Cobrança mensal recorrente. Cancelamento gratuito com reembolso
-                            integral em até 7 dias (CDC art. 49); após, sem reembolso do período vigente.
-                          </Typography>
                         )}
                       </CardContent>
                     </Card>
@@ -242,9 +272,29 @@ export default async function LandingPage() {
                   );
                 })}
               </Grid>
+              {/* Single CDC notice outside cards — was repeated per paid card (R8).
+                  Guard restores the original preco > 0 scope that was lost when deduplicating from per-card to single notice. */}
+              {planos.some(p => p.tier !== "Elite" && p.preco > 0) && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: "block",
+                    textAlign: "center",
+                    mt: 4,
+                    color: "rgba(255,255,255,0.35)",
+                    lineHeight: 1.5,
+                    maxWidth: 500,
+                    mx: "auto",
+                  }}
+                >
+                  {`Cobrança mensal recorrente. ${CDC_CANCEL_NOTICE}`}
+                </Typography>
+              )}
             </Container>
           </Box>
         )}
+
+        <Faq />
       </Box>
 
       <Box

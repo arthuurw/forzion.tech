@@ -32,7 +32,7 @@ public class VinculoAprovadoCriarAssinaturaAlunoHandlerTests
         var criarService = new CriarAssinaturaAlunoService(
             _pacoteRepo.Object, _assinaturaRepo.Object, Mock.Of<ILogger<CriarAssinaturaAlunoService>>());
         _handler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
-            _vinculoRepo.Object, _contaRecebimentoRepo.Object, _treinadorRepo.Object,
+            _vinculoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object, _treinadorRepo.Object,
             criarService, _unitOfWork.Object, _logger.Object);
     }
 

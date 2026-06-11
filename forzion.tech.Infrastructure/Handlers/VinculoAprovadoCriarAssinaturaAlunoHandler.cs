@@ -9,6 +9,7 @@ namespace forzion.tech.Infrastructure.Handlers;
 
 public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
+    IAssinaturaAlunoRepository assinaturaAlunoRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
     ITreinadorRepository treinadorRepository,
     CriarAssinaturaAlunoService criarAssinaturaService,
@@ -36,6 +37,15 @@ public sealed class VinculoAprovadoCriarAssinaturaAlunoHandler(
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
         {
             logger.LogWarning("Treinador {TreinadorId} sem onboarding Stripe — assinatura não criada.", domainEvent.TreinadorId);
+            return;
+        }
+
+        // Guard de idempotência: CriarAssinaturaAlunoService não checa duplicata —
+        // re-dispatch criaria segunda assinatura para o mesmo vínculo.
+        var assinaturaExistente = await assinaturaAlunoRepository.ObterPorVinculoIdAsync(domainEvent.VinculoId, cancellationToken).ConfigureAwait(false);
+        if (assinaturaExistente is not null)
+        {
+            logger.LogInformation("AssinaturaAluno já existe para vínculo {VinculoId}. Ignorado.", domainEvent.VinculoId);
             return;
         }
 

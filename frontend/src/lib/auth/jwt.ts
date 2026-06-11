@@ -7,6 +7,13 @@ interface JwtPayload {
   exp?: number;
 }
 
+const TIPO_CONTA_VALUES: readonly TipoConta[] = ["SystemAdmin", "Treinador", "Aluno"];
+
+// Defense-in-depth: JWT is verified server-side, but a malformed claim value must not slip through as a valid TipoConta.
+export function parseTipoConta(value: unknown): TipoConta | null {
+  return TIPO_CONTA_VALUES.includes(value as TipoConta) ? (value as TipoConta) : null;
+}
+
 export function parseJwtPayload(token: string): JwtPayload | null {
   try {
     const parts = token.split(".");
@@ -22,5 +29,5 @@ export function extractTipoConta(token: string): TipoConta | null {
   const payload = parseJwtPayload(token);
   if (!payload) return null;
   if (payload.exp && payload.exp * 1000 < Date.now()) return null;
-  return (payload.tipo_conta as TipoConta) ?? null;
+  return parseTipoConta(payload.tipo_conta);
 }

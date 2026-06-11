@@ -4,12 +4,13 @@ DOC PARA AGENTES. Padrões de CORREÇÃO transversais que reviews repetidamente 
 
 ## MANUTENÇÃO
 - Atualizar quando um review/code-review pegar um bug de CLASSE nova (não pontual) — adicionar a regra + o incidente.
-- Vive em `specs/` (commitado). Não duplicar regras de [specification-git] (commit/worktree) nem [specification-tests].
+- Não duplicar regras de [specification-git] (commit/worktree) nem [specification-tests].
 
 ## 1. TRANSAÇÃO ↔ EFEITO EXTERNO IRREVERSÍVEL
 - **Efeito externo irreversível (refund Stripe, e-mail, WhatsApp, webhook de saída) vai DEPOIS de `CommitAsync`** — nunca antes. Ordem: mutar agregado → `CommitAsync` → efeito externo. Falha do efeito = `LogCritical` + prossegue (estado já persistido). [incidente CR#1: refund emitido antes do commit → commit falha → dinheiro estornado sem cancelamento persistido + retry tenta refund 2× = `charge_already_refunded`.]
-- Corolário: se o efeito externo PRECISA ser garantido (não pode só logar), o caminho certo é outbox/retry, não chamar pré-commit. Sem outbox no MVP → aceitar "LogCritical + ação manual" e documentar.
-- Domain events de efeito colateral despacham no `CommitAsync` (já é o padrão do `UnitOfWork`).
+- Corolário (ATUALIZADO — outbox existe): efeito que PRECISA ser garantido vai por **outbox transacional** (`specification-backend §3.1`), não "LogCritical + manual". Padrão: enfileira o efeito (`IOutboxEnfileirador.Enfileirar("fx:<nome>", payload, chave)` ou domain-event durável) ANTES do `CommitAsync` → persiste atômico → worker entrega com retry. O "LogCritical + ação manual" só sobra para efeitos NÃO migrados ao outbox.
+  - Aplicado: **evidência de disputa Stripe** — antes era `EnviarEvidenciaDisputaAsync` pós-commit em try/catch+LogCritical (perdia evidência se Stripe falhasse). Agora enfileirada `fx:evidencia_disputa` antes do commit da transição `EmDisputa`; re-PUT idempotente; redelivery não re-enfileira (chave única). Caminho aluno E treinador.
+- Domain events de efeito colateral best-effort despacham no `CommitAsync` (padrão do `UnitOfWork`). Domain-event de **mutação crítica** (que não pode se perder) é marcado durável no `OutboxDurabilityRegistry` → re-dispatchado pelo worker com retry; o handler deve ser **idempotente** (guard defense-in-depth, pois o outbox já dá exactly-once transacional). Aplicado: `PagamentoTreinadorPagoEvent`→renovação (guard: `Status==Ativa && DataProximaCobranca>agora`; restrito a Ativa pra não pular regularização de Inadimplente) e `VinculoAprovadoEvent`→criar assinatura aluno (guard: `ObterPorVinculoIdAsync` já existe → não cria 2ª).
 
 ## 2. TEMPO & AUDITORIA
 - **Timestamp de prova legal/auditoria = relógio do SERVIDOR (`TimeProvider.GetUtcNow().UtcDateTime`), NUNCA valor vindo do cliente.** Cliente pode forjar (retroativo/futuro). O valor do cliente, se útil, vai em campo informativo (`observacao`), não como o timestamp autoritativo. [incidente CR#1-revisão R8: `ConsentimentoDadosSaudeEm` do payload usado como `CreatedAt` do log de consentimento LGPD art. 11 — prova falsificável.]
@@ -39,5 +40,11 @@ DOC PARA AGENTES. Padrões de CORREÇÃO transversais que reviews repetidamente 
 - Worktree de sub-agent nasce em base errada por default — SEMPRE verificar/resetar para a branch-alvo antes de codar. Ver [specification-git] §WORKTREE.
 - Commit/merge: Conventional, header ≤100, type válido (commitlint ativo). Ver [specification-git].
 - Claim cross-file ("o frontend não envia X", "isso está quebrado") → VERIFICAR lendo o arquivo real antes de agir; finders/agents erram por leitura parcial. [incidentes: 2 falsos positivos refutados por leitura direta nesta feature.]
+
+## 8. COMENTÁRIOS (ruído que review repete)
+Agentes tendem a over-comentar. Incluir SÓ o "porquê" não-óbvio (invariante sutil, workaround com motivo, decisão contraintuitiva, gotcha de plataforma) — NUNCA o óbvio nem paráfrase do código. Regra de ESCRITA: remover o ruído ANTES de apresentar o código, não revisão pós-fato. O subset abaixo barrado por hook; paráfrase/óbvio o hook NÃO pega → passar o olho.
+- **Barrado por hook (pre-commit)**: andaime/ref de tarefa (`// T2B.3:`, `// TCR1:`, `// T7:`); divisor decorativo unicode (`// ── X ──`, `// ══`, `// ——`). Fonte/sequência: [specification-git] §PRE-COMMIT HOOK / gate de comentário.
+- **Convenção do repo (NÃO é violação — não tentar "limpar")**: divisor ASCII `// --- X ---` permitido SÓ em arquivos de teste (idiom existente, pervasivo); PROIBIDO em produção. XML doc (`/// <summary>`, `/// <inheritdoc/>`) permitido em interface/contrato público (`I*.cs`, DTO público, migration EF gerada); em implementação/método privado PROIBIDO — lá, se precisar do "porquê", `//` de uma linha.
+- Inline em fim de linha que repete o código: proibido. Preferir nome claro a comentário.
 
 Cross-ref: [specification-backend] (Result/UnitOfWork/DI), [specification-stripe] (refund/webhook), [specification-lgpd] (consentimento/auditoria), [specification-tests], [specification-git].

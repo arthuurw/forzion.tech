@@ -1,87 +1,101 @@
-﻿[
+[
   {
     Exception: CredenciaisInvalidasException,
     StatusCode: 401,
     Title: Não autorizado,
-    Detail: E-mail ou senha inválidos.
+    Detail: E-mail ou senha inválidos.,
+    Code: auth.credenciais_invalidas
   },
   {
     Exception: AlunoNaoEncontradoException,
     StatusCode: 404,
     Title: Não encontrado,
-    Detail: Aluno não encontrado.
+    Detail: Aluno não encontrado.,
+    Code: aluno.nao_encontrado
   },
   {
     Exception: TreinadorNaoEncontradoException,
     StatusCode: 404,
     Title: Não encontrado,
-    Detail: Treinador não encontrado.
+    Detail: Treinador não encontrado.,
+    Code: treinador.nao_encontrado
   },
   {
     Exception: TreinoNaoEncontradoException,
     StatusCode: 404,
     Title: Não encontrado,
-    Detail: Treino não encontrado.
+    Detail: Treino não encontrado.,
+    Code: treino.nao_encontrado
   },
   {
     Exception: VinculoNaoEncontradoException,
     StatusCode: 404,
     Title: Não encontrado,
-    Detail: Vínculo não encontrado.
+    Detail: Vínculo não encontrado.,
+    Code: vinculo.nao_encontrado
   },
   {
     Exception: ExercicioNaoEncontradoException,
     StatusCode: 404,
     Title: Não encontrado,
-    Detail: Exercício não encontrado.
+    Detail: Exercício não encontrado.,
+    Code: exercicio.nao_encontrado
   },
   {
     Exception: PacoteNaoEncontradoException,
     StatusCode: 404,
     Title: Não encontrado,
-    Detail: Pacote não encontrado.
+    Detail: Pacote não encontrado.,
+    Code: pacote.nao_encontrado
   },
   {
     Exception: GrupoMuscularNaoEncontradoException,
     StatusCode: 404,
     Title: Não encontrado,
-    Detail: Grupo muscular não encontrado.
+    Detail: Grupo muscular não encontrado.,
+    Code: grupo_muscular.nao_encontrado
   },
   {
     Exception: PlanoPlataformaNaoEncontradoException,
     StatusCode: 404,
     Title: Não encontrado,
-    Detail: Plano não encontrado.
+    Detail: Plano não encontrado.,
+    Code: plano.nao_encontrado
   },
   {
     Exception: AlunoInativoException,
     StatusCode: 403,
     Title: Inativo,
-    Detail: Aluno inativo.
+    Detail: Aluno inativo.,
+    Code: aluno.inativo
   },
   {
     Exception: AcessoNegadoException,
     StatusCode: 403,
     Title: Acesso negado,
-    Detail: Acesso negado.
+    Detail: Acesso negado.,
+    Code: acesso.negado
   },
   {
     Exception: EmailJaCadastradoException,
     StatusCode: 409,
     Title: Conflito,
-    Detail: Este e-mail já está cadastrado.
+    Detail: Este e-mail já está cadastrado.,
+    Code: email.ja_cadastrado
   },
   {
     Exception: AlunoJaVinculadoException,
     StatusCode: 409,
     Title: Conflito,
-    Detail: O aluno já possui um vínculo ativo com outro treinador.
+    Detail: O aluno já possui um vínculo ativo com outro treinador.,
+    Code: vinculo.aluno_ja_vinculado
   },
   {
     Exception: DomainException,
     StatusCode: 422,
     Title: Erro de domínio,
-    Detail: Regra de dominio violada.
+    Detail: Regra de dominio violada.,
+    Code: dominio.regra_violada
   },
   {
     Exception: InvalidOperationException,

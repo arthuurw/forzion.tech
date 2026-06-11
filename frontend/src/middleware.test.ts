@@ -144,6 +144,16 @@ describe("middleware — assinatura JWT inválida", () => {
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
+  // Defense-in-depth: assinatura válida mas claim tipo_conta forjado → não-autenticado.
+  it("token com tipo_conta forjado (assinatura válida) → redirect /login", async () => {
+    await middleware(makeRequest("/aluno/fichas", {
+      token: makeJwt({ tipo_conta: "Hacker", exp: FUTURE }),
+      session_guard: "1",
+    }));
+    expect(NextResponse.redirect).toHaveBeenCalledOnce();
+    expect(redirectedTo()).toBe("/login");
+  });
+
   it("token expirado em área protegida → redirect /login", async () => {
     const PAST = Math.floor(Date.now() / 1000) - 3600;
     const expiredToken = makeJwt({ tipo_conta: "Aluno", exp: PAST });

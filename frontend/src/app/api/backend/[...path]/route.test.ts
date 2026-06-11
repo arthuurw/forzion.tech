@@ -177,5 +177,18 @@ describe("Backend proxy /api/backend/[...path]", () => {
       const res = await GET(req, makeCtx(["admin", "file"]));
       expect(res.headers.get("content-type")).toBe("text/plain");
     });
+
+    // Regressão: backend 204 (ex.: config de relatório ausente) virava 500 porque
+    // Response não admite body em 204 — construtor lançava.
+    it("propaga 204 sem virar 500", async () => {
+      setupCookies({});
+      server.use(
+        http.get("*/admin/health-report/config", () => new HttpResponse(null, { status: 204 })),
+      );
+
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["admin", "health-report", "config"]));
+      expect(res.status).toBe(204);
+    });
   });
 });

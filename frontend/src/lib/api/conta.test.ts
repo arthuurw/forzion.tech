@@ -28,9 +28,14 @@ describe("contaApi", () => {
     expect(mock.post).toHaveBeenCalledWith("/conta/senha", data);
   });
 
-  it("exportarDados GET com responseType blob", () => {
+  it("exportarDados GET xlsx (default)", () => {
     contaApi.exportarDados();
-    expect(mock.get).toHaveBeenCalledWith("/conta/lgpd/exportar", { responseType: "blob" });
+    expect(mock.get).toHaveBeenCalledWith("/conta/lgpd/exportar", { params: { formato: "xlsx" }, responseType: "blob" });
+  });
+
+  it("exportarDados GET json", () => {
+    contaApi.exportarDados("json");
+    expect(mock.get).toHaveBeenCalledWith("/conta/lgpd/exportar", { params: { formato: "json" }, responseType: "blob" });
   });
 
   it("excluirConta DELETE com senha no body", () => {

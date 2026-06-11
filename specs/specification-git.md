@@ -4,7 +4,7 @@ DOC PARA AGENTES. Fonte de verdade do workflow git deste repo. Formato denso, ag
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Atualizar NA MESMA TAREFA de mudança em: scopes de Conventional Commits, layout de branches, hooks `.husky/`, regras de pre-commit, comandos de setup, política de push/rebase.
-- Vive em `specs/` (versionado; commitar). NÃO duplicar os scopes de Conventional Commits do AGENTS.md (§CONVENÇÕES-CHAVE) — referenciar.
+- NÃO duplicar os scopes de Conventional Commits do AGENTS.md (§CONVENÇÕES-CHAVE) — referenciar.
 
 ## CONTEXTO
 Solo dev. 1 alteração por branch. Multi-folder: cada frente vive em pasta isolada (clone independente OU worktree). Prioriza baixa fricção sync local↔origin. SEM branch protection no remoto (push direto permitido). CI ainda gate de PR.
@@ -88,7 +88,8 @@ docs(infra): add git workflow spec + setup script
 
 ## PUSH / PR
 - Branch local mesmo nome do remoto (convenção). `git push` sem args = pusha branch atual pro mesmo nome em `origin`.
-- PR vai pra `homolog` (default) OU pra `master` quando a alteração foi feita direto em `homolog`. Ver AGENTS.md `FLUXO DE ALTERAÇÃO DE CÓDIGO`.
+- **PR é MANUAL — não abrir automaticamente** (decisão 2026-06-10, até segunda ordem; minutos GH Actions limitados): concluir em `commit + push` na branch; o usuário pede o PR quando quiser. Ver AGENTS.md `DEFINITION OF DONE` passo 8.
+- Quando solicitado: PR vai pra `homolog` (default) OU pra `master` quando a alteração foi feita direto em `homolog`.
 - `gh pr create --fill --base homolog` cria PR com title/body do commit topo.
 - Após merge no remoto, branch local pode ser deletada (`git branch -d`).
 
@@ -111,7 +112,7 @@ docs(infra): add git workflow spec + setup script
 
 ## REFERÊNCIAS
 - AGENTS.md `CONVENÇÕES-CHAVE` (scopes).
-- AGENTS.md `FLUXO DE ALTERAÇÃO DE CÓDIGO` (PR target).
+- AGENTS.md `DEFINITION OF DONE` (passos 7-8: git + PR manual).
 - `frontend/.husky/pre-commit` (hook real).
 - `.gitignore` (gates `/docs/*` com whitelist em `docs/api/` e `docs/test-remediation/`).
 - `scripts/setup-git.ps1` + `scripts/setup-git.sh` (aplicar configs).

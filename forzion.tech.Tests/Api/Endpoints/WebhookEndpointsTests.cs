@@ -49,7 +49,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     {
         _factory.ProcessarWebhookHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookStripeCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("AssinaturaAluno Stripe inválida.")));
+            .ReturnsAsync(Result.Failure(Error.Business("webhook_stripe.assinatura_invalida", "AssinaturaAluno Stripe inválida.")));
 
         var content = new StringContent("{}", Encoding.UTF8, "application/json");
         var request = new HttpRequestMessage(HttpMethod.Post, "/webhooks/stripe") { Content = content };
@@ -73,7 +73,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             .Callback<ProcessarWebhookStripeCommand, CancellationToken>((c, _) => captured = c)
             .ReturnsAsync((ProcessarWebhookStripeCommand c, CancellationToken _) =>
                 string.IsNullOrEmpty(c.AssinaturaAlunoStripe)
-                    ? Result.Failure(Error.Business("Assinatura ausente."))
+                    ? Result.Failure(Error.Business("webhook_stripe.assinatura_ausente", "Assinatura ausente."))
                     : Result.Success());
 
         var content = new StringContent("{\"type\":\"payment_intent.succeeded\"}", Encoding.UTF8, "application/json");
@@ -165,7 +165,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IContaRepository>(),
             Mock.Of<IStripeService>(),
-            Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<IUnitOfWork>(), Mock.Of<IOutboxEnfileirador>(), TimeProvider.System,
             Mock.Of<ILogger<ProcessarWebhookStripeHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

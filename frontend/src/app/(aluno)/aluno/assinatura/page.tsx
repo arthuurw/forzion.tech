@@ -32,7 +32,7 @@ export default function AssinaturaAlunoPage() {
   const [mostrarPix, setMostrarPix] = useState(false);
   const [confirmarCancelar, setConfirmarCancelar] = useState(false);
   const [cancelando, setCancelando] = useState(false);
-  const [baixandoDados, setBaixandoDados] = useState(false);
+  const [baixandoDados, setBaixandoDados] = useState<false | "xlsx" | "json">(false);
   const [sucesso, setSucesso] = useState("");
 
   const carregar = async () => {
@@ -73,11 +73,11 @@ export default function AssinaturaAlunoPage() {
     }
   };
 
-  const baixarMeusDados = async () => {
-    setBaixandoDados(true);
+  const baixarMeusDados = async (formato: "xlsx" | "json") => {
+    setBaixandoDados(formato);
     setError("");
     try {
-      await baixarMeusDadosBlob();
+      await baixarMeusDadosBlob(formato);
     } catch (err) {
       setError(extractApiError(err, "Erro ao exportar dados."));
     } finally {
@@ -185,16 +185,26 @@ export default function AssinaturaAlunoPage() {
         onConfirm={cancelarAssinatura}
         onClose={() => { if (!cancelando) setConfirmarCancelar(false); }}
       >
-        <Button
-          variant="text"
-          size="small"
-          onClick={baixarMeusDados}
-          disabled={baixandoDados}
-          startIcon={baixandoDados ? <CircularProgress size={14} color="inherit" /> : undefined}
-          sx={{ mt: 1 }}
-        >
-          Baixar meus dados
-        </Button>
+        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 1 }}>
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => baixarMeusDados("xlsx")}
+            disabled={!!baixandoDados}
+            startIcon={baixandoDados === "xlsx" ? <CircularProgress size={14} color="inherit" /> : undefined}
+          >
+            Baixar meus dados (Excel)
+          </Button>
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => baixarMeusDados("json")}
+            disabled={!!baixandoDados}
+            startIcon={baixandoDados === "json" ? <CircularProgress size={14} color="inherit" /> : undefined}
+          >
+            Baixar como JSON
+          </Button>
+        </Stack>
       </ConfirmDialog>
     </Box>
   );

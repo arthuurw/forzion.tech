@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback((data: LoginResponse) => {
     // O token não é armazenado no estado client-side — permanece apenas no httpOnly cookie.
-    setUser({ contaId: data.contaId, perfilId: data.perfilId, tipoConta: data.tipoConta });
+    setUser({ contaId: data.contaId, perfilId: data.perfilId, tipoConta: data.tipoConta, nome: data.nome });
   }, []);
 
   const logout = useCallback(async () => {

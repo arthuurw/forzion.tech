@@ -40,13 +40,16 @@ export default function SaudeAdminPage() {
   const [ultimoEnvioEm, setUltimoEnvioEm] = useState<string | null>(null);
 
   const [ultimoSnapshot, setUltimoSnapshot] = useState<HealthSnapshotResponse | null>(null);
+  const [snapshotIndisponivel, setSnapshotIndisponivel] = useState(false);
 
   const loadSnapshots = async () => {
     try {
       const res = await adminApi.listHealthSnapshots({ limite: 1 });
       setUltimoSnapshot(res.data[0] ?? null);
+      setSnapshotIndisponivel(false);
     } catch {
-      // snapshot é informativo; falha não bloqueia a página
+      // snapshot é informativo; falha não bloqueia a página — placeholder distingue de "sem dados"
+      setSnapshotIndisponivel(true);
     }
   };
 
@@ -160,7 +163,7 @@ export default function SaudeAdminPage() {
 
             {ultimoEnvioEm && (
               <Typography variant="caption" color="text.secondary">
-                Último envio: {new Date(ultimoEnvioEm).toLocaleString()}
+                Último envio: {new Date(ultimoEnvioEm).toLocaleString("pt-BR")}
               </Typography>
             )}
 
@@ -186,9 +189,11 @@ export default function SaudeAdminPage() {
                 <Typography variant="body2" color="text.secondary">{ultimoSnapshot.ambiente}</Typography>
               </Box>
               <Typography variant="caption" color="text.secondary">
-                {new Date(ultimoSnapshot.capturadoEm).toLocaleString()}
+                {new Date(ultimoSnapshot.capturadoEm).toLocaleString("pt-BR")}
               </Typography>
             </Stack>
+          ) : snapshotIndisponivel ? (
+            <Typography variant="body2" color="text.secondary">Snapshots indisponíveis no momento.</Typography>
           ) : (
             <Typography variant="body2" color="text.secondary">Nenhum snapshot ainda.</Typography>
           )}

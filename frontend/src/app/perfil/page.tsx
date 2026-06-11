@@ -14,6 +14,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ConsentBanner from "@/components/ui/ConsentBanner";
 import { contaApi, type PerfilResponse } from "@/lib/api/conta";
+import { baixarMeusDados } from "@/lib/utils/downloadBlob";
 import { alunoApi } from "@/lib/api/aluno";
 import { apiClient } from "@/lib/api/client";
 import { extractApiError } from "@/lib/api/extractApiError";
@@ -45,7 +46,7 @@ export default function PerfilPage() {
   const [loadingTrocaPacotes, setLoadingTrocaPacotes] = useState(false);
   const [savingTroca, setSavingTroca] = useState(false);
 
-  const [exportingData, setExportingData] = useState(false);
+  const [exportingData, setExportingData] = useState<false | "xlsx" | "json">(false);
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
   const [deleteSenha, setDeleteSenha] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -117,17 +118,11 @@ export default function PerfilPage() {
     }
   };
 
-  const handleExportarDados = async () => {
-    setExportingData(true);
+  const handleExportarDados = async (formato: "xlsx" | "json") => {
+    setExportingData(formato);
     setError("");
     try {
-      const res = await contaApi.exportarDados();
-      const url = URL.createObjectURL(res.data as Blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "meus-dados.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      await baixarMeusDados(formato);
     } catch (err) {
       setError(extractApiError(err, "Erro ao exportar dados."));
     } finally {
@@ -365,15 +360,26 @@ export default function PerfilPage() {
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Privacidade (LGPD)</Typography>
           </Box>
           <Stack spacing={1.5}>
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={exportingData}
-              onClick={handleExportarDados}
-              sx={{ alignSelf: "flex-start" }}
-            >
-              {exportingData ? "Exportando..." : "Exportar meus dados"}
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={!!exportingData}
+                onClick={() => handleExportarDados("xlsx")}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                {exportingData === "xlsx" ? "Exportando..." : "Baixar meus dados (Excel)"}
+              </Button>
+              <Button
+                variant="text"
+                size="small"
+                disabled={!!exportingData}
+                onClick={() => handleExportarDados("json")}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                {exportingData === "json" ? "Exportando..." : "Baixar como JSON"}
+              </Button>
+            </Stack>
             <Button
               variant="outlined"
               size="small"

@@ -179,11 +179,14 @@ public static class DependencyInjectionExtensions
         services.AddJwtAuthentication(configuration, environment);
         services.AddCorsPolicies(configuration);
         // Liveness é o endpoint sem checks (Predicate => false) mapeado em RouteBuilder.
-        // Readiness usa o DbContextCheck taggeado "ready": só executa quando /health/ready
-        // é chamado (CanConnectAsync). Em ambiente Test o AppDbContext não é registrado
-        // (AddInfrastructure é pulado), então o check só é exercido quando há AppDbContext em DI.
+        // Readiness usa checks taggeados "ready" (DbContextCheck + Stripe + Resend).
+        // Stripe/Resend: Degraded em falha (nunca Unhealthy) — integração fora do ar não mata o pod.
+        // Em ambiente Test o AppDbContext não é registrado; check "db" só roda quando há AppDbContext em DI.
+        services.AddHttpClient(); // necessário para IHttpClientFactory em ResendHealthCheck
         services.AddHealthChecks()
-            .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready" });
+            .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready" })
+            .AddCheck<forzion.tech.Infrastructure.Health.StripeHealthCheck>("stripe", tags: new[] { "ready" })
+            .AddCheck<forzion.tech.Infrastructure.Health.ResendHealthCheck>("resend", tags: new[] { "ready" });
 
         services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -199,6 +202,8 @@ public static class DependencyInjectionExtensions
             services.AddInfrastructure(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
             services.AddHostedService<RelatorioSaudeDiarioService>();
+            services.AddHostedService<OutboxProcessorService>();
+            services.AddHostedService<OutboxLimpezaService>();
             services.AddSingleton<ILoggerProvider, ErrorLogDbSinkProvider>();
         }
 
@@ -237,6 +242,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ExportarDadosPessoaisHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.AnonimizarContaHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ListarContasElegivelPurgaLgpdHandler>();
+        services.AddScoped<IDadosPessoaisExcelRenderer, forzion.tech.Infrastructure.Services.DadosPessoaisExcelRenderer>();
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosAlunoHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosTreinadorHandler>();
 

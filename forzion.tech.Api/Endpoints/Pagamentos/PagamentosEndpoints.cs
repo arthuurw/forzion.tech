@@ -17,6 +17,8 @@ namespace forzion.tech.Api.Endpoints.Pagamentos;
 
 public static class PagamentosEndpoints
 {
+    private const int TamanhoLoteRenovacao = 200;
+
     public static IEndpointRouteBuilder MapPagamentosEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var alunoGroup = endpoints.MapGroup("/aluno/pagamentos")
@@ -180,31 +182,42 @@ public static class PagamentosEndpoints
             if (!ChaveInternaValida(httpContext, configuration))
                 return Results.Unauthorized();
 
-            var assinaturas = await assinaturaTreinadorRepository
-                .ListarParaRenovarAsync(timeProvider.GetUtcNow().UtcDateTime, cancellationToken).ConfigureAwait(false);
-
+            var agora = timeProvider.GetUtcNow().UtcDateTime;
+            var processadas = 0;
             var falhas = 0;
-            foreach (var assinaturaId in assinaturas.Select(a => a.Id))
+            Guid? aposId = null;
+            while (true)
             {
-                var result = await gerarHandler.HandleAsync(
-                    new GerarCobrancaPlanoTreinadorCommand(assinaturaId), cancellationToken).ConfigureAwait(false);
-                if (result.IsFailure)
+                var lote = await assinaturaTreinadorRepository
+                    .ListarParaRenovarAsync(agora, aposId, TamanhoLoteRenovacao, cancellationToken).ConfigureAwait(false);
+                if (lote.Count == 0) break;
+
+                foreach (var assinaturaId in lote.Select(a => a.Id))
                 {
-                    if (result.Error?.Code == "plano_free_assinatura_cancelada")
+                    processadas++;
+                    var result = await gerarHandler.HandleAsync(
+                        new GerarCobrancaPlanoTreinadorCommand(assinaturaId), cancellationToken).ConfigureAwait(false);
+                    if (result.IsFailure)
                     {
-                        logger.LogInformation("Assinatura de treinador {AssinaturaTreinadorId} encerrada por downgrade para Free.",
-                            assinaturaId);
-                    }
-                    else
-                    {
-                        falhas++;
-                        logger.LogWarning("Falha ao renovar assinatura de treinador {AssinaturaTreinadorId}: {Erro}.",
-                            assinaturaId, result.Error?.Message);
+                        if (result.Error?.Code == "plano_free_assinatura_cancelada")
+                        {
+                            logger.LogInformation("Assinatura de treinador {AssinaturaTreinadorId} encerrada por downgrade para Free.",
+                                assinaturaId);
+                        }
+                        else
+                        {
+                            falhas++;
+                            logger.LogWarning("Falha ao renovar assinatura de treinador {AssinaturaTreinadorId}: {Erro}.",
+                                assinaturaId, result.Error?.Message);
+                        }
                     }
                 }
+
+                aposId = lote[^1].Id;
+                if (lote.Count < TamanhoLoteRenovacao) break;
             }
 
-            return Results.Ok(new { processadas = assinaturas.Count, falhas });
+            return Results.Ok(new { processadas, falhas });
         })
         .WithTags("Internal")
         .WithSummary("Processa renovações mensais de planos de treinadores (requer X-Internal-Key)")
@@ -225,24 +238,35 @@ public static class PagamentosEndpoints
             if (!ChaveInternaValida(httpContext, configuration))
                 return Results.Unauthorized();
 
-            var assinaturas = await assinaturaRepository
-                .ListarParaRenovarAsync(timeProvider.GetUtcNow().UtcDateTime, cancellationToken).ConfigureAwait(false);
-
+            var agora = timeProvider.GetUtcNow().UtcDateTime;
+            var processadas = 0;
             var falhas = 0;
-            foreach (var assinatura in assinaturas)
+            Guid? aposId = null;
+            while (true)
             {
-                var result = await gerarHandler.HandleAsync(
-                    new GerarCobrancaMensalCommand(assinatura.Id, assinatura.TreinadorId), cancellationToken).ConfigureAwait(false);
+                var lote = await assinaturaRepository
+                    .ListarParaRenovarAsync(agora, aposId, TamanhoLoteRenovacao, cancellationToken).ConfigureAwait(false);
+                if (lote.Count == 0) break;
 
-                if (result.IsFailure)
+                foreach (var assinatura in lote)
                 {
-                    falhas++;
-                    logger.LogWarning("Falha ao renovar assinatura {AssinaturaAlunoId}: {Erro}.",
-                        assinatura.Id, result.Error?.Message);
+                    processadas++;
+                    var result = await gerarHandler.HandleAsync(
+                        new GerarCobrancaMensalCommand(assinatura.Id, assinatura.TreinadorId), cancellationToken).ConfigureAwait(false);
+
+                    if (result.IsFailure)
+                    {
+                        falhas++;
+                        logger.LogWarning("Falha ao renovar assinatura {AssinaturaAlunoId}: {Erro}.",
+                            assinatura.Id, result.Error?.Message);
+                    }
                 }
+
+                aposId = lote[^1].Id;
+                if (lote.Count < TamanhoLoteRenovacao) break;
             }
 
-            return Results.Ok(new { processadas = assinaturas.Count, falhas });
+            return Results.Ok(new { processadas, falhas });
         })
         .WithTags("Internal")
         .WithSummary("Processa renovações mensais de assinaturas (requer X-Internal-Key)")

@@ -1,7 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno;
@@ -18,8 +18,9 @@ public class CancelarAssinaturaAlunoHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("AssinaturaAluno não encontrada.");
+        var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false);
+        if (assinatura is null)
+            return Result.Failure(AssinaturaAlunoErrors.NaoEncontrada);
 
         var cancelarResult = assinatura.Cancelar(timeProvider.GetUtcNow().UtcDateTime);
         if (cancelarResult.IsFailure)

@@ -1,5 +1,29 @@
 import type { SerieConfigResponse } from "@/types";
 
+// Construído uma vez no módulo: instanciar Intl.NumberFormat por chamada é caro.
+const brlFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+/**
+ * formatarBRL — formats a number as Brazilian Real currency (e.g. R$ 1.234,56).
+ * Zero returns "Gratuito" only when `gratuito` is true (default false), so callers
+ * that display "R$ 0,00" for paid contexts can opt out of the "Gratuito" label.
+ */
+export function formatarBRL(valor: number, gratuito = false): string {
+  if (gratuito && valor === 0) return "Gratuito";
+  return brlFormatter.format(valor);
+}
+
+/**
+ * formatarTelefone — applies Brazilian phone mask to a digit-only or raw string.
+ * Supports 10-digit (landline) and 11-digit (mobile) formats.
+ */
+export function formatarTelefone(phone: string): string {
+  const d = phone.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return phone;
+}
+
 export function formatarSeries(series: SerieConfigResponse[]): string {
   if (!series || series.length === 0) return "—";
   return series

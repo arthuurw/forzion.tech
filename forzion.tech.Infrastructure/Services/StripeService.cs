@@ -29,6 +29,14 @@ public class StripeService(
         IdempotencyKey = $"pagamento-{pagamentoId:N}"
     };
 
+    // Mesma garantia do PaymentIntent: retry de transporte após resposta perdida vira no-op no
+    // Stripe (sem charge_already_refunded / 2º estorno). protected virtual p/ asserção em teste.
+    protected virtual RequestOptions RefundRequestOptions(Guid pagamentoId) => new()
+    {
+        ApiKey = _settings.SecretKey,
+        IdempotencyKey = $"refund-{pagamentoId:N}"
+    };
+
     public async Task<string> CriarContaConnectAsync(string email, string nome, CancellationToken cancellationToken = default)
     {
         var service = new AccountService();
@@ -230,7 +238,7 @@ public class StripeService(
         return account.ChargesEnabled;
     }
 
-    public async Task CriarReembolsoAsync(string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default)
+    public async Task CriarReembolsoAsync(Guid pagamentoId, string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default)
     {
         var service = new RefundService();
         var options = new RefundCreateOptions { PaymentIntent = paymentIntentId };
@@ -241,7 +249,7 @@ public class StripeService(
             options.RefundApplicationFee = true;
         }
 
-        var refund = await service.CreateAsync(options, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var refund = await service.CreateAsync(options, requestOptions: RefundRequestOptions(pagamentoId), cancellationToken: cancellationToken).ConfigureAwait(false);
         logger.LogInformation(
             "Reembolso {RefundId} criado para PaymentIntent {PaymentIntentId} (reverterTransferencia={Reverter}).",
             refund.Id, paymentIntentId, reverterTransferencia);

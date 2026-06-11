@@ -71,6 +71,9 @@ public class FluxosCriticosE2ETests(RealPipelineFixture fixture)
             $"/treinador/vinculos/{vinculoId}/aprovar", new { pacoteId, trarFichas = false });
         aprovar.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        // VinculoAprovado → criar assinatura é handler DURÁVEL (outbox); materializa só ao drenar.
+        await fixture.DrenarOutboxAsync();
+
         // Assinatura criada via domain event handler real, persistida no banco real.
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

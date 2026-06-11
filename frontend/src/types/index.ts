@@ -4,13 +4,14 @@ export type AlunoStatus = "AguardandoAprovacao" | "Ativo" | "Inativo";
 export type TreinadorStatus = "AguardandoPagamento" | "AguardandoAprovacao" | "Ativo" | "Inativo";
 export type VinculoStatus = "AguardandoAprovacao" | "Ativo" | "Inativo";
 export type TreinoAlunoStatus = "Ativo" | "Inativo";
+// Deve espelhar exatamente o enum C# Domain/Enums/ObjetivoTreino (JsonStringEnumConverter
+// casa por nome): valor fora da lista quebra a desserialização do POST /treinos.
 export type ObjetivoTreino =
   | "Hipertrofia"
   | "Emagrecimento"
   | "Resistencia"
   | "Forca"
-  | "Flexibilidade"
-  | "Condicionamento";
+  | "Reabilitacao";
 
 export type DificuldadeTreino = "Iniciante" | "Intermediario" | "Avancado";
 
@@ -19,6 +20,7 @@ export interface LoginResponse {
   tipoConta: TipoConta;
   contaId: string;
   perfilId: string;
+  nome: string;
 }
 
 // SessionUser nunca inclui o token — o token permanece em httpOnly cookie
@@ -27,6 +29,7 @@ export interface SessionUser {
   contaId: string;
   tipoConta: TipoConta;
   perfilId: string;
+  nome: string;
 }
 
 export type FinalidadeTreino =

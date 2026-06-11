@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -16,8 +17,8 @@ namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssina
 ///
 /// Falhas:
 /// <list type="bullet">
-///   <item><description>Nenhuma assinatura ativa/inadimplente → <c>not_found</c> (mapeia 404 no endpoint).</description></item>
-///   <item><description>Já cancelada (race) → <c>business_error</c> (mapeia 422).</description></item>
+///   <item><description>Nenhuma assinatura ativa/inadimplente (ou já cancelada no momento do lookup) → <c>assinatura_aluno.nao_encontrada_para_cancelar</c> (mapeia 404 no endpoint).</description></item>
+///   <item><description>Já cancelada (race pós-guard, via <c>Cancelar</c> no domínio) → <c>assinatura_aluno.ja_cancelada</c> (mapeia 422).</description></item>
 /// </list>
 /// </summary>
 public class CancelarMinhaAssinaturaAlunoHandler(
@@ -28,7 +29,8 @@ public class CancelarMinhaAssinaturaAlunoHandler(
     TimeProvider timeProvider,
     ILogger<CancelarMinhaAssinaturaAlunoHandler> logger)
 {
-    public const string AssinaturaNaoEncontradaErrorCode = "assinatura_nao_encontrada";
+    // Endpoint verifica este code para retornar 404 em vez do 422 padrão Business.
+    public const string AssinaturaNaoEncontradaErrorCode = "assinatura_aluno.nao_encontrada_para_cancelar";
 
     public virtual async Task<Result> HandleAsync(
         CancelarMinhaAssinaturaAlunoCommand command,
@@ -41,9 +43,7 @@ public class CancelarMinhaAssinaturaAlunoHandler(
             .ConfigureAwait(false);
 
         if (assinatura is null || assinatura.Status == AssinaturaAlunoStatus.Cancelada)
-            return Result.Failure(new Error(
-                AssinaturaNaoEncontradaErrorCode,
-                "Nenhuma assinatura ativa encontrada para cancelar."));
+            return Result.Failure(AssinaturaAlunoErrors.NaoEncontradaParaCancelar);
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -78,7 +78,7 @@ public class CancelarMinhaAssinaturaAlunoHandler(
         // Charge destino do aluno → reverter transferência e fee (G1). Status Estornado chega
         // depois via webhook charge.refunded — não muta síncrono aqui.
         await reembolsoService
-            .ReembolsarSeDentroDoPrazoAsync(agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: true, cancellationToken)
+            .ReembolsarSeDentroDoPrazoAsync(pago?.Id ?? Guid.Empty, agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: true, cancellationToken)
             .ConfigureAwait(false);
     }
 }

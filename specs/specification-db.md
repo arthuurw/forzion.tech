@@ -6,15 +6,14 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Este arquivo DEVE ser mantido atualizado. Sempre que uma alteração RELEVANTE de estrutura for feita (nova migration, tabela, coluna, FK, índice, enum, mudança de tipo/nullability/default), ajustar este arquivo NA MESMA TAREFA.
-- Vive em `specs/` (versionado; NÃO confundir com `.specs/` gitignorado). Arquivos de `specs/` devem ser commitados.
 - Ao mudar contagem de tabelas/migrations, atualizar os números nas seções relevantes.
 
 ## STACK & SCHEMAS
 - PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. Stack macro da app em AGENTS.md §STACK.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema. `MigrationsHistoryTable("__EFMigrationsHistory")` sem schema (segue search_path).
-- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 31 tabelas cada (30 EF + ai_token_usage).
+- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 32 tabelas cada (31 EF + ai_token_usage) após `AdicionarOutboxEfeitos` aplicada (migration criada; aplica nos schemas no deploy).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 31 migrations EF aplicadas (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarConcurrencyTokenTreinador`). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` atual `8.0.11`).
+- 34 migrations EF (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarAnonimizadoEmAlunosETreinadores`; 31 aplicadas nos schemas, as 3 mais novas (`AdicionarOutboxEfeitos`, `UniqueDeliveryLogIdempotencia`, `AdicionarAnonimizadoEmAlunosETreinadores`) aplicam no próximo deploy). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` = versão do pacote em `forzion.tech.Infrastructure.csproj`, não fixar aqui).
 - `AdicionarConcurrencyTokenTreinador`: mapeia o system column `xmin` de `treinadores` como concurrency token (concorrência otimista). NÃO gera DDL — o `AddColumn` no `.cs` é artefato de modelo; o SQL gerado só insere a linha de history. Aplicar é no-op estrutural (só registra a migration).
 
 ## APLICAÇÃO DE MIGRATIONS (multi-schema — descobertas operacionais)
@@ -29,7 +28,7 @@ Projeto Supabase único: `forzion` (ref `fdpdbtiuuitndbeujcbj`, região sa-east-
   - Em todos: `SET search_path TO <schema>;` antes do DDL (migrations são schema-agnostic, sem qualificador).
   - **`public` exige GRANT manual nas tabelas novas**: tabelas EF em public são criadas por postgres com RLS desabilitado e `GRANT ALL` para `anon, authenticated, forzion_api, service_role` (espelhar o padrão de `public.pagamentos`). Em develop/homolog isso é automático (dono = forzion_api, role da app). Sequências: N/A (PKs uuid).
   - Gerar SQL mínimo por schema: `dotnet ef migrations script <ultimaAplicada> <alvo> --project forzion.tech.Infrastructure --startup-project forzion.tech.Api`; remover linhas `START TRANSACTION;`/`COMMIT;` e rodar tudo num `execute_sql` (atômico por schema). `--idempotent` gera guards `IF NOT EXISTS(... migration_id ...)` se preferir um script único.
-  - History: inserir `INSERT INTO "__EFMigrationsHistory" (migration_id, product_version) VALUES ('<id>','8.0.11')` por migration aplicada (o `dotnet ef migrations script` já inclui).
+  - History: inserir `INSERT INTO "__EFMigrationsHistory" (migration_id, product_version) VALUES ('<id>','<ProductVersion do dotnet ef>')` por migration aplicada (o `dotnet ef migrations script` já inclui o valor correto).
 
 ## CONVENÇÕES
 - PK: `id` uuid gerado na app (Guid.NewGuid), não pelo banco. Exceção: `tokens_revogados` PK=`jti`.
@@ -41,29 +40,11 @@ Projeto Supabase único: `forzion` (ref `fdpdbtiuuitndbeujcbj`, região sa-east-
 - UQ parciais impõem regra de negócio (pagamentos 1 Pendente/assinatura; treino_alunos 1 Ativo/treino).
 
 ## ENUMS — BINDING DE COLUNA
-Valores e semântica em [specification-model] §4. Aqui: só o vínculo enum→coluna + nota db-specific (persistência/default/tipo). Persistidos como `text` via `HasConversion<string>` (valor = nome do enum), salvo `TempoDisponivel` (`int`).
-- TipoConta → contas.tipo_conta
-- SystemRole → system_users.role
-- UsuarioStatus → system_users.status
-- TreinadorStatus → treinadores.status
-- AlunoStatus → alunos.status
-- VinculoStatus → vinculos_treinador_aluno.status
-- TierPlano → planos_plataforma.tier
-- TreinoAlunoStatus → treino_alunos.status
-- ObjetivoTreino → treinos.objetivo
-- DificuldadeTreino → treinos.dificuldade (default `Iniciante`)
-- FinalidadeTreino → alunos.finalidade
-- NivelCondicionamento → alunos.nivel_condicionamento
-- TempoDisponivel → alunos.tempo_disponivel_minutos (**int**; valor = minutos)
-- AssinaturaAlunoStatus → assinaturas_aluno.status
-- PagamentoStatus → pagamentos.status E pagamentos_treinador.status
-- MetodoPagamento → pagamentos.metodo_pagamento E pagamentos_treinador.metodo_pagamento (default `Pix`)
-- ModoPagamentoAluno → treinadores.modo_pagamento_aluno (default `Plataforma`)
-- AssinaturaTreinadorStatus → assinaturas_treinador.status
-- FinalidadePagamentoTreinador → pagamentos_treinador.finalidade
-- TipoAcaoAprovacao → logs_aprovacao.tipo_acao
-- StatusSaude → health_snapshots.status_geral
-- TipoGrupoMuscular → NÃO é coluna (só seed de grupos_musculares; entidade `GrupoMuscular` é distinta)
+Valores e semântica em [specification-model] §4. Binding enum→coluna é 1:1 MECÂNICO (`text` via `HasConversion<string>`, valor = nome do enum; coluna = snake_case do campo) e §TABELAS já lista o enum de cada coluna — aqui só EXCEÇÕES/notas db-specific:
+- `TempoDisponivel` → `alunos.tempo_disponivel_minutos`: **`int`** (não text; valor = minutos).
+- `PagamentoStatus` e `MetodoPagamento`: cada um vincula DUAS tabelas (`pagamentos` + `pagamentos_treinador`).
+- `TipoGrupoMuscular`: **NÃO é coluna** (só seed de `grupos_musculares`; entidade `GrupoMuscular` é distinta).
+- Defaults de coluna (`DificuldadeTreino`=Iniciante, `MetodoPagamento`=Pix, `ModoPagamentoAluno`=Plataforma): ver §TABELAS.
 
 ## TABELAS
 
@@ -88,7 +69,7 @@ planos_plataforma — planos de assinatura do treinador. id(uuid,NN); nome(varch
 conta_recebimento — Stripe Connect do treinador. id(uuid,NN); treinador_id(uuid,NN); stripe_connect_account_id(varchar,null); onboarding_completo(bool,NN,default false); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,CASCADE) UQ(treinador_id).
 
 ### Treinadores, Pacotes, Vínculos
-treinadores — perfil treinador. id(uuid,NN); conta_id(uuid,NN); nome(varchar,NN); plano_plataforma_id(uuid,null); modo_pagamento_aluno(text,NN,default Plataforma,ModoPagamentoAluno); modo_pagamento_aluno_alterado_em(tstz,null); status(text,NN,TreinadorStatus); aprovado_por_id(uuid,null,sem FK); aprovado_em(tstz,null); telefone(varchar,null); created_at(NN); updated_at(null). PK(id) FK(conta_id→contas,RESTRICT) FK(plano_plataforma_id→planos_plataforma,RESTRICT) UQ(conta_id). (`modo_pagamento_aluno_alterado_em`: última troca de modo; null=nunca; cooldown 90d. Migration `AdicionarModoPagamentoAlteradoEm`.) Concurrency token = system column `xmin` (mapeado via EF, sem coluna física; migration `AdicionarConcurrencyTokenTreinador`): UPDATE concorrente do mesmo treinador aborta com DbUpdateConcurrencyException.
+treinadores — perfil treinador. id(uuid,NN); conta_id(uuid,NN); nome(varchar,NN); plano_plataforma_id(uuid,null); modo_pagamento_aluno(text,NN,default Plataforma,ModoPagamentoAluno); modo_pagamento_aluno_alterado_em(tstz,null); status(text,NN,TreinadorStatus); aprovado_por_id(uuid,null,sem FK); aprovado_em(tstz,null); telefone(varchar,null); anonimizado(bool,NN,default false,LGPD); created_at(NN); updated_at(null). PK(id) FK(conta_id→contas,RESTRICT) FK(plano_plataforma_id→planos_plataforma,RESTRICT) UQ(conta_id). (`modo_pagamento_aluno_alterado_em`: última troca de modo; null=nunca; cooldown 90d. Migration `AdicionarModoPagamentoAlteradoEm`.) Concurrency token = system column `xmin` (mapeado via EF, sem coluna física; migration `AdicionarConcurrencyTokenTreinador`): UPDATE concorrente do mesmo treinador aborta com DbUpdateConcurrencyException.
 
 pacotes — serviços oferecidos pelo treinador. id(uuid,NN); treinador_id(uuid,NN); nome(varchar,NN); preco(numeric,NN); is_ativo(bool,NN); descricao(varchar,null); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,RESTRICT).
 
@@ -97,7 +78,7 @@ vinculos_treinador_aluno — relação treinador↔aluno (aprovação+pacote). i
 logs_aprovacao — auditoria de aprovações/inativações. id(uuid,NN); tipo_acao(text,NN,TipoAcaoAprovacao); realizado_por_id(uuid,NN); entidade_id(uuid,NN); entidade_tipo(varchar,NN); observacao(varchar,null); created_at(NN). PK(id).
 
 ### Alunos
-alunos — perfil aluno + anamnese. id(uuid,NN); conta_id(uuid,NN); nome(varchar,NN); email(varchar,null,VO); telefone(varchar,null); status(text,NN,AlunoStatus); dias_disponiveis(int,null); tempo_disponivel_minutos(int,null,TempoDisponivel); finalidade(varchar,null,FinalidadeTreino); foco_treino(varchar,null); nivel_condicionamento(varchar,null,NivelCondicionamento); limitacoes_fisicas(varchar,null); doencas(varchar,null); observacoes_adicionais(varchar,null); created_at(NN); updated_at(null). PK(id) FK(conta_id→contas,RESTRICT).
+alunos — perfil aluno + anamnese. id(uuid,NN); conta_id(uuid,NN); nome(varchar,NN); email(varchar,null,VO); telefone(varchar,null); status(text,NN,AlunoStatus); dias_disponiveis(int,null); tempo_disponivel_minutos(int,null,TempoDisponivel); finalidade(varchar,null,FinalidadeTreino); foco_treino(varchar,null); nivel_condicionamento(varchar,null,NivelCondicionamento); limitacoes_fisicas(varchar,null); doencas(varchar,null); observacoes_adicionais(varchar,null); anonimizado(bool,NN,default false,LGPD); created_at(NN); updated_at(null). PK(id) FK(conta_id→contas,RESTRICT).
 
 ### Treinos & Exercícios
 grupos_musculares — catálogo (seedado). id(uuid,NN); nome(varchar,NN); created_at(NN); updated_at(null). PK(id) UQ(nome).
@@ -137,11 +118,58 @@ health_snapshots — snapshot diário da saúde do ambiente. id(uuid,NN); captur
 
 error_logs — log de ERROR/Critical (sink custom, best-effort) p/ a seção de erros. id(uuid,NN); ocorrido_em(tstz,NN); nivel(varchar20,NN); origem(varchar256,NN); mensagem(varchar4000,NN,truncada); created_at(NN). PK(id) idx(ocorrido_em).
 
+### Outbox de efeitos externos
+outbox_efeitos — fila durável de efeito externo pós-commit (entrega garantida + retry; gravada no MESMO commit do agregado de origem). id(uuid,NN); tipo(varchar200,NN, `evt:<CLR>`|`fx:<nome>`); payload(jsonb,NN); status(text,NN,OutboxStatus); tentativas(int,NN); proxima_tentativa(tstz,NN, scan do worker `<= agora`); ultimo_erro(text,null); chave_idempotencia(varchar300,NN); criado_em(tstz,NN); processado_em(tstz,null). PK(id) UQ(chave_idempotencia) idx(status,proxima_tentativa). [sem FK — desacoplado; payload carrega ids].
+
 ## ACESSOS / ROLES (Supabase)
 - forzion_api: usado em `ConnectionStrings:AppConnection` (runtime do app + `dotnet ef`). Dono dos objetos em homolog/develop. Em public: NÃO é dono (objetos do postgres) → precisa `GRANT ALL ON ALL TABLES IN SCHEMA public TO forzion_api` + USAGE/CREATE. Search Path da connection define o schema ativo.
 - postgres: `ConnectionStrings:DefaultConnection`. Admin/DDL privilegiado; dono dos objetos de public. NÃO é superuser pleno no Supabase → NÃO consegue `SET ROLE forzion_api`.
 - Runtime: app conecta como forzion_api. Development/Homolog → `Program.cs` roda MigrateAsync + SeedAsync no startup.
 - ⚠️ `Program.cs` adiciona User Secrets DEPOIS do CreateBuilder → secrets sobrescrevem env vars em RUNTIME. `dotnet run` em Development conecta no SUPABASE REMOTO (não local) e migra/seeda lá. `AppDbContextFactory` (design-time, `dotnet ef`) adiciona env por último → env vence (override por env funciona só no ef).
+
+## MIGRATION-SAFETY (política de mudança de schema)
+
+### Padrão expand/contract (obrigatório p/ mudanças breaking)
+Toda mudança que quebra código em voo ou impede rollback de deploy DEVE seguir expand/contract em DEPLOYS SEPARADOS:
+1. **EXPAND** — `AddColumn` nullable (ou com `defaultValue`); código escreve em ambos (velho+novo).
+2. **BACKFILL** — preencher histórico em lotes idempotentes (ver §BACKFILL). Validar dados antes do contrato.
+3. **CONTRACT** — drop do velho só após o código novo estar estável em produção.
+
+Nunca drop+add atômico num app vivo: quebra requests em voo e trava rollback de código.
+
+### Regra `AddColumn` NOT NULL
+`AddColumn` com `NOT NULL` EXIGE `defaultValue` na migration (sem default o Postgres rejeita para tabelas com dados). Precedente no repo: migration `AdicionarModoPagamentoAlteradoEm` usa `nullable: true` para adicionar sem default; `AdicionarAnonimizadoEmAlunosETreinadores` usa `defaultValue: false` no `AddColumn boolean NOT NULL`. Escolha o padrão adequado ao campo; documentar o motivo no migration file.
+
+### Checklist — migration DESTRUTIVA (DROP column/table, type narrowing, rename)
+Uma migration é destrutiva se: remove coluna/tabela, estreita tipo (varchar maior→menor, numeric→int), renomeia coluna/tabela sem alias de compatibilidade, ou remove UQ/FK que o código ainda referencia.
+
+Antes de mergear PR com migration destrutiva:
+- [ ] **Backup verificado**: backup recente (`specification-dr §1`) confirmado existente e íntegro — não assumir; documentar a evidência no PR.
+- [ ] **Drill de restore executado**: restaurar em ambiente isolado e validar integridade (contagem tabelas=32/schema, seed presente, migrations em dia) — procedimento em `specification-dr §2`. Não mergear sem o drill feito.
+- [ ] **Expand/contract respeitado**: a fase CONTRACT só chega neste PR após código novo estável (EXPAND e BACKFILL já deployados e monitorados).
+- [ ] **Schema-agnostic**: sem qualificador de schema hardcoded na migration.
+- [ ] **Rollback planejado**: se o schema for revertido, o código anterior ainda funciona? Documentar no PR.
+
+> Enforcement: processo/revisão (não gate de CI). Ver `specification-dr §6`.
+
+### DECISÃO PENDENTE — `MigrateAsync` no startup vs. pipeline de deploy
+**Status: DECISION-PENDING (2026-06-10)**
+
+Situação atual: `Program.cs` chama `MigrateAsync` + `SeedAsync` no startup em Dev e Homolog, aplicando migrations diretamente contra o banco remoto ao subir a app (`specification-db §ACESSOS`).
+
+Trade-off:
+- **Startup (atual)**: zero infraestrutura extra; zero chance de subir sem schema atualizado; mas migrations destrutivas/backfill de dados rodam com a app já recebendo tráfego (janela de risco), e rollback de imagem NÃO reverte schema (risco DR).
+- **Pipeline (alvo)**: migration vira step do deploy antes do `docker compose up`; app sobe só após schema estar pronto; habilita dry-run e revisão do SQL antes de aplicar; exige step extra no CI/deploy script (ex.: `dotnet ef database update` ou `dotnet ef migrations script | psql`).
+
+Migrar para pipeline é pré-requisito para migrations destrutivas sem janela de downtime e habilita rollback de schema independente da imagem. Decisão requer aprovação do usuário (mudança de processo de deploy — `specification-infrastructure`).
+
+## BACKFILL & MIGRAÇÃO DE DADOS (runtime — migration cobre SCHEMA, isto cobre DADO)
+Migrations criam/alteram estrutura; mudar/preencher DADO existente tem regras próprias. Lembrar: migration destrutiva/backfill roda no startup em Dev/Homolog contra o REMOTO (§ACESSOS) → afeta dado real de homolog.
+- **Expand/contract (zero-downtime + rollback-safe)** — mudança breaking em 3 passos, em DEPLOYS SEPARADOS: (1) EXPAND — add coluna nullable / nova tabela; código escreve em ambas (velha+nova); (2) BACKFILL — popular o histórico em batch; (3) CONTRACT — remover o velho só depois do código novo estável. NUNCA drop+add atômico num app vivo (quebra requests em voo + impede rollback de código).
+- **Backfill em batch idempotente** — preencher dado histórico em LOTES (não um `UPDATE` de N milhões = lock longo/timeout/bloat de WAL); re-rodável sem efeito duplo (guard por estado, ex. `WHERE col IS NULL`).
+- **Rollback de DADO ≠ rollback de schema** — código forward-compat (lê velho E novo) permite reverter o deploy de código SEM reverter a migration. É a condição que torna o deploy revertível ([specification-dr §4]). Migration destrutiva sem janela expand/contract trava rollback → exige backup verificado ANTES ([specification-dr §1]).
+- **Schema-agnostic** (search_path, §STACK) vale também p/ backfill: SQL sem qualificador de schema; aplica por schema via Search Path.
+- Concorrência durante backfill: escrita nova concorrente ao backfill não pode ser sobrescrita — backfill toca só linhas antigas (`WHERE`-guard), código novo é a fonte das linhas novas. Cross-ref [specification-concurrency].
 
 ## DICAS — ALTERAÇÕES DE BANCO
 - Nova migration: `dotnet ef migrations add <Nome>`. Manter agnóstica: NÃO inserir `schema:`/`principalSchema:`/`newSchema:` nem prefixar SQL raw com schema. Atualizar ESTE arquivo.
@@ -149,6 +177,7 @@ error_logs — log de ERROR/Critical (sink custom, best-effort) p/ a seção de 
 - Sincronizar develop/public: `dotnet ef database update` com Search Path. Estrutura antiga divergente → limpar tabelas app primeiro (em public usar conn postgres, pois forzion_api não é dono dos legados). Depois clonar ai_token_usage + copiar seed de homolog.
 - pg_dump/restore: servidor PG17, cliente local PG16 → version mismatch. Usar container postgres:17 OU `dotnet ef migrations script` (offline) p/ extrair DDL.
 - Conectividade: host direto Supabase (db.<ref>.supabase.co) é IPv6-only → containers Docker NÃO alcançam; usar psql do host p/ ops ad-hoc.
+- Conexão RUNTIME do app (homolog/prod): **Session pooler Supabase** (host `aws-0-<região>.pooler.supabase.com`, porta **5432**, user `forzion_api.<ref>`) — IPv4 + pooling; suporta prepared statements + advisory lock → `MigrateAsync()`/seed no startup (`Program.cs`, Dev/Homolog) funcionam (DR-01, decidido 2026-06-11). NÃO usar **Transaction pooler (:6543)** na string do app: sem prepared stmt/session var/temp table → migration no boot quebra. Direct (`db.<ref>`, IPv6-only) = só ops ad-hoc/fallback. String EXATA: Dashboard → Connect → Session pooler; vive em `DB_CONNECTION` da VM (operacional, fora do repo).
 - Scripts do `dotnet ef`: gravados com BOM UTF-8 → remover (`sed '1s/^\xEF\xBB\xBF//'`) antes de aplicar via psql.
 - Migration destrutiva/backfill roda no startup em Dev/Homolog contra o REMOTO. Validar antes; backfills afetam dados reais de homolog.
 - Seed: 9 grupos, 90 exercícios globais, 5 planos, 1 admin (DataSeeder no startup, idempotente, ou cópia de homolog). Admin nasce email_verificado=true.

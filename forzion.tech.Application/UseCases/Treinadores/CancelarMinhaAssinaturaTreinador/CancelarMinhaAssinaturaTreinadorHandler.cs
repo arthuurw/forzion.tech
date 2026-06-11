@@ -62,7 +62,7 @@ public class CancelarMinhaAssinaturaTreinadorHandler(
             .ConfigureAwait(false);
 
         await reembolsoService
-            .ReembolsarSeDentroDoPrazoAsync(agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: false, cancellationToken)
+            .ReembolsarSeDentroDoPrazoAsync(pago?.Id ?? Guid.Empty, agora, pago?.StripePaymentIntentId, pago?.DataPagamento, reverterTransferencia: false, cancellationToken)
             .ConfigureAwait(false);
     }
 }

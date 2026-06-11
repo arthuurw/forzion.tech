@@ -63,5 +63,8 @@ public class AppDbContextDomainEventReentrancyTests(InfrastructureTestFixture fi
                 await Context.CommitAsync(cancellationToken);
             }
         }
+
+        public Task DispatchDuravelAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

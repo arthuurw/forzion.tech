@@ -4,6 +4,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Auth.VerificarEmail;
 
@@ -26,7 +27,7 @@ public class VerificarEmailHandler(
     TimeProvider timeProvider,
     IValidator<VerificarEmailCommand> validator)
 {
-    public virtual Task HandleAsync(
+    public virtual Task<Result> HandleAsync(
         VerificarEmailCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -34,7 +35,7 @@ public class VerificarEmailHandler(
         return HandleAsyncCore(command, cancellationToken);
     }
 
-    private async Task HandleAsyncCore(
+    private async Task<Result> HandleAsyncCore(
         VerificarEmailCommand command,
         CancellationToken cancellationToken)
     {
@@ -45,20 +46,25 @@ public class VerificarEmailHandler(
         var token = await tokenRepository.BuscarPorHashAsync(hash, cancellationToken).ConfigureAwait(false);
 
         if (token is null || token.VerifiedAt.HasValue)
-            throw new DomainException("Token inválido ou já utilizado.");
+            return Result.Failure(Error.Business("auth_verify.token_invalido", "Token inválido ou já utilizado."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
         if (token.ExpiresAt < agora)
-            throw new DomainException("Token expirado. Solicite um novo e-mail de verificação.");
+            return Result.Failure(Error.Business("auth_verify.token_expirado", "Token expirado. Solicite um novo e-mail de verificação."));
 
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
             ?? throw new DomainException("Conta não encontrada.");
 
         conta.MarcarEmailVerificado(agora);
-        token.MarcarComoVerificado(agora);
+
+        var marcarResult = token.MarcarComoVerificado(agora);
+        if (marcarResult.IsFailure)
+            return Result.Failure(marcarResult.Error!);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        return Result.Success();
     }
 
     private static string ComputeHash(string rawToken)

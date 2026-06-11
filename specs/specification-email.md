@@ -4,7 +4,6 @@ DOC PARA AGENTES. Fonte de verdade do processo de e-mail transacional (Resend). 
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de qualquer mudança relevante em: provedor, gate Null/real, chaves de config, templates, handlers de e-mail, fluxos, endpoints, webhook, roteamento (nginx), domínio remetente.
-- Vive em `specs/` (versionado; commitar). NÃO confundir com `.specs/` (gitignorado).
 - Mudança de tabela → atualizar [specification-db], não aqui.
 
 ## STACK & GATE
@@ -85,7 +84,7 @@ Resend não tem sandbox → e-mail de não-prod é real. `EnvironmentEmailDecora
 | POST /auth/login | LoginHandler | 200 | 403 EMAIL_NAO_VERIFICADO (pós-senha) · 401 · 400 |
 | POST /webhooks/resend | ProcessarWebhookResendHandler | 200 (ok/ignorado) | 400 (sem secret ou assinatura inválida) |
 
-⚠️ `DomainException` → **422** (UnprocessableEntity, `GlobalExceptionHandler`), NÃO 400. Só `ValidationException` (FluentValidation, formato) → 400.
+⚠️ Token inválido/usado/expirado = `DomainException`→**422** (NÃO 400); só `ValidationException` (formato) → 400. Mapa exceção→status completo: [specification-backend] §4.
 
 ## INFRA / ROTEAMENTO
 - nginx (`nginx/nginx.conf`): `location /webhooks/ { proxy_pass http://backend:8080; }` ANTES do `location /` (que vai p/ `frontend:3000`). Necessário porque o webhook precisa dos headers `svix-*` CRUS no backend.

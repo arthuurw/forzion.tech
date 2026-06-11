@@ -2,7 +2,8 @@
  * Vitest integration tests for /perfil LGPD section (R4).
  *
  * Covers:
- * - "Exportar meus dados" button triggers GET /conta/lgpd/exportar → downloads file
+ * - "Baixar meus dados (Excel)" button triggers GET /conta/lgpd/exportar?formato=xlsx
+ * - "Baixar como JSON" button triggers GET /conta/lgpd/exportar?formato=json
  * - "Excluir minha conta" button opens ConfirmDialog and calls DELETE /conta/lgpd with senha
  * - "Preferências de cookies" opens ConsentBanner
  */
@@ -53,12 +54,15 @@ beforeEach(() => {
 });
 
 describe("/perfil LGPD section", () => {
-  it("renders Exportar meus dados button", async () => {
+  it("renders Baixar meus dados (Excel) and Baixar como JSON buttons", async () => {
     renderWithProviders(<PerfilPage />);
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /exportar meus dados/i }),
+        screen.getByRole("button", { name: /baixar meus dados \(excel\)/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /baixar como json/i }),
       ).toBeInTheDocument();
     });
   });
@@ -73,13 +77,11 @@ describe("/perfil LGPD section", () => {
     });
   });
 
-  it("Exportar meus dados: calls GET /conta/lgpd/exportar (mocked contaApi)", async () => {
-    // We test that the button exists and the handler calls contaApi.exportarDados.
-    // The actual download chain (URL.createObjectURL) is jsdom-incompatible; we mock contaApi.
+  it("Baixar meus dados (Excel): calls exportarDados('xlsx')", async () => {
     const { contaApi } = await import("@/lib/api/conta");
-     
+
     const exportSpy = vi.spyOn(contaApi, "exportarDados").mockResolvedValue({
-      data: new Blob(['{"dados":"ok"}'], { type: "application/json" }),
+      data: new Blob(["binary"], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
       status: 200,
       statusText: "OK",
       headers: {},
@@ -106,14 +108,14 @@ describe("/perfil LGPD section", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /exportar meus dados/i }),
+        screen.getByRole("button", { name: /baixar meus dados \(excel\)/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /exportar meus dados/i }));
+    fireEvent.click(screen.getByRole("button", { name: /baixar meus dados \(excel\)/i }));
 
     await waitFor(() => {
-      expect(exportSpy).toHaveBeenCalledOnce();
+      expect(exportSpy).toHaveBeenCalledWith("xlsx");
     });
 
     exportSpy.mockRestore();

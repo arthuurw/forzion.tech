@@ -4,7 +4,6 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de qualquer mudança relevante em: SDK version, chaves de config, métodos do `IStripeService`, handlers, fluxos (onboarding/cobrança/webhook), endpoints, roteamento (nginx), cron de renovação, defesas de segurança (cross-account, idempotência, rate limit).
-- Vive em `specs/` (versionado; commitar). NÃO confundir com `.specs/` (gitignorado).
 - Mudança de tabela → atualizar [specification-db], não aqui.
 
 ## STACK & GATE
@@ -82,7 +81,7 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 
 ### Cobrança (treinador inicia OU cron renova)
 1. **Manual treinador**: `POST /treinador/pagamentos/cobrar/{assinaturaId}?metodo=Pix|Cartao` (default Pix).
-2. **Cron**: GH Actions `billing-renewal.yml` cron `0 8 * * *` UTC → `POST /internal/processar-renovacoes` com header `X-Internal-Key`. Loop em `AssinaturaAlunoRepository.ListarParaRenovarAsync(now)` → chama `GerarCobrancaMensalHandler` por assinatura.
+2. **Cron**: GH Actions `billing-renewal.yml` cron `0 8 * * *` UTC → `POST /internal/processar-renovacoes` com header `X-Internal-Key`. Loop em LOTES keyset sobre `AssinaturaAlunoRepository.ListarParaRenovarAsync(now, cursor, N)` ([specification-performance] §2) → chama `GerarCobrancaMensalHandler` por assinatura.
 3. Handler: tx serializable: re-uso de pendente OU MarcarFalhou+Criar novo. Fora tx: chama Stripe (CriarPix/CartaoPaymentIntent) com ApplicationFeeAmount+TransferData. Persist intent data.
 4. Response: `PagamentoResponse` — `ToResponseTreinador` (sem ClientSecret) ou `ToResponseAluno` (com ClientSecret, no fluxo do aluno).
 
@@ -113,7 +112,7 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 | POST /internal/processar-renovacoes-treinador | X-Internal-Key | inline lambda em `PagamentosEndpoints` (loop GerarCobrancaPlanoTreinadorHandler) | 200 `{processadas, falhas}` | 401 |
 | POST /webhooks/stripe | nenhum (Stripe-Signature) | ProcessarWebhookStripeHandler | 200 (ok/ignorado) | 400 (assinatura inválida ou payload >64KB) |
 
-⚠ Mapa de status `DomainException`→422 / `ValidationException`→400 (`GlobalExceptionHandler`): canônico em [specification-email] §ENDPOINTS.
+⚠ Mapa exceção→status HTTP (`GlobalExceptionHandler`): canônico em [specification-backend] §4.
 
 ## INFRA / ROTEAMENTO
 - Roteamento nginx do bloco `location /webhooks/` → backend (ANTES de `location /`): canônico em [specification-email] §INFRA/ROTEAMENTO. Aplica igual ao Stripe — necessário pra header `Stripe-Signature` cru. Webhook Stripe aponta pra `https://<host>/webhooks/stripe` (NUNCA `/api/backend/[...path]`, que descarta o header e injeta Bearer).
@@ -235,14 +234,14 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 - Disputa (chargeback) = aluno (ou plataforma) contesta cobrança junto ao banco do cartão. Stripe envia `charge.dispute.created` ao backend.
 - `StripeWebhookParser` extrai `data.object.payment_intent` (lookup) + `data.object.reason` (motivo). Handler `ProcessarWebhookStripeHandler.ProcessarDisputaCriadaAsync` — **roteamento duplo (T4)**:
   1. Carrega `Pagamento` (aluno) por `PaymentIntentId`. Não encontrado → tenta `PagamentoTreinador`; encontrado → `ProcessarDisputaTreinadorAsync` (`PagamentoTreinador.MarcarEmDisputa` + `AssinaturaTreinador.MarcarInadimplentePorDisputa`; sem notificação e-mail). Nenhum dos dois → log warn + JaConsistente.
-  2. Idempotência: `Status == EmDisputa` (redelivery) → NÃO re-marca nem comita, mas AINDA re-tenta `EnviarEvidenciaDisputaAsync` (overwrite-idempotente do `Dispute.Update`) para recuperar de falha de envio anterior (CR#5), depois retorna `JaConsistente`.
+  2. Idempotência: `Status == EmDisputa` (redelivery) → NÃO re-marca nem comita, e NÃO re-enfileira evidência (a linha outbox `fx:evidencia_disputa` da 1ª disputa já garante entrega+retry; chave única bloquearia) → `JaConsistente`. [Antes (CR#5) re-enviava direto; superseded pelo outbox.]
   3. Guard: `Status != Pago` → log warn + no-op (disputa só faz sentido sobre cobrança capturada). NÃO lança DomainException (Stripe retentaria indefinidamente).
   4. `Pagamento.MarcarEmDisputa(motivo)` — transição `Pago → EmDisputa`, preserva `DataPagamento` (auditoria), dispara `PagamentoEmDisputaEvent(PagamentoId, AssinaturaAlunoId, Valor, MotivoDisputa, OcorridoEm)`.
   5. **Drástico**: carrega `AssinaturaAluno` e chama `MarcarInadimplentePorDisputa(agora)` — força `Ativa → Inadimplente`, equipara `TentativasFalhasConsecutivas` ao threshold como sinalização. NÃO chama `RegistrarPagamentoFalho` (incrementa contador gradual; disputa exige congelamento imediato).
   6. Commit único. Cancelada/Inadimplente/Pendente → no-op idempotente.
 - Handlers de `PagamentoEmDisputaEvent`:
   - `PagamentoEmDisputaEmailTreinadorHandler` (Infrastructure/Notifications/Email) — resolve `Assinatura → Treinador → Conta.Email`, envia e-mail **URGENTE** via `EmailTemplates.PagamentoEmDisputa(nomeTreinador, nomeAluno, valor, motivo)`. CTA aponta para `https://dashboard.stripe.com/disputes` (evidência complementar — prints WhatsApp, fichas — só via Dashboard).
-- **Resposta automática a chargeback (R9)**: após marcar a disputa e commitar (e também na redelivery, ver idempotência item 2), o handler chama o helper único `EnviarEvidenciaDisputaAsync(disputeId, email, dataAtivacao, dataPagamento, ...)` (CR#7 — antes eram 2 métodos quase-iguais `...Aluno/...Treinador`; cada ramo só resolve email + dataAtivacao). Evidências sem nova coluna (D9): `EmailCliente` (Conta.Email — aluno via `IAlunoRepository → ContaId → Conta`; treinador via `Treinador.ContaId → Conta`), `DataAtivacao` (`assinatura.DataInicio` → Stripe `ServiceDate`), `DataUltimoPagamento` (`pagamento.DataPagamento`). `DataUltimaAtividade` é omitida/null (CR#9: sem sinal de atividade real barato, não se duplica a data de pagamento em 2 campos). Stripe API = `Dispute.Update(disputeId, { Evidence })` — **disputeId, não chargeId**. Falha no envio = `LogCritical` + NÃO bloqueia (disputa já marcada/commitada). Sem `disputeId` no payload → não envia (silencioso).
+- **Resposta automática a chargeback (R9) — VIA OUTBOX**: ao marcar a disputa, o handler deriva o payload (`DerivarPayloadEvidencia{Aluno,Treinador}Async`: resolve email + dataAtivacao — leituras movidas para ANTES do commit) e `enfileirador.Enfileirar("fx:evidencia_disputa", payload, "fx:evidencia_disputa:{aluno|treinador}:{pagamento.Id}")` ANTES do `CommitAsync` → linha outbox persiste atômica com a transição `EmDisputa`. O worker (`EvidenciaDisputaEfeitoHandler`) chama `IStripeService.EnviarEvidenciaDisputaAsync(disputeId, DisputaEvidencia, ct)` = `Dispute.Update(disputeId, { Evidence })` (**disputeId, não chargeId**; overwrite-idempotente) com **retry** — exceção propaga (não engole). Substitui o antigo envio pós-commit best-effort `EnviarEvidenciaDisputaAsync` em try/catch+LogCritical (CR#7) que perdia evidência se o Stripe falhasse. Evidências sem nova coluna (D9): `EmailCliente` (Conta.Email — aluno via `IAlunoRepository → ContaId → Conta`; treinador via `Treinador.ContaId → Conta`), `DataAtivacao` (`assinatura.DataInicio` → `ServiceDate`), `DataUltimoPagamento` (`pagamento.DataPagamento`); `DataUltimaAtividade` null (CR#9). Sem `disputeId` → não enfileira. Detalhe do mecanismo outbox: `specification-backend §3.1`.
   - `PagamentoEmDisputaAlertHandler` (Infrastructure/Notifications/Alerts) — `LogLevel.Critical` com campos estruturados (`PagamentoId`, `AssinaturaAlunoId`, `Valor`, `MotivoDisputa`). Arthur acompanha via agregador de log.
 - **Aluno NÃO é notificado**: cliente que abriu disputa já sabe (foi ele que iniciou). Spammar com e-mail redundante adiciona ruído sem valor.
 - Treinador responde a disputa em **7-21d** no Stripe Dashboard c/ evidências (entrega de fichas, execuções, prints WhatsApp); sem resposta no prazo → reversão do valor + fee ~US$15. A evidência automática (R9) já submete o básico (email + ServiceDate + datas de uso/pagamento) via `Dispute.Update`; o Dashboard é só pra complementar.

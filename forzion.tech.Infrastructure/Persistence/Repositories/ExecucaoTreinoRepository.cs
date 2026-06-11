@@ -112,4 +112,12 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
 
         return rows;
     }
+
+    public async Task AnonimizarObservacoesPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await _context.ExecucoesTreino
+            .Where(e => e.AlunoId == alunoId)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(e => e.Observacao, (string?)null),
+                cancellationToken)
+            .ConfigureAwait(false);
 }

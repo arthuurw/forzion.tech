@@ -3,7 +3,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -51,13 +51,17 @@ public class CancelarAssinaturaAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_AssinaturaAlunoNaoEncontrada_LancaDomainException()
+    public async Task HandleAsync_AssinaturaAlunoNaoEncontrada_RetornaFailureNotFound()
     {
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((AssinaturaAluno?)null);
 
-        var act = async () => await _handler.HandleAsync(new CancelarAssinaturaAlunoCommand(Guid.NewGuid()));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("AssinaturaAluno não encontrada.");
+        var result = await _handler.HandleAsync(new CancelarAssinaturaAlunoCommand(Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("assinatura_aluno.nao_encontrada");
+        result.Error.Type.Should().Be(ErrorType.NotFound);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

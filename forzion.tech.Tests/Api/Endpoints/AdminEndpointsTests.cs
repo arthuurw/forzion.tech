@@ -45,6 +45,7 @@ using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
+using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
 using forzion.tech.Domain.Enums;
@@ -849,7 +850,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.AprovarTreinadorHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<TreinadorResponse>(Error.Business("Treinador já aprovado.")));
+            .ReturnsAsync(Result.Failure<TreinadorResponse>(Error.Business("treinador.ja_aprovado", "Treinador já aprovado.")));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/aprovar", new { });
@@ -864,7 +865,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.InativarTreinadorHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<InativarTreinadorCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("Treinador já inativo.")));
+            .ReturnsAsync(Result.Failure(Error.Business("treinador.ja_inativo", "Treinador já inativo.")));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/inativar", new { });
@@ -1018,7 +1019,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.CriarExercicioAdminHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("exercicio.nome_duplicado", "Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync("/admin/exercicios", new { nome = "Supino", grupoMuscularId = Guid.NewGuid() });
@@ -1046,7 +1047,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.AtualizarExercicioHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AtualizarExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("Já existe um exercício com este nome nesta biblioteca.")));
+            .ReturnsAsync(Result.Failure<ExercicioResponse>(Error.Business("exercicio.nome_duplicado", "Já existe um exercício com este nome nesta biblioteca.")));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/exercicios/{Guid.NewGuid()}", new { nome = "Supino" });
@@ -1074,13 +1075,69 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     {
         _factory.ExcluirExercicioHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirExercicioCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("Este exercício está em uso em fichas de treino e não pode ser excluído.")));
+            .ReturnsAsync(Result.Failure(Error.Business("exercicio.em_uso", "Este exercício está em uso em fichas de treino e não pode ser excluído.")));
 
         var response = await CriarClienteAdmin()
             .DeleteAsync($"/admin/exercicios/{Guid.NewGuid()}");
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
+
+    // --- GET /admin/contas/{id}/lgpd/exportar ---
+
+    [Fact]
+    public async Task Get_ExportarLgpdAdmin_SemAutenticacao_Retorna401()
+    {
+        var response = await _factory.CreateClient().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_ExportarLgpdAdmin_NaoAdmin_Retorna403()
+    {
+        var response = await CriarClienteNaoAdmin().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Get_ExportarLgpdAdmin_FormatoXlsx_Retorna200ComArquivoXlsx()
+    {
+        var export = CriarExportFake();
+        var fakeBytes = new byte[] { 1, 2, 3 };
+
+        _factory.ExportarHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExportarDadosPessoaisCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(export));
+        _factory.ExcelRendererMock
+            .Setup(r => r.Render(It.IsAny<DadosPessoaisExport>()))
+            .Returns(fakeBytes);
+
+        var response = await CriarClienteAdmin().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar?formato=xlsx");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType
+            .Should().Be("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("meus-dados.xlsx");
+    }
+
+    [Fact]
+    public async Task Get_ExportarLgpdAdmin_SemFormato_Retorna200Json()
+    {
+        var export = CriarExportFake();
+        _factory.ExportarHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExportarDadosPessoaisCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(export));
+
+        var response = await CriarClienteAdmin().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/json");
+    }
+
+    private static DadosPessoaisExport CriarExportFake() =>
+        new("1.0", DateTime.UtcNow,
+            new ContaExportDto(AlunoId, "user@test.com", "Aluno", false, null, DateTime.UtcNow),
+            null, null, [], [], [], [], [], [], [], []);
 
     // --- WebApplicationFactory ---
 
@@ -1235,6 +1292,23 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IUnitOfWork>());
 
+        public Mock<ExportarDadosPessoaisHandler> ExportarHandlerMock { get; } = new(
+            Mock.Of<IContaRepository>(),
+            Mock.Of<IAlunoRepository>(),
+            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(),
+            Mock.Of<IAssinaturaAlunoRepository>(),
+            Mock.Of<IPagamentoRepository>(),
+            Mock.Of<IPacoteRepository>(),
+            Mock.Of<ITreinoRepository>(),
+            Mock.Of<IExecucaoTreinoRepository>(),
+            Mock.Of<IEmailDeliveryLogRepository>(),
+            Mock.Of<IWhatsAppDeliveryLogRepository>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+
+        public Mock<IDadosPessoaisExcelRenderer> ExcelRendererMock { get; } = new();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -1274,6 +1348,8 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.RemoveAll<CriarExercicioHandler>();
                 services.RemoveAll<AtualizarExercicioHandler>();
                 services.RemoveAll<ExcluirExercicioHandler>();
+                services.RemoveAll<ExportarDadosPessoaisHandler>();
+                services.RemoveAll<IDadosPessoaisExcelRenderer>();
                 services.RemoveAll<IUserContext>();
 
                 services.AddScoped(_ => ListarTreinadoresHandlerMock.Object);
@@ -1307,6 +1383,8 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.AddScoped(_ => CriarExercicioAdminHandlerMock.Object);
                 services.AddScoped(_ => AtualizarExercicioHandlerMock.Object);
                 services.AddScoped(_ => ExcluirExercicioHandlerMock.Object);
+                services.AddScoped(_ => ExportarHandlerMock.Object);
+                services.AddScoped<IDadosPessoaisExcelRenderer>(_ => ExcelRendererMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(AdminId);

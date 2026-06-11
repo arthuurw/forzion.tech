@@ -40,8 +40,9 @@ public class DomainEventDispatcherTests
         }
     }
 
+    // Registry vazio: EventoFake não é durável, então nenhum handler é pulado nem propaga.
     private static DomainEventDispatcher CriarDispatcher(IServiceProvider sp) =>
-        new(sp, NullLogger<DomainEventDispatcher>.Instance);
+        new(sp, new OutboxDurabilityRegistry(), NullLogger<DomainEventDispatcher>.Instance);
 
     [Fact]
     public async Task DispatchAsync_HandlerLanca_LogaESegueParaOProximo()

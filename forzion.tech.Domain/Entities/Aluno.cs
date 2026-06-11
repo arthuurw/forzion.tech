@@ -12,7 +12,7 @@ public class Aluno : IHasDomainEvents
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
 
-    private bool _anonimizado;
+    public bool Anonimizado { get; private set; }
 
     public Guid Id { get; private set; }
     public Guid ContaId { get; private set; }
@@ -156,10 +156,10 @@ public class Aluno : IHasDomainEvents
 
     public Result Anonimizar(DateTime agora)
     {
-        if (_anonimizado)
+        if (Anonimizado)
             return Result.Success();
 
-        _anonimizado = true;
+        Anonimizado = true;
         Nome = "Usuário anonimizado";
         Email = null;
         Telefone = null;

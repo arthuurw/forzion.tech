@@ -6,15 +6,20 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Handlers;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Treinadores;
 
 public class PagamentoTreinadorPagoHandlerTests
 {
+    private static readonly DateTimeOffset Instante = new(2026, 1, 15, 10, 0, 0, TimeSpan.Zero);
+    private static readonly DateTime Agora = Instante.UtcDateTime;
+
     private readonly Mock<IAssinaturaTreinadorRepository> _assinaturaRepo = new();
     private readonly Mock<IPlanoPlataformaRepository> _planoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly FakeTimeProvider _time = new(Instante);
     private readonly PagamentoTreinadorPagoHandler _handler;
 
     public PagamentoTreinadorPagoHandlerTests()
@@ -23,19 +28,19 @@ public class PagamentoTreinadorPagoHandlerTests
             _assinaturaRepo.Object,
             _planoRepo.Object,
             _unitOfWork.Object,
-            TimeProvider.System,
+            _time,
             Mock.Of<ILogger<PagamentoTreinadorPagoHandler>>());
     }
 
     private static AssinaturaTreinador CriarAssinaturaAtiva()
     {
-        var a = AssinaturaTreinador.Criar(Guid.NewGuid(), Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
-        a.Ativar(DateTime.UtcNow);
+        var a = AssinaturaTreinador.Criar(Guid.NewGuid(), Guid.NewGuid(), 50m, Agora).Value;
+        a.Ativar(Agora);
         return a;
     }
 
     private static PagamentoTreinadorPagoEvent CriarEvento(Guid assinaturaId, FinalidadePagamentoTreinador finalidade) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), assinaturaId, finalidade, null, DateTime.UtcNow);
+        new(Guid.NewGuid(), Guid.NewGuid(), assinaturaId, finalidade, null, Agora);
 
     [Fact]
     public async Task HandleAsync_Renovacao_AssinaturaAtiva_RegularizaEAgendaProximaCobranca()
@@ -47,7 +52,7 @@ public class PagamentoTreinadorPagoHandlerTests
         await _handler.HandleAsync(evento);
 
         assinatura.TentativasFalhasConsecutivas.Should().Be(0);
-        assinatura.DataProximaCobranca.Should().BeAfter(DateTime.UtcNow.AddDays(20), "próxima cobrança deve ser ~1 mês no futuro");
+        assinatura.DataProximaCobranca.Should().Be(Agora.AddMonths(1), "próxima cobrança é exatamente 1 mês após o instante de processamento");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -55,7 +60,7 @@ public class PagamentoTreinadorPagoHandlerTests
     public async Task HandleAsync_Renovacao_AssinaturaInadimplente_ReativaEAgenda()
     {
         var assinatura = CriarAssinaturaAtiva();
-        assinatura.MarcarInadimplente(DateTime.UtcNow);
+        assinatura.MarcarInadimplente(Agora);
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Inadimplente);
 
         var evento = CriarEvento(assinatura.Id, FinalidadePagamentoTreinador.Renovacao);
@@ -103,14 +108,14 @@ public class PagamentoTreinadorPagoHandlerTests
     [Fact]
     public async Task HandleAsync_TrocaPlano_Ativa_AplicaTrocarPlanoImediato()
     {
-        var planoNovo = PlanoPlataforma.Criar("Pro", TierPlano.Pro, 100, 100m, DateTime.UtcNow).Value;
+        var planoNovo = PlanoPlataforma.Criar("Pro", TierPlano.Pro, 100, 100m, Agora).Value;
         var assinatura = CriarAssinaturaAtiva();
-        var dataProximaCobrancaOriginal = DateTime.UtcNow.AddDays(15);
-        assinatura.AgendarProximaCobranca(dataProximaCobrancaOriginal, DateTime.UtcNow);
+        var dataProximaCobrancaOriginal = Agora.AddDays(15);
+        assinatura.AgendarProximaCobranca(dataProximaCobrancaOriginal, Agora);
 
         var evento = new PagamentoTreinadorPagoEvent(
             Guid.NewGuid(), assinatura.TreinadorId, assinatura.Id,
-            FinalidadePagamentoTreinador.TrocaPlano, planoNovo.Id, DateTime.UtcNow);
+            FinalidadePagamentoTreinador.TrocaPlano, planoNovo.Id, Agora);
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
@@ -130,7 +135,7 @@ public class PagamentoTreinadorPagoHandlerTests
         var assinatura = CriarAssinaturaAtiva();
         var evento = new PagamentoTreinadorPagoEvent(
             Guid.NewGuid(), assinatura.TreinadorId, assinatura.Id,
-            FinalidadePagamentoTreinador.TrocaPlano, Guid.NewGuid(), DateTime.UtcNow);
+            FinalidadePagamentoTreinador.TrocaPlano, Guid.NewGuid(), Agora);
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _planoRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -145,13 +150,13 @@ public class PagamentoTreinadorPagoHandlerTests
     [Fact]
     public async Task HandleAsync_TrocaPlano_Inadimplente_ReativaETroca()
     {
-        var planoNovo = PlanoPlataforma.Criar("Pro", TierPlano.Pro, 100, 80m, DateTime.UtcNow).Value;
+        var planoNovo = PlanoPlataforma.Criar("Pro", TierPlano.Pro, 100, 80m, Agora).Value;
         var assinatura = CriarAssinaturaAtiva();
-        assinatura.MarcarInadimplente(DateTime.UtcNow);
+        assinatura.MarcarInadimplente(Agora);
 
         var evento = new PagamentoTreinadorPagoEvent(
             Guid.NewGuid(), assinatura.TreinadorId, assinatura.Id,
-            FinalidadePagamentoTreinador.TrocaPlano, planoNovo.Id, DateTime.UtcNow);
+            FinalidadePagamentoTreinador.TrocaPlano, planoNovo.Id, Agora);
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
@@ -160,7 +165,7 @@ public class PagamentoTreinadorPagoHandlerTests
 
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa, "regularização reativa assinatura");
         assinatura.PlanoPlataformaId.Should().Be(planoNovo.Id);
-        assinatura.DataProximaCobranca.Should().BeAfter(DateTime.UtcNow.AddDays(20), "ciclo reinicia após regularização");
+        assinatura.DataProximaCobranca.Should().Be(Agora.AddMonths(1), "ciclo reinicia exatamente 1 mês após a regularização");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -170,7 +175,7 @@ public class PagamentoTreinadorPagoHandlerTests
         var assinatura = CriarAssinaturaAtiva();
         var evento = new PagamentoTreinadorPagoEvent(
             Guid.NewGuid(), assinatura.TreinadorId, assinatura.Id,
-            FinalidadePagamentoTreinador.TrocaPlano, null, DateTime.UtcNow);
+            FinalidadePagamentoTreinador.TrocaPlano, null, Agora);
 
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 

@@ -79,7 +79,9 @@ public static class ContaEndpoints
             .RequireRateLimiting("write");
 
         lgpdGroup.MapGet("/exportar", async (
+            string? formato,
             [FromServices] ExportarDadosPessoaisHandler handler,
+            [FromServices] IDadosPessoaisExcelRenderer excelRenderer,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
@@ -87,10 +89,18 @@ public static class ContaEndpoints
                 .HandleAsync(new ExportarDadosPessoaisCommand(userContext.ContaId), cancellationToken)
                 .ConfigureAwait(false);
             if (result.IsFailure) return result.ToProblemResult();
+
+            if (string.Equals(formato, "xlsx", StringComparison.OrdinalIgnoreCase))
+            {
+                var bytes = excelRenderer.Render(result.Value);
+                return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "meus-dados.xlsx");
+            }
+
             return Results.Ok(result.Value);
         })
         .WithSummary("Exporta os dados pessoais do titular autenticado (portabilidade LGPD)")
         .Produces<DadosPessoaisExport>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status200OK, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
 

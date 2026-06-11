@@ -125,7 +125,7 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         // Criar com Status=Pendente; Ativar() → Status=Ativa; DataProximaCobranca=DateTime.UtcNow (passado)
         var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true);
 
-        var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1));
+        var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1), null, 1000);
 
         resultado.Should().Contain(a => a.Id == assinatura.Id);
     }
@@ -141,7 +141,7 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddMonths(1), DateTime.UtcNow);
         await ctx.SaveChangesAsync();
 
-        var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow);
+        var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow, null, 1000);
 
         resultado.Should().NotContain(a => a.Id == assinatura.Id);
     }
@@ -154,7 +154,7 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         // Ativar e então cancelar → Status=Cancelada, DataProximaCobranca ainda no passado
         var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true, cancelada: true);
 
-        var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1));
+        var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1), null, 1000);
 
         resultado.Should().NotContain(a => a.Id == assinatura.Id);
     }
@@ -167,9 +167,43 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         // Não chamar Ativar() → Status=Pendente
         var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: false);
 
-        var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1));
+        var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1), null, 1000);
 
         resultado.Should().NotContain(a => a.Id == assinatura.Id);
+    }
+
+    [Fact]
+    public async Task ListarParaRenovarAsync_KeysetPaginaTodasSemDuplicarNemPular()
+    {
+        // PERF-01: prova que o loop keyset do cron processa todas as devidas em > 1 lote, sem
+        // duplicar nem pular (DB do fixture acumula entre testes → asserções defensivas: subset+único).
+        await using var ctx = fixture.CreateContext();
+        var ate = DateTime.UtcNow.AddMinutes(1);
+
+        var esperadas = new HashSet<Guid>();
+        for (var i = 0; i < 5; i++)
+        {
+            var seed = await SeedContextAsync(ctx);
+            esperadas.Add((await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true)).Id);
+        }
+        var canceladaSeed = await SeedContextAsync(ctx);
+        var cancelada = await SeedAssinaturaAlunoAsync(ctx, canceladaSeed, ativa: true, cancelada: true);
+
+        const int limite = 2;
+        var coletadas = new List<Guid>();
+        Guid? aposId = null;
+        while (true)
+        {
+            var lote = await Repo(ctx).ListarParaRenovarAsync(ate, aposId, limite);
+            if (lote.Count == 0) break;
+            coletadas.AddRange(lote.Select(a => a.Id));
+            aposId = lote[^1].Id;
+            if (lote.Count < limite) break;
+        }
+
+        coletadas.Should().OnlyHaveUniqueItems();
+        esperadas.Should().BeSubsetOf(coletadas);
+        coletadas.Should().NotContain(cancelada.Id);
     }
 
     // --- ListarPorAlunoAsync ---

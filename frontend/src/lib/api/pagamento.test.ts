@@ -27,12 +27,12 @@ describe("pagamentoApi", () => {
 
   it("gerarCobranca POST com metodo default Pix", () => {
     pagamentoApi.gerarCobranca("a1");
-    expect(mock.post).toHaveBeenCalledWith("/treinador/pagamentos/cobrar/a1?metodo=Pix");
+    expect(mock.post).toHaveBeenCalledWith("/treinador/pagamentos/cobrar/a1", undefined, { params: { metodo: "Pix" } });
   });
 
   it("gerarCobranca POST com metodo Cartao", () => {
     pagamentoApi.gerarCobranca("a1", "Cartao");
-    expect(mock.post).toHaveBeenCalledWith("/treinador/pagamentos/cobrar/a1?metodo=Cartao");
+    expect(mock.post).toHaveBeenCalledWith("/treinador/pagamentos/cobrar/a1", undefined, { params: { metodo: "Cartao" } });
   });
 
   it("obterPagamento GET", () => {

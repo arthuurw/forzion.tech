@@ -591,6 +591,8 @@ internal static class EmailTemplates
             corpo.Append(SecaoEntregabilidade(entrega));
         if (report.Erros is { } erros)
             corpo.Append(SecaoErros(erros));
+        if (report.Outbox is { } outbox)
+            corpo.Append(SecaoOutbox(outbox));
 
         return Layout($"Relatório de saúde — {ambiente}", corpo.ToString());
     }
@@ -679,5 +681,36 @@ internal static class EmailTemplates
             <ul style="margin:0;padding-left:18px">{itens}</ul>
             """;
         return Secao("Erros (24h)", conteudo);
+    }
+
+    private static string SecaoOutbox(OutboxSecao s)
+    {
+        var linhas = new StringBuilder();
+        linhas.Append(Linha("Pendentes", s.Pendente.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Processando", s.Processando.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Concluídos", s.Concluido.ToString(CultureInfo.InvariantCulture)));
+        linhas.Append(Linha("Falhou", s.Falhou.ToString(CultureInfo.InvariantCulture)));
+
+        if (s.FalhasAmostras.Count == 0)
+            return Secao("Outbox de efeitos", Tabela(linhas.ToString()));
+
+        var itens = new StringBuilder();
+        foreach (var amostra in s.FalhasAmostras)
+        {
+            var tipo = WebUtility.HtmlEncode(amostra.Tipo);
+            var erro = WebUtility.HtmlEncode(amostra.UltimoErro ?? "");
+            itens.Append($"""
+                <li style="margin:0 0 8px;color:#444;font-size:13px;line-height:1.5">
+                  <strong style="color:#c62828">{tipo}</strong> ({amostra.Tentativas} tentativas)<br>{erro}
+                </li>
+                """);
+        }
+
+        var conteudo = $"""
+            {Tabela(linhas.ToString())}
+            <p style="color:#c62828;line-height:1.6;margin:12px 0 8px">Efeitos em falha terminal:</p>
+            <ul style="margin:0;padding-left:18px">{itens}</ul>
+            """;
+        return Secao("Outbox de efeitos", conteudo);
     }
 }

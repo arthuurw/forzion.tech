@@ -17,8 +17,8 @@ public interface IStripeService
     // reverterTransferencia=true (charge destino do aluno): reverte a transferência ao treinador
     // e a application fee — sem isso o refund deixa o dinheiro no treinador e pode falhar
     // balance_insufficient. false (charge direto na plataforma, ex. plano do treinador): refund simples.
-    // Reembolso é sempre total (Amount não enviado).
-    Task CriarReembolsoAsync(string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default);
+    // Reembolso é sempre total (Amount não enviado); pagamentoId vira a Idempotency-Key do refund.
+    Task CriarReembolsoAsync(Guid pagamentoId, string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default);
 
     Task<CancelarPaymentIntentResultado> CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default);
 

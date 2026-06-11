@@ -65,7 +65,7 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
         result.Error!.Code.Should().Be("assinatura_treinador.offboarding_necessario");
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
         result.Value.CanceladaEm.Should().Be(agora);
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Cancelada);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_treinador_pago", false, It.IsAny<CancellationToken>()), Times.Once);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_treinador_pago", false, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
         result.IsSuccess.Should().BeTrue();
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Cancelada);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
         var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaTreinadorCommand(TreinadorId));
 
         result.IsSuccess.Should().BeTrue();
-        _stripeService.Verify(s => s.CriarReembolsoAsync("pi_treinador_pago", false, It.IsAny<CancellationToken>()), Times.Once);
+        _stripeService.Verify(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), "pi_treinador_pago", false, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public class CancelarMinhaAssinaturaTreinadorHandlerTests
             .ReturnsAsync(false);
         _pagamentoRepo.Setup(r => r.ObterPagoPorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pago);
-        _stripeService.Setup(s => s.CriarReembolsoAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _stripeService.Setup(s => s.CriarReembolsoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Stripe indisponível"));
 
         var result = await _handler.HandleAsync(new CancelarMinhaAssinaturaTreinadorCommand(TreinadorId));

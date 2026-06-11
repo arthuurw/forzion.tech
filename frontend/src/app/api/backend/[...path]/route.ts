@@ -32,10 +32,14 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
 
   const res = await fetch(url, { method: request.method, headers, body });
 
-  const responseBody = await res.arrayBuffer();
   const responseHeaders = new Headers();
   const responseContentType = res.headers.get("Content-Type");
   if (responseContentType) responseHeaders.set("Content-Type", responseContentType);
+
+  // 204/304 não admitem body: o construtor de Response lança se receber um (mesmo vazio).
+  // Backend devolve 204 p/ recursos ausentes (ex.: config de relatório ainda não criada).
+  const nullBodyStatus = res.status === 204 || res.status === 304;
+  const responseBody = nullBodyStatus ? null : await res.arrayBuffer();
 
   return new NextResponse(responseBody, { status: res.status, headers: responseHeaders });
 }

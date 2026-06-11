@@ -9,6 +9,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.AlterarSenha;
 using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
+using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Conta.Logout;
 using forzion.tech.Application.UseCases.Conta.ObterPerfil;
 using forzion.tech.Domain.Shared;
@@ -112,6 +113,55 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    // --- GET /conta/lgpd/exportar ---
+
+    [Fact]
+    public async Task Get_ExportarLgpd_SemAutenticacao_Retorna401()
+    {
+        var response = await _factory.CreateClient().GetAsync("/conta/lgpd/exportar");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_ExportarLgpd_SemFormato_Retorna200Json()
+    {
+        var export = CriarExportFake();
+        _factory.ExportarHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExportarDadosPessoaisCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(export));
+
+        var response = await CriarClienteAutenticado().GetAsync("/conta/lgpd/exportar");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/json");
+    }
+
+    [Fact]
+    public async Task Get_ExportarLgpd_FormatoXlsx_Retorna200ComArquivoXlsx()
+    {
+        var export = CriarExportFake();
+        var fakeBytes = new byte[] { 1, 2, 3 };
+
+        _factory.ExportarHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ExportarDadosPessoaisCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(export));
+        _factory.ExcelRendererMock
+            .Setup(r => r.Render(It.IsAny<DadosPessoaisExport>()))
+            .Returns(fakeBytes);
+
+        var response = await CriarClienteAutenticado().GetAsync("/conta/lgpd/exportar?formato=xlsx");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType
+            .Should().Be("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("meus-dados.xlsx");
+    }
+
+    private static DadosPessoaisExport CriarExportFake() =>
+        new("1.0", DateTime.UtcNow,
+            new ContaExportDto(ContaId, "user@test.com", "Treinador", false, null, DateTime.UtcNow),
+            null, null, [], [], [], [], [], [], [], []);
+
     // --- WebApplicationFactory ---
 
     public class ContaWebFactory : WebApplicationFactory<Program>
@@ -144,6 +194,23 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<LogoutHandler>>());
 
+        public Mock<ExportarDadosPessoaisHandler> ExportarHandlerMock { get; } = new(
+            Mock.Of<IContaRepository>(),
+            Mock.Of<IAlunoRepository>(),
+            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(),
+            Mock.Of<IAssinaturaAlunoRepository>(),
+            Mock.Of<IPagamentoRepository>(),
+            Mock.Of<IPacoteRepository>(),
+            Mock.Of<ITreinoRepository>(),
+            Mock.Of<IExecucaoTreinoRepository>(),
+            Mock.Of<IEmailDeliveryLogRepository>(),
+            Mock.Of<IWhatsAppDeliveryLogRepository>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+
+        public Mock<IDadosPessoaisExcelRenderer> ExcelRendererMock { get; } = new();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -156,12 +223,16 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
                 services.RemoveAll<AtualizarPerfilHandler>();
                 services.RemoveAll<AlterarSenhaHandler>();
                 services.RemoveAll<LogoutHandler>();
+                services.RemoveAll<ExportarDadosPessoaisHandler>();
+                services.RemoveAll<IDadosPessoaisExcelRenderer>();
                 services.RemoveAll<IUserContext>();
 
                 services.AddScoped(_ => ObterPerfilHandlerMock.Object);
                 services.AddScoped(_ => AtualizarPerfilHandlerMock.Object);
                 services.AddScoped(_ => AlterarSenhaHandlerMock.Object);
                 services.AddScoped(_ => LogoutHandlerMock.Object);
+                services.AddScoped(_ => ExportarHandlerMock.Object);
+                services.AddScoped<IDadosPessoaisExcelRenderer>(_ => ExcelRendererMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(ContaId);

@@ -1,6 +1,7 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { resolve } from "path";
 
 /**
  * Vitest configurado em 3 projects:
@@ -15,6 +16,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
  */
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
+  resolve: {
+    alias: {
+      "next/image": resolve(__dirname, "src/test/mocks/nextImage.tsx"),
+    },
+  },
   test: {
     globals: true,
     // Render de server-components + cold imports ficam lentos sob instrumentação

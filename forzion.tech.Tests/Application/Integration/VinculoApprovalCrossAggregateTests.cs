@@ -20,6 +20,7 @@ using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Infrastructure.Handlers;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -74,8 +75,12 @@ public class VinculoApprovalCrossAggregateTests
             TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 
+        _assinaturaRepo
+            .Setup(r => r.ObterPorVinculoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((forzion.tech.Domain.Entities.AssinaturaAluno?)null);
+
         _criarAssinaturaHandler = new VinculoAprovadoCriarAssinaturaAlunoHandler(
-            _vinculoRepo.Object, _contaRecebimentoRepo.Object, _treinadorRepo.Object,
+            _vinculoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object, _treinadorRepo.Object,
             new forzion.tech.Application.Services.CriarAssinaturaAlunoService(
                 _pacoteRepo.Object, _assinaturaRepo.Object,
                 Mock.Of<ILogger<forzion.tech.Application.Services.CriarAssinaturaAlunoService>>()),
@@ -157,7 +162,7 @@ public class VinculoApprovalCrossAggregateTests
         var result = await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("treinador_sem_onboarding");
+        result.Error!.Code.Should().Be(TreinadorErrors.SemOnboarding.Code);
         vinculo.DomainEvents.OfType<VinculoAprovadoEvent>().Should().BeEmpty();
         _assinaturasCriadas.Should().BeEmpty("assinatura nao deve ser criada sem onboarding completo");
     }

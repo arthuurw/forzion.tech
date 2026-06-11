@@ -432,4 +432,45 @@ public class AssinaturaTreinadorTests
 
         a.Status.Should().Be(AssinaturaTreinadorStatus.Cancelada);
     }
+
+    [Fact]
+    public void MarcarInadimplentePorDisputa_Pendente_NoOp()
+    {
+        var a = Nova();
+
+        a.MarcarInadimplentePorDisputa(Agora);
+
+        a.Status.Should().Be(AssinaturaTreinadorStatus.Pendente);
+        a.DomainEvents.OfType<AssinaturaTreinadorMarcadaInadimplenteEvent>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void MarcarInadimplentePorDisputa_Ativa_EmiteEventoMarcadaInadimplente()
+    {
+        var a = Ativa();
+
+        a.MarcarInadimplentePorDisputa(Agora);
+
+        var ev = a.DomainEvents.OfType<AssinaturaTreinadorMarcadaInadimplenteEvent>().SingleOrDefault();
+        ev.Should().NotBeNull();
+        ev!.AssinaturaTreinadorId.Should().Be(a.Id);
+        ev.TreinadorId.Should().Be(a.TreinadorId);
+        ev.TentativasFalhasConsecutivas.Should().Be(AssinaturaTreinador.LimiteTentativasFalhas);
+        ev.OcorridoEm.Should().Be(Agora);
+    }
+
+    [Fact]
+    public void MarcarInadimplentePorDisputa_Inadimplente_NoOp_SemEvento()
+    {
+        var a = Ativa();
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+        a.RegistrarPagamentoFalho(Agora);
+        a.ClearDomainEvents();
+
+        a.MarcarInadimplentePorDisputa(Agora);
+
+        a.Status.Should().Be(AssinaturaTreinadorStatus.Inadimplente);
+        a.DomainEvents.OfType<AssinaturaTreinadorMarcadaInadimplenteEvent>().Should().BeEmpty();
+    }
 }

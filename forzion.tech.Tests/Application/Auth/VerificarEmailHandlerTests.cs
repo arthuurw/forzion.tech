@@ -17,9 +17,10 @@ namespace forzion.tech.Tests.Application.Auth;
 /// <summary>
 /// VerificarEmail handler — pontos críticos:
 ///   - Token raw nunca consultado direto: handler aplica SHA-256 antes do lookup.
-///   - Token inválido / expirado / já-verificado → DomainException.
+///   - Token inválido / expirado / já-verificado → Result.Failure com code
+///     namespaceado (auth_verify.*), não DomainException.
 ///   - **Replay (F23)**: chamar 2x com o MESMO raw token — 2ª chamada falha
-///     com "inválido ou já utilizado". Cobre o gap específico apontado no review:
+///     com code auth_verify.token_invalido. Cobre o gap específico apontado no review:
 ///     `MarcarComoVerificado` rejeita re-uso via `VerifiedAt.HasValue`, e o
 ///     handler chega no estado `VerifiedAt != null` na 2ª tentativa.
 ///   - Sucesso: `Conta.EmailVerificado = true` + `Token.VerifiedAt` setado, no
@@ -65,29 +66,33 @@ public class VerificarEmailHandlerTests
         Conta.Criar(DomainEmail.Criar("user@example.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
 
     [Fact]
-    public async Task HandleAsync_TokenInexistente_LancaDomainException()
+    public async Task HandleAsync_TokenInexistente_RetornaFailureTokenInvalido()
     {
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((EmailVerificationToken?)null);
 
-        var act = async () => await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*inválido*");
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_verify.token_invalido");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_TokenJaVerificado_LancaDomainException()
+    public async Task HandleAsync_TokenJaVerificado_RetornaFailureTokenInvalido()
     {
         var token = BuildToken(verifiedAt: _timeProvider.GetUtcNow().UtcDateTime);
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(token);
 
-        var act = async () => await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*inválido ou já utilizado*");
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_verify.token_invalido");
     }
 
     [Fact]
-    public async Task HandleAsync_TokenExpirado_LancaDomainException()
+    public async Task HandleAsync_TokenExpirado_RetornaFailureTokenExpirado()
     {
         var token = BuildToken(ttl: TimeSpan.FromMinutes(1));
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
@@ -95,8 +100,10 @@ public class VerificarEmailHandlerTests
 
         _timeProvider.Advance(TimeSpan.FromMinutes(2));
 
-        var act = async () => await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*expirado*");
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_verify.token_expirado");
     }
 
     [Fact]
@@ -109,8 +116,9 @@ public class VerificarEmailHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
 
+        result.IsSuccess.Should().BeTrue();
         conta.EmailVerificado.Should().BeTrue();
         conta.VerificadoEm.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
         token.VerifiedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
@@ -132,8 +140,10 @@ public class VerificarEmailHandlerTests
 
         await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
 
-        var act = async () => await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*inválido ou já utilizado*");
+        var result = await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_verify.token_invalido");
     }
 
     [Fact]

@@ -65,6 +65,7 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
 
         var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
         var raw = await baseQuery
+            .AsNoTracking()
             .OrderByDescending(x => x.v.CreatedAt)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
@@ -92,4 +93,26 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
 
     public async Task AdicionarAsync(VinculoTreinadorAluno vinculo, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno.AddAsync(vinculo, cancellationToken).ConfigureAwait(false);
+
+    // Sem AsNoTracking: handler de anonimização (ANON-01) precisa chamar Inativar nas entidades retornadas.
+    public async Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosEPendentesPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .Where(v => v.AlunoId == alunoId &&
+                        (v.Status == VinculoStatus.Ativo || v.Status == VinculoStatus.AguardandoAprovacao))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<VinculoTreinadorAluno>> ListarTodosPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .AsNoTracking()
+            .Where(v => v.AlunoId == alunoId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<VinculoTreinadorAluno>> ListarTodosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .AsNoTracking()
+            .Where(v => v.TreinadorId == treinadorId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 }
