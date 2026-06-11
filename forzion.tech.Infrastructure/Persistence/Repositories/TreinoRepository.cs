@@ -42,7 +42,14 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
             "objetivo" => q.OrderBy(x => x.Objetivo).ThenBy(x => x.Nome),
             "createdAt" => q.OrderByDescending(x => x.CreatedAt),
             "nomeAluno" => q.OrderBy(x => x.NomeAluno).ThenBy(x => x.Nome),
-            "dificuldade" => q.OrderBy(x => x.Dificuldade).ThenBy(x => x.Nome),
+            // Dificuldade é persistida como string; ordenar pela coluna daria ordem alfabética
+            // (Avancado<Iniciante). CASE pela progressão real: Iniciante→Intermediario→Avancado.
+            // S3358: o ternário aninhado tem de ser expressão (EF traduz em CASE) — não extraível.
+#pragma warning disable S3358
+            "dificuldade" => q.OrderBy(x =>
+                x.Dificuldade == DificuldadeTreino.Iniciante ? 0
+                : x.Dificuldade == DificuldadeTreino.Intermediario ? 1 : 2).ThenBy(x => x.Nome),
+#pragma warning restore S3358
             // mais exercícios primeiro: fichas mais completas no topo
             "exercicios" => q.OrderByDescending(x => x.QtdExercicios).ThenBy(x => x.Nome),
             _ => q.OrderBy(x => x.Nome),

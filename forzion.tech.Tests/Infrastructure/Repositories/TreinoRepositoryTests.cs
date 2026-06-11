@@ -163,8 +163,11 @@ public class TreinoRepositoryTests(InfrastructureTestFixture fixture)
         var ex2 = await SeedExercicioAsync(ctx);
         await SeedTreinoAsync(ctx, tid, $"Vazio-{Guid.NewGuid():N}");
         var cheio = await SeedTreinoAsync(ctx, tid, $"Cheio-{Guid.NewGuid():N}");
-        cheio.AdicionarExercicio(ex1, DateTime.UtcNow);
-        cheio.AdicionarExercicio(ex2, DateTime.UtcNow);
+        // Adiciona o filho explícito ao contexto como o handler faz (AdicionarTreinoExercicioAsync):
+        // PK Guid é ValueGeneratedOnAdd, então um filho novo descoberto só via navegação de
+        // agregado já rastreado vira UPDATE (0 linhas), não INSERT.
+        await ctx.TreinoExercicios.AddAsync(cheio.AdicionarExercicio(ex1, DateTime.UtcNow).Value);
+        await ctx.TreinoExercicios.AddAsync(cheio.AdicionarExercicio(ex2, DateTime.UtcNow).Value);
         await ctx.SaveChangesAsync();
 
         var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(tid, 1, 50, ordenarPor: "exercicios");

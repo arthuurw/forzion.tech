@@ -8,7 +8,9 @@ namespace forzion.tech.Infrastructure.Health;
 // Degraded em vez de Unhealthy — Resend fora do ar não impede leitura/treino, só envio de e-mail.
 public sealed class ResendHealthCheck(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IHealthCheck
 {
+#pragma warning disable S1075 // Endpoint fixo da API do Resend (host público estável), não config de ambiente.
     private const string ApiKeysUrl = "https://api.resend.com/api-keys";
+#pragma warning restore S1075
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(3);
 
     public async Task<HealthCheckResult> CheckHealthAsync(
