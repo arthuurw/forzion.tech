@@ -54,13 +54,17 @@ export function applySessionCookies(
   response.cookies.set("token", data.token, { ...baseCookieOpts(accessMaxAge), httpOnly: true });
   response.cookies.set("refresh", data.refreshToken, { ...baseCookieOpts(idleMaxAge), httpOnly: true });
   response.cookies.set("tipo_conta", data.tipoConta, { ...baseCookieOpts(idleMaxAge), httpOnly: false });
+  // session_guard re-emitido a CADA rotação, não só no login: gateia o jwtVerify em /me e no
+  // middleware. Se não re-emitisse, expiraria junto do 1º access (~15min) e toda chamada cairia
+  // no refresh path — rotação do refresh a cada /me + middleware preso no hint não-verificado.
+  response.cookies.set("session_guard", crypto.randomUUID(), { ...baseCookieOpts(accessMaxAge), httpOnly: true });
 }
 
 export function clearSessionCookies(response: NextResponse): void {
-  response.cookies.delete("token");
-  response.cookies.delete("refresh");
-  response.cookies.delete("session_guard");
-  response.cookies.delete("tipo_conta");
+  // path explícito: os cookies foram setados com Path=/; delete(name) sem path não casa o
+  // Path=/ e deixaria o cookie morto sobreviver no browser (Set-Cookie só apaga path igual).
+  for (const name of ["token", "refresh", "session_guard", "tipo_conta"])
+    response.cookies.delete({ name, path: "/" });
 }
 
 /**

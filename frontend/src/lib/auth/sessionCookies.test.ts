@@ -86,14 +86,28 @@ describe("applySessionCookies", () => {
     // hint de roteamento é legível pelo middleware → NÃO httpOnly
     expect(setCookieHeader(res, "tipo_conta")).not.toContain("HttpOnly");
   });
+
+  it("re-emite session_guard httpOnly a cada rotação (não só no login)", () => {
+    const res = NextResponse.json({});
+    applySessionCookies(res, {
+      token: jwtComExp(Math.floor(Date.now() / 1000) + 900),
+      refreshToken: "raw-refresh-abc",
+      tipoConta: "Aluno",
+    });
+
+    expect(res.cookies.get("session_guard")?.value).toBeTruthy();
+    expect(setCookieHeader(res, "session_guard")).toContain("HttpOnly");
+  });
 });
 
 describe("clearSessionCookies", () => {
-  it("expira os 4 cookies de sessão", () => {
+  it("expira os 4 cookies de sessão com Path=/ (casa o path em que foram setados)", () => {
     const res = NextResponse.json({});
     clearSessionCookies(res);
     for (const name of ["token", "refresh", "session_guard", "tipo_conta"]) {
-      expect(setCookieHeader(res, name)).toContain("Expires=Thu, 01 Jan 1970");
+      const header = setCookieHeader(res, name);
+      expect(header).toContain("Expires=Thu, 01 Jan 1970");
+      expect(header).toContain("Path=/");
     }
   });
 });

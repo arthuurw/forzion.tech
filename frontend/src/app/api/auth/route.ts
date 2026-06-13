@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { LoginResponse } from "@/types";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
-import { accessTokenMaxAge, applySessionCookies, baseCookieOpts } from "@/lib/auth/sessionCookies";
+import { applySessionCookies } from "@/lib/auth/sessionCookies";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
@@ -38,10 +38,6 @@ export async function POST(request: NextRequest) {
   const { token, refreshToken, ...clientSafeData } = data;
   const response = NextResponse.json(clientSafeData);
   applySessionCookies(response, { token, refreshToken, tipoConta: data.tipoConta });
-  response.cookies.set("session_guard", crypto.randomUUID(), {
-    ...baseCookieOpts(accessTokenMaxAge(token)),
-    httpOnly: true,
-  });
 
   return response;
 }
