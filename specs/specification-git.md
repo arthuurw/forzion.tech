@@ -92,6 +92,7 @@ docs(infra): add git workflow spec + setup script
 - Quando solicitado: PR vai pra `homolog` (default) OU pra `master` quando a alteração foi feita direto em `homolog`.
 - `gh pr create --fill --base homolog` cria PR com title/body do commit topo.
 - Após merge no remoto, branch local pode ser deletada (`git branch -d`).
+- **CODE REVIEW pós-PR, ao CI ficar VERDE** (regra; AGENTS.md DoD item 9b): aberto o PR, MONITORAR os checks (`gh pr checks <N>`; background até run `completed`). Code review do diff (context7) roda SÓ quando o CI fica VERDE — não revisar código que ainda falha gate (desperdício; o gate pode mudar o diff). **CI VERMELHO ⇒ debugar a causa PRIMEIRO** (`superpowers:systematic-debugging`), corrigir, repush; revisão espera o verde. Pegar log de job que falhou: `gh run view --job <jobId> --log-failed` (exige a RUN inteira `completed` — jobs pending bloqueiam; aguardar). `/code-review` (local) eu rodo; `/code-review ultra` (cloud, billed) é disparado pelo usuário.
 
 ## EDGE CASES
 - **Branch protection bloqueia push direto** (não é o caso hoje, mas pode passar a ser): use `gh pr create` direto sem push manual `gh` resolve.
