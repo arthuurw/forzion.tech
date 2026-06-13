@@ -8,37 +8,53 @@ public class LimparTokensRevogadosService(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Purga já no boot (antes do delay): instância que reinicia em <1h (deploy/scale) nunca
+        // chegaria à 1ª limpeza, deixando refresh_tokens/famílias crescer sem teto.
         while (!stoppingToken.IsCancellationRequested)
         {
+            await LimparAsync(stoppingToken).ConfigureAwait(false);
+
             try
             {
                 await Task.Delay(TimeSpan.FromHours(1), stoppingToken).ConfigureAwait(false);
-
-                using var scope = serviceProvider.CreateScope();
-                var repo = scope.ServiceProvider.GetRequiredService<ITokenRevogadoRepository>();
-                var removed = await repo.LimparExpiradosAsync(stoppingToken).ConfigureAwait(false);
-
-                if (removed > 0)
-                    logger.LogInformation("Limpeza de tokens revogados: {Count} registros removidos.", removed);
-
-                // GC das sessões de refresh: famílias revogadas ou além do teto absoluto.
-                // Tokens (incl. usados, retidos p/ reuse-detection enquanto a família vive)
-                // caem por cascade no nível do banco junto da família.
-                var familyRepo = scope.ServiceProvider.GetRequiredService<IRefreshTokenFamilyRepository>();
-                var agora = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
-                var familiasRemovidas = await familyRepo.LimparExpiradasAsync(agora, stoppingToken).ConfigureAwait(false);
-
-                if (familiasRemovidas > 0)
-                    logger.LogInformation("Limpeza de famílias de refresh: {Count} famílias removidas.", familiasRemovidas);
             }
             catch (OperationCanceledException)
             {
                 break;
             }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Erro ao limpar tokens revogados expirados.");
-            }
+        }
+    }
+
+    internal async Task LimparAsync(CancellationToken stoppingToken)
+    {
+        using var scope = serviceProvider.CreateScope();
+
+        // Cada purga em try/catch próprio: são independentes, falha numa não pode pular a outra.
+        try
+        {
+            var repo = scope.ServiceProvider.GetRequiredService<ITokenRevogadoRepository>();
+            var removed = await repo.LimparExpiradosAsync(stoppingToken).ConfigureAwait(false);
+            if (removed > 0)
+                logger.LogInformation("Limpeza de tokens revogados: {Count} registros removidos.", removed);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao limpar tokens revogados expirados.");
+        }
+
+        try
+        {
+            // Famílias revogadas ou além do teto absoluto. Os tokens (incl. usados, retidos p/
+            // reuse-detection enquanto a família vive) caem por cascade no nível do banco.
+            var familyRepo = scope.ServiceProvider.GetRequiredService<IRefreshTokenFamilyRepository>();
+            var agora = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+            var familiasRemovidas = await familyRepo.LimparExpiradasAsync(agora, stoppingToken).ConfigureAwait(false);
+            if (familiasRemovidas > 0)
+                logger.LogInformation("Limpeza de famílias de refresh: {Count} famílias removidas.", familiasRemovidas);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao limpar famílias de refresh expiradas.");
         }
     }
 }
