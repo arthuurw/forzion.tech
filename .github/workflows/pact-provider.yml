@@ -24,6 +24,11 @@ jobs:
     name: Provider verification
     runs-on: ubuntu-latest
     environment: homolog
+    # secrets nao podem ser usados em `if:`; mapeia p/ env do job e checa o env.
+    env:
+      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
+      PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,11 +36,23 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Aguarda broker disponivel
+        # O broker mora na VM homolog; neste push o deploy reinicia o nginx em
+        # paralelo. Sem este wait, o verifier bate no broker durante o restart e
+        # falha por race (falso-vermelho) — nao por quebra de contrato.
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS -u "$PACT_BROKER_USERNAME:$PACT_BROKER_PASSWORD" \
+              "$PACT_BROKER_BASE_URL/diagnostic/status/heartbeat" >/dev/null; then
+              echo "broker ok"; exit 0
+            fi
+            echo "broker indisponivel (deploy/restart?), retry $i/12..."; sleep 15
+          done
+          echo "broker nao respondeu apos ~3min"; exit 1
+
       - name: Verifica contratos (provider)
         run: dotnet test forzion.tech.PactVerification/forzion.tech.PactVerification.csproj -c Release --nologo
         env:
           CI: "true"
-          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
-          PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
-          PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
           GITHUB_SHA: ${{ github.sha }}

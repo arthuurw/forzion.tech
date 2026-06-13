@@ -18,6 +18,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using PactNet;
+using PactNet.Infrastructure.Outputters;
 using PactNet.Verifier;
 
 namespace forzion.tech.PactVerification;
@@ -49,8 +51,7 @@ public class ForzionApiProviderTests : IClassFixture<ForzionApiProviderFactory>
         // TestServer in-memory, que nao existe nesta factory (so Kestrel real).
         _ = _factory.Services;
 
-        var config = new PactVerifierConfig();
-        using var verifier = new PactVerifier(config);
+        using var verifier = new PactVerifier(CriarConfigComLog());
 
         verifier
             .ServiceProvider("forzion-api", new Uri(_factory.ServerUri))
@@ -74,6 +75,40 @@ public class ForzionApiProviderTests : IClassFixture<ForzionApiProviderFactory>
             .WithProviderStateUrl(new Uri(new Uri(_factory.ServerUri), "/_pact/provider-states"))
             .Verify();
     }
+
+    [Fact]
+    public void VerificaContratosDeArquivo()
+    {
+        // Caminho do GATE de PR: verifica contra o pact FILE gerado pelo consumer
+        // no mesmo run (sem broker). Gated por PACT_FILE -> no-op em homolog (la
+        // roda so o caminho broker). Os dois metodos sao mutuamente exclusivos
+        // pelo env que cada um exige.
+        var pactFile = Environment.GetEnvironmentVariable("PACT_FILE");
+        if (string.IsNullOrWhiteSpace(pactFile))
+        {
+            return;
+        }
+
+        _ = _factory.Services;
+
+        using var verifier = new PactVerifier(CriarConfigComLog());
+
+        verifier
+            .ServiceProvider("forzion-api", new Uri(_factory.ServerUri))
+            .WithFileSource(new FileInfo(pactFile))
+            .WithProviderStateUrl(new Uri(new Uri(_factory.ServerUri), "/_pact/provider-states"))
+            .WithRequestTimeout(TimeSpan.FromSeconds(10))
+            .Verify();
+    }
+
+    // LogLevel.Debug + ConsoleOutput fazem o detalhe do mismatch (core Rust) sair
+    // no log do CI; sem isso a falha vira PactFailureException generica e a causa
+    // so aparece em repro local.
+    private static PactVerifierConfig CriarConfigComLog() => new()
+    {
+        LogLevel = PactLogLevel.Debug,
+        Outputters = new IOutput[] { new ConsoleOutput() },
+    };
 }
 
 /// <summary>
@@ -149,6 +184,27 @@ public class ForzionApiProviderFactory : WebApplicationFactory<Program>
             // cenario de erro (401/404/500).
             services.AddSingleton<ProviderStateContext>();
             services.AddTransient<IStartupFilter, ProviderStateStartupFilter>();
+
+            // FR-5 — auto-mock fallback: qualquer I*Repository ainda apontando a
+            // impl real (que precisa de DbContext) vira Mock loose com
+            // DefaultValue.Mock. Um repo novo puxado transitivamente por handler de
+            // endpoint verificado passa a retornar defaults (colecoes vazias
+            // nao-null) ao inves de bater no Npgsql -> 500. Os 7 repos com shape ja
+            // foram registrados acima via factory (ImplementationFactory != null),
+            // entao NAO caem nesta varredura (que filtra ImplementationType != null).
+            var reposReais = services
+                .Where(d => d.ServiceType.IsInterface
+                    && d.ServiceType.Namespace?.EndsWith("Interfaces.Repositories", StringComparison.Ordinal) == true
+                    && d.ImplementationType is not null)
+                .ToList();
+
+            foreach (var descriptor in reposReais)
+            {
+                services.Remove(descriptor);
+                var mock = (Mock)Activator.CreateInstance(typeof(Mock<>).MakeGenericType(descriptor.ServiceType))!;
+                mock.DefaultValue = DefaultValue.Mock;
+                services.AddScoped(descriptor.ServiceType, _ => mock.Object);
+            }
         });
     }
 

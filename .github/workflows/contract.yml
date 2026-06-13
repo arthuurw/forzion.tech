@@ -37,6 +37,11 @@ on:
       - "frontend/vitest.pact.config.mts"
       - "frontend/pact-broker.config.ts"
       - ".github/workflows/contract.yml"
+      # O job provider-contract verifica o backend .NET contra o pact no PR;
+      # precisa disparar quando o provider muda (nao so o consumer frontend).
+      - "forzion.tech.Api/**"
+      - "forzion.tech.Application/**"
+      - "forzion.tech.PactVerification/**"
   workflow_dispatch:
 
 jobs:
@@ -118,3 +123,30 @@ jobs:
             --pacticipant=forzion-frontend \
             --version="${PACT_CONSUMER_VERSION}" \
             --to-environment=homolog
+
+  provider-contract:
+    name: Provider contract (file-source, gate de PR)
+    # Shift-left: verifica o provider .NET contra o pact gerado pelo consumer
+    # neste run, via file-source, SEM broker. Pega quebra de contrato do backend
+    # ANTES do merge (a verificacao broker em pact-provider.yml so roda pos-merge).
+    needs: consumer-contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Baixa pact gerado pelo consumer
+        uses: actions/download-artifact@v4
+        with:
+          name: pacts
+          path: frontend/pacts/
+
+      - name: Verifica provider contra o pact file
+        # SEM PACT_BROKER_* e SEM environment: homolog -> creds do broker nao
+        # expostas no PR; o caminho broker do teste e no-op, roda so o file-source.
+        run: dotnet test forzion.tech.PactVerification/forzion.tech.PactVerification.csproj -c Release --nologo
+        env:
+          PACT_FILE: ${{ github.workspace }}/frontend/pacts/forzion-frontend-forzion-api.json
