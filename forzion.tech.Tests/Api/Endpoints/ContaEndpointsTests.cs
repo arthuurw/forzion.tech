@@ -186,6 +186,7 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
             Mock.Of<IContaRepository>(),
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IRefreshTokenService>(),
+            Mock.Of<ITokenRevogadoRepository>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<IValidator<AlterarSenhaCommand>>());
 

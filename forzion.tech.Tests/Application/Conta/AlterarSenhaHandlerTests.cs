@@ -18,6 +18,7 @@ public class AlterarSenhaHandlerTests
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IRefreshTokenService> _refresh = new();
+    private readonly Mock<ITokenRevogadoRepository> _tokenRevogado = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IValidator<AlterarSenhaCommand>> _validator = new();
     private readonly AlterarSenhaHandler _handler;
@@ -32,6 +33,7 @@ public class AlterarSenhaHandlerTests
             _contaRepo.Object,
             _passwordHasher.Object,
             _refresh.Object,
+            _tokenRevogado.Object,
             _unitOfWork.Object,
             TimeProvider.System,
             _validator.Object);
@@ -57,6 +59,45 @@ public class AlterarSenhaHandlerTests
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         // NR-6: troca de senha revoga todas as sessões da conta.
         _refresh.Verify(s => s.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_JtiCorrenteValido_FazBlacklistDoToken()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta();
+        var jti = Guid.NewGuid();
+
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.Jti).Returns(jti);
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddMinutes(15));
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(h => h.Verify("senha123", conta.PasswordHash)).Returns(true);
+        _passwordHasher.Setup(h => h.Hash("nova-senha")).Returns("novo-hash");
+
+        var result = await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
+
+        result.IsSuccess.Should().BeTrue();
+        // security §2: o access curto corrente é blacklistado p/ não sobreviver à troca de senha.
+        _tokenRevogado.Verify(r => r.AdicionarAsync(It.Is<TokenRevogado>(t => t.Jti == jti), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemJti_NaoTentaBlacklist()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta();
+
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _userContext.Setup(u => u.Jti).Returns(Guid.Empty);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(h => h.Verify("senha123", conta.PasswordHash)).Returns(true);
+        _passwordHasher.Setup(h => h.Hash("nova-senha")).Returns("novo-hash");
+
+        var result = await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
+
+        result.IsSuccess.Should().BeTrue();
+        _tokenRevogado.Verify(r => r.AdicionarAsync(It.IsAny<TokenRevogado>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
