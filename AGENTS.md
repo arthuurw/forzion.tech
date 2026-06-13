@@ -42,6 +42,7 @@ Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git.
 | concorrência/lock/idempotência     | concurrency |
 | perf backend/N+1/EF/pool           | performance |
 | backup/restore/DR                  | dr, infrastructure |
+| card/board/pipeline/histórico de entrega | workflow |
 
 ## AREAS COBERTAS POR SPECIFICATION-*
 Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia). Conteúdo de cada spec é auto-evidente pelo nome — abaixo SÓ os caveats não-óbvios (resto: abrir o arquivo):
@@ -53,6 +54,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 - `specification-seo.md` — ASPIRACIONAL (não implementado).
 - `specification-dr.md` — boa parte ALVO/aspiracional, não o estado real.
 - `specification-local-ci-repro.md` — reproduzir gates do CI local + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet8, postgres fsync, .slnx, E2E email-block).
+- `specification-workflow.md` — fluxo de entrega: pipeline de cards (GitHub Projects v2, `.specs` local = fonte de verdade, board = espelho mantido pelo agente via `gh`), Fluxo A (card novo forward) + Fluxo B (backfill histórico→Done consultável por data). Board/backfill NÃO montados ainda (aguardam setup).
 - Sem caveat especial (rotear por TRIGGER): `model`, `backend`, `db`, `email`, `whatsapp`, `frontend`, `git`, `lgpd`, `tests`, `stripe`, `security`, `observability`.
 
 ## CONVENÇÕES-CHAVE
@@ -84,4 +86,5 @@ BUG no caminho ⇒ `superpowers:systematic-debugging`: achar a causa, não remen
 7. PARALELISMO: escopos isolados (análises, implementações sem conflito, tests em arquivos distintos) → delegar a sub-agents em PARALELO (Agent tool), 1 por escopo, batch num turno. Principal coordena: identifica dependências, lança o não-conflitante, agrega, integra (DI/commit). Sub-agents devolvem só sumário. Subordinada à regra 4 (`[P]` em tasks paralelas). Skill obrigatória para dispatch de sub-agents: `superpowers:subagent-driven-development`. Adendo: subagent em worktree pode ter Bash/shell NEGADO ⇒ NÃO roda gates. Principal SEMPRE re-verifica build+testes+format ao integrar — sumário do subagent não é prova.
 8. BUDGET DE CONTEXTO: principal ≤ ~160-170k tokens. Delegar leitura/implementação volumosa a sub-agents (sumário só — regra 7); não reler o que já está em contexto; ler trechos (offset/limit); manter no principal só orquestração/decisão/integração.
 9. COMENTÁRIOS: só o "porquê" não-óbvio (invariante, workaround, gotcha) — NÃO o óbvio, NÃO parafrasear, NÃO inline que repete o código. Regra de ESCRITA (remover ruído ANTES de apresentar), não revisão pós-fato; agentes over-comentam. Subset barrado por hook + convenções do repo (divisor ASCII só em teste, XML doc só em contrato público): `specs/specification-coding.md` §8.
-10. Estas regras só mudam mediante aprovação do usuário.
+10. DECISÃO POR 3 EIXOS: toda decisão de design/arquitetura/trade-off (mecanismo, lib, fluxo, parâmetro) pondera EXPLICITAMENTE **segurança + performance + usabilidade** — os três, não um às cegas. Para a escolha "óbvia" do usuário, VALIDAR antes de aceitar (ex.: e-mail-OTP pedido ⇒ apontar que viola segurança, recomendar TOTP). Gray area entre eixos ⇒ expor o trade-off ao usuário (AskUserQuestion) com recomendação fundamentada (fontes/context7 quando depender de API ou postura de segurança — não alucinar). NÃO "andar pra trás" em nenhum eixo sem trade-off consciente e registrado (spec/STATE). Decisões de segurança/postura: ancorar em fonte autoritativa (OWASP/docs oficiais), não em intuição.
+11. Estas regras só mudam mediante aprovação do usuário.
