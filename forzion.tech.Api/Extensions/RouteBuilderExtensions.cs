@@ -101,7 +101,7 @@ public static class RouteBuilderExtensions
         // backend sem round-trip adicional. BeginScope injeta o id nos logs do request.
         app.Use(async (ctx, next) =>
         {
-            var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
+            var requestId = RequestIdSeguro(ctx.Request.Headers["X-Request-Id"].FirstOrDefault())
                 ?? ctx.TraceIdentifier;
 
             var correlationLogger = ctx.RequestServices
@@ -147,5 +147,19 @@ public static class RouteBuilderExtensions
             .RequireRateLimiting("read");
 
         return endpoints;
+    }
+
+    // HDR-01: o X-Request-Id de entrada é controlado pelo cliente e é ecoado na resposta +
+    // gravado no escopo de log. Kestrel já barra CR/LF (sem response-splitting), mas não limita
+    // tamanho nem charset: valor arbitrário forja linhas em sinks textuais de log e reflete lixo
+    // no header. Só aceita id curto do charset seguro de correlation (UUID/Sentry cabem); senão
+    // descarta e o chamador cai no TraceIdentifier gerado pelo servidor.
+    private static string? RequestIdSeguro(string? entrada)
+    {
+        if (string.IsNullOrEmpty(entrada) || entrada.Length > 128)
+            return null;
+
+        var charsetSeguro = entrada.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.');
+        return charsetSeguro ? entrada : null;
     }
 }

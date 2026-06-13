@@ -45,6 +45,17 @@ public class OutboxProcessorRetryTests(InfrastructureTestFixture fixture)
             throw new InvalidOperationException("permanente");
     }
 
+    // Simula shutdown: cancela o token durante o dispatch e lança OCE observando-o.
+    private sealed class FxCancelaEThrowOce(CancellationTokenSource cts) : IOutboxEfeitoHandler
+    {
+        public string Tipo => "fx:teste";
+        public Task ExecutarAsync(string payload, CancellationToken cancellationToken = default)
+        {
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
+        }
+    }
+
     private static OutboxProcessor CriarProcessor(AppDbContext ctx, IOutboxEfeitoHandler handler, int maxTentativas)
     {
         var dispatcher = new OutboxDispatcher(new NoOpDispatcher(), new OutboxDurabilityRegistry(), [handler]);
@@ -62,6 +73,11 @@ public class OutboxProcessorRetryTests(InfrastructureTestFixture fixture)
     {
         var chave = $"fx:teste:{Guid.NewGuid():N}";
         await using var seed = fixture.CreateContext();
+        // Container é compartilhado pela collection e ProcessarLoteAsync elege TODOS os itens
+        // Pendente (não filtra por chave). Sem zerar, um item Pendente deixado por outro teste
+        // (ex.: o de shutdown) seria processado pelo MESMO handler aqui, dobrando Chamadas e
+        // corrompendo a contagem de tentativas. Isola cada teste com tabela limpa.
+        await seed.OutboxEfeitos.ExecuteDeleteAsync();
         seed.OutboxEfeitos.Add(OutboxEfeito.Criar("fx:teste", "{}", chave, DateTime.UtcNow.AddMinutes(-1)).Value);
         await seed.SaveChangesAsync();
         return chave;
@@ -99,5 +115,25 @@ public class OutboxProcessorRetryTests(InfrastructureTestFixture fixture)
         efeito.Status.Should().Be(OutboxStatus.Falhou);
         efeito.Tentativas.Should().Be(3);
         efeito.UltimoErro.Should().Contain("permanente");
+    }
+
+    // OUT-02: cancelamento de shutdown re-lança (rollback do lease) em vez de queimar uma
+    // tentativa — o item volta Pendente, intacto, para o próximo boot.
+    [Fact]
+    public async Task ProcessarLote_CancelamentoDeShutdown_RelancaSemContarTentativa()
+    {
+        var chave = await SemearEfeitoAsync();
+        using var cts = new CancellationTokenSource();
+        await using var ctx = fixture.CreateContext();
+        var processor = CriarProcessor(ctx, new FxCancelaEThrowOce(cts), maxTentativas: 5);
+
+        var act = async () => await processor.ProcessarLoteAsync(cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        await using var verify = fixture.CreateContext();
+        var efeito = await verify.OutboxEfeitos.AsNoTracking().SingleAsync(o => o.ChaveIdempotencia == chave);
+        efeito.Status.Should().Be(OutboxStatus.Pendente);
+        efeito.Tentativas.Should().Be(0, "OCE de shutdown não é falha de efeito");
     }
 }

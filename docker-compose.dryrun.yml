@@ -1,0 +1,36 @@
+# R3 (deploy-safety): dry-run do migrate contra uma CÓPIA do schema homolog real, na VM.
+# scripts/migrate-dryrun.sh sobe o `dryrun-db`, restaura nele o schema homolog (pg_dump do DB real,
+# estrutura+dados) e roda o serviço `migrate` (mesma imagem do app, `app migrate`) contra a cópia.
+# Os dois serviços compartilham a rede default deste compose. Falha do `migrate` aborta o deploy
+# ANTES de tocar o banco real — pega falha data-dependente (ex.: índice UNIQUE sobre linha
+# duplicada) que o CI em DB vazio não pega. Descartável: `down -v` ao final.
+services:
+  dryrun-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dryrun
+      POSTGRES_PASSWORD: dryrun
+      POSTGRES_DB: dryrun
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dryrun -d dryrun"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    build:
+      context: .
+      dockerfile: forzion.tech.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Homolog
+      # Aponta o app para a cópia efêmera; schema homolog via Search Path (migration é schema-agnostic).
+      ConnectionStrings__AppConnection: "Host=dryrun-db;Port=5432;Database=dryrun;Username=dryrun;Password=dryrun;Search Path=homolog"
+      # AddApiServices lê estes; valores reais do .env (não há chamada externa no modo `migrate`).
+      Auth__JwtSecret: ${JWT_SECRET}
+      Auth__JwtIssuer: ${JWT_ISSUER:-homologacao.forzion.tech}
+      Auth__JwtAudience: ${JWT_AUDIENCE:-homologacao.forzion.tech}
+    # ENTRYPOINT da imagem já é `dotnet forzion.tech.Api.dll`; só anexamos o arg do modo CLI.
+    command: ["migrate"]
+    depends_on:
+      dryrun-db:
+        condition: service_healthy

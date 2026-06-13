@@ -29,6 +29,7 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<TimeProvider> _timeProvider = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ITokenRevogadoRepository> _tokenRevogadoRepo = new();
+    private readonly Mock<IDatabaseErrorInspector> _dbErrorInspector = new();
 
     private readonly AnonimizarContaHandler _handler;
 
@@ -78,7 +79,8 @@ public class AnonimizarContaHandlerTests
             _transactionProvider.Object,
             _timeProvider.Object,
             _userContext.Object,
-            _tokenRevogadoRepo.Object);
+            _tokenRevogadoRepo.Object,
+            _dbErrorInspector.Object);
     }
 
     private static Conta CriarContaComHash(TipoConta tipo, string email = "user@test.com") =>
@@ -519,6 +521,51 @@ public class AnonimizarContaHandlerTests
         _tokenRevogadoRepo.Verify(
             r => r.AdicionarAsync(It.IsAny<TokenRevogado>(), It.IsAny<CancellationToken>()), Times.Never);
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ERRDB-01: a race de revogação concorrente colide no índice único (jti) → 23505. O handler
+    // engole APENAS unique-violation (idempotente), confiando no inspector — não em substring de
+    // mensagem, que quebra por wording/locale do driver.
+    [Fact]
+    public async Task HandleAsync_RevogacaoIdempotente_ViolacaoDeUnicidade_EngoleERetornaSuccess()
+    {
+        var contaId = Guid.NewGuid();
+        var jti = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        conta.Anonimizar(TestData.Agora);
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _userContext.Setup(u => u.Jti).Returns(jti);
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(TestData.Agora.AddHours(1));
+        _tokenRevogadoRepo.Setup(r => r.AdicionarAsync(It.IsAny<TokenRevogado>(), It.IsAny<CancellationToken>()))
+                          .ThrowsAsync(new InvalidOperationException("23505"));
+        _dbErrorInspector.Setup(i => i.EhViolacaoDeUnicidade(It.IsAny<Exception>())).Returns(true);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_RevogacaoIdempotente_ErroNaoUnico_Propaga()
+    {
+        var contaId = Guid.NewGuid();
+        var jti = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        conta.Anonimizar(TestData.Agora);
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _userContext.Setup(u => u.Jti).Returns(jti);
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(TestData.Agora.AddHours(1));
+        _tokenRevogadoRepo.Setup(r => r.AdicionarAsync(It.IsAny<TokenRevogado>(), It.IsAny<CancellationToken>()))
+                          .ThrowsAsync(new InvalidOperationException("connection reset"));
+        _dbErrorInspector.Setup(i => i.EhViolacaoDeUnicidade(It.IsAny<Exception>())).Returns(false);
+
+        var act = () => _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]

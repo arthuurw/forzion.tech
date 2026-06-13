@@ -1,4 +1,5 @@
 using forzion.tech.Api.Extensions;
+using forzion.tech.Api.Startup;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,12 @@ builder.Services
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Homolog"))
+// R1 (deploy-safety): `app migrate` aplica schema+seed e SAI, fora do web host (step one-shot
+// pré-deploy; falha aborta o deploy). Ver MigrationStartup.
+if (MigrationStartup.IsMigrateCommand(args))
+    return await MigrationStartup.RunMigrateAsync(app).ConfigureAwait(false);
+
+if (MigrationStartup.ShouldAutoMigrateOnBoot(app.Environment))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -27,6 +33,7 @@ app.UseApiConfiguration();
 app.MapApiEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
+return 0;
 
 public partial class Program
 {

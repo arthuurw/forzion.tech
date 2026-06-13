@@ -49,6 +49,7 @@ jobs:
             ci:
               - '.github/workflows/**'
               - 'scripts/check-coverage.sh'
+              - 'scripts/lint-migrations.sh'
 
   # ─── HIGIENE ───────────────────────────────────────────────────────────────
   commitlint:
@@ -423,13 +424,32 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
+  # ─── LINT DE MIGRATION ARRISCADA (R5 deploy-safety) ──────────────────────────
+  # PR-only: varre as migrations ADICIONADAS no PR (diff vs base) e reprova padrões
+  # data-dependentes que o CI em DB vazio (Testcontainers) não pega — índice UNIQUE,
+  # AddColumn/AlterColumn NOT NULL sem default. Justificar via `lint-migrations:allow`
+  # na migration (após dedup/backfill). fetch-depth:0 p/ o diff vs origin/<base>.
+  lint-migrations:
+    name: Lint migrations (PR)
+    needs: [changes]
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Lint migrations arriscadas
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: bash scripts/lint-migrations.sh
+
   # ─── GATE (required check) ─────────────────────────────────────────────────────
   # `if: always()` para rodar mesmo com jobs PULADOS pelo path-filter ou por
   # evento (testes pesados sao PR-only). Um job pulado (result 'skipped') NÃO
   # reprova; só 'failure'/'cancelled' reprovam o gate.
   gate:
     name: Gate
-    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend, sanity-backend]
+    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend, sanity-backend, lint-migrations]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -471,13 +491,61 @@ jobs:
             cd /opt/forzion/app
             git pull origin homolog
 
-            docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env build
-            docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env up -d --remove-orphans
+            EF=/opt/forzion/.env
+            DC="docker compose -f docker-compose.homolog.yml --env-file $EF"
+
+            # R4: guarda as imagens em uso ANTES do build, para rollback por tag se o health reprovar.
+            PREV_BACKEND="$($DC images -q backend 2>/dev/null || true)"
+            PREV_FRONTEND="$($DC images -q frontend 2>/dev/null || true)"
+
+            $DC build
+
+            # R3 (Gate A): dry-run do migrate contra uma cópia do schema homolog real. Falha aborta
+            # o deploy (set -e) antes de tocar o real. DB_CONNECTION é lido cru do .env (a string
+            # Npgsql tem ';' e espaços — sourcing quebraria); aspas externas, se houver, removidas.
+            DB_CONNECTION="$(grep -E '^DB_CONNECTION=' "$EF" | head -1 | cut -d= -f2-)"
+            DB_CONNECTION="${DB_CONNECTION%\"}"; DB_CONNECTION="${DB_CONNECTION#\"}"
+            export DB_CONNECTION
+            ENV_FILE="$EF" bash scripts/migrate-dryrun.sh
+
+            # R2 (Gate B): migrate real como one-shot ANTES do up -d. Falha aborta (set -e) e os
+            # containers ANTIGOS seguem servindo (zero downtime). Boot normal não migra (Homolog).
+            $DC run --rm --no-deps backend migrate
+
+            $DC up -d --remove-orphans
+
+            # R4 (Gate C): health-gate pós-deploy. backend não publica porta no host → curl por dentro
+            # do container. Reprovou (liveness ou readiness/DB) → rollback para a imagem anterior.
+            health_ok=0
+            for _ in $(seq 1 30); do
+              if $DC exec -T backend curl -fsS http://localhost:8080/health >/dev/null 2>&1 \
+                 && $DC exec -T backend curl -fsS http://localhost:8080/health/ready >/dev/null 2>&1; then
+                health_ok=1; break
+              fi
+              sleep 4
+            done
+
+            if [ "$health_ok" != 1 ]; then
+              # Sem imagem anterior (1º deploy, ou podada por prune entre deploys) não há pra onde
+              # reverter: re-subir --no-build só recolocaria a imagem NOVA quebrada de pé fingindo
+              # rollback. Aborta explícito exigindo intervenção manual em vez de mascarar.
+              if [ -z "$PREV_BACKEND" ] || [ -z "$PREV_FRONTEND" ]; then
+                echo "::error::Health gate REPROVADO e SEM imagem anterior para rollback (PREV vazio). Build quebrado de pé — intervenção manual necessária."
+                exit 1
+              fi
+              echo "::error::Health gate REPROVADO pós-deploy — revertendo para a imagem anterior."
+              IMG_BACKEND="$($DC config --images backend | head -1)"
+              IMG_FRONTEND="$($DC config --images frontend | head -1)"
+              docker tag "$PREV_BACKEND" "$IMG_BACKEND"
+              docker tag "$PREV_FRONTEND" "$IMG_FRONTEND"
+              $DC up -d --no-build --remove-orphans
+              exit 1
+            fi
 
             # Nginx config eh bind-mount (./nginx/nginx.conf). "up -d" nao
             # recria nginx quando so o arquivo muda, entao a config nova so
             # carrega com restart explicito.
-            docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env restart nginx
+            $DC restart nginx
 
             docker image prune -f
 

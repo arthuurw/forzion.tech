@@ -57,10 +57,25 @@ jobs:
           STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
           FILE="forzion-db-${STAMP}.dump"
 
+          # BKP-01: o dump em claro (PII/LGPD, repo público) não pode sobreviver a NENHUMA saída
+          # — falha do age/aws ou do size-guard. O trap remove claro + .age em qualquer exit.
+          trap 'rm -f "${FILE}" "${FILE}.age"' EXIT
+
+          # BKP-02: senha fora do process list. A URI posicional apareceria em ps/argv do pg_dump;
+          # tira a senha p/ PGPASSWORD e passa a URI sem-senha (host/porta/user/db/params intactos).
+          # BKP-03: parse via urlsplit (python3 -c; ubuntu-latest sempre tem). A senha vai
+          # URL-DECODADA pro PGPASSWORD — libpq decoda a senha quando vem na URI mas usa PGPASSWORD
+          # literal, então senha percent-encoded (%40, %2F...) precisa ser decodada aqui ou a auth
+          # falha. SAFE_URL mantém o user-info encodado (libpq decoda a URI) e sem senha (BKP-02);
+          # URI sem senha → password None → PGPASSWORD vazio (não vira a URI inteira como no sed).
+          PGPASSWORD="$(python3 -c 'import os,urllib.parse as p; u=p.urlsplit(os.environ["BACKUP_DATABASE_URL"]); print(p.unquote(u.password) if u.password is not None else "")')"
+          SAFE_URL="$(python3 -c 'import os,urllib.parse as p; u=p.urlsplit(os.environ["BACKUP_DATABASE_URL"]); netloc=((u.username+"@") if u.username is not None else "")+(u.hostname or "")+((":"+str(u.port)) if u.port else ""); print(p.urlunsplit((u.scheme,netloc,u.path,u.query,u.fragment)))')"
+          export PGPASSWORD
+
           read -ra SCHEMAS <<< "${BACKUP_SCHEMAS}"
           SCHEMA_ARGS=()
           for s in "${SCHEMAS[@]}"; do SCHEMA_ARGS+=("--schema=${s}"); done
-          pg_dump "${BACKUP_DATABASE_URL}" "${SCHEMA_ARGS[@]}" -Fc -f "${FILE}"
+          pg_dump "${SAFE_URL}" "${SCHEMA_ARGS[@]}" -Fc -f "${FILE}"
 
           # dump minúsculo = falha silenciosa do pg_dump; aborta antes de subir lixo + disparar alerta.
           SIZE=$(stat -c%s "${FILE}")

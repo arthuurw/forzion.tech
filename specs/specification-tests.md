@@ -39,8 +39,8 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - **vitest projects** (`vitest.config.mts`): `unit` (node — `src/lib/**`, `src/hooks/**`, `src/middleware`), `integration` (jsdom — `src/components/**`, `src/app/**/__tests__`, libs que tocam DOM, MSW), `api` (node — `src/app/api/**` route handlers).
 - **property** (`*.property.test.ts`, fast-check — excluídos da cobertura), **contract** (Pact consumer, `npm run test:contract`), **E2E Playwright** (`e2e/specs/`: smoke/critical/security/lgpd/multi-tab/network/a11y/visual; 5 projects browser+mobile; `auth.setup` gera storage-state por papel; snapshots por-OS `*-{platform}.png`), **storybook** (+ a11y addon).
 
-## 4. CONTAGEM / RASTREIO (baseline 2026-06-06)
-- Backend: **1843** unit (`Category!=Integration`) + **96** integração/Testcontainers — verde. Frontend: **631** (vitest 3 projects) — verde. Playwright E2E: suíte completa só roda no CI Linux (creds `E2E_*` + browsers); validação local cobriu smoke+critical públicos/admin (público 4/4, admin 3/3 — [specification-local-ci-repro] §4); aluno/treinador bloqueados local. Alguns specs com seletor frágil — ver `.specs/qa`.
+## 4. CONTAGEM / RASTREIO (baseline 2026-06-06; unit reconferido 2026-06-12)
+- Backend: **2088** unit (`Category!=Integration`, reconferido 2026-06-12 — cresceu com a feature cancelamento+compliance; baseline 06-06 era 1843) + **96** integração/Testcontainers (baseline 06-06, roda no CI) — verde. Frontend: **729** (vitest 3 projects, reconferido 2026-06-12; baseline 06-06 era 631) — verde. Playwright E2E: suíte completa só roda no CI Linux (creds `E2E_*` + browsers); validação local cobriu smoke+critical públicos/admin (público 4/4, admin 3/3 — [specification-local-ci-repro] §4); aluno/treinador bloqueados local. Alguns specs com seletor frágil — ver `.specs/qa`.
 - Regra: a contagem NÃO regride sem decisão humana. Teste que falha **fica** (vermelho visível) até ser corrigido pelo código — não some. Cobertura por piso protege contra suíte parar de rodar (§7).
 
 ## 5. CO-LOCALIZAÇÃO (mapa)

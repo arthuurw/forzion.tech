@@ -27,7 +27,7 @@ DOC PARA AGENTES. Continuidade: backup, restore, rollback de deploy, runbook de 
     pg_restore -h host.docker.internal -p 55432 -U postgres -d postgres `
     --no-owner --no-privileges /out/homolog.dump
   # validar (socket local = trust, sem senha)
-  docker exec drill-pg17 psql -U postgres -d postgres -c 'SELECT count(*) FROM homolog."__EFMigrationsHistory";'  # esperado 32
+  docker exec drill-pg17 psql -U postgres -d postgres -c 'SELECT count(*) FROM homolog."__EFMigrationsHistory";'  # = nº de migrations aplicadas no dump (31 no drill 2026-06-11; 34 = total de files no branch atual após deploy — feat já em homolog)
   docker exec drill-pg17 psql -U postgres -d postgres -c 'SELECT count(*) FROM homolog.contas;'
   # teardown
   docker rm -f drill-pg17; Remove-Item -Recurse -Force $drill; Remove-Item Env:\SRC_PW
@@ -44,7 +44,12 @@ DOC PARA AGENTES. Continuidade: backup, restore, rollback de deploy, runbook de 
 
 ## 4. ROLLBACK DE DEPLOY
 - [EXISTE] Deploy homolog = `docker compose build/up` na VM via SSH ([specification-infrastructure]). Rollback de CÓDIGO: re-deploy da imagem/tag anterior.
-- [EXISTE risco] `Program.cs` roda `MigrateAsync`+`SeedAsync` no startup em Dev/Homolog contra o REMOTO ([specification-db §ACESSOS]) — migration aplicada NÃO volta sozinha no rollback de imagem.
+- [EXISTE 2026-06-12 — deploy-safety R1] Migrate DESACOPLADO do boot: `MigrationStartup` faz auto-migrate só em Development; Homolog/Prod aplicam via `app migrate` (modo CLI one-shot — aplica schema+seed e sai 0/1). Boot normal NÃO toca DDL → migration/startup quebrado não derruba o container depois do `up -d` (causa-raiz do incidente 2026-06-11).
+- [EXISTE 2026-06-12 — deploy-safety] Pipeline `deploy-homolog` com 4 gates (ci.yml; detalhe em [specification-infrastructure §DEPLOY]):
+  - **A — dry-run** (`scripts/migrate-dryrun.sh` + `docker-compose.dryrun.yml`): clona o schema homolog real (pg_dump estrutura+dados, na VM — C1/C5) num Postgres efêmero e roda o migrate ali ANTES do real. Pega falha data-dependente (ex.: índice UNIQUE sobre linha duplicada) invisível ao CI em DB vazio.
+  - **B — migrate one-shot pré-`up -d`**: `compose run --rm --no-deps backend ... migrate`. Falha aborta (`set -e`) com os containers ANTIGOS no ar (zero downtime).
+  - **C — health-gate + rollback**: pós-`up -d`, poll `/health`+`/health/ready` por dentro do container; reprovou → re-tag da imagem anterior (`:previous`, guardada antes do build) + `up -d --no-build` + exit 1. Smoke E2E pós-deploy: `smoke.yml` (gateia quando `HOMOLOG_BASE_URL` setado).
+  - **D — lint de migration arriscada** (`scripts/lint-migrations.sh`, job PR-only): reprova `CreateIndex unique:true`, `AddColumn`/`AlterColumn` NOT NULL sem default; justificar via comentário `lint-migrations:allow`.
 - [ALVO] Schema forward-compatible (expand/contract, [specification-db §BACKFILL]) habilita rollback de código SEM rollback de schema — a regra que torna deploy revertível. Migration destrutiva sem janela expand/contract trava o rollback → exige backup verificado (§1) ANTES.
 
 ## 5. RUNBOOK DE INCIDENTE
@@ -59,7 +64,7 @@ Alvo SaaS financeiro: RTO<15min (processo)/<4h (VM); RPO<5min · ≥2 instância
 ### Fase 1 — Quick-wins sem downtime (1–2 dias) [parcialmente em execução — DR-01/02]
 - [FEITO 2026-06-11 — DR-01] Conexão runtime via **Session pooler Supabase (:5432, IPv4)** em vez de direct (IPv6-only): pooling de conexão + IPv4, drop-in SEM código (session suporta migration/prepared stmt → `MigrateAsync` no boot intacto). Transaction :6543 descartado (quebraria migration no boot). Flip aplicado na VM + verificado (`/health/ready`=Healthy; `pg_stat_activity.forzion_api` com `application_name=Supavisor`). Detalhe canônico: [specification-db] §DICAS.
 - [ALVO/em execução] Documentar tier Supabase atual + janela/retenção real de backup em §1 desta spec.
-- [ALVO/em execução] 1º restore drill real (projeto temp Supabase · container `postgres:17` · validar `__EFMigrationsHistory`=32 + contagem `contas`) e resultado documentado (§2).
+- [ALVO/em execução] 1º restore drill real (projeto temp Supabase · container `postgres:17` · validar `__EFMigrationsHistory` = migrations aplicadas no dump (34 files no branch atual; 31 no drill 2026-06-11) + contagem `contas`) e resultado documentado (§2).
 
 ### Fase 2 — Supabase Pro, PITR e read-offloading (1–2 semanas) [ALVO]
 - [ALVO] Upgrade para Supabase Pro → habilita PITR (Point-in-Time Recovery, RPO<1min) + read-replica na mesma região sa-east-1.

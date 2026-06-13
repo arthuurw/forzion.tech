@@ -23,7 +23,9 @@ export const ASSINATURA_INADIMPLENTE_MESSAGE =
 function gravarRequestId(headers: unknown) {
   if (typeof window === "undefined" || !headers) return;
   const id = (headers as Record<string, string | undefined>)["x-request-id"];
-  if (id) (window as typeof window & { __lastRequestId?: string }).__lastRequestId = id;
+  // Resposta sem o header (ex.: 204) LIMPA o id: sem isso, um erro posterior nao
+  // relacionado a API herdaria a correlacao de uma request anterior alheia.
+  (window as typeof window & { __lastRequestId?: string }).__lastRequestId = id || undefined;
 }
 
 apiClient.interceptors.response.use(

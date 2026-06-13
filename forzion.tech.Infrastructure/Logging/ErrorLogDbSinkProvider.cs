@@ -99,7 +99,10 @@ public sealed class ErrorLogDbSinkProvider : ILoggerProvider
         {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var resultado = ErrorLogEntry.Criar(entry.OcorridoEm, entry.Nivel, entry.Origem, entry.Mensagem, entry.OcorridoEm);
+            // CreatedAt = hora de inserção (agora), não a de ocorrência — o canal é assíncrono,
+            // os dois instantes divergem e CreatedAt registra quando a linha foi de fato persistida.
+            var agora = _timeProvider.GetUtcNow().UtcDateTime;
+            var resultado = ErrorLogEntry.Criar(entry.OcorridoEm, entry.Nivel, entry.Origem, entry.Mensagem, agora);
             if (resultado.IsFailure)
                 return;
 

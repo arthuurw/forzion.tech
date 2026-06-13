@@ -8,24 +8,35 @@ import {
 // O interceptor de resposta lê `window` em tempo de chamada. Em env node não há
 // window; stubamos um mínimo (location + dispatchEvent + CustomEvent) para exercer
 // os ramos 401/403 sem depender de jsdom.
-interface RejectedHandler {
+interface InterceptorHandler {
+  fulfilled?: (res: unknown) => unknown;
   rejected?: (error: unknown) => unknown;
 }
 
+function interceptorHandlers() {
+  return (apiClient.interceptors.response as unknown as { handlers: InterceptorHandler[] }).handlers;
+}
+
 function rejectedHandler() {
-  const handlers = (apiClient.interceptors.response as unknown as { handlers: RejectedHandler[] }).handlers;
-  const handler = handlers.find((h) => h?.rejected)?.rejected;
+  const handler = interceptorHandlers().find((h) => h?.rejected)?.rejected;
   if (!handler) throw new Error("interceptor rejected handler não registrado");
   return handler;
 }
 
-const fakeWindow = {
+function fulfilledHandler() {
+  const handler = interceptorHandlers().find((h) => h?.fulfilled)?.fulfilled;
+  if (!handler) throw new Error("interceptor fulfilled handler não registrado");
+  return handler;
+}
+
+const fakeWindow: { location: { href: string }; dispatchEvent: ReturnType<typeof vi.fn>; __lastRequestId?: string } = {
   location: { href: "" },
   dispatchEvent: vi.fn(),
 };
 
 beforeEach(() => {
   fakeWindow.location.href = "";
+  fakeWindow.__lastRequestId = undefined;
   fakeWindow.dispatchEvent.mockClear();
   vi.stubGlobal("window", fakeWindow);
   vi.stubGlobal(
@@ -78,5 +89,17 @@ describe("apiClient — interceptor de resposta", () => {
   it("erro sem response (rede) é propagado", async () => {
     const handler = rejectedHandler();
     await expect(handler({ message: "Network Error" })).rejects.toBeDefined();
+  });
+
+  // FE-01: correlação Sentry sem id stale.
+  it("grava __lastRequestId quando a resposta traz X-Request-Id", () => {
+    fulfilledHandler()({ headers: { "x-request-id": "req-123" } });
+    expect(fakeWindow.__lastRequestId).toBe("req-123");
+  });
+
+  it("limpa __lastRequestId em resposta 204 sem X-Request-Id", () => {
+    fakeWindow.__lastRequestId = "req-antigo";
+    fulfilledHandler()({ headers: {} });
+    expect(fakeWindow.__lastRequestId).toBeUndefined();
   });
 });

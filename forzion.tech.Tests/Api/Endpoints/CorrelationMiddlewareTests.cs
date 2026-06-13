@@ -46,4 +46,35 @@ public class CorrelationMiddlewareTests(CorrelationMiddlewareTests.CorrelationWe
         response.Headers.GetValues("X-Request-Id").Should().ContainSingle()
             .Which.Should().Be(idEntrada);
     }
+
+    // HDR-01: charset fora do seguro é descartado; servidor gera o próprio id (não ecoa lixo).
+    // TryAddWithoutValidation contorna a validação do HttpClient p/ injetar o valor hostil.
+    [Fact]
+    public async Task Get_ComHeaderEntradaCharsetInseguro_NaoEchoaGeraServerSide()
+    {
+        var hostil = "inj!@#$%^&*()";
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.TryAddWithoutValidation("X-Request-Id", hostil);
+
+        var response = await factory.CreateClient().SendAsync(request);
+
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        response.Headers.GetValues("X-Request-Id").Should().ContainSingle()
+            .Which.Should().NotBe(hostil);
+    }
+
+    // HDR-01: acima de 128 chars (mesmo charset seguro) é descartado p/ não inflar log/header.
+    [Fact]
+    public async Task Get_ComHeaderEntradaMuitoLongo_NaoEchoaVerbatim()
+    {
+        var longo = new string('a', 200);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.Add("X-Request-Id", longo);
+
+        var response = await factory.CreateClient().SendAsync(request);
+
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        response.Headers.GetValues("X-Request-Id").Should().ContainSingle()
+            .Which.Should().NotBe(longo);
+    }
 }
