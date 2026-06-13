@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { SignJWT } from "jose";
+import { http, HttpResponse } from "msw";
+import { server } from "@/test/msw/server";
 import { GET } from "@/app/api/auth/me/route";
+import { extractCookies } from "@/test/setup/api";
 import type { NextRequest } from "next/server";
 
 const TEST_SECRET = "test-secret-minimo-32-caracteres-ok";
@@ -84,5 +87,47 @@ describe("GET /api/auth/me", () => {
     const user = await res.json();
     expect(user).not.toBeNull();
     expect(user.nome).toBe("");
+  });
+});
+
+describe("GET /api/auth/me — renovação silenciosa", () => {
+  const novoPar = {
+    token: "novo.access.jwt",
+    refreshToken: "novo-refresh",
+    tipoConta: "Aluno",
+    contaId: "c1",
+    perfilId: "p1",
+    nome: "Maria",
+  };
+
+  it("access expirado + refresh válido → rotaciona e devolve SessionUser", async () => {
+    server.use(http.post("*/auth/refresh", () => HttpResponse.json(novoPar)));
+    const token = await makeJwt({ conta_id: "c1", tipo_conta: "Aluno", perfil_id: "p1", exp: PAST });
+
+    const res = await GET(makeRequest({ token, session_guard: "1", refresh: "raw-antigo" }));
+    const user = await res.json();
+
+    expect(user).not.toBeNull();
+    expect(user.contaId).toBe("c1");
+    expect(user.nome).toBe("Maria");
+    const cookies = extractCookies(res);
+    expect(cookies.refresh).toBe("novo-refresh");
+    expect(cookies.tipo_conta).toBe("Aluno");
+  });
+
+  it("sem access mas refresh válido → renova mesmo sem token", async () => {
+    server.use(http.post("*/auth/refresh", () => HttpResponse.json(novoPar)));
+    const res = await GET(makeRequest({ refresh: "raw-antigo" }));
+    const user = await res.json();
+    expect(user).not.toBeNull();
+    expect(user.contaId).toBe("c1");
+  });
+
+  it("refresh inválido (backend 401) → null limpando cookies", async () => {
+    server.use(http.post("*/auth/refresh", () => new HttpResponse(null, { status: 401 })));
+    const res = await GET(makeRequest({ refresh: "raw-morto" }));
+    expect(await res.json()).toBeNull();
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain("refresh=;");
   });
 });

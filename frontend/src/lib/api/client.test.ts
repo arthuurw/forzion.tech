@@ -52,7 +52,24 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => vi.unstubAllGlobals());
+const originalAdapter = apiClient.defaults.adapter;
+afterEach(() => {
+  vi.unstubAllGlobals();
+  apiClient.defaults.adapter = originalAdapter;
+});
+
+// Adapter fake: resolve toda request sem rede (usado p/ exercer o retry pós-refresh).
+function stubAdapter() {
+  const adapter = vi.fn(async (config: unknown) => ({
+    data: { retried: true },
+    status: 200,
+    statusText: "OK",
+    headers: {},
+    config,
+  }));
+  apiClient.defaults.adapter = adapter as never;
+  return adapter;
+}
 
 describe("apiClient — interceptor de resposta", () => {
   it("redireciona para /login em 401", async () => {
@@ -101,5 +118,58 @@ describe("apiClient — interceptor de resposta", () => {
     fakeWindow.__lastRequestId = "req-antigo";
     fulfilledHandler()({ headers: {} });
     expect(fakeWindow.__lastRequestId).toBeUndefined();
+  });
+});
+
+describe("apiClient — renovação silenciosa em 401", () => {
+  it("401 com config → refresh + refaz a request original (sem deslogar)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
+    const adapter = stubAdapter();
+
+    const result = (await rejectedHandler()({
+      response: { status: 401 },
+      config: { url: "/alunos", headers: {} },
+    })) as { data: unknown };
+
+    expect(result.data).toEqual({ retried: true });
+    expect(adapter).toHaveBeenCalledTimes(1);
+    expect(fakeWindow.location.href).toBe("");
+  });
+
+  it("401 concorrentes coalescem em 1 só refresh (anti-tempestade)", async () => {
+    let resolveFetch!: (r: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((r) => (resolveFetch = r)));
+    vi.stubGlobal("fetch", fetchMock);
+    stubAdapter();
+    const handler = rejectedHandler();
+
+    const p1 = handler({ response: { status: 401 }, config: { url: "/a", headers: {} } });
+    const p2 = handler({ response: { status: 401 }, config: { url: "/b", headers: {} } });
+    resolveFetch(new Response(null, { status: 200 }));
+    await Promise.all([p1, p2]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refresh falha → redireciona /login", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 401 })));
+    const handler = rejectedHandler();
+
+    await expect(
+      handler({ response: { status: 401 }, config: { url: "/a", headers: {} } }),
+    ).rejects.toBeDefined();
+    expect(fakeWindow.location.href).toBe("/login");
+  });
+
+  it("401 já retried → não refaz refresh, vai pro /login (sem loop)", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const handler = rejectedHandler();
+
+    await expect(
+      handler({ response: { status: 401 }, config: { url: "/a", _retry: true, headers: {} } }),
+    ).rejects.toBeDefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fakeWindow.location.href).toBe("/login");
   });
 });

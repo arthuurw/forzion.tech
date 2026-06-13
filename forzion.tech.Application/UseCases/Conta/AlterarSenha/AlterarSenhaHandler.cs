@@ -1,6 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
 
@@ -27,6 +28,7 @@ public class AlterarSenhaHandler(
     IUserContext userContext,
     IContaRepository contaRepository,
     IPasswordHasher passwordHasher,
+    IRefreshTokenService refreshTokenService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     IValidator<AlterarSenhaCommand> validator)
@@ -51,9 +53,13 @@ public class AlterarSenhaHandler(
         if (!passwordHasher.Verify(command.SenhaAtual, conta.PasswordHash))
             throw new CredenciaisInvalidasException();
 
-        var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), timeProvider.GetUtcNow().UtcDateTime);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), agora);
         if (atualizarResult.IsFailure)
             return Result.Failure(atualizarResult.Error!);
+
+        // Troca de senha revoga todas as sessões da conta (NR-6): força re-login em todos os devices.
+        await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

@@ -84,6 +84,7 @@ public class ResponseDtoSnapshots
     [Fact]
     public Task LoginResponse() => Verify(new LoginResponse(
         Token: "token-jwt-deterministico",
+        RefreshToken: "refresh-deterministico",
         TipoConta: TipoConta.Aluno,
         ContaId: Id1,
         PerfilId: Id2,

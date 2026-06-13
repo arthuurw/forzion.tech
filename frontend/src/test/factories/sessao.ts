@@ -12,6 +12,7 @@ export function buildConta(overrides: Partial<LoginResponse> = {}): LoginRespons
   const tipoConta: TipoConta = "Aluno";
   return {
     token: faker.string.alphanumeric(64),
+    refreshToken: faker.string.hexadecimal({ length: 64, prefix: "" }),
     tipoConta,
     contaId: faker.string.uuid(),
     perfilId: faker.string.uuid(),

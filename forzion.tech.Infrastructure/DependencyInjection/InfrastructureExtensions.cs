@@ -76,6 +76,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDbContextTransactionProvider>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddSingleton<IDatabaseErrorInspector, NpgsqlDatabaseErrorInspector>();
         services.AddScoped<IJwtService, JwtService>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 
         services.AddScoped<IContaRepository, ContaRepository>();
@@ -95,6 +96,8 @@ public static class InfrastructureExtensions
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IMensagemSuporteRepository, MensagemSuporteRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<IRefreshTokenFamilyRepository, RefreshTokenFamilyRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IWhatsAppDeliveryLogRepository, WhatsAppDeliveryLogRepository>();

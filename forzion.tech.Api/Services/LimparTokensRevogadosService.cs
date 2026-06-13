@@ -20,6 +20,16 @@ public class LimparTokensRevogadosService(
 
                 if (removed > 0)
                     logger.LogInformation("Limpeza de tokens revogados: {Count} registros removidos.", removed);
+
+                // GC das sessões de refresh: famílias revogadas ou além do teto absoluto.
+                // Tokens (incl. usados, retidos p/ reuse-detection enquanto a família vive)
+                // caem por cascade no nível do banco junto da família.
+                var familyRepo = scope.ServiceProvider.GetRequiredService<IRefreshTokenFamilyRepository>();
+                var agora = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+                var familiasRemovidas = await familyRepo.LimparExpiradasAsync(agora, stoppingToken).ConfigureAwait(false);
+
+                if (familiasRemovidas > 0)
+                    logger.LogInformation("Limpeza de famílias de refresh: {Count} famílias removidas.", familiasRemovidas);
             }
             catch (OperationCanceledException)
             {

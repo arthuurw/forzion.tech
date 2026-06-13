@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import { POST } from "@/app/api/auth/route";
-import { createMockRequest } from "@/test/setup/api";
+import { createMockRequest, extractCookies } from "@/test/setup/api";
 
 vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn(() => true),
@@ -20,6 +20,7 @@ describe("POST /api/auth — resposta de login", () => {
       http.post("*/auth/login", () =>
         HttpResponse.json({
           token: fakeJwt,
+          refreshToken: "raw-refresh",
           tipoConta: "Treinador",
           contaId: "abc",
           perfilId: "def",
@@ -36,6 +37,8 @@ describe("POST /api/auth — resposta de login", () => {
     const body = await res.json();
 
     expect(body.token).toBeUndefined();
+    // refresh raw nunca volta no corpo — só em cookie httpOnly
+    expect(body.refreshToken).toBeUndefined();
     expect(body.tipoConta).toBe("Treinador");
     expect(body.contaId).toBe("abc");
     expect(body.perfilId).toBe("def");
@@ -46,6 +49,7 @@ describe("POST /api/auth — resposta de login", () => {
       http.post("*/auth/login", () =>
         HttpResponse.json({
           token: fakeJwt,
+          refreshToken: "raw-refresh",
           tipoConta: "Aluno",
           contaId: "c1",
           perfilId: "p1",
@@ -67,6 +71,14 @@ describe("POST /api/auth — resposta de login", () => {
     expect(setCookie).toContain("session_guard=");
     // session_guard deve ser um UUID aleatório (não mais o valor estático "1")
     expect(setCookie).not.toContain("session_guard=1;");
+
+    const cookies = extractCookies(res);
+    expect(cookies.refresh).toBe("raw-refresh");
+    expect(cookies.tipo_conta).toBe("Aluno");
+    // hint de roteamento é legível pelo client → NÃO httpOnly
+    const tipoContaCookie = res.headers.getSetCookie().find((c) => c.startsWith("tipo_conta="));
+    expect(tipoContaCookie).toBeDefined();
+    expect(tipoContaCookie).not.toContain("HttpOnly");
   });
 
   it("backend retorna erro → propaga status sem setar cookies", async () => {

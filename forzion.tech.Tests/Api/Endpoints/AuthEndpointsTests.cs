@@ -45,7 +45,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
         Guid.NewGuid(), DateTime.UtcNow, null);
 
     private static readonly LoginResponse RespostaLogin = new(
-        "token.jwt.fake", TipoConta.Treinador, Guid.NewGuid(), TreinadorId, "Carlos");
+        "token.jwt.fake", "refresh.fake", TipoConta.Treinador, Guid.NewGuid(), TreinadorId, "Carlos");
 
     public AuthEndpointsTests(AuthWebFactory factory)
     {
@@ -253,10 +253,13 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
         public Mock<LoginHandler> LoginHandlerMock { get; } = new(
             Mock.Of<IContaRepository>(),
             Mock.Of<IJwtService>(),
+            Mock.Of<IRefreshTokenService>(),
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IAlunoRepository>(),
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<ISystemUserRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            TimeProvider.System,
             Mock.Of<IValidator<LoginCommand>>(),
             Mock.Of<ILogger<LoginHandler>>());
 

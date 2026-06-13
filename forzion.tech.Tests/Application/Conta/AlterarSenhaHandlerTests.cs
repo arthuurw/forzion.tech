@@ -17,6 +17,7 @@ public class AlterarSenhaHandlerTests
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
+    private readonly Mock<IRefreshTokenService> _refresh = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IValidator<AlterarSenhaCommand>> _validator = new();
     private readonly AlterarSenhaHandler _handler;
@@ -30,6 +31,7 @@ public class AlterarSenhaHandlerTests
             _userContext.Object,
             _contaRepo.Object,
             _passwordHasher.Object,
+            _refresh.Object,
             _unitOfWork.Object,
             TimeProvider.System,
             _validator.Object);
@@ -53,6 +55,8 @@ public class AlterarSenhaHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        // NR-6: troca de senha revoga todas as sessões da conta.
+        _refresh.Verify(s => s.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

@@ -97,29 +97,40 @@ html[lang=pt-BR]
 | raiz | `/`, `/perfil` | root layout | livre/all |
 
 ## MIDDLEWARE (`src/middleware.ts`)
-Executa em todas as rotas exceto `_next/static`, `_next/image`, `favicon.ico`, `api/`. Lê cookies `token` + `session_guard` (ambos necessários); extrai `TipoConta` via `extractTipoConta` (decodifica JWT client-side, valida `exp`).
+Executa em todas as rotas exceto `_next/static`, `_next/image`, `favicon.ico`, `api/`. Verifica `token` + `session_guard` via `jwtVerify` (assinatura+`exp` autoritativos). Lê também `refresh` (httpOnly) e o hint `tipo_conta` (NÃO-httpOnly, R-FE — só roteamento; backend autoritativo via jti/policies). `tipoConta` efetivo = verificado ?? hint (quando há refresh).
 
 Lógica de redirect:
 1. `/cadastro/*` → sempre `next()` (livre).
-2. `!tipoConta && !isPublic` → redirect `/login`.
-3. `tipoConta && pathname === "/login"` → redirect para área do role (`/admin`, `/treinador`, `/aluno`).
-4. `tipoConta` acessando área de outro role → redirect para área correta.
+2. `!verificado && !refresh && !isPublic` → redirect `/login`. **Com `refresh` presente (access expirado), NÃO bounceia** — deixa passar p/ a renovação silenciosa client-side (`/api/auth/refresh`) / `/api/auth/me` salvar a sessão.
+3. `tipoConta && pathname === "/login"` → redirect para área do role.
+4. `tipoConta` acessando área de outro role → redirect para área correta (hint roteia attacker p/ a própria área; backend nega o resto).
 
 ## AUTH FLOW
 ```
 Cliente → POST /api/auth (Next.js Route Handler)
   → rate limit 10 req/60s por IP
   → fetch API_BASE/auth/login
-  → resposta: { token, tipoConta, contaId, perfilId }
-  → seta cookies httpOnly: token (Bearer JWT, maxAge=exp-now), session_guard=1 (flag)
-  → retorna { tipoConta, contaId, perfilId } (token NÃO exposto ao JS)
+  → resposta: { token, refreshToken, tipoConta, contaId, perfilId, nome }
+  → seta cookies (helper applySessionCookies): token httpOnly (maxAge=exp-now),
+    refresh httpOnly (maxAge=idle do papel: Admin 2h / demais 7d),
+    tipo_conta NÃO-httpOnly (hint de roteamento), session_guard httpOnly (flag)
+  → retorna { tipoConta, contaId, perfilId, nome } (token E refresh NÃO expostos ao JS)
 
-GET /api/auth/me → jwtVerify (jose, JWT_SECRET + JWT_ISSUER + JWT_AUDIENCE)
-  → extrai conta_id, tipo_conta, perfil_id do payload
-  → retorna SessionUser | null
+POST /api/auth/refresh (proxy de renovação silenciosa)
+  → repassa cookie httpOnly `refresh` → API_BASE/auth/refresh (rotação single-use + reuse detection)
+  → sucesso: reescreve token+refresh+tipo_conta rotacionados | 401: limpa cookies de sessão
+
+GET /api/auth/me → jwtVerify (jose). Access válido → SessionUser.
+  → access expirado/ausente MAS refresh presente: dispara o refresh server-side
+    (rotaciona + reescreve cookies) antes de devolver → sessão sobrevive a reload com access vencido.
+  → sem refresh / refresh morto → null (+ limpa cookies)
+
+client.ts (interceptor axios): 401 ⇒ tenta /api/auth/refresh UMA vez (flag `_retry` anti-loop;
+  promise compartilhada anti-tempestade de refresh concorrente) → refaz a request original;
+  refresh falho ⇒ window.location='/login'.
 
 POST /api/auth/logout
-  → chama API_BASE/conta/logout com Bearer (invalida JTI no backend)
+  → chama API_BASE/conta/logout com Bearer (invalida JTI + revoga família do refresh no backend)
   → delete cookies token + session_guard
   → falha silenciosa (cookies deletados de qualquer forma)
 ```
@@ -139,9 +150,10 @@ POST /api/auth/logout
 ## API ROUTES DE AUTH (Next.js Route Handlers)
 | Rota | Método | Descrição |
 |------|--------|-----------|
-| `/api/auth` | POST | Login → seta cookies httpOnly |
-| `/api/auth/me` | GET | Verifica JWT → retorna SessionUser |
-| `/api/auth/logout` | POST | Invalida backend + limpa cookies |
+| `/api/auth` | POST | Login → seta cookies httpOnly (token+refresh+session_guard) + hint tipo_conta |
+| `/api/auth/refresh` | POST | Renovação silenciosa: repassa cookie refresh → rotaciona token+refresh, ou 401+limpa |
+| `/api/auth/me` | GET | Verifica JWT → SessionUser; access vencido + refresh → rotaciona server-side |
+| `/api/auth/logout` | POST | Invalida backend (jti + família) + limpa cookies |
 | `/api/auth/register/treinador` | POST | Cadastro treinador (rate limit, proxy). Body inclui `planoPlataformaId`+`modoPagamentoAluno` |
 | `/api/auth/register/aluno` | POST | Cadastro aluno (rate limit, proxy) |
 | `/api/auth/planos` | GET | Planos da plataforma p/ wizard de cadastro (proxy `/auth/planos`, `cache: "no-store"`, sem rate limit) |

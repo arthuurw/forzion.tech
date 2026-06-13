@@ -32,6 +32,8 @@ public class AppDbContext(
     internal DbSet<ExecucaoExercicio> ExecucoesExercicio => Set<ExecucaoExercicio>();
     public DbSet<TokenRevogado> TokensRevogados => Set<TokenRevogado>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<RefreshTokenFamily> RefreshTokenFamilies => Set<RefreshTokenFamily>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
     public DbSet<EmailDeliveryLog> EmailDeliveryLogs => Set<EmailDeliveryLog>();
     public DbSet<WhatsAppDeliveryLog> WhatsAppDeliveryLogs => Set<WhatsAppDeliveryLog>();

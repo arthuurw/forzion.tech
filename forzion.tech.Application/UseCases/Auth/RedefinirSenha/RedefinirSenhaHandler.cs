@@ -3,6 +3,7 @@ using System.Text;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
 
@@ -32,6 +33,7 @@ public class RedefinirSenhaHandler(
     IPasswordResetTokenRepository tokenRepository,
     IContaRepository contaRepository,
     IPasswordHasher passwordHasher,
+    IRefreshTokenService refreshTokenService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     IValidator<RedefinirSenhaCommand> validator)
@@ -72,6 +74,9 @@ public class RedefinirSenhaHandler(
         var marcarResult = token.MarcarComoUsado(agora);
         if (marcarResult.IsFailure)
             return Result.Failure(marcarResult.Error!);
+
+        // Reset de senha revoga todas as sessões da conta (NR-6) — inclui o device de quem roubou a senha.
+        await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

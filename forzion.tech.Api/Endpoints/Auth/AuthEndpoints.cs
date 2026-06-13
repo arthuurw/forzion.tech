@@ -4,6 +4,7 @@ using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.Login;
 using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
+using forzion.tech.Application.UseCases.Auth.RenovarSessao;
 using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.UseCases.Pacotes;
 using forzion.tech.Application.UseCases.Pacotes.ListarPacotes;
@@ -26,11 +27,13 @@ public static class AuthEndpoints
 
         group.MapPost("/login", async (
             LoginRequest request,
+            HttpContext http,
             [FromServices] LoginHandler handler,
             CancellationToken cancellationToken) =>
         {
+            var rotulo = http.Request.Headers.UserAgent.ToString();
             var result = await handler.HandleAsync(
-                new LoginCommand(request.Email, request.Senha), cancellationToken);
+                new LoginCommand(request.Email, request.Senha, rotulo), cancellationToken);
 
             return Results.Ok(result);
         })
@@ -41,6 +44,29 @@ public static class AuthEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status401Unauthorized)
         .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/refresh", async (
+            HttpContext http,
+            [FromServices] RenovarSessaoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            // Refresh raw vem do cookie httpOnly `refresh` (repassado pelo proxy Next), nunca do JS.
+            var refresh = http.Request.Cookies["refresh"];
+            if (string.IsNullOrEmpty(refresh))
+                return Results.Unauthorized();
+
+            var result = await handler.HandleAsync(new RenovarSessaoCommand(refresh), cancellationToken);
+
+            // Falha (inválido/expirado/reuse) é sempre 401 genérico: não distingue causa p/ não vazar sinal.
+            return result.IsFailure ? Results.Unauthorized() : Results.Ok(result.Value);
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("auth")
+        .WithName("RefreshSessao")
+        .WithSummary("Rotaciona o refresh token e reemite o access token (renovação silenciosa)")
+        .Produces<RenovarSessaoResponse>()
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/register/treinador", async (
