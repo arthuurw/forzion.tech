@@ -26,6 +26,7 @@ public class RedefinirSenhaHandlerTests
     private readonly Mock<IPasswordResetTokenRepository> _tokenRepo = new();
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IPasswordHasher> _hasher = new();
+    private readonly Mock<IRefreshTokenService> _refresh = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly RedefinirSenhaCommandValidator _validator = new();
@@ -38,7 +39,7 @@ public class RedefinirSenhaHandlerTests
     {
         _hasher.Setup(h => h.Hash(It.IsAny<string>())).Returns<string>(s => $"hash:{s}");
         _handler = new RedefinirSenhaHandler(
-            _tokenRepo.Object, _contaRepo.Object, _hasher.Object,
+            _tokenRepo.Object, _contaRepo.Object, _hasher.Object, _refresh.Object,
             _unitOfWork.Object, _timeProvider, _validator);
     }
 

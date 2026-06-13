@@ -26,7 +26,7 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - `specs/` — docs de referência `specification-*` (versionados/commitados).
 
 ## TRIGGER — QUE SPEC CARREGAR (tarefa → co-carregar)
-Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git.
+Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git. Iniciou/concluiu FEATURE ou FASE ⇒ SEMPRE +workflow (sincronizar o card — DoD#10).
 | Tocou em… | Carregar |
 |---|---|
 | handler/use-case/Result/DI         | backend |
@@ -73,6 +73,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 7. Git: LER `specs/specification-git.md` ANTES de qualquer op git (CANÔNICO — §PRE-COMMIT HOOK + §EDGE CASES/CRLF). Conventional; `dotnet format forzion.tech.slnx` ANTES de `git add` em `.cs` novos.
 8. Commit + push para a BRANCH DE TRABALHO ATUAL apenas. NÃO abrir PR automaticamente — PR (→ `homolog`/`master`) é SEMPRE solicitado manualmente pelo usuário, até segunda ordem (minutos GH Actions limitados).
 9. PR (quando o usuário pedir o PR — DoD#8): (a) PRÉ-PR: RE-LER a `specification-*` de CADA área tocada e ATUALIZAR o arquivo na MESMA branch se o código divergiu (specs versionadas = estado REAL, não aspiracional); (b) PÓS-PR, AO CI FICAR VERDE: CODE REVIEW do diff alinhado ao plugin **context7** — toda afirmação que dependa de API de lib/framework (EF Core, Npgsql, Stripe.net, ASP.NET, Serilog, Next.js/React/MUI/Sentry, aws-cli/age/pg_dump) é VERIFICADA no context7 (`resolve-library-id`→`query-docs`) ANTES de confirmar/refutar achado — não alucinar API. Achado cross-file: ler o arquivo real (`coding §7`). O review TAMBÉM valida COMENTÁRIOS DESNECESSÁRIOS (regra 9 / `specification-coding` §8): paráfrase, óbvio, inline que repete o código — o subset que o hook de pre-commit NÃO pega (exige julgamento); flagar pra remoção. CI VERMELHO ⇒ `superpowers:systematic-debugging` da causa PRIMEIRO; NÃO revisar código que ainda falha gate. Fluxo operacional (monitorar checks, ordem): `specification-git` §PUSH/PR.
+10. Board (sincronizar o card — `specification-workflow` Fluxo A): a CADA fase concluída, mover o Status do card (Specifying→Designing→Ready for Dev→In Dev→Testing→Developed→In Review→Done); ao mergear, Status=Done + campo Concluído em. NÃO depende de o usuário pedir — é parte do "done". Pré-condição: a workflow-spec já está em contexto (TRIGGER acima dispara em início/fim de feature ou fase) → usar os IDs de campo + comandos `gh` de lá. Escopo Small (quick mode) sem card NÃO se aplica.
 BUG no caminho ⇒ `superpowers:systematic-debugging`: achar a causa, não remendar sintoma; teste vermelho FICA até o código corrigir.
 
 ## REGRAS (só alteráveis mediante aprovação do usuário)

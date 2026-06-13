@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { extractApiErrorInfo } from "@/lib/api/extractApiError";
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/backend";
@@ -7,6 +7,27 @@ export const apiClient = axios.create({
   baseURL,
   headers: { "Content-Type": "application/json" },
 });
+
+// Flag de retry por request: garante UMA tentativa de refresh (sem loop se o retry
+// também 401 — ex.: família revogada / refresh já rotacionado).
+type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
+// Promise de refresh em voo, compartilhada entre 401s concorrentes (anti-tempestade):
+// N requests que estouram juntos disparam 1 só chamada a /api/auth/refresh.
+let refreshInFlight: Promise<boolean> | null = null;
+
+function renovarSessao(): Promise<boolean> {
+  if (!refreshInFlight) {
+    // fetch direto (não apiClient) p/ não recursar neste interceptor.
+    refreshInFlight = fetch("/api/auth/refresh", { method: "POST" })
+      .then((r) => r.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
 
 /**
  * Nome do evento global disparado quando o backend retorna 403 com code
@@ -33,11 +54,19 @@ apiClient.interceptors.response.use(
     gravarRequestId(res.headers);
     return res;
   },
-  (error) => {
+  async (error: AxiosError) => {
     gravarRequestId(error?.response?.headers);
     if (typeof window !== "undefined") {
       const { status, code } = extractApiErrorInfo(error);
       if (status === 401) {
+        const original = error.config as RetriableConfig | undefined;
+        // 1ª 401: tenta renovação silenciosa e refaz a request original com os
+        // cookies rotacionados. Só desloga se o refresh falhar (sessão de fato morta).
+        if (original && !original._retry) {
+          original._retry = true;
+          const renovou = await renovarSessao();
+          if (renovou) return apiClient(original);
+        }
         window.location.href = "/login";
       } else if (status === 403 && code === "ASSINATURA_INADIMPLENTE") {
         // Dispatch evento global. AppLayout (ou outro listener) renderiza toast.

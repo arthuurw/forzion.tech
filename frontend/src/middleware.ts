@@ -28,7 +28,15 @@ export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("token")?.value;
   const sessionGuard = request.cookies.get("session_guard")?.value;
-  const tipoConta = token && sessionGuard ? await verifyTipoConta(token) : null;
+  const refresh = request.cookies.get("refresh")?.value;
+  const verified = token && sessionGuard ? await verifyTipoConta(token) : null;
+
+  // Access expirado (15min) mas refresh presente ⇒ renovação silenciosa client-side ainda
+  // pode salvar a sessão. NÃO é decisão de segurança — backend é autoritativo via jti/policies;
+  // o hint `tipo_conta` (não-httpOnly) serve só p/ rotear sem desencriptar o JWT (R-FE).
+  const hasRefresh = Boolean(refresh);
+  const hint = hasRefresh ? parseTipoConta(request.cookies.get("tipo_conta")?.value) : null;
+  const tipoConta = verified ?? hint;
 
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||
@@ -37,8 +45,9 @@ export default async function middleware(request: NextRequest) {
   // Cadastro é sempre acessível — autenticado ou não
   if (pathname.startsWith("/cadastro/")) return NextResponse.next();
 
-  // Não autenticado (ou token expirado) tentando acessar área protegida
-  if (!tipoConta && !isPublic) {
+  // Não autenticado E sem refresh tentando acessar área protegida. Com refresh presente,
+  // deixa passar: a página/cliente dispara o refresh em vez de bouncear pro /login.
+  if (!verified && !hasRefresh && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

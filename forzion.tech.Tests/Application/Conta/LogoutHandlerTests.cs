@@ -2,6 +2,7 @@ using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.Logout;
+using forzion.tech.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Moq;
 using DomainTokenRevogado = forzion.tech.Domain.Entities.TokenRevogado;
@@ -11,6 +12,7 @@ namespace forzion.tech.Tests.Application.ContaTestes;
 public class LogoutHandlerTests
 {
     private readonly Mock<ITokenRevogadoRepository> _tokenRepo = new();
+    private readonly Mock<IRefreshTokenService> _refresh = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<LogoutHandler>> _logger = new();
@@ -18,7 +20,8 @@ public class LogoutHandlerTests
 
     public LogoutHandlerTests()
     {
-        _handler = new LogoutHandler(_tokenRepo.Object, _userContext.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
+        _userContext.Setup(u => u.FamiliaId).Returns(Guid.Empty);
+        _handler = new LogoutHandler(_tokenRepo.Object, _refresh.Object, _userContext.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
     }
 
     [Fact]
@@ -33,6 +36,19 @@ public class LogoutHandlerTests
         result.IsSuccess.Should().BeTrue();
         _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ComFamilia_RevogaFamiliaDoDevice()
+    {
+        var familiaId = Guid.NewGuid();
+        _userContext.Setup(u => u.Jti).Returns(Guid.NewGuid());
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddHours(1));
+        _userContext.Setup(u => u.FamiliaId).Returns(familiaId);
+
+        await _handler.HandleAsync();
+
+        _refresh.Verify(r => r.RevogarFamiliaAsync(familiaId, MotivoRevogacaoFamilia.Logout, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

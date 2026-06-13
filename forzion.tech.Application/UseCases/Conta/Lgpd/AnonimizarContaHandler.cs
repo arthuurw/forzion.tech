@@ -35,7 +35,8 @@ public class AnonimizarContaHandler(
     TimeProvider timeProvider,
     IUserContext userContext,
     ITokenRevogadoRepository tokenRevogadoRepository,
-    IDatabaseErrorInspector databaseErrorInspector)
+    IDatabaseErrorInspector databaseErrorInspector,
+    IRefreshTokenFamilyRepository refreshTokenFamilyRepository)
 {
     public virtual Task<Result> HandleAsync(
         AnonimizarContaCommand command,
@@ -157,6 +158,12 @@ public class AnonimizarContaHandler(
         // Assunto/descrição das mensagens de suporte são texto livre = PII potencial. Apaga na mesma
         // transação ambiente (ExecuteDelete) — all-or-nothing com o resto da anonimização (FR-10).
         await mensagemSuporteRepository
+            .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+
+        // Sessões de refresh (família + tokens via cascade): o Rotulo guarda device/user-agent
+        // (PII potencial) e a sessão vincula-se ao titular. Purga na mesma transação; sem refresh
+        // válido, qualquer renovação pós-anonimização cai em 401 (NR-6/SEC-4).
+        await refreshTokenFamilyRepository
             .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
         var logResult = LogAprovacao.Registrar(

@@ -16,23 +16,30 @@ public class LoginHandlerTests
 {
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IJwtService> _jwtService = new();
+    private readonly Mock<IRefreshTokenService> _refresh = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<ISystemUserRepository> _systemUserRepo = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<LoginHandler>> _logger = new();
     private readonly LoginCommandValidator _validator = new();
     private readonly LoginHandler _handler;
 
     public LoginHandlerTests()
     {
+        _refresh.Setup(s => s.EmitirNovaFamiliaAsync(It.IsAny<Conta>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefreshEmitido("refresh-raw", Guid.NewGuid()));
         _handler = new LoginHandler(
             _contaRepo.Object,
             _jwtService.Object,
+            _refresh.Object,
             _passwordHasher.Object,
             _alunoRepo.Object,
             _treinadorRepo.Object,
             _systemUserRepo.Object,
+            _unitOfWork.Object,
+            TimeProvider.System,
             _validator,
             _logger.Object);
     }
@@ -49,7 +56,7 @@ public class LoginHandlerTests
         _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);
-        _jwtService.Setup(j => j.GerarToken(conta, treinador.Id, It.IsAny<string>())).Returns("token.jwt");
+        _jwtService.Setup(j => j.GerarToken(conta, treinador.Id, It.IsAny<string>(), It.IsAny<Guid>())).Returns("token.jwt");
 
         var result = await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
@@ -148,14 +155,14 @@ public class LoginHandlerTests
         _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);
-        _jwtService.Setup(j => j.GerarToken(conta, aluno.Id, It.IsAny<string>())).Returns("token.aluno");
+        _jwtService.Setup(j => j.GerarToken(conta, aluno.Id, It.IsAny<string>(), It.IsAny<Guid>())).Returns("token.aluno");
 
         var result = await _handler.HandleAsync(new LoginCommand("aluno@test.com", "senha123"));
 
         result.Token.Should().Be("token.aluno");
         result.TipoConta.Should().Be(TipoConta.Aluno);
         result.Nome.Should().Be("João Aluno");
-        _jwtService.Verify(j => j.GerarToken(conta, aluno.Id, It.IsAny<string>()), Times.Once);
+        _jwtService.Verify(j => j.GerarToken(conta, aluno.Id, It.IsAny<string>(), It.IsAny<Guid>()), Times.Once);
     }
 
     [Fact]
@@ -170,14 +177,14 @@ public class LoginHandlerTests
         _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
         _systemUserRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(systemUser);
-        _jwtService.Setup(j => j.GerarToken(conta, systemUser.Id, It.IsAny<string>())).Returns("token.admin");
+        _jwtService.Setup(j => j.GerarToken(conta, systemUser.Id, It.IsAny<string>(), It.IsAny<Guid>())).Returns("token.admin");
 
         var result = await _handler.HandleAsync(new LoginCommand("admin@test.com", "senha123"));
 
         result.Token.Should().Be("token.admin");
         result.TipoConta.Should().Be(TipoConta.SystemAdmin);
         result.Nome.Should().Be("Admin");
-        _jwtService.Verify(j => j.GerarToken(conta, systemUser.Id, It.IsAny<string>()), Times.Once);
+        _jwtService.Verify(j => j.GerarToken(conta, systemUser.Id, It.IsAny<string>(), It.IsAny<Guid>()), Times.Once);
     }
 
     [Fact]
@@ -228,7 +235,7 @@ public class LoginHandlerTests
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
         await act.Should().ThrowAsync<TreinadorAguardandoAprovacaoException>();
-        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -247,7 +254,7 @@ public class LoginHandlerTests
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
         await act.Should().ThrowAsync<TreinadorPagamentoPendenteException>();
-        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -267,7 +274,7 @@ public class LoginHandlerTests
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
         await act.Should().ThrowAsync<TreinadorInativoException>();
-        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]

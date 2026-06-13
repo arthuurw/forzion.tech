@@ -17,6 +17,18 @@ export type DificuldadeTreino = "Iniciante" | "Intermediario" | "Avancado";
 
 export interface LoginResponse {
   token: string;
+  refreshToken: string;
+  tipoConta: TipoConta;
+  contaId: string;
+  perfilId: string;
+  nome: string;
+}
+
+// Resposta da rotação de sessão (/auth/refresh). Mesmo shape do login: novo access +
+// refresh rotacionado (single-use). O refresh raw nunca chega ao JS — fica em cookie httpOnly.
+export interface RefreshResponse {
+  token: string;
+  refreshToken: string;
   tipoConta: TipoConta;
   contaId: string;
   perfilId: string;

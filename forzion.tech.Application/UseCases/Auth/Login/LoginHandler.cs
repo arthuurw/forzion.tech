@@ -9,10 +9,13 @@ namespace forzion.tech.Application.UseCases.Auth.Login;
 public class LoginHandler(
     IContaRepository contaRepository,
     IJwtService jwtService,
+    IRefreshTokenService refreshTokenService,
     IPasswordHasher passwordHasher,
     IAlunoRepository alunoRepository,
     ITreinadorRepository treinadorRepository,
     ISystemUserRepository systemUserRepository,
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
     IValidator<LoginCommand> validator,
     ILogger<LoginHandler> logger)
 {
@@ -79,10 +82,14 @@ public class LoginHandler(
                 throw new InvalidOperationException("Tipo de conta inválido.");
         }
 
-        var token = jwtService.GerarToken(conta, perfilId, nome);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        // Emite a família ANTES do JWT: o access carrega a claim `fam` desta sessão.
+        var refresh = await refreshTokenService.EmitirNovaFamiliaAsync(conta, agora, command.Rotulo, cancellationToken).ConfigureAwait(false);
+        var token = jwtService.GerarToken(conta, perfilId, nome, refresh.FamiliaId);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Login realizado — ContaId: {ContaId} TipoConta: {TipoConta}", conta.Id, conta.TipoConta);
 
-        return new LoginResponse(token, conta.TipoConta, conta.Id, perfilId, nome);
+        return new LoginResponse(token, refresh.RefreshRaw, conta.TipoConta, conta.Id, perfilId, nome);
     }
 }

@@ -138,6 +138,33 @@ public class JwtServiceTests
     }
 
     [Fact]
+    public void GerarToken_AccessMinutesPorPapel_AdminMaisCurtoQueAluno()
+    {
+        var instante = new DateTimeOffset(2026, 1, 15, 10, 0, 0, TimeSpan.Zero);
+        var time = new FakeTimeProvider(instante);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:JwtSecret"] = Secret,
+                ["Auth:JwtIssuer"] = Issuer,
+                ["Auth:JwtAudience"] = Audience,
+                ["Auth:Sessao:Aluno:AccessMinutes"] = "15",
+                ["Auth:Sessao:SystemAdmin:AccessMinutes"] = "10",
+            })
+            .Build();
+        var service = new JwtService(config, time);
+
+        var aluno = Conta.Criar(Email.Criar("aluno@test.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
+        var admin = Conta.Criar(Email.Criar("admin@test.com").Value, "hash", TipoConta.SystemAdmin, DateTime.UtcNow).Value;
+
+        var jwtAluno = new JwtSecurityTokenHandler().ReadJwtToken(service.GerarToken(aluno, Guid.NewGuid(), "A"));
+        var jwtAdmin = new JwtSecurityTokenHandler().ReadJwtToken(service.GerarToken(admin, admin.Id, "B"));
+
+        jwtAluno.ValidTo.Should().Be(instante.UtcDateTime.AddMinutes(15));
+        jwtAdmin.ValidTo.Should().Be(instante.UtcDateTime.AddMinutes(10));
+    }
+
+    [Fact]
     public void Construtor_SecretNaoConfigurado_LancaInvalidOperationException()
     {
         var config = new ConfigurationBuilder()

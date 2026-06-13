@@ -23,6 +23,8 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
 - **SystemUser** — perfil admin plataforma. `Criar(contaId, nome, agora, role=SuperAdmin)` → nasce `Status=Ativo`. Métodos: `AlterarRole`, `AlterarStatus`, `AtualizarNome`. Inv: contaId≠Empty; nome 1..100.
 - **TokenRevogado** — blacklist JWT (logout). `Criar(jti, expiraEm, agora)` → `Result<TokenRevogado>`. Inv: jti≠Empty; expiraEm futuro (`expiraEm > agora`; sem `DateTime.UtcNow`, §1). PK=Jti. Sem mutação.
 - **PasswordResetToken** — reset senha. `Criar(contaId, tokenHash, expiresAt, agora)`. `MarcarComoUsado(agora)` → `Result` (`TokenErrors.JaUtilizado` se já usado; NÃO lança). Inv: contaId≠Empty; hash não-vazio; expiresAt>agora.
+- **RefreshTokenFamily** (aggregate root) — sessão de refresh (rotação). `Criar(contaId, absolutoExpiraEm, agora, rotulo?)`. `Revogar(motivo, agora)` → `Result` (`RefreshErrors.FamiliaJaRevogada` se já revogada). `EstaAtiva(agora)` = não-revogada ∧ `agora < AbsolutoExpiraEm`. Inv: contaId≠Empty; absoluto futuro. Motivo = `MotivoRevogacaoFamilia` (§4).
+- **RefreshToken** — refresh single-use (cadeia de rotação). `Criar(familiaId, tokenHash, expiraEm, agora)`. `MarcarUsado(agora, sucessorId)` → `Result` (`RefreshErrors.TokenJaUtilizado`/`SucessorInvalido`). `EstaValido(agora)` = não-usado ∧ `agora < ExpiraEm`. Inv: familiaId≠Empty; hash não-vazio; expiraEm futuro. `UsadoEm` set ⇒ reuso = ataque (revoga família — [specification-security] §2).
 - **EmailVerificationToken** — verificação e-mail no cadastro. `Criar(contaId, tokenHash, expiresAt, agora)`. `MarcarComoVerificado(agora)` → `Result` (`TokenErrors.JaUtilizado` se já usado; NÃO lança). Mesmas inv do reset token. Fluxo em [specification-email].
 - **EmailDeliveryLog** — auditoria entrega (webhook Resend). `Criar(resendMessageId, eventType, recipientEmail, ocorridoEm, payload, agora)`. Sem validação/mutação (log append-only).
 
@@ -118,6 +120,7 @@ Significado/transições de domínio (mapeamento de coluna em [specification-db]
 - **TipoAcaoAprovacao** {AprovacaoTreinador, ReprovacaoTreinador, InativacaoTreinador, AprovacaoVinculo, ReprovacaoVinculo, InativacaoVinculo, AtribuicaoPlanTreinador, ExclusaoTreinador, ExportacaoDados, AnonimizacaoConta, ConsentimentoAnamnese} — tipo registrado em LogAprovacao (ExportacaoDados/AnonimizacaoConta/ConsentimentoAnamnese = trilha LGPD; ConsentimentoAnamnese = consentimento art. 11 no cadastro do aluno, observacao = versão do termo). Persistido como text (`HasConversion<string>`) → novo valor sem migration.
 - **StatusSaude** {Ok, Degradado, Falha} — status geral do HealthSnapshot.
 - **CategoriaSuporte** {Duvida=0, Sugestao=1, Outro=2} — categoria do ticket de `MensagemSuporte`. Persistido como text (`HasConversion<string>`).
+- **MotivoRevogacaoFamilia** {Logout=0, TrocaSenha=1, ReuseDetectado=2, MfaDesabilitado=3, Admin=4} — motivo da revogação de `RefreshTokenFamily`. Persistido como text(32). `MfaDesabilitado` RESERVADO (hook futuro p/ MFA — design R4). Cross-ref [specification-security] §2.
 - **TipoGrupoMuscular** {Peito, Costas, Ombro, Biceps, Triceps, Pernas, Gluteos, Core, FullBody} — ⚠️ enum no namespace Enums chamado `TipoGrupoMuscular` (não `GrupoMuscular`); a entidade catálogo é `GrupoMuscular`. Usado p/ seed dos 9 grupos; não é coluna ([specification-db]).
 
 ## 5. DOMAIN EVENTS

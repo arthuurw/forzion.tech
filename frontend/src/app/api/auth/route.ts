@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { LoginResponse } from "@/types";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { applySessionCookies } from "@/lib/auth/sessionCookies";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
-
-function getTokenMaxAge(token: string): number | undefined {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    if (payload.exp) return payload.exp - Math.floor(Date.now() / 1000);
-  } catch {
-    // JWT malformed — return undefined so cookie receives no maxAge (session cookie)
-  }
-  return undefined;
-}
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
@@ -43,18 +34,10 @@ export async function POST(request: NextRequest) {
 
   const data: LoginResponse = await res.json();
 
-  const maxAge = getTokenMaxAge(data.token);
-  const baseOpts = {
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict" as const,
-    path: "/",
-    maxAge,
-  };
-
-  const { token, ...clientSafeData } = data;
+  // `refresh` é httpOnly e NÃO pode vazar no corpo da resposta (fica só no cookie).
+  const { token, refreshToken, ...clientSafeData } = data;
   const response = NextResponse.json(clientSafeData);
-  response.cookies.set("token", token, { ...baseOpts, httpOnly: true });
-  response.cookies.set("session_guard", crypto.randomUUID(), { ...baseOpts, httpOnly: true });
+  applySessionCookies(response, { token, refreshToken, tipoConta: data.tipoConta });
 
   return response;
 }

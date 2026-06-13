@@ -1266,6 +1266,97 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("planos_plataforma", (string)null);
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.Property<Guid>("FamiliaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("familia_id");
+
+                    b.Property<Guid?>("SubstituidoPorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("substituido_por_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("usado_em");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refresh_tokens");
+
+                    b.HasIndex("FamiliaId")
+                        .HasDatabaseName("ix_refresh_tokens_familia_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_refresh_tokens_token_hash");
+
+                    b.ToTable("refresh_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.RefreshTokenFamily", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AbsolutoExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("absoluto_expira_em");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CriadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criada_em");
+
+                    b.Property<string>("MotivoRevogacao")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("motivo_revogacao");
+
+                    b.Property<DateTime?>("RevogadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revogada_em");
+
+                    b.Property<string>("Rotulo")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("rotulo");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refresh_token_families");
+
+                    b.HasIndex("ContaId")
+                        .HasDatabaseName("ix_refresh_token_families_conta_id");
+
+                    b.HasIndex("RevogadaEm")
+                        .HasDatabaseName("ix_refresh_token_families_revogada_em");
+
+                    b.ToTable("refresh_token_families", (string)null);
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.SerieConfig", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1885,6 +1976,16 @@ namespace forzion.tech.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_pagamentos_treinador_treinadores_treinador_id");
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("forzion.tech.Domain.Entities.RefreshTokenFamily", null)
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_refresh_tokens_refresh_token_families_familia_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.SerieConfig", b =>

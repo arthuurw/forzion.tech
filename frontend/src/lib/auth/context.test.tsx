@@ -19,6 +19,7 @@ const SESSION_USER: SessionUser = {
 
 const LOGIN_PAYLOAD: LoginResponse = {
   token: "fake-token",
+  refreshToken: "fake-refresh",
   contaId: "c1",
   perfilId: "p1",
   tipoConta: "Treinador",

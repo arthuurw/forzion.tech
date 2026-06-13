@@ -1,6 +1,8 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
 
@@ -27,6 +29,8 @@ public class AlterarSenhaHandler(
     IUserContext userContext,
     IContaRepository contaRepository,
     IPasswordHasher passwordHasher,
+    IRefreshTokenService refreshTokenService,
+    ITokenRevogadoRepository tokenRevogadoRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     IValidator<AlterarSenhaCommand> validator)
@@ -51,9 +55,25 @@ public class AlterarSenhaHandler(
         if (!passwordHasher.Verify(command.SenhaAtual, conta.PasswordHash))
             throw new CredenciaisInvalidasException();
 
-        var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), timeProvider.GetUtcNow().UtcDateTime);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), agora);
         if (atualizarResult.IsFailure)
             return Result.Failure(atualizarResult.Error!);
+
+        // Revogação conjunta (NR-6 / security §2): mata o refresh de todos os devices E faz
+        // blacklist do jti corrente — sem o blacklist, o access curto roubado sobreviveria à
+        // troca de senha por até 15min (janela que o blacklist fecha).
+        await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
+
+        var jti = userContext.Jti;
+        var tokenExpiraEm = userContext.TokenExpiraEm;
+        if (jti != Guid.Empty && tokenExpiraEm > agora)
+        {
+            var tokenResult = TokenRevogado.Criar(jti, tokenExpiraEm, agora);
+            if (tokenResult.IsFailure)
+                return Result.Failure(tokenResult.Error!);
+            await tokenRevogadoRepository.AdicionarAsync(tokenResult.Value, cancellationToken).ConfigureAwait(false);
+        }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

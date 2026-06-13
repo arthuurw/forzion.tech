@@ -12,7 +12,7 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. Stack macro da app em AGENTS.md §STACK.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema.
 - **History table — RUNTIME pina o schema; DESIGN-TIME não** (gotcha Npgsql 8.0.11): `NpgsqlHistoryRepository.ExistsSql` checa a existência da `__EFMigrationsHistory` com schema HARDCODED em `public` (`n.nspname = TableSchema ?? "public"`), mas CREATE/leitura usam o search_path. Sem pinar, num alvo cujo `public` NÃO tem a history (ex.: dry-run clonando só `homolog`), o Exists dá falso-negativo → CREATE plano cai no search_path e colide (`42P07 already exists`). Por isso o **runtime** (`InfrastructureExtensions`, usado por `app migrate`/dry-run) pina `MigrationsHistoryTable("__EFMigrationsHistory", <1º schema do Search Path>)` via `MigrationHistorySchemaResolver` → Exists/CREATE/leitura no MESMO schema. O **design-time** (`AppDbContextFactory`) fica SEM schema (unqualified) de propósito: `dotnet ef migrations script` precisa gerar SQL portável e reusável por schema (§APLICAÇÃO DE MIGRATIONS depende de unqualified + `SET search_path`).
-- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 33 tabelas cada (32 EF + ai_token_usage) após `AdicionarMensagemSuporte` aplicada (migration criada; aplica nos schemas no deploy).
+- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 35 tabelas cada (34 EF + ai_token_usage) após `AdicionarRefreshTokens` aplicada (migration criada; aplica nos schemas no deploy).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
 - 34 migrations EF (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarAnonimizadoEmAlunosETreinadores`; 31 aplicadas nos schemas, as 3 mais novas (`AdicionarOutboxEfeitos`, `UniqueDeliveryLogIdempotencia`, `AdicionarAnonimizadoEmAlunosETreinadores`) aplicam no próximo deploy). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` = versão do pacote em `forzion.tech.Infrastructure.csproj`, não fixar aqui).
 - `AdicionarConcurrencyTokenTreinador`: mapeia o system column `xmin` de `treinadores` como concurrency token (concorrência otimista). NÃO gera DDL — o `AddColumn` no `.cs` é artefato de modelo; o SQL gerado só insere a linha de history. Aplicar é no-op estrutural (só registra a migration).
@@ -37,7 +37,7 @@ Projeto Supabase único: `forzion` (ref `fdpdbtiuuitndbeujcbj`, região sa-east-
 - Email: VO normalizado lowercase.
 - Money: numeric.
 - FK default ON DELETE RESTRICT. CASCADE só em filhos de composição (ver por tabela).
-- Tokens (password_reset/email_verification): armazenam SHA-256 hex(64) do token; cru só no e-mail; `conta_id` SEM FK física (só índice).
+- Tokens (password_reset/email_verification/refresh): armazenam SHA-256 hex(64) do token; cru só no e-mail (reset/verify) ou no cookie httpOnly (refresh); `conta_id` SEM FK física (só índice). EXCEÇÃO: `refresh_tokens.familia_id` TEM FK física com ON DELETE CASCADE (GC/purga da família apaga os tokens no nível do banco).
 - UQ parciais impõem regra de negócio (pagamentos 1 Pendente/assinatura; treino_alunos 1 Ativo/treino).
 
 ## ENUMS — BINDING DE COLUNA
@@ -57,6 +57,10 @@ system_users — perfil admin plataforma. id(uuid,NN); conta_id(uuid,NN); nome(v
 tokens_revogados — blacklist JWT (logout). jti(uuid,NN); expira_em(tstz,NN). PK(jti). Limpeza por hosted service.
 
 password_reset_tokens — reset de senha. id(uuid,NN); conta_id(uuid,NN,sem FK); token_hash(varchar64,NN); expires_at(tstz,NN,+1h); used_at(tstz,null); created_at(NN). PK(id) UQ(token_hash) idx(conta_id).
+
+refresh_token_families — agregado de sessão (rotação de refresh). id(uuid,NN); conta_id(uuid,NN,sem FK); criada_em(tstz,NN); absoluto_expira_em(tstz,NN,teto absoluto server-side); revogada_em(tstz,null); motivo_revogacao(varchar32,null,MotivoRevogacaoFamilia); rotulo(text,null,device/user-agent). PK(id) idx(conta_id), idx(revogada_em). GC `LimparExpiradasAsync` (revogada/pós-absoluto); purga LGPD `ExcluirPorContaIdAsync`.
+
+refresh_tokens — token de refresh single-use (cadeia de rotação). id(uuid,NN); familia_id(uuid,NN); token_hash(varchar64,NN,SHA-256 hex); criado_em(tstz,NN); expira_em(tstz,NN,idle); usado_em(tstz,null); substituido_por_id(uuid,null,sucessor). PK(id) UQ(token_hash) idx(familia_id) FK(familia_id→refresh_token_families,**CASCADE**). Raw só no cookie httpOnly; usado_em set ⇒ reuso = ataque (revoga família). Tokens usados RETIDOS p/ reuse-detection enquanto a família vive.
 
 email_verification_tokens — verificação de e-mail no cadastro. id(uuid,NN); conta_id(uuid,NN,sem FK); token_hash(varchar64,NN); expires_at(tstz,NN,+24h); verified_at(tstz,null); created_at(NN). PK(id) UQ(token_hash) idx(conta_id).
 
@@ -148,7 +152,7 @@ Uma migration é destrutiva se: remove coluna/tabela, estreita tipo (varchar mai
 
 Antes de mergear PR com migration destrutiva:
 - [ ] **Backup verificado**: backup recente (`specification-dr §1`) confirmado existente e íntegro — não assumir; documentar a evidência no PR.
-- [ ] **Drill de restore executado**: restaurar em ambiente isolado e validar integridade (contagem tabelas=33/schema, seed presente, migrations em dia) — procedimento em `specification-dr §2`. Não mergear sem o drill feito.
+- [ ] **Drill de restore executado**: restaurar em ambiente isolado e validar integridade (contagem tabelas=35/schema, seed presente, migrations em dia) — procedimento em `specification-dr §2`. Não mergear sem o drill feito.
 - [ ] **Expand/contract respeitado**: a fase CONTRACT só chega neste PR após código novo estável (EXPAND e BACKFILL já deployados e monitorados).
 - [ ] **Schema-agnostic**: sem qualificador de schema hardcoded na migration.
 - [ ] **Rollback planejado**: se o schema for revertido, o código anterior ainda funciona? Documentar no PR.

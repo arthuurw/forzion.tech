@@ -103,6 +103,8 @@ public record WhatsAppDeliveryLogExportDto(
 /// <summary>
 /// Versioned portability export (LGPD Art. 18, IV).
 /// Contains only the titular's data — never third-party PII.
+/// Refresh token hashes são DELIBERADAMENTE omitidos: são credenciais de segurança
+/// (SHA-256, não reversíveis a dado pessoal portável), não objeto de portabilidade (SEC-4).
 /// </summary>
 public record DadosPessoaisExport(
     string Versao,

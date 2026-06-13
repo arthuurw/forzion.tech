@@ -19,6 +19,9 @@ public class HttpUserContext(IHttpContextAccessor httpContextAccessor) : IUserCo
 
     public Guid Jti => ParseClaim("jti");
 
+    // Tolera tokens sem a claim (rollout / sessões antigas): Empty → logout só faz blacklist do jti.
+    public Guid FamiliaId => Guid.TryParse(Claim("fam"), out var id) ? id : Guid.Empty;
+
     public DateTime TokenExpiraEm
     {
         get

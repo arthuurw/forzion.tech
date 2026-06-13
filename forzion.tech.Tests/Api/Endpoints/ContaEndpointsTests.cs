@@ -185,11 +185,14 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
             Mock.Of<IUserContext>(),
             Mock.Of<IContaRepository>(),
             Mock.Of<IPasswordHasher>(),
+            Mock.Of<IRefreshTokenService>(),
+            Mock.Of<ITokenRevogadoRepository>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<IValidator<AlterarSenhaCommand>>());
 
         public Mock<LogoutHandler> LogoutHandlerMock { get; } = new(
             Mock.Of<ITokenRevogadoRepository>(),
+            Mock.Of<IRefreshTokenService>(),
             Mock.Of<IUserContext>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<LogoutHandler>>());

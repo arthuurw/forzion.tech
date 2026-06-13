@@ -31,6 +31,7 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ITokenRevogadoRepository> _tokenRevogadoRepo = new();
     private readonly Mock<IDatabaseErrorInspector> _dbErrorInspector = new();
+    private readonly Mock<IRefreshTokenFamilyRepository> _refreshFamilyRepo = new();
 
     private readonly AnonimizarContaHandler _handler;
 
@@ -84,7 +85,8 @@ public class AnonimizarContaHandlerTests
             _timeProvider.Object,
             _userContext.Object,
             _tokenRevogadoRepo.Object,
-            _dbErrorInspector.Object);
+            _dbErrorInspector.Object,
+            _refreshFamilyRepo.Object);
     }
 
     private static Conta CriarContaComHash(TipoConta tipo, string email = "user@test.com") =>
@@ -194,6 +196,25 @@ public class AnonimizarContaHandlerTests
 
         _assinanteRepo.Verify(
             r => r.AnonimizarPorAlunoIdAsync(aluno.Id, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PurgaFamiliasDeRefreshDoTitular()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Teste", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        _refreshFamilyRepo.Verify(
+            r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

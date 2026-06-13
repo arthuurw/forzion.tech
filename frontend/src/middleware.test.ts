@@ -195,6 +195,41 @@ describe("middleware — papel errado na rota", () => {
   });
 });
 
+describe("middleware — leniência com refresh presente (access expirado)", () => {
+  it("sem access mas refresh + hint na área própria → pass-through (refresh silencioso)", async () => {
+    await middleware(makeRequest("/aluno/fichas", { refresh: "raw", tipo_conta: "Aluno" }));
+    expect(NextResponse.next).toHaveBeenCalled();
+    expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+
+  it("sem access mas refresh sem hint em área protegida → pass-through (cliente renova)", async () => {
+    await middleware(makeRequest("/aluno/fichas", { refresh: "raw" }));
+    expect(NextResponse.next).toHaveBeenCalled();
+    expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+
+  it("refresh + hint Aluno em /admin → redirect /aluno (roteia pelo hint)", async () => {
+    await middleware(makeRequest("/admin", { refresh: "raw", tipo_conta: "Aluno" }));
+    expect(redirectedTo()).toBe("/aluno");
+  });
+
+  it("refresh + hint Treinador em /login → redirect /treinador", async () => {
+    await middleware(makeRequest("/login", { refresh: "raw", tipo_conta: "Treinador" }));
+    expect(redirectedTo()).toBe("/treinador");
+  });
+
+  it("hint forjado (tipo_conta inválido) + refresh em área protegida → pass-through, sem rotear", async () => {
+    await middleware(makeRequest("/aluno/fichas", { refresh: "raw", tipo_conta: "Hacker" }));
+    expect(NextResponse.next).toHaveBeenCalled();
+    expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+
+  it("sem access e SEM refresh em área protegida → redirect /login", async () => {
+    await middleware(makeRequest("/aluno/fichas", {}));
+    expect(redirectedTo()).toBe("/login");
+  });
+});
+
 describe("middleware — autenticado na área correta", () => {
   it.each([
     ["Aluno",       "/aluno/fichas"],
