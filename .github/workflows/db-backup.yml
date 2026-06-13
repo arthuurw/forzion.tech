@@ -63,8 +63,13 @@ jobs:
 
           # BKP-02: senha fora do process list. A URI posicional apareceria em ps/argv do pg_dump;
           # tira a senha p/ PGPASSWORD e passa a URI sem-senha (host/porta/user/db/params intactos).
-          PGPASSWORD="$(printf '%s' "${BACKUP_DATABASE_URL}" | sed -E 's#^postgres(ql)?://[^:/?#]+:([^@]+)@.*#\2#')"
-          SAFE_URL="$(printf '%s' "${BACKUP_DATABASE_URL}" | sed -E 's#(^postgres(ql)?://[^:/?#]+):[^@]+@#\1@#')"
+          # BKP-03: parse via urlsplit (python3 -c; ubuntu-latest sempre tem). A senha vai
+          # URL-DECODADA pro PGPASSWORD — libpq decoda a senha quando vem na URI mas usa PGPASSWORD
+          # literal, então senha percent-encoded (%40, %2F...) precisa ser decodada aqui ou a auth
+          # falha. SAFE_URL mantém o user-info encodado (libpq decoda a URI) e sem senha (BKP-02);
+          # URI sem senha → password None → PGPASSWORD vazio (não vira a URI inteira como no sed).
+          PGPASSWORD="$(python3 -c 'import os,urllib.parse as p; u=p.urlsplit(os.environ["BACKUP_DATABASE_URL"]); print(p.unquote(u.password) if u.password is not None else "")')"
+          SAFE_URL="$(python3 -c 'import os,urllib.parse as p; u=p.urlsplit(os.environ["BACKUP_DATABASE_URL"]); netloc=((u.username+"@") if u.username is not None else "")+(u.hostname or "")+((":"+str(u.port)) if u.port else ""); print(p.urlunsplit((u.scheme,netloc,u.path,u.query,u.fragment)))')"
           export PGPASSWORD
 
           read -ra SCHEMAS <<< "${BACKUP_SCHEMAS}"

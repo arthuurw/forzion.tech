@@ -54,8 +54,12 @@ done
 
 echo "migrate-dryrun: clonando schema '$SCHEMA' do DB real para a cópia..."
 # pg_dump cria o schema e popula; pipe interno ao container (alcança o pooler via NAT da VM).
+# pipefail DENTRO do sh -c: a shell aninhada não herda o pipefail do script-pai, então sem
+# isto um pg_dump que morre no meio + psql aplicando o stream parcial e saindo 0 mascararia a
+# falha (pipeline=psql=0) → dry-run falso-positivo. ON_ERROR_STOP só pega erro SQL do psql.
 "${DC[@]}" exec -T -e PGPASSWORD="$SRC_PASS" dryrun-db sh -c \
-  "pg_dump 'host=$SRC_HOST port=$SRC_PORT user=$SRC_USER dbname=$SRC_DB sslmode=require' \
+  "set -o pipefail
+   pg_dump 'host=$SRC_HOST port=$SRC_PORT user=$SRC_USER dbname=$SRC_DB sslmode=require' \
      --schema='$SCHEMA' --no-owner --no-privileges \
    | psql -U dryrun -d dryrun -v ON_ERROR_STOP=1 -q"
 

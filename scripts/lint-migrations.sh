@@ -19,10 +19,22 @@ if [ "$#" -gt 0 ]; then
   files=("$@")
 else
   base="${BASE_REF:-origin/homolog}"
+  # Valida que a base resolve ANTES de concluir "nada a checar": se a ref não foi fetchada
+  # (`bad revision`), o git diff sairia vazio e o gate passaria em silêncio — falso negativo.
+  git rev-parse --verify --quiet "$base^{commit}" >/dev/null || {
+    echo "lint-migrations: base ref '$base' não resolve (fetch faltando?). Abortando para não pular o gate." >&2
+    exit 2
+  }
+  # Captura o diff com rc próprio (sem mascarar falha do git num `|| true`); só DEPOIS filtra.
+  diff_out="$(git diff --name-only --diff-filter=A "$base...HEAD" -- '*/Migrations/*.cs')" || {
+    echo "lint-migrations: git diff falhou para '$base...HEAD'. Abortando." >&2
+    exit 2
+  }
   while IFS= read -r f; do
-    [ -n "$f" ] && files+=("$f")
-  done < <(git diff --name-only --diff-filter=A "$base...HEAD" -- '*/Migrations/*.cs' \
-            | grep -vE '\.Designer\.cs$|ModelSnapshot\.cs$' || true)
+    [ -n "$f" ] || continue
+    case "$f" in *.Designer.cs|*ModelSnapshot.cs) continue ;; esac
+    files+=("$f")
+  done <<< "$diff_out"
 fi
 
 [ "${#files[@]}" -eq 0 ] && { echo "lint-migrations: nenhuma migration nova para checar."; exit 0; }
@@ -35,6 +47,8 @@ for f in "${files[@]}"; do
 
   # Quebra o arquivo em "statements" por chamada migrationBuilder.<X>(...) e normaliza espaços,
   # já que EF gera as chamadas multi-linha (o padrão arriscado fica numa linha separada).
+  # nocasematch: DDL cru em Sql(...) pode vir minúsculo ("create unique index").
+  shopt -s nocasematch
   while IFS= read -r stmt; do
     case "$stmt" in
       CreateIndex*unique:*true*)
@@ -48,8 +62,16 @@ for f in "${files[@]}"; do
         printf '%s' "$stmt" | grep -q 'defaultValue' || {
           echo "$f: AlterColumn -> NOT NULL sem defaultValue — falha se houver NULLs."
           rc=1 ; } ;;
+      # DDL cru via Sql(...) escapa do schema tipado do EF — varre o texto SQL direto.
+      Sql*CREATE\ UNIQUE\ INDEX*|Sql*ADD\ CONSTRAINT*UNIQUE*)
+        echo "$f: Sql() com CREATE UNIQUE INDEX/UNIQUE — falha sobre duplicatas pré-existentes; dedup antes ou justifique."
+        rc=1 ;;
+      Sql*NOT\ NULL*)
+        echo "$f: Sql() com NOT NULL — em tabela populada exige default/backfill; justifique (lint-migrations:allow) se seguro."
+        rc=1 ;;
     esac
   done < <(awk 'BEGIN{RS="migrationBuilder\\."} {gsub(/\n/," "); gsub(/ +/," "); print}' "$f")
+  shopt -u nocasematch
 done
 
 [ "$rc" -eq 0 ] && echo "lint-migrations: OK (nenhum padrão arriscado)."

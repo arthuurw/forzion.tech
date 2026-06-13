@@ -526,11 +526,18 @@ jobs:
             done
 
             if [ "$health_ok" != 1 ]; then
+              # Sem imagem anterior (1º deploy, ou podada por prune entre deploys) não há pra onde
+              # reverter: re-subir --no-build só recolocaria a imagem NOVA quebrada de pé fingindo
+              # rollback. Aborta explícito exigindo intervenção manual em vez de mascarar.
+              if [ -z "$PREV_BACKEND" ] || [ -z "$PREV_FRONTEND" ]; then
+                echo "::error::Health gate REPROVADO e SEM imagem anterior para rollback (PREV vazio). Build quebrado de pé — intervenção manual necessária."
+                exit 1
+              fi
               echo "::error::Health gate REPROVADO pós-deploy — revertendo para a imagem anterior."
               IMG_BACKEND="$($DC config --images backend | head -1)"
               IMG_FRONTEND="$($DC config --images frontend | head -1)"
-              [ -n "$PREV_BACKEND" ] && docker tag "$PREV_BACKEND" "$IMG_BACKEND"
-              [ -n "$PREV_FRONTEND" ] && docker tag "$PREV_FRONTEND" "$IMG_FRONTEND"
+              docker tag "$PREV_BACKEND" "$IMG_BACKEND"
+              docker tag "$PREV_FRONTEND" "$IMG_FRONTEND"
               $DC up -d --no-build --remove-orphans
               exit 1
             fi
