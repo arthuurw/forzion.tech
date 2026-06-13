@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
@@ -47,7 +48,9 @@ public class RenovarSessaoHandler(
                 return await EmitirAccessAsync(rotacao, cancellationToken).ConfigureAwait(false);
 
             default:
-                return Result.Failure<RenovarSessaoResponse>(RefreshErrors.SessaoInvalida);
+                // Enum exaustivo: cair aqui = valor novo não tratado. Falha alto em vez de
+                // mascarar como SessaoInvalida (que esconderia o bug de um case faltando).
+                throw new UnreachableException($"ResultadoRotacao não tratado: {rotacao.Resultado}");
         }
     }
 
