@@ -11,6 +11,9 @@ namespace forzion.tech.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // lint-migrations:allow — o índice UNIQUE em refresh_tokens.token_hash recai sobre
+            // tabela CRIADA nesta mesma migration (sem linhas pré-existentes), logo não há risco
+            // de falha por duplicata; o lint não distingue tabela nova de tabela populada.
             migrationBuilder.CreateTable(
                 name: "refresh_token_families",
                 columns: table => new
