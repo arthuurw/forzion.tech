@@ -12,7 +12,7 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. Stack macro da app em AGENTS.md §STACK.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema.
 - **History table — RUNTIME pina o schema; DESIGN-TIME não** (gotcha Npgsql 8.0.11): `NpgsqlHistoryRepository.ExistsSql` checa a existência da `__EFMigrationsHistory` com schema HARDCODED em `public` (`n.nspname = TableSchema ?? "public"`), mas CREATE/leitura usam o search_path. Sem pinar, num alvo cujo `public` NÃO tem a history (ex.: dry-run clonando só `homolog`), o Exists dá falso-negativo → CREATE plano cai no search_path e colide (`42P07 already exists`). Por isso o **runtime** (`InfrastructureExtensions`, usado por `app migrate`/dry-run) pina `MigrationsHistoryTable("__EFMigrationsHistory", <1º schema do Search Path>)` via `MigrationHistorySchemaResolver` → Exists/CREATE/leitura no MESMO schema. O **design-time** (`AppDbContextFactory`) fica SEM schema (unqualified) de propósito: `dotnet ef migrations script` precisa gerar SQL portável e reusável por schema (§APLICAÇÃO DE MIGRATIONS depende de unqualified + `SET search_path`).
-- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 32 tabelas cada (31 EF + ai_token_usage) após `AdicionarOutboxEfeitos` aplicada (migration criada; aplica nos schemas no deploy).
+- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 33 tabelas cada (32 EF + ai_token_usage) após `AdicionarMensagemSuporte` aplicada (migration criada; aplica nos schemas no deploy).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
 - 34 migrations EF (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarAnonimizadoEmAlunosETreinadores`; 31 aplicadas nos schemas, as 3 mais novas (`AdicionarOutboxEfeitos`, `UniqueDeliveryLogIdempotencia`, `AdicionarAnonimizadoEmAlunosETreinadores`) aplicam no próximo deploy). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` = versão do pacote em `forzion.tech.Infrastructure.csproj`, não fixar aqui).
 - `AdicionarConcurrencyTokenTreinador`: mapeia o system column `xmin` de `treinadores` como concurrency token (concorrência otimista). NÃO gera DDL — o `AddColumn` no `.cs` é artefato de modelo; o SQL gerado só insere a linha de history. Aplicar é no-op estrutural (só registra a migration).
@@ -63,6 +63,8 @@ email_verification_tokens — verificação de e-mail no cadastro. id(uuid,NN); 
 email_delivery_logs — auditoria entrega e-mail (webhook Resend/Svix). id(uuid,NN); resend_message_id(varchar100,NN); event_type(varchar50,NN); recipient_email(varchar254,NN); ocorrido_em(tstz,NN); payload(text,NN,JSON cru); created_at(NN). PK(id) idx(resend_message_id), idx(event_type).
 
 whatsapp_delivery_logs — auditoria entrega WhatsApp (webhook Meta Cloud API). id(uuid,NN); meta_message_id(varchar100,NN); event_type(varchar50,NN); recipient_phone(varchar32,NN); ocorrido_em(tstz,NN); payload(text,NN,JSON cru); created_at(NN). PK(id) idx(meta_message_id), idx(event_type).
+
+mensagens_suporte — ticket de contato com o suporte (aluno/treinador). id(uuid,NN); conta_id(uuid,NN); categoria(varchar20,NN,CategoriaSuporte); assunto(varchar120,NN); descricao(varchar2000,NN); criada_em(tstz,NN). PK(id) FK(conta_id→contas,RESTRICT) idx(conta_id). NÃO snapshota nome/e-mail (PII resolvida live no envio). Apagada na anonimização LGPD (`ExcluirPorContaIdAsync`).
 
 ### Planos & Recebimento (treinador↔plataforma)
 planos_plataforma — planos de assinatura do treinador. id(uuid,NN); nome(varchar,NN); max_alunos(int,NN); preco(numeric,NN); is_ativo(bool,NN); tier(varchar,NN,TierPlano); descricao(varchar,null); created_at(NN); updated_at(null). PK(id).
@@ -146,7 +148,7 @@ Uma migration é destrutiva se: remove coluna/tabela, estreita tipo (varchar mai
 
 Antes de mergear PR com migration destrutiva:
 - [ ] **Backup verificado**: backup recente (`specification-dr §1`) confirmado existente e íntegro — não assumir; documentar a evidência no PR.
-- [ ] **Drill de restore executado**: restaurar em ambiente isolado e validar integridade (contagem tabelas=32/schema, seed presente, migrations em dia) — procedimento em `specification-dr §2`. Não mergear sem o drill feito.
+- [ ] **Drill de restore executado**: restaurar em ambiente isolado e validar integridade (contagem tabelas=33/schema, seed presente, migrations em dia) — procedimento em `specification-dr §2`. Não mergear sem o drill feito.
 - [ ] **Expand/contract respeitado**: a fase CONTRACT só chega neste PR após código novo estável (EXPAND e BACKFILL já deployados e monitorados).
 - [ ] **Schema-agnostic**: sem qualificador de schema hardcoded na migration.
 - [ ] **Rollback planejado**: se o schema for revertido, o código anterior ainda funciona? Documentar no PR.

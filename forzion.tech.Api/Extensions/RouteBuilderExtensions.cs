@@ -10,6 +10,7 @@ using forzion.tech.Api.Endpoints.Internal;
 using forzion.tech.Api.Endpoints.Pagamentos;
 using forzion.tech.Api.Endpoints.Treinos;
 using forzion.tech.Api.Endpoints.Treinador;
+using forzion.tech.Api.Endpoints.Suporte;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 
@@ -26,6 +27,7 @@ public static class RouteBuilderExtensions
         endpoints.MapAlunoAreaEndpoints();
         endpoints.MapAlunoEndpoints();
         endpoints.MapContaEndpoints();
+        endpoints.MapSuporteEndpoints();
         endpoints.MapExercicioEndpoints();
         endpoints.MapTreinoEndpoints();
         endpoints.MapPagamentosEndpoints();

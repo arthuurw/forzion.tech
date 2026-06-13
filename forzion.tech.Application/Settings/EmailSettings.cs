@@ -5,6 +5,9 @@ public class EmailSettings
     public string FromName { get; set; } = "forzion.tech";
     public string FromAddress { get; set; } = "noreply@forzion.tech";
 
+    // Destino das mensagens de suporte enviadas pelos usuários (página de contato).
+    public string SupportAddress { get; set; } = "suporte@forzion.tech";
+
     // Não-prod marca e-mail como teste (prefixo no assunto + banner). Default prod-safe: false.
     public bool MarcarComoTeste { get; set; }
     public string PrefixoAssuntoTeste { get; set; } = string.Empty;

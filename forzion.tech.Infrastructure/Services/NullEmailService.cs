@@ -12,6 +12,6 @@ public sealed class NullEmailService : IEmailService
 
     public bool Habilitado => false;
 
-    public Task EnviarAsync(string para, string assunto, string htmlBody, CancellationToken cancellationToken = default)
+    public Task EnviarAsync(string para, string assunto, string htmlBody, CancellationToken cancellationToken = default, string? replyTo = null)
         => Task.CompletedTask;
 }

@@ -27,7 +27,7 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 2. Resolve perfil. **Treinador com vínculos ativos → `Error.Business("offboarding_necessario")`, aborta.**
 3. Captura email/telefone antigos (scrub de logs).
 4. `conta.Anonimizar` + `aluno|treinador.Anonimizar` + read-model `assinantes` (`IAssinanteRepository.AnonimizarPorAlunoIdAsync`).
-5. Scrub recipient dos delivery logs: `IEmailDeliveryLogRepository.AnonimizarPorEmailAsync` + `IWhatsAppDeliveryLogRepository.AnonimizarPorTelefoneAsync` (recipient → placeholder; payload mantido p/ auditoria).
+5. Scrub recipient dos delivery logs: `IEmailDeliveryLogRepository.AnonimizarPorEmailAsync` + `IWhatsAppDeliveryLogRepository.AnonimizarPorTelefoneAsync` (recipient → placeholder; payload mantido p/ auditoria). `IMensagemSuporteRepository.ExcluirPorContaIdAsync` (ExecuteDelete): mensagens de suporte são texto livre (assunto/descrição) = PII potencial e sem valor fiscal → **DELETE** (não scrub), all-or-nothing na mesma transação.
 6. `PasswordHash` vazio + `AnonimizadaEm` bloqueiam login FUTURO. JWTs já emitidos seguem válidos até expirar (stateless) — sem revogação imediata de sessão; logout forçado exige revogar o `jti` à parte (fora deste handler).
 7. `LogAprovacao.Registrar(AnonimizacaoConta, ...)`.
 8. `CommitAsync` único (despacha `ContaAnonimizadaEvent`). **RETÉM** pagamentos/assinaturas/logs (sem PII direto).
@@ -78,7 +78,7 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 - Admin (detalhe treinador/aluno, aba LGPD): exportar + anonimizar (ConfirmDialog destrutivo). `adminApi.exportarDadosConta(contaId)` / `anonimizarConta(contaId)`.
 
 ## DB / PII
-- PII por tabela e escopo de scrub → ver `.specs/features/lgpd/spec.md` + [specification-db]. Sensível (saúde): anamnese do aluno. Retidos anonimizados: pagamentos, assinaturas_aluno, logs_aprovacao, treinos/execuções (ids).
+- PII por tabela e escopo de scrub → ver `.specs/features/lgpd/spec.md` + [specification-db]. Sensível (saúde): anamnese do aluno. Retidos anonimizados: pagamentos, assinaturas_aluno, logs_aprovacao, treinos/execuções (ids). `mensagens_suporte` são DELETADAS (não retidas) — texto livre sem valor fiscal.
 
 ## CONSENTIMENTO DE SAÚDE (art. 11 — anamnese)
 Anamnese do aluno (finalidade, foco_treino, nivel_condicionamento, limitacoes_fisicas, doencas) = dado sensível de saúde → exige consentimento específico e destacado.

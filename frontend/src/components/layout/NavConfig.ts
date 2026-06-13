@@ -6,6 +6,7 @@ import InventoryIcon from "@mui/icons-material/Inventory";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import HistoryIcon from "@mui/icons-material/History";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import type { ElementType } from "react";
 import type { TipoConta } from "@/types";
 
@@ -29,11 +30,13 @@ const treinadorNav: NavItem[] = [
   { label: "Fichas", href: "/treinador/treinos", Icon: ListAltIcon },
   { label: "Exercícios", href: "/treinador/exercicios", Icon: FitnessCenterIcon },
   { label: "Pacotes", href: "/treinador/pacotes", Icon: InventoryIcon },
+  { label: "Suporte", href: "/treinador/suporte", Icon: SupportAgentIcon },
 ];
 
 const alunoNav: NavItem[] = [
   { label: "Minhas Fichas", href: "/aluno/fichas", Icon: AssignmentIcon },
   { label: "Histórico", href: "/aluno/historico", Icon: HistoryIcon },
+  { label: "Suporte", href: "/aluno/suporte", Icon: SupportAgentIcon },
 ];
 
 export const NAV_BY_TIPO: Record<TipoConta, NavItem[]> = {

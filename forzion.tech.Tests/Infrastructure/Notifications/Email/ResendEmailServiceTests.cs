@@ -37,6 +37,13 @@ public class ResendEmailServiceTests
     private static string FromDoPayload(string json) =>
         JsonDocument.Parse(json).RootElement.GetProperty("from").GetString()!;
 
+    private static bool TemReplyTo(string json, out string? valor)
+    {
+        var existe = JsonDocument.Parse(json).RootElement.TryGetProperty("reply_to", out var prop);
+        valor = existe ? prop.GetString() : null;
+        return existe;
+    }
+
     [Fact]
     public async Task EnviarAsync_UsaRemetenteDeEmailSettings()
     {
@@ -63,5 +70,26 @@ public class ResendEmailServiceTests
         await service.EnviarAsync("dest@forzion.tech", "Assunto", "<p>corpo</p>");
 
         FromDoPayload(getBody()!).Should().Be("forzion.tech <noreply@forzion.tech>");
+    }
+
+    [Fact]
+    public async Task EnviarAsync_ComReplyTo_IncluiCampoNoPayload()
+    {
+        var (service, getBody) = Build(new EmailSettings());
+
+        await service.EnviarAsync("suporte@forzion.tech", "Assunto", "<p>corpo</p>", replyTo: "usuario@forzion.tech");
+
+        TemReplyTo(getBody()!, out var valor).Should().BeTrue();
+        valor.Should().Be("usuario@forzion.tech");
+    }
+
+    [Fact]
+    public async Task EnviarAsync_SemReplyTo_OmiteCampo()
+    {
+        var (service, getBody) = Build(new EmailSettings());
+
+        await service.EnviarAsync("dest@forzion.tech", "Assunto", "<p>corpo</p>");
+
+        TemReplyTo(getBody()!, out _).Should().BeFalse();
     }
 }

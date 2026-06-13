@@ -481,6 +481,52 @@ internal static class EmailTemplates
             """);
     }
 
+    public static string MensagemSuporte(
+        string nomeRemetente,
+        string emailRemetente,
+        string tipoConta,
+        string categoria,
+        string assunto,
+        string descricao)
+    {
+        // Encode ANTES de injetar <br>: texto livre do usuário (assunto/descrição) é PII potencial
+        // e vetor de HTML injection no corpo do e-mail. Encode neutraliza tags; só então quebras
+        // de linha viram <br> (preserva formatação sem reabrir injeção).
+        var descricaoHtml = WebUtility.HtmlEncode(descricao).Replace("\n", "<br>", StringComparison.Ordinal);
+        return Layout(
+            "Nova mensagem de suporte",
+            $"""
+            <p style="color:#444;line-height:1.6">Mensagem recebida pela página de contato:</p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Nome</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(nomeRemetente)}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">E-mail</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(emailRemetente)}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Tipo de conta</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(tipoConta)}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Categoria</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(categoria)}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Assunto</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(assunto)}</td>
+              </tr>
+            </table>
+            <p style="color:#666;font-size:14px;margin:0 0 4px">Descrição</p>
+            <p style="color:#444;line-height:1.6;white-space:pre-wrap;background:#F5F5F5;border-radius:4px;padding:16px;margin:0">{descricaoHtml}</p>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Responda diretamente a este e-mail para falar com o usuário (reply-to configurado).
+            </p>
+            """);
+    }
+
     public static string AssinaturaReativada(string nomeAluno, string linkPortal) =>
         Layout(
             "Assinatura reativada!",

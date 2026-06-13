@@ -58,6 +58,7 @@ public class AnonimizacaoAtomicaTests(RealPipelineFixture fixture)
             sp.GetRequiredService<IAssinanteRepository>(),
             sp.GetRequiredService<IEmailDeliveryLogRepository>(),
             sp.GetRequiredService<IWhatsAppDeliveryLogRepository>(),
+            sp.GetRequiredService<IMensagemSuporteRepository>(),
             logFalho.Object,
             sp.GetRequiredService<IPasswordHasher>(),
             db,

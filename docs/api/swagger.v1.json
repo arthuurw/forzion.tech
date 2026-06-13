@@ -3410,6 +3410,62 @@
         }
       }
     },
+    "/suporte/mensagens": {
+      "post": {
+        "tags": [
+          "Suporte"
+        ],
+        "summary": "Envia uma mensagem ao suporte (identidade do remetente vem do token, não do payload)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnviarMensagemSuporteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/treinador/onboarding": {
       "post": {
         "tags": [
@@ -5972,6 +6028,24 @@
             "items": {
               "$ref": "#/components/schemas/SerieConfigRequest"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EnviarMensagemSuporteRequest": {
+        "type": "object",
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "nullable": true
+          },
+          "assunto": {
+            "type": "string",
+            "nullable": true
+          },
+          "descricao": {
+            "type": "string",
             "nullable": true
           }
         },

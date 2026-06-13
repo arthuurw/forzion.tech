@@ -17,16 +17,17 @@ public sealed class EnvironmentEmailDecorator(
 
     public bool Habilitado => inner.Habilitado;
 
-    public Task EnviarAsync(string para, string assunto, string htmlBody, CancellationToken cancellationToken = default)
+    public Task EnviarAsync(string para, string assunto, string htmlBody, CancellationToken cancellationToken = default, string? replyTo = null)
     {
         if (!settings.MarcarComoTeste)
-            return inner.EnviarAsync(para, assunto, htmlBody, cancellationToken);
+            return inner.EnviarAsync(para, assunto, htmlBody, cancellationToken, replyTo);
 
         return inner.EnviarAsync(
             ResolverDestinatario(para),
             AplicarPrefixo(assunto),
             Banner + htmlBody,
-            cancellationToken);
+            cancellationToken,
+            replyTo);
     }
 
     private string AplicarPrefixo(string assunto) =>
