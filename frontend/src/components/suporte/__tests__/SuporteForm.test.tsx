@@ -75,4 +75,23 @@ describe("SuporteForm", () => {
     await preencherEnviar();
     expect(await screen.findByText(/não foi possível enviar/i)).toBeInTheDocument();
   });
+
+  it("mostra erro quando o perfil não carrega e fecha o banner ao clicar", async () => {
+    server.use(http.get("*/conta/perfil", () => new HttpResponse(null, { status: 500 })));
+    renderWithProviders(<SuporteForm />);
+    expect(await screen.findByText(/não foi possível carregar seus dados/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /fechar/i }));
+    await waitFor(() =>
+      expect(screen.queryByText(/não foi possível carregar seus dados/i)).not.toBeInTheDocument(),
+    );
+  });
+
+  it("permite enviar outra mensagem após o sucesso", async () => {
+    server.use(http.post("*/suporte/mensagens", () => new HttpResponse(null, { status: 202 })));
+    renderWithProviders(<SuporteForm />);
+    await preencherEnviar();
+    expect(await screen.findByText(/mensagem enviada/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /enviar outra mensagem/i }));
+    expect(await screen.findByLabelText(/assunto/i)).toBeInTheDocument();
+  });
 });
