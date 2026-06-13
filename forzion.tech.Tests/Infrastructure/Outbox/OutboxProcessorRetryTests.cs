@@ -73,6 +73,11 @@ public class OutboxProcessorRetryTests(InfrastructureTestFixture fixture)
     {
         var chave = $"fx:teste:{Guid.NewGuid():N}";
         await using var seed = fixture.CreateContext();
+        // Container é compartilhado pela collection e ProcessarLoteAsync elege TODOS os itens
+        // Pendente (não filtra por chave). Sem zerar, um item Pendente deixado por outro teste
+        // (ex.: o de shutdown) seria processado pelo MESMO handler aqui, dobrando Chamadas e
+        // corrompendo a contagem de tentativas. Isola cada teste com tabela limpa.
+        await seed.OutboxEfeitos.ExecuteDeleteAsync();
         seed.OutboxEfeitos.Add(OutboxEfeito.Criar("fx:teste", "{}", chave, DateTime.UtcNow.AddMinutes(-1)).Value);
         await seed.SaveChangesAsync();
         return chave;
