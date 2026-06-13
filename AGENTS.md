@@ -3,7 +3,7 @@
 Guia macro para agentes. Formato agent-oriented (denso, sem prosa decorativa). Para o contexto MACRO do projeto, carregar APENAS este arquivo.
 
 ## FRESCOR
-Validado: 2026-06-10. STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`.
+Validado: 2026-06-13. STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`.
 
 ## PROJETO
 forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadastro/aprovação de treinadores, vínculo de alunos, fichas de treino (exercícios + séries), registro de execuções, assinaturas e pagamentos recorrentes.
@@ -21,6 +21,7 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - `forzion.tech.Infrastructure` — EF/repos, integrações, handlers de domain event, seed, migrations.
 - `forzion.tech.Api` — endpoints, middleware, DI, Program.cs.
 - `forzion.tech.Tests` — testes (xUnit).
+- `forzion.tech.PactVerification` — verificação de contratos Pact (provider). Entra no build da `.slnx`.
 - `frontend/` — Next.js.
 - `specs/` — docs de referência `specification-*` (versionados/commitados).
 
@@ -54,7 +55,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 - `specification-seo.md` — ASPIRACIONAL (não implementado).
 - `specification-dr.md` — boa parte ALVO/aspiracional, não o estado real.
 - `specification-local-ci-repro.md` — reproduzir gates do CI local + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet8, postgres fsync, .slnx, E2E email-block).
-- `specification-workflow.md` — fluxo de entrega: pipeline de cards (GitHub Projects v2, `.specs` local = fonte de verdade, board = espelho mantido pelo agente via `gh`), Fluxo A (card novo forward) + Fluxo B (backfill histórico→Done consultável por data). Board/backfill NÃO montados ainda (aguardam setup).
+- `specification-workflow.md` — fluxo de entrega: pipeline de cards (GitHub Projects v2, `.specs` local = fonte de verdade, board = espelho mantido pelo agente via `gh`), Fluxo A (card novo forward) + Fluxo B (backfill histórico→Done consultável por data). Board MONTADO (Project nº1, 37 issues backfill #94-#130; IDs de campo pinados em `§9`); card = issue real com conteúdo completo embutido (durabilidade: `.specs` é gitignored). Manutenção forward via Fluxo A. PENDENTE: automação Action PR-event→Status; tornar `to-issues.sh` idempotente.
 - Sem caveat especial (rotear por TRIGGER): `model`, `backend`, `db`, `email`, `whatsapp`, `frontend`, `git`, `lgpd`, `tests`, `stripe`, `security`, `observability`.
 
 ## CONVENÇÕES-CHAVE
