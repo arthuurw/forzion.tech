@@ -42,6 +42,12 @@ public sealed class OutboxProcessor(
                 await dispatcher.DespacharAsync(item, cancellationToken).ConfigureAwait(false);
                 item.MarcarConcluido(timeProvider.GetUtcNow().UtcDateTime);
             }
+            // Cancelamento de shutdown não é falha de efeito: re-lança p/ abortar o ciclo sem
+            // gravar (rollback do lease → item segue Pendente), em vez de queimar uma tentativa.
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 RegistrarFalha(item, ex);

@@ -33,7 +33,8 @@ public class AnonimizarContaHandler(
     IDbContextTransactionProvider transactionProvider,
     TimeProvider timeProvider,
     IUserContext userContext,
-    ITokenRevogadoRepository tokenRevogadoRepository)
+    ITokenRevogadoRepository tokenRevogadoRepository,
+    IDatabaseErrorInspector databaseErrorInspector)
 {
     public virtual Task<Result> HandleAsync(
         AnonimizarContaCommand command,
@@ -226,9 +227,7 @@ public class AnonimizarContaHandler(
             await tokenRevogadoRepository.AdicionarAsync(token, CancellationToken.None).ConfigureAwait(false);
             await unitOfWork.CommitAsync(CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception ex) when (
-            ex.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true ||
-            ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
+        catch (Exception ex) when (databaseErrorInspector.EhViolacaoDeUnicidade(ex))
         {
             // Race rara: outra revogação concorrente inseriu o mesmo jti. Idempotente.
         }

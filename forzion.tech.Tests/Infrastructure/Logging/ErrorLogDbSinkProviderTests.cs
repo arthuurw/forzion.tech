@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Infrastructure.Logging;
@@ -154,6 +155,31 @@ public class ErrorLogDbSinkProviderTests
         // DropsContados pode ser 0 se o worker consumiu rápido o suficiente — o invariante
         // é que nunca lança exceção sob overflow.
         provider.DropsContados.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    // LOG-01: CreatedAt = hora de inserção, distinta de OcorridoEm (canal assíncrono).
+    // AutoAdvance garante que a 2ª leitura do clock (persist) > a 1ª (enqueue), sem race.
+    [Fact]
+    public async Task Persistir_CreatedAt_EhHoraDePersistencia_DistintaDeOcorridoEm()
+    {
+        var (scopeFactory, _) = CriarScopeFactory();
+        var (lifetime, stoppingCts) = CriarLifetime();
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 12, 0, 0, 0, TimeSpan.Zero))
+        {
+            AutoAdvanceAmount = TimeSpan.FromMinutes(1)
+        };
+        using var provider = new ErrorLogDbSinkProvider(scopeFactory, clock);
+        provider.RegistrarDrenoNoShutdown(lifetime);
+
+        provider.CreateLogger("Cat").Log(LogLevel.Error, 0, "erro", null, (s, _) => s);
+
+        stoppingCts.Cancel();
+        await Task.Delay(200);
+
+        using var scope = scopeFactory.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var log = await ctx.ErrorLogs.SingleAsync();
+        log.CreatedAt.Should().BeAfter(log.OcorridoEm, "CreatedAt registra quando a linha foi persistida");
     }
 
     [Fact]

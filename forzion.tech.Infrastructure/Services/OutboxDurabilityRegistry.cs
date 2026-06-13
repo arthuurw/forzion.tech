@@ -12,17 +12,35 @@ public sealed class OutboxDurabilityRegistry
     private readonly Dictionary<Type, Registro> _porEvento = [];
     private readonly Dictionary<string, Type> _porFullName = [];
 
+    // 1ª chamada por evento: fixa a chave de idempotência. O outbox grava UMA linha por evento
+    // (uma chave), então um 2º keyed Registrar para o mesmo evento descartaria sua chave em
+    // silêncio — falha no boot em vez disso. Handlers duráveis extra usam RegistrarHandlerAdicional.
     public OutboxDurabilityRegistry Registrar<TEvent, THandler>(Func<TEvent, string> chaveIdempotencia)
         where TEvent : IDomainEvent
         where THandler : IDomainEventHandler<TEvent>
     {
+        if (_porEvento.ContainsKey(typeof(TEvent)))
+            throw new InvalidOperationException(
+                $"{typeof(TEvent).Name} já tem chave durável; use RegistrarHandlerAdicional para handlers extra.");
+
+        var registro = new Registro(evento => chaveIdempotencia((TEvent)evento));
+        _porEvento[typeof(TEvent)] = registro;
+        if (typeof(TEvent).FullName is { } fullName)
+            _porFullName[fullName] = typeof(TEvent);
+
+        registro.Handlers.Add(typeof(THandler));
+        return this;
+    }
+
+    // Handler durável adicional para um evento já registrado: roda na mesma transação do worker
+    // e compartilha a chave do evento (não tem chave própria). Exige o evento já registrado.
+    public OutboxDurabilityRegistry RegistrarHandlerAdicional<TEvent, THandler>()
+        where TEvent : IDomainEvent
+        where THandler : IDomainEventHandler<TEvent>
+    {
         if (!_porEvento.TryGetValue(typeof(TEvent), out var registro))
-        {
-            registro = new Registro(evento => chaveIdempotencia((TEvent)evento));
-            _porEvento[typeof(TEvent)] = registro;
-            if (typeof(TEvent).FullName is { } fullName)
-                _porFullName[fullName] = typeof(TEvent);
-        }
+            throw new InvalidOperationException(
+                $"{typeof(TEvent).Name} não tem handler durável base; registre-o com Registrar primeiro.");
 
         registro.Handlers.Add(typeof(THandler));
         return this;

@@ -57,10 +57,20 @@ jobs:
           STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
           FILE="forzion-db-${STAMP}.dump"
 
+          # BKP-01: o dump em claro (PII/LGPD, repo público) não pode sobreviver a NENHUMA saída
+          # — falha do age/aws ou do size-guard. O trap remove claro + .age em qualquer exit.
+          trap 'rm -f "${FILE}" "${FILE}.age"' EXIT
+
+          # BKP-02: senha fora do process list. A URI posicional apareceria em ps/argv do pg_dump;
+          # tira a senha p/ PGPASSWORD e passa a URI sem-senha (host/porta/user/db/params intactos).
+          PGPASSWORD="$(printf '%s' "${BACKUP_DATABASE_URL}" | sed -E 's#^postgres(ql)?://[^:/?#]+:([^@]+)@.*#\2#')"
+          SAFE_URL="$(printf '%s' "${BACKUP_DATABASE_URL}" | sed -E 's#(^postgres(ql)?://[^:/?#]+):[^@]+@#\1@#')"
+          export PGPASSWORD
+
           read -ra SCHEMAS <<< "${BACKUP_SCHEMAS}"
           SCHEMA_ARGS=()
           for s in "${SCHEMAS[@]}"; do SCHEMA_ARGS+=("--schema=${s}"); done
-          pg_dump "${BACKUP_DATABASE_URL}" "${SCHEMA_ARGS[@]}" -Fc -f "${FILE}"
+          pg_dump "${SAFE_URL}" "${SCHEMA_ARGS[@]}" -Fc -f "${FILE}"
 
           # dump minúsculo = falha silenciosa do pg_dump; aborta antes de subir lixo + disparar alerta.
           SIZE=$(stat -c%s "${FILE}")

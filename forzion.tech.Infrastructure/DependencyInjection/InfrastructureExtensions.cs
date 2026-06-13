@@ -73,6 +73,7 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IDbContextTransactionProvider>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddSingleton<IDatabaseErrorInspector, NpgsqlDatabaseErrorInspector>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 
