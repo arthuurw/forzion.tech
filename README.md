@@ -941,7 +941,7 @@ Confere logs do backend: `ProcessarWebhookStripeHandler` deve marcar `Pagamento.
 | `AdicionarAnonimizadaEmContas` | Colunas de anonimização (flag/timestamp) em `contas` (LGPD — exclusão por anonimização) |
 | `AdicionarBillingTreinadorEModoPagamento` | Tabelas `assinaturas_treinador` + `pagamentos_treinador` (billing treinador↔plataforma); coluna `modo_pagamento_aluno` em `treinadores` |
 
-> **Migrations são SCHEMA-AGNOSTIC** — `AppDbContext` sem `HasDefaultSchema`; o schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). As MESMAS migrations aplicam em `homolog`/`develop`/`public`. `MigrationsHistoryTable` sem schema (segue o search_path). Total: 29 migrations. Ver [`specs/specification-db.md`](specs/specification-db.md).
+> **Migrations são SCHEMA-AGNOSTIC** — `AppDbContext` sem `HasDefaultSchema`; o schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). As MESMAS migrations aplicam em `homolog`/`develop`/`public`. A `__EFMigrationsHistory` em runtime é pinada no schema do `search_path` (gotcha Npgsql 8.0.11 no check de existência); o design-time fica sem schema p/ scripts portáveis. Ver [`specs/specification-db.md`](specs/specification-db.md).
 
 ---
 
