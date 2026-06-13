@@ -15,9 +15,9 @@ Resultado: fluidez preservada (1-liner humano) + pipeline visível + histórico 
 **GitHub Projects v2** (no mesmo repo/owner). Escolha registrada (2026-06-13) — análise em [[mfa-sessao-specs-pending]] thread: grátis SEM cap de issues (Linear free = 250, fatal p/ backfill), PR-nativo (transição aguardando-PR→done via Actions já existentes), já no stack.
 - **Driver primário: `gh` CLI** (já autenticado) — `gh project create`, `gh project field-create`, `gh project item-create`/`item-add`, `gh project item-edit` (status via `--single-select-option-id`); mutações de campo que o CLI não cobrir → GraphQL (`gh api graphql`). Sintaxe exata dos flags é pinada no setup (não assumir às cegas — verificar `gh project --help` na criação).
 - **MCP opcional**: GitHub MCP server ganhou toolset de Projects (out/2025), mas mutação de status-field é parcial — `gh`/GraphQL é o caminho completo. MCP não é pré-requisito.
-- **Tipo de card — HÍBRIDO** (decidido no setup 2026-06-13):
-  - **Backfill histórico (Fluxo B) = draft item** do Project. Razão: 37 itens já fechados não devem poluir o issue-tracker do repo (ruído vs. bugs reais), zero notificação, zero write de issue. Os campos dedicados **Concluído em** (date) + **Tipo**/**Área** (single-select) cobrem data/label que justificariam issue. Consulta por data funciona igual.
-  - **Card novo (Fluxo A, forward) = GitHub Issue real.** Razão: a automação de transição (PR-open→In Review, merge→Done) precisa de issue real p/ o GitHub linkar PR/commit nativamente — draft não linka PR. Trade-off consciente (AGENTS.md regra 10): draft é ótimo p/ histórico imutável, issue é necessário onde há PR a rastrear.
+- **Card = GitHub Issue real** (decidido 2026-06-13; ANTES era híbrido draft/issue, REVERTIDO por requisito de durabilidade do usuário: "se eu perder a pasta .specs local, tenho que ter TUDO no board"). Draft NÃO atende: vive só dentro do Project (some se o Project for deletado) e o `.specs` é gitignored (não está no git) — logo a issue é a ÚNICA cópia durável do conteúdo.
+- **Conteúdo COMPLETO embutido na issue** (não só link): corpo = bloco de metadados (Status/Área/Tipo/Concluído em/Specs path/Nota — em TEXTO legível, não id) + `spec.md` inteiro; cada `.md` restante (design/tasks/style/STATE/plan/etc) = 1 comentário. Self-contained: a issue sozinha (sem Project, sem `.specs`) carrega todo o histórico do que foi previsto + feito. Issues não expiram, exportáveis (`gh issue list --json body` + `gh api` p/ comentários).
+- Issue **fechada** = Done (histórico); **aberta** = pipeline ativo. Data real fica no campo **Concluído em** E no header do corpo (closed-date do GitHub = dia do backfill, não a data real — usar o campo/header).
 
 ## 3. PIPELINE — ESTADOS (campo Status, single-select)
 Ordem e gate de ENTRADA de cada estado (o gate é o que precisa estar verdadeiro p/ entrar):
@@ -59,7 +59,7 @@ Responsabilidade: passos 2–4 = agente; 1/5 = humano (1-liner + decisão de PR)
 Objetivo: toda `.specs` já desenvolvida (neste repo + pastas locais externas que o usuário apontar) entra no board em **Done** com data, p/ responder "o que foi entregue em X data?".
 1. **Inventário**: varrer cada raiz `.specs` informada; listar features (pastas com `spec.md`/`tasks.md`).
 2. **Derivar metadados** por feature: título, área, **data de conclusão** (prioridade: `STATE.md` > `git log` do commit/PR relacionado > mtime do arquivo), sumário (1–2 linhas do `spec.md`), path, refs de commit/PR se rastreáveis.
-3. **Criar draft item direto em Done** (`gh project item-create` + `gh project item-edit` set Status=Done + Concluído em + Tipo/Área + Specs path). Sem passar pelo pipeline. (Draft, não issue — §2.)
+3. **Criar issue com conteúdo completo** (`gh issue create --body-file` = header de metadados + `spec.md`; `gh issue comment` p/ cada `.md` restante) → `gh project item-add` → `gh project item-edit` set Status/Área/Tipo/Specs-path/Concluído-em → `gh issue close` se Done. Sem passar pelo pipeline. Script de referência: `.specs/features/workflow-board-setup/to-issues.sh`.
 4. **Idempotência**: marcar por `Specs path` único; re-rodar o backfill NÃO duplica (checar item existente antes de criar).
 5. Roda 1x p/ o acervo; depois é append-only conforme novas features fecham pelo Fluxo A.
 Caveat: features sem data rastreável → marcar `data ≈ <mtime>` com label `data-aproximada` (não inventar precisão — AGENTS.md regra 10).
@@ -81,7 +81,7 @@ Project criado + backfill de 37 cards feito. Reprodutível via `.specs/features/
 - **Area** (field `PVTSSF_lAHOAg7S384BahuczhVYvhA`): backend `553ac63b` · frontend `01e6e4e2` · infra `9361f93a` · ci `fb085e02` · stripe `f834d69f` · email `15a118f3` · whatsapp `14618e14` · db `5fb6f308` · security `e95e9f54` · lgpd `3ecad119` · tests `9519b63d` · docs `720568dc` · workflow `fb9f2a57`
 - **Tipo** (field `PVTSSF_lAHOAg7S384BahuczhVYvhc`): feature `a4dda951` · fix `a0265df9` · chore `b176c6ff` · spec `f2da1e24`
 - **Specs path** (text field `PVTF_lAHOAg7S384BahuczhVYvhg`) · **Concluído em** (date field `PVTF_lAHOAg7S384BahuczhVYvhk`)
-- Backfill resultante: 37 cards (22 Done · 1 Developed/Awaiting PR · 3 In Dev · 11 Ready for Dev), zero dup. Idempotência: chave = Specs path; re-rodar deve checar item existente antes de criar (o script atual NÃO checa — re-rodar duplicaria; ajustar antes de re-executar).
+- Backfill resultante: **37 issues** (30 Done[fechadas] · 2 Developed/Awaiting PR · 2 In Dev · 3 Ready for Dev), zero dup, conteúdo completo embutido. Issues #94-#130. (Os drafts iniciais foram convertidos p/ issues e deletados.) Status validado por código (8 que pareciam ReadyForDev estavam Done — ver manifest.md). Idempotência: chave = Specs path / título=slug; re-rodar `to-issues.sh` NÃO checa existente → DUPLICARIA (ajustar antes de re-executar).
 
 ### Gaps remanescentes
 - Automação de transições por evento de PR (Action `pull_request`/`pull_request_target` → mover Status) — só p/ cards-novos-issue (Fluxo A); fase posterior. Até lá, transição via `gh` pelo agente.
