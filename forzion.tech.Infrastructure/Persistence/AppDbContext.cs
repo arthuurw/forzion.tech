@@ -45,6 +45,7 @@ public class AppDbContext(
     public DbSet<HealthSnapshot> HealthSnapshots => Set<HealthSnapshot>();
     public DbSet<ErrorLogEntry> ErrorLogs => Set<ErrorLogEntry>();
     public DbSet<OutboxEfeito> OutboxEfeitos => Set<OutboxEfeito>();
+    public DbSet<MensagemSuporte> MensagensSuporte => Set<MensagemSuporte>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {

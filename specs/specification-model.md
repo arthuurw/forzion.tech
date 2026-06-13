@@ -89,6 +89,7 @@ Linha por entidade: nome — propósito; factory; métodos de mutação; invaria
 - **HealthSnapshot** — snapshot diário de saúde. `Criar(ambiente, status, payloadJson, agora)`. Inv: ambiente/payload não-vazios. Append-only.
 - **ErrorLogEntry** — log de ERROR/Critical. Const `MensagemMaxLength=4000`. `Criar(ocorridoEm, nivel, origem, mensagem)` (trunca mensagem em 4000). Inv: nivel/origem não-vazios. Append-only.
 - **LogAprovacao** — auditoria de aprovações/inativações. Factory `Registrar(tipoAcao, realizadoPorId, entidadeId, entidadeTipo, agora, observacao?)`. Inv: ids≠Empty; entidadeTipo não-vazio; obs ≤500. Append-only.
+- **MensagemSuporte*** — ticket de contato com o suporte. `Criar(contaId, categoria, assunto, descricao, agora)` → `Result<MensagemSuporte>`. Consts `AssuntoMaxLength=120`, `DescricaoMaxLength=2000`. Inv: contaId≠Empty; categoria definida; assunto 3..120; descrição 20..2000. Emite `MensagemSuporteCriadaEvent`. NÃO armazena nome/e-mail (identidade resolvida live no handler). Apagada na anonimização LGPD ([specification-lgpd]).
 
 ## 3. VALUE OBJECTS
 - **Email** (único VO) — `sealed record`, `string Value`. `Criar(value)` → `Result<Email>` (NÃO lança): normaliza (`Trim().ToLowerInvariant()`), valida ≤256 + regex `^[^@\s]+@[^@\s]+\.[^@\s]+$` (Compiled+IgnoreCase+NonBacktracking, timeout 1s); falha → `Result.Failure` com `EmailErrors.Obrigatorio` (vazio) / `EmailErrors.MuitoLongo` (>256) / `EmailErrors.Invalido` (regex). `FromDatabase(value)`: BYPASSA validação (reconstituição de dados já persistidos). `ToString()`=Value. Igualdade/imutabilidade via `record`.
@@ -116,6 +117,7 @@ Significado/transições de domínio (mapeamento de coluna em [specification-db]
 - **FinalidadePagamentoTreinador** {Cadastro, Renovacao, TrocaPlano} — discrimina o que o `PagamentoTreinador` cobra; o handler do `PagamentoTreinadorPagoEvent` ramifica por este valor.
 - **TipoAcaoAprovacao** {AprovacaoTreinador, ReprovacaoTreinador, InativacaoTreinador, AprovacaoVinculo, ReprovacaoVinculo, InativacaoVinculo, AtribuicaoPlanTreinador, ExclusaoTreinador, ExportacaoDados, AnonimizacaoConta, ConsentimentoAnamnese} — tipo registrado em LogAprovacao (ExportacaoDados/AnonimizacaoConta/ConsentimentoAnamnese = trilha LGPD; ConsentimentoAnamnese = consentimento art. 11 no cadastro do aluno, observacao = versão do termo). Persistido como text (`HasConversion<string>`) → novo valor sem migration.
 - **StatusSaude** {Ok, Degradado, Falha} — status geral do HealthSnapshot.
+- **CategoriaSuporte** {Duvida=0, Sugestao=1, Outro=2} — categoria do ticket de `MensagemSuporte`. Persistido como text (`HasConversion<string>`).
 - **TipoGrupoMuscular** {Peito, Costas, Ombro, Biceps, Triceps, Pernas, Gluteos, Core, FullBody} — ⚠️ enum no namespace Enums chamado `TipoGrupoMuscular` (não `GrupoMuscular`); a entidade catálogo é `GrupoMuscular`. Usado p/ seed dos 9 grupos; não é coluna ([specification-db]).
 
 ## 5. DOMAIN EVENTS
@@ -148,6 +150,7 @@ Todos `sealed record : IDomainEvent`. Handlers (e-mail/WhatsApp/projeção) em [
 | AssinaturaTreinadorReativadaEvent | AssinaturaTreinador.RegistrarPagamentoRegularizado (Inadimplente→Ativa) | AssinaturaTreinadorId, TreinadorId, OcorridoEm | (sem handler registrado) |
 | AssinaturaTreinadorPlanoTrocadoEvent | AssinaturaTreinador.TrocarPlanoImediato / AplicarPlanoAgendado | AssinaturaTreinadorId, TreinadorId, PlanoAnteriorId, PlanoNovoId, OcorridoEm | (sem handler registrado) |
 | PagamentoTreinadorPagoEvent | PagamentoTreinador.MarcarPago | PagamentoTreinadorId, TreinadorId, AssinaturaTreinadorId, Finalidade, PlanoAlvoId?, OcorridoEm | orquestra renovação/troca de plano ([specification-backend]) |
+| MensagemSuporteCriadaEvent | MensagemSuporte.Criar | MensagemSuporteId, ContaId, TipoConta, Categoria, Assunto, Descricao, OcorridoEm | e-mail ao suporte (handler DURÁVEL via outbox, [specification-email]) |
 
 ⚠️ `PagamentoFalhouEvent` carrega `AssinaturaAlunoId` (1º campo) e é emitido pela `AssinaturaAluno`, NÃO pelo `Pagamento`. `PagamentoCriadoEvent`/`PagamentoEstornadoEvent`/`PagamentoEmDisputaEvent` são emitidos pelo `Pagamento`.
 ⚠️ `AssinaturaTreinadorPagamentoFalhouEvent` é emitido a CADA falha (análogo ao `PagamentoFalhouEvent` do aluno). Na 3ª falha, `AssinaturaTreinadorMarcadaInadimplenteEvent` é emitido ADICIONALMENTE (dois eventos no mesmo `RegistrarPagamentoFalho`). Ambos têm handler de e-mail registrado.

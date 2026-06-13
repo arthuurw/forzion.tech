@@ -245,6 +245,11 @@ Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 - `components/aluno/SemVinculoAtivoBanner.tsx`: lê `GET /aluno/vinculo` (`alunoApi.getMeuVinculo`). Estado `ativo` (oculto) | `pendente` (aguardando aprovação) | `sem-vinculo`. Mensagem: histórico consultável, registro de novos treinos bloqueado. Renderizado no dashboard (`(aluno)/aluno/page.tsx`) e no histórico (`(aluno)/aluno/historico/page.tsx`).
 - Execução (`(aluno)/aluno/fichas/[fichaId]/executar/page.tsx`): trata `403` do registro com mensagem clara ("Você não tem um treinador ativo. Não é possível registrar novos treinos.").
 
+### Contato com suporte (`(aluno)/aluno/suporte` + `(treinador)/treinador/suporte`)
+- Form compartilhado `components/suporte/SuporteForm.tsx`; as duas páginas são thin (só renderizam o form). Item "Suporte" (`SupportAgentIcon`) no `NavConfig` de aluno e treinador (Admin não vê).
+- react-hook-form + `zodResolver(suporteSchema)` (`lib/validations/suporte.ts`: categoria enum Duvida/Sugestao/Outro, assunto 3–120, descrição 20–2000 com `.trim()` espelhando o backend). Nome/E-mail são `disabled`, pré-preenchidos via `contaApi.getPerfil()` (server-authoritative — NÃO do token, que não traz e-mail).
+- Submit via `apiClient.post("/suporte/mensagens", {categoria, assunto, descricao})` (catch-all `/api/backend` com Bearer; SEM route proxy dedicado — identidade vem do token no backend). 202 → tela de sucesso; erro → `AlertBanner` (`extractApiError`).
+
 ## TESTES (`vitest.config.mts`)
 3 projects vitest:
 

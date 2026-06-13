@@ -22,6 +22,7 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<IAssinanteRepository> _assinanteRepo = new();
     private readonly Mock<IEmailDeliveryLogRepository> _emailLogRepo = new();
     private readonly Mock<IWhatsAppDeliveryLogRepository> _waLogRepo = new();
+    private readonly Mock<IMensagemSuporteRepository> _mensagemSuporteRepo = new();
     private readonly Mock<ILogAprovacaoRepository> _logAprovacaoRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IUnitOfWork> _uow = new();
@@ -48,6 +49,8 @@ public class AnonimizarContaHandlerTests
                      .Returns(Task.CompletedTask);
         _waLogRepo.Setup(r => r.AnonimizarPorTelefoneAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .Returns(Task.CompletedTask);
+        _mensagemSuporteRepo.Setup(r => r.ExcluirPorContaIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                            .Returns(Task.CompletedTask);
         _assinanteRepo.Setup(r => r.AnonimizarPorAlunoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                       .Returns(Task.CompletedTask);
         _vinculoRepo.Setup(r => r.ListarAtivosEPendentesPorAlunoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -73,6 +76,7 @@ public class AnonimizarContaHandlerTests
             _assinanteRepo.Object,
             _emailLogRepo.Object,
             _waLogRepo.Object,
+            _mensagemSuporteRepo.Object,
             _logAprovacaoRepo.Object,
             _passwordHasher.Object,
             _uow.Object,
@@ -419,6 +423,29 @@ public class AnonimizarContaHandlerTests
         _execucaoRepo.Verify(r => r.AnonimizarObservacoesPorAlunoIdAsync(aluno.Id, It.IsAny<CancellationToken>()), Times.Once);
         // scrub must precede commit
         commitCallOrder.Should().Equal("scrub", "commit");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ApagaMensagensSuporteDoTitularAntesDoCommit()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+
+        var ordem = new List<string>();
+        _mensagemSuporteRepo.Setup(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                            .Callback(() => ordem.Add("excluir-suporte"))
+                            .Returns(Task.CompletedTask);
+        _uow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("commit"))
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _mensagemSuporteRepo.Verify(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
+        ordem.Should().Equal("excluir-suporte", "commit");
     }
 
     [Fact]

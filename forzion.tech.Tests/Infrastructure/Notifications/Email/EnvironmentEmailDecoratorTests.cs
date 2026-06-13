@@ -12,14 +12,14 @@ public class EnvironmentEmailDecoratorTests
     private readonly Mock<IEmailService> _inner = new();
     private readonly Mock<ILogger<EnvironmentEmailDecorator>> _logger = new();
 
-    private sealed record Enviado(string Para, string Assunto, string Html);
+    private sealed record Enviado(string Para, string Assunto, string Html, string? ReplyTo);
 
     private (EnvironmentEmailDecorator decorator, Func<Enviado?> capturado) Build(EmailSettings settings)
     {
         Enviado? capturado = null;
         _inner
-            .Setup(s => s.EnviarAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback<string, string, string, CancellationToken>((para, assunto, html, _) => capturado = new Enviado(para, assunto, html))
+            .Setup(s => s.EnviarAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .Callback<string, string, string, CancellationToken, string?>((para, assunto, html, _, replyTo) => capturado = new Enviado(para, assunto, html, replyTo))
             .Returns(Task.CompletedTask);
 
         var decorator = new EnvironmentEmailDecorator(_inner.Object, settings, _logger.Object);
@@ -126,6 +126,18 @@ public class EnvironmentEmailDecoratorTests
         await decorator.EnviarAsync("real@cliente.com", "Assunto", "<p>corpo</p>");
 
         capturado()!.Para.Should().Be("real@cliente.com");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RepassaReplyTo_AoInner(bool marcarComoTeste)
+    {
+        var (decorator, capturado) = Build(new EmailSettings { MarcarComoTeste = marcarComoTeste });
+
+        await decorator.EnviarAsync("dest@forzion.tech", "Assunto", "<p>corpo</p>", replyTo: "usuario@forzion.tech");
+
+        capturado()!.ReplyTo.Should().Be("usuario@forzion.tech");
     }
 
     [Fact]

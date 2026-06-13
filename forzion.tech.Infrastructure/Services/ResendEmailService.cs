@@ -30,15 +30,19 @@ public sealed class ResendEmailService(HttpClient http, string apiKey, string ap
         return $"{email[0]}***@{email[(arroba + 1)..]}";
     }
 
-    public async Task EnviarAsync(string para, string assunto, string htmlBody, CancellationToken cancellationToken = default)
+    public async Task EnviarAsync(string para, string assunto, string htmlBody, CancellationToken cancellationToken = default, string? replyTo = null)
     {
-        var payload = new
+        var payload = new Dictionary<string, object>
         {
-            from = _from,
-            to = new[] { para },
-            subject = assunto,
-            html = htmlBody
+            ["from"] = _from,
+            ["to"] = new[] { para },
+            ["subject"] = assunto,
+            ["html"] = htmlBody
         };
+
+        // Só inclui reply_to quando informado — campo opcional da API Resend (POST /emails).
+        if (!string.IsNullOrWhiteSpace(replyTo))
+            payload["reply_to"] = replyTo;
 
         try
         {

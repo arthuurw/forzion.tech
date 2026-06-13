@@ -27,6 +27,7 @@ public class AnonimizarContaHandler(
     IAssinanteRepository assinanteRepository,
     IEmailDeliveryLogRepository emailDeliveryLogRepository,
     IWhatsAppDeliveryLogRepository whatsAppDeliveryLogRepository,
+    IMensagemSuporteRepository mensagemSuporteRepository,
     ILogAprovacaoRepository logAprovacaoRepository,
     IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork,
@@ -152,6 +153,11 @@ public class AnonimizarContaHandler(
         if (!string.IsNullOrEmpty(oldTelefone))
             await whatsAppDeliveryLogRepository
                 .AnonimizarPorTelefoneAsync(oldTelefone, cancellationToken).ConfigureAwait(false);
+
+        // Assunto/descrição das mensagens de suporte são texto livre = PII potencial. Apaga na mesma
+        // transação ambiente (ExecuteDelete) — all-or-nothing com o resto da anonimização (FR-10).
+        await mensagemSuporteRepository
+            .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
         var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AnonimizacaoConta,

@@ -333,6 +333,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<AtualizarPerfilHandler>();
         services.AddScoped<AlterarSenhaHandler>();
         services.AddScoped<LogoutHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Suporte.EnviarMensagem.EnviarMensagemSuporteHandler>();
 
         return services;
     }

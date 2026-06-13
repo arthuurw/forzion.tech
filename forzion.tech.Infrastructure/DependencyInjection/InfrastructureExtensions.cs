@@ -93,6 +93,7 @@ public static class InfrastructureExtensions
         services.AddScoped<ILogAprovacaoRepository, LogAprovacaoRepository>();
         services.AddScoped<ITokenRevogadoRepository, TokenRevogadoRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IMensagemSuporteRepository, MensagemSuporteRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
@@ -176,6 +177,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoCanceladaEvent>, AssinaturaAlunoCanceladaEmailTreinadorHandler>();
         services.AddScoped<IDomainEventHandler<VinculoPendenteCriadoEvent>, VinculoPendenteCriadoEmailTreinadorHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoReativadaEvent>, AssinaturaAlunoReativadaEmailAlunoHandler>();
+        services.AddScoped<IDomainEventHandler<MensagemSuporteCriadaEvent>, MensagemSuporteCriadaEmailHandler>();
 
         services.AddScoped<IDomainEventHandler<AssinaturaTreinadorPagamentoFalhouEvent>, AssinaturaTreinadorPagamentoFalhouEmailHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaTreinadorMarcadaInadimplenteEvent>, AssinaturaTreinadorMarcadaInadimplenteEmailHandler>();
@@ -242,5 +244,9 @@ public static class InfrastructureExtensions
             .Registrar<PagamentoTreinadorPagoEvent, PagamentoTreinadorPagoHandler>(
                 e => $"evt:PagamentoTreinadorPago:{e.PagamentoTreinadorId}")
             .Registrar<VinculoAprovadoEvent, VinculoAprovadoCriarAssinaturaAlunoHandler>(
-                e => $"evt:VinculoAprovado:{e.VinculoId}");
+                e => $"evt:VinculoAprovado:{e.VinculoId}")
+            // E-mail ao suporte é durável (FR-05): nunca perdido por falha transitória do Resend.
+            // Diferente das demais notificações best-effort — aqui o usuário escolheu garantia de entrega.
+            .Registrar<MensagemSuporteCriadaEvent, MensagemSuporteCriadaEmailHandler>(
+                e => $"evt:MensagemSuporteCriada:{e.MensagemSuporteId}");
 }
