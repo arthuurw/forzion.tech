@@ -34,7 +34,7 @@ Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git.
 | schema/migration/FK/enum           | db |
 | endpoint/contrato/erro API         | backend, security |
 | Stripe/refund/webhook pagamento    | stripe, security |
-| email/whatsapp                     | email · whatsapp |
+| email/whatsapp                     | email, whatsapp |
 | componente/form/página             | frontend, frontend-ui |
 | auth/headers/rate-limit/segredo    | security |
 | log/health/perf-web                | observability |
@@ -61,10 +61,10 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 ## CONVENÇÕES-CHAVE
 - DDD: entidades com factory `Criar`; domain events despachados no `UnitOfWork.CommitAsync` (re-entrância tratada). Result<T> pattern. FluentValidation auto-descoberto. Handlers registrados manualmente no DI.
 - Commits: Conventional Commits. Scopes válidos: `frontend|backend|infra|ci|deps|tests|docs`.
-- Tasks da skill (`tlc-spec-driven`): toda task que escreve código leva no "Done when" o gate de COMENTÁRIOS (regra 9 / `specs/specification-coding.md` §8) — o hook não pega paráfrase/óbvio.
+- Tasks da skill (`tlc-spec-driven`): toda task que escreve código leva no "Done when" o gate de COMENTÁRIOS (regra 9).
 
 ## DEFINITION OF DONE (toda alteração de código)
-1. Testes: comportamento novo/bugfix tem teste que asservera o COMPORTAMENTO, escrito JUNTO da implementação. NÃO rodar ciclo cerimonial red→green→refactor por iteração — agente escreve código+teste juntos; o valor "falharia sem o código" sai por design. Asserção real, não tautologia (`specification-tests` §11).
+1. Testes: comportamento novo/bugfix tem teste que assevera o COMPORTAMENTO, escrito JUNTO da implementação. NÃO rodar ciclo cerimonial red→green→refactor por iteração — agente escreve código+teste juntos; o valor "falharia sem o código" sai por design. Asserção real, não tautologia (`specification-tests` §11).
 2. Build completo: `dotnet build forzion.tech.slnx` (inclui `forzion.tech.PactVerification`) + frontend build.
 3. Suíte verde local (unit + vitest; integração/E2E no CI se sem Docker). Contagem NÃO regride; GREEN intocável (`specification-tests` §1.3/§4).
 4. Comportamento verificado DE FATO, não só teste verde. [`/verify` · `superpowers:verification-before-completion`]
@@ -72,7 +72,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 6. Comentários: só o "porquê" não-óbvio (regra 9).
 7. Git: LER `specs/specification-git.md` ANTES de qualquer op git (CANÔNICO — §PRE-COMMIT HOOK + §EDGE CASES/CRLF). Conventional; `dotnet format forzion.tech.slnx` ANTES de `git add` em `.cs` novos.
 8. Commit + push para a BRANCH DE TRABALHO ATUAL apenas. NÃO abrir PR automaticamente — PR (→ `homolog`/`master`) é SEMPRE solicitado manualmente pelo usuário, até segunda ordem (minutos GH Actions limitados).
-9. PR (quando o usuário pedir o PR — regra 8): (a) PRÉ-PR: RE-LER a `specification-*` de CADA área tocada e ATUALIZAR o arquivo na MESMA branch se o código divergiu (specs versionadas = estado REAL, não aspiracional); (b) PÓS-PR, AO CI FICAR VERDE: CODE REVIEW do diff alinhado ao plugin **context7** — toda afirmação que dependa de API de lib/framework (EF Core, Npgsql, Stripe.net, ASP.NET, Serilog, Next.js/React/MUI/Sentry, aws-cli/age/pg_dump) é VERIFICADA no context7 (`resolve-library-id`→`query-docs`) ANTES de confirmar/refutar achado — não alucinar API. Achado cross-file: ler o arquivo real (`coding §7`). O review TAMBÉM valida COMENTÁRIOS DESNECESSÁRIOS (regra 9 / `specification-coding` §8): paráfrase, óbvio, inline que repete o código — o subset que o hook de pre-commit NÃO pega (exige julgamento); flagar pra remoção. CI VERMELHO ⇒ `superpowers:systematic-debugging` da causa PRIMEIRO; NÃO revisar código que ainda falha gate. Fluxo operacional (monitorar checks, ordem): `specification-git` §PUSH/PR.
+9. PR (quando o usuário pedir o PR — DoD#8): (a) PRÉ-PR: RE-LER a `specification-*` de CADA área tocada e ATUALIZAR o arquivo na MESMA branch se o código divergiu (specs versionadas = estado REAL, não aspiracional); (b) PÓS-PR, AO CI FICAR VERDE: CODE REVIEW do diff alinhado ao plugin **context7** — toda afirmação que dependa de API de lib/framework (EF Core, Npgsql, Stripe.net, ASP.NET, Serilog, Next.js/React/MUI/Sentry, aws-cli/age/pg_dump) é VERIFICADA no context7 (`resolve-library-id`→`query-docs`) ANTES de confirmar/refutar achado — não alucinar API. Achado cross-file: ler o arquivo real (`coding §7`). O review TAMBÉM valida COMENTÁRIOS DESNECESSÁRIOS (regra 9 / `specification-coding` §8): paráfrase, óbvio, inline que repete o código — o subset que o hook de pre-commit NÃO pega (exige julgamento); flagar pra remoção. CI VERMELHO ⇒ `superpowers:systematic-debugging` da causa PRIMEIRO; NÃO revisar código que ainda falha gate. Fluxo operacional (monitorar checks, ordem): `specification-git` §PUSH/PR.
 BUG no caminho ⇒ `superpowers:systematic-debugging`: achar a causa, não remendar sintoma; teste vermelho FICA até o código corrigir.
 
 ## REGRAS (só alteráveis mediante aprovação do usuário)
