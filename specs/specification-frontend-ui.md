@@ -77,6 +77,7 @@ Story = `*.stories.tsx`. A11y test (vitest-axe dedicado) = `*.a11y.test.tsx`. Co
 | `ErrorBoundary` | class boundary + Sentry capture | `children`, `fallback?` | ❌ | ❌ |
 | `InfoLine` | label:value inline (sem `"use client"`) | `label`, `value` | ❌ | ❌ |
 | `Logo` | wordmark "forzion.tech" | `size`(sm\|md\|lg), `sx?` | ❌ | ❌ |
+| `CheckoutTermos` | disclosure CDC art. 31 de transparência de preço no checkout | `valor: number`, `dense?: boolean` | ❌ | ✅ (`CheckoutTermos.test.tsx`: valor exibido + termos + CDC) |
 
 NÃO há barrel `ui/index.ts`. Todos os componentes são importados por path direto (ex. `@/components/ui/StatusChip`).
 

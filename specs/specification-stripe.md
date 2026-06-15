@@ -13,13 +13,13 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
   - `GerarLinkOnboardingAsync(accountId, urlRetorno, urlCancelamento, ct)` → URL
   - `CriarPixPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `PixPaymentResult(intentId, qrCode, qrCodeUrl, expiracao)` (fluxo aluno — Connect + fee split)
   - `CriarCartaoPaymentIntentAsync(valor, accountId, pagamentoId, taxaPlataformaPercent, ct)` → `CartaoPaymentResult(intentId, clientSecret)` (fluxo aluno — Connect + fee split)
-  - `CriarPixPlataformaPaymentIntentAsync(valor, pagamentoTreinadorId, ct)` → `PixPaymentResult` — **plano do treinador**: valor CHEIO p/ conta da plataforma (sem `accountId`/`TransferData`/`ApplicationFeeAmount`/`taxaPercent`). Idempotency key `pagamento-{guid_n}`.
+  - `CriarPixPlataformaPaymentIntentAsync(valor, pagamentoTreinadorId, ct)` → `PixPaymentResult` — **plano do treinador**: valor CHEIO p/ conta da plataforma (sem `accountId`/`TransferData`/`ApplicationFeeAmount`/`taxaPercent`). Idempotency key `pagamento-treinador-{guid_n}`.
   - `CriarCartaoPlataformaPaymentIntentAsync(valor, pagamentoTreinadorId, ct)` → `CartaoPaymentResult` — idem, cartão.
   - `ContaEstaAtivadaAsync(accountId, ct)` → `bool` (poll `account.ChargesEnabled`)
   - `ValidarWebhookAsync(payload, assinaturaHeader)` → `bool` (`EventUtility.ConstructEvent` HMAC-SHA256)
   - `ListarEventosDesdeAsync(desdeUtc, ct)` → `IReadOnlyList<StripeEventSummary>` (reconciliação — ver §RECONCILIAÇÃO)
-  - `CriarReembolsoAsync(paymentIntentId, reverterTransferencia, ct)` → reembolso total (CDC 7d — ver §CANCELAMENTO/REEMBOLSO). `reverterTransferencia=true` ⇒ `RefundCreateOptions{ PaymentIntent, ReverseTransfer=true, RefundApplicationFee=true }` (charge destino do aluno); `false` ⇒ só `{ PaymentIntent }` (charge direto-plataforma do treinador). `Amount` não enviado = total.
-  - `CancelarPaymentIntentAsync(paymentIntentId, ct)` → `PaymentIntentService.CancelAsync`. Cancela PI não-capturado (ex.: Pix pendente ao treinador trocar p/ modo Externo). Best-effort: lança se PI já terminal — caller (`AlterarModoPagamentoTreinadorHandler`) faz try/catch + LogWarning.
+  - `CriarReembolsoAsync(pagamentoId, paymentIntentId, reverterTransferencia, ct)` → reembolso total (CDC 7d — ver §CANCELAMENTO/REEMBOLSO). `pagamentoId` vira a idempotency-key do refund (`refund-{guid_n}`). `reverterTransferencia=true` ⇒ `RefundCreateOptions{ PaymentIntent, ReverseTransfer=true, RefundApplicationFee=true }` (charge destino do aluno); `false` ⇒ só `{ PaymentIntent }` (charge direto-plataforma do treinador). `Amount` não enviado = total.
+  - `CancelarPaymentIntentAsync(paymentIntentId, ct)` → `CancelarPaymentIntentResultado` (`Cancelado`/`JaCancelado`/`JaCapturado`). Cancela PI não-capturado (ex.: Pix pendente ao treinador trocar p/ modo Externo). Faz GET do status antes de cancelar (evita falha em PI já terminal).
   - `EnviarEvidenciaDisputaAsync(disputeId, DisputaEvidencia, ct)` → `Dispute.Update(disputeId, { Evidence })` — resposta automática a chargeback (ver §CHARGEBACKS). **disputeId, NÃO chargeId/paymentIntentId.** `DisputaEvidencia(EmailCliente, DataAtivacao, DataUltimaAtividade, DataUltimoPagamento)` → `CustomerEmailAddress`, `ServiceDate` (yyyy-MM-dd), `UncategorizedText` (datas concatenadas).
 - Impl única: `StripeService` (Infrastructure/Services). Sem `NullStripeService` — `StripeSettings.ValidateOnStart` exige `SecretKey`/`WebhookSecret` não-vazios (boot falha sem config).
 - `RequestOptions { ApiKey }` passada em cada chamada (sem estado global).
@@ -167,23 +167,19 @@ INTERNAL_API_KEY=<openssl rand -hex 32, valor SEPARADO do hmg>
 ⚠ `INTERNAL_API_KEY` POR-ambiente (não compartilhar). Sincronizar com GitHub secret `INTERNAL_API_KEY` do environment correspondente pro workflow `billing-renewal.yml`.
 
 ## CRON DE RENOVAÇÃO
-- Workflow `.github/workflows/billing-renewal.yml` — cron `0 8 * * *` UTC (Daily 08:00 UTC); `workflow_dispatch` pra trigger manual.
-- Single step: `curl -f -X POST -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" https://${{ secrets.HOMOLOG_HOST }}/internal/processar-renovacoes`.
-- `INTERNAL_API_KEY` deve casar exato com env `Internal:ApiKey` do backend.
+Disparado por `billing-renewal.yml` (aluno) e `billing-renewal-treinador.yml` (treinador). Schedules, X-Internal-Key wiring e monitoring de issue: [specification-infrastructure §CI-CD].
 - Sem fallback interno (não há `IHostedService`/`BackgroundService` pra renovação) — se workflow morre, renovação para.
-- **Monitoring:** step `if: failure()` cria GitHub Issue automática com label `billing-renewal-failed` (via `actions/github-script@v7`). GitHub notifica Arthur por e-mail/Slack se inscrito.
-- **Plano do treinador**: workflow paralelo `billing-renewal-treinador.yml` (cron `0 8 * * *` UTC) → `POST /internal/processar-renovacoes-treinador` → loop `GerarCobrancaPlanoTreinadorHandler`. Mesmo padrão X-Internal-Key + Issue on failure.
+- **Plano do treinador**: `POST /internal/processar-renovacoes-treinador` → loop `GerarCobrancaPlanoTreinadorHandler`.
 
 ## RECONCILIAÇÃO PERIÓDICA (safety net webhook)
-- Workflow `.github/workflows/billing-reconciliation.yml` — cron `0 4 * * 1` UTC (Segunda 04:00 UTC, weekly); `workflow_dispatch` com input `desde_utc`.
-- Chama `POST /internal/reconciliar-pagamentos` com X-Internal-Key (same FixedTimeEquals pattern). Body `{}` = últimos 7 dias; override via `desdeUtc` ISO-8601.
+Disparado por `billing-reconciliation.yml` (cron semanal seg 04h UTC + `workflow_dispatch` com input `desde_utc`). Schedule, wiring e monitoring de issue: [specification-infrastructure §CI-CD].
+- Chama `POST /internal/reconciliar-pagamentos` com X-Internal-Key. Body `{}` = últimos 7 dias; override via `desdeUtc` ISO-8601.
 - Backend handler `ReconciliarPagamentosStripeHandler` (Application):
   1. `IStripeService.ListarEventosDesdeAsync(desdeUtc)` — `EventService.ListAutoPagingAsync` filtrando por `payment_intent.{succeeded,payment_failed,canceled}` + `account.updated` + `charge.refunded` + `charge.dispute.created`, cap 1000 eventos.
   2. Por evento: chama `ProcessarWebhookStripeHandler.ProcessarEventoAsync(evento, ct)` — método refatorado pra ser reutilizável sem signature verification (eventos vêm autenticados via nossa API key).
   3. Resultado por evento: `Aplicado` | `JaConsistente` | `Ignorado`. Reconciliator agrega → `{ TotalEventos, Replayed, JaConsistentes, Erros }`.
   4. Idempotência preservada: handler interno checa estado terminal por tipo de evento (`Pagamento.Status != Pendente` para `payment_intent.*`; `Status == Estornado` para `charge.refunded`; `Status == EmDisputa` para `charge.dispute.created`).
 - Pega webhooks perdidos (Stripe retry policy desistiu OU rede falhou OU backend estava down).
-- **Monitoring:** step `if: failure()` cria GitHub Issue com label `billing-reconciliation-failed` (mesmo pattern do billing-renewal).
 
 ## FRONTEND
 - Componentes (`src/components/pagamento/`): `PagamentoCartao.tsx` (carrega Stripe.js via `loadStripe(NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)`, wrap `<Elements options={{clientSecret}}>` + `<CartaoForm>` com `useStripe`/`useElements`/`confirmPayment`), `PagamentoPix.tsx` (QR code + polling 30s + clipboard copy).

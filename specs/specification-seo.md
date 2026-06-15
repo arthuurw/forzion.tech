@@ -34,7 +34,7 @@ Metadata por rota via `layout.tsx` server por rota (§2.2). Nenhuma rota usa `ge
 | `alternates`/`canonical` | `[ATUAL]` (T5) | `/`, `/login`, `/cadastro/treinador`, `/cadastro/aluno` |
 | `application/ld+json` (structured data) | `[ATUAL]` (T5) | Organization na landing `page.tsx` (§5.1) |
 | OG image | `[ATUAL]` (T5) | `app/opengraph-image.tsx` (dinâmica next/og) → rota `/opengraph-image` no build |
-| `favicon`/`icon`/`apple-icon` | NÃO CONFIRMADO via convenção App Router `[GAP]` | sem `app/icon.*`/`app/favicon.ico` |
+| `favicon` | `[ATUAL]` | `app/favicon.ico` presente — Next.js App Router serve automaticamente como `/favicon.ico`. Sem `app/icon.*` nem `app/apple-icon.*` (ícones adicionais ausentes — `[GAP]`). |
 
 ### Superfície pública indexável — `[ATUAL]`
 Rotas públicas (grupo `(public)` + landing) — únicas candidatas a `index` (ver [specification-frontend] §grupos de rota):

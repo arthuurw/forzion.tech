@@ -267,8 +267,8 @@ Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 
 | Project | Env | Pool | Setup | Include |
 |---------|-----|------|-------|---------|
-| `unit` | node | threads | `src/test/setup/unit.ts` | `src/lib/**/*.test.ts`, `src/hooks/**/*.test.ts`, `src/middleware.test.ts` |
-| `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts` |
+| `unit` | node | threads | `src/test/setup/unit.ts` | `src/lib/**/*.test.ts`, `src/lib/**/*.property.test.ts`, `src/hooks/**/*.test.ts`, `src/hooks/**/*.property.test.ts`, `src/middleware.test.ts`, `src/middleware.signature.test.ts` (exclui: hooks RTL/DOM e excel/downloadBlob/admin.msw/auth-context que rodam em `integration`) |
+| `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/components/**/__tests__/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/utils/downloadBlob.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts`, hooks RTL: `useInactivity`, `useConsent`, `usePaginatedList`, `useCRUDDialog` |
 | `api` | node | threads | `src/test/setup/api.ts` | `src/app/api/**/*.test.ts` |
 
 **Coverage (v8)**: thresholds por glob (l/b/f por camada) — canônico em [specification-tests] §8 (enforced em `vitest run --coverage`).

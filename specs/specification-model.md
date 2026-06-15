@@ -154,6 +154,8 @@ Todos `sealed record : IDomainEvent`. Handlers (e-mail/WhatsApp/projeção) em [
 | AssinaturaTreinadorPlanoTrocadoEvent | AssinaturaTreinador.TrocarPlanoImediato / AplicarPlanoAgendado | AssinaturaTreinadorId, TreinadorId, PlanoAnteriorId, PlanoNovoId, OcorridoEm | (sem handler registrado) |
 | PagamentoTreinadorPagoEvent | PagamentoTreinador.MarcarPago | PagamentoTreinadorId, TreinadorId, AssinaturaTreinadorId, Finalidade, PlanoAlvoId?, OcorridoEm | orquestra renovação/troca de plano ([specification-backend]) |
 | MensagemSuporteCriadaEvent | MensagemSuporte.Criar | MensagemSuporteId, ContaId, TipoConta, Categoria, Assunto, Descricao, OcorridoEm | e-mail ao suporte (handler DURÁVEL via outbox, [specification-email]) |
+| CobrancaProximaAlunoEvent | (dispatch por `DespacharPreAvisosAlunoHandler`) | AssinaturaAlunoId, AlunoId, TreinadorId, Valor, DataProximaCobranca, OcorridoEm | e-mail pré-aviso aluno (3 dias antes; `CobrancaProximaEmailAlunoHandler`) |
+| CobrancaProximaTreinadorEvent | (dispatch por `DespacharPreAvisosTreinadorHandler`) | AssinaturaTreinadorId, TreinadorId, Valor, DataProximaCobranca, OcorridoEm | e-mail pré-aviso treinador (3 dias antes; `CobrancaProximaEmailTreinadorHandler`) |
 
 ⚠️ `PagamentoFalhouEvent` carrega `AssinaturaAlunoId` (1º campo) e é emitido pela `AssinaturaAluno`, NÃO pelo `Pagamento`. `PagamentoCriadoEvent`/`PagamentoEstornadoEvent`/`PagamentoEmDisputaEvent` são emitidos pelo `Pagamento`.
 ⚠️ `AssinaturaTreinadorPagamentoFalhouEvent` é emitido a CADA falha (análogo ao `PagamentoFalhouEvent` do aluno). Na 3ª falha, `AssinaturaTreinadorMarcadaInadimplenteEvent` é emitido ADICIONALMENTE (dois eventos no mesmo `RegistrarPagamentoFalho`). Ambos têm handler de e-mail registrado.
@@ -265,5 +267,5 @@ Base `DomainException : Exception` (ctors: vazio / message / message+inner). `Do
 
 ## 8. INTERFACES DE DOMÍNIO
 - **IDomainEvent** (Events) — `DateTime OcorridoEm`. Contrato base de evento.
-- **IHasDomainEvents** (Events) — `IReadOnlyList<IDomainEvent> DomainEvents; void ClearDomainEvents();`. Implementado por: Conta (emite `ContaRegistradaEvent` + `ContaAnonimizadaEvent`), Aluno, Treinador, VinculoTreinadorAluno, AssinaturaAluno, Pagamento, AssinaturaTreinador, PagamentoTreinador.
+- **IHasDomainEvents** (Events) — `IReadOnlyList<IDomainEvent> DomainEvents; void ClearDomainEvents();`. Implementado por: Conta (emite `ContaRegistradaEvent` + `ContaAnonimizadaEvent`), Aluno, Treinador, VinculoTreinadorAluno, AssinaturaAluno, Pagamento, AssinaturaTreinador, PagamentoTreinador, MensagemSuporte.
 - **ICapacidadePlano** (Interfaces) — `int MaxAlunos`. Implementado por `PlanoPlataforma`; abstrai a regra de capacidade usada na validação de `LimiteAlunosAtingidoException`.

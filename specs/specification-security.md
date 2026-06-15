@@ -72,7 +72,7 @@ Cross-ref [specification-infrastructure] (ENV/SECRETS, `.env` na VM). Por ambien
 
 ## 6. SAST / DAST / SUPPLY-CHAIN
 ### SAST — Semgrep (`.github/workflows/semgrep.yml`)
-`semgrep scan --config p/default --error --metrics=off`. **BLOQUEANTE** (`--error` falha o job em finding). Triggers: push/PR em `homolog` (paths-ignore docs/specs) + schedule `0 5 * * 1` (segunda 05:00). Escopo via `.semgrepignore` (nginx/infra/fixtures fora). Substitui CodeQL (que exigia GHAS em repo privado).
+`semgrep scan --config p/default --error --metrics=off`. **BLOQUEANTE** (`--error` falha o job em finding). Triggers: PR→`homolog` + `workflow_dispatch` (sem schedule — removido; não dispara fora da branch default). Escopo via `.semgrepignore` (nginx/infra/fixtures fora). Substitui CodeQL (que exigia GHAS em repo privado).
 
 ### DAST — OWASP ZAP (`zap.yaml` + `.github/workflows/zap.yml`) — MAIOR GAP
 Automation Framework (`zap.yaml`):
@@ -112,7 +112,6 @@ Todos os webhooks: `AllowAnonymous` + rate `webhook` (300/min IP) + body cap **6
 - **DAST não testa endpoints autenticados**: `zap.yaml` auth `manual` + exclude `/api/auth` ⇒ toda a superfície pós-login fica fora da varredura ativa.
 - **Brute-force monitoring ausente** (CONCERNS High): rate-limit bloqueia mas sem alerta/detecção; sem fail2ban/WAF no edge.
 - **`/internal/*` público sem WAF/firewall** (CONCERNS High): exposto via HTTPS com X-Internal-Key. Constant-time OK, mas sem camada extra; brute-force da key não monitorado.
-- **Sem Stripe-Idempotency-Key** nas Create requests (CONCERNS High): app protege via tx serializable, mas idempotency Stripe-side seria belt-and-suspenders.
 - **Sentry wiring incompleto** (CONCERNS Medium): `@sentry/nextjs` instalado, gate por consentimento de cookie ([specification-lgpd]); erros prod podem cair em buracos.
 - **Branch protection do repo**: push direto a `homolog`/`master` proibido por convenção (CONCERNS:37) mas enforcement de branch protection é responsabilidade de config do repo — REFERENCIAR [specification-infrastructure]; `--no-verify` NUNCA (hooks locais, não server-side).
 - **OSV report-only** (deps dev não gateadas); gate de vuln frontend é só `npm audit --omit=dev >= high`.

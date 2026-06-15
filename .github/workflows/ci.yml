@@ -480,6 +480,17 @@ jobs:
     # explicitamente. Sem isto o merge em homolog NÃO deploya (regressão silenciosa).
     if: ${{ always() && needs.gate.result == 'success' && github.event_name == 'push' }}
     steps:
+      # Borda Hostinger dropa o IP rotativo do runner na 22 pública (timeout). Runner
+      # entra no tailnet (nó efêmero tag:ci) e fala com a VPS pelo IP privado 100.x.y.z
+      # — NAT traversal + DERP, zero porta inbound exposta. HOMOLOG_HOST = IP tailnet.
+      - name: Conecta no tailnet
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          version: latest
+
       - name: Deploy na VM
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
