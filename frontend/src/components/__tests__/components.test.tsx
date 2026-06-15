@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import StatusChip from "@/components/ui/StatusChip";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import InfoLine from "@/components/ui/InfoLine";
 
 describe("StatusChip", () => {
   it("renderiza 'Ativo' para status Ativo", () => {
@@ -39,6 +40,23 @@ describe("EmptyState", () => {
   it("não renderiza botão quando actionLabel ausente", () => {
     render(<EmptyState message="Vazio" />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+});
+
+describe("InfoLine", () => {
+  it("renderiza label e value", () => {
+    render(<InfoLine label="E-mail" value="ana@x.com" />);
+    expect(screen.getByText("E-mail:")).toBeInTheDocument();
+    expect(screen.getByText(/ana@x\.com/)).toBeInTheDocument();
+  });
+
+  it("aplica overflowWrap:anywhere p/ quebrar e-mail longo sem espaço (R9)", () => {
+    render(
+      <InfoLine label="E-mail" value="nome.sobrenome.muito.longo@dominio-extenso.com.br" />,
+    );
+    expect(screen.getByText("E-mail:").closest("p")).toHaveStyle({
+      "overflow-wrap": "anywhere",
+    });
   });
 });
 

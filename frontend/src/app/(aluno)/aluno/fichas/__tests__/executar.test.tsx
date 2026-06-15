@@ -93,6 +93,26 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     expect(infoIcon).not.toBeNull();
   });
 
+  // R6 — dots de progresso têm alvo de toque acessível (ButtonBase com aria-label)
+  // e navegam ao exercício correspondente.
+  it("dots de progresso: botão com aria-label navega ao exercício (R6)", async () => {
+    respondFicha(
+      makeFicha({
+        exercicios: [
+          makeExercicio({ treinoExercicioId: "ex-1", nomeExercicio: "Supino" }),
+          makeExercicio({ treinoExercicioId: "ex-2", nomeExercicio: "Agachamento" }),
+        ],
+      }),
+    );
+    render(<ExecutarFichaPage />);
+    await screen.findByText("Supino");
+
+    const dot2 = screen.getByRole("button", { name: "Ir para exercício 2" });
+    expect(dot2).toBeInTheDocument();
+    fireEvent.click(dot2);
+    expect(await screen.findByText("Agachamento")).toBeInTheDocument();
+  });
+
   it("registro sem treinador ativo (403) exibe mensagem clara de bloqueio", async () => {
     respondFicha();
     server.use(

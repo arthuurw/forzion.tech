@@ -195,6 +195,7 @@ Básico aqui; tokens exatos (paleta/radius/tipografia/component-defaults/anti-zo
 
 ## RESPONSIVIDADE
 - Breakpoints MUI default; layout adapta em `<md` para mobile (detalhes/tokens em [specification-frontend-ui] §RESPONSIVIDADE).
+- **Alvo de verificação = 360px; target-size AA = 24px (não 44px=AAA); CHECKLIST anti-regressão mobile + padrões (kebab de ações, hit-area de dot, ResponsiveTable obrigatória) em [specification-frontend-ui] §RESPONSIVIDADE — aplicar ao mexer em qualquer página/componente.**
 - `viewportFit: "cover"` + `env(safe-area-inset-bottom)` para iPhone notch.
 - BottomNavigation com `showLabels: navItems.length <= 4`.
 - Padding do main: `p: {xs:2.5, md:3.5}`, `pb: {xs:"calc(72px+safe-area)", md:3.5}`.

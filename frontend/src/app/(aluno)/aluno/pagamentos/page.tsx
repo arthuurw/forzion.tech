@@ -2,13 +2,20 @@
 import { useEffect, useState } from "react";
 import {
   Box, Typography, CircularProgress, Alert,
-  Table, TableBody, TableCell, TableHead, TableRow,
   Chip, Button, Dialog, DialogContent, DialogTitle, IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import type { PagamentoResponse } from "@/types";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { PAGAMENTO_STATUS_COLORS, PAGAMENTO_STATUS_LABEL } from "@/lib/constants/labels";
+
+const COLUNAS: Column[] = [
+  { label: "Data" },
+  { label: "Valor" },
+  { label: "Status" },
+  { label: "Ações", align: "right" },
+];
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 
@@ -28,42 +35,35 @@ function TabelaPagamentos({ pagamentos, loading, error, onAtualizar }: Props) {
 
   return (
     <>
-      <Box sx={{ overflowX: "auto" }}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Data</TableCell>
-            <TableCell>Valor</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell />
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {pagamentos.map((p) => (
-            <TableRow key={p.pagamentoId}>
-              <TableCell>{new Date(p.createdAt).toLocaleDateString("pt-BR")}</TableCell>
-              <TableCell>
-                {p.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </TableCell>
-              <TableCell>
+      <ResponsiveTable<PagamentoResponse>
+        columns={COLUNAS}
+        rows={pagamentos}
+        rowKey={(p) => p.pagamentoId}
+        renderCell={(p, col) => {
+          switch (col) {
+            case 0:
+              return new Date(p.createdAt).toLocaleDateString("pt-BR");
+            case 1:
+              return p.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+            case 2:
+              return (
                 <Chip
                   label={PAGAMENTO_STATUS_LABEL[p.status]}
                   color={PAGAMENTO_STATUS_COLORS[p.status]}
                   size="small"
                 />
-              </TableCell>
-              <TableCell>
-                {p.status === "Pendente" && (
-                  <Button size="small" onClick={() => setPagamentoAberto(p)}>
-                    Pagar
-                  </Button>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      </Box>
+              );
+            case 3:
+              return p.status === "Pendente" ? (
+                <Button size="small" onClick={() => setPagamentoAberto(p)}>
+                  Pagar
+                </Button>
+              ) : null;
+            default:
+              return null;
+          }
+        }}
+      />
 
       <Dialog open={!!pagamentoAberto} onClose={() => setPagamentoAberto(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>

@@ -122,7 +122,17 @@ export default function ConsentBanner({ forceOpen, onClose }: ConsentBannerProps
           </Stack>
         )}
       </DialogContent>
-      <DialogActions sx={{ flexWrap: "wrap", gap: 0.5, px: 2, pb: 2 }}>
+      <DialogActions
+        sx={{
+          flexWrap: "wrap",
+          gap: 0.5,
+          px: 2,
+          pb: 2,
+          // xs: empilha em coluna (3 botões espremidos a 360px); semântica inalterada.
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
+        }}
+      >
         {!showPrefs ? (
           <>
             <Button

@@ -26,7 +26,7 @@ export default function OnboardingRetornoPage() {
   }
 
   return (
-    <Box sx={{ p: 4, maxWidth: 480, mx: "auto", textAlign: "center" }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 480, mx: "auto", textAlign: "center" }}>
       <Stack spacing={2} sx={{ alignItems: "center" }}>
         {completo ? (
           <>

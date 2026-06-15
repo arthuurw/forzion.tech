@@ -24,7 +24,16 @@ export default function AlunoInadimplenteBanner({
     <Alert
       severity={variant}
       role="alert"
-      sx={{ mb: 2 }}
+      sx={{
+        mb: 2,
+        // xs: CTA abaixo do texto (largura cheia) em vez de espremido à direita.
+        "& .MuiAlert-action": {
+          ml: { xs: 0, sm: "auto" },
+          pl: { xs: 0, sm: 2 },
+          mt: { xs: 1, sm: 0 },
+          width: { xs: "100%", sm: "auto" },
+        },
+      }}
       action={
         <Button
           component={Link}
@@ -32,6 +41,7 @@ export default function AlunoInadimplenteBanner({
           color={variant}
           size="small"
           variant="outlined"
+          sx={{ width: { xs: "100%", sm: "auto" } }}
         >
           Regularizar agora
         </Button>

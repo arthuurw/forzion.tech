@@ -37,7 +37,7 @@ export default function Diferenciais() {
           </Typography>
         </Box>
 
-        <Grid container sx={{ mb: 1, px: { xs: 1, md: 2 } }}>
+        <Grid container sx={{ mb: 1, px: { xs: 1, md: 2 }, display: { xs: "none", sm: "flex" } }}>
           <Grid size={{ xs: 4, md: 4 }} />
           <Grid size={{ xs: 4, md: 4 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, textAlign: "center" }}>
@@ -67,12 +67,12 @@ export default function Diferenciais() {
               borderRadius: 1,
             }}
           >
-            <Grid size={{ xs: 4, md: 4 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, mb: { xs: 0.5, sm: 0 } }}>
                 {aspecto}
               </Typography>
             </Grid>
-            <Grid size={{ xs: 4, md: 4 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, justifyContent: "flex-start" }}>
                 <CheckIcon sx={{ fontSize: 18, color: "secondary.main", flexShrink: 0, mt: "1px" }} />
                 <Typography variant="body2" color="text.primary" sx={{ textAlign: "left" }}>
@@ -80,7 +80,7 @@ export default function Diferenciais() {
                 </Typography>
               </Box>
             </Grid>
-            <Grid size={{ xs: 4, md: 4 }} sx={{ pl: { xs: 1, md: 2 } }}>
+            <Grid size={{ xs: 12, sm: 4 }} sx={{ pl: { xs: 0, sm: 2 }, mt: { xs: 0.5, sm: 0 } }}>
               <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, justifyContent: "flex-start" }}>
                 <CloseIcon sx={{ fontSize: 18, color: "text.disabled", flexShrink: 0, mt: "1px" }} />
                 <Typography variant="body2" color="text.secondary" sx={{ textAlign: "left" }}>

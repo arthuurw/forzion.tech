@@ -83,7 +83,7 @@ export default function DashboardAlunoPage() {
 
       {/* Stat cards */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" }, gap: 2, mb: 4 }}>
-        <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.success.main}`, borderRadius: 2 }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderLeft: `4px solid ${theme.palette.success.main}`, borderRadius: 2 }}>
           <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "success.main" }}>
             {totalFichas}
           </Typography>
@@ -91,7 +91,7 @@ export default function DashboardAlunoPage() {
             Fichas disponíveis
           </Typography>
         </Paper>
-        <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.info.main}`, borderRadius: 2 }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderLeft: `4px solid ${theme.palette.info.main}`, borderRadius: 2 }}>
           <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "info.main" }}>
             {totalExecucoes}
           </Typography>
@@ -103,7 +103,7 @@ export default function DashboardAlunoPage() {
 
       {/* Charts */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2, mb: 4 }}>
-        <Paper sx={{ p: 3, borderRadius: 2 }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
           <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
             FICHAS POR STATUS
           </Typography>
@@ -136,7 +136,7 @@ export default function DashboardAlunoPage() {
           )}
         </Paper>
 
-        <Paper sx={{ p: 3, borderRadius: 2 }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
           <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
             SESSÕES POR SEMANA
           </Typography>
@@ -188,7 +188,7 @@ export default function DashboardAlunoPage() {
                     flexWrap: "wrap",
                   }}
                 >
-                  <Box>
+                  <Box sx={{ minWidth: 0 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {f.nomeTreino}
                     </Typography>
@@ -196,14 +196,18 @@ export default function DashboardAlunoPage() {
                       {OBJETIVO_LABEL[f.objetivo] ?? f.objetivo} · {f.exercicios.length} exercício{f.exercicios.length !== 1 ? "s" : ""}
                     </Typography>
                   </Box>
-                  <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ width: { xs: "100%", sm: "auto" }, "& > a": { flex: { xs: 1, sm: "0 0 auto" } } }}
+                  >
                     <Link href={`/aluno/fichas/${f.treinoAlunoId}`} style={{ textDecoration: "none" }}>
-                      <Button size="small" variant="contained" startIcon={<FitnessCenterIcon />}>
+                      <Button size="small" variant="contained" startIcon={<FitnessCenterIcon />} sx={{ width: "100%" }}>
                         Ver ficha
                       </Button>
                     </Link>
                     <Link href={`/aluno/fichas/${f.treinoAlunoId}/executar`} style={{ textDecoration: "none" }}>
-                      <Button size="small" variant="outlined" startIcon={<PlayArrowIcon />}>
+                      <Button size="small" variant="outlined" startIcon={<PlayArrowIcon />} sx={{ width: "100%" }}>
                         Executar
                       </Button>
                     </Link>

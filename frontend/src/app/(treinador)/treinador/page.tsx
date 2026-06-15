@@ -370,7 +370,7 @@ export default function DashboardTreinadorPage() {
                     {v.emailAluno ?? "—"}
                   </Typography>
                 </Box>
-                <Stack direction="row" spacing={1} sx={{ flexShrink: 0, alignItems: "center" }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1 }}>
                   {v.pacoteId && pacotes.length > 0 && (
                     <Typography variant="caption" color="text.secondary">
                       Pacote: <strong>{pacotes.find((p) => p.pacoteId === v.pacoteId)?.nome ?? "—"}</strong>

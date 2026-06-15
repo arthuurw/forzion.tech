@@ -165,6 +165,11 @@ export default async function LandingPage() {
                     textDecoration: "underline",
                     cursor: "pointer",
                     transition: "color 0.2s",
+                    // alvo de toque ≥44px (era ~16px de altura de linha — R22).
+                    display: "inline-flex",
+                    alignItems: "center",
+                    minHeight: 44,
+                    px: 1,
                   }}
                 >
                   Já foi convidado por um treinador? Acesse aqui como aluno

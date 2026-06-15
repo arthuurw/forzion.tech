@@ -44,6 +44,35 @@ describe("CadastroAlunoPage (R6 resumo + R8 consentimento anamnese)", () => {
     await screen.findByText("Disponibilidade");
   };
 
+  // R8 — "alterar" virou Button real (role button, focável), não mais Box span click-only.
+  it("'alterar' é botão (role button) e volta ao passo de treinador", async () => {
+    const treinadores = [{ treinadorId: "t-1", nome: "Carlos" }];
+    const pacotes = [
+      { pacoteId: "p-1", nome: "Plano Mensal", descricao: "Acompanhamento", preco: 150, treinadorId: "t-1" },
+    ];
+    vi.spyOn(global, "fetch").mockImplementation(((url: string) => {
+      if (url.includes("/pacotes")) {
+        return Promise.resolve({ ok: true, json: async () => pacotes } as Response);
+      }
+      if (url.includes("/treinadores")) {
+        return Promise.resolve({ ok: true, json: async () => treinadores } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+    }) as typeof fetch);
+
+    render(<CadastroAlunoPage />);
+    fireEvent.click(screen.getByText("Carregar treinadores"));
+    fireEvent.click(await screen.findByText("Carlos"));
+    // passo 1 (pacote): "alterar" presente como botão.
+    const alterar = await screen.findByRole("button", { name: /alterar/i });
+    expect(alterar).toBeInTheDocument();
+
+    fireEvent.click(alterar);
+    // voltou ao passo 0: lista de treinadores, sem "Plano Mensal".
+    expect(screen.queryByText("Plano Mensal")).not.toBeInTheDocument();
+    expect(screen.getByText("Carlos")).toBeInTheDocument();
+  });
+
   it("exibe resumo de contratação (valor + cancelamento) antes do CTA final", async () => {
     await fillUntilAnamnese();
     expect(await screen.findByText(/R\$\s?150,00/)).toBeInTheDocument();

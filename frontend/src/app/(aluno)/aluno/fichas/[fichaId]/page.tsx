@@ -52,22 +52,27 @@ export default function DetalheFichaAlunoPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3, flexWrap: "wrap" }}>
         <IconButton onClick={() => router.push("/aluno/fichas")} aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
-        <Box sx={{ flex: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>{ficha.nomeTreino}</Typography>
           <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
             <Chip label={OBJETIVO_LABEL[ficha.objetivo] ?? ficha.objetivo} size="small" />
             <StatusChip status={ficha.status} />
           </Stack>
         </Box>
-        <Stack direction="row" spacing={1}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ flexBasis: { xs: "100%", sm: "auto" }, justifyContent: "flex-end" }}
+        >
           <Button
             variant="outlined"
             size="small"
             startIcon={<FileDownloadIcon />}
+            sx={{ flexGrow: { xs: 1, sm: 0 } }}
             onClick={() => void exportarFichaParaExcel({ nome: ficha.nomeTreino, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
           >
             Exportar
@@ -76,6 +81,7 @@ export default function DetalheFichaAlunoPage() {
             <Button
               variant="contained"
               startIcon={<PlayArrowIcon />}
+              sx={{ flexGrow: { xs: 1, sm: 0 } }}
               onClick={() => router.push(`/aluno/fichas/${fichaId}/executar`)}
             >
               Iniciar treino

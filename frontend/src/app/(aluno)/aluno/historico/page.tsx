@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Stack, Chip, Grid, Skeleton,
-  ToggleButtonGroup, ToggleButton,
+  ToggleButtonGroup, ToggleButton, useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import {
@@ -58,6 +58,7 @@ function sessoesPorSemana(execucoes: ExecucaoTreinoResponse[]) {
 
 export default function HistoricoAlunoPage() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [allExecucoes, setAllExecucoes] = useState<ExecucaoTreinoResponse[]>([]);
   const [allLoading, setAllLoading] = useState(true);
 
@@ -158,7 +159,7 @@ export default function HistoricoAlunoPage() {
           >
             {PERIODOS.map((p) => (
               <ToggleButton key={p.value} value={p.value} sx={{ fontSize: "0.75rem", px: 1.5 }}>
-                {p.label}
+                {isMobile ? p.value : p.label}
               </ToggleButton>
             ))}
           </ToggleButtonGroup>

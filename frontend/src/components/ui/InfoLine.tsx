@@ -7,7 +7,7 @@ interface Props {
 
 export default function InfoLine({ label, value }: Props) {
   return (
-    <Typography variant="body2">
+    <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
       <strong>{label}:</strong> {value}
     </Typography>
   );

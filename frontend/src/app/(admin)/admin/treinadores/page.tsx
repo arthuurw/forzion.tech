@@ -1,10 +1,11 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box, Typography, Select, MenuItem, FormControl,
   InputLabel, IconButton, Tooltip, Dialog, DialogTitle,
   DialogContent, DialogActions, Button, Autocomplete, TextField,
+  Menu, ListItemIcon, ListItemText, useMediaQuery, useTheme,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
@@ -12,6 +13,7 @@ import BlockIcon from "@mui/icons-material/Block";
 import CardMembershipIcon from "@mui/icons-material/CardMembership";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import InfoIcon from "@mui/icons-material/Info";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import StatusChip from "@/components/ui/StatusChip";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AlertBanner from "@/components/ui/AlertBanner";
@@ -29,10 +31,105 @@ const COLUMNS: Column[] = [
   { label: "Ações", align: "right" },
 ];
 
+interface AcoesProps {
+  t: TreinadorResponse;
+  isMobile: boolean;
+  onAprovar: (t: TreinadorResponse) => void;
+  onReprovar: (t: TreinadorResponse) => void;
+  onInativar: (t: TreinadorResponse) => void;
+  onExcluir: (t: TreinadorResponse) => void;
+  onAtribuirPlano: (t: TreinadorResponse) => void;
+  onDetalhe: (t: TreinadorResponse) => void;
+}
 
+// <md o slot de ações vira kebab (até 4 IconButtons espremiam o nome no card — R5).
+// ≥md mantém os IconButtons inline.
+function TreinadorAcoes({
+  t, isMobile, onAprovar, onReprovar, onInativar, onExcluir, onAtribuirPlano, onDetalhe,
+}: AcoesProps) {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const close = () => setAnchorEl(null);
+
+  if (!isMobile) {
+    return (
+      <>
+        {t.status === "AguardandoAprovacao" && (
+          <>
+            <Tooltip title="Aprovar">
+              <IconButton size="small" color="success" aria-label="Aprovar treinador" onClick={() => onAprovar(t)}>
+                <CheckIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Reprovar">
+              <IconButton size="small" color="error" aria-label="Reprovar treinador" onClick={() => onReprovar(t)}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
+        {t.status === "Ativo" && (
+          <Tooltip title="Inativar">
+            <IconButton size="small" color="error" aria-label="Inativar treinador" onClick={() => onInativar(t)}>
+              <BlockIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+        {t.status === "Inativo" && (
+          <Tooltip title="Excluir permanentemente">
+            <IconButton size="small" color="error" aria-label="Excluir treinador permanentemente" onClick={() => onExcluir(t)}>
+              <DeleteForeverIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+        <Tooltip title="Atribuir plano">
+          <IconButton size="small" aria-label="Atribuir plano" onClick={() => onAtribuirPlano(t)}>
+            <CardMembershipIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Ver detalhe">
+          <IconButton size="small" aria-label="Ver detalhe do treinador" onClick={() => onDetalhe(t)}>
+            <InfoIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </>
+    );
+  }
+
+  const itens: { label: string; icon: ReactNode; onClick: () => void }[] = [];
+  if (t.status === "AguardandoAprovacao") {
+    itens.push({ label: "Aprovar", icon: <CheckIcon fontSize="small" color="success" />, onClick: () => onAprovar(t) });
+    itens.push({ label: "Reprovar", icon: <CloseIcon fontSize="small" color="error" />, onClick: () => onReprovar(t) });
+  }
+  if (t.status === "Ativo") {
+    itens.push({ label: "Inativar", icon: <BlockIcon fontSize="small" color="error" />, onClick: () => onInativar(t) });
+  }
+  if (t.status === "Inativo") {
+    itens.push({ label: "Excluir permanentemente", icon: <DeleteForeverIcon fontSize="small" color="error" />, onClick: () => onExcluir(t) });
+  }
+  itens.push({ label: "Atribuir plano", icon: <CardMembershipIcon fontSize="small" />, onClick: () => onAtribuirPlano(t) });
+  itens.push({ label: "Ver detalhe", icon: <InfoIcon fontSize="small" />, onClick: () => onDetalhe(t) });
+
+  return (
+    <>
+      <IconButton size="small" aria-label={`Ações de ${t.nome}`} onClick={(e) => setAnchorEl(e.currentTarget)}>
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
+        {itens.map((it) => (
+          <MenuItem key={it.label} onClick={() => { close(); it.onClick(); }}>
+            <ListItemIcon>{it.icon}</ListItemIcon>
+            <ListItemText>{it.label}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  );
+}
 
 export default function TreinadoresAdminPage() {
   const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [statusFilter, setStatusFilter] = useState<TreinadorStatus | "">("");
 
   const [confirmAprovar, setConfirmAprovar] = useState<TreinadorResponse | null>(null);
@@ -198,46 +295,16 @@ export default function TreinadoresAdminPage() {
             <Typography variant="caption">{new Date(t.createdAt).toLocaleDateString("pt-BR")}</Typography>
           );
           return (
-            <>
-              {t.status === "AguardandoAprovacao" && (
-                <>
-                  <Tooltip title="Aprovar">
-                    <IconButton size="small" color="success" aria-label="Aprovar treinador" onClick={() => setConfirmAprovar(t)}>
-                      <CheckIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Reprovar">
-                    <IconButton size="small" color="error" aria-label="Reprovar treinador" onClick={() => setConfirmReprovar(t)}>
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </>
-              )}
-              {t.status === "Ativo" && (
-                <Tooltip title="Inativar">
-                  <IconButton size="small" color="error" aria-label="Inativar treinador" onClick={() => setConfirmInativar(t)}>
-                    <BlockIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              )}
-              {t.status === "Inativo" && (
-                <Tooltip title="Excluir permanentemente">
-                  <IconButton size="small" color="error" aria-label="Excluir treinador permanentemente" onClick={() => setConfirmExcluir(t)}>
-                    <DeleteForeverIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              )}
-              <Tooltip title="Atribuir plano">
-                <IconButton size="small" aria-label="Atribuir plano" onClick={() => openPlanoDialog(t)}>
-                  <CardMembershipIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Ver detalhe">
-                <IconButton size="small" aria-label="Ver detalhe do treinador" onClick={() => router.push(`/admin/treinadores/${t.treinadorId}`)}>
-                  <InfoIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </>
+            <TreinadorAcoes
+              t={t}
+              isMobile={isMobile}
+              onAprovar={setConfirmAprovar}
+              onReprovar={setConfirmReprovar}
+              onInativar={setConfirmInativar}
+              onExcluir={setConfirmExcluir}
+              onAtribuirPlano={openPlanoDialog}
+              onDetalhe={(tr) => router.push(`/admin/treinadores/${tr.treinadorId}`)}
+            />
           );
         }}
       />

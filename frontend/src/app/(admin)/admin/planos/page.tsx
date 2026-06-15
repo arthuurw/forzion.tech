@@ -126,7 +126,7 @@ export default function PlanosAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>Planos</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCriarOpen(true)}>
           Novo plano

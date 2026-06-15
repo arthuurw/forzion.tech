@@ -185,7 +185,7 @@ export default function AssinaturaAlunoPage() {
         onConfirm={cancelarAssinatura}
         onClose={() => { if (!cancelando) setConfirmarCancelar(false); }}
       >
-        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 1 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ flexWrap: "wrap", mt: 1 }}>
           <Button
             variant="text"
             size="small"

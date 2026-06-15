@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Button, Stack, LinearProgress,
   TextField, IconButton, Chip, Dialog, DialogTitle, DialogContent,
-  DialogActions, Divider,
+  DialogActions, Divider, ButtonBase,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -301,7 +301,10 @@ export default function ExecutarFichaPage() {
                         value={set.reps}
                         onChange={(e) => setSetField(current.treinoExercicioId, idx, "reps", e.target.value)}
                         slotProps={{ htmlInput: { min: 0 } }}
-                        sx={{ flex: 1, minWidth: 68, maxWidth: 90 }}
+                        sx={{
+                          flex: 1, minWidth: 72, maxWidth: { xs: 120, sm: 90 },
+                          "& .MuiInputBase-input": { textAlign: "center", py: { xs: 1.25, sm: 0.5 } },
+                        }}
                       />
                       <TextField
                         label="kg"
@@ -310,7 +313,10 @@ export default function ExecutarFichaPage() {
                         value={set.carga}
                         onChange={(e) => setSetField(current.treinoExercicioId, idx, "carga", e.target.value)}
                         slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
-                        sx={{ flex: 1, minWidth: 68, maxWidth: 90 }}
+                        sx={{
+                          flex: 1, minWidth: 72, maxWidth: { xs: 120, sm: 90 },
+                          "& .MuiInputBase-input": { textAlign: "center", py: { xs: 1.25, sm: 0.5 } },
+                        }}
                       />
                     </Box>
                   </Box>
@@ -356,22 +362,32 @@ export default function ExecutarFichaPage() {
         )}
       </Stack>
 
-      {/* Progress dots */}
-      <Stack direction="row" spacing={0.5} sx={{ justifyContent: "center", mt: 3 }}>
+      {/* Progress dots — alvo de toque ≥40px (AA 2.5.8) embora o ponto seja 8px;
+          flexWrap evita overflow no fluxo de academia com muitos exercícios (R6). */}
+      <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", mt: 2 }}>
         {exercicios.map((_, i) => (
-          <Box
+          <ButtonBase
             key={i}
             onClick={() => !submitting && setCurrentIndex(i)}
+            disabled={submitting}
+            aria-label={`Ir para exercício ${i + 1}`}
+            aria-current={i === currentIndex ? "step" : undefined}
             sx={{
-              width: 8, height: 8, borderRadius: "50%",
-              bgcolor: i === currentIndex ? "primary.main" : i < currentIndex ? "success.main" : "grey.300",
-              cursor: submitting ? "default" : "pointer",
-              transition: "background-color 0.2s",
-              opacity: submitting ? 0.5 : 1,
+              width: 40, height: 40, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}
-          />
+          >
+            <Box
+              sx={{
+                width: 8, height: 8, borderRadius: "50%",
+                bgcolor: i === currentIndex ? "primary.main" : i < currentIndex ? "success.main" : "grey.300",
+                transition: "background-color 0.2s",
+                opacity: submitting ? 0.5 : 1,
+              }}
+            />
+          </ButtonBase>
         ))}
-      </Stack>
+      </Box>
 
       {/* Confirm dialog */}
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
