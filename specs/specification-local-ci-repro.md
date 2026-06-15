@@ -18,7 +18,7 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 | Gate/check | Comando local | Rodável Win? | Caveat |
 |---|---|---|---|
 | backend build+format | `dotnet build -c Release` ; `dotnet format forzion.tech.slnx --verify-no-changes` | ✅ | format exige CRLF (§2). `.slnx` precisa SDK ≥9/10. |
-| backend unit (1843) | `dotnet test forzion.tech.Tests --filter "Category!=Integration"` | ✅ | — |
+| backend unit | `dotnet test forzion.tech.Tests --filter "Category!=Integration"` | ✅ | contagem atual: ver [specification-tests] §4 |
 | **backend coverage gates** | ver §3 | ⚠️ | NÃO rodar 6× `--no-build` em sequência no Windows (merge/lock → números errados/rc=1). Rodar 1× sem Include e ler a tabela por módulo. |
 | backend integração (Testcontainers) | `dotnet test forzion.tech.Tests --filter "Category=Integration"` | ✅ (Docker) | 96 testes; sobe Postgres efêmero. |
 | backend vuln/SBOM | `dotnet list forzion.tech.slnx package --vulnerable --include-transitive` | ✅ | — |
@@ -49,7 +49,7 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 - **Broker Pact (homolog) trava o `contract`/`pact-provider` (CANÔNICO)**: ambos dependem do broker self-hosted na VM homolog (`https://pact.homologacao.forzion.tech`, containers `pact-broker`+`pact-postgres`). A borda (nginx) responde `401` mesmo com o broker app/DB degradado; o step "Aguarda broker disponivel" faz `curl` heartbeat **autenticado SEM `--max-time`** → se o broker app/DB não responde, o curl **PENDURA** (não falha em ~3min; runs de 20min+). App NÃO é afetado (DB do app é separado do `pact-postgres`; `can-i-deploy` já é `continue-on-error`). Diagnóstico: app `homologacao.forzion.tech`=200 + broker=`401` (borda viva) mas heartbeat autenticado pendura → broker interno. Remediação (VM): `docker compose -f docker-compose.homolog.yml ps` / `restart pact-broker pact-postgres`. Hardening: add `--max-time` no `curl` do `contract.yml`/`pact-provider.yml` p/ falhar rápido em vez de pendurar.
 
 ## 3. COVERAGE BACKEND — números reais medidos (unit, `Category!=Integration`)
-Medido 2026-06-06 (pós-billing treinador + raise de cobertura; SDK 8/10 idênticos → não é artefato de SDK). Gates (pisos) por módulo: CANÔNICO em [specification-tests] §8 — aqui só os reais:
+Medido 2026-06-06 (pós-billing treinador + raise de cobertura; SDK 8/10 idênticos → não é artefato de SDK). Contagem unit atual: **2164** (reconferida 2026-06-13 — [specification-tests] §4 é canônico). Gates (pisos) por módulo: CANÔNICO em [specification-tests] §8 — aqui só os reais:
 | Módulo | Line | Branch | Method | Status vs gate (b75/l85/m85; Api l85/m70) |
 |---|---|---|---|---|
 | Domain | 95.22% | 92.67% | 94.85% | ✅ |

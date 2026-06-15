@@ -3,7 +3,7 @@
 Guia macro para agentes. Formato agent-oriented (denso, sem prosa decorativa). Para o contexto MACRO do projeto, carregar APENAS este arquivo.
 
 ## FRESCOR
-Validado: 2026-06-13. STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`.
+Validado: 2026-06-14. STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`.
 
 ## PROJETO
 forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadastro/aprovação de treinadores, vínculo de alunos, fichas de treino (exercícios + séries), registro de execuções, assinaturas e pagamentos recorrentes.
@@ -26,7 +26,7 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - `specs/` — docs de referência `specification-*` (versionados/commitados).
 
 ## TRIGGER — QUE SPEC CARREGAR (tarefa → co-carregar)
-Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git. Iniciou/concluiu FEATURE ou FASE ⇒ SEMPRE +workflow (sincronizar o card — DoD#10).
+Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git. Iniciou/concluiu FEATURE ou FASE ⇒ SEMPRE +workflow (sincronizar o card — DoD#10). Vai DESENHAR feature que toca auth/webhook/concorrência/PII/pagamento ⇒ ANTES de codar +design-review (checklist pre-flight).
 | Tocou em… | Carregar |
 |---|---|
 | handler/use-case/Result/DI         | backend |
@@ -40,14 +40,16 @@ Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git. Iniciou/conclui
 | log/health/perf-web                | observability |
 | LGPD/consentimento/exclusão        | lgpd |
 | CI/hook/gate/cobertura             | tests, local-ci-repro |
-| concorrência/lock/idempotência     | concurrency |
+| concorrência/lock/idempotência     | concurrency, design-review |
+| design de feature sensível (PRE-código): auth/webhook/race/PII/pagamento | design-review |
 | perf backend/N+1/EF/pool           | performance |
 | backup/restore/DR                  | dr, infrastructure |
 | card/board/pipeline/histórico de entrega | workflow |
 
 ## AREAS COBERTAS POR SPECIFICATION-*
 Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia). Conteúdo de cada spec é auto-evidente pelo nome — abaixo SÓ os caveats não-óbvios (resto: abrir o arquivo):
-- `specification-coding.md` — checklist de incidentes; ler ANTES de handler/integração/validação/mapeamento de erro E de QUALQUER code-review.
+- `specification-coding.md` — checklist de incidentes (PÓS-código/review); ler ANTES de handler/integração/validação/mapeamento de erro E de QUALQUER code-review.
+- `specification-design-review.md` — checklist PRE-código (design-time/pre-flight), gêmeo do coding; rodar ANTES de codar feature que toca auth/webhook/concorrência/PII/pagamento. Pega a CLASSE latente (race, defense-in-depth, abuso, PII em repouso) que teste+review não veem. Saída vai no `design.md` da feature; origem: auditoria 2026-06-14.
 - `specification-concurrency.md` — ordering: `coding §1` é o canônico.
 - `specification-performance.md` — enforcement FRACO (disciplina+revisão, sem gate hard).
 - `specification-infrastructure.md` — subir local SEM Docker → §LOCAL-RUN (receita Development+develop; gotcha launch-profile/Homolog; `.env.local` do frontend).
