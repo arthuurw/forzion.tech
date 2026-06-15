@@ -368,7 +368,7 @@ export default function ExecutarFichaPage() {
         {exercicios.map((_, i) => (
           <ButtonBase
             key={i}
-            onClick={() => !submitting && setCurrentIndex(i)}
+            onClick={() => setCurrentIndex(i)}
             disabled={submitting}
             aria-label={`Ir para exercício ${i + 1}`}
             aria-current={i === currentIndex ? "step" : undefined}

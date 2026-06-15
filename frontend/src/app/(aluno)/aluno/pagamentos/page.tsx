@@ -9,6 +9,8 @@ import type { PagamentoResponse } from "@/types";
 import { pagamentoApi } from "@/lib/api/pagamento";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { PAGAMENTO_STATUS_COLORS, PAGAMENTO_STATUS_LABEL } from "@/lib/constants/labels";
+import PagamentoPix from "@/components/pagamento/PagamentoPix";
+import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 
 const COLUNAS: Column[] = [
   { label: "Data" },
@@ -16,8 +18,6 @@ const COLUNAS: Column[] = [
   { label: "Status" },
   { label: "Ações", align: "right" },
 ];
-import PagamentoPix from "@/components/pagamento/PagamentoPix";
-import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 
 interface Props {
   pagamentos: PagamentoResponse[];
