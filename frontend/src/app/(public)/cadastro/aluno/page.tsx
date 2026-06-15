@@ -17,6 +17,8 @@ import {
   Divider,
   FormControlLabel,
   Checkbox,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -55,6 +57,8 @@ export default function CadastroAlunoPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [consentimentoSaude, setConsentimentoSaude] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const methods = useForm<CadastroAlunoFormData>({
     resolver: zodResolver(cadastroAlunoSchema),
@@ -189,13 +193,24 @@ export default function CadastroAlunoPage() {
         Selecione seu treinador e o plano de atendimento para iniciar.
       </Typography>
 
-      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
-        {STEPS.map((label) => (
-          <Step key={label}>
-            <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+      {isMobile ? (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="overline" color="text.secondary" sx={{ display: "block", lineHeight: 1.4 }}>
+            Passo {activeStep + 1} de {STEPS.length}
+          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {STEPS[activeStep]}
+          </Typography>
+        </Box>
+      ) : (
+        <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
+          {STEPS.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      )}
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
@@ -234,11 +249,11 @@ export default function CadastroAlunoPage() {
 
       {activeStep === 1 && (
         <Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Treinador: <strong>{selectedTreinador?.nome}</strong> |{" "}
-            <Box component="span" sx={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => goToStep(0)}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+            <span>Treinador: <strong>{selectedTreinador?.nome}</strong></span>
+            <Button variant="text" size="small" onClick={() => goToStep(0)} sx={{ minWidth: 0 }}>
               alterar
-            </Box>
+            </Button>
           </Typography>
           {loadingList ? (
             <LoadingSpinner />

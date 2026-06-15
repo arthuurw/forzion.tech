@@ -178,7 +178,7 @@ export default function DetalheAlunoAdminPage() {
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}>
         <Tab label="Dados" />
         <Tab label="Fichas" />
         <Tab label="Execuções" />

@@ -2,7 +2,7 @@
  * Ações da página /admin/treinadores: aprovar, reprovar, inativar, excluir,
  * atribuir plano, filtro de status e navegação para detalhe.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
@@ -189,5 +189,49 @@ describe("/admin/treinadores — ações", () => {
 
     fireEvent.click(screen.getAllByLabelText("Ver detalhe do treinador")[0]);
     expect(mockPush).toHaveBeenCalledWith("/admin/treinadores/t-aguard");
+  });
+
+  // R5 — em mobile (<md) as ações colapsam num kebab Menu; itens alcançáveis e
+  // disparam o handler certo.
+  describe("mobile (<md) → kebab de ações", () => {
+    let original: typeof window.matchMedia;
+    beforeEach(() => {
+      original = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+    });
+    afterEach(() => {
+      window.matchMedia = original;
+    });
+
+    it("abre kebab do treinador Aguardando e expõe Aprovar/Reprovar/Atribuir plano/Ver detalhe", async () => {
+      renderWithProviders(<TreinadoresAdminPage />);
+      await waitList();
+
+      fireEvent.click(screen.getByLabelText("Ações de Aguardando Coach"));
+      const menu = await screen.findByRole("menu");
+      expect(within(menu).getByText("Aprovar")).toBeInTheDocument();
+      expect(within(menu).getByText("Reprovar")).toBeInTheDocument();
+      expect(within(menu).getByText("Atribuir plano")).toBeInTheDocument();
+      expect(within(menu).getByText("Ver detalhe")).toBeInTheDocument();
+    });
+
+    it("item 'Ver detalhe' do kebab navega para a página do treinador", async () => {
+      renderWithProviders(<TreinadoresAdminPage />);
+      await waitList();
+
+      fireEvent.click(screen.getByLabelText("Ações de Aguardando Coach"));
+      const menu = await screen.findByRole("menu");
+      fireEvent.click(within(menu).getByText("Ver detalhe"));
+      expect(mockPush).toHaveBeenCalledWith("/admin/treinadores/t-aguard");
+    });
   });
 });

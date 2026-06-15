@@ -141,7 +141,7 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart
                     data={volumePorGrupo}
-                    margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+                    margin={{ top: 8, right: 16, bottom: isMobile ? 28 : 0, left: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} vertical={false} />
                     <XAxis
@@ -149,6 +149,9 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                       type="category"
                       interval={0}
                       tick={{ fontSize: isMobile ? 9 : 11 }}
+                      angle={isMobile ? -35 : 0}
+                      textAnchor={isMobile ? "end" : "middle"}
+                      height={isMobile ? 56 : 30}
                       stroke={CHART_COLORS.axis}
                     />
                     <YAxis type="number" tick={{ fontSize: 10 }} stroke={CHART_COLORS.axis} width={48} />

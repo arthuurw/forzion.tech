@@ -5,6 +5,7 @@ import {
   Box, Typography, Card, Chip, Stack, Button, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Autocomplete, TextField, IconButton, Tooltip, Divider,
+  useMediaQuery, useTheme,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
@@ -48,6 +49,8 @@ const SERIE_VAZIA: SerieRow = { quantidade: "3", repeticoesMin: "10", repeticoes
 export default function DetalheFichaPage() {
   const { treinoId } = useParams<{ treinoId: string }>();
   const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [ficha, setFicha] = useState<TreinoResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -409,7 +412,7 @@ export default function DetalheFichaPage() {
       </Card>
 
       {/* Dialog: adicionar exercício */}
-      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="md" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile} slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Adicionar exercício</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
@@ -570,7 +573,7 @@ export default function DetalheFichaPage() {
       />
 
       {/* Dialog: editar séries do exercício */}
-      <Dialog open={!!editExTarget} onClose={() => setEditExTarget(null)} maxWidth="md" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
+      <Dialog open={!!editExTarget} onClose={() => setEditExTarget(null)} maxWidth="md" fullWidth fullScreen={isMobile} slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar séries — {editExTarget?.nomeExercicio}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>

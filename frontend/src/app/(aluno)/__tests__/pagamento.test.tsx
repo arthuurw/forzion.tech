@@ -462,6 +462,50 @@ describe("PagamentosAlunoPage", () => {
     expect(screen.queryByText("Pagar")).not.toBeInTheDocument();
   });
 
+  // R2 — migração p/ ResponsiveTable: <md vira card (sem <table>), ≥md mantém tabela.
+  // "Pagar" só no pagamento Pendente, nos dois modos.
+  it("desktop (≥md) → renderiza <table>; 'Pagar' só no Pendente", async () => {
+    setAssinatura();
+    setListaPagamentos([
+      makePagamento({ pagamentoId: "p-pend", status: "Pendente" }),
+      makePagamento({ pagamentoId: "p-pago", status: "Pago" }),
+    ]);
+
+    render(<PagamentosAlunoPage />);
+    expect(await screen.findByText("Pago")).toBeInTheDocument();
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    // 2 pagamentos, 1 Pendente → 1 botão "Pagar".
+    expect(screen.getAllByText("Pagar")).toHaveLength(1);
+  });
+
+  it("mobile (<md) → modo card (sem <table>); 'Pagar' só no Pendente", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true, // força down("md")
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    try {
+      setAssinatura();
+      setListaPagamentos([
+        makePagamento({ pagamentoId: "p-pend", status: "Pendente" }),
+        makePagamento({ pagamentoId: "p-pago", status: "Pago" }),
+      ]);
+
+      render(<PagamentosAlunoPage />);
+      expect(await screen.findByText("Pago")).toBeInTheDocument();
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Pagar")).toHaveLength(1);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("pagamento Pendente Pix → clicar Pagar abre dialog 'Pagamento via Pix'", async () => {
     setAssinatura();
     setListaPagamentos([makePagamento({ status: "Pendente", metodoPagamento: "Pix" })]);

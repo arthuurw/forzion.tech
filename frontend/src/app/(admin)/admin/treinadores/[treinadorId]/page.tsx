@@ -162,7 +162,7 @@ export default function DetalheTreinadorAdminPage() {
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}>
         <Tab label="Alunos" />
         <Tab label="Vínculos" />
         <Tab label="Treinos" />
@@ -299,7 +299,7 @@ export default function DetalheTreinadorAdminPage() {
                 </Typography>
               );
               return (
-                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: { md: 300 }, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: { xs: 200, md: 300 }, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {p.descricao ?? "—"}
                 </Typography>
               );

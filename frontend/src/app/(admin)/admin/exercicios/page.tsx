@@ -141,7 +141,7 @@ export default function ExerciciosAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>Biblioteca Global</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>

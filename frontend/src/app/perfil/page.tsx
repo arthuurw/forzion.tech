@@ -207,9 +207,9 @@ export default function PerfilPage() {
             <Avatar sx={{ width: 44, height: 44, bgcolor: "secondary.main", fontWeight: 700, fontSize: 16 }}>
               {perfil?.nome?.[0]?.toUpperCase() ?? "?"}
             </Avatar>
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{perfil?.nome}</Typography>
-              <Typography variant="caption" color="text.secondary">{perfil?.email}</Typography>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>{perfil?.nome}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>{perfil?.email}</Typography>
             </Box>
             <Box sx={{ ml: "auto" }}>
               <Chip label={perfil?.tipoConta} size="small" sx={{ bgcolor: "primary.main", color: "secondary.main", fontWeight: 700 }} />

@@ -220,7 +220,7 @@ export default function PlanoTreinadorPage() {
       {assinatura && (
         <Card variant="outlined" sx={{ mb: 3 }}>
           <CardContent>
-            <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+            <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 1, flexWrap: "wrap", gap: 1 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
                 {planoAtual?.nome ?? "Plano atual"}
               </Typography>
@@ -278,8 +278,8 @@ export default function PlanoTreinadorPage() {
             return (
               <Card key={plano.planoId} variant="outlined">
                 <CardContent>
-                  <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-                    <Box>
+                  <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+                    <Box sx={{ minWidth: 0 }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
                         {plano.nome}
                       </Typography>

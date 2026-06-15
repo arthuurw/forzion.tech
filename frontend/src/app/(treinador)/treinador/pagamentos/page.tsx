@@ -112,7 +112,7 @@ export default function PagamentosTreinadorPage() {
 
   if (externo) {
     return (
-      <Box sx={{ p: 4, maxWidth: 600 }}>
+      <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 600 }}>
         <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>Recebimentos</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Você recebe seus alunos por fora da plataforma.
@@ -120,7 +120,7 @@ export default function PagamentosTreinadorPage() {
 
         {!confirmarTroca && error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        <Paper variant="outlined" sx={{ p: 3 }}>
+        <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
           <Stack spacing={1.5}>
             <Chip label="Pagamento externo" color="default" size="small" sx={{ alignSelf: "flex-start" }} />
             <Typography variant="body2" color="text.secondary">
@@ -138,7 +138,7 @@ export default function PagamentosTreinadorPage() {
   }
 
   return (
-    <Box sx={{ p: 4, maxWidth: 600 }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 600 }}>
       <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>Recebimentos</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Configure sua conta Stripe para receber pagamentos dos alunos via Pix.
@@ -146,7 +146,7 @@ export default function PagamentosTreinadorPage() {
 
       {!confirmarTroca && error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Paper variant="outlined" sx={{ p: 3 }}>
+      <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
         <Stack spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <Typography variant="subtitle1" sx={{ fontWeight: "medium" }}>Status da conta</Typography>
