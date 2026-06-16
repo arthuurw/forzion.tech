@@ -1,34 +1,19 @@
 name: Contract — Pact (consumer)
 
-# Gera e valida o contrato consumer-driven do frontend (forzion-frontend).
-# - pull_request: gera + valida (gate). NAO toca o broker.
-# - push (homolog): gera + valida + publica no broker.
-# - workflow_dispatch: disparo manual (publica).
+# Gate de PR do contrato consumer-driven (forzion-frontend), SEM broker:
+# - pull_request: gera + valida o pact + verifica o provider .NET via file-source
+#   (shift-left — pega quebra de contrato ANTES do merge). NAO toca o broker.
+# - workflow_dispatch: idem, manual.
 #
-# O broker (pact.homologacao.forzion.tech) vive no VM homolog e nem sempre e
-# alcancavel dos runners GitHub. Por isso publish/can-i-deploy rodam SO em
-# push/dispatch — em PR seriam dependencia externa flaky que derruba o gate sem
-# relacao com o contrato. `environment: homolog` expoe os secrets tambem em PR,
-# entao o guard e o EVENTO (github.event_name), nao a presenca do secret.
-#
-# Nota: o publish espera o broker responder (heartbeat) antes de subir o pact.
-# Em push, o deploy homolog roda em paralelo e reinicia o nginx; o wait evita
-# que o publish falhe ao bater no broker durante esse restart.
-# (workflow_run nao serve aqui: ele le o workflow do branch default `main`, onde
-#  este arquivo nao existe — entao nunca dispararia.)
-#
-# A verificacao do PROVIDER (backend .NET) NAO esta aqui: roda no pipeline do
-# backend com o pact-verifier .NET, consumindo o contrato publicado no broker.
+# O publish no broker e a verificacao broker do provider NAO vivem mais aqui:
+# em push -> homolog ambos batem na MESMA VM/nginx do app e, durante o deploy
+# (build + restart nginx), a 443 fica inalcancavel (race -> falso-vermelho).
+# Migraram para ci.yml, em jobs `needs: deploy-homolog` que rodam DEPOIS do
+# deploy, com o broker estavel.
+# (workflow_run nao resolveria: le o workflow do branch default `main`, onde
+#  este arquivo nao existe.)
 
 on:
-  push:
-    branches: [homolog]
-    paths:
-      - "frontend/src/lib/api/**"
-      - "frontend/src/test/pact/**"
-      - "frontend/vitest.pact.config.mts"
-      - "frontend/pact-broker.config.ts"
-      - ".github/workflows/contract.yml"
   pull_request:
     branches: [homolog]
     paths:
@@ -46,18 +31,8 @@ on:
 
 jobs:
   consumer-contract:
-    name: Consumer contract (gera + valida + publica)
+    name: Consumer contract (gera + valida — gate de PR)
     runs-on: ubuntu-latest
-    # Os secrets PACT_BROKER_* vivem no Environment `homolog` — sem isto o job
-    # nao os enxerga e o publish e skipado.
-    environment: homolog
-    # secrets nao podem ser usados em `if:`; mapeia p/ env do job e checa o env.
-    env:
-      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
-      PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
-      PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
-      PACT_CONSUMER_VERSION: ${{ github.sha }}
-      PACT_CONSUMER_BRANCH: ${{ github.ref_name }}
     defaults:
       run:
         working-directory: frontend
@@ -83,52 +58,11 @@ jobs:
           path: frontend/pacts/*.json
           if-no-files-found: error
 
-      - name: Aguarda broker disponivel
-        # Em push, o deploy reinicia o nginx em paralelo; espera o heartbeat
-        # responder antes de publicar (evita falha por race com o restart).
-        # So em push/dispatch — o broker nao e dependencia do gate de PR.
-        if: ${{ github.event_name != 'pull_request' && env.PACT_BROKER_BASE_URL != '' }}
-        run: |
-          for i in $(seq 1 12); do
-            if curl -fsS --connect-timeout 10 --max-time 20 -u "$PACT_BROKER_USERNAME:$PACT_BROKER_PASSWORD" \
-              "$PACT_BROKER_BASE_URL/diagnostic/status/heartbeat" >/dev/null; then
-              echo "broker ok"; exit 0
-            fi
-            echo "broker indisponivel (deploy/restart?), retry $i/12..."; sleep 15
-          done
-          echo "broker nao respondeu apos 12 tentativas"; exit 1
-
-      - name: Publica no broker
-        if: ${{ github.event_name != 'pull_request' && env.PACT_BROKER_BASE_URL != '' }}
-        run: |
-          docker run --rm \
-            -v "$PWD/pacts:/pacts" \
-            -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
-            pactfoundation/pact-cli@sha256:0ab9d13bb7e46da28c108df49f390bc173616906f41af79c4fa5a08d24277bdc \
-            publish /pacts \
-            --consumer-app-version="${PACT_CONSUMER_VERSION}" \
-            --branch="${PACT_CONSUMER_BRANCH}"
-
-      - name: can-i-deploy (consumer)
-        if: ${{ github.event_name != 'pull_request' && env.PACT_BROKER_BASE_URL != '' }}
-        # Report-only ate o provider (backend .NET) verificar os contratos e
-        # registrar deploy no environment homolog. Sem verificacao, o broker
-        # corretamente responde "no" — nao deve derrubar a workflow ainda.
-        continue-on-error: true
-        run: |
-          docker run --rm \
-            -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
-            pactfoundation/pact-cli@sha256:0ab9d13bb7e46da28c108df49f390bc173616906f41af79c4fa5a08d24277bdc \
-            broker can-i-deploy \
-            --pacticipant=forzion-frontend \
-            --version="${PACT_CONSUMER_VERSION}" \
-            --to-environment=homolog
-
   provider-contract:
     name: Provider contract (file-source, gate de PR)
     # Shift-left: verifica o provider .NET contra o pact gerado pelo consumer
     # neste run, via file-source, SEM broker. Pega quebra de contrato do backend
-    # ANTES do merge (a verificacao broker em pact-provider.yml so roda pos-merge).
+    # ANTES do merge (a verificacao broker em ci.yml so roda pos-deploy, no push).
     needs: consumer-contract
     runs-on: ubuntu-latest
     steps:

@@ -1,23 +1,21 @@
 name: Pact — provider verification (backend)
 
-# Verifica a API .NET (provider forzion-api) contra os contratos publicados no
-# broker pelo consumer (forzion-frontend) e publica o resultado da verificacao.
+# Re-verifica a API .NET (provider forzion-api) contra o ultimo contrato
+# publicado no broker, FORA do fluxo de deploy.
+#
+# A verificacao do push -> homolog NAO vive aqui: roda em ci.yml, no job
+# pact-provider-verify `needs: deploy-homolog`, DEPOIS do deploy (broker
+# estavel — evita o race com o restart do nginx). Aqui ficam so os disparos
+# que NAO correm o deploy: cron semanal (drift se o broker mudou sem deploy) e
+# disparo manual.
 #
 # Projeto isolado (forzion.tech.PactVerification) — nao faz parte da solution,
-# entao o gate de PR nao o builda. Roda aqui, com os secrets do broker do
-# Environment homolog. Sem broker, o teste e no-op.
+# entao o gate de PR nao o builda. Sem broker, o teste e no-op.
 on:
   workflow_dispatch:
   schedule:
     # Terca 05:00 UTC — re-verifica contra o ultimo contrato publicado.
     - cron: "0 5 * * 2"
-  push:
-    branches: [homolog]
-    paths:
-      - "forzion.tech.Api/**"
-      - "forzion.tech.Application/**"
-      - "forzion.tech.PactVerification/**"
-      - ".github/workflows/pact-provider.yml"
 
 jobs:
   verify:
@@ -37,9 +35,8 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Aguarda broker disponivel
-        # O broker mora na VM homolog; neste push o deploy reinicia o nginx em
-        # paralelo. Sem este wait, o verifier bate no broker durante o restart e
-        # falha por race (falso-vermelho) — nao por quebra de contrato.
+        # Rede de seguranca: cron/manual nao correm o deploy, mas o broker pode
+        # estar reiniciando por outra razao. curl com --max-time falha rapido.
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           for i in $(seq 1 12); do

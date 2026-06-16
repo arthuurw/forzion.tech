@@ -561,3 +561,116 @@ jobs:
             docker image prune -f
 
             echo "Deploy homolog OK -- $(date)"
+
+  # ─── PACT — PÓS-DEPLOY (broker estável) ──────────────────────────────────────
+  # O broker Pact mora na MESMA VM/nginx do app. Durante o deploy (build na VM +
+  # recreate + restart nginx) a 443 fica inalcançável por dezenas de min — um job
+  # que corra o deploy em paralelo bate no broker no meio e falha por RACE (falso
+  # -vermelho), não por quebra de contrato. Por isso publish (consumer) e verify
+  # (provider) rodam DEPOIS do deploy via `needs:`, em ordem consumer→provider.
+  # PR segue coberto pelo gate file-source SEM broker em contract.yml.
+  pact-publish:
+    name: Pact — publica consumer (pós-deploy)
+    needs: [deploy-homolog]
+    # `always() && result==success`: o success() IMPLÍCITO avalia o grafo
+    # TRANSITIVO de needs — com os jobs PR-only skipados em push, pularia este
+    # também (mesmo gotcha do deploy-homolog acima).
+    if: ${{ always() && needs.deploy-homolog.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: homolog
+    env:
+      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
+      PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
+      PACT_CONSUMER_VERSION: ${{ github.sha }}
+      PACT_CONSUMER_BRANCH: ${{ github.ref_name }}
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Gera + valida contrato consumer
+        run: npm run test:contract
+
+      - name: Aguarda broker disponivel
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS --connect-timeout 10 --max-time 20 -u "$PACT_BROKER_USERNAME:$PACT_BROKER_PASSWORD" \
+              "$PACT_BROKER_BASE_URL/diagnostic/status/heartbeat" >/dev/null; then
+              echo "broker ok"; exit 0
+            fi
+            echo "broker indisponivel (deploy/restart?), retry $i/12..."; sleep 15
+          done
+          echo "broker nao respondeu apos 12 tentativas"; exit 1
+
+      - name: Publica no broker
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          docker run --rm \
+            -v "$PWD/pacts:/pacts" \
+            -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
+            pactfoundation/pact-cli@sha256:0ab9d13bb7e46da28c108df49f390bc173616906f41af79c4fa5a08d24277bdc \
+            publish /pacts \
+            --consumer-app-version="${PACT_CONSUMER_VERSION}" \
+            --branch="${PACT_CONSUMER_BRANCH}"
+
+      - name: can-i-deploy (consumer)
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        # Report-only ate o provider verificar e registrar o deploy no environment
+        # homolog (job pact-provider-verify a seguir). Sem verificacao, o broker
+        # corretamente responde "no" — nao deve derrubar a workflow ainda.
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
+            pactfoundation/pact-cli@sha256:0ab9d13bb7e46da28c108df49f390bc173616906f41af79c4fa5a08d24277bdc \
+            broker can-i-deploy \
+            --pacticipant=forzion-frontend \
+            --version="${PACT_CONSUMER_VERSION}" \
+            --to-environment=homolog
+
+  pact-provider-verify:
+    name: Pact — verifica provider (pós-deploy)
+    needs: [pact-publish]
+    if: ${{ always() && needs.pact-publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: homolog
+    env:
+      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
+      PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Aguarda broker disponivel
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS --connect-timeout 10 --max-time 20 -u "$PACT_BROKER_USERNAME:$PACT_BROKER_PASSWORD" \
+              "$PACT_BROKER_BASE_URL/diagnostic/status/heartbeat" >/dev/null; then
+              echo "broker ok"; exit 0
+            fi
+            echo "broker indisponivel (deploy/restart?), retry $i/12..."; sleep 15
+          done
+          echo "broker nao respondeu apos 12 tentativas"; exit 1
+
+      - name: Verifica contratos (provider)
+        run: dotnet test forzion.tech.PactVerification/forzion.tech.PactVerification.csproj -c Release --nologo
+        env:
+          CI: "true"
+          GITHUB_SHA: ${{ github.sha }}
