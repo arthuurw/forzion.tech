@@ -32,7 +32,7 @@ DOC PARA AGENTES. CASA ÚNICA de concorrência — hoje espalhado incidente-a-in
 ## 7. ENFORCEMENT
 - **Teste de integração concorrente** (Testcontainers, [specification-tests §6]): disparar 2 chamadas do handler EM PARALELO e asseverar efeito único (não só retry sequencial). Esse é o gate real de idempotência.
 - **UNIQUE constraints** no schema = gate de banco ([specification-db]). **`xmin` token** = revisão de diff (sem gate hard).
-- Cross-ref gap: Stripe NÃO usa `Stripe-Idempotency-Key` nos Create (protegido por tx + UNIQUE app-side) — [specification-security §8].
+- Stripe USA `Stripe-Idempotency-Key` nos Create de PaymentIntent/refund (`pagamento-{guid}`/`refund-{guid}`/`pagamento-treinador-{guid}`) — belt-and-suspenders sobre a tx serializable (F12) + UNIQUE app-side; retry de transporte não cria 2º intent. CANÔNICO em [specification-stripe].
 
 ## 8. REFERÊNCIAS
-[specification-coding §1] (ordering — CANÔNICO), [specification-db] (xmin/UQ parciais/outbox), [specification-stripe] (webhook/refund/PaymentIntent), [specification-backend] (outbox/UnitOfWork/eventos), [specification-tests §6] (Testcontainers/dublês), [specification-security §7-8] (webhook signing / gap idempotency).
+[specification-coding §1] (ordering — CANÔNICO), [specification-db] (xmin/UQ parciais/outbox), [specification-stripe] (webhook/refund/PaymentIntent), [specification-backend] (outbox/UnitOfWork/eventos), [specification-tests §6] (Testcontainers/dublês), [specification-security §7] (webhook signing).

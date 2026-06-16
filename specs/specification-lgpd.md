@@ -87,7 +87,7 @@ Anamnese do aluno (finalidade, foco_treino, nivel_condicionamento, limitacoes_fi
 - Sem nova coluna/migration: reusa `logs_aprovacao` (enum text). Versão do termo no campo `observacao`.
 
 ## AUDITORIA
-`logs_aprovacao` com `TipoAcaoAprovacao.ExportacaoDados` / `AnonimizacaoConta` / `ConsentimentoAnamnese` (text enum; sem migration). Registra quem/quando/alvo. `ConsentimentoAnamnese` = consentimento art. 11 no cadastro do aluno (observacao = versão do termo).
+`logs_aprovacao` com `TipoAcaoAprovacao.ExportacaoDados` / `AnonimizacaoConta` / `ConsentimentoAnamnese` (text enum; sem migration). Registra quem (`realizado_por`) / quando / alvo (`entidade_id` + tipo `Conta`). **Atribuição da exportação** (`ExportarDadosPessoaisCommand(ContaId, RealizadoPorId)`): self (`/conta/lgpd/exportar`) ⇒ `realizado_por = alvo = titular`; admin (`/admin/contas/{id}/lgpd/exportar`) ⇒ `realizado_por = ContaId do admin`, `alvo = titular` (exportação por admin fica atribuída a ele). Auditoria OBRIGATÓRIA/fail-closed: `LogAprovacao` é commitado ANTES de devolver o export; falha ao registrar ⇒ export NÃO retorna. `ConsentimentoAnamnese` = consentimento art. 11 no cadastro do aluno (observacao = versão do termo).
 
 ## TESTES
 - Backend: Domain (Anonimizar de Conta/Aluno/Treinador — PII some, idempotência, evento), Application (export agrega todas as seções sem terceiros; anonimização scrub + retém financeiro + bloqueio treinador-ativo + senha errada), endpoints (200/401/403). ~40 testes.
