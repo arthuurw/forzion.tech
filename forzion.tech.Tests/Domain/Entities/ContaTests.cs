@@ -117,6 +117,19 @@ public class ContaTests
     }
 
     [Fact]
+    public void InvalidarSessoesAnteriores_SetaEpochEUpdatedAt()
+    {
+        var agora = new DateTimeOffset(2026, 5, 25, 12, 0, 0, TimeSpan.Zero);
+        var conta = Conta.Criar(EmailValido, HashValido, TipoConta.Aluno, TestData.Agora).Value;
+        conta.SessoesInvalidasAntesDeUtc.Should().BeNull();
+
+        conta.InvalidarSessoesAnteriores(agora);
+
+        conta.SessoesInvalidasAntesDeUtc.Should().Be(agora);
+        conta.UpdatedAt.Should().Be(agora.UtcDateTime);
+    }
+
+    [Fact]
     public void MarcarEmailVerificado_ContaJaVerificada_NaoAlteraDatas()
     {
         var primeiraVez = new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc);

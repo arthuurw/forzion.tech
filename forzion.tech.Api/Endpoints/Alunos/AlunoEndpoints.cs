@@ -16,13 +16,19 @@ public static class AlunoEndpoints
 {
     public static void MapAlunoEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/alunos")
+        var readGroup = app.MapGroup("/alunos")
+            .WithTags("Alunos")
+            .RequireRateLimiting("read")
+            .AddEndpointFilter<PerfilIdRequiredFilter>()
+            .AddEndpointFilter<PaginacaoFilter>();
+
+        var writeGroup = app.MapGroup("/alunos")
             .WithTags("Alunos")
             .RequireRateLimiting("write")
             .AddEndpointFilter<PerfilIdRequiredFilter>()
             .AddEndpointFilter<PaginacaoFilter>();
 
-        group.MapGet("/", async (
+        readGroup.MapGet("/", async (
             [FromServices] ListarAlunosHandler handler,
             [FromServices] IUserContext userContext,
             HttpContext httpContext,
@@ -43,7 +49,7 @@ public static class AlunoEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        group.MapGet("/{id}", async (
+        readGroup.MapGet("/{id}", async (
             Guid id,
             [FromServices] ObterAlunoHandler handler,
             CancellationToken cancellationToken) =>
@@ -60,7 +66,7 @@ public static class AlunoEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        group.MapGet("/{alunoId}/treinos", async (
+        readGroup.MapGet("/{alunoId}/treinos", async (
             Guid alunoId,
             [FromServices] ListarTreinosHandler handler,
             HttpContext httpContext,
@@ -81,7 +87,7 @@ public static class AlunoEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        group.MapPatch("/{id}", async (
+        writeGroup.MapPatch("/{id}", async (
             Guid id,
             [FromBody] AtualizarAlunoRequest request,
             [FromServices] AtualizarAlunoHandler handler,
@@ -102,7 +108,7 @@ public static class AlunoEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        group.MapPatch("/{id}/status", async (
+        writeGroup.MapPatch("/{id}/status", async (
             Guid id,
             [FromBody] AlterarStatusAlunoRequest request,
             [FromServices] AlterarStatusAlunoHandler handler,

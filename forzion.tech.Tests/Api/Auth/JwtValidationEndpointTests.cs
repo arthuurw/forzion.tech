@@ -40,14 +40,19 @@ public class JwtValidationEndpointTests : IClassFixture<JwtValidationEndpointTes
         string issuer = Issuer,
         string audience = Audience,
         DateTime? expires = null,
-        bool comJti = true)
+        bool comJti = true,
+        string? contaId = null,
+        DateTime? notBefore = null,
+        bool comNbf = true)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        var conta = contaId ?? Guid.NewGuid().ToString();
         var claims = new List<Claim>
         {
-            new("conta_id", Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Sub, conta),
+            new("conta_id", conta),
             new("tipo_conta", "Treinador"),
             new("perfil_id", Guid.NewGuid().ToString()),
         };
@@ -55,11 +60,12 @@ public class JwtValidationEndpointTests : IClassFixture<JwtValidationEndpointTes
             claims.Add(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
 
         var expiry = expires ?? DateTime.UtcNow.AddMinutes(60);
+        DateTime? nbf = comNbf ? (notBefore ?? expiry.AddMinutes(-60)) : null;
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
             claims: claims,
-            notBefore: expiry.AddMinutes(-60),
+            notBefore: nbf,
             expires: expiry,
             signingCredentials: credentials);
 
@@ -125,8 +131,45 @@ public class JwtValidationEndpointTests : IClassFixture<JwtValidationEndpointTes
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task Get_Perfil_TokenSemNbf_Retorna401()
+    {
+        var token = GerarToken(AppSecret, comNbf: false);
+
+        var response = await ClienteComToken(token).GetAsync("/conta/perfil");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_Perfil_TokenAnteriorAoEpoch_Retorna401()
+    {
+        var nbf = _factory.EpochInstant.AddMinutes(-5).UtcDateTime;
+        var token = GerarToken(AppSecret, contaId: _factory.EpochContaId.ToString(), notBefore: nbf);
+
+        var response = await ClienteComToken(token).GetAsync("/conta/perfil");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_Perfil_TokenPosteriorAoEpoch_NaoRetorna401()
+    {
+        var nbf = _factory.EpochInstant.AddMinutes(5).UtcDateTime;
+        var token = GerarToken(AppSecret, contaId: _factory.EpochContaId.ToString(), notBefore: nbf);
+
+        var response = await ClienteComToken(token).GetAsync("/conta/perfil");
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     public class RealAuthWebFactory : WebApplicationFactory<Program>
     {
+        public Guid EpochContaId { get; } = Guid.NewGuid();
+        // No passado: os tokens forjados precisam de nbf <= agora p/ lifetime válido.
+        public DateTimeOffset EpochInstant { get; } = DateTimeOffset.UtcNow.AddMinutes(-30);
+
         public Mock<ObterPerfilHandler> ObterPerfilHandlerMock { get; } = new(
             Mock.Of<IUserContext>(),
             Mock.Of<IContaRepository>(),
@@ -158,6 +201,17 @@ public class JwtValidationEndpointTests : IClassFixture<JwtValidationEndpointTes
                     .Setup(r => r.EstaRevogadoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(false);
                 services.AddScoped(_ => revogadoMock.Object);
+
+                // Só EpochContaId tem carimbo; outras contas → null, p/ não afetar os demais testes.
+                services.RemoveAll<IContaRepository>();
+                var contaMock = new Mock<IContaRepository>();
+                contaMock
+                    .Setup(r => r.ObterEpochSessaoAsync(EpochContaId, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(EpochInstant);
+                contaMock
+                    .Setup(r => r.ObterEpochSessaoAsync(It.Is<Guid>(g => g != EpochContaId), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((DateTimeOffset?)null);
+                services.AddScoped(_ => contaMock.Object);
             });
         }
     }

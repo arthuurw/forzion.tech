@@ -13,9 +13,8 @@ public class WhatsAppDeliveryLogConfiguration : IEntityTypeConfiguration<WhatsAp
         builder.Property(e => e.Id).HasColumnName("id");
         builder.Property(e => e.MetaMessageId).HasColumnName("meta_message_id").HasMaxLength(100);
         builder.Property(e => e.EventType).HasColumnName("event_type").HasMaxLength(50);
-        builder.Property(e => e.RecipientPhone).HasColumnName("recipient_phone").HasMaxLength(32);
+        builder.Property(e => e.RecipientPhoneHash).HasColumnName("recipient_phone_hash").HasMaxLength(64);
         builder.Property(e => e.OcorridoEm).HasColumnName("ocorrido_em");
-        builder.Property(e => e.Payload).HasColumnName("payload");
         builder.Property(e => e.CreatedAt).HasColumnName("created_at");
 
         // Único: idempotência sob redelivery concorrente de webhook — o par (mensagem, evento) identifica

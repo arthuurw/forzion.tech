@@ -546,10 +546,11 @@ public static class AdminEndpoints
             string? formato,
             [FromServices] ExportarDadosPessoaisHandler handler,
             [FromServices] IDadosPessoaisExcelRenderer excelRenderer,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler
-                .HandleAsync(new ExportarDadosPessoaisCommand(id), cancellationToken)
+                .HandleAsync(new ExportarDadosPessoaisCommand(id, userContext.ContaId), cancellationToken)
                 .ConfigureAwait(false);
             if (result.IsFailure) return result.ToProblemResult();
 

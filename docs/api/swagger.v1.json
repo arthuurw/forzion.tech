@@ -3261,6 +3261,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Forbidden",
             "content": {
@@ -3424,6 +3434,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/IniciarPagamentoPlanoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -5257,80 +5277,6 @@
         }
       }
     },
-    "/treinos/{id}/execucoes": {
-      "post": {
-        "tags": [
-          "Treinos"
-        ],
-        "summary": "Registra a execução de um treino",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegistrarExecucaoRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegistrarExecucaoResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Content",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/webhooks/stripe": {
       "post": {
         "tags": [
@@ -7137,58 +7083,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RegistrarExecucaoAlunoItemRequest"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "RegistrarExecucaoItemRequest": {
-        "type": "object",
-        "properties": {
-          "treinoExercicioId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "seriesExecutadas": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "repeticoesExecutadas": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "cargaExecutada": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "observacao": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "RegistrarExecucaoRequest": {
-        "type": "object",
-        "properties": {
-          "alunoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "dataExecucao": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "observacao": {
-            "type": "string",
-            "nullable": true
-          },
-          "exercicios": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RegistrarExecucaoItemRequest"
             },
             "nullable": true
           }

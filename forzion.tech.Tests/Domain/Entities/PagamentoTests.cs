@@ -124,6 +124,42 @@ public class PagamentoTests
         r.Error!.Message.Should().Be("Apenas pagamentos pendentes podem ser marcados como pagos.");
     }
 
+    [Fact]
+    public void MarcarPago_LimpaClientSecret_PreservaPaymentIntentId()
+    {
+        var p = CriarValido();
+        p.DefinirDadosCartao("pi_123", "cs_secret", TestData.Agora);
+
+        p.MarcarPago(TestData.Agora);
+
+        p.ClientSecret.Should().BeNull();
+        p.StripePaymentIntentId.Should().Be("pi_123");
+    }
+
+    [Fact]
+    public void MarcarFalhou_LimpaQrCodePix()
+    {
+        var p = CriarValido();
+        p.DefinirDadosPix("pi_123", "qr", "https://img.url", TestData.Agora.AddHours(1), TestData.Agora);
+
+        p.MarcarFalhou(TestData.Agora);
+
+        p.PixQrCode.Should().BeNull();
+        p.PixQrCodeUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public void MarcarExpirado_LimpaQrCodePix()
+    {
+        var p = CriarValido();
+        p.DefinirDadosPix("pi_123", "qr", "https://img.url", TestData.Agora.AddHours(1), TestData.Agora);
+
+        p.MarcarExpirado(TestData.Agora);
+
+        p.PixQrCode.Should().BeNull();
+        p.PixQrCodeUrl.Should().BeNull();
+    }
+
     // --- MarcarFalhou ---
 
     [Fact]

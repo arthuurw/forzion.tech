@@ -23,6 +23,13 @@ public class ContaRepository(AppDbContext context) : IContaRepository
             .ConfigureAwait(false);
     }
 
+    public async Task<DateTimeOffset?> ObterEpochSessaoAsync(Guid contaId, CancellationToken cancellationToken = default) =>
+        await _context.Contas.AsNoTracking()
+            .Where(c => c.Id == contaId)
+            .Select(c => c.SessoesInvalidasAntesDeUtc)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task AdicionarAsync(Conta conta, CancellationToken cancellationToken = default) =>
         await _context.Contas.AddAsync(conta, cancellationToken).ConfigureAwait(false);
 

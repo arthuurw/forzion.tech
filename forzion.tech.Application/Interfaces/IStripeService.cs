@@ -12,7 +12,10 @@ public interface IStripeService
     Task<CartaoPaymentResult> CriarCartaoPlataformaPaymentIntentAsync(decimal valor, Guid pagamentoTreinadorId, CancellationToken cancellationToken = default);
 
     Task<bool> ContaEstaAtivadaAsync(string stripeAccountId, CancellationToken cancellationToken = default);
-    Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe);
+
+    // Retorna o JSON do evento VERIFICADO (não o body raw) p/ o caller parsear; null = rejeitado
+    // (assinatura inválida ou Livemode divergente). String, não Stripe.Event, p/ não vazar Stripe.net na Application.
+    Task<string?> ValidarWebhookAsync(string payload, string assinaturaStripe);
 
     // reverterTransferencia=true (charge destino do aluno): reverte a transferência ao treinador
     // e a application fee — sem isso o refund deixa o dinheiro no treinador e pode falhar

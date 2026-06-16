@@ -323,17 +323,27 @@ public class StripeService(
         return string.Join(" ", partes);
     }
 
-    public Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe)
+    public Task<string?> ValidarWebhookAsync(string payload, string assinaturaStripe)
     {
         try
         {
-            EventUtility.ConstructEvent(payload, assinaturaStripe, _settings.WebhookSecret);
-            return Task.FromResult(true);
+            var evento = EventUtility.ConstructEvent(payload, assinaturaStripe, _settings.WebhookSecret);
+
+            // SEC-03: ExpectLivemode null = sem enforcement (ambiente não-prod/teste).
+            if (_settings.ExpectLivemode is { } esperado && evento.Livemode != esperado)
+            {
+                logger.LogWarning(
+                    "Webhook Stripe rejeitado: Livemode={Livemode} difere do esperado={Esperado} (evento {EventId}).",
+                    evento.Livemode, esperado, evento.Id);
+                return Task.FromResult<string?>(null);
+            }
+
+            return Task.FromResult<string?>(payload);
         }
         catch (Exception ex) when (ex is StripeException or InvalidDataException or ArgumentException)
         {
             logger.LogWarning(ex, "Webhook Stripe inválido: {Message}.", ex.Message);
-            return Task.FromResult(false);
+            return Task.FromResult<string?>(null);
         }
     }
 

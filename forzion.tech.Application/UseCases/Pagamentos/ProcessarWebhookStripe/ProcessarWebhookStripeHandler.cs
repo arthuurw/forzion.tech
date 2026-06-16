@@ -31,11 +31,13 @@ public class ProcessarWebhookStripeHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var valido = await stripeService.ValidarWebhookAsync(command.Payload, command.AssinaturaAlunoStripe).ConfigureAwait(false);
-        if (!valido)
+        // SEC-02: age sobre o JSON do evento VERIFICADO retornado pela verificação, não sobre o
+        // body raw não-confiável. null = assinatura inválida OU Livemode divergente (SEC-03).
+        var eventoVerificadoJson = await stripeService.ValidarWebhookAsync(command.Payload, command.AssinaturaAlunoStripe).ConfigureAwait(false);
+        if (eventoVerificadoJson is null)
             return Result.Failure(Error.Business("webhook_stripe.assinatura_invalida", "AssinaturaAluno do webhook inválida."));
 
-        var evento = StripeWebhookParser.Parse(command.Payload);
+        var evento = StripeWebhookParser.Parse(eventoVerificadoJson);
 
         await ProcessarEventoAsync(evento, cancellationToken).ConfigureAwait(false);
 

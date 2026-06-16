@@ -3,6 +3,7 @@ using System.Text;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Validation;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
@@ -19,13 +20,7 @@ public class RedefinirSenhaCommandValidator : AbstractValidator<RedefinirSenhaCo
             .NotEmpty().WithMessage("O token é obrigatório.")
             .Length(64).WithMessage("Token inválido.");
 
-        RuleFor(x => x.NovaSenha)
-            .NotEmpty().WithMessage("A nova senha é obrigatória.")
-            .MinimumLength(8).WithMessage("A nova senha deve ter pelo menos 8 caracteres.")
-            .MaximumLength(72).WithMessage("A nova senha deve ter no máximo 72 caracteres.")
-            .Matches("[A-Z]").WithMessage("A nova senha deve conter pelo menos uma letra maiúscula.")
-            .Matches("[a-z]").WithMessage("A nova senha deve conter pelo menos uma letra minúscula.")
-            .Matches("[0-9]").WithMessage("A nova senha deve conter pelo menos um dígito.");
+        RuleFor(x => x.NovaSenha).SenhaForte();
     }
 }
 
@@ -59,7 +54,8 @@ public class RedefinirSenhaHandler(
         if (token is null || token.UsedAt.HasValue)
             return Result.Failure(Error.Business("auth_reset.token_invalido", "Token inválido ou já utilizado."));
 
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var agoraOffset = timeProvider.GetUtcNow();
+        var agora = agoraOffset.UtcDateTime;
 
         if (token.ExpiresAt < agora)
             return Result.Failure(Error.Business("auth_reset.token_expirado", "Token expirado. Solicite um novo link de redefinição."));
@@ -70,6 +66,8 @@ public class RedefinirSenhaHandler(
         var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), agora);
         if (atualizarResult.IsFailure)
             return Result.Failure(atualizarResult.Error!);
+
+        conta.InvalidarSessoesAnteriores(agoraOffset);
 
         var marcarResult = token.MarcarComoUsado(agora);
         if (marcarResult.IsFailure)

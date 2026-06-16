@@ -27,6 +27,7 @@ public class EsqueceuSenhaHandlerTests
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IPasswordResetTokenRepository> _tokenRepo = new();
     private readonly Mock<IEmailService> _emailService = new();
+    private readonly Mock<IEmailBackgroundDispatcher> _dispatcher = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly Mock<ILogger<EsqueceuSenhaHandler>> _logger = new();
@@ -36,9 +37,11 @@ public class EsqueceuSenhaHandlerTests
     {
         var settings = Options.Create(new AppSettings { FrontendBaseUrl = "https://forzion.test" });
         _emailService.SetupGet(s => s.Habilitado).Returns(true);
+        _dispatcher.Setup(d => d.Disparar(It.IsAny<Func<IEmailService, CancellationToken, Task>>()))
+            .Callback<Func<IEmailService, CancellationToken, Task>>(f => f(_emailService.Object, CancellationToken.None).GetAwaiter().GetResult());
 
         _handler = new EsqueceuSenhaHandler(
-            _contaRepo.Object, _tokenRepo.Object, _emailService.Object,
+            _contaRepo.Object, _tokenRepo.Object, _dispatcher.Object,
             _unitOfWork.Object, settings, _timeProvider, _logger.Object);
     }
 
@@ -143,5 +146,19 @@ public class EsqueceuSenhaHandlerTests
 
         hashes.Should().HaveCount(2);
         hashes[0].Should().NotBe(hashes[1]);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PersisteEComitaComCancellationTokenDaRequest()
+    {
+        var conta = BuildConta();
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("user@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        using var cts = new CancellationTokenSource();
+
+        await _handler.HandleAsync(new EsqueceuSenhaCommand("user@example.com"), cts.Token);
+
+        _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<PasswordResetToken>(), cts.Token), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(cts.Token), Times.Once);
     }
 }

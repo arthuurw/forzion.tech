@@ -200,6 +200,24 @@ public class AnonimizarContaHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_CarimbaEpochDeSessaoDaConta()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Epoch", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        conta.SessoesInvalidasAntesDeUtc.Should().Be(TestData.Agora);
+    }
+
+    [Fact]
     public async Task HandleAsync_PurgaFamiliasDeRefreshDoTitular()
     {
         var contaId = Guid.NewGuid();

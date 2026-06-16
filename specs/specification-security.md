@@ -13,7 +13,7 @@ Trust boundaries: `internet → nginx (edge, TLS terminate) → {frontend:3000 |
 | Proxy BFF backend | Next `/api/backend/[...path]` | repassa Bearer do usuário | frontend reescreve p/ `API_BASE_URL`; descarta headers crus (ex. svix-*) |
 | Auth proxy | Next `/api/auth/*` | pré-auth (login/registro/reset) | rate-limit frontend in-memory (§4) + rate-limit backend `auth` |
 | Webhooks | `nginx /webhooks/` → `backend:8080` DIRETO | assinatura (Stripe/Svix/Meta) — anônimo | bypassa o proxy SPA p/ preservar headers de assinatura crus (nginx.conf `location /webhooks/`) |
-| Endpoints internos | `/internal/processar-renovacoes-treinador`, `/internal/processar-renovacoes`, `/internal/reconciliar-pagamentos` | header `X-Internal-Key` constant-time (§5) | server-to-server (billing-* GH Actions); EXPOSTO via HTTPS público sem WAF (gap §8) |
+| Endpoints internos | `/internal/*` — billing (renovações aluno/treinador, reconciliar) + LGPD-purge (`lgpd/contas-elegiveis`, `lgpd/contas/{id}`) + pré-avisos (aluno/treinador); inventário completo em [specification-backend] §endpoints internos | header `X-Internal-Key` constant-time (§5) | server-to-server (GH Actions billing/LGPD/pré-avisos); EXPOSTO via HTTPS público sem WAF (gap §8) |
 | Health | `/health` (liveness) + `/health/ready` | anônimo + rate `read` | contrato em [specification-observability] §2 |
 
 Swagger NÃO é exposto publicamente: backend só serve Swagger em Development (não roteado pelo nginx em homolog/prod).
@@ -67,7 +67,7 @@ Cross-ref [specification-infrastructure] (ENV/SECRETS, `.env` na VM). Por ambien
 | CI / GH Actions | GitHub Actions secrets (`secrets.HOMOLOG_HOST`, `HOMOLOG_SSH_KEY`, `SENTRY_AUTH_TOKEN`, etc.) + `vars.HOMOLOG_BASE_URL` | deploy/scan tokens |
 
 - **`Auth:JwtSecret`**: validado no boot (≥32 bytes UTF-8), falha fechada se ausente (`AuthenticationExtensions.AddJwtAuthentication`). Next: `JWT_SECRET`+`API_BASE_URL` obrigatórios em produção (`next.config.ts`, guard lança no boot).
-- **Comparação constant-time `/internal`** — validador único compartilhado `PagamentosEndpoints.ChaveInternaValida` (aplicado nos 3 endpoints internos): `X-Internal-Key` vs `Internal:ApiKey` via `CryptographicOperations.FixedTimeEquals`, precedido de checagem de comprimento (evita `ArgumentException` em spans desiguais e timing oracle). Mesma técnica no handshake WhatsApp `hub.verify_token` (`WebhookEndpoints.cs`, branch GET `hub.verify_token`). Chave ausente/divergente ⇒ 401/403.
+- **Comparação constant-time `/internal`** — validador único compartilhado `InternalApiKeyValidator.ChaveInternaValida` (`Api/Extensions`; `PagamentosEndpoints` delega via wrapper fino), aplicado em TODOS os endpoints `/internal/*`: `X-Internal-Key` vs `Internal:ApiKey` via `CryptographicOperations.FixedTimeEquals`, precedido de checagem de comprimento (evita `ArgumentException` em spans desiguais e timing oracle). Mesma técnica no handshake WhatsApp `hub.verify_token` (`WebhookEndpoints.cs`, branch GET `hub.verify_token`). Chave ausente/divergente ⇒ 401/403.
 - **Scanning de segredos versionados**: gitleaks no CI (§6, `.gitleaks.toml`).
 
 ## 6. SAST / DAST / SUPPLY-CHAIN

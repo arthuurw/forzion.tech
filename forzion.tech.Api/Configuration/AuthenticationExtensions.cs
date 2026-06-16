@@ -67,12 +67,33 @@ public static class AuthenticationExtensions
                     return;
                 }
 
-                var repo = ctx.HttpContext.RequestServices.GetService<ITokenRevogadoRepository>();
+                var services = ctx.HttpContext.RequestServices;
+
+                var repo = services.GetService<ITokenRevogadoRepository>();
                 if (repo is not null &&
                     await repo.EstaRevogadoAsync(jti, ctx.HttpContext.RequestAborted).ConfigureAwait(false))
                 {
                     ctx.Fail("Token revogado.");
+                    return;
                 }
+
+                var subClaim = ctx.Principal?.FindFirst("sub")?.Value;
+                var nbfClaim = ctx.Principal?.FindFirst("nbf")?.Value;
+                if (!Guid.TryParse(subClaim, out var contaId) || !long.TryParse(nbfClaim, out var nbf))
+                {
+                    ctx.Fail("Token sem sub/nbf válido.");
+                    return;
+                }
+
+                var contaRepo = services.GetService<IContaRepository>();
+                var epoch = contaRepo is null
+                    ? null
+                    : await contaRepo.ObterEpochSessaoAsync(contaId, ctx.HttpContext.RequestAborted).ConfigureAwait(false);
+
+                // Compara em segundos (nbf é NumericDate); truncar o epoch ao mesmo grão não
+                // rejeita um token re-emitido no mesmo segundo do carimbo.
+                if (epoch is not null && nbf < epoch.Value.ToUnixTimeSeconds())
+                    ctx.Fail("Sessão invalidada.");
             }
         };
 

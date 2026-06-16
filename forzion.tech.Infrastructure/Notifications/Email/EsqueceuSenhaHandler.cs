@@ -14,7 +14,7 @@ public record EsqueceuSenhaCommand(string Email);
 public class EsqueceuSenhaHandler(
     IContaRepository contaRepository,
     IPasswordResetTokenRepository tokenRepository,
-    IEmailService emailService,
+    IEmailBackgroundDispatcher emailBackground,
     IUnitOfWork unitOfWork,
     IOptions<AppSettings> appSettings,
     TimeProvider timeProvider,
@@ -58,19 +58,12 @@ public class EsqueceuSenhaHandler(
         await tokenRepository.AdicionarAsync(resetToken, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        if (!emailService.Habilitado)
-        {
-            logger.LogDebug("EsqueceuSenhaHandler: e-mail desabilitado — token gerado para conta {ContaId}.", conta.Id);
-            return;
-        }
-
+        var destino = conta.Email.Value;
         var resetLink = $"{appSettings.Value.FrontendBaseUrl}/reset-password?token={rawToken}";
-
-        await emailService.EnviarAsync(
-            conta.Email.Value,
-            "Redefinição de senha — forzion.tech",
-            EmailTemplates.RedefinirSenha(conta.Email.Value, resetLink),
-            cancellationToken).ConfigureAwait(false);
+        emailBackground.Disparar((email, ct) =>
+            email.Habilitado
+                ? email.EnviarAsync(destino, "Redefinição de senha — forzion.tech", EmailTemplates.RedefinirSenha(destino, resetLink), ct)
+                : Task.CompletedTask);
     }
 
     private static string GenerateRawToken()

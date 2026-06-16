@@ -19,6 +19,7 @@ services:
       Email__AllowlistDominios: ${EMAIL_ALLOWLIST_DOMAINS:-}
       App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-https://homologacao.forzion.tech}
       Internal__ApiKey: ${INTERNAL_API_KEY:-}
+      DeliveryLog__RecipientHashKey: ${DELIVERY_LOG_HASH_KEY:-}
       # WhatsApp via Meta Cloud API (opcional — PhoneNumberId+AccessToken vazios → NullWhatsAppNotifier)
       WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}

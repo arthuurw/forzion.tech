@@ -91,7 +91,7 @@ public class ExportarDadosPessoaisHandlerTests
         var contaId = Guid.NewGuid();
         SetupContaNotFound(contaId);
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Type.Should().Be(ErrorType.NotFound);
@@ -120,7 +120,7 @@ public class ExportarDadosPessoaisHandlerTests
         SetupEmailLogs("aluno@test.com");
         SetupLogAprovacao();
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsSuccess.Should().BeTrue();
         var export = result.Value;
@@ -165,7 +165,7 @@ public class ExportarDadosPessoaisHandlerTests
         SetupEmailLogs(conta.Email.Value);
         SetupLogAprovacao();
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsSuccess.Should().BeTrue();
         var export = result.Value;
@@ -203,7 +203,7 @@ public class ExportarDadosPessoaisHandlerTests
         SetupEmailLogs("aluno@test.com");
         SetupLogAprovacao();
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Vinculos.Should().HaveCount(1);
@@ -228,7 +228,7 @@ public class ExportarDadosPessoaisHandlerTests
         SetupEmailLogs("treinador@test.com");
         SetupLogAprovacao();
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsSuccess.Should().BeTrue();
         var export = result.Value;
@@ -267,7 +267,7 @@ public class ExportarDadosPessoaisHandlerTests
         SetupEmailLogs("coach@test.com");
         SetupLogAprovacao();
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Vinculos.Should().HaveCount(2);
@@ -297,7 +297,7 @@ public class ExportarDadosPessoaisHandlerTests
                      .ReturnsAsync([]);
         SetupEmailLogs("log-fail@test.com");
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsFailure.Should().BeTrue();
         _logAprovacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -335,8 +335,8 @@ public class ExportarDadosPessoaisHandlerTests
         var treino = Treino.Criar("Treino A", ObjetivoTreino.Forca, treinadorId, TestData.Agora, DificuldadeTreino.Avancado).Value;
         var execucao = ExecucaoTreino.Criar(treino.Id, aluno.Id, TestData.Agora, TestData.Agora, "Concluído com carga máxima").Value;
 
-        var emailLog = EmailDeliveryLog.Criar("rid-1", "delivered", "joana@test.com", TestData.Agora, "{}", TestData.Agora);
-        var waLog = WhatsAppDeliveryLog.Criar("mid-1", "read", "+5511999998888", TestData.Agora, "{}", TestData.Agora);
+        var emailLog = EmailDeliveryLog.Criar("rid-1", "delivered", "joana@test.com", TestData.Agora, TestData.Agora);
+        var waLog = WhatsAppDeliveryLog.Criar("mid-1", "read", "+5511999998888", TestData.Agora, TestData.Agora);
 
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
@@ -351,7 +351,7 @@ public class ExportarDadosPessoaisHandlerTests
         _waLogRepo.Setup(r => r.ListarPorTelefoneAsync("+5511999998888", It.IsAny<CancellationToken>())).ReturnsAsync([waLog]);
         SetupLogAprovacao();
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsSuccess.Should().BeTrue();
         var export = result.Value;
@@ -435,8 +435,8 @@ public class ExportarDadosPessoaisHandlerTests
         var pacote = Pacote.Criar(treinador.Id, "Plano Premium", 299.90m, TestData.Agora, "Acompanhamento completo").Value;
         var treino = Treino.Criar("Treino Full Body", ObjetivoTreino.Resistencia, treinador.Id, TestData.Agora, DificuldadeTreino.Intermediario).Value;
 
-        var emailLog = EmailDeliveryLog.Criar("rid-2", "bounced", "coach@test.com", TestData.Agora, "{}", TestData.Agora);
-        var waLog = WhatsAppDeliveryLog.Criar("mid-2", "delivered", "+5521988887777", TestData.Agora, "{}", TestData.Agora);
+        var emailLog = EmailDeliveryLog.Criar("rid-2", "bounced", "coach@test.com", TestData.Agora, TestData.Agora);
+        var waLog = WhatsAppDeliveryLog.Criar("mid-2", "delivered", "+5521988887777", TestData.Agora, TestData.Agora);
 
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -448,7 +448,7 @@ public class ExportarDadosPessoaisHandlerTests
         _waLogRepo.Setup(r => r.ListarPorTelefoneAsync("+5521988887777", It.IsAny<CancellationToken>())).ReturnsAsync([waLog]);
         SetupLogAprovacao();
 
-        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         result.IsSuccess.Should().BeTrue();
         var export = result.Value;
@@ -501,7 +501,7 @@ public class ExportarDadosPessoaisHandlerTests
         SetupEmailLogs(conta.Email.Value);
         SetupLogAprovacao();
 
-        await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId));
+        await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
 
         _logAprovacaoRepo.Verify(
             r => r.AdicionarAsync(
@@ -509,5 +509,36 @@ public class ExportarDadosPessoaisHandlerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Admin_RegistraAtorReal()
+    {
+        var contaId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Titular", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+        SetupAlunoBaseRepos(aluno);
+        _assinaturaRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync([]);
+        _treinoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync((new List<Treino>().AsReadOnly() as IReadOnlyList<Treino>, 0));
+        _execucaoRepo.Setup(r => r.ListarPorAlunoAsync(aluno.Id, 1, int.MaxValue, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync([]);
+        SetupEmailLogs(conta.Email.Value);
+        SetupLogAprovacao();
+
+        await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, adminId));
+
+        _logAprovacaoRepo.Verify(
+            r => r.AdicionarAsync(
+                It.Is<LogAprovacao>(l => l.RealizadoPorId == adminId && l.EntidadeId == contaId),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

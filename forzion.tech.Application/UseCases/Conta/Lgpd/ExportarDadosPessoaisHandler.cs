@@ -121,7 +121,7 @@ public record DadosPessoaisExport(
     IReadOnlyList<EmailDeliveryLogExportDto> EmailDeliveryLogs,
     IReadOnlyList<WhatsAppDeliveryLogExportDto> WhatsAppDeliveryLogs);
 
-public record ExportarDadosPessoaisCommand(Guid ContaId);
+public record ExportarDadosPessoaisCommand(Guid ContaId, Guid RealizadoPorId);
 
 public class ExportarDadosPessoaisHandler(
     IContaRepository contaRepository,
@@ -259,7 +259,7 @@ public class ExportarDadosPessoaisHandler(
         // Audit is mandatory — a validation failure means the export must not be returned.
         var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.ExportacaoDados,
-            realizadoPorId: command.ContaId,
+            realizadoPorId: command.RealizadoPorId,
             entidadeId: command.ContaId,
             entidadeTipo: "Conta",
             agora);

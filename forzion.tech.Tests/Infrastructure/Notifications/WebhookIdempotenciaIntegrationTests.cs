@@ -1,14 +1,18 @@
 using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
+using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -24,6 +28,8 @@ namespace forzion.tech.Tests.Infrastructure.Notifications;
 public class WebhookIdempotenciaIntegrationTests(InfrastructureTestFixture fixture)
 {
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 6, 10, 0, 0, 0, TimeSpan.Zero));
+    private readonly IRecipientHasher _hasher =
+        new RecipientHasher(Options.Create(new DeliveryLogSettings { RecipientHashKey = "test-key" }));
 
     private const string ResendSecret = "whsec_Zm9yemlvbi10ZXN0LXNlY3JldC1yZXNlbmQ=";
     private const string WhatsAppSecret = "forzion-test-whatsapp-secret";
@@ -47,7 +53,7 @@ public class WebhookIdempotenciaIntegrationTests(InfrastructureTestFixture fixtu
         {
             await seed.Database.EnsureCreatedAsync();
             seed.EmailDeliveryLogs.Add(EmailDeliveryLog.Criar(
-                emailId, eventType, "u@test.com", _time.GetUtcNow().UtcDateTime, "{}", _time.GetUtcNow().UtcDateTime));
+                emailId, eventType, "u@test.com", _time.GetUtcNow().UtcDateTime, _time.GetUtcNow().UtcDateTime));
             await seed.SaveChangesAsync();
         }
 
@@ -59,7 +65,7 @@ public class WebhookIdempotenciaIntegrationTests(InfrastructureTestFixture fixtu
         repo.Setup(r => r.AdicionarAsync(It.IsAny<EmailDeliveryLog>(), It.IsAny<CancellationToken>()))
             .Returns<EmailDeliveryLog, CancellationToken>((l, ct) => ctx.EmailDeliveryLogs.AddAsync(l, ct).AsTask());
 
-        var handler = new ProcessarWebhookResendHandler(repo.Object, ctx, _time, NullLogger<ProcessarWebhookResendHandler>.Instance);
+        var handler = new ProcessarWebhookResendHandler(repo.Object, ctx, _time, _hasher, NullLogger<ProcessarWebhookResendHandler>.Instance);
         var cmd = SignedResend(emailId, eventType);
 
         var result = await handler.HandleAsync(cmd, ResendSecret);
@@ -81,7 +87,7 @@ public class WebhookIdempotenciaIntegrationTests(InfrastructureTestFixture fixtu
         {
             await seed.Database.EnsureCreatedAsync();
             seed.WhatsAppDeliveryLogs.Add(WhatsAppDeliveryLog.Criar(
-                messageId, eventType, "5511999990000", _time.GetUtcNow().UtcDateTime, "{}", _time.GetUtcNow().UtcDateTime));
+                messageId, eventType, "5511999990000", _time.GetUtcNow().UtcDateTime, _time.GetUtcNow().UtcDateTime));
             await seed.SaveChangesAsync();
         }
 
@@ -92,7 +98,7 @@ public class WebhookIdempotenciaIntegrationTests(InfrastructureTestFixture fixtu
         repo.Setup(r => r.AdicionarAsync(It.IsAny<WhatsAppDeliveryLog>(), It.IsAny<CancellationToken>()))
             .Returns<WhatsAppDeliveryLog, CancellationToken>((l, ct) => ctx.WhatsAppDeliveryLogs.AddAsync(l, ct).AsTask());
 
-        var handler = new ProcessarWebhookWhatsAppHandler(repo.Object, ctx, _time, NullLogger<ProcessarWebhookWhatsAppHandler>.Instance);
+        var handler = new ProcessarWebhookWhatsAppHandler(repo.Object, ctx, _time, _hasher, NullLogger<ProcessarWebhookWhatsAppHandler>.Instance);
         var payload = BuildMetaPayload(messageId, eventType);
         var cmd = new ProcessarWebhookWhatsAppCommand(payload, SignMeta(payload, WhatsAppSecret));
 
@@ -113,8 +119,8 @@ public class WebhookIdempotenciaIntegrationTests(InfrastructureTestFixture fixtu
 
         await using var ctx = CreateContext();
         await ctx.Database.EnsureCreatedAsync();
-        var repo = new WhatsAppDeliveryLogRepository(ctx);
-        var handler = new ProcessarWebhookWhatsAppHandler(repo, ctx, _time, NullLogger<ProcessarWebhookWhatsAppHandler>.Instance);
+        var repo = new WhatsAppDeliveryLogRepository(ctx, _hasher);
+        var handler = new ProcessarWebhookWhatsAppHandler(repo, ctx, _time, _hasher, NullLogger<ProcessarWebhookWhatsAppHandler>.Instance);
 
         var payload = BuildMetaPayloadDuplicado(messageId, eventType);
         var cmd = new ProcessarWebhookWhatsAppCommand(payload, SignMeta(payload, WhatsAppSecret));

@@ -4,7 +4,6 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Infrastructure.Notifications.Email;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -19,6 +18,7 @@ public class EmailVerificationSenderTests
 
     private readonly Mock<IEmailVerificationTokenRepository> _tokenRepo = new();
     private readonly Mock<IEmailService> _emailService = new();
+    private readonly Mock<IEmailBackgroundDispatcher> _dispatcher = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _time = new(Agora);
     private readonly EmailVerificationSender _sender;
@@ -26,13 +26,14 @@ public class EmailVerificationSenderTests
     public EmailVerificationSenderTests()
     {
         _emailService.SetupGet(e => e.Habilitado).Returns(true);
+        _dispatcher.Setup(d => d.Disparar(It.IsAny<Func<IEmailService, CancellationToken, Task>>()))
+            .Callback<Func<IEmailService, CancellationToken, Task>>(f => f(_emailService.Object, CancellationToken.None).GetAwaiter().GetResult());
         _sender = new EmailVerificationSender(
             _tokenRepo.Object,
-            _emailService.Object,
+            _dispatcher.Object,
             _unitOfWork.Object,
             Options.Create(new AppSettings { FrontendBaseUrl = "https://app.test" }),
-            _time,
-            Mock.Of<ILogger<EmailVerificationSender>>());
+            _time);
     }
 
     [Fact]

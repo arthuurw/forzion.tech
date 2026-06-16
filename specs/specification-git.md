@@ -77,7 +77,8 @@ docs(infra): add git workflow spec + setup script
 - Vive em `frontend/.husky/pre-commit` (executável). `core.hooksPath` aponta pra `frontend/.husky/`.
 - Roda **por área staged** (não global): se só backend → roda gate backend; idem frontend.
 - **Gate de comentário (.cs)**: roda ANTES do gate backend, sempre que houver `.cs` staged (exclui EF-generated `*Designer.cs`/`*ModelSnapshot.cs`). Falha o commit se uma linha ADICIONADA contiver o subset objetivamente proibido da AGENTS.md regra 9: andaime/ref de task (`// T2B.3:`, `// TCR1:`, `// T7:` — regex `T[0-9][0-9A-Z.]*:` / `TCR[0-9]+:`) ou divisor decorativo UNICODE (`// ──`/`// ══`/`// ——`, ≥2 chars `[─━═—]` logo após `//`). NÃO bloqueia: divisor ASCII `// --- X ---` (idiom de teste), em-dash `—` no meio de frase, XML doc em interface. Paráfrase/comentário óbvio o gate NÃO pega (exige julgamento) — fica pra revisão.
-- **Backend gate**: `dotnet format --verify-no-changes` → `dotnet build -c Release` → `dotnet test --filter "Category!=Integration"`.
+- **Backend gate**: `dotnet format --verify-no-changes` → `dotnet build -c Release` → **swagger drift** → `dotnet test --filter "Category!=Integration"`.
+- **Swagger drift gate** (espelha o job `openapi-drift` do CI): após o build, roda `bash scripts/gen-swagger.sh` (regenera `docs/api/swagger.v1.json` offline — já exporta `ASPNETCORE_ENVIRONMENT=Test`/`Auth__JwtSecret` e usa o DLL Release) e falha o commit se `git diff --quiet -- docs/api/swagger.v1.json` acusar divergência (endpoint/contrato mudou sem regenerar o spec). Fix: `bash scripts/gen-swagger.sh` + `git add docs/api/swagger.v1.json`. Só roda quando `BACKEND_CHANGED=1`.
 - **Frontend gate**: `npm run typecheck` → `npx lint-staged` (eslint --fix nos staged) → `npm test` (vitest).
 - Filter `Category!=Integration` (trait-based) pula tests que exigem Docker. Sem isso, hook falhava localmente sem Docker rodando.
 - **NUNCA `--no-verify`**. Política do repo (regra implícita pelo `husky` instalado). Se hook falha, conserte a causa.
@@ -88,7 +89,7 @@ docs(infra): add git workflow spec + setup script
 
 ## PUSH / PR
 - Branch local mesmo nome do remoto (convenção). `git push` sem args = pusha branch atual pro mesmo nome em `origin`.
-- **PR é MANUAL — não abrir automaticamente** (decisão 2026-06-10, até segunda ordem; minutos GH Actions limitados): concluir em `commit + push` na branch; o usuário pede o PR quando quiser. Ver AGENTS.md `DEFINITION OF DONE` passo 8.
+- **PR é MANUAL — não abrir automaticamente** (decisão 2026-06-10, até segunda ordem; uso consciente de recursos de CI + o usuário decide o que vira PR): concluir em `commit + push` na branch; o usuário pede o PR quando quiser. Ver AGENTS.md `DEFINITION OF DONE` passo 8.
 - Quando solicitado: PR vai pra `homolog` (default) OU pra `master` quando a alteração foi feita direto em `homolog`.
 - `gh pr create --fill --base homolog` cria PR com title/body do commit topo.
 - Após merge no remoto, branch local pode ser deletada (`git branch -d`).
@@ -103,6 +104,7 @@ docs(infra): add git workflow spec + setup script
 - **Lint-staged corrompendo arquivos** — `playwright/prefer-web-first-assertions` reescreve `await el.getAttribute(...)` em `expect malformado`. Workaround: usar `el.evaluate((e) => e.getAttribute(...))` (rule não match).
 - **Reapply stash após rebase falho** — `rebase.autoStash=true` faz pop automático no fim. Se conflito durante pop, resolver manualmente (`git status` mostra UU).
 - **Sync após force push em outro clone** (raro) — `git fetch && git reset --hard origin/<branch>` se a branch local NÃO tem trabalho não pushado.
+- **Branch reusada após squash-merge** (gotcha recorrente) — PR squash-merged colapsa os N commits da branch num ÚNICO commit novo no alvo; os originais ficam órfãos. Continuar/re-mirar a MESMA branch depois ⇒ GitHub marca CONFLICTING (base divergiu, history não casa). Fix: reconstruir a branch limpa do alvo atualizado (`git reset --hard origin/<alvo>`) + `git cherry-pick` só do trabalho ainda não mergeado; NÃO merge/rebase da branch velha. Alternativa: merge-commit em vez de squash preserva a linhagem e evita o CONFLICTING ao reusar.
 
 ## SETUP NOVO CLONE / NOVA MÁQUINA
 1. `git clone <url>` (configs `--global` já valem se setup-git rodou antes).

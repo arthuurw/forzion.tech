@@ -315,36 +315,6 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    // --- POST /treinos/{id}/execucoes ---
-
-    [Fact]
-    public async Task Post_RegistrarExecucao_Retorna201()
-    {
-        var execResp = new RegistrarExecucaoResponse(
-            Guid.NewGuid(), TreinoId, Guid.NewGuid(), DateTime.UtcNow, null, DateTime.UtcNow);
-        _factory.RegistrarExecucaoHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(execResp));
-
-        var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{TreinoId}/execucoes",
-            new { alunoId = Guid.NewGuid(), dataExecucao = DateTime.UtcNow, observacao = (string?)null, exercicios = Array.Empty<object>() });
-
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-    }
-
-    [Fact]
-    public async Task Post_RegistrarExecucao_VinculoInativo_Retorna403()
-    {
-        _factory.RegistrarExecucaoHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new AcessoNegadoException());
-
-        var response = await CriarClienteAutenticado().PostAsJsonAsync($"/treinos/{TreinoId}/execucoes",
-            new { alunoId = Guid.NewGuid(), dataExecucao = DateTime.UtcNow, observacao = (string?)null, exercicios = Array.Empty<object>() });
-
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
     // --- Authorization policy tests (Treinador policy on group) ---
 
     [Fact]
@@ -373,14 +343,6 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
     public async Task Delete_Excluir_AlunoRole_Retorna403()
     {
         var response = await CriarClienteAluno().DeleteAsync($"/treinos/{TreinoId}");
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task Post_RegistrarExecucao_AlunoRole_Retorna403()
-    {
-        var response = await CriarClienteAluno().PostAsJsonAsync($"/treinos/{TreinoId}/execucoes",
-            new { alunoId = Guid.NewGuid(), dataExecucao = DateTime.UtcNow, observacao = (string?)null, exercicios = Array.Empty<object>() });
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 

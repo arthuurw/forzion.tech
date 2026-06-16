@@ -86,7 +86,7 @@ public static class ContaEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler
-                .HandleAsync(new ExportarDadosPessoaisCommand(userContext.ContaId), cancellationToken)
+                .HandleAsync(new ExportarDadosPessoaisCommand(userContext.ContaId, userContext.ContaId), cancellationToken)
                 .ConfigureAwait(false);
             if (result.IsFailure) return result.ToProblemResult();
 

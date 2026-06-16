@@ -88,7 +88,13 @@ public class MetaWhatsAppCloudNotifier(
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "Failed to send WhatsApp message to {Phone}.", phone);
+            logger.LogError(ex, "Failed to send WhatsApp message to {Phone}.", MascararTelefone(phone));
         }
+    }
+
+    private static string MascararTelefone(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return "(vazio)";
+        return phone.Length <= 4 ? "***" : $"***{phone[^4..]}";
     }
 }

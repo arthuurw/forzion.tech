@@ -12,7 +12,7 @@ public class ReenviarVerificacaoHandlerTests
 {
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<EmailVerificationSender> _sender =
-        new(null!, null!, null!, null!, null!, null!);
+        new(null!, null!, null!, null!, null!);
     private readonly ReenviarVerificacaoHandler _handler;
 
     public ReenviarVerificacaoHandlerTests()

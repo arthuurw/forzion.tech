@@ -50,7 +50,8 @@ public class AnonimizarContaHandler(
         AnonimizarContaCommand command,
         CancellationToken cancellationToken)
     {
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var agoraOffset = timeProvider.GetUtcNow();
+        var agora = agoraOffset.UtcDateTime;
 
         var conta = await contaRepository
             .ObterPorIdAsync(command.ContaId, cancellationToken).ConfigureAwait(false);
@@ -143,6 +144,8 @@ public class AnonimizarContaHandler(
         var contaResult = conta.Anonimizar(agora);
         if (contaResult.IsFailure)
             return contaResult;
+
+        conta.InvalidarSessoesAnteriores(agoraOffset);
 
         if (alunoIdParaAssinante.HasValue)
             await assinanteRepository

@@ -9,6 +9,7 @@ services:
       Auth__JwtIssuer: ${JWT_ISSUER:-forzion.tech}
       Auth__JwtAudience: ${JWT_AUDIENCE:-forzion.tech}
       Cors__AllowedOrigins: ${CORS_ORIGINS}
+      DeliveryLog__RecipientHashKey: ${DELIVERY_LOG_HASH_KEY}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
