@@ -103,6 +103,7 @@ docs(infra): add git workflow spec + setup script
 - **Lint-staged corrompendo arquivos** — `playwright/prefer-web-first-assertions` reescreve `await el.getAttribute(...)` em `expect malformado`. Workaround: usar `el.evaluate((e) => e.getAttribute(...))` (rule não match).
 - **Reapply stash após rebase falho** — `rebase.autoStash=true` faz pop automático no fim. Se conflito durante pop, resolver manualmente (`git status` mostra UU).
 - **Sync após force push em outro clone** (raro) — `git fetch && git reset --hard origin/<branch>` se a branch local NÃO tem trabalho não pushado.
+- **Branch reusada após squash-merge** (gotcha recorrente) — PR squash-merged colapsa os N commits da branch num ÚNICO commit novo no alvo; os originais ficam órfãos. Continuar/re-mirar a MESMA branch depois ⇒ GitHub marca CONFLICTING (base divergiu, history não casa). Fix: reconstruir a branch limpa do alvo atualizado (`git reset --hard origin/<alvo>`) + `git cherry-pick` só do trabalho ainda não mergeado; NÃO merge/rebase da branch velha. Alternativa: merge-commit em vez de squash preserva a linhagem e evita o CONFLICTING ao reusar.
 
 ## SETUP NOVO CLONE / NOVA MÁQUINA
 1. `git clone <url>` (configs `--global` já valem se setup-git rodou antes).
