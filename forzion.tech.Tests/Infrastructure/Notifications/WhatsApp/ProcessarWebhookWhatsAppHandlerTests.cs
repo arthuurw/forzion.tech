@@ -212,10 +212,17 @@ public class ProcessarWebhookWhatsAppHandlerTests
         captured.Should().NotBeNull();
         captured!.MetaMessageId.Should().Be("wamid_xyz");
         captured.EventType.Should().Be("read");
-        captured.RecipientPhoneHash.Should().Be(_hasher.Hash("5511988887777"));
+        captured.RecipientPhoneHash.Should().Be(_hasher.HashTelefone("5511988887777"));
         captured.RecipientPhoneHash.Should().NotBe("5511988887777");
         captured.OcorridoEm.Should().Be(DateTimeOffset.FromUnixTimeSeconds(unixTs).UtcDateTime);
         captured.CreatedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
+
+        _logger.Verify(l => l.Log(
+            It.IsAny<LogLevel>(),
+            It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("5511988887777")),
+            It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
     }
 
     [Fact]

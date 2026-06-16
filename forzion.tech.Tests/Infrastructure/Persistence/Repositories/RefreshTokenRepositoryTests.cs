@@ -93,6 +93,60 @@ public class RefreshTokenRepositoryTests(InfrastructureTestFixture fixture)
     }
 
     [Fact]
+    public async Task RotacionarAtomicoAsync_TokenNaoUsado_ConsomeEInsereSucessorJuntos()
+    {
+        var familia = RefreshTokenFamily.Criar(Guid.NewGuid(), Base.AddDays(90), Base).Value;
+        var token = RefreshToken.Criar(familia.Id, Guid.NewGuid().ToString("N"), Base.AddDays(7), Base).Value;
+        var sucessor = RefreshToken.Criar(familia.Id, Guid.NewGuid().ToString("N"), Base.AddDays(7), Base.AddMinutes(10)).Value;
+
+        await using (var seed = fixture.CreateContext())
+        {
+            seed.RefreshTokenFamilies.Add(familia);
+            seed.RefreshTokens.Add(token);
+            await seed.SaveChangesAsync();
+        }
+
+        bool ok;
+        await using (var ctx = fixture.CreateContext())
+        {
+            ok = await new RefreshTokenRepository(ctx).RotacionarAtomicoAsync(token.Id, Base.AddMinutes(10), sucessor);
+        }
+
+        ok.Should().BeTrue();
+        await using var verify = fixture.CreateContext();
+        var original = await verify.RefreshTokens.FirstAsync(t => t.Id == token.Id);
+        original.UsadoEm.Should().Be(Base.AddMinutes(10));
+        original.SubstituidoPorId.Should().Be(sucessor.Id);
+        (await verify.RefreshTokens.AnyAsync(t => t.Id == sucessor.Id)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RotacionarAtomicoAsync_TokenJaUsado_RollbackSemOrfao()
+    {
+        var familia = RefreshTokenFamily.Criar(Guid.NewGuid(), Base.AddDays(90), Base).Value;
+        var token = RefreshToken.Criar(familia.Id, Guid.NewGuid().ToString("N"), Base.AddDays(7), Base).Value;
+        token.MarcarUsado(Base.AddMinutes(1), Guid.NewGuid());
+        var sucessor = RefreshToken.Criar(familia.Id, Guid.NewGuid().ToString("N"), Base.AddDays(7), Base.AddMinutes(10)).Value;
+
+        await using (var seed = fixture.CreateContext())
+        {
+            seed.RefreshTokenFamilies.Add(familia);
+            seed.RefreshTokens.Add(token);
+            await seed.SaveChangesAsync();
+        }
+
+        bool ok;
+        await using (var ctx = fixture.CreateContext())
+        {
+            ok = await new RefreshTokenRepository(ctx).RotacionarAtomicoAsync(token.Id, Base.AddMinutes(10), sucessor);
+        }
+
+        ok.Should().BeFalse();
+        await using var verify = fixture.CreateContext();
+        (await verify.RefreshTokens.AnyAsync(t => t.Id == sucessor.Id)).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task RotacionarAsync_DuasRotacoesConcorrentes_UmSucessoOutroReuse()
     {
         // SEC-01: sem o claim atômico, 2 refresh concorrentes do mesmo token emitiriam 2 sucessores

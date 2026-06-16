@@ -48,6 +48,25 @@ public class StripeServiceTests
     }
 
     [Fact]
+    public async Task ValidarWebhookAsync_RetornaPayloadCruVerbatim_PreservandoCamposNoParse()
+    {
+        var payload =
+            "{\"id\":\"evt_meta\",\"object\":\"event\",\"api_version\":\""
+            + Stripe.StripeConfiguration.ApiVersion
+            + "\",\"type\":\"payment_intent.succeeded\",\"account\":\"acct_xpto\","
+            + "\"data\":{\"object\":{\"id\":\"pi_1\",\"object\":\"payment_intent\",\"metadata\":{\"assinatura_id\":\"sub_42\"}}}}";
+        var assinatura = AssinarStripe(payload, WebhookSecret, DateTimeOffset.UtcNow);
+
+        var resultado = await CriarServico().ValidarWebhookAsync(payload, assinatura);
+
+        resultado.Should().Be(payload);
+        var evento = Stripe.EventUtility.ParseEvent(resultado);
+        evento.Account.Should().Be("acct_xpto");
+        var pi = (Stripe.PaymentIntent)evento.Data.Object;
+        pi.Metadata["assinatura_id"].Should().Be("sub_42");
+    }
+
+    [Fact]
     public async Task ValidarWebhookAsync_PayloadAdulterado_RetornaNull()
     {
         var assinatura = AssinarStripe(Payload, WebhookSecret, DateTimeOffset.UtcNow);

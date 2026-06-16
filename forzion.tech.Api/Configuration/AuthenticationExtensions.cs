@@ -79,18 +79,21 @@ public static class AuthenticationExtensions
 
                 var subClaim = ctx.Principal?.FindFirst("sub")?.Value;
                 var nbfClaim = ctx.Principal?.FindFirst("nbf")?.Value;
-                if (Guid.TryParse(subClaim, out var contaId) && long.TryParse(nbfClaim, out var nbf))
+                if (!Guid.TryParse(subClaim, out var contaId) || !long.TryParse(nbfClaim, out var nbf))
                 {
-                    var contaRepo = services.GetService<IContaRepository>();
-                    var epoch = contaRepo is null
-                        ? null
-                        : await contaRepo.ObterEpochSessaoAsync(contaId, ctx.HttpContext.RequestAborted).ConfigureAwait(false);
-
-                    // Compara em segundos (nbf é NumericDate); truncar o epoch ao mesmo grão não
-                    // rejeita um token re-emitido no mesmo segundo do carimbo.
-                    if (epoch is not null && nbf < epoch.Value.ToUnixTimeSeconds())
-                        ctx.Fail("Sessão invalidada.");
+                    ctx.Fail("Token sem sub/nbf válido.");
+                    return;
                 }
+
+                var contaRepo = services.GetService<IContaRepository>();
+                var epoch = contaRepo is null
+                    ? null
+                    : await contaRepo.ObterEpochSessaoAsync(contaId, ctx.HttpContext.RequestAborted).ConfigureAwait(false);
+
+                // Compara em segundos (nbf é NumericDate); truncar o epoch ao mesmo grão não
+                // rejeita um token re-emitido no mesmo segundo do carimbo.
+                if (epoch is not null && nbf < epoch.Value.ToUnixTimeSeconds())
+                    ctx.Fail("Sessão invalidada.");
             }
         };
 

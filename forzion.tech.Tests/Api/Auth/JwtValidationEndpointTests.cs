@@ -42,7 +42,8 @@ public class JwtValidationEndpointTests : IClassFixture<JwtValidationEndpointTes
         DateTime? expires = null,
         bool comJti = true,
         string? contaId = null,
-        DateTime? notBefore = null)
+        DateTime? notBefore = null,
+        bool comNbf = true)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -59,11 +60,12 @@ public class JwtValidationEndpointTests : IClassFixture<JwtValidationEndpointTes
             claims.Add(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
 
         var expiry = expires ?? DateTime.UtcNow.AddMinutes(60);
+        DateTime? nbf = comNbf ? (notBefore ?? expiry.AddMinutes(-60)) : null;
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
             claims: claims,
-            notBefore: notBefore ?? expiry.AddMinutes(-60),
+            notBefore: nbf,
             expires: expiry,
             signingCredentials: credentials);
 
@@ -123,6 +125,16 @@ public class JwtValidationEndpointTests : IClassFixture<JwtValidationEndpointTes
     public async Task Get_Perfil_AudienceErrado_Retorna401()
     {
         var token = GerarToken(AppSecret, audience: "audience-malicioso");
+
+        var response = await ClienteComToken(token).GetAsync("/conta/perfil");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_Perfil_TokenSemNbf_Retorna401()
+    {
+        var token = GerarToken(AppSecret, comNbf: false);
 
         var response = await ClienteComToken(token).GetAsync("/conta/perfil");
 

@@ -17,7 +17,7 @@ public class WhatsAppDeliveryLogRepository(AppDbContext context, IRecipientHashe
 
     public async Task<IReadOnlyList<WhatsAppDeliveryLog>> ListarPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default)
     {
-        var hash = hasher.Hash(telefone);
+        var hash = hasher.HashTelefone(telefone);
         return await context.WhatsAppDeliveryLogs
             .AsNoTracking()
             .Where(w => w.RecipientPhoneHash == hash)
@@ -28,7 +28,7 @@ public class WhatsAppDeliveryLogRepository(AppDbContext context, IRecipientHashe
 
     public async Task AnonimizarPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default)
     {
-        var hash = hasher.Hash(telefone);
+        var hash = hasher.HashTelefone(telefone);
         await context.WhatsAppDeliveryLogs
             .Where(w => w.RecipientPhoneHash == hash)
             .ExecuteUpdateAsync(

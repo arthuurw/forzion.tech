@@ -25,7 +25,7 @@ public class EmailDeliveryLogRepository(AppDbContext context, IRecipientHasher h
 
     public async Task<IReadOnlyList<EmailDeliveryLog>> ListarPorEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        var hash = hasher.Hash(email);
+        var hash = hasher.HashEmail(email);
         return await context.EmailDeliveryLogs
             .AsNoTracking()
             .Where(e => e.RecipientEmailHash == hash)
@@ -36,7 +36,7 @@ public class EmailDeliveryLogRepository(AppDbContext context, IRecipientHasher h
 
     public async Task AnonimizarPorEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        var hash = hasher.Hash(email);
+        var hash = hasher.HashEmail(email);
         await context.EmailDeliveryLogs
             .Where(e => e.RecipientEmailHash == hash)
             .ExecuteUpdateAsync(

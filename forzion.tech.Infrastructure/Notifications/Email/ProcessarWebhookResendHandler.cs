@@ -71,10 +71,11 @@ public class ProcessarWebhookResendHandler(
         }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var recipientHash = recipientHasher.HashEmail(parsed.RecipientEmail);
         var log = EmailDeliveryLog.Criar(
             parsed.EmailId,
             parsed.EventType,
-            recipientHasher.Hash(parsed.RecipientEmail),
+            recipientHash,
             parsed.CreatedAt,
             agora);
 
@@ -97,8 +98,8 @@ public class ProcessarWebhookResendHandler(
         }
 
         logger.LogInformation(
-            "Evento Resend registrado: {EventType} para {Email} (messageId: {MessageId}).",
-            parsed.EventType, parsed.RecipientEmail, parsed.EmailId);
+            "Evento Resend registrado: {EventType} para recipient {RecipientHash} (messageId: {MessageId}).",
+            parsed.EventType, recipientHash, parsed.EmailId);
 
         return Result.Success();
     }

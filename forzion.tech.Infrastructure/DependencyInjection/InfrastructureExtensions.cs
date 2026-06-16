@@ -144,6 +144,7 @@ public static class InfrastructureExtensions
                 s.RecipientHashKey = DeliveryLogSettings.DevDefaultKey;
         });
         services.AddSingleton<IRecipientHasher, RecipientHasher>();
+        services.AddSingleton<IEmailBackgroundDispatcher, EmailBackgroundDispatcher>();
 
         // PaymentSettings — expõe taxa de plataforma para a camada Application
         services.AddOptions<PaymentSettings>()

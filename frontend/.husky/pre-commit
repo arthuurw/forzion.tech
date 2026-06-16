@@ -4,7 +4,7 @@
 # Este hook roda a partir da RAIZ do repo e decide por area conforme os
 # arquivos staged:
 #   - toca frontend/  -> gate frontend (typecheck + lint-staged + vitest)
-#   - toca backend    -> gate backend (dotnet format --verify + build + unit rapidos)
+#   - toca backend    -> gate backend (dotnet format --verify + build + swagger drift + unit rapidos)
 # Commit que so toca uma area NAO paga o custo da outra.
 # NUNCA usar --no-verify (proibido por politica).
 
@@ -74,6 +74,18 @@ if [ "$BACKEND_CHANGED" -eq 1 ]; then
   echo "Pre-commit [backend]: dotnet build -c Release..."
   dotnet build forzion.tech.slnx -c Release \
     || { echo "Pre-commit FAILED: dotnet build"; exit 1; }
+
+  # Espelha o job openapi-drift do CI: regenera o spec e falha se divergir do
+  # versionado (endpoint mudou sem regenerar swagger). gen-swagger.sh ja exporta
+  # ASPNETCORE_ENVIRONMENT/Auth__JwtSecret e usa o DLL Release recem-buildado.
+  echo "Pre-commit [backend]: swagger drift (gen + diff)..."
+  bash scripts/gen-swagger.sh >/dev/null \
+    || { echo "Pre-commit FAILED: gen-swagger.sh"; exit 1; }
+  if ! git diff --quiet -- docs/api/swagger.v1.json; then
+    echo "Pre-commit FAILED: docs/api/swagger.v1.json desatualizado."
+    echo "Rode 'bash scripts/gen-swagger.sh' e re-stage (git add docs/api/swagger.v1.json)."
+    exit 1
+  fi
 
   echo "Pre-commit [backend]: testes unit rapidos..."
   # Filtro por trait Category=Integration (cobre E2E/Repositories/Notifications/AppDbContextDomainEventReentrancy).

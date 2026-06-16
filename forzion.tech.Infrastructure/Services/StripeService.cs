@@ -338,7 +338,7 @@ public class StripeService(
                 return Task.FromResult<string?>(null);
             }
 
-            return Task.FromResult<string?>(evento.ToJson());
+            return Task.FromResult<string?>(payload);
         }
         catch (Exception ex) when (ex is StripeException or InvalidDataException or ArgumentException)
         {

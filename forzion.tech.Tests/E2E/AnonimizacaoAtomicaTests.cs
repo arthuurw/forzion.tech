@@ -31,7 +31,7 @@ public class AnonimizacaoAtomicaTests(RealPipelineFixture fixture)
         using (var seedScope = fixture.Services.CreateScope())
         {
             var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
-            emailHash = seedScope.ServiceProvider.GetRequiredService<IRecipientHasher>().Hash(email);
+            emailHash = seedScope.ServiceProvider.GetRequiredService<IRecipientHasher>().HashEmail(email);
             var contaSeed = Conta.Criar(Email.Criar(email).Value, "$2a$12$x", TipoConta.Aluno, DateTime.UtcNow).Value;
             contaId = contaSeed.Id;
             seedDb.Contas.Add(contaSeed);

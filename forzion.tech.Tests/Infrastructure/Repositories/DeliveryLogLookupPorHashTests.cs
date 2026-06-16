@@ -17,21 +17,21 @@ public class DeliveryLogLookupPorHashTests(InfrastructureTestFixture fixture)
         new RecipientHasher(Options.Create(new DeliveryLogSettings { RecipientHashKey = "test-key" }));
 
     [Fact]
-    public async Task ListarPorEmail_CasaPorHashDoArg()
+    public async Task ListarPorEmail_CasaPorHashDoArg_CanonicalizandoCasing()
     {
-        const string email = "lookup@test.com";
+        const string emailCru = "  Lookup@Test.COM ";
         await using (var ctx = fixture.CreateContext())
         {
             await ctx.EmailDeliveryLogs.ExecuteDeleteAsync();
             ctx.EmailDeliveryLogs.Add(EmailDeliveryLog.Criar(
-                $"rid_{Guid.NewGuid():N}", "delivered", Hasher.Hash(email), DateTime.UtcNow, DateTime.UtcNow));
+                $"rid_{Guid.NewGuid():N}", "delivered", Hasher.HashEmail(emailCru), DateTime.UtcNow, DateTime.UtcNow));
             await ctx.SaveChangesAsync();
         }
 
         await using var read = fixture.CreateContext();
         var repo = new EmailDeliveryLogRepository(read, Hasher);
 
-        (await repo.ListarPorEmailAsync(email)).Should().HaveCount(1);
+        (await repo.ListarPorEmailAsync("lookup@test.com")).Should().HaveCount(1);
         (await repo.ListarPorEmailAsync("outro@test.com")).Should().BeEmpty();
     }
 
@@ -44,7 +44,7 @@ public class DeliveryLogLookupPorHashTests(InfrastructureTestFixture fixture)
         {
             await ctx.EmailDeliveryLogs.ExecuteDeleteAsync();
             ctx.EmailDeliveryLogs.Add(EmailDeliveryLog.Criar(
-                rid, "delivered", Hasher.Hash(email), DateTime.UtcNow, DateTime.UtcNow));
+                rid, "delivered", Hasher.HashEmail(email), DateTime.UtcNow, DateTime.UtcNow));
             await ctx.SaveChangesAsync();
         }
 

@@ -66,10 +66,11 @@ public class ProcessarWebhookWhatsAppHandler(
                 continue;
             }
 
+            var recipientHash = recipientHasher.HashTelefone(status.RecipientId);
             var log = WhatsAppDeliveryLog.Criar(
                 status.MessageId,
                 status.Status,
-                recipientHasher.Hash(status.RecipientId),
+                recipientHash,
                 status.OcorridoEm,
                 agora);
 
@@ -77,8 +78,8 @@ public class ProcessarWebhookWhatsAppHandler(
             persistiuAlgum = true;
 
             logger.LogInformation(
-                "Evento WhatsApp registrado: {Status} para {Phone} (messageId: {MessageId}).",
-                status.Status, status.RecipientId, status.MessageId);
+                "Evento WhatsApp registrado: {Status} para recipient {RecipientHash} (messageId: {MessageId}).",
+                status.Status, recipientHash, status.MessageId);
         }
 
         if (persistiuAlgum)

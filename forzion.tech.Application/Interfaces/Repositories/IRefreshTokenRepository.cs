@@ -9,4 +9,6 @@ public interface IRefreshTokenRepository
 
     /// <summary>Marca o token usado atomicamente. Retorna linhas afetadas: 1 = venceu a corrida; 0 = reuse.</summary>
     Task<int> MarcarUsadoSeNaoUsadoAsync(Guid tokenId, DateTime usadoEm, Guid sucessorId, CancellationToken cancellationToken = default);
+
+    Task<bool> RotacionarAtomicoAsync(Guid tokenId, DateTime usadoEm, RefreshToken sucessor, CancellationToken cancellationToken = default);
 }

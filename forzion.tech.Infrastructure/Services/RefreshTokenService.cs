@@ -53,15 +53,12 @@ public class RefreshTokenService(
         if (conta is null)
             return RotacaoResultado.Invalido();
 
-        // Sucessor criado antes do claim p/ fixar SubstituidoPorId no mesmo UPDATE.
         var (raw, sucessor) = CriarTokenSucessor(familia, conta.TipoConta, agora);
 
-        // SEC-01: claim atômico; 0 linhas = perdeu a corrida ⇒ reuse, sucessor descartado.
-        var afetadas = await tokenRepository.MarcarUsadoSeNaoUsadoAsync(token.Id, agora, sucessor.Id, cancellationToken).ConfigureAwait(false);
-        if (afetadas == 0)
+        var rotacionado = await tokenRepository.RotacionarAtomicoAsync(token.Id, agora, sucessor, cancellationToken).ConfigureAwait(false);
+        if (!rotacionado)
             return Reuse(familia, agora);
 
-        await tokenRepository.AdicionarAsync(sucessor, cancellationToken).ConfigureAwait(false);
         return RotacaoResultado.Sucesso(conta, familia.Id, raw);
     }
 

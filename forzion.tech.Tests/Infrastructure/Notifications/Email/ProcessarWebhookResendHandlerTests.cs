@@ -180,9 +180,16 @@ public class ProcessarWebhookResendHandlerTests
         captured.Should().NotBeNull();
         captured!.ResendMessageId.Should().Be("msg_xyz");
         captured.EventType.Should().Be("email.bounced");
-        captured.RecipientEmailHash.Should().Be(_hasher.Hash("destinatario@example.com"));
+        captured.RecipientEmailHash.Should().Be(_hasher.HashEmail("destinatario@example.com"));
         captured.RecipientEmailHash.Should().NotBe("destinatario@example.com");
         captured.CreatedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
+
+        _logger.Verify(l => l.Log(
+            It.IsAny<LogLevel>(),
+            It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("destinatario@example.com")),
+            It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
     }
 
     [Fact]

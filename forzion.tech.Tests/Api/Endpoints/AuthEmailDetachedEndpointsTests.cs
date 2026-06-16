@@ -22,31 +22,59 @@ public class AuthEmailDetachedEndpointsTests : IClassFixture<AuthEmailDetachedEn
     public AuthEmailDetachedEndpointsTests(DetachedFactory factory) => _factory = factory;
 
     [Fact]
-    public async Task Post_ForgotPassword_RetornaSemAguardarEnvio()
+    public async Task Post_ForgotPassword_AguardaPersistenciaERetorna200()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        _factory.EsqueceuSenhaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<EsqueceuSenhaCommand>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var response = await _factory.CreateClient().PostAsJsonAsync(
-            "/auth/forgot-password", new { Email = "qualquer@test.com" }, cts.Token);
+            "/auth/forgot-password", new { Email = "qualquer@test.com" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task Post_ResendVerification_RetornaSemAguardarEnvio()
+    public async Task Post_ForgotPassword_FalhaNaPersistencia_Propaga500()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        _factory.EsqueceuSenhaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<EsqueceuSenhaCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db down"));
 
         var response = await _factory.CreateClient().PostAsJsonAsync(
-            "/auth/resend-verification", new { Email = "qualquer@test.com" }, cts.Token);
+            "/auth/forgot-password", new { Email = "qualquer@test.com" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    public async Task Post_ResendVerification_AguardaPersistenciaERetorna200()
+    {
+        _factory.ReenviarVerificacaoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ReenviarVerificacaoCommand>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _factory.CreateClient().PostAsJsonAsync(
+            "/auth/resend-verification", new { Email = "qualquer@test.com" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task Post_ResendVerification_FalhaNaPersistencia_Propaga500()
+    {
+        _factory.ReenviarVerificacaoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ReenviarVerificacaoCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db down"));
+
+        var response = await _factory.CreateClient().PostAsJsonAsync(
+            "/auth/resend-verification", new { Email = "qualquer@test.com" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+    }
+
     public class DetachedFactory : WebApplicationFactory<Program>
     {
-        private readonly TaskCompletionSource _gate = new();
-
         public Mock<EsqueceuSenhaHandler> EsqueceuSenhaHandlerMock { get; }
         public Mock<ReenviarVerificacaoHandler> ReenviarVerificacaoHandlerMock { get; }
 
@@ -55,20 +83,14 @@ public class AuthEmailDetachedEndpointsTests : IClassFixture<AuthEmailDetachedEn
             EsqueceuSenhaHandlerMock = new Mock<EsqueceuSenhaHandler>(
                 Mock.Of<IContaRepository>(),
                 Mock.Of<IPasswordResetTokenRepository>(),
-                Mock.Of<IEmailService>(),
+                Mock.Of<IEmailBackgroundDispatcher>(),
                 Mock.Of<IUnitOfWork>(),
                 Options.Create(new AppSettings()),
                 TimeProvider.System,
                 Mock.Of<ILogger<EsqueceuSenhaHandler>>());
-            EsqueceuSenhaHandlerMock
-                .Setup(h => h.HandleAsync(It.IsAny<EsqueceuSenhaCommand>(), It.IsAny<CancellationToken>()))
-                .Returns(_gate.Task);
 
             ReenviarVerificacaoHandlerMock = new Mock<ReenviarVerificacaoHandler>(
                 Mock.Of<IContaRepository>(), null!, Mock.Of<ILogger<ReenviarVerificacaoHandler>>());
-            ReenviarVerificacaoHandlerMock
-                .Setup(h => h.HandleAsync(It.IsAny<ReenviarVerificacaoCommand>(), It.IsAny<CancellationToken>()))
-                .Returns(_gate.Task);
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -84,12 +106,6 @@ public class AuthEmailDetachedEndpointsTests : IClassFixture<AuthEmailDetachedEn
                 services.AddScoped(_ => EsqueceuSenhaHandlerMock.Object);
                 services.AddScoped(_ => ReenviarVerificacaoHandlerMock.Object);
             });
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            _gate.TrySetResult();
-            base.Dispose(disposing);
         }
     }
 }
