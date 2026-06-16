@@ -59,9 +59,7 @@ public class ErrorLogDbSinkProviderTests
         var logger = provider.CreateLogger("TestCategory");
         logger.Log(LogLevel.Error, 0, "mensagem de erro", null, (s, _) => s);
 
-        // Aciona shutdown: completa o canal e drena.
         stoppingCts.Cancel();
-        await Task.Delay(200); // aguarda drain breve
 
         var count = await ContarEntradasAsync(scopeFactory);
         count.Should().Be(1, "o log Error deve ser persistido antes do shutdown");
@@ -79,9 +77,7 @@ public class ErrorLogDbSinkProviderTests
         for (var i = 0; i < 5; i++)
             logger.Log(LogLevel.Critical, 0, $"erro {i}", null, (s, _) => s);
 
-        // Dispara shutdown; DrenaNoShutdown aguarda até 5 s — todos os 5 itens cabem no canal (1000).
         stoppingCts.Cancel();
-        await Task.Delay(500);
 
         var count = await ContarEntradasAsync(scopeFactory);
         count.Should().Be(5, "todos os logs em voo devem ser drenados antes do processo sair");
@@ -100,7 +96,6 @@ public class ErrorLogDbSinkProviderTests
         logger.Log(LogLevel.Information, 0, "info", null, (s, _) => s);
 
         stoppingCts.Cancel();
-        await Task.Delay(200);
 
         var count = await ContarEntradasAsync(scopeFactory);
         count.Should().Be(0, "Warning/Information não devem ser persistidos");
@@ -118,42 +113,27 @@ public class ErrorLogDbSinkProviderTests
         logger.Log(LogLevel.Error, 0, "ef error", null, (s, _) => s);
 
         stoppingCts.Cancel();
-        await Task.Delay(200);
 
         var count = await ContarEntradasAsync(scopeFactory);
         count.Should().Be(0, "categorias EF devem ser filtradas para evitar recursão");
     }
 
     [Fact]
-    public async Task Log_CanalCheio_ContabilizaDropSemLancarExcecao()
+    public void Log_CanalCheio_ContabilizaDropSemLancarExcecao()
     {
         var (scopeFactory, _) = CriarScopeFactory();
 
-        // Usamos um DbContext que bloqueia para manter o canal cheio durante o teste.
-        // Alternativa sem bloquear: criar provider com canal já cheio via subclasse.
-        // Abordagem escolhida: não acionar o worker (não cancela o stopping token ainda)
-        // e enviar mais itens do que a capacidade (1000 + 1).
         using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
         var logger = provider.CreateLogger("OverflowCategory");
 
-        // Enfileirar mais do que a capacidade para forçar pelo menos 1 drop.
-        // Canal tem capacidade 1000; o worker consome em paralelo — para garantir overflow
-        // sem depender de timing, enviamos 1001 em sequência. Na prática pelo menos alguns
-        // são descartados quando o worker ainda está ocupado.
-        // WHY: o teste valida a ausência de exceção e a presença do contador — não o número
-        // exato de drops (que depende de scheduling).
-        for (var i = 0; i < 1001; i++)
-            logger.Log(LogLevel.Error, 0, $"msg {i}", null, (s, _) => s);
-
-        // Não há throw esperado; drops são contabilizados silenciosamente.
-        var act = async () =>
+        var act = () =>
         {
-            await Task.Delay(50);
+            for (var i = 0; i < 1001; i++)
+                logger.Log(LogLevel.Error, 0, $"msg {i}", null, (s, _) => s);
         };
-        await act.Should().NotThrowAsync();
 
-        // DropsContados pode ser 0 se o worker consumiu rápido o suficiente — o invariante
-        // é que nunca lança exceção sob overflow.
+        act.Should().NotThrow();
+
         provider.DropsContados.Should().BeGreaterThanOrEqualTo(0);
     }
 
@@ -174,7 +154,6 @@ public class ErrorLogDbSinkProviderTests
         provider.CreateLogger("Cat").Log(LogLevel.Error, 0, "erro", null, (s, _) => s);
 
         stoppingCts.Cancel();
-        await Task.Delay(200);
 
         using var scope = scopeFactory.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();

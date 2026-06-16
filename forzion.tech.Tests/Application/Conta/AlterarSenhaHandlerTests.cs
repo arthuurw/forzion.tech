@@ -62,6 +62,23 @@ public class AlterarSenhaHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_SenhaCorreta_CarimbaEpochDeSessao()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta();
+
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(h => h.Verify("senha123", conta.PasswordHash)).Returns(true);
+        _passwordHasher.Setup(h => h.Hash("nova-senha")).Returns("novo-hash");
+
+        var result = await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
+
+        result.IsSuccess.Should().BeTrue();
+        conta.SessoesInvalidasAntesDeUtc.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task HandleAsync_JtiCorrenteValido_FazBlacklistDoToken()
     {
         var contaId = Guid.NewGuid();

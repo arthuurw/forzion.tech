@@ -125,6 +125,22 @@ public class RedefinirSenhaHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_TokenValido_CarimbaEpochDeSessao()
+    {
+        var conta = BuildConta();
+        var token = BuildToken(contaId: conta.Id);
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(token);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+
+        result.IsSuccess.Should().BeTrue();
+        conta.SessoesInvalidasAntesDeUtc.Should().Be(_timeProvider.GetUtcNow());
+    }
+
+    [Fact]
     public async Task HandleAsync_Replay_MesmoTokenDuasVezes_SegundaFalha()
     {
         // Cenário crítico de segurança: atacante intercepta o link e tenta usar duas vezes.

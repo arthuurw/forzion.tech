@@ -1,6 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Validation;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
@@ -15,13 +16,7 @@ public class AlterarSenhaCommandValidator : AbstractValidator<AlterarSenhaComman
     public AlterarSenhaCommandValidator()
     {
         RuleFor(x => x.SenhaAtual).NotEmpty();
-        RuleFor(x => x.NovaSenha)
-            .NotEmpty()
-            .MinimumLength(8).WithMessage("A nova senha deve ter pelo menos 8 caracteres.")
-            .MaximumLength(72)
-            .Matches("[A-Z]").WithMessage("A nova senha deve conter pelo menos uma letra maiúscula.")
-            .Matches("[a-z]").WithMessage("A nova senha deve conter pelo menos uma letra minúscula.")
-            .Matches("[0-9]").WithMessage("A nova senha deve conter pelo menos um dígito.");
+        RuleFor(x => x.NovaSenha).SenhaForte();
     }
 }
 
@@ -55,10 +50,13 @@ public class AlterarSenhaHandler(
         if (!passwordHasher.Verify(command.SenhaAtual, conta.PasswordHash))
             throw new CredenciaisInvalidasException();
 
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var agoraOffset = timeProvider.GetUtcNow();
+        var agora = agoraOffset.UtcDateTime;
         var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), agora);
         if (atualizarResult.IsFailure)
             return Result.Failure(atualizarResult.Error!);
+
+        conta.InvalidarSessoesAnteriores(agoraOffset);
 
         // Revogação conjunta (NR-6 / security §2): mata o refresh de todos os devices E faz
         // blacklist do jti corrente — sem o blacklist, o access curto roubado sobreviveria à

@@ -8,7 +8,7 @@ public class HttpUserContext(IHttpContextAccessor httpContextAccessor) : IUserCo
 {
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    public Guid ContaId => ParseClaim("conta_id");
+    public Guid ContaId => ParseClaim("sub");
 
     public TipoConta TipoConta =>
         Enum.TryParse<TipoConta>(Claim("tipo_conta"), out var t)

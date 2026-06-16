@@ -340,6 +340,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
+                    b.Property<DateTimeOffset?>("SessoesInvalidasAntesDeUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("sessoes_invalidas_antes_de_utc");
+
                     b.Property<string>("TipoConta")
                         .IsRequired()
                         .HasColumnType("text")
@@ -427,16 +431,11 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ocorrido_em");
 
-                    b.Property<string>("Payload")
+                    b.Property<string>("RecipientEmailHash")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("payload");
-
-                    b.Property<string>("RecipientEmail")
-                        .IsRequired()
-                        .HasMaxLength(254)
-                        .HasColumnType("character varying(254)")
-                        .HasColumnName("recipient_email");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("recipient_email_hash");
 
                     b.Property<string>("ResendMessageId")
                         .IsRequired()
@@ -1777,16 +1776,11 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ocorrido_em");
 
-                    b.Property<string>("Payload")
+                    b.Property<string>("RecipientPhoneHash")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("payload");
-
-                    b.Property<string>("RecipientPhone")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("recipient_phone");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("recipient_phone_hash");
 
                     b.HasKey("Id")
                         .HasName("pk_whatsapp_delivery_logs");

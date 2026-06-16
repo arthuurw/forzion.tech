@@ -11,7 +11,6 @@ using forzion.tech.Application.UseCases.Treinos.CriarTreino;
 using forzion.tech.Application.UseCases.Treinos.DuplicarTreino;
 using forzion.tech.Application.UseCases.Treinos.ExcluirTreino;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
-using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Treinos.ListarAlunosTreino;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
@@ -245,31 +244,6 @@ public static class TreinoEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
-
-        group.MapPost("/{id}/execucoes", async (
-            Guid id,
-            [FromBody] RegistrarExecucaoRequest request,
-            [FromServices] RegistrarExecucaoHandler handler,
-            CancellationToken cancellationToken) =>
-        {
-            var command = new RegistrarExecucaoCommand(
-                id,
-                request.AlunoId,
-                request.DataExecucao,
-                request.Observacao,
-                request.Exercicios.Select(e => new RegistrarExecucaoItemCommand(e.TreinoExercicioId, e.SeriesExecutadas, e.RepeticoesExecutadas, e.CargaExecutada, e.Observacao)).ToList());
-
-            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
-            if (result.IsFailure) return result.ToProblemResult();
-            return Results.Created($"/treinos/{id}/execucoes/{result.Value.ExecucaoId}", result.Value);
-        })
-        .RequireAuthorization()
-        .WithSummary("Registra a execução de um treino")
-        .Produces<RegistrarExecucaoResponse>(StatusCodes.Status201Created)
-        .Produces(StatusCodes.Status401Unauthorized)
-        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
-        .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)
-        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
     }
 
 }
@@ -280,5 +254,3 @@ public record CriarTreinoRequest(Guid? AlunoId, string Nome, ObjetivoTreino Obje
 public record AtualizarTreinoRequest(string? Nome, ObjetivoTreino? Objetivo, DificuldadeTreino? Dificuldade = null, DateOnly? DataInicio = null, DateOnly? DataFim = null, bool LimparDataInicio = false, bool LimparDataFim = false);
 public record SerieConfigRequest(int Quantidade, int RepeticoesMin, int? RepeticoesMax, string? Descricao, decimal? Carga, int? Descanso);
 public record AdicionarExercicioRequest(Guid ExercicioId, IReadOnlyList<SerieConfigRequest> Series);
-public record RegistrarExecucaoItemRequest(Guid TreinoExercicioId, int SeriesExecutadas, int RepeticoesExecutadas, decimal? CargaExecutada, string? Observacao);
-public record RegistrarExecucaoRequest(Guid AlunoId, DateTime DataExecucao, string? Observacao, List<RegistrarExecucaoItemRequest> Exercicios);

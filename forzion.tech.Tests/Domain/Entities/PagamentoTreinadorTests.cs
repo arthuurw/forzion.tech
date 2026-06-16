@@ -93,6 +93,30 @@ public class PagamentoTreinadorTests
     }
 
     [Fact]
+    public void MarcarPago_LimpaClientSecret_PreservaPaymentIntentId()
+    {
+        var p = Novo();
+        p.DefinirDadosCartao("pi_1", "cs_1", Agora);
+
+        p.MarcarPago(Agora);
+
+        p.ClientSecret.Should().BeNull();
+        p.StripePaymentIntentId.Should().Be("pi_1");
+    }
+
+    [Fact]
+    public void MarcarFalhou_LimpaQrCodePix()
+    {
+        var p = Novo();
+        p.DefinirDadosPix("pi_1", "qr", "url", Agora.AddMinutes(30), Agora);
+
+        p.MarcarFalhou(Agora);
+
+        p.PixQrCode.Should().BeNull();
+        p.PixQrCodeUrl.Should().BeNull();
+    }
+
+    [Fact]
     public void MarcarFalhou_Pendente_Ok_DepoisFalha()
     {
         var p = Novo();

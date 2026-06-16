@@ -17,6 +17,7 @@ public class ProcessarWebhookWhatsAppHandler(
     IWhatsAppDeliveryLogRepository logRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
+    IRecipientHasher recipientHasher,
     ILogger<ProcessarWebhookWhatsAppHandler> logger)
 {
     public virtual async Task<Result> HandleAsync(
@@ -68,9 +69,8 @@ public class ProcessarWebhookWhatsAppHandler(
             var log = WhatsAppDeliveryLog.Criar(
                 status.MessageId,
                 status.Status,
-                status.RecipientId,
+                recipientHasher.Hash(status.RecipientId),
                 status.OcorridoEm,
-                command.Payload,
                 agora);
 
             await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);

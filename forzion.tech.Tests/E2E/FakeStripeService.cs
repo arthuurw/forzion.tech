@@ -39,8 +39,9 @@ public sealed class FakeStripeService : IStripeService
     public Task<bool> ContaEstaAtivadaAsync(string stripeAccountId, CancellationToken cancellationToken = default) =>
         Task.FromResult(true);
 
-    public Task<bool> ValidarWebhookAsync(string payload, string assinaturaStripe) =>
-        Task.FromResult(true);
+    // Echo do payload como evento verificado (E2E sem assinatura real).
+    public Task<string?> ValidarWebhookAsync(string payload, string assinaturaStripe) =>
+        Task.FromResult<string?>(payload);
 
     public Task CriarReembolsoAsync(Guid pagamentoId, string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;

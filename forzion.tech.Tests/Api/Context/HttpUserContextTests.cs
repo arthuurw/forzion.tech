@@ -32,7 +32,7 @@ public class HttpUserContextTests
     public void ContaId_ClaimValida_RetornaGuid()
     {
         var id = Guid.NewGuid();
-        var ctx = new HttpUserContext(CriarAccessor(new Claim("conta_id", id.ToString())));
+        var ctx = new HttpUserContext(CriarAccessor(new Claim("sub", id.ToString())));
         ctx.ContaId.Should().Be(id);
     }
 

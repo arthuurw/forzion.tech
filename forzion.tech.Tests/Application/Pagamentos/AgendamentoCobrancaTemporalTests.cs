@@ -39,7 +39,7 @@ public class AgendamentoCobrancaTemporalTests
             _stripeService.Object, _unitOfWork.Object, Mock.Of<IOutboxEnfileirador>(), _time, _logger.Object);
 
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
-            .ReturnsAsync(true);
+            .ReturnsAsync((string p, string _) => p);
     }
 
     private static string PaymentIntentPayload(string type, string paymentIntentId) =>

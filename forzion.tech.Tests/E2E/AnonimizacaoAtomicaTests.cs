@@ -25,16 +25,18 @@ public class AnonimizacaoAtomicaTests(RealPipelineFixture fixture)
         var email = $"atom{Guid.NewGuid():N}@e2e.test";
         var resendId = $"resend_{Guid.NewGuid():N}";
         Guid contaId;
+        string emailHash;
 
-        // Seed: conta + um delivery log com o e-mail. O scrub do log é ExecuteUpdate.
+        // Seed: conta + um delivery log com o hash do e-mail. O scrub do log é ExecuteUpdate.
         using (var seedScope = fixture.Services.CreateScope())
         {
             var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            emailHash = seedScope.ServiceProvider.GetRequiredService<IRecipientHasher>().Hash(email);
             var contaSeed = Conta.Criar(Email.Criar(email).Value, "$2a$12$x", TipoConta.Aluno, DateTime.UtcNow).Value;
             contaId = contaSeed.Id;
             seedDb.Contas.Add(contaSeed);
             seedDb.EmailDeliveryLogs.Add(
-                EmailDeliveryLog.Criar(resendId, "delivered", email, DateTime.UtcNow, "{}", DateTime.UtcNow));
+                EmailDeliveryLog.Criar(resendId, "delivered", emailHash, DateTime.UtcNow, DateTime.UtcNow));
             await seedDb.SaveChangesAsync();
         }
 
@@ -77,7 +79,7 @@ public class AnonimizacaoAtomicaTests(RealPipelineFixture fixture)
         using var verifyScope = fixture.Services.CreateScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
         var logPersistido = await verifyDb.EmailDeliveryLogs.AsNoTracking().FirstAsync(l => l.ResendMessageId == resendId);
-        logPersistido.RecipientEmail.Should().Be(email, "scrub via ExecuteUpdate deve ter sido revertido com a transação");
+        logPersistido.RecipientEmailHash.Should().Be(emailHash, "scrub via ExecuteUpdate deve ter sido revertido com a transação");
         var contaPersistida = await verifyDb.Contas.AsNoTracking().FirstAsync(c => c.Id == contaId);
         contaPersistida.AnonimizadaEm.Should().BeNull("anonimização é all-or-nothing");
     }

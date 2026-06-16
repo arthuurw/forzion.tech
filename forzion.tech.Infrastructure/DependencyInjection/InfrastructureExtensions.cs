@@ -125,7 +125,25 @@ public static class InfrastructureExtensions
             .Validate(s => s.TaxaPlataformaPercent > 0 && s.TaxaPlataformaPercent <= 100,
                 "Stripe:TaxaPlataformaPercent deve estar entre 0 e 100.")
             .ValidateOnStart();
+        // SEC-03: se ExpectLivemode não foi configurado explicitamente, default por ambiente —
+        // Production espera live; demais (incl. Homolog público em test-mode) não enforça.
+        var isProduction = string.Equals(
+            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+            "Production", StringComparison.OrdinalIgnoreCase);
+        services.PostConfigure<StripeSettings>(s => s.ExpectLivemode ??= isProduction);
         services.AddScoped<IStripeService, StripeService>();
+
+        services.AddOptions<DeliveryLogSettings>()
+            .BindConfiguration("DeliveryLog")
+            .Validate(s => !isProduction || !string.IsNullOrWhiteSpace(s.RecipientHashKey),
+                "DeliveryLog:RecipientHashKey não configurado. Use User Secrets ou variável de ambiente.")
+            .ValidateOnStart();
+        services.PostConfigure<DeliveryLogSettings>(s =>
+        {
+            if (!isProduction && string.IsNullOrWhiteSpace(s.RecipientHashKey))
+                s.RecipientHashKey = DeliveryLogSettings.DevDefaultKey;
+        });
+        services.AddSingleton<IRecipientHasher, RecipientHasher>();
 
         // PaymentSettings — expõe taxa de plataforma para a camada Application
         services.AddOptions<PaymentSettings>()

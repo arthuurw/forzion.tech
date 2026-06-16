@@ -68,6 +68,9 @@ public static class PagamentosEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
+            if (!Enum.IsDefined(metodo))
+                return Results.Problem(detail: "Método de pagamento inválido.", statusCode: StatusCodes.Status400BadRequest);
+
             var result = await handler.HandleAsync(
                 new GerarCobrancaMensalCommand(assinaturaId, userContext.PerfilId, metodo), cancellationToken).ConfigureAwait(false);
 
@@ -76,6 +79,7 @@ public static class PagamentosEndpoints
         })
         .WithSummary("Gera cobrança mensal para uma assinatura (metodo: Pix ou Cartao)")
         .Produces<PagamentoResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
@@ -151,6 +155,9 @@ public static class PagamentosEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
+            if (!Enum.IsDefined(metodo))
+                return Results.Problem(detail: "Método de pagamento inválido.", statusCode: StatusCodes.Status400BadRequest);
+
             var assinatura = await assinaturaTreinadorRepository
                 .ObterAtualPorTreinadorAsync(userContext.PerfilId, cancellationToken).ConfigureAwait(false);
             if (assinatura is null)
@@ -167,6 +174,7 @@ public static class PagamentosEndpoints
         })
         .WithSummary("Gera cobrança de renovação do plano do treinador (metodo: Pix ou Cartao)")
         .Produces<IniciarPagamentoPlanoResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 

@@ -189,6 +189,36 @@ public class MetaWhatsAppCloudNotifierTests
     }
 
     [Fact]
+    public async Task SendAsync_HttpRequestException_MascaraTelefoneNoLog()
+    {
+        const string telefone = "5511988887777";
+        _handlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Timeout"));
+
+        var httpClient = new HttpClient(_handlerMock.Object)
+        {
+            BaseAddress = new Uri("https://graph.facebook.com/v21.0/123456789/")
+        };
+        var notifier = new MetaWhatsAppCloudNotifier(httpClient, _logger.Object);
+
+        await notifier.SendAsync(telefone, "msg");
+
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => !v.ToString()!.Contains(telefone) && v.ToString()!.Contains("***7777")),
+                It.IsAny<HttpRequestException>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task SendAsync_Cancelado_PropagaCancellationException()
     {
         using var cts = new CancellationTokenSource();

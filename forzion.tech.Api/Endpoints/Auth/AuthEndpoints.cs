@@ -134,12 +134,16 @@ public static class AuthEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
-        group.MapPost("/forgot-password", async (
+        group.MapPost("/forgot-password", (
             ForgotPasswordRequest request,
-            [FromServices] EsqueceuSenhaHandler handler,
-            CancellationToken cancellationToken) =>
+            [FromServices] IServiceScopeFactory scopeFactory,
+            [FromServices] ILoggerFactory loggerFactory) =>
         {
-            await handler.HandleAsync(new EsqueceuSenhaCommand(request.Email), cancellationToken);
+            var email = request.Email;
+            DispararEnvioEmBackground<EsqueceuSenhaHandler>(
+                scopeFactory,
+                loggerFactory.CreateLogger(typeof(AuthEndpoints).FullName!),
+                (handler, ct) => handler.HandleAsync(new EsqueceuSenhaCommand(email), ct));
             return Results.Ok();
         })
         .AllowAnonymous()
@@ -180,12 +184,16 @@ public static class AuthEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
-        group.MapPost("/resend-verification", async (
+        group.MapPost("/resend-verification", (
             ResendVerificationRequest request,
-            [FromServices] ReenviarVerificacaoHandler handler,
-            CancellationToken cancellationToken) =>
+            [FromServices] IServiceScopeFactory scopeFactory,
+            [FromServices] ILoggerFactory loggerFactory) =>
         {
-            await handler.HandleAsync(new ReenviarVerificacaoCommand(request.Email), cancellationToken);
+            var email = request.Email;
+            DispararEnvioEmBackground<ReenviarVerificacaoHandler>(
+                scopeFactory,
+                loggerFactory.CreateLogger(typeof(AuthEndpoints).FullName!),
+                (handler, ct) => handler.HandleAsync(new ReenviarVerificacaoCommand(email), ct));
             return Results.Ok();
         })
         .AllowAnonymous()
@@ -233,6 +241,27 @@ public static class AuthEndpoints
         .Produces<IReadOnlyList<TreinadorResponse>>();
 
         return endpoints;
+    }
+
+    private static void DispararEnvioEmBackground<THandler>(
+        IServiceScopeFactory scopeFactory,
+        ILogger logger,
+        Func<THandler, CancellationToken, Task> envio)
+        where THandler : notnull
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var handler = scope.ServiceProvider.GetRequiredService<THandler>();
+                await envio(handler, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Falha no envio de e-mail em background ({Handler}).", typeof(THandler).Name);
+            }
+        });
     }
 }
 

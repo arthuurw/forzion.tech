@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Svix;
+using Svix.Exceptions;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
 
@@ -20,6 +21,7 @@ public class ProcessarWebhookResendHandler(
     IEmailDeliveryLogRepository logRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
+    IRecipientHasher recipientHasher,
     ILogger<ProcessarWebhookResendHandler> logger)
 {
     private static readonly HashSet<string> EventosRelevantes = new(StringComparer.OrdinalIgnoreCase)
@@ -72,9 +74,8 @@ public class ProcessarWebhookResendHandler(
         var log = EmailDeliveryLog.Criar(
             parsed.EmailId,
             parsed.EventType,
-            parsed.RecipientEmail,
+            recipientHasher.Hash(parsed.RecipientEmail),
             parsed.CreatedAt,
-            command.Payload,
             agora);
 
         await logRepository.AdicionarAsync(log, cancellationToken).ConfigureAwait(false);
@@ -116,11 +117,10 @@ public class ProcessarWebhookResendHandler(
             new Webhook(secret).Verify(command.Payload, headers);
             return true;
         }
-        // Svix lança WebhookVerificationException; o tipo concreto não é público de forma
-        // estável entre versões do pacote, então casamos por nome (assinatura inválida/erro
-        // de verificação) — qualquer falha de Verify significa assinatura inválida → false.
-        catch (Exception ex) when (ex.GetType().Name.Contains("Verification", StringComparison.OrdinalIgnoreCase)
-                                   || ex.GetType().Name.Contains("Webhook", StringComparison.OrdinalIgnoreCase))
+        // SEC-04: fail-closed pelo tipo concreto. Svix.Webhook.Verify lança
+        // WebhookVerificationException para TODA falha de verificação (assinatura inválida,
+        // headers ausentes/malformados, timestamp fora da tolerância). Sem match por nome.
+        catch (WebhookVerificationException)
         {
             return false;
         }

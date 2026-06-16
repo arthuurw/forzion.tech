@@ -20,8 +20,8 @@ public interface IWhatsAppDeliveryLogRepository
     Task<IReadOnlyList<WhatsAppDeliveryLog>> ListarPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Scrubs the recipient phone on all logs matching <paramref name="telefone"/>
-    /// (LGPD anonymization). Replaces RecipientPhone with an anonymized placeholder.
+    /// Scrubs the recipient hash on all logs matching <paramref name="telefone"/>
+    /// (LGPD anonymization). Replaces RecipientPhoneHash with an anonymized placeholder.
     /// </summary>
     Task AnonimizarPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default);
 }

@@ -41,8 +41,10 @@ public class ProcessarWebhookStripeHandlerTests
             _alunoRepo.Object, _contaRepo.Object,
             _stripeService.Object, _unitOfWork.Object, _enfileirador.Object, _timeProvider, _logger.Object);
 
+        // Verificação devolve o JSON do evento verificado; o fake ecoa o payload recebido,
+        // espelhando o contrato (handler parseia o retorno, não o body raw).
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
-            .ReturnsAsync(true);
+            .ReturnsAsync((string p, string _) => p);
     }
 
     private static string PaymentIntentPayload(string type, string paymentIntentId) =>
@@ -90,11 +92,33 @@ public class ProcessarWebhookStripeHandlerTests
     public async Task HandleAsync_AssinaturaAlunoInvalida_RetornaFailure()
     {
         _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(false);
+            .ReturnsAsync((string?)null);
 
         var result = await _handler.HandleAsync(new ProcessarWebhookStripeCommand("{}", "bad_sig"));
 
         result.IsSuccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ProcessaEventoVerificado_NaoOBodyRaw()
+    {
+        // SEC-02: body raw aponta pi_adulterado; a verificação devolve o evento real (pi_verificado).
+        // O handler DEVE agir sobre o verificado — busca pi_verificado, ignora o raw.
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_verificado", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_verificado", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _stripeService.Setup(s => s.ValidarWebhookAsync(It.IsAny<string>(), ValidSig))
+            .ReturnsAsync(PaymentIntentPayload("payment_intent.succeeded", "pi_verificado"));
+
+        var bodyRaw = PaymentIntentPayload("payment_intent.succeeded", "pi_adulterado");
+        var result = await _handler.HandleAsync(new ProcessarWebhookStripeCommand(bodyRaw, ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        _pagamentoRepo.Verify(r => r.ObterPorPaymentIntentIdAsync("pi_adulterado", It.IsAny<CancellationToken>()), Times.Never,
+            "o body raw não-confiável não deve ser processado");
     }
 
     [Fact]

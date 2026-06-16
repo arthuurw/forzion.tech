@@ -3,9 +3,12 @@ using System.Text;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
+using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -22,6 +25,8 @@ public class ProcessarWebhookWhatsAppHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 5, 29, 10, 0, 0, TimeSpan.Zero));
     private readonly Mock<ILogger<ProcessarWebhookWhatsAppHandler>> _logger = new();
+    private readonly IRecipientHasher _hasher =
+        new RecipientHasher(Options.Create(new DeliveryLogSettings { RecipientHashKey = "test-key" }));
     private readonly ProcessarWebhookWhatsAppHandler _handler;
 
     private const string AppSecret = "forzion-test-whatsapp-secret";
@@ -29,7 +34,7 @@ public class ProcessarWebhookWhatsAppHandlerTests
     public ProcessarWebhookWhatsAppHandlerTests()
     {
         _handler = new ProcessarWebhookWhatsAppHandler(
-            _logRepo.Object, _unitOfWork.Object, _timeProvider, _logger.Object);
+            _logRepo.Object, _unitOfWork.Object, _timeProvider, _hasher, _logger.Object);
 
         _logRepo.Setup(r => r.ExisteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -207,9 +212,9 @@ public class ProcessarWebhookWhatsAppHandlerTests
         captured.Should().NotBeNull();
         captured!.MetaMessageId.Should().Be("wamid_xyz");
         captured.EventType.Should().Be("read");
-        captured.RecipientPhone.Should().Be("5511988887777");
+        captured.RecipientPhoneHash.Should().Be(_hasher.Hash("5511988887777"));
+        captured.RecipientPhoneHash.Should().NotBe("5511988887777");
         captured.OcorridoEm.Should().Be(DateTimeOffset.FromUnixTimeSeconds(unixTs).UtcDateTime);
-        captured.Payload.Should().Be(payload);
         captured.CreatedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
     }
 

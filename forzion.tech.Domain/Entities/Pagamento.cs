@@ -86,6 +86,7 @@ public class Pagamento : IHasDomainEvents
         Status = PagamentoStatus.Pago;
         DataPagamento = agora;
         UpdatedAt = agora;
+        LimparDadosSensiveis();
         return Result.Success();
     }
 
@@ -96,6 +97,7 @@ public class Pagamento : IHasDomainEvents
 
         Status = PagamentoStatus.Falhou;
         UpdatedAt = agora;
+        LimparDadosSensiveis();
         return Result.Success();
     }
 
@@ -106,7 +108,15 @@ public class Pagamento : IHasDomainEvents
 
         Status = PagamentoStatus.Expirado;
         UpdatedAt = agora;
+        LimparDadosSensiveis();
         return Result.Success();
+    }
+
+    private void LimparDadosSensiveis()
+    {
+        ClientSecret = null;
+        PixQrCode = null;
+        PixQrCodeUrl = null;
     }
 
     /// <summary>

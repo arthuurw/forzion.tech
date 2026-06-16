@@ -38,5 +38,9 @@ public class ContaConfiguration : IEntityTypeConfiguration<Conta>
         builder.Property(c => c.AnonimizadaEm)
             .HasColumnName("anonimizada_em")
             .HasColumnType("timestamptz");
+
+        builder.Property(c => c.SessoesInvalidasAntesDeUtc)
+            .HasColumnName("sessoes_invalidas_antes_de_utc")
+            .HasColumnType("timestamptz");
     }
 }

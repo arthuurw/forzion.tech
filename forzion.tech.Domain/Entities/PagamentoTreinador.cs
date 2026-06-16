@@ -96,6 +96,7 @@ public class PagamentoTreinador : IHasDomainEvents
         Status = PagamentoStatus.Pago;
         DataPagamento = agora;
         UpdatedAt = agora;
+        LimparDadosSensiveis();
         _domainEvents.Add(new PagamentoTreinadorPagoEvent(
             Id, TreinadorId, AssinaturaTreinadorId, Finalidade, PlanoAlvoId, agora));
         return Result.Success();
@@ -108,6 +109,7 @@ public class PagamentoTreinador : IHasDomainEvents
 
         Status = PagamentoStatus.Falhou;
         UpdatedAt = agora;
+        LimparDadosSensiveis();
         return Result.Success();
     }
 
@@ -118,7 +120,15 @@ public class PagamentoTreinador : IHasDomainEvents
 
         Status = PagamentoStatus.Expirado;
         UpdatedAt = agora;
+        LimparDadosSensiveis();
         return Result.Success();
+    }
+
+    private void LimparDadosSensiveis()
+    {
+        ClientSecret = null;
+        PixQrCode = null;
+        PixQrCodeUrl = null;
     }
 
     public Result MarcarEstornado(DateTime agora)

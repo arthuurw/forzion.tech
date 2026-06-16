@@ -24,7 +24,8 @@ public class RefreshTokenService(
         var familia = RefreshTokenFamily.Criar(conta.Id, absoluto, agora, Truncar(rotulo)).Value;
         await familyRepository.AdicionarAsync(familia, cancellationToken).ConfigureAwait(false);
 
-        var (raw, _) = await CriarTokenAsync(familia, conta.TipoConta, agora, cancellationToken).ConfigureAwait(false);
+        var (raw, token) = CriarTokenSucessor(familia, conta.TipoConta, agora);
+        await tokenRepository.AdicionarAsync(token, cancellationToken).ConfigureAwait(false);
         return new RefreshEmitido(raw, familia.Id);
     }
 
@@ -41,14 +42,9 @@ public class RefreshTokenService(
         if (familia is null || !familia.EstaAtiva(agora))
             return RotacaoResultado.Invalido();
 
-        // Token já usado numa família ainda ativa = refresh roubado e reapresentado (NR-3):
-        // revoga a cadeia inteira e sinaliza p/ alerta. Este é o ganho de segurança do modelo.
+        // Token já usado = refresh reapresentado (NR-3); a corrida concorrente cai no claim atômico.
         if (token.UsadoEm.HasValue)
-        {
-            familia.Revogar(MotivoRevogacaoFamilia.ReuseDetectado, agora);
-            logger.LogWarning("Reuse de refresh token detectado — família {FamiliaId} revogada (conta {ContaId}).", familia.Id, familia.ContaId);
-            return RotacaoResultado.Reuse(familia.Id);
-        }
+            return Reuse(familia, agora);
 
         if (!token.EstaValido(agora))
             return RotacaoResultado.Invalido();
@@ -57,10 +53,23 @@ public class RefreshTokenService(
         if (conta is null)
             return RotacaoResultado.Invalido();
 
-        var (raw, sucessor) = await CriarTokenAsync(familia, conta.TipoConta, agora, cancellationToken).ConfigureAwait(false);
-        token.MarcarUsado(agora, sucessor.Id);
+        // Sucessor criado antes do claim p/ fixar SubstituidoPorId no mesmo UPDATE.
+        var (raw, sucessor) = CriarTokenSucessor(familia, conta.TipoConta, agora);
 
+        // SEC-01: claim atômico; 0 linhas = perdeu a corrida ⇒ reuse, sucessor descartado.
+        var afetadas = await tokenRepository.MarcarUsadoSeNaoUsadoAsync(token.Id, agora, sucessor.Id, cancellationToken).ConfigureAwait(false);
+        if (afetadas == 0)
+            return Reuse(familia, agora);
+
+        await tokenRepository.AdicionarAsync(sucessor, cancellationToken).ConfigureAwait(false);
         return RotacaoResultado.Sucesso(conta, familia.Id, raw);
+    }
+
+    private RotacaoResultado Reuse(RefreshTokenFamily familia, DateTime agora)
+    {
+        familia.Revogar(MotivoRevogacaoFamilia.ReuseDetectado, agora);
+        logger.LogWarning("Reuse de refresh token detectado — família {FamiliaId} revogada (conta {ContaId}).", familia.Id, familia.ContaId);
+        return RotacaoResultado.Reuse(familia.Id);
     }
 
     public async Task RevogarFamiliaAsync(Guid familiaId, MotivoRevogacaoFamilia motivo, DateTime agora, CancellationToken cancellationToken = default)
@@ -76,16 +85,14 @@ public class RefreshTokenService(
             familia.Revogar(motivo, agora);
     }
 
-    private async Task<(string Raw, RefreshToken Token)> CriarTokenAsync(RefreshTokenFamily familia, TipoConta tipo, DateTime agora, CancellationToken cancellationToken)
+    // Não persiste: na rotação o INSERT só ocorre após vencer o claim.
+    private (string Raw, RefreshToken Token) CriarTokenSucessor(RefreshTokenFamily familia, TipoConta tipo, DateTime agora)
     {
         var raw = GerarRaw();
         var idle = agora + SessaoConfig.IdleWindow(configuration, tipo);
         // Idle nunca ultrapassa o teto absoluto da família (NR-5: idle ≠ eterno).
         var expiraEm = idle < familia.AbsolutoExpiraEm ? idle : familia.AbsolutoExpiraEm;
-
-        var token = RefreshToken.Criar(familia.Id, Hash(raw), expiraEm, agora).Value;
-        await tokenRepository.AdicionarAsync(token, cancellationToken).ConfigureAwait(false);
-        return (raw, token);
+        return (raw, RefreshToken.Criar(familia.Id, Hash(raw), expiraEm, agora).Value);
     }
 
     private static string GerarRaw() =>

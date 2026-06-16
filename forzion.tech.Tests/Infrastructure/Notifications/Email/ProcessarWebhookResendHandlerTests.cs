@@ -1,9 +1,12 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Svix;
@@ -25,6 +28,8 @@ public class ProcessarWebhookResendHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly Mock<ILogger<ProcessarWebhookResendHandler>> _logger = new();
+    private readonly IRecipientHasher _hasher =
+        new RecipientHasher(Options.Create(new DeliveryLogSettings { RecipientHashKey = "test-key" }));
     private readonly ProcessarWebhookResendHandler _handler;
 
     // Secret no formato Svix (`whsec_<base64>`). Base64("forzion-test-secret-resend") -> chars válidos.
@@ -33,7 +38,7 @@ public class ProcessarWebhookResendHandlerTests
     public ProcessarWebhookResendHandlerTests()
     {
         _handler = new ProcessarWebhookResendHandler(
-            _logRepo.Object, _unitOfWork.Object, _timeProvider, _logger.Object);
+            _logRepo.Object, _unitOfWork.Object, _timeProvider, _hasher, _logger.Object);
 
         _logRepo.Setup(r => r.ExisteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -71,6 +76,22 @@ public class ProcessarWebhookResendHandlerTests
         result.IsSuccess.Should().BeFalse();
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<EmailDeliveryLog>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_FalhaDeVerifyNaoAssinatura_FailClosed_SemExcecao()
+    {
+        // SEC-04: timestamp malformado faz o Verify lançar WebhookVerificationException por um
+        // caminho distinto de "assinatura inválida". Deve falhar fechado (Failure), não vazar 500.
+        var cmd = new ProcessarWebhookResendCommand(
+            "{\"type\":\"email.delivered\",\"data\":{}}",
+            $"msg_{Guid.NewGuid():N}", "not-a-timestamp", "v1,whatever");
+
+        var act = async () => await _handler.HandleAsync(cmd, Secret);
+
+        var result = await act.Should().NotThrowAsync();
+        result.Which.IsSuccess.Should().BeFalse();
+        _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<EmailDeliveryLog>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -159,7 +180,8 @@ public class ProcessarWebhookResendHandlerTests
         captured.Should().NotBeNull();
         captured!.ResendMessageId.Should().Be("msg_xyz");
         captured.EventType.Should().Be("email.bounced");
-        captured.RecipientEmail.Should().Be("destinatario@example.com");
+        captured.RecipientEmailHash.Should().Be(_hasher.Hash("destinatario@example.com"));
+        captured.RecipientEmailHash.Should().NotBe("destinatario@example.com");
         captured.CreatedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
     }
 

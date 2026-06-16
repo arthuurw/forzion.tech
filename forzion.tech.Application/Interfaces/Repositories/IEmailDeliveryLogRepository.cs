@@ -21,8 +21,8 @@ public interface IEmailDeliveryLogRepository
     Task<IReadOnlyList<EmailDeliveryLog>> ListarPorEmailAsync(string email, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Scrubs the recipient e-mail on all logs matching <paramref name="email"/>
-    /// (LGPD anonymization). Replaces RecipientEmail with an anonymized placeholder.
+    /// Scrubs the recipient hash on all logs matching <paramref name="email"/>
+    /// (LGPD anonymization). Replaces RecipientEmailHash with an anonymized placeholder.
     /// </summary>
     Task AnonimizarPorEmailAsync(string email, CancellationToken cancellationToken = default);
 }

@@ -57,7 +57,7 @@ public class RefreshTokenServiceTests
     }
 
     [Fact]
-    public async Task Rotacionar_TokenValido_MarcaUsadoEEmiteSucessor()
+    public async Task Rotacionar_TokenValido_MarcaUsadoAtomicamenteEEmiteSucessor()
     {
         var conta = NovaConta();
         var familia = RefreshTokenFamily.Criar(conta.Id, Agora.AddDays(90), Agora).Value;
@@ -67,14 +67,48 @@ public class RefreshTokenServiceTests
         _familyRepo.Setup(r => r.ObterPorIdAsync(familia.Id, It.IsAny<CancellationToken>())).ReturnsAsync(familia);
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
+        DateTime? usadoEmNoClaim = null;
+        Guid? sucessorIdNoClaim = null;
+        _tokenRepo.Setup(r => r.MarcarUsadoSeNaoUsadoAsync(token.Id, It.IsAny<DateTime>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Callback<Guid, DateTime, Guid, CancellationToken>((_, usado, suc, _) => { usadoEmNoClaim = usado; sucessorIdNoClaim = suc; })
+            .ReturnsAsync(1);
+
+        RefreshToken? sucessorAdicionado = null;
+        _tokenRepo.Setup(r => r.AdicionarAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
+            .Callback<RefreshToken, CancellationToken>((t, _) => sucessorAdicionado = t);
+
         var r = await _service.RotacionarAsync(raw, Agora.AddMinutes(30), default);
 
         r.Resultado.Should().Be(ResultadoRotacao.Sucesso);
         r.Conta.Should().Be(conta);
         r.RefreshRaw.Should().NotBeNullOrEmpty().And.NotBe(raw);
-        token.UsadoEm.Should().Be(Agora.AddMinutes(30));
-        token.SubstituidoPorId.Should().NotBeNull();
+        // Marca é atômica no banco (não muta a entidade lida): asserta sobre os args do claim.
+        usadoEmNoClaim.Should().Be(Agora.AddMinutes(30));
+        sucessorAdicionado.Should().NotBeNull();
+        sucessorIdNoClaim.Should().Be(sucessorAdicionado!.Id);
         _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Rotacionar_PerdeClaimAtomico_RevogaFamiliaEReuse()
+    {
+        // SEC-01: token não-usado na leitura, mas o claim afeta 0 linhas (concorrente venceu) ⇒ reuse.
+        var conta = NovaConta();
+        var familia = RefreshTokenFamily.Criar(conta.Id, Agora.AddDays(90), Agora).Value;
+        var raw = "rawcorrida";
+        var token = RefreshToken.Criar(familia.Id, Hash(raw), Agora.AddDays(7), Agora).Value;
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(Hash(raw), It.IsAny<CancellationToken>())).ReturnsAsync(token);
+        _familyRepo.Setup(r => r.ObterPorIdAsync(familia.Id, It.IsAny<CancellationToken>())).ReturnsAsync(familia);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _tokenRepo.Setup(r => r.MarcarUsadoSeNaoUsadoAsync(token.Id, It.IsAny<DateTime>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        var r = await _service.RotacionarAsync(raw, Agora.AddMinutes(5), default);
+
+        r.Resultado.Should().Be(ResultadoRotacao.ReuseDetectado);
+        familia.RevogadaEm.Should().NotBeNull();
+        familia.MotivoRevogacao.Should().Be(MotivoRevogacaoFamilia.ReuseDetectado);
+        _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
