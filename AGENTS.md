@@ -25,8 +25,21 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - `frontend/` — Next.js.
 - `specs/` — docs de referência `specification-*` (versionados/commitados).
 
+## PIPELINE — ORDEM DE EXECUÇÃO (passo a passo: o quê → QUANDO)
+DoD adiante = CHECKLIST (o quê); ISTO = SEQUÊNCIA (quando). Escopo trivial pula 1-3. BUG em qualquer ponto ⇒ `superpowers:systematic-debugging` (causa, não sintoma).
+1. BRAINSTORM (`superpowers:brainstorming`) — ANTES de QUALQUER feature/mudança de comportamento; explora intenção+requisito+design. PRECEDE o Specify do `tlc-spec-driven` (não o substitui).
+2. SPEC-DRIVEN (`tlc-spec-driven`) — escopo NOVO: Specify→Design→Tasks→Execute; artefatos em `.specs/` (regra 4). Já quebrado antes ⇒ seguir `tasks.md` direto, SEM reinvocar a skill (regra 4 §PORÉM).
+3. DESIGN-REVIEW (`specs/specification-design-review.md`) — SÓ se toca auth/webhook/concorrência/PII/pagamento; ANTES de codar; saída no `design.md` da feature.
+4. CODA + TESTE JUNTOS (DoD#1) — co-carregar specs via TRIGGER abaixo (+coding +tests + áreas tocadas) ANTES de codar.
+5. GATES LOCAIS — `dotnet format` (DoD#7) → `dotnet build .slnx` + frontend build (DoD#2) → suíte verde (DoD#3).
+6. VERIFY (DoD#4, `superpowers:verification-before-completion`) — comportamento DE FATO, não só verde.
+7. SELF-REVIEW (DoD#5, `superpowers:requesting-code-review`) — diff vs `specification-coding`.
+8. COMMIT + PUSH na branch atual (DoD#8). PR NÃO automático — manual pelo usuário.
+9. BOARD: mover Status a cada fase concluída (DoD#10).
+— PR (quando o usuário pedir): pré-PR re-ler+atualizar specs tocadas → pós-PR CI verde → code-review com context7 (DoD#9).
+
 ## TRIGGER — QUE SPEC CARREGAR (tarefa → co-carregar)
-Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git. Iniciou/concluiu FEATURE ou FASE ⇒ SEMPRE +workflow (sincronizar o card — DoD#10). Vai DESENHAR feature que toca auth/webhook/concorrência/PII/pagamento ⇒ ANTES de codar +design-review (checklist pre-flight).
+Vai escrever CÓDIGO ⇒ SEMPRE +coding +tests (carregar ANTES de codar, não depois). Git ⇒ SEMPRE +git. Iniciou/concluiu FEATURE ou FASE ⇒ SEMPRE +workflow (sincronizar o card — DoD#10). Vai DESENHAR feature que toca auth/webhook/concorrência/PII/pagamento ⇒ ANTES de codar +design-review (checklist pre-flight). Nome curto na coluna "Carregar" = arquivo `specs/specification-<nome>.md`.
 | Tocou em… | Carregar |
 |---|---|
 | handler/use-case/Result/DI         | backend |
@@ -45,6 +58,20 @@ Escreveu CÓDIGO ⇒ SEMPRE +coding +tests. Git ⇒ SEMPRE +git. Iniciou/conclui
 | perf backend/N+1/EF/pool           | performance |
 | backup/restore/DR                  | dr, infrastructure |
 | card/board/pipeline/histórico de entrega | workflow |
+
+## TRIGGER — QUE SKILL INVOCAR (situação → skill)
+Gêmeo da tabela de specs. Skill ausente no projeto ⇒ baixar+instalar antes de usar (regra 6).
+| Situação | Skill |
+|---|---|
+| feature/mudança de comportamento (ANTES de tudo) | `superpowers:brainstorming` |
+| escopo NOVO a quebrar (spec→design→tasks→execute) | `tlc-spec-driven` |
+| criar/alterar `specification-*` (framework de cobertura) | `technical-design-doc-creator` |
+| README/doc | `docs-writer` |
+| 2+ escopos isolados em paralelo (sub-agents)      | `superpowers:subagent-driven-development` |
+| afirmar "pronto/passa/corrigido"                  | `superpowers:verification-before-completion` (`/verify`) |
+| antes de pedir/fazer code-review                  | `superpowers:requesting-code-review` |
+| BUG / falha de teste / comportamento inesperado   | `superpowers:systematic-debugging` |
+| code-review do diff de um PR                      | `/code-review` (+ context7 p/ afirmação de API de lib) |
 
 ## AREAS COBERTAS POR SPECIFICATION-*
 Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia). Conteúdo de cada spec é auto-evidente pelo nome — abaixo SÓ os caveats não-óbvios (resto: abrir o arquivo):
@@ -84,7 +111,7 @@ BUG no caminho ⇒ `superpowers:systematic-debugging`: achar a causa, não remen
 2. Antes de alteração relevante numa área coberta por `specification-*`, LER o arquivo antes de planejar/alterar (ex.: banco → `specs/specification-db.md`).
 3. `specification-*` é AGENT-ORIENTED (denso, notação compacta). Criar/alterar: exige revisão (não às cegas), manter atualizado na mesma tarefa, criar SEMPRE em `specs/` (pasta EXCLUSIVA para arquivos `specification-*.md`; commitado), usar a skill `technical-design-doc-creator` como framework de cobertura (output denso, não TDD verboso).
 ### EXECUÇÃO (como trabalhar)
-4. Tarefa com ALTERAÇÃO DE ESCOPO (feature, mudança de comportamento) DEVE usar a skill `tlc-spec-driven` (tasks atômicas + state file). Os artefatos de quebra (`spec.md`/`tasks.md`/`STATE.md`) vivem em `.specs/` (gitignored; NÃO em `specs/`, reservada a `specification-*.md`). Não se aplica a ajustes triviais. **PORÉM**: a skill é pra VALIDAR/quebrar escopo NOVO. Se a tarefa é só EXECUTAR algo já quebrado (já existe `tasks.md`/`.specs/` da feature, validado por skill antes), seguir o `tasks.md` direto SEM reinvocar a skill — invocá-la de novo só repete trabalho já validado.
+4. Tarefa com ALTERAÇÃO DE ESCOPO (feature, mudança de comportamento) DEVE usar a skill `tlc-spec-driven` (tasks atômicas + state file), PRECEDIDA de `superpowers:brainstorming` (explora intenção/requisito/design ANTES do Specify — não o substitui; ver PIPELINE). Os artefatos de quebra (`spec.md`/`tasks.md`/`STATE.md`) vivem em `.specs/` (gitignored; NÃO em `specs/`, reservada a `specification-*.md`). Não se aplica a ajustes triviais. **PORÉM**: a skill é pra VALIDAR/quebrar escopo NOVO. Se a tarefa é só EXECUTAR algo já quebrado (já existe `tasks.md`/`.specs/` da feature, validado por skill antes), seguir o `tasks.md` direto SEM reinvocar a skill — invocá-la de novo só repete trabalho já validado.
 5. README segue os princípios do `docs-writer` (precisão no código, voz ativa, consistência, verificação de links).
 6. Skill citada ausente no projeto: procurar, baixar e instalar antes de usar.
 7. PARALELISMO: escopos isolados (análises, implementações sem conflito, tests em arquivos distintos) → delegar a sub-agents em PARALELO (Agent tool), 1 por escopo, batch num turno. Principal coordena: identifica dependências, lança o não-conflitante, agrega, integra (DI/commit). Sub-agents devolvem só sumário. Subordinada à regra 4 (`[P]` em tasks paralelas). Skill obrigatória para dispatch de sub-agents: `superpowers:subagent-driven-development`. Adendo: subagent em worktree pode ter Bash/shell NEGADO ⇒ NÃO roda gates. Principal SEMPRE re-verifica build+testes+format ao integrar — sumário do subagent não é prova.
