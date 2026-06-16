@@ -90,13 +90,13 @@ jobs:
         if: ${{ github.event_name != 'pull_request' && env.PACT_BROKER_BASE_URL != '' }}
         run: |
           for i in $(seq 1 12); do
-            if curl -fsS -u "$PACT_BROKER_USERNAME:$PACT_BROKER_PASSWORD" \
+            if curl -fsS --connect-timeout 10 --max-time 20 -u "$PACT_BROKER_USERNAME:$PACT_BROKER_PASSWORD" \
               "$PACT_BROKER_BASE_URL/diagnostic/status/heartbeat" >/dev/null; then
               echo "broker ok"; exit 0
             fi
             echo "broker indisponivel (deploy/restart?), retry $i/12..."; sleep 15
           done
-          echo "broker nao respondeu apos ~3min"; exit 1
+          echo "broker nao respondeu apos 12 tentativas"; exit 1
 
       - name: Publica no broker
         if: ${{ github.event_name != 'pull_request' && env.PACT_BROKER_BASE_URL != '' }}
