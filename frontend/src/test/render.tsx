@@ -1,6 +1,6 @@
 /**
  * renderWithProviders — wrapper de render do React Testing Library
- * que aplica os providers globais da aplicacao (Theme + Localization + Auth + Snackbar).
+ * que aplica os providers globais da aplicacao (Theme + Localization + Auth).
  *
  * Uso:
  *   import { renderWithProviders } from "@/test/render";
@@ -19,29 +19,21 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import "dayjs/locale/pt-br";
 import theme from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth/context";
-import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
 
 export interface ProvidersOptions {
   /**
    * Pular AuthProvider (util quando teste mocka contexto manualmente).
    */
   skipAuth?: boolean;
-  /**
-   * Pular SnackbarProvider (util para tests rapidos sem UI feedback).
-   */
-  skipSnackbar?: boolean;
 }
 
 interface AllProvidersProps extends ProvidersOptions {
   children: ReactNode;
 }
 
-function AllProviders({ children, skipAuth, skipSnackbar }: AllProvidersProps) {
+function AllProviders({ children, skipAuth }: AllProvidersProps) {
   let tree: ReactNode = children;
 
-  if (!skipSnackbar) {
-    tree = <SnackbarProvider>{tree}</SnackbarProvider>;
-  }
   if (!skipAuth) {
     tree = <AuthProvider>{tree}</AuthProvider>;
   }
@@ -60,10 +52,10 @@ export function renderWithProviders(
   ui: ReactElement,
   options: Omit<RenderOptions, "wrapper"> & ProvidersOptions = {},
 ): RenderResult {
-  const { skipAuth, skipSnackbar, ...renderOptions } = options;
+  const { skipAuth, ...renderOptions } = options;
   return render(ui, {
     wrapper: ({ children }) => (
-      <AllProviders skipAuth={skipAuth} skipSnackbar={skipSnackbar}>
+      <AllProviders skipAuth={skipAuth}>
         {children}
       </AllProviders>
     ),
