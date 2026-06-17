@@ -133,6 +133,20 @@ internal static class EmailTemplates
             </p>
             """);
 
+    public static string CodigoMfa(string codigo) =>
+        Layout(
+            "Seu código de verificação",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá!</p>
+            <p style="color:#444;line-height:1.6">
+              Use o código abaixo para concluir sua verificação. Ele é válido por <strong>10 minutos</strong>.
+            </p>
+            <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1A1A1A;text-align:center;margin:24px 0">{codigo}</p>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Se você não solicitou este código, ignore este e-mail e considere trocar sua senha.
+            </p>
+            """);
+
     public static string VerificarEmail(string email, string verifyLink) =>
         Layout(
             "Confirme seu e-mail",
