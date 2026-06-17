@@ -54,7 +54,7 @@ src/
     observability/     — WebVitals
     pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
     treinador/         — componentes específicos do treinador
-    ui/                — componentes compartilhados (ErrorBoundary, SnackbarProvider, LoadingSpinner, DataList, etc.)
+    ui/                — componentes compartilhados (ErrorBoundary, AlertBanner, LoadingSpinner, DataList, etc.)
   hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent
   lib/
     api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
@@ -80,9 +80,8 @@ html[lang=pt-BR]
       ThemeRegistry
         ErrorBoundary
           AuthProvider
-            SnackbarProvider
-              ConsentProvider
-              {children}
+            ConsentProvider
+            {children}
 ```
 - `metadata`: title="forzion.tech", description.
 - `viewport`: `width=device-width, initialScale=1, viewportFit=cover`.
@@ -347,7 +346,12 @@ Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 ## OBSERVABILIDADE
 - **Sentry**: erros + replay (RUM). DSN configurado no container (no-op sem DSN). Source maps com `SENTRY_AUTH_TOKEN`.
 - **WebVitals** (`src/components/observability/WebVitals.tsx`): coleta e envia Core Web Vitals.
-- **ErrorBoundary** global em root layout + por grupo de rota. `global-error.tsx` para erros fora do layout.
+- **ErrorBoundary**: `app/error.tsx` (root) + `error.tsx` por route-group — `(aluno)`, `(treinador)`, `(admin)` — cada um client (`{error, reset}`), render pt-BR + botão "Tentar novamente" (`reset()`) + link ao painel do grupo + `Sentry.captureException(error)`. `global-error.tsx` para erros fora do layout. O boundary de grupo contém crash de render do segmento preservando o shell.
+
+## TRATAMENTO DE ERRO (padrão canônico)
+- **Erro de chamada de API**: capturar no `catch (err)` e exibir via `AlertBanner` (ou `Alert` MUI) com `extractApiError(err, "<fallback pt-BR>")` — surfaça o `detail` (→`title`→`message`) pt-BR do backend; `<fallback>` só quando a resposta não traz texto útil. `extractApiErrorInfo` quando precisar de `status`/`code` (ex.: telas que mapeiam status, como login/executar). NÃO hardcodar mensagem genérica descartando o `detail` do backend.
+- **Falha de load de página de detalhe**: `return null` em estado de erro é BANIDO (causa tela branca). Renderizar estado de erro (mensagem + retry) — ver `DetalheErro`/`AlertBanner`.
+- `SnackbarProvider`/`useSnackbar` (toast global genérico) foi removido (0 consumidores); o canal de feedback de erro é `AlertBanner` + `extractApiError`. (O MUI `<Snackbar>` do banner de inadimplência no `AppLayout` é caso à parte — ver [specification-stripe].)
 
 ## DICAS / GOTCHAS
 - `legacy-peer-deps=true` em `.npmrc` (madge@8 + TS6) — ver §TYPESCRIPT; NÃO remover sem atualizar madge.
