@@ -136,3 +136,59 @@ describe("POST /api/auth — resposta de login", () => {
     expect(res.status).toBe(429);
   });
 });
+
+describe("POST /api/auth — MFA pendente", () => {
+  it("mfaRequerido → seta cookie mfa_pending httpOnly e não abre sessão", async () => {
+    server.use(
+      http.post("*/auth/login", () =>
+        HttpResponse.json({
+          token: "",
+          refreshToken: "",
+          tipoConta: "Aluno",
+          contaId: "00000000-0000-0000-0000-000000000000",
+          perfilId: "00000000-0000-0000-0000-000000000000",
+          mfaRequerido: true,
+          mfaPendingToken: "pending-jwt",
+          mfaPendingExpiraEm: "2026-06-17T13:00:00Z",
+        }),
+      ),
+    );
+
+    const req = createMockRequest({ method: "POST", body: { email: "u@u.com", senha: "secret" } });
+    const res = await POST(req);
+    const body = await res.json();
+    const cookies = extractCookies(res);
+
+    expect(body.mfaRequerido).toBe(true);
+    expect(body.mfaPendingExpiraEm).toBe("2026-06-17T13:00:00Z");
+    expect(body.mfaPendingToken).toBeUndefined();
+    expect(cookies.mfa_pending).toBe("pending-jwt");
+    expect(cookies.token).toBeUndefined();
+    expect(cookies.refresh).toBeUndefined();
+  });
+
+  it("repassa o cookie trusted_device ao backend", async () => {
+    let cookieHeader: string | null = null;
+    server.use(
+      http.post("*/auth/login", ({ request }) => {
+        cookieHeader = request.headers.get("Cookie");
+        return HttpResponse.json({
+          token: fakeJwt,
+          refreshToken: "raw-refresh",
+          tipoConta: "Aluno",
+          contaId: "c1",
+          perfilId: "p1",
+        });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      cookies: { trusted_device: "device-raw" },
+      body: { email: "u@u.com", senha: "secret" },
+    });
+    await POST(req);
+
+    expect(cookieHeader).toBe("trusted_device=device-raw");
+  });
+});

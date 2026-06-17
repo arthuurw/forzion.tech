@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FluentValidation;
+using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Auth.Login;
@@ -21,6 +22,8 @@ public class LoginHandlerTests
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<ISystemUserRepository> _systemUserRepo = new();
+    private readonly Mock<IContaMfaRepository> _contaMfaRepo = new();
+    private readonly Mock<ITrustedDeviceRepository> _trustedDeviceRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<LoginHandler>> _logger = new();
     private readonly LoginCommandValidator _validator = new();
@@ -35,9 +38,9 @@ public class LoginHandlerTests
             _jwtService.Object,
             _refresh.Object,
             _passwordHasher.Object,
-            _alunoRepo.Object,
-            _treinadorRepo.Object,
-            _systemUserRepo.Object,
+            new LoginPerfilResolver(_alunoRepo.Object, _treinadorRepo.Object, _systemUserRepo.Object),
+            _contaMfaRepo.Object,
+            _trustedDeviceRepo.Object,
             _unitOfWork.Object,
             TimeProvider.System,
             _validator,
@@ -282,5 +285,82 @@ public class LoginHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_MfaHabilitadoSemDispositivoConfiavel_RetornaPendente()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
+        var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaMfaRepo.Setup(r => r.BuscarPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(MfaHabilitado(conta.Id));
+        _jwtService.Setup(j => j.GerarTokenEscopo(conta, MfaScopes.Pendente, It.IsAny<TimeSpan>()))
+            .Returns(new TokenEscopo("pending.jwt", Guid.NewGuid(), DateTime.UtcNow.AddMinutes(5)));
+
+        var result = await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
+
+        result.MfaRequerido.Should().BeTrue();
+        result.MfaPendingToken.Should().Be("pending.jwt");
+        result.Token.Should().BeEmpty();
+        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DispositivoConfiavelAtivo_PulaSegundoFatorERegistraUso()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
+        var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaMfaRepo.Setup(r => r.BuscarPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(MfaHabilitado(conta.Id));
+        var agora = DateTime.UtcNow;
+        var device = TrustedDevice.Criar(conta.Id, "hash-device", agora.AddDays(30), agora).Value;
+        _trustedDeviceRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(device);
+        _jwtService.Setup(j => j.GerarToken(conta, treinador.Id, It.IsAny<string>(), It.IsAny<Guid>())).Returns("token.jwt");
+
+        var result = await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123", null, "raw-token"));
+
+        result.MfaRequerido.Should().BeFalse();
+        result.Token.Should().Be("token.jwt");
+        device.UltimoUsoEm.Should().NotBeNull();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DispositivoDeOutraConta_RetornaPendente()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
+        var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaMfaRepo.Setup(r => r.BuscarPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(MfaHabilitado(conta.Id));
+        var agora = DateTime.UtcNow;
+        var device = TrustedDevice.Criar(Guid.NewGuid(), "hash-device", agora.AddDays(30), agora).Value;
+        _trustedDeviceRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(device);
+        _jwtService.Setup(j => j.GerarTokenEscopo(conta, MfaScopes.Pendente, It.IsAny<TimeSpan>()))
+            .Returns(new TokenEscopo("pending.jwt", Guid.NewGuid(), agora.AddMinutes(5)));
+
+        var result = await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123", null, "raw-token"));
+
+        result.MfaRequerido.Should().BeTrue();
+        _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    private static ContaMfa MfaHabilitado(Guid contaId)
+    {
+        var mfa = ContaMfa.Criar(contaId, "cifra", DateTime.UtcNow).Value;
+        mfa.Confirmar(1, DateTime.UtcNow);
+        return mfa;
     }
 }

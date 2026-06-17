@@ -2,6 +2,12 @@ using forzion.tech.Domain.Entities;
 
 namespace forzion.tech.Application.Interfaces;
 
+/// <summary>Token de escopo restrito (MFA pendente / step-up): porta <c>jti</c> e expiração curta.</summary>
+public record TokenEscopo(string Token, Guid Jti, DateTime ExpiraEm);
+
+/// <summary>Identidade extraída de um token de escopo após validação completa.</summary>
+public record EscopoValidado(Guid ContaId, Guid Jti);
+
 public interface IJwtService
 {
     /// <summary>
@@ -12,4 +18,19 @@ public interface IJwtService
     /// <param name="nome">Nome do perfil — exposto como claim p/ a UI exibir o usuário logado sem round-trip extra.</param>
     /// <param name="familiaId">Id da família de refresh desta sessão — claim <c>fam</c> p/ o logout revogar só este device. <c>default</c> omite a claim.</param>
     string GerarToken(Conta conta, Guid perfilId, string nome, Guid familiaId = default);
+
+    /// <summary>
+    /// Gera um JWT de escopo restrito (<c>scope</c>) sem as claims de negócio (<c>tipo_conta</c>/<c>perfil_id</c>),
+    /// de modo que NÃO satisfaz as policies de papel nem a policy padrão (autenticado sem escopo).
+    /// </summary>
+    /// <param name="conta">A conta dona do token.</param>
+    /// <param name="escopo">Escopo do token (<c>mfa_pending</c> ou <c>step_up</c>).</param>
+    /// <param name="validade">Janela de validade curta a partir de agora.</param>
+    TokenEscopo GerarTokenEscopo(Conta conta, string escopo, TimeSpan validade);
+
+    /// <summary>
+    /// Valida um token de escopo (assinatura/emissor/audiência/validade) e confere o <c>scope</c>.
+    /// Retorna a identidade quando válido; <c>null</c> em qualquer falha (inválido, expirado, escopo divergente).
+    /// </summary>
+    EscopoValidado? ValidarTokenEscopo(string token, string escopoEsperado);
 }

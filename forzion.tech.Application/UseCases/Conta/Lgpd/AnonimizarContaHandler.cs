@@ -36,7 +36,11 @@ public class AnonimizarContaHandler(
     IUserContext userContext,
     ITokenRevogadoRepository tokenRevogadoRepository,
     IDatabaseErrorInspector databaseErrorInspector,
-    IRefreshTokenFamilyRepository refreshTokenFamilyRepository)
+    IRefreshTokenFamilyRepository refreshTokenFamilyRepository,
+    IContaMfaRepository contaMfaRepository,
+    IMfaRecoveryCodeRepository mfaRecoveryCodeRepository,
+    IMfaChallengeRepository mfaChallengeRepository,
+    ITrustedDeviceRepository trustedDeviceRepository)
 {
     public virtual Task<Result> HandleAsync(
         AnonimizarContaCommand command,
@@ -168,6 +172,11 @@ public class AnonimizarContaHandler(
         // válido, qualquer renovação pós-anonimização cai em 401 (NR-6/SEC-4).
         await refreshTokenFamilyRepository
             .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+
+        await contaMfaRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await mfaRecoveryCodeRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
         var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.AnonimizacaoConta,

@@ -56,5 +56,29 @@ public class LimparTokensRevogadosService(
         {
             logger.LogError(ex, "Erro ao limpar famílias de refresh expiradas.");
         }
+
+        try
+        {
+            var challengeRepo = scope.ServiceProvider.GetRequiredService<IMfaChallengeRepository>();
+            var desafiosRemovidos = await challengeRepo.LimparExpiradosAsync(stoppingToken).ConfigureAwait(false);
+            if (desafiosRemovidos > 0)
+                logger.LogInformation("Limpeza de desafios MFA: {Count} registros removidos.", desafiosRemovidos);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao limpar desafios MFA expirados.");
+        }
+
+        try
+        {
+            var deviceRepo = scope.ServiceProvider.GetRequiredService<ITrustedDeviceRepository>();
+            var dispositivosRemovidos = await deviceRepo.LimparExpiradosAsync(stoppingToken).ConfigureAwait(false);
+            if (dispositivosRemovidos > 0)
+                logger.LogInformation("Limpeza de dispositivos confiáveis: {Count} registros removidos.", dispositivosRemovidos);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao limpar dispositivos confiáveis expirados.");
+        }
     }
 }

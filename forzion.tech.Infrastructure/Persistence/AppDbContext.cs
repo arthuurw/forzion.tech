@@ -48,6 +48,11 @@ public class AppDbContext(
     public DbSet<ErrorLogEntry> ErrorLogs => Set<ErrorLogEntry>();
     public DbSet<OutboxEfeito> OutboxEfeitos => Set<OutboxEfeito>();
     public DbSet<MensagemSuporte> MensagensSuporte => Set<MensagemSuporte>();
+    public DbSet<ContaMfa> ContasMfa => Set<ContaMfa>();
+    public DbSet<MfaRecoveryCode> MfaRecoveryCodes => Set<MfaRecoveryCode>();
+    public DbSet<MfaChallenge> MfaChallenges => Set<MfaChallenge>();
+    public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
+    public DbSet<TrocaEmailToken> TrocaEmailTokens => Set<TrocaEmailToken>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {

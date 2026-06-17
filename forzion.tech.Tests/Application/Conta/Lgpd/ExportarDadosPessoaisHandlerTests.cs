@@ -512,6 +512,24 @@ public class ExportarDadosPessoaisHandlerTests
     }
 
     [Fact]
+    public void DadosPessoaisExport_NaoExpoeCredencialOuSegredoMfa()
+    {
+        var proibidos = new[] { "secret", "senha", "password", "recovery", "totp", "tokenhash", "codigohash" };
+
+        var tipos = new[]
+        {
+            typeof(DadosPessoaisExport), typeof(ContaExportDto), typeof(AlunoExportDto),
+            typeof(TreinadorExportDto), typeof(VinculoExportDto), typeof(AssinaturaExportDto),
+            typeof(PagamentoExportDto), typeof(PacoteExportDto), typeof(TreinoExportDto),
+            typeof(ExecucaoExportDto), typeof(EmailDeliveryLogExportDto), typeof(WhatsAppDeliveryLogExportDto),
+        };
+
+        var nomes = tipos.SelectMany(t => t.GetProperties()).Select(p => p.Name.ToLowerInvariant());
+
+        nomes.Should().NotContain(n => proibidos.Any(n.Contains));
+    }
+
+    [Fact]
     public async Task HandleAsync_Admin_RegistraAtorReal()
     {
         var contaId = Guid.NewGuid();

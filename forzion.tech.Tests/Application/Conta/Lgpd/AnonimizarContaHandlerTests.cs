@@ -32,6 +32,10 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<ITokenRevogadoRepository> _tokenRevogadoRepo = new();
     private readonly Mock<IDatabaseErrorInspector> _dbErrorInspector = new();
     private readonly Mock<IRefreshTokenFamilyRepository> _refreshFamilyRepo = new();
+    private readonly Mock<IContaMfaRepository> _contaMfaRepo = new();
+    private readonly Mock<IMfaRecoveryCodeRepository> _recoveryRepo = new();
+    private readonly Mock<IMfaChallengeRepository> _challengeRepo = new();
+    private readonly Mock<ITrustedDeviceRepository> _trustedDeviceRepo = new();
 
     private readonly AnonimizarContaHandler _handler;
 
@@ -86,7 +90,11 @@ public class AnonimizarContaHandlerTests
             _userContext.Object,
             _tokenRevogadoRepo.Object,
             _dbErrorInspector.Object,
-            _refreshFamilyRepo.Object);
+            _refreshFamilyRepo.Object,
+            _contaMfaRepo.Object,
+            _recoveryRepo.Object,
+            _challengeRepo.Object,
+            _trustedDeviceRepo.Object);
     }
 
     private static Conta CriarContaComHash(TipoConta tipo, string email = "user@test.com") =>
@@ -234,6 +242,26 @@ public class AnonimizarContaHandlerTests
         _refreshFamilyRepo.Verify(
             r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PurgaCredenciaisMfaDoTitular()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Com MFA", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        _contaMfaRepo.Verify(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _recoveryRepo.Verify(r => r.RemoverPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _challengeRepo.Verify(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _trustedDeviceRepo.Verify(r => r.RemoverPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

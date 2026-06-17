@@ -20,6 +20,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
@@ -123,7 +124,7 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
         var (treinadorId, _) = await TreinadorAprovadoComPlanoAsync();
         var treinador = await ClienteTreinadorAsync(treinadorId);
 
-        await CompletarOnboardingAsync(treinador);
+        await CompletarOnboardingAsync(treinador, treinadorId);
 
         var pacoteId = await CriarPacoteAsync(treinador);
         var (alunoId, _) = await RegistrarAlunoAsync(treinadorId, pacoteId);
@@ -163,6 +164,16 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
 
     private async Task<HttpClient> ClienteAdminAsync() =>
         ClienteComToken(await LoginTokenAsync(RealPipelineFixture.AdminEmail, RealPipelineFixture.AdminPassword));
+
+    private async Task AprovarTreinadorAdminAsync(HttpClient admin, Guid treinadorId)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"/admin/treinadores/{treinadorId}/aprovar")
+        {
+            Content = JsonContent.Create(new { }),
+        };
+        req.Headers.Add(RequerStepUpFilter.Header, await fixture.GerarStepUpTokenAsync(RealPipelineFixture.AdminEmail));
+        (await admin.SendAsync(req)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 
     private async Task<HttpClient> ClienteTreinadorAsync(Guid treinadorId) =>
         ClienteComToken(await LoginTokenAsync(_emailPorTreinador[treinadorId], SenhaPadrao));
@@ -204,8 +215,7 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
         var (treinadorId, email) = await RegistrarTreinadorAsync();
         var admin = await ClienteAdminAsync();
 
-        (await admin.PostAsJsonAsync($"/admin/treinadores/{treinadorId}/aprovar", new { }))
-            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AprovarTreinadorAdminAsync(admin, treinadorId);
 
         var freeId = await ObterPlanoFreeIdAsync();
         (await admin.PatchAsJsonAsync($"/admin/treinadores/{treinadorId}/plano", new { planoId = freeId }))
@@ -241,14 +251,18 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
         return vinculo.GetProperty("vinculoPendente").GetProperty("vinculoId").GetGuid();
     }
 
-    private static async Task CompletarOnboardingAsync(HttpClient treinador)
+    private async Task CompletarOnboardingAsync(HttpClient treinador, Guid treinadorId)
     {
-        var iniciar = await treinador.PostAsJsonAsync("/treinador/onboarding", new
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/treinador/onboarding")
         {
-            urlRetorno = $"{RealPipelineFixture.UrlBase}/retorno",
-            urlCancelamento = $"{RealPipelineFixture.UrlBase}/cancelar"
-        });
-        iniciar.StatusCode.Should().Be(HttpStatusCode.OK);
+            Content = JsonContent.Create(new
+            {
+                urlRetorno = $"{RealPipelineFixture.UrlBase}/retorno",
+                urlCancelamento = $"{RealPipelineFixture.UrlBase}/cancelar"
+            }),
+        };
+        req.Headers.Add(RequerStepUpFilter.Header, await fixture.GerarStepUpTokenAsync(_emailPorTreinador[treinadorId]));
+        (await treinador.SendAsync(req)).StatusCode.Should().Be(HttpStatusCode.OK);
 
         var status = await treinador.GetFromJsonAsync<JsonElement>("/treinador/onboarding/status");
         status.GetProperty("onboardingCompleto").GetBoolean().Should().BeTrue();

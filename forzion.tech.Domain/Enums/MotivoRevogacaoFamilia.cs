@@ -7,4 +7,5 @@ public enum MotivoRevogacaoFamilia
     ReuseDetectado = 2,
     MfaDesabilitado = 3,
     Admin = 4,
+    TrocaEmail = 5,
 }

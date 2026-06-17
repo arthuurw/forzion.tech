@@ -109,8 +109,10 @@ public static class AdminEndpoints
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
         })
+        .AddEndpointFilter<RequerStepUpFilter>()
         .WithSummary("Aprova um treinador")
         .Produces<TreinadorResponse>()
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
@@ -127,8 +129,10 @@ public static class AdminEndpoints
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
+        .AddEndpointFilter<RequerStepUpFilter>()
         .WithSummary("Reprova um treinador aguardando aprovação")
         .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
@@ -145,8 +149,10 @@ public static class AdminEndpoints
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
+        .AddEndpointFilter<RequerStepUpFilter>()
         .WithSummary("Inativa um treinador e faz cascade nos vínculos")
         .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 

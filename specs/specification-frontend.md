@@ -116,6 +116,16 @@ Cliente → POST /api/auth (Next.js Route Handler)
     tipo_conta NÃO-httpOnly (hint de roteamento), session_guard httpOnly (flag)
   → retorna { tipoConta, contaId, perfilId, nome } (token E refresh NÃO expostos ao JS)
 
+  MFA habilitado: backend responde { mfaRequerido, mfaPendingToken, mfaPendingExpiraEm }
+  → route seta cookie httpOnly `mfa_pending` (applyMfaPendingCookie); devolve só
+    { mfaRequerido:true, mfaPendingExpiraEm } — o token pending NUNCA vai ao JS.
+  → login envia cookie `trusted_device` ao backend (se presente) p/ pular o 2º fator.
+
+POST /api/auth/mfa/verificar (conclui o 2º fator)
+  → lê cookie httpOnly `mfa_pending` → Bearer → API_BASE/auth/mfa/verificar { codigo, fator, lembrarDispositivo }
+  → sucesso: applySessionCookies + clearMfaPendingCookie (+ applyTrustedDeviceCookie se lembrou) → SessionUser
+POST /api/auth/mfa/email/enviar → repassa `mfa_pending` → envia OTP por e-mail
+
 POST /api/auth/refresh (proxy de renovação silenciosa)
   → repassa cookie httpOnly `refresh` → API_BASE/auth/refresh (rotação single-use + reuse detection)
   → sucesso: reescreve token+refresh+tipo_conta rotacionados | 401: limpa cookies de sessão
@@ -154,6 +164,8 @@ POST /api/auth/logout
 | `/api/auth/refresh` | POST | Renovação silenciosa: repassa cookie refresh → rotaciona token+refresh, ou 401+limpa |
 | `/api/auth/me` | GET | Verifica JWT → SessionUser; access vencido + refresh → rotaciona server-side |
 | `/api/auth/logout` | POST | Invalida backend (jti + família) + limpa cookies |
+| `/api/auth/mfa/verificar` | POST | Conclui 2º fator: lê cookie `mfa_pending` → Bearer; seta sessão + trusted_device |
+| `/api/auth/mfa/email/enviar` | POST | Envia OTP de login por e-mail (repassa `mfa_pending`) |
 | `/api/auth/register/treinador` | POST | Cadastro treinador (rate limit, proxy). Body inclui `planoPlataformaId`+`modoPagamentoAluno` |
 | `/api/auth/register/aluno` | POST | Cadastro aluno (rate limit, proxy) |
 | `/api/auth/planos` | GET | Planos da plataforma p/ wizard de cadastro (proxy `/auth/planos`, `cache: "no-store"`, sem rate limit) |
@@ -173,11 +185,14 @@ POST /api/auth/logout
 ```
 apiClient = axios.create({ baseURL: NEXT_PUBLIC_API_BASE_URL ?? "/api/backend" })
 interceptor resposta:
-  401 → window.location.href = "/login"
+  401 → tenta /api/auth/refresh UMA vez (flag _retry), refaz; senão → "/login"
+  403 + code === "step_up_requerido" → requestStepUp() UMA vez (flag _stepUpRetry);
+        token obtido → refaz a request com header `X-Step-Up-Token`.
   403 + data.code === "ASSINATURA_INADIMPLENTE" → dispatch CustomEvent
         `forzion:assinatura-inadimplente` em window (NÃO redireciona; só notifica).
         AppLayout escuta e renderiza toast (regularizar em Pagamentos).
 ```
+- **Step-up** (`lib/auth/stepUpController.ts`): registry `registerStepUpHandler`/`requestStepUp` (promise in-flight compartilhada anti-tempestade). `StepUpProvider` (`components/seguranca/`) registra um handler que abre `StepUpDialog` (pede TOTP ou OTP por e-mail → `POST /auth/step-up/iniciar`+`/verificar`) e resolve com o token `step_up`; o interceptor injeta no header e refaz a request. Token NÃO persistido — vive só na request retried.
 - `ASSINATURA_INADIMPLENTE_EVENT` + `ASSINATURA_INADIMPLENTE_MESSAGE` exportados do client.
 - Enforcement server-side: backend `RequireAssinaturaAtivaFilter` retorna 403 `ASSINATURA_INADIMPLENTE` em endpoints restritos (ex.: POST execuções). Cross-ref inadimplência: [specification-stripe].
 - Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`.
@@ -188,6 +203,13 @@ interceptor resposta:
 - Mobile (<md): `Drawer` temporário + `BottomNavigation` fixo (inferior, com `safe-area-inset-bottom`).
 - `NavConfig` por `TipoConta`: items de navegação derivados do role.
 - **Inatividade**: `useInactivity` — warn aos N minutos, logout automático aos 20 min.
+
+## SEGURANÇA / MFA (`src/app/seguranca/`)
+Página autenticada de segurança da conta (link no `AppHeader`/nav). Cliente em `lib/api/mfa.ts` (via `apiClient` → `/conta/mfa/*`). Tipos em `types/index.ts` (`MfaStatus`, `CompletarMfaResponse`, `LoginResponse.mfaRequerido/mfaPendingToken`, etc.).
+- **Ativar TOTP**: `POST /conta/mfa/totp/iniciar` → exibe segredo + QR (URI `otpauth://`) → usuário confirma código → `POST /conta/mfa/totp/confirmar` → mostra os **10 recovery codes UMA vez** (`RecoveryCodesPanel`, download/cópia; raw não re-exibido).
+- **Status/gestão**: `GET /conta/mfa/status` (habilitado, recovery restantes, dispositivos confiáveis); `POST /desabilitar` e `POST /recovery/regenerar` exigem **step-up** (disparam `StepUpDialog` via interceptor `step_up_requerido`).
+- **Login 2ª etapa** (`(public)/login/page.tsx`): resposta `mfaRequerido` → tela do 2º fator (TOTP / recovery / "enviar código por e-mail" → `/api/auth/mfa/email/enviar`) + checkbox "lembrar dispositivo" → `/api/auth/mfa/verificar`. O token pending vive só no cookie httpOnly `mfa_pending` (nunca no JS).
+- a11y (foco/erro/labels) conforme [specification-frontend-ui].
 
 ## TEMA MUI (`src/lib/theme/index.ts`)
 Básico aqui; tokens exatos (paleta/radius/tipografia/component-defaults/anti-zoom) em [specification-frontend-ui] §DESIGN TOKENS — NÃO duplicar.
