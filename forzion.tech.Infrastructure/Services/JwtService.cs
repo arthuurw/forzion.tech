@@ -100,4 +100,42 @@ public class JwtService : IJwtService
 
         return new TokenEscopo(new JwtSecurityTokenHandler().WriteToken(token), jti, expiraEm);
     }
+
+    public EscopoValidado? ValidarTokenEscopo(string token, string escopoEsperado)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(escopoEsperado);
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        var parametros = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret)),
+            ValidateIssuer = true,
+            ValidIssuer = _issuer,
+            ValidateAudience = true,
+            ValidAudience = _audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
+        };
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
+            var principal = handler.ValidateToken(token, parametros, out _);
+
+            if (!string.Equals(principal.FindFirst("scope")?.Value, escopoEsperado, StringComparison.Ordinal))
+                return null;
+            if (!Guid.TryParse(principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var contaId))
+                return null;
+            if (!Guid.TryParse(principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value, out var jti))
+                return null;
+
+            return new EscopoValidado(contaId, jti);
+        }
+        catch (Exception ex) when (ex is SecurityTokenException or ArgumentException)
+        {
+            return null;
+        }
+    }
 }

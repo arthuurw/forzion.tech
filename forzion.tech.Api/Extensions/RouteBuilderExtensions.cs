@@ -21,6 +21,7 @@ public static class RouteBuilderExtensions
     public static IEndpointRouteBuilder MapApiEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapAuthEndpoints();
+        endpoints.MapStepUpEndpoints();
         endpoints.MapAdminEndpoints();
         endpoints.MapHealthReportEndpoints();
         endpoints.MapTreinadorEndpoints();
