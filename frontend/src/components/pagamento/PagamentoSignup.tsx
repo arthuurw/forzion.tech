@@ -6,6 +6,7 @@ import { Box, Typography, Button, CircularProgress, Alert, Paper, Stack } from "
 import type { IniciarPagamentoPlanoResponse } from "@/types";
 import { formatarBRL } from "@/lib/utils/formatting";
 import { mapStripeError } from "@/lib/pagamento/stripeErro";
+import CopiarPixButton from "@/components/pagamento/CopiarPixButton";
 
 const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
@@ -46,13 +47,7 @@ function PixView({ pagamento }: { pagamento: IniciarPagamentoPlanoResponse }) {
             >
               {pagamento.pixQrCode.slice(0, 60)}…
             </Box>
-            <Button
-              size="small"
-              sx={{ mt: 1 }}
-              onClick={() => { navigator.clipboard.writeText(pagamento.pixQrCode!).catch(() => {}); }}
-            >
-              Copiar código
-            </Button>
+            <CopiarPixButton codigo={pagamento.pixQrCode} />
           </Box>
         )}
 
