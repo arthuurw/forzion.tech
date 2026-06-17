@@ -4,8 +4,11 @@ using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
+using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
+using forzion.tech.Application.UseCases.Nfse.ListarNotasFiscaisTreinador;
+using forzion.tech.Application.UseCases.Nfse.ObterDanfseTreinador;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
@@ -493,9 +496,85 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
+        group.MapPut("/dados-fiscais", async (
+            [FromBody] DadosFiscaisRequest request,
+            [FromServices] DefinirDadosFiscaisTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new DefinirDadosFiscaisTreinadorCommand(
+                    userContext.PerfilId, request.TipoDocumento, request.Documento, request.RazaoSocial,
+                    request.Logradouro, request.Numero, request.Bairro, request.CodigoMunicipioIbge,
+                    request.Uf, request.Cep, request.Complemento, request.InscricaoMunicipal),
+                cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Salva os dados fiscais do treinador (tomador) usados na emissão das NFS-e")
+        .Produces<DadosFiscaisResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet("/dados-fiscais", async (
+            [FromServices] ObterDadosFiscaisTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Lê os dados fiscais do treinador autenticado")
+        .Produces<DadosFiscaisResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/notas-fiscais", async (
+            [FromServices] ListarNotasFiscaisTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            var aposId = Guid.TryParse(httpContext.Request.Query["aposId"], out var apos) ? apos : (Guid?)null;
+            _ = int.TryParse(httpContext.Request.Query["limite"], out var limite);
+
+            var result = await handler.HandleAsync(userContext.PerfilId, aposId, limite, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .WithSummary("Lista as notas fiscais do treinador autenticado (keyset)")
+        .Produces<ListarNotasFiscaisResponse>();
+
+        group.MapGet("/notas-fiscais/{id:guid}/danfse", async (
+            Guid id,
+            [FromServices] ObterDanfseTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, id, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(new { danfseRef = result.Value });
+        })
+        .WithSummary("Retorna a referência (URL) da DANFSe de uma nota fiscal do treinador")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
         return endpoints;
     }
 }
+
+public record DadosFiscaisRequest(
+    forzion.tech.Domain.Enums.TipoDocumentoFiscal TipoDocumento,
+    string Documento,
+    string RazaoSocial,
+    string Logradouro,
+    string Numero,
+    string Bairro,
+    string CodigoMunicipioIbge,
+    string Uf,
+    string Cep,
+    string? Complemento = null,
+    string? InscricaoMunicipal = null);
 
 public record IniciarOnboardingRequest(string UrlRetorno, string UrlCancelamento);
 public record AlterarModoPagamentoRequest(ModoPagamentoAluno Modo);

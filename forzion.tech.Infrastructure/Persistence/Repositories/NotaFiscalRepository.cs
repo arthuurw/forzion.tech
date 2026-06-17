@@ -38,6 +38,17 @@ public class NotaFiscalRepository(AppDbContext context) : INotaFiscalRepository
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<NotaFiscal>> ListarAdminAsync(NotaFiscalStatus? status, Guid? treinadorId, Guid? aposId, int limite, CancellationToken cancellationToken = default) =>
+        await context.NotasFiscais
+            .AsNoTracking()
+            .Where(n => (status == null || n.Status == status)
+                        && (treinadorId == null || n.TreinadorId == treinadorId)
+                        && (aposId == null || n.Id > aposId))
+            .OrderBy(n => n.Id)
+            .Take(limite)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<bool> ExisteComissaoAsync(Guid treinadorId, DateOnly competenciaInicio, CancellationToken cancellationToken = default) =>
         await context.NotasFiscais
             .AnyAsync(n => n.TreinadorId == treinadorId

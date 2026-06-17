@@ -39,6 +39,7 @@ using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
+using forzion.tech.Application.UseCases.Admin.NotasFiscais;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
@@ -586,6 +587,39 @@ public static class AdminEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet("/notas-fiscais", async (
+            [FromServices] ListarNotasFiscaisAdminHandler handler,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            var statusString = httpContext.Request.Query["status"].ToString();
+            NotaFiscalStatus status = default;
+            var statusParsed = !string.IsNullOrEmpty(statusString) && Enum.TryParse(statusString, ignoreCase: true, out status);
+            var treinadorId = Guid.TryParse(httpContext.Request.Query["treinadorId"], out var tid) ? tid : (Guid?)null;
+            var aposId = Guid.TryParse(httpContext.Request.Query["aposId"], out var apos) ? apos : (Guid?)null;
+            _ = int.TryParse(httpContext.Request.Query["limite"], out var limite);
+
+            var result = await handler.HandleAsync(
+                statusParsed ? status : null, treinadorId, aposId, limite, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .WithSummary("Lista notas fiscais do sistema com filtros (status, treinador) e paginação keyset")
+        .Produces<ListarNotasFiscaisAdminResponse>();
+
+        group.MapPost("/notas-fiscais/{id:guid}/reprocessar", async (
+            Guid id,
+            [FromServices] ReprocessarNotaFiscalHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(id, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Reenfileira a emissão de uma nota fiscal em erro")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         return endpoints;
     }

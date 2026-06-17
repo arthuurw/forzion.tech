@@ -32,6 +32,9 @@ using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
+using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
+using forzion.tech.Application.UseCases.Nfse.ListarNotasFiscaisTreinador;
+using forzion.tech.Application.UseCases.Nfse.ObterDanfseTreinador;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Domain.Shared.Errors;
@@ -830,6 +833,103 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
+    private static object DadosFiscaisBody() => new
+    {
+        TipoDocumento = "Cpf",
+        Documento = "39053344705",
+        RazaoSocial = "João Treinador",
+        Logradouro = "Rua A",
+        Numero = "100",
+        Bairro = "Centro",
+        CodigoMunicipioIbge = "3550308",
+        Uf = "SP",
+        Cep = "01001000",
+    };
+
+    private static DadosFiscaisResponse RespostaDadosFiscais => new(
+        TipoDocumentoFiscal.Cpf, "39053344705", "João Treinador", null,
+        new EnderecoFiscalResponse("Rua A", "100", null, "Centro", "3550308", "SP", "01001000"));
+
+    [Fact]
+    public async Task Put_DadosFiscais_Treinador_Retorna200()
+    {
+        _factory.DefinirDadosFiscaisHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirDadosFiscaisTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(RespostaDadosFiscais));
+
+        var response = await CriarClienteTreinador().PutAsJsonAsync("/treinador/dados-fiscais", DadosFiscaisBody());
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Put_DadosFiscais_DocumentoInvalido_Retorna422()
+    {
+        _factory.DefinirDadosFiscaisHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirDadosFiscaisTreinadorCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<DadosFiscaisResponse>(DadosFiscaisErrors.DocumentoInvalido));
+
+        var response = await CriarClienteTreinador().PutAsJsonAsync("/treinador/dados-fiscais", DadosFiscaisBody());
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task Put_DadosFiscais_RoleErrada_Retorna403()
+    {
+        var response = await CriarClienteAdmin().PutAsJsonAsync("/treinador/dados-fiscais", DadosFiscaisBody());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Get_DadosFiscais_Treinador_Retorna200()
+    {
+        _factory.ObterDadosFiscaisHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success<DadosFiscaisResponse?>(RespostaDadosFiscais));
+
+        var response = await CriarClienteTreinador().GetAsync("/treinador/dados-fiscais");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_NotasFiscais_Treinador_Retorna200()
+    {
+        _factory.ListarNotasFiscaisHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ListarNotasFiscaisResponse([], null));
+
+        var response = await CriarClienteTreinador().GetAsync("/treinador/notas-fiscais");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_Danfse_Treinador_Retorna200()
+    {
+        _factory.ObterDanfseHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success("https://nfse.example/danfse/1.pdf"));
+
+        var response = await CriarClienteTreinador().GetAsync($"/treinador/notas-fiscais/{Guid.NewGuid()}/danfse");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_Danfse_NaoDono_Retorna404()
+    {
+        _factory.ObterDanfseHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<string>(NotaFiscalErrors.NaoEncontrada));
+
+        var response = await CriarClienteTreinador().GetAsync($"/treinador/notas-fiscais/{Guid.NewGuid()}/danfse");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     // --- WebApplicationFactory ---
 
     public class TreinadorWebFactory : WebApplicationFactory<Program>
@@ -1002,6 +1102,19 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IExercicioRepository>(),
             Mock.Of<IUnitOfWork>());
 
+        public Mock<DefinirDadosFiscaisTreinadorHandler> DefinirDadosFiscaisHandlerMock { get; } = new(
+            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+
+        public Mock<ObterDadosFiscaisTreinadorHandler> ObterDadosFiscaisHandlerMock { get; } = new(
+            Mock.Of<ITreinadorRepository>());
+
+        public Mock<ListarNotasFiscaisTreinadorHandler> ListarNotasFiscaisHandlerMock { get; } = new(
+            Mock.Of<INotaFiscalRepository>());
+
+        public Mock<ObterDanfseTreinadorHandler> ObterDanfseHandlerMock { get; } = new(
+            Mock.Of<INotaFiscalRepository>());
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -1036,6 +1149,10 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<CriarExercicioHandler>();
                 services.RemoveAll<AtualizarExercicioHandler>();
                 services.RemoveAll<ExcluirExercicioHandler>();
+                services.RemoveAll<DefinirDadosFiscaisTreinadorHandler>();
+                services.RemoveAll<ObterDadosFiscaisTreinadorHandler>();
+                services.RemoveAll<ListarNotasFiscaisTreinadorHandler>();
+                services.RemoveAll<ObterDanfseTreinadorHandler>();
                 services.RemoveAll<IUserContext>();
 
                 services.AddScoped(_ => ListarAlunosHandlerMock.Object);
@@ -1063,6 +1180,10 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.AddScoped(_ => CriarExercicioHandlerMock.Object);
                 services.AddScoped(_ => AtualizarExercicioHandlerMock.Object);
                 services.AddScoped(_ => ExcluirExercicioHandlerMock.Object);
+                services.AddScoped(_ => DefinirDadosFiscaisHandlerMock.Object);
+                services.AddScoped(_ => ObterDadosFiscaisHandlerMock.Object);
+                services.AddScoped(_ => ListarNotasFiscaisHandlerMock.Object);
+                services.AddScoped(_ => ObterDanfseHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(ContaId);
