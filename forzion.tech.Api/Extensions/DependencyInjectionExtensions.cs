@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
@@ -220,6 +221,8 @@ public static class DependencyInjectionExtensions
 
     public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)
     {
+        ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("pt-BR");
+
         services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
         services.AddScoped<IValidator<SolicitarTrocaEmailCommand>, SolicitarTrocaEmailCommandValidator>();
 

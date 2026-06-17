@@ -15,7 +15,7 @@ public class AlterarSenhaCommandValidator : AbstractValidator<AlterarSenhaComman
 {
     public AlterarSenhaCommandValidator()
     {
-        RuleFor(x => x.SenhaAtual).NotEmpty();
+        RuleFor(x => x.SenhaAtual).NotEmpty().WithMessage("A senha atual é obrigatória.");
         RuleFor(x => x.NovaSenha).SenhaForte();
     }
 }
