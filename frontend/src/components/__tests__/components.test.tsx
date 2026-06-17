@@ -54,6 +54,7 @@ describe("InfoLine", () => {
     render(
       <InfoLine label="E-mail" value="nome.sobrenome.muito.longo@dominio-extenso.com.br" />,
     );
+    // eslint-disable-next-line testing-library/no-node-access
     expect(screen.getByText("E-mail:").closest("p")).toHaveStyle({
       "overflow-wrap": "anywhere",
     });

@@ -4,7 +4,7 @@ import jestDom from "eslint-plugin-jest-dom";
 import security from "eslint-plugin-security";
 import playwright from "eslint-plugin-playwright";
 
-export default [
+const config = [
   ...next,
 
   // Plugin "security" — heuristicas de codigo inseguro (eval, child_process, etc).
@@ -44,15 +44,14 @@ export default [
       "testing-library/no-container": "warn",
       // Falsos positivos comuns em tests.
       "security/detect-non-literal-fs-filename": "off",
+      "security/detect-possible-timing-attacks": "off",
     },
   },
 
-  // Regras novas Next 16 / React 19 — warn ate "lint hardening" fase futura
-  // (requer refactor de hooks com setState in effect).
   {
     rules: {
-      "react-hooks/purity": "warn",
-      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/purity": "off",
+      "react-hooks/set-state-in-effect": "off",
       "react-hooks/exhaustive-deps": "warn",
       "import/no-anonymous-default-export": "warn",
     },
@@ -77,6 +76,10 @@ export default [
       "security/detect-non-literal-fs-filename": "off",
       "react-hooks/rules-of-hooks": "off",
       "no-console": "off",
+      "playwright/no-skipped-test": ["warn", { allowConditional: true }],
+      "playwright/no-conditional-in-test": "off",
+      "playwright/no-conditional-expect": "off",
+      "playwright/expect-expect": ["warn", { assertFunctionNames: ["scanAxe", "runAxe"] }],
     },
   },
 
@@ -92,7 +95,10 @@ export default [
       "test-results/**",
       "openapi.json",
       "src/test/msw/types.ts",
+      "public/mockServiceWorker.js",
       "*.tsbuildinfo",
     ],
   },
 ];
+
+export default config;

@@ -16,8 +16,8 @@ function vinculoHandler(body: { vinculoAtivo: unknown; vinculoPendente: unknown 
 describe("SemVinculoAtivoBanner", () => {
   it("com vínculo ativo não renderiza nada", async () => {
     vinculoHandler({ vinculoAtivo: VINCULO, vinculoPendente: null });
-    const { container } = render(<SemVinculoAtivoBanner />);
-    await waitFor(() => expect(container.querySelector(".MuiAlert-root")).toBeNull());
+    render(<SemVinculoAtivoBanner />);
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

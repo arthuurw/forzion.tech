@@ -108,6 +108,7 @@ describe("/admin/planos — editar", () => {
     renderWithProviders(<PlanosAdminPage />);
     await screen.findByText(/Até 10 alunos/i);
 
+    // eslint-disable-next-line testing-library/no-node-access
     fireEvent.click(screen.getByTestId("EditIcon").closest("button")!);
     const dialog = await screen.findByRole("dialog");
     const nomeInput = within(dialog).getByLabelText(/nome/i);
@@ -123,6 +124,7 @@ describe("/admin/planos — editar", () => {
     renderWithProviders(<PlanosAdminPage />);
     await screen.findByText(/Até 10 alunos/i);
 
+    // eslint-disable-next-line testing-library/no-node-access
     fireEvent.click(screen.getByTestId("EditIcon").closest("button")!);
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /salvar/i }));
@@ -143,6 +145,7 @@ describe("/admin/planos — excluir", () => {
     renderWithProviders(<PlanosAdminPage />);
     await screen.findByText(/Até 10 alunos/i);
 
+    // eslint-disable-next-line testing-library/no-node-access
     fireEvent.click(screen.getByTestId("DeleteIcon").closest("button")!);
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /^excluir$/i }));
@@ -156,6 +159,7 @@ describe("/admin/planos — excluir", () => {
     renderWithProviders(<PlanosAdminPage />);
     await screen.findByText(/Até 10 alunos/i);
 
+    // eslint-disable-next-line testing-library/no-node-access
     fireEvent.click(screen.getByTestId("DeleteIcon").closest("button")!);
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /^excluir$/i }));

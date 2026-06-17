@@ -89,6 +89,7 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     await screen.findByText("Supino");
 
     // O span com title contendo "média" deve existir
+    // eslint-disable-next-line testing-library/no-node-access
     const infoIcon = document.querySelector('[title*="média"]');
     expect(infoIcon).not.toBeNull();
   });

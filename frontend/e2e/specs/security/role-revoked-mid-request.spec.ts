@@ -102,8 +102,9 @@ test.describe("security: role revoked DURANTE request in-flight (skip)", () => {
 
   useAuthRole(test, "admin");
 
-  test("admin inativa treinador enquanto treinador faz request lenta → 403", async () => {
-    // Stub: precisa de um endpoint backend que aceita ?delay=Nms (apenas em
-    // env Test). Sem isso, race condition real e dificil de forcar em E2E.
-  });
+  // eslint-disable-next-line playwright/expect-expect
+  test.fixme(
+    "admin inativa treinador enquanto treinador faz request lenta → 403 — precisa endpoint backend ?delay=Nms (env Test)",
+    async () => {}
+  );
 });

@@ -132,10 +132,9 @@ describe("DashboardAdminPage — a11y charts", () => {
     render(<Page />);
 
     await waitFor(() => {
-      const figure = document.querySelector(
-        "figure[aria-label='Distribuição de treinadores por status']",
-      );
-      expect(figure).toBeTruthy();
+      expect(
+        screen.getByRole("figure", { name: "Distribuição de treinadores por status" }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -144,10 +143,9 @@ describe("DashboardAdminPage — a11y charts", () => {
     render(<Page />);
 
     await waitFor(() => {
-      const figure = document.querySelector(
-        "figure[aria-label='Distribuição de treinadores por plano']",
-      );
-      expect(figure).toBeTruthy();
+      expect(
+        screen.getByRole("figure", { name: "Distribuição de treinadores por plano" }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -156,10 +154,9 @@ describe("DashboardAdminPage — a11y charts", () => {
     render(<Page />);
 
     await waitFor(() => {
-      const figure = document.querySelector(
-        "figure[aria-label='Distribuição de alunos por status']",
-      );
-      expect(figure).toBeTruthy();
+      expect(
+        screen.getByRole("figure", { name: "Distribuição de alunos por status" }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -168,10 +165,9 @@ describe("DashboardAdminPage — a11y charts", () => {
     render(<Page />);
 
     await waitFor(() => {
-      const figure = document.querySelector(
-        "figure[aria-label='Distribuição de alunos por finalidade']",
-      );
-      expect(figure).toBeTruthy();
+      expect(
+        screen.getByRole("figure", { name: "Distribuição de alunos por finalidade" }),
+      ).toBeInTheDocument();
     });
   });
 });

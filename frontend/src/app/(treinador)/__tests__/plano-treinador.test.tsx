@@ -121,7 +121,7 @@ describe("PlanoTreinadorPage", () => {
     const botoesTocar = screen.getAllByText("Trocar");
     fireEvent.click(botoesTocar[botoesTocar.length - 1]);
 
-    await waitFor(() => screen.getByText("Confirmar troca de plano"));
+    await screen.findByText("Confirmar troca de plano");
     fireEvent.click(screen.getByText("Confirmar"));
 
     await waitFor(() => {
@@ -152,7 +152,7 @@ describe("PlanoTreinadorPage", () => {
     await waitFor(() => screen.getAllByText("Trocar")[0]);
     fireEvent.click(screen.getAllByText("Trocar")[0]);
 
-    await waitFor(() => screen.getByText("Confirmar"));
+    await screen.findByText("Confirmar");
     fireEvent.click(screen.getByText("Confirmar"));
 
     await waitFor(() => {

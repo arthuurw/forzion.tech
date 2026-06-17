@@ -25,6 +25,7 @@ describe("LandingPage — plano Elite", () => {
       if (node.tagName === "A" && (node as HTMLAnchorElement).href?.includes("/cadastro/treinador")) {
         throw new Error("Elite card is wrapped in a /cadastro/treinador link");
       }
+      // eslint-disable-next-line testing-library/no-node-access
       node = node.parentElement;
     }
     expect(eliteBadge).toBeInTheDocument();
@@ -42,6 +43,7 @@ describe("LandingPage — plano Elite", () => {
         found = true;
         break;
       }
+      // eslint-disable-next-line testing-library/no-node-access
       node = node.parentElement;
     }
     expect(found).toBe(true);

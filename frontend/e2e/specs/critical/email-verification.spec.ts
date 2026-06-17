@@ -44,12 +44,9 @@ test.describe("auth: email verification", () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
+  // eslint-disable-next-line playwright/expect-expect
   test.fixme(
     "verify-email replay (mesmo raw token 2x) → 2ª chamada falha — depende de E2E_VERIFY_TOKEN_HOOK",
-    async ({ page }) => {
-      // Cobertura unit: VerificarEmailHandlerTests.HandleAsync_Replay_MesmoTokenDuasVezes_SegundaFalha_F23.
-      // E2E aguarda hook que devolva o último token raw emitido para uma conta de teste.
-      page.toString();
-    }
+    async () => {}
   );
 });
