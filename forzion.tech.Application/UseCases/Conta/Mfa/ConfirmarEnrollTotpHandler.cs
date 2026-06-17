@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
@@ -31,8 +29,6 @@ public class ConfirmarEnrollTotpHandler(
     TimeProvider timeProvider,
     IValidator<ConfirmarEnrollTotpCommand> validator)
 {
-    private const int QuantidadeRecoveryCodes = 10;
-
     public virtual Task<Result<ConfirmarEnrollTotpResult>> HandleAsync(
         ConfirmarEnrollTotpCommand command,
         CancellationToken cancellationToken = default)
@@ -64,13 +60,13 @@ public class ConfirmarEnrollTotpHandler(
         if (confirmar.IsFailure)
             return Result.Failure<ConfirmarEnrollTotpResult>(confirmar.Error!);
 
-        var raws = new List<string>(QuantidadeRecoveryCodes);
-        var entidades = new List<MfaRecoveryCode>(QuantidadeRecoveryCodes);
-        for (var i = 0; i < QuantidadeRecoveryCodes; i++)
+        var codes = RecoveryCodeGenerator.Gerar();
+        var raws = new List<string>(codes.Count);
+        var entidades = new List<MfaRecoveryCode>(codes.Count);
+        foreach (var (raw, hash) in codes)
         {
-            var raw = GerarRecoveryCode();
             raws.Add(raw);
-            entidades.Add(MfaRecoveryCode.Criar(mfa.ContaId, Hash(raw), agora).Value);
+            entidades.Add(MfaRecoveryCode.Criar(mfa.ContaId, hash, agora).Value);
         }
 
         await recoveryCodeRepository.AdicionarRangeAsync(entidades, cancellationToken).ConfigureAwait(false);
@@ -78,10 +74,4 @@ public class ConfirmarEnrollTotpHandler(
 
         return Result.Success(new ConfirmarEnrollTotpResult(raws));
     }
-
-    private static string GerarRecoveryCode() =>
-        Convert.ToHexString(RandomNumberGenerator.GetBytes(5)).ToLowerInvariant();
-
-    private static string Hash(string raw) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 }

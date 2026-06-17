@@ -19,4 +19,13 @@ public class TrustedDeviceRepository(AppDbContext context) : ITrustedDeviceRepos
             .Where(d => d.ContaId == contaId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task RemoverPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default)
+    {
+        var devices = await context.TrustedDevices
+            .Where(d => d.ContaId == contaId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        context.TrustedDevices.RemoveRange(devices);
+    }
 }

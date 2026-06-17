@@ -3015,6 +3015,108 @@
         }
       }
     },
+    "/conta/mfa/status": {
+      "get": {
+        "tags": [
+          "Conta"
+        ],
+        "summary": "Retorna o status do MFA, os códigos de recuperação restantes e os dispositivos confiáveis",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaStatusResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/conta/mfa/desabilitar": {
+      "post": {
+        "tags": [
+          "Conta"
+        ],
+        "summary": "Desabilita o MFA, limpa o segredo, os códigos de recuperação e os dispositivos confiáveis",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conta/mfa/recovery/regenerar": {
+      "post": {
+        "tags": [
+          "Conta"
+        ],
+        "summary": "Regenera os códigos de recuperação e invalida o lote anterior",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerarRecoveryCodesResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exercicios": {
       "post": {
         "tags": [
@@ -6881,6 +6983,33 @@
         "type": "integer",
         "format": "int32"
       },
+      "MfaDispositivoConfiavel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rotulo": {
+            "type": "string",
+            "nullable": true
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ultimoUsoEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "MfaFator": {
         "enum": [
           0,
@@ -6889,6 +7018,26 @@
         ],
         "type": "integer",
         "format": "int32"
+      },
+      "MfaStatusResult": {
+        "type": "object",
+        "properties": {
+          "habilitado": {
+            "type": "boolean"
+          },
+          "recoveryCodesRestantes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dispositivos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MfaDispositivoConfiavel"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "ModoPagamentoAluno": {
         "enum": [
@@ -7230,6 +7379,19 @@
           "desdeUtc": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RegenerarRecoveryCodesResult": {
+        "type": "object",
+        "properties": {
+          "recoveryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false

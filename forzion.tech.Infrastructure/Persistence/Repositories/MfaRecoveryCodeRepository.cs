@@ -14,4 +14,13 @@ public class MfaRecoveryCodeRepository(AppDbContext context) : IMfaRecoveryCodeR
             .Where(c => c.ContaId == contaId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task RemoverPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default)
+    {
+        var codes = await context.MfaRecoveryCodes
+            .Where(c => c.ContaId == contaId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        context.MfaRecoveryCodes.RemoveRange(codes);
+    }
 }

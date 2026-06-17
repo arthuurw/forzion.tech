@@ -230,6 +230,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<RedefinirSenhaHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.IniciarEnrollTotpHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.ConfirmarEnrollTotpHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.ObterStatusMfaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.DesabilitarMfaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.RegenerarRecoveryCodesHandler>();
         services.AddScoped<IEnviarCodigoMfaService, EnviarCodigoMfaService>();
         services.AddScoped<forzion.tech.Application.UseCases.Auth.StepUp.IniciarStepUpHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Auth.StepUp.VerificarStepUpHandler>();
