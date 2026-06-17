@@ -104,10 +104,36 @@ namespace forzion.tech.Api.Extensions;
 
 public static class DependencyInjectionExtensions
 {
+    private static readonly Dictionary<int, string> TitulosFrameworkPtBr = new()
+    {
+        [StatusCodes.Status400BadRequest] = "Requisição inválida.",
+        [StatusCodes.Status405MethodNotAllowed] = "Método não permitido.",
+        [StatusCodes.Status415UnsupportedMediaType] = "Formato de mídia não suportado.",
+    };
+
+    private static readonly HashSet<string> TitulosFrameworkEmIngles = new(StringComparer.Ordinal)
+    {
+        "Bad Request",
+        "Method Not Allowed",
+        "Unsupported Media Type",
+    };
+
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         services.AddExceptionHandler<GlobalExceptionHandler>();
-        services.AddProblemDetails();
+        services.AddProblemDetails(options =>
+        {
+            options.CustomizeProblemDetails = ctx =>
+            {
+                var pd = ctx.ProblemDetails;
+                var status = pd.Status ?? ctx.HttpContext.Response.StatusCode;
+                if (TitulosFrameworkPtBr.TryGetValue(status, out var titulo)
+                    && (string.IsNullOrEmpty(pd.Title) || TitulosFrameworkEmIngles.Contains(pd.Title)))
+                {
+                    pd.Title = titulo;
+                }
+            };
+        });
 
         if (environment.IsEnvironment("Test"))
         {

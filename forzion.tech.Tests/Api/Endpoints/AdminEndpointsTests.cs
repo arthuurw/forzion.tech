@@ -1008,6 +1008,19 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task Post_GrupoMuscular_JsonMalformado_RetornaTitlePtBr()
+    {
+        var conteudo = new StringContent("{ nome: ", System.Text.Encoding.UTF8, "application/json");
+
+        var response = await CriarClienteAdmin()
+            .PostAsync("/admin/grupos-musculares", conteudo);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("title").GetString().Should().Be("Requisição inválida.");
+    }
+
     // --- DELETE /admin/grupos-musculares/{id} ---
 
     [Fact]
