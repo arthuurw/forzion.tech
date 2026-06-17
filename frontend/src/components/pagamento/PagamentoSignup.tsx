@@ -5,6 +5,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { Box, Typography, Button, CircularProgress, Alert, Paper, Stack } from "@mui/material";
 import type { IniciarPagamentoPlanoResponse } from "@/types";
 import { formatarBRL } from "@/lib/utils/formatting";
+import { mapStripeError } from "@/lib/pagamento/stripeErro";
 
 const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
@@ -89,7 +90,7 @@ function CartaoForm({ valor, onPago }: { valor: number; onPago: () => void }) {
     });
 
     if (error) {
-      setErro(error.message ?? "Erro ao processar pagamento.");
+      setErro(mapStripeError(error));
       setProcessando(false);
       return;
     }
@@ -133,7 +134,7 @@ export default function PagamentoSignup({ pagamento, onPagoCartao }: Props) {
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret: pagamento.clientSecret }}>
+    <Elements stripe={stripePromise} options={{ clientSecret: pagamento.clientSecret, locale: "pt-BR" }}>
       <CartaoForm valor={pagamento.valor} onPago={onPagoCartao} />
     </Elements>
   );

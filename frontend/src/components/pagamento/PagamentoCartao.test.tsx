@@ -228,7 +228,7 @@ describe("CartaoForm — F7 partial Stripe mock", () => {
     resolveConfirm({});
   });
 
-  it("erro sem message → fallback 'Erro ao processar pagamento.'", async () => {
+  it("erro sem code nem message → fallback pt-BR curado", async () => {
     const confirmPayment = vi.fn().mockResolvedValue({ error: {} });
     vi.mocked(useStripe).mockReturnValue(realisticStripe(confirmPayment));
     vi.mocked(useElements).mockReturnValue(realisticElements());
@@ -239,6 +239,26 @@ describe("CartaoForm — F7 partial Stripe mock", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
 
-    expect(await screen.findByText("Erro ao processar pagamento.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Não foi possível processar o pagamento. Verifique os dados do cartão."),
+    ).toBeInTheDocument();
+  });
+
+  it("decline_code conhecido → cópia pt-BR curada", async () => {
+    const confirmPayment = vi.fn().mockResolvedValue({
+      error: { code: "card_declined", decline_code: "insufficient_funds", message: "Your card was declined." },
+    });
+    vi.mocked(useStripe).mockReturnValue(realisticStripe(confirmPayment));
+    vi.mocked(useElements).mockReturnValue(realisticElements());
+
+    respondPagamento({ status: "Pendente", clientSecret: "cs_test" });
+    render(<PagamentoCartao pagamentoId="p1" />);
+    await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
+
+    expect(
+      await screen.findByText("Saldo ou limite insuficiente. Tente outro cartão."),
+    ).toBeInTheDocument();
   });
 });
