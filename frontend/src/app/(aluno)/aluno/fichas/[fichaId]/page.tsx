@@ -18,6 +18,7 @@ import StatusChip from "@/components/ui/StatusChip";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 import { exportarFichaParaExcel } from "@/lib/utils/excel";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 export default function DetalheFichaAlunoPage() {
   const { fichaId } = useParams<{ fichaId: string }>();
@@ -31,8 +32,8 @@ export default function DetalheFichaAlunoPage() {
     try {
       const res = await alunoApi.getFicha(fichaId);
       setFicha(res.data);
-    } catch {
-      setError("Erro ao carregar ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar ficha."));
     } finally {
       setLoading(false);
     }

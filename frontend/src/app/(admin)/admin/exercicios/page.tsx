@@ -91,8 +91,8 @@ export default function ExerciciosAdminPage() {
       closeCriar();
       resetForm();
       reload();
-    } catch {
-      setError("Erro ao criar exercício.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao criar exercício."));
     } finally {
       setSaving(false);
     }
@@ -117,8 +117,8 @@ export default function ExerciciosAdminPage() {
       setSuccess(`"${editNome}" atualizado.`);
       closeEdit();
       reload();
-    } catch {
-      setError("Erro ao atualizar exercício.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar exercício."));
     } finally {
       setSavingEdit(false);
     }
@@ -132,8 +132,8 @@ export default function ExerciciosAdminPage() {
       setSuccess(`"${confirmExcluir.nome}" excluído.`);
       closeExcluir();
       reload();
-    } catch {
-      setError("Erro ao excluir exercício. Pode estar em uso em fichas.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir exercício. Pode estar em uso em fichas."));
     } finally {
       setLoadingExcluir(false);
     }

@@ -22,6 +22,7 @@ import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import type { TreinadorResponse, TreinadorStatus, PlanoPlataformaResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 const COLUMNS: Column[] = [
   { label: "Nome" },
@@ -169,8 +170,8 @@ export default function TreinadoresAdminPage() {
       setConfirmAprovar(null);
       setObservacaoAprovar("");
       reload();
-    } catch {
-      setError("Erro ao aprovar treinador.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao aprovar treinador."));
     } finally {
       setLoadingAprovar(false);
     }
@@ -185,8 +186,8 @@ export default function TreinadoresAdminPage() {
       setConfirmReprovar(null);
       setObservacaoReprovar("");
       reload();
-    } catch {
-      setError("Erro ao reprovar treinador.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao reprovar treinador."));
     } finally {
       setLoadingReprovar(false);
     }
@@ -201,8 +202,8 @@ export default function TreinadoresAdminPage() {
       setConfirmInativar(null);
       setObservacaoInativar("");
       reload();
-    } catch {
-      setError("Erro ao inativar treinador.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao inativar treinador."));
     } finally {
       setLoadingInativar(false);
     }
@@ -216,8 +217,8 @@ export default function TreinadoresAdminPage() {
       setSuccess(`${confirmExcluir.nome}: conta excluída permanentemente.`);
       setConfirmExcluir(null);
       reload();
-    } catch {
-      setError("Erro ao excluir treinador.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir treinador."));
     } finally {
       setLoadingExcluir(false);
     }
@@ -230,8 +231,8 @@ export default function TreinadoresAdminPage() {
       try {
         const res = await adminApi.listPlanos();
         setPlanos(res.data);
-      } catch {
-        setError("Erro ao carregar planos.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar planos."));
       }
     }
   };
@@ -244,8 +245,8 @@ export default function TreinadoresAdminPage() {
       setSuccess(`Plano "${selectedPlano.nome}" atribuido a ${planoDialog.nome}.`);
       setPlanoDialog(null);
       reload();
-    } catch {
-      setError("Erro ao atribuir plano.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atribuir plano."));
     } finally {
       setLoadingPlano(false);
     }

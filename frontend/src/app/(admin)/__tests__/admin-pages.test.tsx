@@ -188,7 +188,7 @@ describe("DetalheAlunoAdminPage", () => {
 
   it("exibe alerta de erro quando API falha", async () => {
     server.use(
-      http.get("*/admin/alunos/:id", () => HttpResponse.json({ title: "fail" }, { status: 500 })),
+      http.get("*/admin/alunos/:id", () => new HttpResponse(null, { status: 500 })),
     );
     const { default: Page } = await import("@/app/(admin)/admin/alunos/[alunoId]/page");
     render(<Page />);
@@ -243,7 +243,7 @@ describe("DetalheTreinadorAdminPage", () => {
 
   it("exibe alerta de erro quando getTreinador falha", async () => {
     server.use(
-      http.get("*/admin/treinadores/:id", () => HttpResponse.json({ title: "fail" }, { status: 500 })),
+      http.get("*/admin/treinadores/:id", () => new HttpResponse(null, { status: 500 })),
     );
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/[treinadorId]/page");
     render(<Page />);
@@ -302,7 +302,7 @@ describe("DetalheTreinoAdminPage", () => {
 
   it("exibe alerta de erro quando API falha", async () => {
     server.use(
-      http.get("*/admin/treinos/:id", () => HttpResponse.json({ title: "fail" }, { status: 404 })),
+      http.get("*/admin/treinos/:id", () => new HttpResponse(null, { status: 404 })),
     );
     const { default: Page } = await import("@/app/(admin)/admin/treinos/[treinoId]/page");
     render(<Page />);

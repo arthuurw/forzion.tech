@@ -23,6 +23,7 @@ import InfoLine from "@/components/ui/InfoLine";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
 import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
 import { formatarBRL, formatarTelefone } from "@/lib/utils/formatting";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 const FICHAS_COLS: Column[] = [
   { label: "Ficha", mobileRole: "primary" },
@@ -60,8 +61,8 @@ export default function DetalheAlunoPage() {
       if (vinculo?.pacoteId) {
         setPacote(pacotesRes.data.find((p) => p.pacoteId === vinculo.pacoteId) ?? null);
       }
-    } catch {
-      setError("Erro ao carregar dados do aluno.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar dados do aluno."));
     } finally {
       setLoading(false);
     }
@@ -76,8 +77,8 @@ export default function DetalheAlunoPage() {
       try {
         const res = await treinadorApi.listFichas({ tamanhoPagina: 100 });
         setTodasFichas(res.data.items);
-      } catch {
-        setError("Erro ao carregar fichas.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar fichas."));
       }
     }
   };
@@ -90,8 +91,8 @@ export default function DetalheAlunoPage() {
       setSuccess(`Ficha "${selectedFicha.nome}" vinculada com sucesso.`);
       setVincularOpen(false);
       load();
-    } catch {
-      setError("Erro ao vincular ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao vincular ficha."));
     } finally {
       setLoadingVincular(false);
     }

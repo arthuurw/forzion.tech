@@ -15,6 +15,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { adminApi } from "@/lib/api/admin";
 import type { PlanoPlataformaResponse, TierPlano } from "@/types";
 import { formatarBRL } from "@/lib/utils/formatting";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 const TIER_OPTIONS: { value: TierPlano; label: string; disabled?: boolean }[] = [
   { value: "Free",    label: "Free" },
@@ -54,8 +55,8 @@ export default function PlanosAdminPage() {
     try {
       const res = await adminApi.listPlanos();
       setPlanos(res.data);
-    } catch {
-      setError("Erro ao carregar planos.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar planos."));
     } finally {
       setLoading(false);
     }
@@ -72,8 +73,8 @@ export default function PlanosAdminPage() {
       setCriarOpen(false);
       setNome(""); setTier("Basic"); setMaxAlunos(""); setPreco(""); setDescricao("");
       load();
-    } catch {
-      setError("Erro ao criar plano.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao criar plano."));
     } finally {
       setSaving(false);
     }
@@ -102,8 +103,8 @@ export default function PlanosAdminPage() {
       setSuccess(`Plano "${editNome}" atualizado.`);
       setEditPlano(null);
       load();
-    } catch {
-      setError("Erro ao atualizar plano.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar plano."));
     } finally {
       setSavingEdit(false);
     }
@@ -117,8 +118,8 @@ export default function PlanosAdminPage() {
       setSuccess(`Plano "${confirmExcluir.nome}" excluído.`);
       setConfirmExcluir(null);
       load();
-    } catch {
-      setError("Erro ao excluir plano.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir plano."));
     } finally {
       setLoadingExcluir(false);
     }

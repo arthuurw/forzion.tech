@@ -19,6 +19,7 @@ import { srOnly } from "@/lib/utils/a11y";
 import type {
   TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
 } from "@/types";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 interface StatItem { name: string; value: number; color: string }
 interface PlanoStat { planoId: string; name: string; total: number; preco: number; maxAlunos: number }
@@ -106,8 +107,8 @@ export default function DashboardAdminPage() {
 
       setTotalExercicios(exerciciosRes.data.total);
       setTotalGrupos((gruposRes.data as GrupoMuscularResponse[]).length);
-    } catch {
-      setError("Erro ao carregar dados do painel.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar dados do painel."));
     } finally {
       setLoading(false);
     }
@@ -120,8 +121,8 @@ export default function DashboardAdminPage() {
     try {
       await adminApi.aprovarTreinador(id);
       await load();
-    } catch {
-      setError("Erro ao aprovar treinador.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao aprovar treinador."));
     } finally {
       setActionLoading(null);
     }
@@ -132,8 +133,8 @@ export default function DashboardAdminPage() {
     try {
       await adminApi.reprovarTreinador(id);
       await load();
-    } catch {
-      setError("Erro ao reprovar treinador.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao reprovar treinador."));
     } finally {
       setActionLoading(null);
     }
@@ -144,8 +145,8 @@ export default function DashboardAdminPage() {
     try {
       await adminApi.alterarStatusAluno(id, "Ativo");
       await load();
-    } catch {
-      setError("Erro ao aprovar aluno.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao aprovar aluno."));
     } finally {
       setActionLoading(null);
     }
@@ -156,8 +157,8 @@ export default function DashboardAdminPage() {
     try {
       await adminApi.alterarStatusAluno(id, "Inativo");
       await load();
-    } catch {
-      setError("Erro ao inativar aluno.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao inativar aluno."));
     } finally {
       setActionLoading(null);
     }
