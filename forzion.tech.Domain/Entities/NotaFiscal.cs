@@ -123,6 +123,7 @@ public class NotaFiscal : IHasDomainEvents
 
         Status = NotaFiscalStatus.BloqueadaDadosFiscais;
         UpdatedAt = agora;
+        _domainEvents.Add(new NotaFiscalBloqueadaDadosFiscaisEvent(Id, TreinadorId, agora));
         return Result.Success();
     }
 

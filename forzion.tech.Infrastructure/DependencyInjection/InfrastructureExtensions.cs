@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
@@ -55,6 +56,7 @@ public static class InfrastructureExtensions
         services.AddSingleton(BuildOutboxDurabilityRegistry());
         services.AddScoped<IOutboxEnfileirador, OutboxEnfileirador>();
         services.AddScoped<IOutboxEfeitoHandler, EvidenciaDisputaEfeitoHandler>();
+        services.AddScoped<IOutboxEfeitoHandler, EmitirNfseEfeitoHandler>();
         services.AddScoped<OutboxDispatcher>();
         services.AddScoped<OutboxProcessor>();
         services.AddOptions<OutboxOptions>().BindConfiguration("Outbox");
@@ -106,6 +108,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
         services.AddScoped<IAssinaturaTreinadorRepository, AssinaturaTreinadorRepository>();
         services.AddScoped<IPagamentoTreinadorRepository, PagamentoTreinadorRepository>();
+        services.AddScoped<INotaFiscalRepository, NotaFiscalRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
         services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
         services.AddScoped<IHealthReportConfigRepository, HealthReportConfigRepository>();
@@ -152,6 +155,30 @@ public static class InfrastructureExtensions
             .Validate(s => !s.Habilitado || s.AliquotaIss > 0,
                 "Nfse:AliquotaIss deve ser maior que zero quando a emissão está habilitada.")
             .ValidateOnStart();
+
+        if (configuration.GetValue<bool>("Nfse:Habilitado"))
+        {
+            services.AddHttpClient("nfse", client => client.Timeout = TimeSpan.FromSeconds(30))
+                .ConfigurePrimaryHttpMessageHandler(sp =>
+                {
+                    var s = sp.GetRequiredService<IOptions<NfseSettings>>().Value;
+                    var handler = new HttpClientHandler();
+                    handler.ClientCertificates.Add(
+                        new X509Certificate2(s.CertificadoPath, s.CertificadoSenha, X509KeyStorageFlags.EphemeralKeySet));
+                    return handler;
+                });
+            services.AddScoped<IEmissorNfseService>(sp =>
+                new EmissorNfseNacionalService(
+                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("nfse"),
+                    sp.GetRequiredService<IOptions<NfseSettings>>(),
+                    sp.GetRequiredService<ILogger<EmissorNfseNacionalService>>(),
+                    sp.GetRequiredService<TimeProvider>()));
+        }
+        else
+        {
+            services.AddScoped<IEmissorNfseService>(sp =>
+                new NullEmissorNfseService(sp.GetRequiredService<ILogger<NullEmissorNfseService>>()));
+        }
 
         services.AddOptions<DeliveryLogSettings>()
             .BindConfiguration("DeliveryLog")
@@ -228,6 +255,7 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, PagamentoTreinadorPagoHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, EmitirNfseAssinaturaHandler>();
 
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
@@ -285,6 +313,7 @@ public static class InfrastructureExtensions
         new OutboxDurabilityRegistry()
             .Registrar<PagamentoTreinadorPagoEvent, PagamentoTreinadorPagoHandler>(
                 e => $"evt:PagamentoTreinadorPago:{e.PagamentoTreinadorId}")
+            .RegistrarHandlerAdicional<PagamentoTreinadorPagoEvent, EmitirNfseAssinaturaHandler>()
             .Registrar<VinculoAprovadoEvent, VinculoAprovadoCriarAssinaturaAlunoHandler>(
                 e => $"evt:VinculoAprovado:{e.VinculoId}")
             // E-mail ao suporte é durável (FR-05): nunca perdido por falha transitória do Resend.
