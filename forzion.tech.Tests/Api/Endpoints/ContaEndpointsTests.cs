@@ -3,8 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using FluentAssertions;
 using FluentValidation;
+using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.AlterarSenha;
@@ -39,6 +41,8 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
     {
         _factory = factory;
     }
+
+    private const string StepUpTokenValido = "step-up-ok";
 
     private HttpClient CriarClienteAutenticado()
     {
@@ -87,16 +91,30 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
     // --- POST /conta/senha ---
 
     [Fact]
-    public async Task Post_AlterarSenha_Autenticado_Retorna204()
+    public async Task Post_AlterarSenha_ComTokenStepUp_Retorna204()
     {
         _factory.AlterarSenhaHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<AlterarSenhaCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
-        var response = await CriarClienteAutenticado().PostAsJsonAsync("/conta/senha",
+        var client = CriarClienteAutenticado();
+        client.DefaultRequestHeaders.Add("X-Step-Up-Token", StepUpTokenValido);
+
+        var response = await client.PostAsJsonAsync("/conta/senha",
             new { SenhaAtual = "SenhaAtual@123", NovaSenha = "SenhaNova@456" });
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Post_AlterarSenha_SemTokenStepUp_Retorna403()
+    {
+        var response = await CriarClienteAutenticado().PostAsJsonAsync("/conta/senha",
+            new { SenhaAtual = "SenhaAtual@123", NovaSenha = "SenhaNova@456" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
     }
 
     // --- POST /conta/logout ---
@@ -186,6 +204,7 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
             Mock.Of<IContaRepository>(),
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IRefreshTokenService>(),
+            Mock.Of<ITrustedDeviceRepository>(),
             Mock.Of<ITokenRevogadoRepository>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<IValidator<AlterarSenhaCommand>>());
@@ -229,6 +248,8 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
                 services.RemoveAll<ExportarDadosPessoaisHandler>();
                 services.RemoveAll<IDadosPessoaisExcelRenderer>();
                 services.RemoveAll<IUserContext>();
+                services.RemoveAll<IJwtService>();
+                services.RemoveAll<ITokenRevogadoRepository>();
 
                 services.AddScoped(_ => ObterPerfilHandlerMock.Object);
                 services.AddScoped(_ => AtualizarPerfilHandlerMock.Object);
@@ -236,6 +257,16 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
                 services.AddScoped(_ => LogoutHandlerMock.Object);
                 services.AddScoped(_ => ExportarHandlerMock.Object);
                 services.AddScoped<IDadosPessoaisExcelRenderer>(_ => ExcelRendererMock.Object);
+
+                var jwtMock = new Mock<IJwtService>();
+                jwtMock.Setup(j => j.ValidarTokenEscopo("step-up-ok", MfaScopes.StepUp))
+                    .Returns(new EscopoValidado(ContaId, Guid.NewGuid()));
+                services.AddScoped(_ => jwtMock.Object);
+
+                var tokenRevogadoMock = new Mock<ITokenRevogadoRepository>();
+                tokenRevogadoMock.Setup(r => r.EstaRevogadoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
+                services.AddScoped(_ => tokenRevogadoMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(ContaId);

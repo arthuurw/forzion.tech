@@ -154,7 +154,7 @@ public static class AuthEndpoints
             [FromServices] RedefinirSenhaHandler handler,
             CancellationToken cancellationToken) =>
         {
-            var result = await handler.HandleAsync(new RedefinirSenhaCommand(request.Token, request.NovaSenha), cancellationToken);
+            var result = await handler.HandleAsync(new RedefinirSenhaCommand(request.Token, request.NovaSenha, request.CodigoTotp), cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok();
         })
@@ -258,6 +258,6 @@ public record RegistrarAlunoRequest(
     DateTime? ConsentimentoDadosSaudeEm = null);
 public record IniciarPagamentoPlanoRequest(MetodoPagamento Metodo);
 public record ForgotPasswordRequest(string Email);
-public record ResetPasswordRequest(string Token, string NovaSenha);
+public record ResetPasswordRequest(string Token, string NovaSenha, string? CodigoTotp = null);
 public record VerifyEmailRequest(string Token);
 public record ResendVerificationRequest(string Email);

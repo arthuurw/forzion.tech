@@ -1,4 +1,5 @@
 using forzion.tech.Api.Extensions;
+using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Conta.AlterarSenha;
 using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
@@ -53,9 +54,11 @@ public static class ContaEndpoints
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
+        .AddEndpointFilter<RequerStepUpFilter>()
         .WithSummary("Altera a senha do usuário autenticado")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
