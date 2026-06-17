@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { extractApiErrorInfo } from "@/lib/api/extractApiError";
+import { requestStepUp } from "@/lib/auth/stepUpController";
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/backend";
 
@@ -10,7 +11,7 @@ export const apiClient = axios.create({
 
 // Flag de retry por request: garante UMA tentativa de refresh (sem loop se o retry
 // também 401 — ex.: família revogada / refresh já rotacionado).
-type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean; _stepUpRetry?: boolean };
 
 // Promise de refresh em voo, compartilhada entre 401s concorrentes (anti-tempestade):
 // N requests que estouram juntos disparam 1 só chamada a /api/auth/refresh.
@@ -68,6 +69,16 @@ apiClient.interceptors.response.use(
           if (renovou) return apiClient(original);
         }
         window.location.href = "/login";
+      } else if (status === 403 && code === "step_up_requerido") {
+        const original = error.config as RetriableConfig | undefined;
+        if (original && !original._stepUpRetry) {
+          original._stepUpRetry = true;
+          const token = await requestStepUp();
+          if (token) {
+            original.headers.set("X-Step-Up-Token", token);
+            return apiClient(original);
+          }
+        }
       } else if (status === 403 && code === "ASSINATURA_INADIMPLENTE") {
         // Dispatch evento global. AppLayout (ou outro listener) renderiza toast.
         // Nao redireciona: aluno pode ja estar no portal; so notifica.

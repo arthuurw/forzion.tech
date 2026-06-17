@@ -5,11 +5,13 @@ import type {
   IniciarPagamentoPlanoResponse,
   LoginResponse,
   MetodoPagamento,
+  MfaPendingResult,
   PacoteResponse,
   PlanoPlataformaResponse,
   ProblemDetails,
   TreinadorResponse,
 } from "@/types";
+import { type MfaFatorValue } from "@/lib/api/mfa";
 
 // Thrown when an auth route responds non-2xx. Carries status + parsed ProblemDetails
 // (when the body is JSON) so callers can branch on status/code without re-reading res.
@@ -82,9 +84,23 @@ export interface RegisterTreinadorPayload {
   modoPagamentoAluno: string;
 }
 
+export interface CompletarMfaPayload {
+  codigo: string;
+  fator: MfaFatorValue;
+  lembrarDispositivo: boolean;
+}
+
 export const authApi = {
   login(payload: LoginPayload) {
-    return postJson<LoginResponse>("/api/auth", payload);
+    return postJson<LoginResponse | MfaPendingResult>("/api/auth", payload);
+  },
+
+  completarMfa(payload: CompletarMfaPayload) {
+    return postJson<LoginResponse>("/api/auth/mfa/verificar", payload);
+  },
+
+  enviarCodigoEmailMfa() {
+    return postJson<unknown>("/api/auth/mfa/email/enviar", {});
   },
 
   resendVerification(email: string) {

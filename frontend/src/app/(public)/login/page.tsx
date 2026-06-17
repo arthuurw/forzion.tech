@@ -1,5 +1,7 @@
 "use client";
-import { Box, Typography, Button, CircularProgress, Divider } from "@mui/material";
+import {
+  Box, Typography, Button, CircularProgress, Divider, TextField, Checkbox, FormControlLabel, Stack,
+} from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +14,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import { useAuth, homeRouteFor } from "@/lib/auth/context";
 import { loginSchema, type LoginFormData } from "@/lib/validations/common";
 import { authApi, AuthApiError } from "@/lib/api/auth";
+import { MfaFator, type MfaFatorValue } from "@/lib/api/mfa";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export default function LoginPage() {
@@ -23,6 +26,12 @@ export default function LoginPage() {
   const [reenviando, setReenviando] = useState(false);
   const [reenviado, setReenviado] = useState(false);
   const [bloqueio, setBloqueio] = useState<{ titulo: string; mensagem: string } | null>(null);
+  const [mfaPendente, setMfaPendente] = useState(false);
+  const [mfaCodigo, setMfaCodigo] = useState("");
+  const [mfaFator, setMfaFator] = useState<MfaFatorValue>(MfaFator.Totp);
+  const [lembrar, setLembrar] = useState(false);
+  const [emailEnviado, setEmailEnviado] = useState(false);
+  const [mfaError, setMfaError] = useState("");
   const methods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -44,8 +53,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const payload = await authApi.login({ email: data.email, senha: data.password });
-      login(payload);
-      router.push(homeRouteFor(payload.tipoConta));
+      if ("contaId" in payload) {
+        login(payload);
+        router.push(homeRouteFor(payload.tipoConta));
+      } else {
+        setMfaPendente(true);
+      }
     } catch (e) {
       if (!(e instanceof AuthApiError)) {
         setError("Não foi possível conectar ao servidor.");
@@ -88,6 +101,48 @@ export default function LoginPage() {
     }
   };
 
+  const completarMfa = async () => {
+    if (!mfaCodigo.trim()) return;
+    setMfaError("");
+    setLoading(true);
+    try {
+      const payload = await authApi.completarMfa({
+        codigo: mfaCodigo.trim(),
+        fator: mfaFator,
+        lembrarDispositivo: lembrar,
+      });
+      login(payload);
+      router.push(homeRouteFor(payload.tipoConta));
+    } catch (e) {
+      if (e instanceof AuthApiError) {
+        setMfaError(e.problem?.detail ?? e.problem?.title ?? "Código inválido.");
+      } else {
+        setMfaError("Não foi possível conectar ao servidor.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const usarCodigoEmail = async () => {
+    setMfaError("");
+    try {
+      await authApi.enviarCodigoEmailMfa();
+      setMfaFator(MfaFator.Email);
+      setMfaCodigo("");
+      setEmailEnviado(true);
+    } catch {
+      setMfaError("Não foi possível enviar o código por e-mail.");
+    }
+  };
+
+  const usarRecovery = () => {
+    setMfaError("");
+    setMfaFator(MfaFator.RecoveryCode);
+    setMfaCodigo("");
+    setEmailEnviado(false);
+  };
+
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -99,6 +154,67 @@ export default function LoginPage() {
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
+      {mfaPendente ? (
+        <Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {mfaFator === MfaFator.Email
+              ? "Digite o código que enviamos para o seu e-mail."
+              : mfaFator === MfaFator.RecoveryCode
+                ? "Digite um dos seus códigos de recuperação."
+                : "Digite o código atual do seu aplicativo autenticador."}
+          </Typography>
+          <AlertBanner open={!!mfaError} message={mfaError} onClose={() => setMfaError("")} />
+          {emailEnviado && mfaFator === MfaFator.Email && (
+            <AlertBanner
+              open
+              severity="success"
+              message="Código enviado para o seu e-mail."
+              onClose={() => setEmailEnviado(false)}
+            />
+          )}
+          <Box
+            component="form"
+            onSubmit={(e) => { e.preventDefault(); completarMfa(); }}
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          >
+            <TextField
+              label={mfaFator === MfaFator.RecoveryCode ? "Código de recuperação" : "Código de verificação"}
+              value={mfaCodigo}
+              onChange={(e) => setMfaCodigo(e.target.value)}
+              slotProps={{ htmlInput: { inputMode: mfaFator === MfaFator.RecoveryCode ? "text" : "numeric", autoComplete: "one-time-code", "aria-label": "Código de verificação" } }}
+              autoFocus
+            />
+            <FormControlLabel
+              control={<Checkbox checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} />}
+              label="Lembrar este dispositivo por 30 dias"
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              size="large"
+              fullWidth
+              disabled={loading || !mfaCodigo.trim()}
+              startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
+            >
+              Verificar
+            </Button>
+          </Box>
+          <Stack spacing={1} sx={{ mt: 2 }}>
+            {mfaFator !== MfaFator.Email && (
+              <Button variant="text" size="small" onClick={usarCodigoEmail}>
+                Usar código por e-mail
+              </Button>
+            )}
+            {mfaFator !== MfaFator.RecoveryCode && (
+              <Button variant="text" size="small" onClick={usarRecovery}>
+                Usar código de recuperação
+              </Button>
+            )}
+          </Stack>
+        </Box>
+      ) : (
+        <>
       {emailNaoVerificado && (
         <Box
           sx={{
@@ -187,6 +303,8 @@ export default function LoginPage() {
           </Link>
         </Typography>
       </Box>
+        </>
+      )}
     </Box>
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { LoginResponse } from "@/types";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
-import { applySessionCookies } from "@/lib/auth/sessionCookies";
+import { applySessionCookies, applyMfaPendingCookie } from "@/lib/auth/sessionCookies";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
@@ -21,9 +21,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const trustedDevice = request.cookies.get("trusted_device")?.value;
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(trustedDevice ? { Cookie: `trusted_device=${trustedDevice}` } : {}),
+    },
     body: JSON.stringify(body),
   });
 
@@ -34,10 +38,19 @@ export async function POST(request: NextRequest) {
 
   const data: LoginResponse = await res.json();
 
-  // `refresh` é httpOnly e NÃO pode vazar no corpo da resposta (fica só no cookie).
-  const { token, refreshToken, ...clientSafeData } = data;
-  const response = NextResponse.json(clientSafeData);
-  applySessionCookies(response, { token, refreshToken, tipoConta: data.tipoConta });
+  if (data.mfaRequerido && data.mfaPendingToken) {
+    const response = NextResponse.json({ mfaRequerido: true, mfaPendingExpiraEm: data.mfaPendingExpiraEm ?? null });
+    applyMfaPendingCookie(response, data.mfaPendingToken);
+    return response;
+  }
+
+  const response = NextResponse.json({
+    tipoConta: data.tipoConta,
+    contaId: data.contaId,
+    perfilId: data.perfilId,
+    nome: data.nome,
+  });
+  applySessionCookies(response, { token: data.token, refreshToken: data.refreshToken, tipoConta: data.tipoConta });
 
   return response;
 }
