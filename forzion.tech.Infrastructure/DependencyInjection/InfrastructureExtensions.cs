@@ -78,6 +78,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddSingleton<ITotpService, OtpNetTotpService>();
 
         services.AddScoped<IContaRepository, ContaRepository>();
         services.AddScoped<IAlunoRepository, AlunoRepository>();
