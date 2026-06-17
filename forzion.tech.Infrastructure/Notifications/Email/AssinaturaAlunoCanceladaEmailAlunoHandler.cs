@@ -53,7 +53,7 @@ public sealed class AssinaturaAlunoCanceladaEmailAlunoHandler(
         var treinador = await treinadorRepository
             .ObterPorIdAsync(domainEvent.TreinadorId, cancellationToken)
             .ConfigureAwait(false);
-        var nomeTreinador = treinador?.Nome ?? "seu treinador";
+        var nomeTreinador = treinador?.Nome ?? "quem te treina";
 
         await emailService.EnviarAsync(
             emailDestino,

@@ -40,7 +40,7 @@ export default function FichasAlunoPage() {
       <DataList
         loading={loading}
         items={fichas}
-        emptyMessage="Nenhum protocolo de treino disponível. Seu treinador ainda não vinculou fichas à sua conta."
+        emptyMessage="Nenhum protocolo de treino disponível. Quem te treina ainda não vinculou fichas à sua conta."
         columns={COLUMNS}
         rowKey={(f) => f.treinoAlunoId}
         onRowClick={(f) => router.push(`/aluno/fichas/${f.treinoAlunoId}`)}

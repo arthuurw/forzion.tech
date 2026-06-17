@@ -126,6 +126,6 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     fireEvent.click(screen.getByRole("button", { name: /Finalizar treino/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Confirmar registro/ }));
 
-    expect(await screen.findByText(/não tem um treinador ativo/i)).toBeInTheDocument();
+    expect(await screen.findByText(/não tem um vínculo ativo/i)).toBeInTheDocument();
   });
 });

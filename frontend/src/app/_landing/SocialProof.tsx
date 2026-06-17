@@ -30,7 +30,7 @@ export default function SocialProof({ testimonials, count }: SocialProofProps) {
           </Typography>
           {count !== undefined && count > 0 && (
             <Typography variant="subtitle1" sx={{ mt: 2, color: "text.secondary" }}>
-              +{count} treinadores cadastrados
+              +{count} treinadores na plataforma
             </Typography>
           )}
         </Box>

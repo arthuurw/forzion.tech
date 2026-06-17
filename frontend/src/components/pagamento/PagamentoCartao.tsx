@@ -113,7 +113,7 @@ export default function PagamentoCartao({ pagamentoId, onPago }: Props) {
   if (!pagamento?.clientSecret) {
     return (
       <Alert severity="error">
-        Dados de pagamento indisponíveis. Solicite uma nova cobrança ao seu treinador.
+        Dados de pagamento indisponíveis. Solicite uma nova cobrança a quem te treina.
       </Alert>
     );
   }
@@ -122,7 +122,7 @@ export default function PagamentoCartao({ pagamentoId, onPago }: Props) {
     return (
       <Alert severity="error">
         {pagamento.status === "Falhou" ? "Pagamento falhou." : "Pagamento expirado."}{" "}
-        Solicite uma nova cobrança ao seu treinador.
+        Solicite uma nova cobrança a quem te treina.
       </Alert>
     );
   }

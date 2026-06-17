@@ -107,7 +107,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
       <Stack spacing={1} sx={{ alignItems: "center", py: 2 }}>
         <Chip label={pagamento.status === "Expirado" ? "QR expirado" : "Pagamento falhou"} color="error" />
         <Typography variant="body2" color="text.secondary">
-          Solicite uma nova cobrança ao seu treinador.
+          Solicite uma nova cobrança a quem te treina.
         </Typography>
       </Stack>
     );

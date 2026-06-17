@@ -98,7 +98,7 @@ export default function AlunosTreinadorPage() {
     setLoadingAprovar(true);
     try {
       await treinadorApi.aprovarVinculo(aprovarDialog.vinculoId, selectedPacote.pacoteId, trarFichas);
-      setSuccess(`${aprovarDialog.nomeAluno} aprovado com o pacote "${selectedPacote.nome}".`);
+      setSuccess(`${aprovarDialog.nomeAluno}: vínculo aprovado com o pacote "${selectedPacote.nome}".`);
       setAprovarDialog(null);
       reload();
     } catch (err) {

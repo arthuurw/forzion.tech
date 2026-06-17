@@ -31,6 +31,6 @@ describe("SocialProof", () => {
 
   it("exibe contador quando fornecido com valor positivo", () => {
     render(<SocialProof testimonials={[]} count={150} />);
-    expect(screen.getByText("+150 treinadores cadastrados")).toBeInTheDocument();
+    expect(screen.getByText("+150 treinadores na plataforma")).toBeInTheDocument();
   });
 });

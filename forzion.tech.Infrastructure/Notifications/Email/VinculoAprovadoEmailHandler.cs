@@ -49,7 +49,7 @@ public sealed class VinculoAprovadoEmailHandler(
             .ObterPorIdAsync(domainEvent.TreinadorId, cancellationToken)
             .ConfigureAwait(false);
 
-        var nomeTreinador = treinador?.Nome ?? "seu treinador";
+        var nomeTreinador = treinador?.Nome ?? "Quem te treina";
 
         await emailService.EnviarAsync(
             emailDestino,

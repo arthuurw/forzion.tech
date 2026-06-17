@@ -190,7 +190,7 @@ export default function CadastroAlunoPage() {
         Criar conta como aluno
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Selecione seu treinador e o plano de atendimento para iniciar.
+        Selecione o treinador e o plano de atendimento para iniciar.
       </Typography>
 
       {isMobile ? (
@@ -394,7 +394,7 @@ export default function CadastroAlunoPage() {
             <FormTextField
               name="observacoesAdicionais"
               label="Observações adicionais (opcional)"
-              placeholder="Qualquer informação relevante para o seu treinador..."
+              placeholder="Qualquer informação relevante para quem vai te treinar..."
               multiline
               rows={3}
               size="small"

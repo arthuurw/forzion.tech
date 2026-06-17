@@ -102,13 +102,13 @@ describe("PagamentoPix", () => {
   it("estado Expirado → exibe mensagem", async () => {
     respondPagamento({ status: "Expirado", pixQrCode: null, pixQrCodeUrl: null });
     render(<PagamentoPix pagamentoId="pay-1" />);
-    expect(await screen.findByText("Solicite uma nova cobrança ao seu treinador.")).toBeInTheDocument();
+    expect(await screen.findByText("Solicite uma nova cobrança a quem te treina.")).toBeInTheDocument();
   });
 
   it("estado Falhou → exibe mensagem", async () => {
     respondPagamento({ status: "Falhou", pixQrCode: null, pixQrCodeUrl: null });
     render(<PagamentoPix pagamentoId="pay-1" />);
-    expect(await screen.findByText("Solicite uma nova cobrança ao seu treinador.")).toBeInTheDocument();
+    expect(await screen.findByText("Solicite uma nova cobrança a quem te treina.")).toBeInTheDocument();
   });
 
   it("estado Pendente → exibe 'Pague via Pix' e botão copiar", async () => {

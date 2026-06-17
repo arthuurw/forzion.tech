@@ -127,7 +127,7 @@ public class AssinaturaAlunoCanceladaEmailAlunoHandlerTests
         _emailService.Verify(e => e.EnviarAsync(
             It.IsAny<string>(),
             It.IsAny<string>(),
-            It.Is<string>(html => html.Contains("seu treinador")),
+            It.Is<string>(html => html.Contains("quem te treina")),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

@@ -24,7 +24,7 @@ describe("SemVinculoAtivoBanner", () => {
   it("sem vínculo exibe aviso de histórico read-only", async () => {
     vinculoHandler({ vinculoAtivo: null, vinculoPendente: null });
     render(<SemVinculoAtivoBanner />);
-    expect(await screen.findByText(/não tem um treinador ativo/)).toBeInTheDocument();
+    expect(await screen.findByText(/não tem um vínculo ativo/)).toBeInTheDocument();
     expect(screen.getByText(/registro de novos treinos fica bloqueado/)).toBeInTheDocument();
   });
 
