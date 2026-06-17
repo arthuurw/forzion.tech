@@ -40,4 +40,17 @@ describe("HistoricoAlunoPage — erro nos indicadores", () => {
       await screen.findByText("Não foi possível carregar os indicadores do histórico."),
     ).toBeInTheDocument();
   });
+
+  it("getMinhaProgressao falha → exibe erro na seção de progressão (não gráfico vazio)", async () => {
+    server.use(
+      http.get("*/aluno/execucoes", () => HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 20 })),
+      http.get("*/aluno/progressao", () => new HttpResponse(null, { status: 500 })),
+    );
+    const { default: Page } = await import("@/app/(aluno)/aluno/historico/page");
+    render(<Page />);
+    expect(
+      await screen.findByText("Não foi possível carregar a progressão."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Nenhuma execução registrada no período.")).not.toBeInTheDocument();
+  });
 });

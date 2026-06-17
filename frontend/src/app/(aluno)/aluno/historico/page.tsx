@@ -67,6 +67,7 @@ export default function HistoricoAlunoPage() {
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [exercicios, setExercicios] = useState<ExercicioProgressao[]>([]);
   const [progLoading, setProgLoading] = useState(true);
+  const [progError, setProgError] = useState("");
 
   const fetcher = useCallback(
     (p: number, ps: number) => alunoApi.listExecucoes({ pagina: p + 1, tamanhoPagina: ps }).then((r) => r.data),
@@ -89,8 +90,8 @@ export default function HistoricoAlunoPage() {
     setProgLoading(true);
     const { de, ate } = periodoParaDatas(periodo);
     alunoApi.getMinhaProgressao(de, ate)
-      .then((res) => { if (active) setExercicios(res.data.exercicios); })
-      .catch(() => { if (active) setExercicios([]); })
+      .then((res) => { if (active) { setExercicios(res.data.exercicios); setProgError(""); } })
+      .catch((err) => { if (active) { setExercicios([]); setProgError(extractApiError(err, "Não foi possível carregar a progressão.")); } })
       .finally(() => { if (active) setProgLoading(false); });
     return () => { active = false; };
   }, [periodo]);
@@ -173,6 +174,12 @@ export default function HistoricoAlunoPage() {
               </Grid>
             ))}
           </Grid>
+        ) : progError ? (
+          <Card variant="outlined">
+            <CardContent sx={{ textAlign: "center", py: 3 }}>
+              <Typography color="error">{progError}</Typography>
+            </CardContent>
+          </Card>
         ) : exercicios.length === 0 ? (
           <Card variant="outlined">
             <CardContent sx={{ textAlign: "center", py: 3 }}>
