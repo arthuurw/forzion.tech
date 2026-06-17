@@ -22,6 +22,7 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
 
     public async Task<IReadOnlyList<ExecucaoTreino>> ListarPorAlunoAsync(Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default) =>
         await _context.ExecucoesTreino
+            .AsNoTracking()
             .Where(e => e.AlunoId == alunoId)
             .OrderByDescending(e => e.DataExecucao)
             .Skip((pagina - 1) * tamanhoPagina)

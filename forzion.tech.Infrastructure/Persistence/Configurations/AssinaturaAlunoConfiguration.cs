@@ -8,7 +8,8 @@ public class AssinaturaAlunoConfiguration : IEntityTypeConfiguration<AssinaturaA
 {
     public void Configure(EntityTypeBuilder<AssinaturaAluno> builder)
     {
-        builder.ToTable("assinaturas_aluno");
+        builder.ToTable("assinaturas_aluno", t =>
+            t.HasCheckConstraint("ck_assinaturas_aluno_valor_nao_negativo", "\"valor\" >= 0"));
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.VinculoId).IsRequired();

@@ -5,6 +5,7 @@ using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 using Moq;
 using forzion.tech.Tests.Builders;
@@ -15,6 +16,7 @@ public class ReativarVinculoHandlerTests
 {
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
+    private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -26,6 +28,7 @@ public class ReativarVinculoHandlerTests
         _handler = new ReativarVinculoHandler(
             _vinculoRepo.Object,
             _alunoRepo.Object,
+            _pacoteRepo.Object,
             _limiteService.Object,
             _logRepo.Object,
             _unitOfWork.Object, TimeProvider.System,
@@ -57,6 +60,25 @@ public class ReativarVinculoHandlerTests
         result.Value.AlunoId.Should().Be(aluno.Id);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PacoteDeOutroTreinador_FalhaSemCriar()
+    {
+        var treinadorId = Guid.NewGuid();
+        var aluno = CriarAluno();
+        var pacoteAlheio = Pacote.Criar(Guid.NewGuid(), "Mensal", 100m, DateTime.UtcNow).Value;
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync((VinculoTreinadorAluno?)null);
+        _limiteService.Setup(s => s.ValidarAsync(treinadorId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteAlheio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacoteAlheio);
+
+        var result = await _handler.HandleAsync(new ReativarVinculoCommand(treinadorId, aluno.Id, pacoteAlheio.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be(PacoteErrors.NaoPertenceTreinador.Code);
+        _vinculoRepo.Verify(r => r.AdicionarAsync(It.IsAny<VinculoTreinadorAluno>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

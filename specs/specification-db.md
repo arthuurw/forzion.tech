@@ -12,9 +12,9 @@ Notação coluna: `nome(tipo, NN|null[, nota])`. PK / FK(col→tabela, ONDELETE)
 - PostgreSQL 17 (Supabase). EF Core 8, snake_case naming convention. Stack macro da app em AGENTS.md §STACK.
 - Migrations SCHEMA-AGNOSTIC: `AppDbContext` SEM `HasDefaultSchema`. Schema-alvo vem do `search_path` da connection (ex.: `Search Path=homolog`). Mesmas migrations aplicam em qualquer schema.
 - **History table — RUNTIME pina o schema; DESIGN-TIME não** (gotcha Npgsql 8.0.11): `NpgsqlHistoryRepository.ExistsSql` checa a existência da `__EFMigrationsHistory` com schema HARDCODED em `public` (`n.nspname = TableSchema ?? "public"`), mas CREATE/leitura usam o search_path. Sem pinar, num alvo cujo `public` NÃO tem a history (ex.: dry-run clonando só `homolog`), o Exists dá falso-negativo → CREATE plano cai no search_path e colide (`42P07 already exists`). Por isso o **runtime** (`InfrastructureExtensions`, usado por `app migrate`/dry-run) pina `MigrationsHistoryTable("__EFMigrationsHistory", <1º schema do Search Path>)` via `MigrationHistorySchemaResolver` → Exists/CREATE/leitura no MESMO schema. O **design-time** (`AppDbContextFactory`) fica SEM schema (unqualified) de propósito: `dotnet ef migrations script` precisa gerar SQL portável e reusável por schema (§APLICAÇÃO DE MIGRATIONS depende de unqualified + `SET search_path`).
-- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 36 tabelas BASE cada (34 entidades EF + `ai_token_usage` não-EF + `__EFMigrationsHistory` de controle) após todas as 37 migrations aplicadas; paridade dos 3 schemas verificada 2026-06-16 (migration history + table set idênticos). Nível atual por schema pode divergir — conferir antes (§APLICAÇÃO DE MIGRATIONS §GOTCHA).
+- Schemas com estrutura IDÊNTICA: `homolog` (deploy ativo, canônico), `develop` (sandbox), `public` (sandbox/legado sincronizado). 36 tabelas BASE cada (34 entidades EF + `ai_token_usage` não-EF + `__EFMigrationsHistory` de controle) após todas as 39 migrations aplicadas (table count inalterado nas 2 últimas: `DeliveryLogPseudonimizarRecipient` e `AdicionarCheckConstraintsIntegridade` não criam/removem tabela); paridade dos 3 schemas verificada 2026-06-16 no nível de então — as 2 últimas migrations podem não estar aplicadas nos 3 schemas. Nível atual por schema pode divergir — conferir antes (§APLICAÇÃO DE MIGRATIONS §GOTCHA).
 - `ai_token_usage`: existe nos 3 schemas mas NÃO é gerenciada por migration EF (criada fora do EF). Recriar via `CREATE TABLE <schema>.ai_token_usage (LIKE homolog.ai_token_usage INCLUDING ALL)`.
-- 37 migrations EF (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarTokenEpochConta`). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` = versão do pacote em `forzion.tech.Infrastructure.csproj`, não fixar aqui).
+- 39 migrations EF (arquivos não-Designer/Snapshot em `Infrastructure/Migrations/`; última `AdicionarCheckConstraintsIntegridade`). Tabela de controle `__EFMigrationsHistory` por schema (colunas snake_case: `migration_id` varchar(150) PK, `product_version` varchar(32); EF `ProductVersion` = versão do pacote em `forzion.tech.Infrastructure.csproj`, não fixar aqui).
 - `AdicionarConcurrencyTokenTreinador`: mapeia o system column `xmin` de `treinadores` como concurrency token (concorrência otimista). NÃO gera DDL — o `AddColumn` no `.cs` é artefato de modelo; o SQL gerado só insere a linha de history. Aplicar é no-op estrutural (só registra a migration).
 
 ## APLICAÇÃO DE MIGRATIONS (multi-schema — descobertas operacionais)
@@ -39,6 +39,17 @@ Projeto Supabase único: `forzion` (ref `fdpdbtiuuitndbeujcbj`, região sa-east-
 - FK default ON DELETE RESTRICT. CASCADE só em filhos de composição (ver por tabela).
 - Tokens (password_reset/email_verification/refresh): armazenam SHA-256 hex(64) do token; cru só no e-mail (reset/verify) ou no cookie httpOnly (refresh); `conta_id` SEM FK física (só índice). EXCEÇÃO: `refresh_tokens.familia_id` TEM FK física com ON DELETE CASCADE (GC/purga da família apaga os tokens no nível do banco).
 - UQ parciais impõem regra de negócio (pagamentos 1 Pendente/assinatura; treino_alunos 1 Ativo/treino).
+- CHECK constraints impõem invariantes de domínio no último nível (barreira contra write fora do app/bug) — ver §CHECK CONSTRAINTS. Espelhados nos `*Configuration` via `ToTable(t => t.HasCheckConstraint(...))` (snapshot em sync); writes legítimos já passam (app valida antes), zero impacto em UX.
+
+## CHECK CONSTRAINTS
+Migration `AdicionarCheckConstraintsIntegridade` (DB-02, 2026-06-16; schema-agnostic, sem qualificador). Nome = `ck_<tabela>_<regra>`. Bounds alinhadas às factories de domínio (não rejeitam dado legítimo):
+- `pacotes`: `preco >= 0`.
+- `planos_plataforma`: `preco >= 0`; `max_alunos > 0`.
+- `assinaturas_aluno`: `valor >= 0`. `assinaturas_treinador`: `valor >= 0`.
+- `pagamentos`: `valor >= 0`. `pagamentos_treinador`: `valor >= 0`.
+- `treino_exercicio_series`: `quantidade > 0`; `repeticoes_min > 0`; `repeticoes_max IS NULL OR repeticoes_max >= repeticoes_min`.
+- `execucoes_exercicio`: `series_executadas > 0`; `repeticoes_executadas > 0`.
+- Violação → `PostgresException` SqlState `23514` (check_violation); via SaveChanges vem envolto em `DbUpdateException`.
 
 ## ENUMS — BINDING DE COLUNA
 Valores e semântica em [specification-model] §4. Binding enum→coluna é 1:1 MECÂNICO (`text` via `HasConversion<string>`, valor = nome do enum; coluna = snake_case do campo) e §TABELAS já lista o enum de cada coluna — aqui só EXCEÇÕES/notas db-specific:

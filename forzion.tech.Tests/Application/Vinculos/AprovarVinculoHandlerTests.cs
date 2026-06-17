@@ -20,6 +20,7 @@ public class AprovarVinculoHandlerTests
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
+    private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<ILimiteTreinadorService> _limiteService = new();
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -52,6 +53,7 @@ public class AprovarVinculoHandlerTests
             _alunoRepo.Object,
             _treinadorRepo.Object,
             _contaRecebimentoRepo.Object,
+            _pacoteRepo.Object,
             _limiteService.Object,
             _logRepo.Object,
             _unitOfWork.Object,
@@ -95,6 +97,23 @@ public class AprovarVinculoHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(VinculoStatus.Ativo);
         _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PacoteDeOutroTreinador_FalhaSemAprovar()
+    {
+        var treinadorId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        var pacoteAlheio = Pacote.Criar(Guid.NewGuid(), "Mensal", 100m, DateTime.UtcNow).Value;
+        _vinculoRepo.Setup(r => r.ObterPorIdAsync(vinculo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteAlheio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacoteAlheio);
+
+        var result = await _handler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacoteAlheio.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be(PacoteErrors.NaoPertenceTreinador.Code);
+        _logRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

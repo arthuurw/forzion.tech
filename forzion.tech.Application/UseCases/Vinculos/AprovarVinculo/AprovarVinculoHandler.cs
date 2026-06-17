@@ -17,6 +17,7 @@ public class AprovarVinculoHandler(
     IAlunoRepository alunoRepository,
     ITreinadorRepository treinadorRepository,
     IContaRecebimentoRepository contaRecebimentoRepository,
+    IPacoteRepository pacoteRepository,
     ILimiteTreinadorService limiteTreinadorService,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
@@ -51,6 +52,13 @@ public class AprovarVinculoHandler(
             var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
             if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto)
                 return Result.Failure<VinculoResponse>(TreinadorErrors.SemOnboarding);
+        }
+
+        if (command.PacoteId != Guid.Empty)
+        {
+            var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false);
+            if (pacote is not null && pacote.TreinadorId != vinculo.TreinadorId)
+                return Result.Failure<VinculoResponse>(PacoteErrors.NaoPertenceTreinador);
         }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;

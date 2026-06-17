@@ -137,9 +137,12 @@ public class FluxoCompletoTests
         contaOnboarded.ConfirmarOnboarding(DateTime.UtcNow);
         contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(contaOnboarded);
 
+        var pacoteRepo = new Mock<IPacoteRepository>();
+        pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
         var handler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
-            _alunoRepo.Object, _treinadorRepo.Object, contaRecebimentoRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
+            _alunoRepo.Object, _treinadorRepo.Object, contaRecebimentoRepo.Object, pacoteRepo.Object, limiteService, _logRepo.Object, _unitOfWork.Object,
             mockTxProvider.Object, TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());
 

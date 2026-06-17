@@ -8,7 +8,11 @@ public class PlanoPlataformaConfiguration : IEntityTypeConfiguration<PlanoPlataf
 {
     public void Configure(EntityTypeBuilder<PlanoPlataforma> builder)
     {
-        builder.ToTable("planos_plataforma");
+        builder.ToTable("planos_plataforma", t =>
+        {
+            t.HasCheckConstraint("ck_planos_plataforma_preco_nao_negativo", "\"preco\" >= 0");
+            t.HasCheckConstraint("ck_planos_plataforma_max_alunos_positivo", "\"max_alunos\" > 0");
+        });
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.Nome)

@@ -8,7 +8,12 @@ public class SerieConfigConfiguration : IEntityTypeConfiguration<SerieConfig>
 {
     public void Configure(EntityTypeBuilder<SerieConfig> builder)
     {
-        builder.ToTable("treino_exercicio_series");
+        builder.ToTable("treino_exercicio_series", t =>
+        {
+            t.HasCheckConstraint("ck_treino_exercicio_series_quantidade_positivo", "\"quantidade\" > 0");
+            t.HasCheckConstraint("ck_treino_exercicio_series_repeticoes_min_positivo", "\"repeticoes_min\" > 0");
+            t.HasCheckConstraint("ck_treino_exercicio_series_repeticoes_max_gte_min", "\"repeticoes_max\" IS NULL OR \"repeticoes_max\" >= \"repeticoes_min\"");
+        });
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.TreinoExercicioId).IsRequired();
