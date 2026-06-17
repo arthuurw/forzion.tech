@@ -4,10 +4,9 @@ name: Pact — provider verification (backend)
 # publicado no broker, FORA do fluxo de deploy.
 #
 # A verificacao do push -> homolog NAO vive aqui: roda em ci.yml, no job
-# pact-provider-verify `needs: deploy-homolog`, DEPOIS do deploy (broker
-# estavel — evita o race com o restart do nginx). Aqui ficam so os disparos
-# que NAO correm o deploy: cron semanal (drift se o broker mudou sem deploy) e
-# disparo manual.
+# pact-provider-verify `needs: deploy-homolog`, DEPOIS do deploy (ordem de
+# publicacao consumer->provider). Aqui ficam so os disparos que NAO correm o
+# deploy: cron semanal (drift se o broker mudou sem deploy) e disparo manual.
 #
 # Projeto isolado (forzion.tech.PactVerification) — nao faz parte da solution,
 # entao o gate de PR nao o builda. Sem broker, o teste e no-op.
@@ -27,6 +26,7 @@ jobs:
       PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
       PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
       PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
+      HOMOLOG_HOST: ${{ secrets.HOMOLOG_HOST }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,9 +34,26 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # INVARIANTE: broker alcançado SÓ via tailnet (borda pública dropa o IP do
+      # runner — mesmo motivo do SSH do deploy). Detalhe em ci.yml grupo PACT e
+      # specs/specification-local-ci-repro.md (§Pact broker rota).
+      - name: Conecta no tailnet
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          version: latest
+
+      - name: Resolve broker via tailnet
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          BROKER_HOST="$(printf '%s' "$PACT_BROKER_BASE_URL" | sed -E 's#^https?://##; s#/.*$##')"
+          echo "$HOMOLOG_HOST $BROKER_HOST" | sudo tee -a /etc/hosts
+
       - name: Aguarda broker disponivel
-        # Rede de seguranca: cron/manual nao correm o deploy, mas o broker pode
-        # estar reiniciando por outra razao. curl com --max-time falha rapido.
+        # Rede de seguranca: o broker pode estar reiniciando. curl --max-time falha rapido.
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           for i in $(seq 1 12); do

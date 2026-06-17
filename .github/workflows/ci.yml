@@ -562,13 +562,21 @@ jobs:
 
             echo "Deploy homolog OK -- $(date)"
 
-  # ─── PACT — PÓS-DEPLOY (broker estável) ──────────────────────────────────────
-  # O broker Pact mora na MESMA VM/nginx do app. Durante o deploy (build na VM +
-  # recreate + restart nginx) a 443 fica inalcançável por dezenas de min — um job
-  # que corra o deploy em paralelo bate no broker no meio e falha por RACE (falso
-  # -vermelho), não por quebra de contrato. Por isso publish (consumer) e verify
-  # (provider) rodam DEPOIS do deploy via `needs:`, em ordem consumer→provider.
-  # PR segue coberto pelo gate file-source SEM broker em contract.yml.
+  # ─── PACT — PÓS-DEPLOY (broker via tailnet) ──────────────────────────────────
+  # O broker Pact mora na MESMA VM do app. O runner do GitHub NÃO alcança o broker
+  # pela borda pública (https://pact.<host>): a borda Hostinger dropa o IP rotativo
+  # do runner — MESMO motivo que força o deploy a usar tailnet (ver "Conecta no
+  # tailnet" do deploy-homolog). Mover Pact p/ pós-deploy/heartbeat NÃO resolve isso
+  # (espera uma borda que segue dropando o runner) — foi a regressão recorrente.
+  #
+  # INVARIANTE (não regredir): TODO job que fala com o broker DEVE (1) entrar no
+  # tailnet e (2) mapear o host do broker -> IP privado da VM (HOMOLOG_HOST) antes
+  # de qualquer acesso. Assim o tráfego vai runner->tailnet->nginx:443->broker, com
+  # TLS/SNI intactos (cert valida pelo hostname). Nenhuma mudança de timing/deploy
+  # reintroduz o erro porque a rota não depende da borda pública.
+  # Detalhe canônico em specs/specification-local-ci-repro.md (§Pact broker rota).
+  # Ordem consumer→provider é só de publicação (não é race). PR segue coberto pelo
+  # gate file-source SEM broker em contract.yml.
   pact-publish:
     name: Pact — publica consumer (pós-deploy)
     needs: [deploy-homolog]
@@ -584,6 +592,7 @@ jobs:
       PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
       PACT_CONSUMER_VERSION: ${{ github.sha }}
       PACT_CONSUMER_BRANCH: ${{ github.ref_name }}
+      HOMOLOG_HOST: ${{ secrets.HOMOLOG_HOST }}
     defaults:
       run:
         working-directory: frontend
@@ -602,6 +611,25 @@ jobs:
       - name: Gera + valida contrato consumer
         run: npm run test:contract
 
+      # INVARIANTE (ver bloco do grupo PACT acima): broker alcançado SÓ via tailnet.
+      - name: Conecta no tailnet
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          version: latest
+
+      # Resolve o host do broker p/ o IP privado da VM (HOMOLOG_HOST), no runner e
+      # nos containers pact-cli (--add-host abaixo). TLS/SNI seguem pelo hostname.
+      - name: Resolve broker via tailnet
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          BROKER_HOST="$(printf '%s' "$PACT_BROKER_BASE_URL" | sed -E 's#^https?://##; s#/.*$##')"
+          echo "BROKER_HOST=$BROKER_HOST" >> "$GITHUB_ENV"
+          echo "$HOMOLOG_HOST $BROKER_HOST" | sudo tee -a /etc/hosts
+
       - name: Aguarda broker disponivel
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
@@ -610,7 +638,7 @@ jobs:
               "$PACT_BROKER_BASE_URL/diagnostic/status/heartbeat" >/dev/null; then
               echo "broker ok"; exit 0
             fi
-            echo "broker indisponivel (deploy/restart?), retry $i/12..."; sleep 15
+            echo "broker indisponivel (restart?), retry $i/12..."; sleep 15
           done
           echo "broker nao respondeu apos 12 tentativas"; exit 1
 
@@ -618,6 +646,7 @@ jobs:
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           docker run --rm \
+            --add-host "${BROKER_HOST}:${HOMOLOG_HOST}" \
             -v "$PWD/pacts:/pacts" \
             -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
             pactfoundation/pact-cli@sha256:0ab9d13bb7e46da28c108df49f390bc173616906f41af79c4fa5a08d24277bdc \
@@ -633,6 +662,7 @@ jobs:
         continue-on-error: true
         run: |
           docker run --rm \
+            --add-host "${BROKER_HOST}:${HOMOLOG_HOST}" \
             -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
             pactfoundation/pact-cli@sha256:0ab9d13bb7e46da28c108df49f390bc173616906f41af79c4fa5a08d24277bdc \
             broker can-i-deploy \
@@ -650,12 +680,29 @@ jobs:
       PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
       PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
       PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
+      HOMOLOG_HOST: ${{ secrets.HOMOLOG_HOST }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+
+      # INVARIANTE (ver bloco do grupo PACT acima): broker alcançado SÓ via tailnet.
+      - name: Conecta no tailnet
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          version: latest
+
+      - name: Resolve broker via tailnet
+        if: ${{ env.PACT_BROKER_BASE_URL != '' }}
+        run: |
+          BROKER_HOST="$(printf '%s' "$PACT_BROKER_BASE_URL" | sed -E 's#^https?://##; s#/.*$##')"
+          echo "$HOMOLOG_HOST $BROKER_HOST" | sudo tee -a /etc/hosts
 
       - name: Aguarda broker disponivel
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
@@ -665,7 +712,7 @@ jobs:
               "$PACT_BROKER_BASE_URL/diagnostic/status/heartbeat" >/dev/null; then
               echo "broker ok"; exit 0
             fi
-            echo "broker indisponivel (deploy/restart?), retry $i/12..."; sleep 15
+            echo "broker indisponivel (restart?), retry $i/12..."; sleep 15
           done
           echo "broker nao respondeu apos 12 tentativas"; exit 1
 
