@@ -133,6 +133,26 @@ public static class InfrastructureExtensions
         services.PostConfigure<StripeSettings>(s => s.ExpectLivemode ??= isProduction);
         services.AddScoped<IStripeService, StripeService>();
 
+        services.AddOptions<NfseSettings>()
+            .BindConfiguration("Nfse")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CertificadoPath),
+                "Nfse:CertificadoPath não configurado. Use User Secrets ou variável de ambiente.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CertificadoSenha),
+                "Nfse:CertificadoSenha não configurado. Use User Secrets ou variável de ambiente.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CnpjPrestador),
+                "Nfse:CnpjPrestador não configurado.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.InscricaoMunicipal),
+                "Nfse:InscricaoMunicipal não configurada.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CodigoMunicipioIbge),
+                "Nfse:CodigoMunicipioIbge não configurado.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.SerieDps),
+                "Nfse:SerieDps não configurada.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CodigoServicoAssinatura),
+                "Nfse:CodigoServicoAssinatura não configurado.")
+            .Validate(s => !s.Habilitado || s.AliquotaIss > 0,
+                "Nfse:AliquotaIss deve ser maior que zero quando a emissão está habilitada.")
+            .ValidateOnStart();
+
         services.AddOptions<DeliveryLogSettings>()
             .BindConfiguration("DeliveryLog")
             .Validate(s => !isProduction || !string.IsNullOrWhiteSpace(s.RecipientHashKey),

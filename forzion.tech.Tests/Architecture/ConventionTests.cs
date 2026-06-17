@@ -22,6 +22,8 @@ public class ConventionTests
     private static readonly IReadOnlySet<string> FactoriesAlternativas = new HashSet<string>
     {
         "Registrar",
+        "CriarAssinatura",
+        "CriarComissao",
     };
 
     private static IEnumerable<Type> EntidadesDeDominio() =>

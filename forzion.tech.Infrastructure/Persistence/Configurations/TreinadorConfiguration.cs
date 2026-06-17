@@ -60,5 +60,7 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
         builder.Property(t => t.UpdatedAt);
 
         builder.Property(t => t.Anonimizado).HasDefaultValue(false);
+
+        builder.Ignore(t => t.DadosFiscais);
     }
 }
