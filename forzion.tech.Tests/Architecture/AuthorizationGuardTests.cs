@@ -40,6 +40,7 @@ public class AuthorizationGuardTests
         "ExportarDadosPessoaisHandler",
         "GerarCobrancaMensalHandler",
         "GerarCobrancaPlanoTreinadorHandler",
+        "GerarNfseComissaoMensalHandler",
         "InativarTreinadorHandler",
         "IniciarOnboardingTreinadorHandler",
         "IniciarPagamentoPlanoHandler",

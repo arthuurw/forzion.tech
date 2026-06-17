@@ -87,6 +87,7 @@ using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
+using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
@@ -321,6 +322,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<CancelarMinhaAssinaturaAlunoHandler>();
         services.AddScoped<ObterAssinaturaAlunoHandler>();
         services.AddScoped<GerarCobrancaMensalHandler>();
+        services.AddScoped<GerarNfseComissaoMensalHandler>();
         services.AddScoped<ObterStatusPagamentoHandler>();
         services.AddScoped<ListarPagamentosAssinaturaAlunoHandler>();
         services.AddScoped<ProcessarWebhookStripeHandler>();

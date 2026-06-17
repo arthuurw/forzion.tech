@@ -3130,6 +3130,53 @@
         }
       }
     },
+    "/internal/gerar-nfse-comissao": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Gera NFS-e mensal de comissão marketplace (mês anterior por padrão) — requer X-Internal-Key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GerarNfseComissaoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/aluno/pagamentos/{pagamentoId}": {
       "get": {
         "tags": [
@@ -6225,6 +6272,22 @@
         "properties": {
           "email": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GerarNfseComissaoRequest": {
+        "type": "object",
+        "properties": {
+          "ano": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "mes": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
