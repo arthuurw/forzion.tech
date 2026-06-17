@@ -16,15 +16,15 @@ function vinculoHandler(body: { vinculoAtivo: unknown; vinculoPendente: unknown 
 describe("SemVinculoAtivoBanner", () => {
   it("com vínculo ativo não renderiza nada", async () => {
     vinculoHandler({ vinculoAtivo: VINCULO, vinculoPendente: null });
-    const { container } = render(<SemVinculoAtivoBanner />);
-    await waitFor(() => expect(container.querySelector(".MuiAlert-root")).toBeNull());
+    render(<SemVinculoAtivoBanner />);
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("sem vínculo exibe aviso de histórico read-only", async () => {
     vinculoHandler({ vinculoAtivo: null, vinculoPendente: null });
     render(<SemVinculoAtivoBanner />);
-    expect(await screen.findByText(/não tem um treinador ativo/)).toBeInTheDocument();
+    expect(await screen.findByText(/não tem um vínculo ativo/)).toBeInTheDocument();
     expect(screen.getByText(/registro de novos treinos fica bloqueado/)).toBeInTheDocument();
   });
 

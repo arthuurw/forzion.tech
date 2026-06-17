@@ -22,7 +22,7 @@ const statusColor: Record<string, "default" | "success" | "warning" | "error"> =
 // Texto verbatim do ConfirmDialog — fonte da verdade para o conteúdo da
 // confirmação (também referenciado pelos testes).
 export const CANCELAR_ASSINATURA_DESCRICAO =
-  "Sua assinatura será cancelada imediatamente. Você não terá mais acesso a novas execuções e fichas serão somente leitura. Esta ação NÃO pode ser desfeita pelo portal — para reativar, contate seu treinador.";
+  "Sua assinatura será cancelada imediatamente. Você não terá mais acesso a novas execuções e fichas serão somente leitura. Esta ação NÃO pode ser desfeita pelo portal — para reativar, contate quem te treina.";
 
 export default function AssinaturaAlunoPage() {
   const [assinatura, setAssinatura] = useState<AssinaturaAlunoResponse | null>(null);

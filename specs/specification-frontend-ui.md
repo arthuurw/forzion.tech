@@ -1,5 +1,5 @@
 # specification-frontend-ui — design system & acessibilidade (forzion.tech)
-DOC AGENTES (denso). Fonte de verdade de design tokens, inventário de componentes UI/forms, governance e conformance a11y. Atualizar NA MESMA TAREFA ao tocar tema/tokens (`src/lib/theme/index.ts`), `src/components/{ui,forms}/*`, `src/app/_landing/*` (§LANDING), padrões a11y (aria/foco/keyboard/reduced-motion), conformance WCAG/harness, responsividade, ou F18 (color-contrast); + story + a11y test (ver §GOVERNANCE). EXPANDE e REFERENCIA, NÃO duplica o TEMA MUI básico / §RESPONSIVIDADE de [specification-frontend]; toda afirmação ancorada em path real. Cross-ref: [specification-frontend], [specification-tests] (harness a11y), [specification-lgpd] (ConsentBanner), [specification-observability] (lighthouse a11y).
+DOC AGENTES (denso). Fonte de verdade de design tokens, inventário de componentes UI/forms, governance, conformance a11y e **copy/linguagem neutra de gênero** (§LINGUAGEM NEUTRA). Atualizar NA MESMA TAREFA ao tocar tema/tokens (`src/lib/theme/index.ts`), `src/components/{ui,forms}/*`, `src/app/_landing/*` (§LANDING), padrões a11y (aria/foco/keyboard/reduced-motion), conformance WCAG/harness, responsividade, F18 (color-contrast), ou **escrever/alterar copy user-facing** (§LINGUAGEM NEUTRA); + story + a11y test (ver §GOVERNANCE). EXPANDE e REFERENCIA, NÃO duplica o TEMA MUI básico / §RESPONSIVIDADE de [specification-frontend]; toda afirmação ancorada em path real. Cross-ref: [specification-frontend], [specification-tests] (harness a11y), [specification-lgpd] (ConsentBanner), [specification-observability] (lighthouse a11y).
 
 ## DESIGN TOKENS (`src/lib/theme/index.ts`)
 Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` aplicado (paginação, datas, validações MUI em pt-BR).
@@ -99,6 +99,42 @@ NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/form
 - **Padrão de props**: discriminantes via enum string — `severity`(error\|warning\|info\|success), `size`(small\|medium), `status`(enums domínio), `mobileRole`(primary\|secondary\|actions\|hidden). Booleans de modo: `destructive`, `loading`, `fullPage`, `forceOpen`. Callbacks `on*` opcionais habilitam comportamento (ex. `onRowClick` ⇒ row vira `role=button` focável).
 - **Imports**: NÃO há barrel (`ui/index.ts`/`forms/index.ts` inexistentes); sempre path direto.
 - **Componentes de domínio (não-`ui/`)**: `components/aluno/AlunoInadimplenteBanner.tsx` (banner persistente `role=alert`); `components/aluno/AlunoInadimplenteGate.tsx` (wrapper client-side: fetch on-mount de `obterMinhaAssinatura`, renderiza o banner quando status `Inadimplente`, falha silenciosa); `components/treinador/ProgressaoAluno.tsx` (gráficos recharts de progressão por exercício, props `alunoId`, seletor de período 7d/30d/60d/90d/6m/1a/tudo).
+
+## LINGUAGEM NEUTRA DE GÊNERO (copy user-facing)
+Toda copy nova nasce neutra. Origem: feature `texto-unissex` (sweep 2026-06-16). Aplica a JSX/strings de UI (sem lib i18n — copy hardcoded inline), títulos/corpo de e-mail (`Notifications/Email/**`) e corpo de template WhatsApp (`.specs/features/texto-unissex/WHATSAPP-COPY.md`). Estilo = **híbrido neutro**: reescrever pra neutro onde for natural; `(a)`/`(as)` só último recurso, nunca empilhado.
+
+### Prioridade de técnica (ordem)
+1. **Frase nominal** — preferir substantivo/particípio que concorda com termo neutro/abstrato. `{nome} aprovado com sucesso` → `{nome}: cadastro aprovado`.
+2. **2ª pessoa / verbo** — falar com a pessoa, sem adjetivo concordado. `você entrou`, `confirmar exclusão`.
+3. **Reescrita** — trocar a construção. `Você está inativo … será desconectado` → `Você está sem atividade … sua sessão será encerrada`.
+4. **`(a)` — ÚLTIMO recurso**, só quando 1-3 são inviáveis. Nunca `seu(sua) aluno(a)` (reescrever).
+
+### Glossário (gendered → neutro)
+| Evitar | Preferir | Técnica |
+|---|---|---|
+| Bem-vindo / Seja bem-vindo | **Boas-vindas** / Que bom ter você aqui | frase nominal |
+| {nome} aprovado com sucesso | **{nome}: cadastro aprovado** | frase nominal |
+| {nome} reprovado | **{nome}: cadastro recusado** | frase nominal |
+| {nome} inativado / excluído | **{nome}: conta inativada / conta excluída** | frase nominal |
+| Você está inativo (sessão) | **Você está sem atividade** | reescrita |
+| você será desconectado | **sua sessão será encerrada** | reescrita |
+| treinadores cadastrados (contagem) | **treinadores na plataforma** | reescrita |
+| seu treinador (dirigido ao aluno) | **quem te treina** / seu treinador(a) | reescrita / `(a)` p/ última |
+| Você não tem um treinador ativo | **Você não tem um vínculo ativo** | reescrita |
+| o aluno {nome} / o treinador {nome} (3ª pessoa) | **{nome}** (omitir artigo de gênero) | omitir artigo |
+
+### Invariantes
+- **Manter os substantivos de papel** `aluno`/`treinador` (D3 da feature): são os termos de domínio do produto. NÃO neutralizar via `aluno(a)`/dropar o papel — neutraliza-se a copy ao redor, não o papel.
+- **Particípio concordando com substantivo neutro/abstrato JÁ é neutro — não mexer**: "Conta aprovada", "Assinatura cancelada", "Pagamento confirmado", "Ficha atualizada", "Cobrança estornada". Plural genérico masculino de menu/aba ("Alunos", "Treinadores") tolerado; não inflar com `(as)`.
+- **NÃO tocar** (falso-positivo): rotas/pastas (`app/(aluno)`), identificadores TS/C# (`nomeAluno`, `IAlunoRepository`), chaves JSON/DTO/params, colunas DB/migrations, `data-testid`/seletores e2e, nomes de template WhatsApp (`bem_vindo_aluno` — string técnica aprovada na Meta), logs estruturados.
+- **WhatsApp**: corpo dos templates vive na Meta, não no repo — alterar copy = re-aprovação manual no Meta Business Manager (ops), nome do template + ordem de variáveis `{{1}}…` imutáveis. Copy-alvo catalogada em `.specs/features/texto-unissex/WHATSAPP-COPY.md`.
+
+### Detecção (sweep ao revisar copy)
+Regex base (case-insensitive), revisar cada hit à mão:
+```
+(bem-vind|seja bem|obrigad[oa]|cadastrad[oa]|conectad[oa]|logad[oa]|desconectad[oa]|bloquead[oa]|aprovad[oa]|reprovad[oa]|inativad[oa]|você está (inativo|ativo|conectado|logado|bloqueado)|seu treinador|sua treinador|seu aluno|sua aluna|nenhum (aluno|treinador)|treinador ativo)
+```
+Frontend: `grep -rniE "<regex>" frontend/src --include=*.tsx --include=*.ts | grep -viE "\.(test|spec|stories)\."`. Gotcha: literais bare como `"treinador ativo"` (sem `seu`/`bloqueado`) escapam regex estreito — varrer também o papel solto em mensagens de erro/403.
 
 ## ACESSIBILIDADE
 **Conformance alvo: WCAG 2.1 AA** (declarado como ALVO; sem doc de auditoria formal de conformidade no repo). Tags axe usadas: `wcag2a + wcag2aa + wcag21a + wcag21aa` (`frontend/e2e/utils/axe.ts`).

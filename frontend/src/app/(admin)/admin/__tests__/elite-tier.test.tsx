@@ -61,11 +61,8 @@ describe("PlanosAdminPage — Elite desabilitado no dropdown de tier", () => {
 
     await waitFor(() => {
       const listbox = screen.getByRole("listbox");
-      const eliteOption = within(listbox).getByText("Elite (em breve)");
-      expect(eliteOption).toBeInTheDocument();
-      // MUI MenuItem disabled renders as aria-disabled="true" on the li
-      const li = eliteOption.closest("li");
-      expect(li).toHaveAttribute("aria-disabled", "true");
+      const eliteOption = within(listbox).getByRole("option", { name: "Elite (em breve)" });
+      expect(eliteOption).toHaveAttribute("aria-disabled", "true");
     });
   });
 
@@ -89,10 +86,8 @@ describe("PlanosAdminPage — Elite desabilitado no dropdown de tier", () => {
 
     await waitFor(() => {
       const listbox = screen.getByRole("listbox");
-      const eliteOption = within(listbox).getByText("Elite (em breve)");
-      expect(eliteOption).toBeInTheDocument();
-      const li = eliteOption.closest("li");
-      expect(li).toHaveAttribute("aria-disabled", "true");
+      const eliteOption = within(listbox).getByRole("option", { name: "Elite (em breve)" });
+      expect(eliteOption).toHaveAttribute("aria-disabled", "true");
     });
   });
 });
@@ -138,11 +133,9 @@ describe("TreinadoresAdminPage — Elite excluído do autocomplete de plano", ()
       expect(screen.getByText("Treinador Teste")).toBeInTheDocument();
     });
 
-    const membershipBtn = screen.getAllByRole("button").find((b) =>
-      b.querySelector("[data-testid='CardMembershipIcon']"),
-    );
-    expect(membershipBtn).toBeDefined();
-    fireEvent.click(membershipBtn!);
+    const membershipBtn = screen.getByRole("button", { name: "Atribuir plano" });
+    expect(membershipBtn).toBeInTheDocument();
+    fireEvent.click(membershipBtn);
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();

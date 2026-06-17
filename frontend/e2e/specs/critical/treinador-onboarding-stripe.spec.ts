@@ -90,11 +90,9 @@ test.describe("critical: Stripe Connect onboarding (treinador)", () => {
     expect(statusChecked).toBe(true);
   });
 
+  // eslint-disable-next-line playwright/expect-expect
   test.fixme(
     "fluxo end-to-end Stripe Express (form externo) — precisa Stripe-cli stub",
-    async () => {
-      // Fora do scope F29. Tracked pra Fase 5 quando setup CI com Stripe test
-      // mode for definido.
-    },
+    async () => {}
   );
 });

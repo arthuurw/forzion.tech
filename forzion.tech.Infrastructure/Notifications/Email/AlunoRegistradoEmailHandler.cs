@@ -28,7 +28,7 @@ public sealed class AlunoRegistradoEmailHandler(
 
         await emailService.EnviarAsync(
             emailDestino,
-            "Bem-vindo à forzion.tech!",
+            "Boas-vindas à forzion.tech!",
             EmailTemplates.BemVindoAluno(domainEvent.Nome),
             cancellationToken).ConfigureAwait(false);
     }

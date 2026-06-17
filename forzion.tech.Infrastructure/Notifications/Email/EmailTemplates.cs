@@ -77,7 +77,7 @@ internal static class EmailTemplates
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{nomeAluno}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              O treinador <strong>{nomeTreinador}</strong> aprovou seu vínculo.
+              <strong>{nomeTreinador}</strong> aprovou seu vínculo.
               Você já pode acessar suas fichas de treino na plataforma.
             </p>
             <a href="https://forzion.tech/login"
@@ -88,11 +88,11 @@ internal static class EmailTemplates
 
     public static string BemVindoAluno(string nome) =>
         Layout(
-            "Bem-vindo à forzion.tech!",
+            "Boas-vindas à forzion.tech!",
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              Seu cadastro foi realizado com sucesso. Aguarde a aprovação do seu treinador
+              Seu cadastro foi realizado com sucesso. Aguarde a aprovação de quem vai te treinar
               para acessar suas fichas de treino.
             </p>
             <a href="https://forzion.tech/login"
@@ -108,7 +108,7 @@ internal static class EmailTemplates
             <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Sua conta foi <strong style="color:#c62828">inativada</strong>.
-              Caso acredite que isso foi um engano, entre em contato com seu treinador.
+              Caso acredite que isso foi um engano, entre em contato com quem te treina.
             </p>
             """);
 
@@ -183,7 +183,7 @@ internal static class EmailTemplates
               Ver pagamento
             </a>
             <p style="color:#999;font-size:12px;margin-top:24px">
-              Em caso de dúvidas, fale com o seu treinador.
+              Em caso de dúvidas, fale com quem te treina.
             </p>
             """);
     }
@@ -265,7 +265,7 @@ internal static class EmailTemplates
               Atualizar pagamento
             </a>
             <p style="color:#999;font-size:12px;margin-top:24px">
-              Em caso de dúvidas, fale com o seu treinador.
+              Em caso de dúvidas, fale com quem te treina.
             </p>
             """);
     }
@@ -291,7 +291,7 @@ internal static class EmailTemplates
               Ver pagamentos
             </a>
             <p style="color:#999;font-size:12px;margin-top:24px">
-              Em caso de dúvidas, fale com o seu treinador.
+              Em caso de dúvidas, fale com quem te treina.
             </p>
             """);
     }
@@ -311,7 +311,7 @@ internal static class EmailTemplates
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              <strong style="color:#c62828">Atenção: uma disputa de pagamento (chargeback) foi aberta pelo aluno {WebUtility.HtmlEncode(nomeAluno)}.</strong>
+              <strong style="color:#c62828">Atenção: uma disputa de pagamento (chargeback) foi aberta por {WebUtility.HtmlEncode(nomeAluno)}.</strong>
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
               <tr>
@@ -333,8 +333,8 @@ internal static class EmailTemplates
               é devolvido automaticamente ao cliente e a taxa do chargeback é cobrada.
             </p>
             <p style="color:#444;line-height:1.6">
-              A assinatura do aluno foi <strong>congelada</strong> automaticamente — ele perde acesso a recursos
-              pagos até a disputa ser resolvida.
+              A assinatura do aluno foi <strong>congelada</strong> automaticamente — o acesso a recursos
+              pagos fica bloqueado até a disputa ser resolvida.
             </p>
             <a href="{dashboardStripeUrl}"
                style="display:inline-block;margin-top:16px;padding:12px 24px;background:#c62828;color:#FFFFFF;text-decoration:none;border-radius:4px;font-weight:bold">
@@ -380,7 +380,7 @@ internal static class EmailTemplates
               Regularizar agora
             </a>
             <p style="color:#999;font-size:12px;margin-top:24px">
-              Em caso de dúvidas, fale com o seu treinador.
+              Em caso de dúvidas, fale com quem te treina.
             </p>
             """);
 
@@ -390,7 +390,7 @@ internal static class EmailTemplates
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{nomeAluno}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              Sua assinatura com o treinador <strong>{nomeTreinador}</strong> foi criada com sucesso.
+              Sua assinatura com <strong>{nomeTreinador}</strong> foi criada com sucesso.
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
               <tr>
@@ -403,7 +403,7 @@ internal static class EmailTemplates
               </tr>
             </table>
             <p style="color:#444;line-height:1.6">
-              As cobranças serão geradas mensalmente pelo seu treinador.
+              As cobranças serão geradas mensalmente por quem te treina.
               Você receberá uma notificação quando houver um pagamento pendente.
             </p>
             <a href="https://forzion.tech/aluno/assinatura"
@@ -421,7 +421,7 @@ internal static class EmailTemplates
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              Sua assinatura com o treinador <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>
+              Sua assinatura com <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>
               foi <strong style="color:#c62828">cancelada</strong> em <strong>{dataFormatada}</strong>.
             </p>
             <p style="color:#444;line-height:1.6">
@@ -429,7 +429,7 @@ internal static class EmailTemplates
               não poderão ser registradas. Obrigado por ter feito parte da forzion.tech!
             </p>
             <p style="color:#444;line-height:1.6">
-              Para reativar, entre em contato com seu treinador.
+              Para reativar, entre em contato com quem te treina.
             </p>
             """);
     }
@@ -440,7 +440,7 @@ internal static class EmailTemplates
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              O aluno <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong> solicitou vínculo com você
+              <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong> solicitou vínculo com você
               e está <strong>aguardando aprovação</strong>.
             </p>
             <p style="color:#444;line-height:1.6">
@@ -461,8 +461,8 @@ internal static class EmailTemplates
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              O aluno <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong> acabou de cancelar a assinatura
-              dele(a) pelo portal.
+              <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong> acabou de cancelar a assinatura
+              pelo portal.
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
               <tr>
@@ -542,7 +542,7 @@ internal static class EmailTemplates
               Acessar plataforma
             </a>
             <p style="color:#999;font-size:12px;margin-top:24px">
-              Em caso de dúvidas, fale com o seu treinador.
+              Em caso de dúvidas, fale com quem te treina.
             </p>
             """);
 

@@ -27,7 +27,7 @@ export default function SemVinculoAtivoBanner() {
     <Alert severity="info" sx={{ mb: 3 }}>
       {estado === "pendente"
         ? "Seu vínculo está aguardando aprovação do treinador. Você pode consultar seu histórico; registrar novos treinos será liberado após a aprovação."
-        : "Você não tem um treinador ativo. Seu histórico continua disponível para consulta, mas o registro de novos treinos fica bloqueado até um novo vínculo."}
+        : "Você não tem um vínculo ativo. Seu histórico continua disponível para consulta, mas o registro de novos treinos fica bloqueado até um novo vínculo."}
     </Alert>
   );
 }

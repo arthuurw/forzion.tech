@@ -89,6 +89,7 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     await screen.findByText("Supino");
 
     // O span com title contendo "média" deve existir
+    // eslint-disable-next-line testing-library/no-node-access
     const infoIcon = document.querySelector('[title*="média"]');
     expect(infoIcon).not.toBeNull();
   });
@@ -126,6 +127,6 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     fireEvent.click(screen.getByRole("button", { name: /Finalizar treino/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Confirmar registro/ }));
 
-    expect(await screen.findByText(/não tem um treinador ativo/i)).toBeInTheDocument();
+    expect(await screen.findByText(/não tem um vínculo ativo/i)).toBeInTheDocument();
   });
 });

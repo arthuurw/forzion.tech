@@ -119,7 +119,7 @@ export default function ExecutarFichaPage() {
       const { status, message } = extractApiErrorInfo(err);
       if (status === 404) setError("Ficha não encontrada.");
       else if (status === 422) setError(message ?? "Dados inválidos para registrar o treino.");
-      else if (status === 403) setError("Você não tem um treinador ativo. Não é possível registrar novos treinos.");
+      else if (status === 403) setError("Você não tem um vínculo ativo. Não é possível registrar novos treinos.");
       else setError("Erro ao registrar treino. Tente novamente.");
     } finally {
       setSubmitting(false);

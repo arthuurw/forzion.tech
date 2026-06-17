@@ -165,7 +165,7 @@ export default function TreinadoresAdminPage() {
     setLoadingAprovar(true);
     try {
       await adminApi.aprovarTreinador(confirmAprovar.treinadorId, observacaoAprovar.trim() || null);
-      setSuccess(`${confirmAprovar.nome} aprovado com sucesso.`);
+      setSuccess(`${confirmAprovar.nome}: cadastro aprovado.`);
       setConfirmAprovar(null);
       setObservacaoAprovar("");
       reload();
@@ -181,7 +181,7 @@ export default function TreinadoresAdminPage() {
     setLoadingReprovar(true);
     try {
       await adminApi.reprovarTreinador(confirmReprovar.treinadorId, observacaoReprovar.trim() || null);
-      setSuccess(`${confirmReprovar.nome} reprovado.`);
+      setSuccess(`${confirmReprovar.nome}: cadastro recusado.`);
       setConfirmReprovar(null);
       setObservacaoReprovar("");
       reload();
@@ -197,7 +197,7 @@ export default function TreinadoresAdminPage() {
     setLoadingInativar(true);
     try {
       await adminApi.inativarTreinador(confirmInativar.treinadorId, observacaoInativar.trim() || null);
-      setSuccess(`${confirmInativar.nome} inativado. Vinculos e fichas afetados.`);
+      setSuccess(`${confirmInativar.nome}: conta inativada. Vínculos e fichas afetados.`);
       setConfirmInativar(null);
       setObservacaoInativar("");
       reload();
@@ -213,7 +213,7 @@ export default function TreinadoresAdminPage() {
     setLoadingExcluir(true);
     try {
       await adminApi.excluirTreinador(confirmExcluir.treinadorId);
-      setSuccess(`${confirmExcluir.nome} excluído permanentemente.`);
+      setSuccess(`${confirmExcluir.nome}: conta excluída permanentemente.`);
       setConfirmExcluir(null);
       reload();
     } catch {

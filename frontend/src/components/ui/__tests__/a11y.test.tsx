@@ -31,6 +31,7 @@ describe("ConfirmDialog — a11y", () => {
     const describedById = dialog.getAttribute("aria-describedby");
     expect(describedById).toBeTruthy();
 
+    // eslint-disable-next-line testing-library/no-node-access
     const descEl = document.getElementById(describedById!);
     expect(descEl).toBeTruthy();
     expect(descEl!).toHaveTextContent("Você tem certeza?");
@@ -82,8 +83,8 @@ describe("ResponsiveTable — keyboard activation (desktop)", () => {
       />,
     );
     const rows = screen.getAllByRole("button", { name: undefined });
-    const tableRows = document
-      .querySelectorAll("tr[role='button']");
+    // eslint-disable-next-line testing-library/no-node-access
+    const tableRows = document.querySelectorAll("tr[role='button']");
     expect(tableRows.length).toBe(2);
     tableRows.forEach((tr) => {
       expect(tr).toHaveAttribute("tabindex", "0");
@@ -97,6 +98,7 @@ describe("ResponsiveTable — keyboard activation (desktop)", () => {
         renderCell={renderCell} onRowClick={onRowClick}
       />,
     );
+    // eslint-disable-next-line testing-library/no-node-access
     const [firstRow] = document.querySelectorAll("tr[role='button']");
     fireEvent.keyDown(firstRow, { key: "Enter" });
     expect(onRowClick).toHaveBeenCalledWith(ROWS[0]);
@@ -109,6 +111,7 @@ describe("ResponsiveTable — keyboard activation (desktop)", () => {
         renderCell={renderCell} onRowClick={onRowClick}
       />,
     );
+    // eslint-disable-next-line testing-library/no-node-access
     const [firstRow] = document.querySelectorAll("tr[role='button']");
     fireEvent.keyDown(firstRow, { key: " " });
     expect(onRowClick).toHaveBeenCalledWith(ROWS[0]);
@@ -121,6 +124,7 @@ describe("ResponsiveTable — keyboard activation (desktop)", () => {
         renderCell={renderCell} onRowClick={onRowClick}
       />,
     );
+    // eslint-disable-next-line testing-library/no-node-access
     const [firstRow] = document.querySelectorAll("tr[role='button']");
     fireEvent.keyDown(firstRow, { key: "Tab" });
     expect(onRowClick).not.toHaveBeenCalled();
@@ -133,6 +137,7 @@ describe("ResponsiveTable — keyboard activation (desktop)", () => {
         renderCell={renderCell}
       />,
     );
+    // eslint-disable-next-line testing-library/no-node-access
     const tableRows = document.querySelectorAll("tr[role='button']");
     expect(tableRows.length).toBe(0);
   });
@@ -153,6 +158,7 @@ describe("ResponsiveTable — keyboard activation (mobile)", () => {
         renderCell={renderCell} onRowClick={onRowClick}
       />,
     );
+    // eslint-disable-next-line testing-library/no-node-access
     const cardRows = document.querySelectorAll("[role='button'][tabindex='0']");
     expect(cardRows.length).toBe(2);
   });
@@ -164,6 +170,7 @@ describe("ResponsiveTable — keyboard activation (mobile)", () => {
         renderCell={renderCell} onRowClick={onRowClick}
       />,
     );
+    // eslint-disable-next-line testing-library/no-node-access
     const [firstCard] = document.querySelectorAll("[role='button'][tabindex='0']");
     fireEvent.keyDown(firstCard, { key: "Enter" });
     expect(onRowClick).toHaveBeenCalledWith(ROWS[0]);
@@ -176,6 +183,7 @@ describe("ResponsiveTable — keyboard activation (mobile)", () => {
         renderCell={renderCell} onRowClick={onRowClick}
       />,
     );
+    // eslint-disable-next-line testing-library/no-node-access
     const [firstCard] = document.querySelectorAll("[role='button'][tabindex='0']");
     fireEvent.keyDown(firstCard, { key: " " });
     expect(onRowClick).toHaveBeenCalledWith(ROWS[0]);

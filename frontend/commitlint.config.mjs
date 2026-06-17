@@ -1,6 +1,6 @@
 // Convencional Commits enforcement.
 // Roda em commit-msg via .husky/commit-msg.
-export default {
+const config = {
   extends: ["@commitlint/config-conventional"],
   rules: {
     // Permite os scopes usados no projeto.
@@ -13,3 +13,5 @@ export default {
     "body-max-line-length": [1, "always", 200],
   },
 };
+
+export default config;

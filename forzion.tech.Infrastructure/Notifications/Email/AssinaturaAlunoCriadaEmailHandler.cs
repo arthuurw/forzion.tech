@@ -54,7 +54,7 @@ public sealed class AssinaturaAlunoCriadaEmailHandler(
             .ObterPorIdAsync(domainEvent.PacoteId, cancellationToken)
             .ConfigureAwait(false);
 
-        var nomeTreinador = treinador?.Nome ?? "seu treinador";
+        var nomeTreinador = treinador?.Nome ?? "quem te treina";
         var nomePacote = pacote?.Nome ?? "Padrão";
 
         await emailService.EnviarAsync(

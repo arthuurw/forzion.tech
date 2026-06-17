@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import type { PlanoPlataformaResponse, TreinadorResponse } from "@/types";
@@ -52,7 +52,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
 
     const Page = await importPage();
     render(<Page />);
-    await waitFor(() => screen.getByText(/Free — Grátis/));
+    await screen.findByText(/Free — Grátis/);
 
     preencherDados();
     fireEvent.click(screen.getByRole("radio", { name: /Free/ }));
@@ -81,7 +81,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
 
     const Page = await importPage();
     render(<Page />);
-    await waitFor(() => screen.getByText(/Basic — /));
+    await screen.findByText(/Basic — /);
 
     preencherDados();
     fireEvent.click(screen.getByRole("radio", { name: /Basic/ }));
@@ -104,7 +104,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
 
     const Page = await importPage();
     render(<Page />);
-    await waitFor(() => screen.getByText(/Basic — /));
+    await screen.findByText(/Basic — /);
 
     preencherDados();
     fireEvent.click(screen.getByRole("radio", { name: /Basic/ }));

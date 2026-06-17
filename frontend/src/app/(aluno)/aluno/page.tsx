@@ -71,7 +71,7 @@ export default function DashboardAlunoPage() {
       }
     };
     load();
-  }, []);
+  }, [theme.palette.success.main, theme.palette.text.disabled]);
 
   if (loading) return <LoadingSpinner />;
 

@@ -155,7 +155,7 @@ public class AssinaturaAlunoCriadaEmailHandlerTests
         _emailService.Verify(e => e.EnviarAsync(
             "maria@example.com",
             "AssinaturaAluno criada — forzion.tech",
-            It.Is<string>(html => html.Contains("seu treinador")),
+            It.Is<string>(html => html.Contains("quem te treina")),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

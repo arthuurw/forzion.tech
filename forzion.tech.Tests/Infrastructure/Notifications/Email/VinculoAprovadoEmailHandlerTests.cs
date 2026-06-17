@@ -140,7 +140,7 @@ public class VinculoAprovadoEmailHandlerTests
         _emailService.Verify(e => e.EnviarAsync(
             "maria@example.com",
             "Vínculo aprovado — forzion.tech",
-            It.Is<string>(html => html.Contains("seu treinador")),
+            It.Is<string>(html => html.Contains("Quem te treina")),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
