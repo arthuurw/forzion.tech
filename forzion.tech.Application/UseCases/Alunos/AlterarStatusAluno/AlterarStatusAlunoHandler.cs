@@ -42,7 +42,7 @@ public class AlterarStatusAlunoHandler(
         else if (command.NovoStatus == AlunoStatus.Inativo)
             statusResult = aluno.Inativar(agora);
         else
-            return Result.Failure<AlunoResponse>(Error.Business("aluno.transicao_invalida", $"Transição de status '{command.NovoStatus}' não permitida."));
+            return Result.Failure<AlunoResponse>(Error.Business("aluno.transicao_invalida", "Esta transição de status não é permitida."));
 
         if (statusResult.IsFailure)
             return Result.Failure<AlunoResponse>(statusResult.Error!);

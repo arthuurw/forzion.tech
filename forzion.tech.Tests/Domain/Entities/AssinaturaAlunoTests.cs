@@ -109,7 +109,7 @@ public class AssinaturaAlunoTests
         a.Cancelar(TestData.Agora);
         var r = a.Ativar(TestData.Agora);
         r.IsFailure.Should().BeTrue();
-        r.Error!.Message.Should().Be("AssinaturaAluno cancelada não pode ser ativada.");
+        r.Error!.Message.Should().Be("A assinatura cancelada não pode ser ativada.");
     }
 
     [Fact]
