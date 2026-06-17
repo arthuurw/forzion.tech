@@ -69,4 +69,35 @@ public class JwtService : IJwtService
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    public TokenEscopo GerarTokenEscopo(Conta conta, string escopo, TimeSpan validade)
+    {
+        ArgumentNullException.ThrowIfNull(conta);
+        ArgumentException.ThrowIfNullOrWhiteSpace(escopo);
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var jti = Guid.NewGuid();
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, conta.Id.ToString()),
+            new("conta_id", conta.Id.ToString()),
+            new("scope", escopo),
+            new(JwtRegisteredClaimNames.Jti, jti.ToString()),
+        };
+
+        var agora = _timeProvider.GetUtcNow().UtcDateTime;
+        var expiraEm = agora.Add(validade);
+
+        var token = new JwtSecurityToken(
+            issuer: _issuer,
+            audience: _audience,
+            claims: claims,
+            notBefore: agora,
+            expires: expiraEm,
+            signingCredentials: credentials);
+
+        return new TokenEscopo(new JwtSecurityTokenHandler().WriteToken(token), jti, expiraEm);
+    }
 }
