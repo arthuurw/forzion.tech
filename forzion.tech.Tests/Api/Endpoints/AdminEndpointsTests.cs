@@ -899,6 +899,10 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/aprovar", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("title").GetString().Should().Be("Não foi possível processar.");
+        problem.GetProperty("detail").GetString().Should().Be("Treinador já aprovado.");
+        problem.GetProperty("code").GetString().Should().Be("treinador.ja_aprovado");
     }
 
     // --- POST /admin/treinadores/{id}/inativar — failure branch ---
@@ -970,6 +974,10 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .DeleteAsync($"/admin/planos/{Guid.NewGuid()}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("title").GetString().Should().Be("Não encontrado.");
+        problem.GetProperty("detail").GetString().Should().Be("Plano não encontrado.");
+        problem.GetProperty("code").GetString().Should().Be("plano_nao_encontrado");
     }
 
     // --- PATCH /admin/grupos-musculares/{id} ---
