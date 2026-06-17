@@ -88,6 +88,7 @@ namespace forzion.tech.Infrastructure.Migrations
                 maxLength: 10,
                 nullable: true);
 
+            // lint-migrations:allow
             migrationBuilder.CreateTable(
                 name: "notas_fiscais",
                 columns: table => new
