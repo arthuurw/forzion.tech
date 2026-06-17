@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using FluentAssertions;
+using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
@@ -127,11 +128,20 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         _factory = factory;
     }
 
+    private const string StepUpTokenValido = "step-up-ok";
+
     private HttpClient CriarClienteAdmin()
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Test", "admin");
+        return client;
+    }
+
+    private HttpClient CriarClienteAdminComStepUp()
+    {
+        var client = CriarClienteAdmin();
+        client.DefaultRequestHeaders.Add("X-Step-Up-Token", StepUpTokenValido);
         return client;
     }
 
@@ -214,10 +224,21 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<AprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(aprovado));
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/aprovar", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_AprovarTreinador_SemStepUp_Retorna403()
+    {
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/aprovar", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
     }
 
     [Fact]
@@ -227,7 +248,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<AprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TreinadorNaoEncontradoException());
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .PostAsJsonAsync($"/admin/treinadores/{Guid.NewGuid()}/aprovar", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -250,10 +271,21 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<InativarTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/inativar", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Post_InativarTreinador_SemStepUp_Retorna403()
+    {
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/inativar", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
     }
 
     // --- DELETE /admin/treinadores/{id} ---
@@ -824,10 +856,21 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<ReprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/reprovar", new { observacao = "Reprovado." });
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Post_ReprovarTreinador_SemStepUp_Retorna403()
+    {
+        var response = await CriarClienteAdmin()
+            .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/reprovar", new { observacao = "Reprovado." });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
     }
 
     [Fact]
@@ -837,7 +880,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<ReprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TreinadorNaoEncontradoException());
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .PostAsJsonAsync($"/admin/treinadores/{Guid.NewGuid()}/reprovar", new { observacao = (string?)null });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -852,7 +895,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<AprovarTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure<TreinadorResponse>(Error.Business("treinador.ja_aprovado", "Treinador já aprovado.")));
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/aprovar", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -867,7 +910,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<InativarTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(Error.Business("treinador.ja_inativo", "Treinador já inativo.")));
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/inativar", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -1351,6 +1394,8 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.RemoveAll<ExportarDadosPessoaisHandler>();
                 services.RemoveAll<IDadosPessoaisExcelRenderer>();
                 services.RemoveAll<IUserContext>();
+                services.RemoveAll<IJwtService>();
+                services.RemoveAll<ITokenRevogadoRepository>();
 
                 services.AddScoped(_ => ListarTreinadoresHandlerMock.Object);
                 services.AddScoped(_ => AprovarTreinadorHandlerMock.Object);
@@ -1391,6 +1436,16 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 userContextMock.Setup(u => u.PerfilId).Returns(AdminId);
                 userContextMock.Setup(u => u.TipoConta).Returns(TipoConta.SystemAdmin);
                 services.AddScoped(_ => userContextMock.Object);
+
+                var jwtMock = new Mock<IJwtService>();
+                jwtMock.Setup(j => j.ValidarTokenEscopo("step-up-ok", MfaScopes.StepUp))
+                    .Returns(new EscopoValidado(AdminId, Guid.NewGuid()));
+                services.AddScoped(_ => jwtMock.Object);
+
+                var tokenRevogadoMock = new Mock<ITokenRevogadoRepository>();
+                tokenRevogadoMock.Setup(r => r.EstaRevogadoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
+                services.AddScoped(_ => tokenRevogadoMock.Object);
 
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, AdminTestAuthHandler>("Test", _ => { });

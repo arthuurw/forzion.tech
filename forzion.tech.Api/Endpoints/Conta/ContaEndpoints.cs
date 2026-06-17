@@ -6,6 +6,8 @@ using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Conta.Logout;
 using forzion.tech.Application.UseCases.Conta.ObterPerfil;
+using forzion.tech.Application.UseCases.Conta.TrocarEmail;
+using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.Mvc;
 
 namespace forzion.tech.Api.Endpoints.Conta;
@@ -62,6 +64,37 @@ public static class ContaEndpoints
         .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPost("/email/trocar", async (
+            [FromBody] TrocarEmailRequest request,
+            [FromServices] SolicitarTrocaEmailHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            await handler.HandleAsync(new SolicitarTrocaEmailCommand(userContext.ContaId, request.NovoEmail), cancellationToken).ConfigureAwait(false);
+            return Results.Accepted();
+        })
+        .AddEndpointFilter<RequerStepUpFilter>()
+        .WithSummary("Inicia a troca de e-mail enviando um código ao novo endereço")
+        .Produces(StatusCodes.Status202Accepted)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/email/confirmar", async (
+            [FromBody] ConfirmarEmailRequest request,
+            [FromServices] ConfirmarTrocaEmailHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new ConfirmarTrocaEmailCommand(userContext.ContaId, userContext.Jti, userContext.TokenExpiraEm, request.Codigo),
+                cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Confirma a troca de e-mail com o código recebido no novo endereço")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest);
 
         group.MapPost("/logout", async (
             [FromServices] LogoutHandler handler,
@@ -135,3 +168,5 @@ public static class ContaEndpoints
 public record AtualizarPerfilRequest(string Nome);
 public record AlterarSenhaRequest(string SenhaAtual, string NovaSenha);
 public record AnonimizarContaSelfRequest(string Senha);
+public record TrocarEmailRequest(string NovoEmail);
+public record ConfirmarEmailRequest(string Codigo);

@@ -216,6 +216,7 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)
     {
         services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
+        services.AddScoped<IValidator<SolicitarTrocaEmailCommand>, SolicitarTrocaEmailCommandValidator>();
 
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
         services.AddScoped<forzion.tech.Application.Services.CriarPagamentoComIntentService>();
@@ -231,6 +232,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Auth.RenovarSessao.RenovarSessaoHandler>();
         services.AddScoped<EsqueceuSenhaHandler>();
         services.AddScoped<RedefinirSenhaHandler>();
+        services.AddScoped<forzion.tech.Infrastructure.Notifications.Email.SolicitarTrocaEmailHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.TrocarEmail.ConfirmarTrocaEmailHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.IniciarEnrollTotpHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.ConfirmarEnrollTotpHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.ObterStatusMfaHandler>();

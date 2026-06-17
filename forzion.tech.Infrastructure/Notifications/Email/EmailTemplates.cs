@@ -133,6 +133,21 @@ internal static class EmailTemplates
             </p>
             """);
 
+    public static string TrocaEmailCodigo(string codigo) =>
+        Layout(
+            "Confirmação de troca de e-mail",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá!</p>
+            <p style="color:#444;line-height:1.6">
+              Recebemos uma solicitação para associar este endereço à sua conta forzion.tech.
+              Use o código abaixo para confirmar a troca. Ele é válido por <strong>30 minutos</strong>.
+            </p>
+            <p style="font-size:24px;font-weight:bold;letter-spacing:4px;color:#1A1A1A;text-align:center;margin:24px 0;word-break:break-all">{codigo}</p>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Se você não solicitou a troca de e-mail, ignore esta mensagem. Seu e-mail permanece o mesmo.
+            </p>
+            """);
+
     public static string CodigoMfa(string codigo) =>
         Layout(
             "Seu código de verificação",

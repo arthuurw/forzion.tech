@@ -52,6 +52,7 @@ public class AppDbContext(
     public DbSet<MfaRecoveryCode> MfaRecoveryCodes => Set<MfaRecoveryCode>();
     public DbSet<MfaChallenge> MfaChallenges => Set<MfaChallenge>();
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
+    public DbSet<TrocaEmailToken> TrocaEmailTokens => Set<TrocaEmailToken>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
