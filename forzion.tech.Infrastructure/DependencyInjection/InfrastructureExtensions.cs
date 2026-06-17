@@ -100,6 +100,10 @@ public static class InfrastructureExtensions
         services.AddScoped<IRefreshTokenFamilyRepository, RefreshTokenFamilyRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
+        services.AddScoped<IContaMfaRepository, ContaMfaRepository>();
+        services.AddScoped<IMfaRecoveryCodeRepository, MfaRecoveryCodeRepository>();
+        services.AddScoped<IMfaChallengeRepository, MfaChallengeRepository>();
+        services.AddScoped<ITrustedDeviceRepository, TrustedDeviceRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IWhatsAppDeliveryLogRepository, WhatsAppDeliveryLogRepository>();
         services.AddScoped<IPlanoNotificationPolicy, Notifications.PlanoNotificationPolicy>();
