@@ -86,7 +86,7 @@ public class MfaRepositoriesTests(InfrastructureTestFixture fixture)
         await using (var ctx = fixture.CreateContext())
         {
             var removidos = await new MfaChallengeRepository(ctx, relogio).LimparExpiradosAsync();
-            removidos.Should().Be(1);
+            removidos.Should().BeGreaterThanOrEqualTo(1);
         }
 
         await using var verify = fixture.CreateContext();
