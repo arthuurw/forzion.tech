@@ -574,6 +574,11 @@ jobs:
   # de qualquer acesso. Assim o tráfego vai runner->tailnet->nginx:443->broker, com
   # TLS/SNI intactos (cert valida pelo hostname). Nenhuma mudança de timing/deploy
   # reintroduz o erro porque a rota não depende da borda pública.
+  #
+  # PRÉ-REQUISITO DE INFRA (não versionado no repo — vive no console Tailscale):
+  # o policy precisa liberar `tag:ci` -> VM em tcp:443 (além do tcp:22 do SSH).
+  # `tag:ci` é escopo restrito; sem esse grant a 443 via tailnet é DROPADA pela ACL
+  # (connect-timeout idêntico ao público) — tailnet+resolve sozinhos NÃO bastam.
   # Detalhe canônico em specs/specification-local-ci-repro.md (§Pact broker rota).
   # Ordem consumer→provider é só de publicação (não é race). PR segue coberto pelo
   # gate file-source SEM broker em contract.yml.
