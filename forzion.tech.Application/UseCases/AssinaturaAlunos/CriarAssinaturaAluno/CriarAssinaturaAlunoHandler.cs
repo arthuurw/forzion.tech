@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
@@ -39,11 +40,10 @@ public class CriarAssinaturaAlunoHandler(
         // chamador autorizado conseguiria criar assinatura por R$ 0,01.
         var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false);
         if (pacote is null)
-            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("pacote.nao_encontrado", "Pacote não encontrado."));
+            return Result.Failure<AssinaturaAlunoResponse>(PacoteErrors.NaoEncontrado);
 
-        // Defesa anti cross-tenant: pacote precisa pertencer ao mesmo treinador.
         if (pacote.TreinadorId != command.TreinadorId)
-            return Result.Failure<AssinaturaAlunoResponse>(Error.Business("pacote.nao_pertence_treinador", "Pacote não pertence ao treinador informado."));
+            return Result.Failure<AssinaturaAlunoResponse>(PacoteErrors.NaoPertenceTreinador);
 
         var assinaturaResult = AssinaturaAluno.Criar(
             command.VinculoId,

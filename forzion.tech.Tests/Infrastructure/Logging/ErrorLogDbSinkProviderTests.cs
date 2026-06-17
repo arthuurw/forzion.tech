@@ -25,6 +25,17 @@ public class ErrorLogDbSinkProviderTests
         return (sp.GetRequiredService<IServiceScopeFactory>(), dbName);
     }
 
+    private static IServiceScopeFactory CriarScopeFactoryQueTrava(ManualResetEventSlim porta)
+    {
+        var mock = new Mock<IServiceScopeFactory>();
+        mock.Setup(f => f.CreateScope()).Returns(() =>
+        {
+            porta.Wait();
+            return Mock.Of<IServiceScope>();
+        });
+        return mock.Object;
+    }
+
     // Conta entradas gravadas no banco InMemory.
     private static async Task<int> ContarEntradasAsync(IServiceScopeFactory scopeFactory)
     {
@@ -121,20 +132,23 @@ public class ErrorLogDbSinkProviderTests
     [Fact]
     public void Log_CanalCheio_ContabilizaDropSemLancarExcecao()
     {
-        var (scopeFactory, _) = CriarScopeFactory();
+        using var drenoTravado = new ManualResetEventSlim(false);
+        var scopeFactory = CriarScopeFactoryQueTrava(drenoTravado);
 
         using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
         var logger = provider.CreateLogger("OverflowCategory");
 
         var act = () =>
         {
-            for (var i = 0; i < 1001; i++)
+            for (var i = 0; i < 2001; i++)
                 logger.Log(LogLevel.Error, 0, $"msg {i}", null, (s, _) => s);
         };
 
         act.Should().NotThrow();
 
-        provider.DropsContados.Should().BeGreaterThanOrEqualTo(0);
+        provider.DropsContados.Should().BeGreaterThanOrEqualTo(1);
+
+        drenoTravado.Set();
     }
 
     // LOG-01: CreatedAt = hora de inserção, distinta de OcorridoEm (canal assíncrono).

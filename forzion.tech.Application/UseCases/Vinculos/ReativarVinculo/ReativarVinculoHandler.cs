@@ -4,6 +4,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
@@ -11,6 +12,7 @@ namespace forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
 public class ReativarVinculoHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IAlunoRepository alunoRepository,
+    IPacoteRepository pacoteRepository,
     ILimiteTreinadorService limiteTreinadorService,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
@@ -40,6 +42,13 @@ public class ReativarVinculoHandler(
             throw new AlunoJaVinculadoException();
 
         await limiteTreinadorService.ValidarAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
+
+        if (command.PacoteId != Guid.Empty)
+        {
+            var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false);
+            if (pacote is not null && pacote.TreinadorId != command.TreinadorId)
+                return Result.Failure<VinculoResponse>(PacoteErrors.NaoPertenceTreinador);
+        }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var vinculoResult = VinculoTreinadorAluno.Criar(command.TreinadorId, command.AlunoId, agora);

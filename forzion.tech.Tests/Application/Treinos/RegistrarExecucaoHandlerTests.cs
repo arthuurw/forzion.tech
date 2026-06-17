@@ -52,9 +52,9 @@ public class RegistrarExecucaoHandlerTests
         var result = await _handler.HandleAsync(ComandoValido(treino.Id, alunoId));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.TreinoId.Should().Be(treino.Id);
-        result.Value.AlunoId.Should().Be(alunoId);
-        _execucaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<ExecucaoTreino>(), It.IsAny<CancellationToken>()), Times.Once);
+        _execucaoRepo.Verify(r => r.AdicionarAsync(
+            It.Is<ExecucaoTreino>(e => e.TreinoId == treino.Id && e.AlunoId == alunoId && e.Exercicios.Count == 0),
+            It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -211,7 +211,16 @@ public class RegistrarExecucaoHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Observacao.Should().Be("treino concluído");
         _execucaoRepo.Verify(r => r.AdicionarAsync(
-            It.Is<ExecucaoTreino>(e => e.Exercicios.Count == 1), It.IsAny<CancellationToken>()), Times.Once);
+            It.Is<ExecucaoTreino>(e =>
+                e.TreinoId == treino.Id
+                && e.AlunoId == alunoId
+                && e.Observacao == "treino concluído"
+                && e.Exercicios.Count == 1
+                && e.Exercicios[0].TreinoExercicioId == item.TreinoExercicioId
+                && e.Exercicios[0].SeriesExecutadas == 4
+                && e.Exercicios[0].RepeticoesExecutadas == 10
+                && e.Exercicios[0].CargaExecutada == 80.5m),
+            It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

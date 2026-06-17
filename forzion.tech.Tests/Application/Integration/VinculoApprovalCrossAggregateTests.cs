@@ -70,7 +70,7 @@ public class VinculoApprovalCrossAggregateTests
 
         _aprovarHandler = new AprovarVinculoHandler(
             _vinculoRepo.Object, _treinoAlunoRepo.Object, _treinoRepo.Object,
-            _alunoRepo.Object, _treinadorRepo.Object, _contaRecebimentoRepo.Object, _limiteService.Object, _logRepo.Object,
+            _alunoRepo.Object, _treinadorRepo.Object, _contaRecebimentoRepo.Object, _pacoteRepo.Object, _limiteService.Object, _logRepo.Object,
             _unitOfWork.Object, _transactionProvider.Object,
             TimeProvider.System,
             Mock.Of<ILogger<AprovarVinculoHandler>>());

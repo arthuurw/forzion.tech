@@ -28,6 +28,12 @@ public class CriarAssinaturaAlunoService(
             return ResultadoCriacaoAssinaturaAluno.PacoteIndisponivel;
         }
 
+        if (pacote.TreinadorId != vinculo.TreinadorId)
+        {
+            logger.LogWarning("Vínculo {VinculoId}: pacote {PacoteId} pertence a outro treinador — assinatura não criada.", vinculo.Id, pacote.Id);
+            return ResultadoCriacaoAssinaturaAluno.PacoteIndisponivel;
+        }
+
         var assinaturaResult = AssinaturaAluno.Criar(vinculo.Id, pacote.Id, vinculo.TreinadorId, vinculo.AlunoId, pacote.Preco, agora);
         if (assinaturaResult.IsFailure)
         {

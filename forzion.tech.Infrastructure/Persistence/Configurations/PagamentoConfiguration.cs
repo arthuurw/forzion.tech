@@ -9,7 +9,8 @@ public class PagamentoConfiguration : IEntityTypeConfiguration<Pagamento>
 {
     public void Configure(EntityTypeBuilder<Pagamento> builder)
     {
-        builder.ToTable("pagamentos");
+        builder.ToTable("pagamentos", t =>
+            t.HasCheckConstraint("ck_pagamentos_valor_nao_negativo", "\"valor\" >= 0"));
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.AssinaturaAlunoId).IsRequired();

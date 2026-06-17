@@ -8,7 +8,11 @@ public class ExecucaoExercicioConfiguration : IEntityTypeConfiguration<ExecucaoE
 {
     public void Configure(EntityTypeBuilder<ExecucaoExercicio> builder)
     {
-        builder.ToTable("execucoes_exercicio");
+        builder.ToTable("execucoes_exercicio", t =>
+        {
+            t.HasCheckConstraint("ck_execucoes_exercicio_series_positivo", "\"series_executadas\" > 0");
+            t.HasCheckConstraint("ck_execucoes_exercicio_repeticoes_positivo", "\"repeticoes_executadas\" > 0");
+        });
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.SeriesExecutadas).IsRequired();

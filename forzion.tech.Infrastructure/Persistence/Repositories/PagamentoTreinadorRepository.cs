@@ -24,6 +24,7 @@ public class PagamentoTreinadorRepository(AppDbContext context) : IPagamentoTrei
 
     public async Task<PagamentoTreinador?> ObterPagoPorAssinaturaAsync(Guid assinaturaTreinadorId, CancellationToken cancellationToken = default) =>
         await context.PagamentosTreinador
+            .AsNoTracking()
             .Where(p => p.AssinaturaTreinadorId == assinaturaTreinadorId
                 && p.Status == PagamentoStatus.Pago
                 && p.StripePaymentIntentId != null)

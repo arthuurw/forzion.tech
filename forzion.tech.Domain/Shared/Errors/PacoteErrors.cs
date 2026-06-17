@@ -8,4 +8,6 @@ public static class PacoteErrors
     public static Error NomeMuitoLongo => new("pacote.nome_muito_longo", "O nome deve ter no máximo 100 caracteres.");
     public static Error PrecoNegativo => new("pacote.preco_negativo", "O preço não pode ser negativo.");
     public static Error DescricaoMuitoLonga => new("pacote.descricao_muito_longa", "A descrição deve ter no máximo 500 caracteres.");
+    public static Error NaoEncontrado => new("pacote.nao_encontrado", "Pacote não encontrado.", ErrorType.NotFound);
+    public static Error NaoPertenceTreinador => new("pacote.nao_pertence_treinador", "Pacote não pertence ao treinador informado.");
 }

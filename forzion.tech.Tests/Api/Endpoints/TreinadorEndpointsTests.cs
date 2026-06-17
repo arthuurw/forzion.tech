@@ -846,6 +846,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IAlunoRepository>(),
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IContaRecebimentoRepository>(),
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<ILimiteTreinadorService>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
@@ -948,6 +949,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<ReativarVinculoHandler> ReativarVinculoHandlerMock { get; } = new(
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
             Mock.Of<IAlunoRepository>(),
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<ILimiteTreinadorService>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,

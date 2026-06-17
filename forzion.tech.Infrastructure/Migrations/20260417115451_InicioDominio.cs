@@ -14,13 +14,6 @@ namespace forzion.tech.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // This migration is schema-agnostic and works for any PostgreSQL schema
-            // The schema name is read from the __EFMigrationsHistory table location
-
-            var schemaName = migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL" 
-                ? GetCurrentSchema() 
-                : "dbo";
-
             // Cleanup legacy tables if they exist
             migrationBuilder.Sql($@"
                 DO $$ 
@@ -44,13 +37,6 @@ namespace forzion.tech.Infrastructure.Migrations
                 END $$;
             ");
 
-            // Create the default schema if needed (will be public or homolog based on context)
-            migrationBuilder.Sql($@"
-                CREATE SCHEMA IF NOT EXISTS public;
-            ");
-
-            // All tables created via EF Core migration builder
-            // The schema will be applied from the DbContext configuration
             migrationBuilder.CreateTable(
                 name: "contas",
                 columns: table => new
@@ -551,12 +537,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "contas");
-        }
-
-        private string GetCurrentSchema()
-        {
-            // Placeholder - in actual execution, EF Core will handle schema from context
-            return "public";
         }
     }
 }

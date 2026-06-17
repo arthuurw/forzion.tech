@@ -7,6 +7,8 @@ namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
 public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepository
 {
+    private const int LimiteListagem = 500;
+
     private readonly AppDbContext _context = context;
 
     public async Task<TreinoAluno?> ObterAsync(Guid treinoId, Guid alunoId, CancellationToken cancellationToken = default) =>
@@ -47,7 +49,7 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
             join t in _context.Treinos on ta.TreinoId equals t.Id
             where ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo && t.TreinadorId == treinadorId
             select new { ta, t.Nome }
-        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+        ).Take(LimiteListagem).ToListAsync(cancellationToken).ConfigureAwait(false);
 
         return raw.Select(x => new TreinoAlunoComNome(x.ta, x.Nome)).ToList();
     }
@@ -60,7 +62,7 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
             join t in _context.Treinos on ta.TreinoId equals t.Id
             where ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo
             select new { ta, t.Nome }
-        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+        ).Take(LimiteListagem).ToListAsync(cancellationToken).ConfigureAwait(false);
 
         return raw.Select(x => new TreinoAlunoComNome(x.ta, x.Nome)).ToList();
     }
@@ -155,7 +157,7 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
             join a in _context.Alunos on ta.AlunoId equals a.Id
             where ta.TreinoId == treinoId && ta.Status == TreinoAlunoStatus.Ativo
             select new { ta.Id, ta.AlunoId, a.Nome, ta.Status }
-        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+        ).Take(LimiteListagem).ToListAsync(cancellationToken).ConfigureAwait(false);
 
         return raw.Select(x => new TreinoAlunoVinculado(x.Id, x.AlunoId, x.Nome, x.Status)).ToList();
     }

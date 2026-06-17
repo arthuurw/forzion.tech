@@ -8,7 +8,8 @@ public class AssinaturaTreinadorConfiguration : IEntityTypeConfiguration<Assinat
 {
     public void Configure(EntityTypeBuilder<AssinaturaTreinador> builder)
     {
-        builder.ToTable("assinaturas_treinador");
+        builder.ToTable("assinaturas_treinador", t =>
+            t.HasCheckConstraint("ck_assinaturas_treinador_valor_nao_negativo", "\"valor\" >= 0"));
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.TreinadorId).IsRequired();

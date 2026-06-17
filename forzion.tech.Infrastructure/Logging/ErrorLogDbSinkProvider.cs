@@ -44,7 +44,7 @@ public sealed class ErrorLogDbSinkProvider : ILoggerProvider
 
         _canal = Channel.CreateBounded<LogEntry>(new BoundedChannelOptions(CapacidadeCanal)
         {
-            FullMode = BoundedChannelFullMode.DropWrite,
+            FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
             SingleWriter = false
         });
