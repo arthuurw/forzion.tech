@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
-public class TrustedDeviceRepository(AppDbContext context) : ITrustedDeviceRepository
+public class TrustedDeviceRepository(AppDbContext context, TimeProvider timeProvider) : ITrustedDeviceRepository
 {
     public async Task AdicionarAsync(TrustedDevice device, CancellationToken cancellationToken = default) =>
         await context.TrustedDevices.AddAsync(device, cancellationToken).ConfigureAwait(false);
@@ -27,5 +27,14 @@ public class TrustedDeviceRepository(AppDbContext context) : ITrustedDeviceRepos
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         context.TrustedDevices.RemoveRange(devices);
+    }
+
+    public async Task<int> LimparExpiradosAsync(CancellationToken cancellationToken = default)
+    {
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        return await context.TrustedDevices
+            .Where(d => d.ExpiraEm <= agora || d.RevogadoEm != null)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 }

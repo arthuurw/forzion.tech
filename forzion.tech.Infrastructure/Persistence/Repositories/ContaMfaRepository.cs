@@ -13,4 +13,13 @@ public class ContaMfaRepository(AppDbContext context) : IContaMfaRepository
         await context.ContasMfa
             .FirstOrDefaultAsync(m => m.ContaId == contaId, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default)
+    {
+        var registros = await context.ContasMfa
+            .Where(m => m.ContaId == contaId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        context.ContasMfa.RemoveRange(registros);
+    }
 }

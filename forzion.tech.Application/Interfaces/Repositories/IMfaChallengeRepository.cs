@@ -7,4 +7,6 @@ public interface IMfaChallengeRepository
 {
     Task AdicionarAsync(MfaChallenge challenge, CancellationToken cancellationToken = default);
     Task<MfaChallenge?> BuscarUltimoPorContaEPropositoAsync(Guid contaId, MfaProposito proposito, CancellationToken cancellationToken = default);
+    Task<int> LimparExpiradosAsync(CancellationToken cancellationToken = default);
+    Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default);
 }

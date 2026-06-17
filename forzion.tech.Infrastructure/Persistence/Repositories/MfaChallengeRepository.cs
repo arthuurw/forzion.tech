@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
-public class MfaChallengeRepository(AppDbContext context) : IMfaChallengeRepository
+public class MfaChallengeRepository(AppDbContext context, TimeProvider timeProvider) : IMfaChallengeRepository
 {
     public async Task AdicionarAsync(MfaChallenge challenge, CancellationToken cancellationToken = default) =>
         await context.MfaChallenges.AddAsync(challenge, cancellationToken).ConfigureAwait(false);
@@ -16,4 +16,22 @@ public class MfaChallengeRepository(AppDbContext context) : IMfaChallengeReposit
             .OrderByDescending(c => c.CriadoEm)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<int> LimparExpiradosAsync(CancellationToken cancellationToken = default)
+    {
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        return await context.MfaChallenges
+            .Where(c => c.ExpiraEm <= agora)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default)
+    {
+        var challenges = await context.MfaChallenges
+            .Where(c => c.ContaId == contaId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        context.MfaChallenges.RemoveRange(challenges);
+    }
 }

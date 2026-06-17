@@ -3,6 +3,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 
 namespace forzion.tech.Tests.Infrastructure.Persistence.Repositories;
 
@@ -58,14 +59,39 @@ public class MfaRepositoriesTests(InfrastructureTestFixture fixture)
 
         await using (var ctx = fixture.CreateContext())
         {
-            await new MfaChallengeRepository(ctx).AdicionarAsync(challenge);
+            await new MfaChallengeRepository(ctx, TimeProvider.System).AdicionarAsync(challenge);
             await ctx.SaveChangesAsync();
         }
 
         await using var verify = fixture.CreateContext();
-        var repo = new MfaChallengeRepository(verify);
+        var repo = new MfaChallengeRepository(verify, TimeProvider.System);
         (await repo.BuscarUltimoPorContaEPropositoAsync(contaId, MfaProposito.StepUp)).Should().NotBeNull();
         (await repo.BuscarUltimoPorContaEPropositoAsync(contaId, MfaProposito.LoginFallback)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task MfaChallenge_LimparExpirados_RemoveSoOsVencidos()
+    {
+        var contaId = Guid.NewGuid();
+        var expirado = MfaChallenge.Criar(contaId, $"exp-{contaId}", MfaProposito.StepUp, Agora.AddMinutes(5), Agora).Value;
+        var vigente = MfaChallenge.Criar(contaId, $"viv-{contaId}", MfaProposito.LoginFallback, Agora.AddMinutes(30), Agora).Value;
+
+        await using (var ctx = fixture.CreateContext())
+        {
+            ctx.MfaChallenges.AddRange(expirado, vigente);
+            await ctx.SaveChangesAsync();
+        }
+
+        var relogio = new FakeTimeProvider(Agora.AddMinutes(10));
+        await using (var ctx = fixture.CreateContext())
+        {
+            var removidos = await new MfaChallengeRepository(ctx, relogio).LimparExpiradosAsync();
+            removidos.Should().Be(1);
+        }
+
+        await using var verify = fixture.CreateContext();
+        var restantes = await verify.MfaChallenges.Where(c => c.ContaId == contaId).ToListAsync();
+        restantes.Should().ContainSingle().Which.Id.Should().Be(vigente.Id);
     }
 
     [Fact]
@@ -77,14 +103,41 @@ public class MfaRepositoriesTests(InfrastructureTestFixture fixture)
 
         await using (var ctx = fixture.CreateContext())
         {
-            await new TrustedDeviceRepository(ctx).AdicionarAsync(device);
+            await new TrustedDeviceRepository(ctx, TimeProvider.System).AdicionarAsync(device);
             await ctx.SaveChangesAsync();
         }
 
         await using var verify = fixture.CreateContext();
-        var lido = await new TrustedDeviceRepository(verify).BuscarPorHashAsync(hash);
+        var lido = await new TrustedDeviceRepository(verify, TimeProvider.System).BuscarPorHashAsync(hash);
         lido.Should().NotBeNull();
         lido!.Rotulo.Should().Be("Chrome/Windows");
+    }
+
+    [Fact]
+    public async Task TrustedDevice_LimparExpirados_RemoveVencidosERevogados()
+    {
+        var contaId = Guid.NewGuid();
+        var expirado = TrustedDevice.Criar(contaId, $"exp-{contaId}", Agora.AddDays(1), Agora).Value;
+        var revogado = TrustedDevice.Criar(contaId, $"rev-{contaId}", Agora.AddDays(40), Agora).Value;
+        revogado.Revogar(Agora.AddDays(2));
+        var ativo = TrustedDevice.Criar(contaId, $"atv-{contaId}", Agora.AddDays(40), Agora).Value;
+
+        await using (var ctx = fixture.CreateContext())
+        {
+            ctx.TrustedDevices.AddRange(expirado, revogado, ativo);
+            await ctx.SaveChangesAsync();
+        }
+
+        var relogio = new FakeTimeProvider(Agora.AddDays(10));
+        await using (var ctx = fixture.CreateContext())
+        {
+            var removidos = await new TrustedDeviceRepository(ctx, relogio).LimparExpiradosAsync();
+            removidos.Should().Be(2);
+        }
+
+        await using var verify = fixture.CreateContext();
+        var restantes = await verify.TrustedDevices.Where(d => d.ContaId == contaId).ToListAsync();
+        restantes.Should().ContainSingle().Which.Id.Should().Be(ativo.Id);
     }
 
     [Fact]
