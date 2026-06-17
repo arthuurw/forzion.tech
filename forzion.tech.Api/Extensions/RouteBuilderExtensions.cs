@@ -27,6 +27,7 @@ public static class RouteBuilderExtensions
         endpoints.MapAlunoAreaEndpoints();
         endpoints.MapAlunoEndpoints();
         endpoints.MapContaEndpoints();
+        endpoints.MapMfaEndpoints();
         endpoints.MapSuporteEndpoints();
         endpoints.MapExercicioEndpoints();
         endpoints.MapTreinoEndpoints();

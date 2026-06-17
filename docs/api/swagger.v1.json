@@ -2803,6 +2803,112 @@
         }
       }
     },
+    "/conta/mfa/totp/iniciar": {
+      "post": {
+        "tags": [
+          "Conta"
+        ],
+        "summary": "Inicia a configuração do TOTP e retorna o segredo e o URI otpauth",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IniciarEnrollTotpResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conta/mfa/totp/confirmar": {
+      "post": {
+        "tags": [
+          "Conta"
+        ],
+        "summary": "Confirma o TOTP com um código válido, habilita o MFA e retorna os códigos de recuperação",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmarMfaTotpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmarEnrollTotpResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exercicios": {
       "post": {
         "tags": [
@@ -5830,6 +5936,29 @@
         },
         "additionalProperties": false
       },
+      "ConfirmarEnrollTotpResult": {
+        "type": "object",
+        "properties": {
+          "recoveryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmarMfaTotpRequest": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CriarExercicioGlobalRequest": {
         "type": "object",
         "properties": {
@@ -6323,6 +6452,20 @@
         "type": "object",
         "properties": {
           "observacao": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IniciarEnrollTotpResult": {
+        "type": "object",
+        "properties": {
+          "secretBase32": {
+            "type": "string",
+            "nullable": true
+          },
+          "otpauthUri": {
             "type": "string",
             "nullable": true
           }

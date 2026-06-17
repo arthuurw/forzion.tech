@@ -7,6 +7,8 @@ public static class MfaErrors
     public static Error JaConfirmado => new("mfa.ja_confirmado", "A autenticação em dois fatores já foi confirmada.");
     public static Error NaoHabilitado => new("mfa.nao_habilitado", "A autenticação em dois fatores não está habilitada.");
     public static Error CodigoReutilizado => new("mfa.codigo_reutilizado", "Este código já foi utilizado.");
+    public static Error EnrollNaoIniciado => new("mfa.enroll_nao_iniciado", "Inicie a configuração da autenticação em dois fatores antes de confirmar.");
+    public static Error CodigoInvalido => new("mfa.codigo_invalido", "O código informado é inválido.");
 
     public static Error CodigoHashObrigatorio => new("mfa.codigo_hash_obrigatorio", "O hash do código é obrigatório.");
     public static Error ExpiracaoNaoFutura => new("mfa.expiracao_nao_futura", "A data de expiração deve ser futura.");

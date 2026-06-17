@@ -200,6 +200,7 @@ public static class DependencyInjectionExtensions
         if (!environment.IsEnvironment("Test"))
         {
             services.AddInfrastructure(configuration);
+            services.AddMfaProtection(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
             services.AddHostedService<RelatorioSaudeDiarioService>();
             services.AddHostedService<OutboxProcessorService>();
@@ -227,6 +228,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Auth.RenovarSessao.RenovarSessaoHandler>();
         services.AddScoped<EsqueceuSenhaHandler>();
         services.AddScoped<RedefinirSenhaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.IniciarEnrollTotpHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.ConfirmarEnrollTotpHandler>();
         services.AddScoped<VerificarEmailHandler>();
         services.AddScoped<ReenviarVerificacaoHandler>();
         services.AddScoped<EmailVerificationSender>();
