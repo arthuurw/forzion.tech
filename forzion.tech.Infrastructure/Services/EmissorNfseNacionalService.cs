@@ -19,6 +19,8 @@ public class EmissorNfseNacionalService : IEmissorNfseService
     private const string Namespace = "http://www.sped.fazenda.gov.br/nfse";
     private const string VersaoLayout = "1.01";
     private const string VersaoAplicativo = "forzion.tech-1.0";
+    private const string CodigoEventoCancelamento = "101101";
+    private const string CodigoMotivoCancelamento = "9";
 
     private readonly HttpClient _httpClient;
     private readonly NfseSettings _settings;
@@ -98,8 +100,79 @@ public class EmissorNfseNacionalService : IEmissorNfseService
         return new NfseStatus(NfseSituacao.Rejeitada, null, null, null, codigo, motivo);
     }
 
-    public Task<NfseResultado> CancelarAsync(string chaveAcesso, string motivo, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException("Cancelamento de NFS-e ainda não implementado.");
+    public async Task<NfseResultado> CancelarAsync(string chaveAcesso, string motivo, CancellationToken cancellationToken = default)
+    {
+        var eventoXmlGZipB64 = MontarAssinarCompactarEvento(chaveAcesso, motivo);
+        _logger.LogInformation("Transmitindo cancelamento da NFS-e {ChaveAcesso} ao Sistema Nacional.", chaveAcesso);
+
+        var payload = JsonSerializer.Serialize(new { pedidoRegistroEventoXmlGZipB64 = eventoXmlGZipB64 });
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        using var resposta = await _httpClient
+            .PostAsync(Endpoint($"nfse/{Uri.EscapeDataString(chaveAcesso)}/eventos"), content, cancellationToken)
+            .ConfigureAwait(false);
+        var corpo = await resposta.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+        if ((int)resposta.StatusCode >= 500)
+        {
+            _logger.LogError("Falha {Status} ao cancelar NFS-e {ChaveAcesso}.", (int)resposta.StatusCode, chaveAcesso);
+            throw new HttpRequestException($"Sistema Nacional NFS-e respondeu {(int)resposta.StatusCode}.");
+        }
+
+        if (resposta.IsSuccessStatusCode)
+        {
+            _logger.LogInformation("Cancelamento da NFS-e {ChaveAcesso} aceito.", chaveAcesso);
+            return new NfseResultado(true, chaveAcesso, null, _timeProvider.GetUtcNow().UtcDateTime, null, null, null);
+        }
+
+        var (codigo, motivoErro) = LerErro(corpo, resposta.StatusCode);
+        _logger.LogWarning("Cancelamento da NFS-e {ChaveAcesso} rejeitado: {Codigo} - {Motivo}.", chaveAcesso, codigo, motivoErro);
+        return new NfseResultado(false, null, null, null, null, codigo, motivoErro);
+    }
+
+    private string MontarAssinarCompactarEvento(string chaveAcesso, string motivo)
+    {
+        var doc = MontarEventoCancelamento(chaveAcesso, motivo, out var idInfPedReg);
+        Assinar(doc, idInfPedReg);
+        return Compactar(doc);
+    }
+
+    private XmlDocument MontarEventoCancelamento(string chaveAcesso, string motivo, out string idInfPedReg)
+    {
+        var doc = new XmlDocument { PreserveWhitespace = true };
+
+        XmlElement E(string nome, string valor)
+        {
+            var e = doc.CreateElement(nome, Namespace);
+            e.InnerText = valor;
+            return e;
+        }
+
+        XmlElement G(string nome) => doc.CreateElement(nome, Namespace);
+
+        var raiz = G("pedRegEvento");
+        raiz.SetAttribute("versao", VersaoLayout);
+        doc.AppendChild(raiz);
+
+        idInfPedReg = $"PRE{SoDigitos(chaveAcesso)}{CodigoEventoCancelamento}001";
+        var inf = G("infPedReg");
+        inf.SetAttribute("Id", idInfPedReg);
+        raiz.AppendChild(inf);
+
+        inf.AppendChild(E("tpAmb", _settings.Ambiente == NfseAmbiente.Producao ? "1" : "2"));
+        inf.AppendChild(E("verAplic", VersaoAplicativo));
+        inf.AppendChild(E("dhEvento", _timeProvider.GetUtcNow().ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture)));
+        inf.AppendChild(E("CNPJAutor", SoDigitos(_settings.CnpjPrestador)));
+        inf.AppendChild(E("chNFSe", chaveAcesso));
+        inf.AppendChild(E("nPedRegEvento", "1"));
+
+        var evento = G("e101101");
+        evento.AppendChild(E("xDesc", "Cancelamento"));
+        evento.AppendChild(E("cMotivo", CodigoMotivoCancelamento));
+        evento.AppendChild(E("xMotivo", motivo));
+        inf.AppendChild(evento);
+
+        return doc;
+    }
 
     private string MontarAssinarCompactar(DpsInput input)
     {

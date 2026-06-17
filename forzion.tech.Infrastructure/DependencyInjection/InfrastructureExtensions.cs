@@ -2,6 +2,7 @@ using System.Security.Cryptography.X509Certificates;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
+using forzion.tech.Application.UseCases.Nfse.CancelarNfse;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Handlers;
 using forzion.tech.Infrastructure.Notifications.Alerts;
@@ -57,6 +58,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IOutboxEnfileirador, OutboxEnfileirador>();
         services.AddScoped<IOutboxEfeitoHandler, EvidenciaDisputaEfeitoHandler>();
         services.AddScoped<IOutboxEfeitoHandler, EmitirNfseEfeitoHandler>();
+        services.AddScoped<IOutboxEfeitoHandler, CancelarNfseEfeitoHandler>();
         services.AddScoped<OutboxDispatcher>();
         services.AddScoped<OutboxProcessor>();
         services.AddOptions<OutboxOptions>().BindConfiguration("Outbox");
@@ -256,6 +258,8 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, PagamentoTreinadorPagoHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, EmitirNfseAssinaturaHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoTreinadorEstornadoEvent>, CancelarNfseHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoTreinadorEmDisputaEvent>, CancelarNfseHandler>();
 
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
@@ -314,6 +318,10 @@ public static class InfrastructureExtensions
             .Registrar<PagamentoTreinadorPagoEvent, PagamentoTreinadorPagoHandler>(
                 e => $"evt:PagamentoTreinadorPago:{e.PagamentoTreinadorId}")
             .RegistrarHandlerAdicional<PagamentoTreinadorPagoEvent, EmitirNfseAssinaturaHandler>()
+            .Registrar<PagamentoTreinadorEstornadoEvent, CancelarNfseHandler>(
+                e => $"evt:PagamentoTreinadorEstornado:{e.PagamentoTreinadorId}")
+            .Registrar<PagamentoTreinadorEmDisputaEvent, CancelarNfseHandler>(
+                e => $"evt:PagamentoTreinadorEmDisputa:{e.PagamentoTreinadorId}")
             .Registrar<VinculoAprovadoEvent, VinculoAprovadoCriarAssinaturaAlunoHandler>(
                 e => $"evt:VinculoAprovado:{e.VinculoId}")
             // E-mail ao suporte é durável (FR-05): nunca perdido por falha transitória do Resend.

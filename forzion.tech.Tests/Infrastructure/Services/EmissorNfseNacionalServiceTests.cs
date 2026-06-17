@@ -105,6 +105,52 @@ public class EmissorNfseNacionalServiceTests
         status.Situacao.Should().Be(NfseSituacao.NaoEncontrada);
     }
 
+    [Fact]
+    public async Task CancelarAsync_PostaEventoAssinadoNoEndpointDeEventos()
+    {
+        HttpRequestMessage? requisicao = null;
+        var (servico, handler) = Criar(req =>
+        {
+            requisicao = req;
+            return Resposta(HttpStatusCode.OK, "{}");
+        });
+
+        var resultado = await servico.CancelarAsync("CHV-CANCEL", "Cancelamento por estorno do pagamento.");
+
+        resultado.Sucesso.Should().BeTrue();
+        requisicao!.Method.Should().Be(HttpMethod.Post);
+        requisicao.RequestUri!.AbsolutePath.Should().EndWith("/nfse/CHV-CANCEL/eventos");
+
+        var doc = DescompactarEvento(handler.Bodies[0]);
+        doc.DocumentElement!.LocalName.Should().Be("pedRegEvento");
+        doc.GetElementsByTagName("chNFSe")[0]!.InnerText.Should().Be("CHV-CANCEL");
+        doc.GetElementsByTagName("cMotivo")[0]!.InnerText.Should().Be("9");
+        AssinaturaValida(doc).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CancelarAsync_Rejeicao_RetornaErroSemExcecao()
+    {
+        var (servico, _) = Criar(_ => Resposta(
+            HttpStatusCode.BadRequest,
+            "{\"erros\":[{\"codigo\":\"E8001\",\"descricao\":\"prazo expirado\"}]}"));
+
+        var resultado = await servico.CancelarAsync("CHV-X", "motivo de cancelamento");
+
+        resultado.Sucesso.Should().BeFalse();
+        resultado.CodigoErro.Should().Be("E8001");
+    }
+
+    [Fact]
+    public async Task CancelarAsync_Erro5xx_PropagaParaRetry()
+    {
+        var (servico, _) = Criar(_ => Resposta(HttpStatusCode.InternalServerError, string.Empty));
+
+        var act = () => servico.CancelarAsync("CHV-X", "motivo de cancelamento");
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
     private static (EmissorNfseNacionalService servico, CapturingHandler handler) Criar(
         Func<HttpRequestMessage, HttpResponseMessage> responder,
         IOptions<NfseSettings>? settings = null,
@@ -141,9 +187,15 @@ public class EmissorNfseNacionalServiceTests
     private static HttpResponseMessage Resposta(HttpStatusCode status, string json) =>
         new(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
 
-    private static XmlDocument DescompactarDps(string corpoJson)
+    private static XmlDocument DescompactarDps(string corpoJson) =>
+        Descompactar(corpoJson, "dpsXmlGZipB64");
+
+    private static XmlDocument DescompactarEvento(string corpoJson) =>
+        Descompactar(corpoJson, "pedidoRegistroEventoXmlGZipB64");
+
+    private static XmlDocument Descompactar(string corpoJson, string campo)
     {
-        var b64 = JsonDocument.Parse(corpoJson).RootElement.GetProperty("dpsXmlGZipB64").GetString()!;
+        var b64 = JsonDocument.Parse(corpoJson).RootElement.GetProperty(campo).GetString()!;
         using var entrada = new MemoryStream(Convert.FromBase64String(b64));
         using var gzip = new GZipStream(entrada, CompressionMode.Decompress);
         using var leitor = new StreamReader(gzip, Encoding.UTF8);

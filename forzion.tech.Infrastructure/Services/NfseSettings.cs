@@ -21,4 +21,5 @@ public class NfseSettings
     public string CertificadoPath { get; set; } = string.Empty;
     public string CertificadoSenha { get; set; } = string.Empty;
     public string RegimeTributario { get; set; } = "SimplesNacional";
+    public int PrazoCancelamentoDias { get; set; } = 90;
 }
