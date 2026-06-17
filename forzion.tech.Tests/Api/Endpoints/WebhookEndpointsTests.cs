@@ -6,6 +6,8 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
+using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -106,6 +108,38 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
         captured!.AssinaturaAlunoStripe.Should().Be("t=1,v1=deadbeef");
     }
 
+    // --- POST /webhooks/resend / /webhooks/whatsapp — não vazam Error.Message ---
+
+    [Fact]
+    public async Task Post_WebhookResend_Invalido_NaoEcoaErrorMessage()
+    {
+        _factory.ProcessarWebhookResendHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookResendCommand>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(Error.Business("webhook_email.assinatura_invalida", "Assinatura do webhook inválida.")));
+
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await _factory.CreateClient().PostAsync("/webhooks/resend", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        problem.GetProperty("detail").GetString().Should().Be("Webhook inválido.");
+    }
+
+    [Fact]
+    public async Task Post_WebhookWhatsApp_Invalido_NaoEcoaErrorMessage()
+    {
+        _factory.ProcessarWebhookWhatsAppHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookWhatsAppCommand>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(Error.Business("webhook_whatsapp.assinatura_invalida", "Assinatura inválida.")));
+
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await _factory.CreateClient().PostAsync("/webhooks/whatsapp", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        problem.GetProperty("detail").GetString().Should().Be("Webhook inválido.");
+    }
+
     // --- GET /webhooks/whatsapp (Meta verification handshake) ---
 
     [Fact]
@@ -168,6 +202,20 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             Mock.Of<IUnitOfWork>(), Mock.Of<IOutboxEnfileirador>(), TimeProvider.System,
             Mock.Of<ILogger<ProcessarWebhookStripeHandler>>());
 
+        public Mock<ProcessarWebhookResendHandler> ProcessarWebhookResendHandlerMock { get; } = new(
+            Mock.Of<IEmailDeliveryLogRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            TimeProvider.System,
+            Mock.Of<IRecipientHasher>(),
+            Mock.Of<ILogger<ProcessarWebhookResendHandler>>());
+
+        public Mock<ProcessarWebhookWhatsAppHandler> ProcessarWebhookWhatsAppHandlerMock { get; } = new(
+            Mock.Of<IWhatsAppDeliveryLogRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            TimeProvider.System,
+            Mock.Of<IRecipientHasher>(),
+            Mock.Of<ILogger<ProcessarWebhookWhatsAppHandler>>());
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -179,6 +227,10 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             {
                 services.RemoveAll<ProcessarWebhookStripeHandler>();
                 services.AddScoped(_ => ProcessarWebhookHandlerMock.Object);
+                services.RemoveAll<ProcessarWebhookResendHandler>();
+                services.AddScoped(_ => ProcessarWebhookResendHandlerMock.Object);
+                services.RemoveAll<ProcessarWebhookWhatsAppHandler>();
+                services.AddScoped(_ => ProcessarWebhookWhatsAppHandlerMock.Object);
             });
         }
     }
