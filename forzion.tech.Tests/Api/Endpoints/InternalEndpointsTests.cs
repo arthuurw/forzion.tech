@@ -38,7 +38,9 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IPasswordHasher>(), Mock.Of<IUnitOfWork>(), Mock.Of<IDbContextTransactionProvider>(),
             TimeProvider.System, Mock.Of<IUserContext>(), Mock.Of<ITokenRevogadoRepository>(),
-            Mock.Of<IDatabaseErrorInspector>(), Mock.Of<IRefreshTokenFamilyRepository>());
+            Mock.Of<IDatabaseErrorInspector>(), Mock.Of<IRefreshTokenFamilyRepository>(),
+            Mock.Of<IContaMfaRepository>(), Mock.Of<IMfaRecoveryCodeRepository>(),
+            Mock.Of<IMfaChallengeRepository>(), Mock.Of<ITrustedDeviceRepository>());
 
         public Mock<GerarNfseComissaoMensalHandler> GerarNfseComissaoMock { get; } = new(
             Mock.Of<IPagamentoRepository>(), Mock.Of<INotaFiscalRepository>(), Mock.Of<IOutboxEnfileirador>(),

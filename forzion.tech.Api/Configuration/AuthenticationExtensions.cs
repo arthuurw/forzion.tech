@@ -1,6 +1,8 @@
 using System.Text;
+using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
@@ -46,10 +48,20 @@ public static class AuthenticationExtensions
                 options.Events = BuildEvents(environment);
             });
 
+        // Token de escopo restrito (mfa_pending/step_up) carrega a claim `scope` e NÃO tem
+        // `tipo_conta`/`perfil_id`. A policy padrão exige autenticado SEM escopo, fechando as
+        // rotas de negócio (`.RequireAuthorization()` sem papel) a esses tokens; as policies de
+        // papel já os excluem por exigirem `tipo_conta`.
         services.AddAuthorizationBuilder()
+            .SetDefaultPolicy(new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .RequireAssertion(ctx => !ctx.User.HasClaim(c => c.Type == MfaScopes.ClaimType))
+                .Build())
             .AddPolicy("SystemAdmin", p => p.RequireClaim("tipo_conta", "SystemAdmin"))
             .AddPolicy("Treinador", p => p.RequireClaim("tipo_conta", "Treinador"))
-            .AddPolicy("Aluno", p => p.RequireClaim("tipo_conta", "Aluno"));
+            .AddPolicy("Aluno", p => p.RequireClaim("tipo_conta", "Aluno"))
+            .AddPolicy(MfaScopes.PolicyPendente, p => p.RequireClaim(MfaScopes.ClaimType, MfaScopes.Pendente))
+            .AddPolicy(MfaScopes.PolicyStepUp, p => p.RequireClaim(MfaScopes.ClaimType, MfaScopes.StepUp));
 
         return services;
     }

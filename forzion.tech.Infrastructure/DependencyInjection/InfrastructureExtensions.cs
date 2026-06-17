@@ -82,6 +82,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddSingleton<ITotpService, OtpNetTotpService>();
 
         services.AddScoped<IContaRepository, ContaRepository>();
         services.AddScoped<IAlunoRepository, AlunoRepository>();
@@ -100,9 +101,14 @@ public static class InfrastructureExtensions
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IMensagemSuporteRepository, MensagemSuporteRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<ITrocaEmailTokenRepository, TrocaEmailTokenRepository>();
         services.AddScoped<IRefreshTokenFamilyRepository, RefreshTokenFamilyRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
+        services.AddScoped<IContaMfaRepository, ContaMfaRepository>();
+        services.AddScoped<IMfaRecoveryCodeRepository, MfaRecoveryCodeRepository>();
+        services.AddScoped<IMfaChallengeRepository, MfaChallengeRepository>();
+        services.AddScoped<ITrustedDeviceRepository, TrustedDeviceRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IWhatsAppDeliveryLogRepository, WhatsAppDeliveryLogRepository>();
         services.AddScoped<IPlanoNotificationPolicy, Notifications.PlanoNotificationPolicy>();

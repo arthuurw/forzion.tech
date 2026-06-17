@@ -75,8 +75,10 @@ public static class TreinadorEndpoints
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(new { url = result.Value });
         })
+        .AddEndpointFilter<RequerStepUpFilter>()
         .WithSummary("Inicia o onboarding Stripe Connect do treinador e retorna o link")
         .Produces<object>()
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity)

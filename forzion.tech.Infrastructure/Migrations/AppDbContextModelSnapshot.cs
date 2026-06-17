@@ -373,6 +373,51 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("contas", (string)null);
                 });
 
+            modelBuilder.Entity("forzion.tech.Domain.Entities.ContaMfa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<DateTime?>("ConfirmadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmado_em");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<bool>("Habilitado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("habilitado");
+
+                    b.Property<string>("TotpSecretCifrado")
+                        .HasColumnType("text")
+                        .HasColumnName("totp_secret_cifrado");
+
+                    b.Property<long?>("UltimoTimeStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("ultimo_time_step");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conta_mfa");
+
+                    b.HasIndex("ContaId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_conta_mfa_conta_id");
+
+                    b.ToTable("conta_mfa", (string)null);
+                });
+
             modelBuilder.Entity("forzion.tech.Domain.Entities.ContaRecebimento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -997,6 +1042,88 @@ namespace forzion.tech.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("ck_notas_fiscais_valor_nao_negativo", "\"valor\" >= 0");
                         });
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.MfaChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CodigoHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("codigo_hash");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.Property<string>("Proposito")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("proposito");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentativas");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("usado_em");
+
+                    b.HasKey("Id")
+                        .HasName("pk_mfa_challenges");
+
+                    b.HasIndex("ContaId", "Proposito")
+                        .HasDatabaseName("ix_mfa_challenges_conta_id_proposito");
+
+                    b.ToTable("mfa_challenges", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.MfaRecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CodigoHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("codigo_hash");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("usado_em");
+
+                    b.HasKey("Id")
+                        .HasName("pk_mfa_recovery_codes");
+
+                    b.HasIndex("ContaId")
+                        .HasDatabaseName("ix_mfa_recovery_codes_conta_id");
+
+                    b.ToTable("mfa_recovery_codes", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.OutboxEfeito", b =>
@@ -1820,6 +1947,102 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_treino_exercicios_treino_id");
 
                     b.ToTable("treino_exercicios", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.TrocaEmailToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.Property<string>("NovoEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("novo_email");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("usado_em");
+
+                    b.HasKey("Id")
+                        .HasName("pk_troca_email_tokens");
+
+                    b.HasIndex("ContaId")
+                        .HasDatabaseName("ix_troca_email_tokens_conta_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_troca_email_tokens_token_hash");
+
+                    b.ToTable("troca_email_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.TrustedDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.Property<DateTime?>("RevogadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revogado_em");
+
+                    b.Property<string>("Rotulo")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("rotulo");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime?>("UltimoUsoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_uso_em");
+
+                    b.HasKey("Id")
+                        .HasName("pk_trusted_devices");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_trusted_devices_token_hash");
+
+                    b.ToTable("trusted_devices", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.VinculoTreinadorAluno", b =>

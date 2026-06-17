@@ -114,6 +114,7 @@ public static class DependencyInjectionExtensions
             services.AddRateLimiter(opt =>
             {
                 opt.AddPolicy("auth", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("mfa", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("write", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("read", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("internal", _ => RateLimitPartition.GetNoLimiter<string>("test"));
@@ -153,6 +154,10 @@ public static class DependencyInjectionExtensions
                 opt.AddPolicy("auth", ctx =>
                     RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
                         _ => Fixed(10, TimeSpan.FromMinutes(1))));
+
+                opt.AddPolicy("mfa", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                        _ => Fixed(5, TimeSpan.FromMinutes(1))));
 
                 // write: por usuário se autenticado, IP caso contrário
                 opt.AddPolicy("write", ctx =>
@@ -201,6 +206,7 @@ public static class DependencyInjectionExtensions
         if (!environment.IsEnvironment("Test"))
         {
             services.AddInfrastructure(configuration);
+            services.AddMfaProtection(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
             services.AddHostedService<RelatorioSaudeDiarioService>();
             services.AddHostedService<OutboxProcessorService>();
@@ -216,6 +222,7 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)
     {
         services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
+        services.AddScoped<IValidator<SolicitarTrocaEmailCommand>, SolicitarTrocaEmailCommandValidator>();
 
         services.AddScoped<ILimiteTreinadorService, LimiteTreinadorService>();
         services.AddScoped<forzion.tech.Application.Services.CriarPagamentoComIntentService>();
@@ -224,10 +231,23 @@ public static class DependencyInjectionExtensions
 
         services.AddOptions<AppSettings>().BindConfiguration("App");
 
+        services.AddScoped<ILoginPerfilResolver, LoginPerfilResolver>();
         services.AddScoped<LoginHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Auth.Mfa.CompletarLoginMfaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Auth.Mfa.SolicitarCodigoLoginEmailHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Auth.RenovarSessao.RenovarSessaoHandler>();
         services.AddScoped<EsqueceuSenhaHandler>();
         services.AddScoped<RedefinirSenhaHandler>();
+        services.AddScoped<forzion.tech.Infrastructure.Notifications.Email.SolicitarTrocaEmailHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.TrocarEmail.ConfirmarTrocaEmailHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.IniciarEnrollTotpHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.ConfirmarEnrollTotpHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.ObterStatusMfaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.DesabilitarMfaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.Mfa.RegenerarRecoveryCodesHandler>();
+        services.AddScoped<IEnviarCodigoMfaService, EnviarCodigoMfaService>();
+        services.AddScoped<forzion.tech.Application.UseCases.Auth.StepUp.IniciarStepUpHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Auth.StepUp.VerificarStepUpHandler>();
         services.AddScoped<VerificarEmailHandler>();
         services.AddScoped<ReenviarVerificacaoHandler>();
         services.AddScoped<EmailVerificationSender>();

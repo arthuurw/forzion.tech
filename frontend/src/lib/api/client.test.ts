@@ -4,6 +4,7 @@ import {
   ASSINATURA_INADIMPLENTE_EVENT,
   ASSINATURA_INADIMPLENTE_MESSAGE,
 } from "./client";
+import { registerStepUpHandler } from "@/lib/auth/stepUpController";
 
 // O interceptor de resposta lê `window` em tempo de chamada. Em env node não há
 // window; stubamos um mínimo (location + dispatchEvent + CustomEvent) para exercer
@@ -171,5 +172,53 @@ describe("apiClient — renovação silenciosa em 401", () => {
     ).rejects.toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(fakeWindow.location.href).toBe("/login");
+  });
+});
+
+describe("apiClient — step-up em 403 step_up_requerido", () => {
+  it("solicita step-up e refaz a request com o header X-Step-Up-Token", async () => {
+    const unregister = registerStepUpHandler(async () => "su-tok");
+    const adapter = stubAdapter();
+    const setHeader = vi.fn();
+
+    const result = (await rejectedHandler()({
+      response: { status: 403, data: { code: "step_up_requerido" } },
+      config: { url: "/conta/email/trocar", headers: { set: setHeader } },
+    })) as { data: unknown };
+
+    expect(setHeader).toHaveBeenCalledWith("X-Step-Up-Token", "su-tok");
+    expect(result.data).toEqual({ retried: true });
+    expect(adapter).toHaveBeenCalledTimes(1);
+    unregister();
+  });
+
+  it("step-up cancelado (sem token) → propaga erro sem refazer", async () => {
+    const unregister = registerStepUpHandler(async () => null);
+    const adapter = stubAdapter();
+
+    await expect(
+      rejectedHandler()({
+        response: { status: 403, data: { code: "step_up_requerido" } },
+        config: { url: "/conta/email/trocar", headers: { set: vi.fn() } },
+      }),
+    ).rejects.toBeDefined();
+    expect(adapter).not.toHaveBeenCalled();
+    unregister();
+  });
+
+  it("já tentou step-up (_stepUpRetry) → não repete o desafio", async () => {
+    const handlerFn = vi.fn(async () => "su-tok");
+    const unregister = registerStepUpHandler(handlerFn);
+    const adapter = stubAdapter();
+
+    await expect(
+      rejectedHandler()({
+        response: { status: 403, data: { code: "step_up_requerido" } },
+        config: { url: "/conta/email/trocar", _stepUpRetry: true, headers: { set: vi.fn() } },
+      }),
+    ).rejects.toBeDefined();
+    expect(handlerFn).not.toHaveBeenCalled();
+    expect(adapter).not.toHaveBeenCalled();
+    unregister();
   });
 });

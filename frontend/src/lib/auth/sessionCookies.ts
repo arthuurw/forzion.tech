@@ -60,6 +60,21 @@ export function applySessionCookies(
   response.cookies.set("session_guard", crypto.randomUUID(), { ...baseCookieOpts(accessMaxAge), httpOnly: true });
 }
 
+const TRUSTED_DEVICE_MAX_AGE = 30 * 24 * 60 * 60;
+
+export function applyMfaPendingCookie(response: NextResponse, pendingToken: string): void {
+  const maxAge = accessTokenMaxAge(pendingToken);
+  response.cookies.set("mfa_pending", pendingToken, { ...baseCookieOpts(maxAge), httpOnly: true });
+}
+
+export function clearMfaPendingCookie(response: NextResponse): void {
+  response.cookies.delete({ name: "mfa_pending", path: "/" });
+}
+
+export function applyTrustedDeviceCookie(response: NextResponse, deviceToken: string): void {
+  response.cookies.set("trusted_device", deviceToken, { ...baseCookieOpts(TRUSTED_DEVICE_MAX_AGE), httpOnly: true });
+}
+
 export function clearSessionCookies(response: NextResponse): void {
   // path explícito: os cookies foram setados com Path=/; delete(name) sem path não casa o
   // Path=/ e deixaria o cookie morto sobreviver no browser (Set-Cookie só apaga path igual).

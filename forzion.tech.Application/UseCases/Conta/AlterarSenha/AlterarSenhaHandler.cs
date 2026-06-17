@@ -25,6 +25,7 @@ public class AlterarSenhaHandler(
     IContaRepository contaRepository,
     IPasswordHasher passwordHasher,
     IRefreshTokenService refreshTokenService,
+    ITrustedDeviceRepository trustedDeviceRepository,
     ITokenRevogadoRepository tokenRevogadoRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
@@ -62,6 +63,7 @@ public class AlterarSenhaHandler(
         // blacklist do jti corrente — sem o blacklist, o access curto roubado sobreviveria à
         // troca de senha por até 15min (janela que o blacklist fecha).
         await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
+        await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
         var jti = userContext.Jti;
         var tokenExpiraEm = userContext.TokenExpiraEm;

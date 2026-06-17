@@ -13,6 +13,7 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
+import ShieldIcon from "@mui/icons-material/Shield";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
@@ -120,6 +121,9 @@ export default function AppHeader({ onMenuToggle, showMenuButton = true }: AppHe
           >
             <MenuItem onClick={() => { setAnchor(null); router.push("/perfil"); }} sx={{ gap: 1.5, py: 1.5 }}>
               <PersonIcon fontSize="small" sx={{ color: "text.secondary" }} /> Meu Perfil
+            </MenuItem>
+            <MenuItem onClick={() => { setAnchor(null); router.push("/seguranca"); }} sx={{ gap: 1.5, py: 1.5 }}>
+              <ShieldIcon fontSize="small" sx={{ color: "text.secondary" }} /> Segurança
             </MenuItem>
             <Divider />
             <MenuItem onClick={() => { setAnchor(null); logout(); }} sx={{ gap: 1.5, py: 1.5, color: "error.main" }}>

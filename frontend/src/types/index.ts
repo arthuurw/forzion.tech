@@ -22,6 +22,19 @@ export interface LoginResponse {
   contaId: string;
   perfilId: string;
   nome: string;
+  mfaRequerido?: boolean;
+  mfaPendingToken?: string | null;
+  mfaPendingExpiraEm?: string | null;
+}
+
+export interface MfaPendingResult {
+  mfaRequerido: true;
+  mfaPendingExpiraEm: string | null;
+}
+
+export interface CompletarMfaResponse {
+  login: LoginResponse;
+  trustedDeviceToken: string | null;
 }
 
 // Resposta da rotação de sessão (/auth/refresh). Mesmo shape do login: novo access +

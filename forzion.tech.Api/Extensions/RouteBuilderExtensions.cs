@@ -21,12 +21,15 @@ public static class RouteBuilderExtensions
     public static IEndpointRouteBuilder MapApiEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapAuthEndpoints();
+        endpoints.MapMfaLoginEndpoints();
+        endpoints.MapStepUpEndpoints();
         endpoints.MapAdminEndpoints();
         endpoints.MapHealthReportEndpoints();
         endpoints.MapTreinadorEndpoints();
         endpoints.MapAlunoAreaEndpoints();
         endpoints.MapAlunoEndpoints();
         endpoints.MapContaEndpoints();
+        endpoints.MapMfaEndpoints();
         endpoints.MapSuporteEndpoints();
         endpoints.MapExercicioEndpoints();
         endpoints.MapTreinoEndpoints();

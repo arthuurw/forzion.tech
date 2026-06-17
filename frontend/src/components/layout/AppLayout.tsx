@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/auth/context";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { useInactivity } from "@/hooks/useInactivity";
 import { ASSINATURA_INADIMPLENTE_EVENT } from "@/lib/api/client";
+import StepUpProvider from "@/components/seguranca/StepUpProvider";
 
 const DRAWER_WIDTH = 232;
 const DRAWER_COLLAPSED = 68;
@@ -144,6 +145,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppHeader
         onMenuToggle={() => (isMobile ? setMobileOpen((v) => !v) : setCollapsed((v) => !v))}
       />
+      <StepUpProvider />
 
       {!isMobile && (
         <Drawer

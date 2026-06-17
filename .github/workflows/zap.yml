@@ -35,7 +35,7 @@ jobs:
     name: ZAP ${{ github.event.inputs.mode || 'baseline' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Resolve target
         id: t

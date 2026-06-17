@@ -82,6 +82,17 @@ public class Conta : IHasDomainEvents
         UpdatedAt = agora.UtcDateTime;
     }
 
+    public Result AtualizarEmail(ValueObjects.Email novoEmail, DateTime agora)
+    {
+        ArgumentNullException.ThrowIfNull(novoEmail);
+
+        Email = novoEmail;
+        EmailVerificado = true;
+        VerificadoEm = agora;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
     public Result Anonimizar(DateTime agora)
     {
         if (AnonimizadaEm is not null)

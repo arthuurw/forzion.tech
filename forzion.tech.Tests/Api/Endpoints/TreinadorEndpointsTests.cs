@@ -3,8 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using FluentAssertions;
 using FluentValidation;
+using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Shared;
@@ -102,11 +104,20 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         _factory = factory;
     }
 
+    private const string StepUpTokenValido = "step-up-ok";
+
     private HttpClient CriarClienteTreinador()
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Test", "treinador");
+        return client;
+    }
+
+    private HttpClient CriarClienteTreinadorComStepUp()
+    {
+        var client = CriarClienteTreinador();
+        client.DefaultRequestHeaders.Add("X-Step-Up-Token", StepUpTokenValido);
         return client;
     }
 
@@ -337,10 +348,21 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .Setup(h => h.HandleAsync(It.IsAny<IniciarOnboardingTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success("http://localhost/stripe-onboarding"));
 
-        var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/onboarding",
+        var response = await CriarClienteTreinadorComStepUp().PostAsJsonAsync("/treinador/onboarding",
             new { UrlRetorno = "http://localhost/retorno", UrlCancelamento = "http://localhost/cancelar" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_Onboarding_SemStepUp_Retorna403()
+    {
+        var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/onboarding",
+            new { UrlRetorno = "http://localhost/retorno", UrlCancelamento = "http://localhost/cancelar" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
     }
 
     [Fact]
@@ -350,7 +372,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .Setup(h => h.HandleAsync(It.IsAny<IniciarOnboardingTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new DomainException("Treinador não encontrado."));
 
-        var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/onboarding",
+        var response = await CriarClienteTreinadorComStepUp().PostAsJsonAsync("/treinador/onboarding",
             new { UrlRetorno = "http://localhost/retorno", UrlCancelamento = "http://localhost/cancelar" });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -785,7 +807,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     [Fact]
     public async Task Post_Onboarding_UrlForaDominio_Retorna400()
     {
-        var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/onboarding",
+        var response = await CriarClienteTreinadorComStepUp().PostAsJsonAsync("/treinador/onboarding",
             new { UrlRetorno = "http://malicious.com/retorno", UrlCancelamento = "http://localhost/cancelar" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -795,9 +817,9 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     [Fact]
     public async Task Post_Onboarding_UrlBaseNaoConfigurada_Retorna500()
     {
-        // Stripe:UrlBase vazio é misconfiguração de servidor, não request inválido — deve ser 500, não 400.
         var client = _factory.WithWebHostBuilder(b => b.UseSetting("Stripe:UrlBase", "")).CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "treinador");
+        client.DefaultRequestHeaders.Add("X-Step-Up-Token", StepUpTokenValido);
 
         var response = await client.PostAsJsonAsync("/treinador/onboarding",
             new { UrlRetorno = "http://localhost/retorno", UrlCancelamento = "http://localhost/cancelar" });
@@ -813,7 +835,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             .Setup(h => h.HandleAsync(It.IsAny<IniciarOnboardingTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure<string>(Error.Business("treinador.nao_encontrado", "Treinador não encontrado.")));
 
-        var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/onboarding",
+        var response = await CriarClienteTreinadorComStepUp().PostAsJsonAsync("/treinador/onboarding",
             new { UrlRetorno = "http://localhost/retorno", UrlCancelamento = "http://localhost/cancelar" });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -1154,6 +1176,8 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<ListarNotasFiscaisTreinadorHandler>();
                 services.RemoveAll<ObterDanfseTreinadorHandler>();
                 services.RemoveAll<IUserContext>();
+                services.RemoveAll<IJwtService>();
+                services.RemoveAll<ITokenRevogadoRepository>();
 
                 services.AddScoped(_ => ListarAlunosHandlerMock.Object);
                 services.AddScoped(_ => AprovarVinculoHandlerMock.Object);
@@ -1190,6 +1214,16 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 userContextMock.Setup(u => u.PerfilId).Returns(TreinadorId);
                 userContextMock.Setup(u => u.TipoConta).Returns(TipoConta.Treinador);
                 services.AddScoped(_ => userContextMock.Object);
+
+                var jwtMock = new Mock<IJwtService>();
+                jwtMock.Setup(j => j.ValidarTokenEscopo("step-up-ok", MfaScopes.StepUp))
+                    .Returns(new EscopoValidado(ContaId, Guid.NewGuid()));
+                services.AddScoped(_ => jwtMock.Object);
+
+                var tokenRevogadoMock = new Mock<ITokenRevogadoRepository>();
+                tokenRevogadoMock.Setup(r => r.EstaRevogadoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
+                services.AddScoped(_ => tokenRevogadoMock.Object);
 
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, TreinadorTestAuthHandler>("Test", _ => { });

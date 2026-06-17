@@ -30,8 +30,8 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       ci: ${{ steps.filter.outputs.ci }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -60,10 +60,10 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -88,9 +88,9 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -146,9 +146,9 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -218,7 +218,7 @@ jobs:
       - name: Upload relatório HTML de cobertura
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-backend
           path: coverage-report/
@@ -237,9 +237,9 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -272,9 +272,9 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -302,9 +302,9 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -337,7 +337,7 @@ jobs:
           dotnet CycloneDX forzion.tech.slnx -o ./sbom-backend -F Json -fn sbom.cdx.json
 
       - name: Upload SBOM (backend)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-backend
           path: sbom-backend/sbom.cdx.json
@@ -358,7 +358,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Gitleaks roda ANTES do npm ci: varre só a árvore versionada (sem
       # node_modules instalado nem sbom gerado).
@@ -379,7 +379,7 @@ jobs:
             --config=/src/osv-scanner.toml \
             --lockfile=/src/frontend/package-lock.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -398,7 +398,7 @@ jobs:
         run: npm run sbom
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: frontend/sbom.cdx.json
@@ -415,8 +415,8 @@ jobs:
     if: ${{ github.event_name == 'push' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
       - name: Restore
@@ -435,7 +435,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Lint migrations arriscadas
@@ -602,9 +602,9 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -687,9 +687,9 @@ jobs:
       PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
       HOMOLOG_HOST: ${{ secrets.HOMOLOG_HOST }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 

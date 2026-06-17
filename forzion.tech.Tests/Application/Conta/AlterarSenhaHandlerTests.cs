@@ -18,6 +18,7 @@ public class AlterarSenhaHandlerTests
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IRefreshTokenService> _refresh = new();
+    private readonly Mock<ITrustedDeviceRepository> _trustedDevice = new();
     private readonly Mock<ITokenRevogadoRepository> _tokenRevogado = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IValidator<AlterarSenhaCommand>> _validator = new();
@@ -33,6 +34,7 @@ public class AlterarSenhaHandlerTests
             _contaRepo.Object,
             _passwordHasher.Object,
             _refresh.Object,
+            _trustedDevice.Object,
             _tokenRevogado.Object,
             _unitOfWork.Object,
             TimeProvider.System,
@@ -59,6 +61,23 @@ public class AlterarSenhaHandlerTests
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         // NR-6: troca de senha revoga todas as sessões da conta.
         _refresh.Verify(s => s.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SenhaCorreta_RevogaDispositivosConfiaveis()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta();
+
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(h => h.Verify("senha123", conta.PasswordHash)).Returns(true);
+        _passwordHasher.Setup(h => h.Hash("nova-senha")).Returns("novo-hash");
+
+        var result = await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
+
+        result.IsSuccess.Should().BeTrue();
+        _trustedDevice.Verify(r => r.RemoverPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
