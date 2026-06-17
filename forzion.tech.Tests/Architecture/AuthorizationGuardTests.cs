@@ -74,6 +74,7 @@ public class AuthorizationGuardTests
         "ObterVinculoAlunoHandler",
         "ProcessarWebhookStripeHandler",
         "ReativarVinculoHandler",
+        "ReconciliarNfseHandler",
         "ReconciliarPagamentosStripeHandler",
         "RedefinirSenhaHandler",
         "RegistrarAlunoHandler",

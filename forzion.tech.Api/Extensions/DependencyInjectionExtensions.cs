@@ -329,6 +329,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Nfse.ObterDanfseTreinador.ObterDanfseTreinadorHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Admin.NotasFiscais.ListarNotasFiscaisAdminHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Admin.NotasFiscais.ReprocessarNotaFiscalHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Nfse.ReconciliarNfse.ReconciliarNfseHandler>();
         services.AddScoped<ObterStatusPagamentoHandler>();
         services.AddScoped<ListarPagamentosAssinaturaAlunoHandler>();
         services.AddScoped<ProcessarWebhookStripeHandler>();

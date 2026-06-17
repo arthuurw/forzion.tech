@@ -1,6 +1,7 @@
 using forzion.tech.Api.Extensions;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
+using forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
 using forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao;
 using Microsoft.AspNetCore.Mvc;
 
@@ -134,6 +135,26 @@ public static class InternalEndpoints
         .RequireRateLimiting("internal")
         .Produces<object>()
         .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        endpoints.MapPost("/internal/reconciliar-nfse", async (
+            HttpContext httpContext,
+            [FromServices] ReconciliarNfseHandler handler,
+            IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            if (!InternalApiKeyValidator.ChaveInternaValida(httpContext, configuration))
+                return Results.Unauthorized();
+
+            var result = await handler.HandleAsync(new ReconciliarNfseCommand(), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithTags("Internal")
+        .WithSummary("Reconcilia NFS-e não-terminais consultando o gov (status divergente) — requer X-Internal-Key")
+        .AllowAnonymous()
+        .RequireRateLimiting("internal")
+        .Produces<ReconciliarNfseResponse>()
         .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         return endpoints;
