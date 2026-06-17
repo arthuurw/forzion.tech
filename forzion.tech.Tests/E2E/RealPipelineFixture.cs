@@ -1,4 +1,6 @@
+using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Seed;
@@ -109,6 +111,16 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
         using var scope = Services.CreateScope();
         var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
         while (await processor.ProcessarLoteAsync() > 0) { }
+    }
+
+    public async Task<string> GerarStepUpTokenAsync(string email)
+    {
+        using var scope = Services.CreateScope();
+        var conta = await scope.ServiceProvider.GetRequiredService<IContaRepository>()
+            .ObterPorEmailAsync(email.Trim().ToLowerInvariant())
+            ?? throw new InvalidOperationException($"Conta '{email}' não encontrada para gerar step-up.");
+        return scope.ServiceProvider.GetRequiredService<IJwtService>()
+            .GerarTokenEscopo(conta, MfaScopes.StepUp, TimeSpan.FromMinutes(5)).Token;
     }
 
     async Task IAsyncLifetime.DisposeAsync()

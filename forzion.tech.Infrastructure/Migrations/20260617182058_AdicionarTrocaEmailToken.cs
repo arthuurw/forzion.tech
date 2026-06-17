@@ -11,6 +11,7 @@ namespace forzion.tech.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // lint-migrations:allow
             migrationBuilder.CreateTable(
                 name: "troca_email_tokens",
                 columns: table => new

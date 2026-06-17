@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Infrastructure.Persistence;
@@ -28,8 +29,7 @@ public class FluxosCriticosE2ETests(RealPipelineFixture fixture)
         var (treinadorId, _) = await RegistrarTreinadorAsync();
 
         var admin = await ClienteAdminAsync();
-        var aprovar = await admin.PostAsJsonAsync($"/admin/treinadores/{treinadorId}/aprovar", new { });
-        aprovar.StatusCode.Should().Be(HttpStatusCode.OK);
+        await AprovarTreinadorAdminAsync(admin, treinadorId);
 
         var detalhe = await admin.GetFromJsonAsync<JsonElement>($"/admin/treinadores/{treinadorId}");
         detalhe.GetProperty("status").GetString().Should().Be("Ativo");
@@ -104,6 +104,16 @@ public class FluxosCriticosE2ETests(RealPipelineFixture fixture)
     private async Task<HttpClient> ClienteAdminAsync() =>
         ClienteComToken(await LoginTokenAsync(RealPipelineFixture.AdminEmail, RealPipelineFixture.AdminPassword));
 
+    private async Task AprovarTreinadorAdminAsync(HttpClient admin, Guid treinadorId)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"/admin/treinadores/{treinadorId}/aprovar")
+        {
+            Content = JsonContent.Create(new { }),
+        };
+        req.Headers.Add(RequerStepUpFilter.Header, await fixture.GerarStepUpTokenAsync(RealPipelineFixture.AdminEmail));
+        (await admin.SendAsync(req)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     private async Task<HttpClient> ClienteTreinadorAsync(Guid treinadorId)
     {
         // o e-mail do treinador é determinístico a partir do id criado em RegistrarTreinadorAsync
@@ -152,8 +162,7 @@ public class FluxosCriticosE2ETests(RealPipelineFixture fixture)
         var (treinadorId, email) = await RegistrarTreinadorAsync();
         var admin = await ClienteAdminAsync();
 
-        (await admin.PostAsJsonAsync($"/admin/treinadores/{treinadorId}/aprovar", new { }))
-            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AprovarTreinadorAdminAsync(admin, treinadorId);
 
         var freeId = await ObterPlanoFreeIdAsync();
         (await admin.PatchAsJsonAsync($"/admin/treinadores/{treinadorId}/plano", new { planoId = freeId }))
