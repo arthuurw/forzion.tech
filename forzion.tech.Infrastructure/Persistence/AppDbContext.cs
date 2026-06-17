@@ -48,6 +48,7 @@ public class AppDbContext(
     public DbSet<ErrorLogEntry> ErrorLogs => Set<ErrorLogEntry>();
     public DbSet<OutboxEfeito> OutboxEfeitos => Set<OutboxEfeito>();
     public DbSet<MensagemSuporte> MensagensSuporte => Set<MensagemSuporte>();
+    public DbSet<NotaFiscal> NotasFiscais => Set<NotaFiscal>();
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {

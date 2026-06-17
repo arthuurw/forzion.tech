@@ -12,6 +12,13 @@ public sealed record DadosFiscais
     public EnderecoFiscal Endereco { get; }
     public string? InscricaoMunicipal { get; }
 
+    private DadosFiscais()
+    {
+        Documento = null!;
+        RazaoSocial = null!;
+        Endereco = null!;
+    }
+
     private DadosFiscais(TipoDocumentoFiscal tipoDocumento, string documento, string razaoSocial, EnderecoFiscal endereco, string? inscricaoMunicipal)
     {
         TipoDocumento = tipoDocumento;
