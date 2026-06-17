@@ -47,6 +47,7 @@ public class RegenerarRecoveryCodesHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.RecoveryCodes.Should().HaveCount(10).And.OnlyHaveUniqueItems();
+        result.Value.RecoveryCodes.Should().OnlyContain(c => c.Length == 16);
         adicionados.Should().HaveCount(10);
         _recoveryRepo.Verify(r => r.RemoverPorContaIdAsync(ContaId, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);

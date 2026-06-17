@@ -13,7 +13,7 @@ public static class MfaLoginEndpoints
         var group = endpoints.MapGroup("/auth/mfa")
             .WithTags("Auth")
             .RequireAuthorization(MfaScopes.PolicyPendente)
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("mfa");
 
         group.MapPost("/verificar", async (
             CompletarLoginMfaRequest request,

@@ -113,6 +113,7 @@ public static class DependencyInjectionExtensions
             services.AddRateLimiter(opt =>
             {
                 opt.AddPolicy("auth", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("mfa", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("write", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("read", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("internal", _ => RateLimitPartition.GetNoLimiter<string>("test"));
@@ -152,6 +153,10 @@ public static class DependencyInjectionExtensions
                 opt.AddPolicy("auth", ctx =>
                     RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
                         _ => Fixed(10, TimeSpan.FromMinutes(1))));
+
+                opt.AddPolicy("mfa", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                        _ => Fixed(5, TimeSpan.FromMinutes(1))));
 
                 // write: por usuário se autenticado, IP caso contrário
                 opt.AddPolicy("write", ctx =>

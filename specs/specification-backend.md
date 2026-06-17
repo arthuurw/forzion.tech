@@ -137,7 +137,7 @@ Todos com rate `auth`. Postura/fatores em [specification-security] §2.1; modelo
 - `Results` de falha de negócio com `Result` pattern usam `ResultExtensions.ToProblemResult()` → 422.
 
 ### Rate limiting (`AddApiServices`)
-Políticas FixedWindow (rejeição 429). Em ambiente `Test` todas viram NoLimiter. Chave: `auth`/`internal`/`webhook` por IP; `read`/`write` por `sub` (autenticado) ou IP (fallback). Caps autoritativos (números) em [specification-security] §4.
+Políticas FixedWindow (rejeição 429). Em ambiente `Test` todas viram NoLimiter. Chave: `auth`/`internal`/`webhook` por IP; `read`/`write`/`mfa` por `sub` (autenticado) ou IP (fallback). `mfa` (verificação de 2º fator em `/auth/mfa/*` e `/auth/step-up/*`) é sub-keyed de propósito — trava brute-force do TOTP por-conta, imune a rotação de IP. Caps autoritativos (números) em [specification-security] §4.
 
 ### Endpoints internos (server-to-server)
 Todos anônimos + rate `internal`. Autenticação por header `X-Internal-Key` comparado a `Internal:ApiKey` com **comparação de tempo constante** (`CryptographicOperations.FixedTimeEquals`, após checar igualdade de comprimento — evita `ArgumentException` e timing attack). Sem/divergente → 401.

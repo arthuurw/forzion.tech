@@ -12,7 +12,7 @@ internal static class RecoveryCodeGenerator
         var lista = new List<(string Raw, string Hash)>(quantidade);
         for (var i = 0; i < quantidade; i++)
         {
-            var raw = Convert.ToHexString(RandomNumberGenerator.GetBytes(5)).ToLowerInvariant();
+            var raw = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
             lista.Add((raw, Hash(raw)));
         }
 

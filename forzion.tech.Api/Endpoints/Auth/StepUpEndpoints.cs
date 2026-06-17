@@ -11,7 +11,7 @@ public static class StepUpEndpoints
         var group = endpoints.MapGroup("/auth/step-up")
             .WithTags("Auth")
             .RequireAuthorization()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("mfa");
 
         group.MapPost("/iniciar", async (
             [FromServices] IniciarStepUpHandler handler,
