@@ -224,7 +224,10 @@ public static class DependencyInjectionExtensions
 
         services.AddOptions<AppSettings>().BindConfiguration("App");
 
+        services.AddScoped<ILoginPerfilResolver, LoginPerfilResolver>();
         services.AddScoped<LoginHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Auth.Mfa.CompletarLoginMfaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Auth.Mfa.SolicitarCodigoLoginEmailHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Auth.RenovarSessao.RenovarSessaoHandler>();
         services.AddScoped<EsqueceuSenhaHandler>();
         services.AddScoped<RedefinirSenhaHandler>();

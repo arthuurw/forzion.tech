@@ -2543,6 +2543,105 @@
         }
       }
     },
+    "/auth/mfa/verificar": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Conclui o login verificando o segundo fator (TOTP, código de recuperação ou e-mail)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletarLoginMfaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletarLoginMfaResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/mfa/email/enviar": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Envia o código de login por e-mail para a conta com login pendente",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/step-up/iniciar": {
       "post": {
         "tags": [
@@ -6144,6 +6243,35 @@
         },
         "additionalProperties": false
       },
+      "CompletarLoginMfaRequest": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "nullable": true
+          },
+          "fator": {
+            "$ref": "#/components/schemas/MfaFator"
+          },
+          "lembrarDispositivo": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CompletarLoginMfaResult": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "$ref": "#/components/schemas/LoginResponse"
+          },
+          "trustedDeviceToken": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConfirmarEnrollTotpResult": {
         "type": "object",
         "properties": {
@@ -6970,6 +7098,18 @@
           },
           "nome": {
             "type": "string",
+            "nullable": true
+          },
+          "mfaRequerido": {
+            "type": "boolean"
+          },
+          "mfaPendingToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "mfaPendingExpiraEm": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },

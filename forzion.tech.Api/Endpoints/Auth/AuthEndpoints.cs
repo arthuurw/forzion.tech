@@ -32,8 +32,9 @@ public static class AuthEndpoints
             CancellationToken cancellationToken) =>
         {
             var rotulo = http.Request.Headers.UserAgent.ToString();
+            var trustedDevice = http.Request.Cookies["trusted_device"];
             var result = await handler.HandleAsync(
-                new LoginCommand(request.Email, request.Senha, rotulo), cancellationToken);
+                new LoginCommand(request.Email, request.Senha, rotulo, trustedDevice), cancellationToken);
 
             return Results.Ok(result);
         })

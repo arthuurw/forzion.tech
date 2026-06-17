@@ -1,6 +1,8 @@
 using FluentValidation;
+using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Auth.Mfa;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -11,14 +13,16 @@ public class LoginHandler(
     IJwtService jwtService,
     IRefreshTokenService refreshTokenService,
     IPasswordHasher passwordHasher,
-    IAlunoRepository alunoRepository,
-    ITreinadorRepository treinadorRepository,
-    ISystemUserRepository systemUserRepository,
+    ILoginPerfilResolver perfilResolver,
+    IContaMfaRepository contaMfaRepository,
+    ITrustedDeviceRepository trustedDeviceRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     IValidator<LoginCommand> validator,
     ILogger<LoginHandler> logger)
 {
+    private static readonly TimeSpan ValidadePendente = TimeSpan.FromMinutes(5);
+
     public virtual Task<LoginResponse> HandleAsync(
         LoginCommand command,
         CancellationToken cancellationToken = default)
@@ -44,45 +48,26 @@ public class LoginHandler(
         if (!conta.EmailVerificado)
             throw new EmailNaoVerificadoException();
 
-        // Conta verificada sem perfil correspondente é inconsistência de dados (não regra de
-        // negócio): mapeia p/ 500, não 422 (DomainException). Idem TipoConta inválido.
-        Guid perfilId;
-        string nome;
-        switch (conta.TipoConta)
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var (perfilId, nome) = await perfilResolver.ResolverAsync(conta, cancellationToken).ConfigureAwait(false);
+
+        var mfa = await contaMfaRepository.BuscarPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        if (mfa is { Habilitado: true })
         {
-            case Domain.Enums.TipoConta.Aluno:
-                var aluno = await alunoRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false)
-                    ?? throw new InvalidOperationException("Perfil de aluno não encontrado para esta conta.");
-                perfilId = aluno.Id;
-                nome = aluno.Nome;
-                break;
+            var dispositivo = command.TrustedDeviceToken is { Length: > 0 } tokenRaw
+                ? await trustedDeviceRepository.BuscarPorHashAsync(TrustedDeviceToken.Hash(tokenRaw), cancellationToken).ConfigureAwait(false)
+                : null;
 
-            case Domain.Enums.TipoConta.Treinador:
-                var treinador = await treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false)
-                    ?? throw new InvalidOperationException("Perfil de treinador não encontrado para esta conta.");
-                // Treinador só acessa após aprovação do admin (e-mail verificado não basta).
-                if (treinador.Status == Domain.Enums.TreinadorStatus.AguardandoPagamento)
-                    throw new TreinadorPagamentoPendenteException();
-                if (treinador.Status == Domain.Enums.TreinadorStatus.AguardandoAprovacao)
-                    throw new TreinadorAguardandoAprovacaoException();
-                if (treinador.Status == Domain.Enums.TreinadorStatus.Inativo)
-                    throw new TreinadorInativoException();
-                perfilId = treinador.Id;
-                nome = treinador.Nome;
-                break;
+            if (dispositivo is null || dispositivo.ContaId != conta.Id || !dispositivo.EstaAtivo(agora))
+            {
+                var pendente = jwtService.GerarTokenEscopo(conta, MfaScopes.Pendente, ValidadePendente);
+                logger.LogInformation("Login exige segundo fator — ContaId: {ContaId}", conta.Id);
+                return LoginResponse.Pendente(pendente.Token, pendente.ExpiraEm);
+            }
 
-            case Domain.Enums.TipoConta.SystemAdmin:
-                var systemUser = await systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false)
-                    ?? throw new InvalidOperationException("Perfil de administrador não encontrado para esta conta.");
-                perfilId = systemUser.Id;
-                nome = systemUser.Nome;
-                break;
-
-            default:
-                throw new InvalidOperationException("Tipo de conta inválido.");
+            dispositivo.RegistrarUso(agora);
         }
 
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
         // Emite a família ANTES do JWT: o access carrega a claim `fam` desta sessão.
         var refresh = await refreshTokenService.EmitirNovaFamiliaAsync(conta, agora, command.Rotulo, cancellationToken).ConfigureAwait(false);
         var token = jwtService.GerarToken(conta, perfilId, nome, refresh.FamiliaId);
