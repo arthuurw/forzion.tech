@@ -20,7 +20,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # --error: falha o job em qualquer finding bloqueante.
       # Escopo via .semgrepignore (nginx/infra + fixtures de teste fora).
