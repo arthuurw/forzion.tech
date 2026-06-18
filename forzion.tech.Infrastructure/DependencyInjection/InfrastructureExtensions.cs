@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
+using forzion.tech.Application.UseCases.Nfse.CancelarNfse;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Handlers;
 using forzion.tech.Infrastructure.Notifications.Alerts;
@@ -55,6 +56,8 @@ public static class InfrastructureExtensions
         services.AddSingleton(BuildOutboxDurabilityRegistry());
         services.AddScoped<IOutboxEnfileirador, OutboxEnfileirador>();
         services.AddScoped<IOutboxEfeitoHandler, EvidenciaDisputaEfeitoHandler>();
+        services.AddScoped<IOutboxEfeitoHandler, EmitirNfseEfeitoHandler>();
+        services.AddScoped<IOutboxEfeitoHandler, CancelarNfseEfeitoHandler>();
         services.AddScoped<OutboxDispatcher>();
         services.AddScoped<OutboxProcessor>();
         services.AddOptions<OutboxOptions>().BindConfiguration("Outbox");
@@ -112,6 +115,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
         services.AddScoped<IAssinaturaTreinadorRepository, AssinaturaTreinadorRepository>();
         services.AddScoped<IPagamentoTreinadorRepository, PagamentoTreinadorRepository>();
+        services.AddScoped<INotaFiscalRepository, NotaFiscalRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
         services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
         services.AddScoped<IHealthReportConfigRepository, HealthReportConfigRepository>();
@@ -138,6 +142,49 @@ public static class InfrastructureExtensions
             "Production", StringComparison.OrdinalIgnoreCase);
         services.PostConfigure<StripeSettings>(s => s.ExpectLivemode ??= isProduction);
         services.AddScoped<IStripeService, StripeService>();
+
+        services.AddOptions<NfseSettings>()
+            .BindConfiguration("Nfse")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CertificadoPath),
+                "Nfse:CertificadoPath não configurado. Use User Secrets ou variável de ambiente.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CertificadoSenha),
+                "Nfse:CertificadoSenha não configurado. Use User Secrets ou variável de ambiente.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CnpjPrestador),
+                "Nfse:CnpjPrestador não configurado.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.InscricaoMunicipal),
+                "Nfse:InscricaoMunicipal não configurada.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CodigoMunicipioIbge),
+                "Nfse:CodigoMunicipioIbge não configurado.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.SerieDps),
+                "Nfse:SerieDps não configurada.")
+            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CodigoServicoAssinatura),
+                "Nfse:CodigoServicoAssinatura não configurado.")
+            .Validate(s => !s.Habilitado || s.AliquotaIss > 0,
+                "Nfse:AliquotaIss deve ser maior que zero quando a emissão está habilitada.")
+            .ValidateOnStart();
+
+        if (configuration.GetValue<bool>("Nfse:Habilitado"))
+        {
+            services.AddSingleton<NfseMtlsCertificate>();
+            services.AddHttpClient("nfse", client => client.Timeout = TimeSpan.FromSeconds(30))
+                .ConfigurePrimaryHttpMessageHandler(sp =>
+                {
+                    var handler = new HttpClientHandler();
+                    handler.ClientCertificates.Add(sp.GetRequiredService<NfseMtlsCertificate>().Certificado);
+                    return handler;
+                });
+            services.AddScoped<IEmissorNfseService>(sp =>
+                new EmissorNfseNacionalService(
+                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("nfse"),
+                    sp.GetRequiredService<IOptions<NfseSettings>>(),
+                    sp.GetRequiredService<ILogger<EmissorNfseNacionalService>>(),
+                    sp.GetRequiredService<TimeProvider>()));
+        }
+        else
+        {
+            services.AddScoped<IEmissorNfseService>(sp =>
+                new NullEmissorNfseService(sp.GetRequiredService<ILogger<NullEmissorNfseService>>()));
+        }
 
         services.AddOptions<DeliveryLogSettings>()
             .BindConfiguration("DeliveryLog")
@@ -214,6 +261,10 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, PagamentoTreinadorPagoHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, EmitirNfseAssinaturaHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoTreinadorEstornadoEvent>, CancelarNfseHandler>();
+        services.AddScoped<IDomainEventHandler<PagamentoTreinadorEmDisputaEvent>, CancelarNfseHandler>();
+        services.AddScoped<IDomainEventHandler<NotaFiscalEmitidaEvent>, NfseEmitidaEmailHandler>();
 
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
@@ -271,6 +322,11 @@ public static class InfrastructureExtensions
         new OutboxDurabilityRegistry()
             .Registrar<PagamentoTreinadorPagoEvent, PagamentoTreinadorPagoHandler>(
                 e => $"evt:PagamentoTreinadorPago:{e.PagamentoTreinadorId}")
+            .RegistrarHandlerAdicional<PagamentoTreinadorPagoEvent, EmitirNfseAssinaturaHandler>()
+            .Registrar<PagamentoTreinadorEstornadoEvent, CancelarNfseHandler>(
+                e => $"evt:PagamentoTreinadorEstornado:{e.PagamentoTreinadorId}")
+            .Registrar<PagamentoTreinadorEmDisputaEvent, CancelarNfseHandler>(
+                e => $"evt:PagamentoTreinadorEmDisputa:{e.PagamentoTreinadorId}")
             .Registrar<VinculoAprovadoEvent, VinculoAprovadoCriarAssinaturaAlunoHandler>(
                 e => $"evt:VinculoAprovado:{e.VinculoId}")
             // E-mail ao suporte é durável (FR-05): nunca perdido por falha transitória do Resend.

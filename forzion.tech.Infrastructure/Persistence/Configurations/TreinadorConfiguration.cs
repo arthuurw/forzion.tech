@@ -60,5 +60,26 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
         builder.Property(t => t.UpdatedAt);
 
         builder.Property(t => t.Anonimizado).HasDefaultValue(false);
+
+        builder.OwnsOne(t => t.DadosFiscais, df =>
+        {
+            df.Property(d => d.TipoDocumento).HasConversion<string>().HasMaxLength(10);
+            df.Property(d => d.Documento).HasMaxLength(14);
+            df.Property(d => d.RazaoSocial).HasMaxLength(150);
+            df.Property(d => d.InscricaoMunicipal).HasMaxLength(30);
+
+            df.OwnsOne(d => d.Endereco, e =>
+            {
+                e.Property(x => x.Logradouro).HasMaxLength(200);
+                e.Property(x => x.Numero).HasMaxLength(20);
+                e.Property(x => x.Complemento).HasMaxLength(100);
+                e.Property(x => x.Bairro).HasMaxLength(100);
+                e.Property(x => x.CodigoMunicipioIbge).HasMaxLength(7);
+                e.Property(x => x.Uf).HasMaxLength(2);
+                e.Property(x => x.Cep).HasMaxLength(8);
+            });
+            df.Navigation(d => d.Endereco).IsRequired();
+        });
+        builder.Navigation(t => t.DadosFiscais).IsRequired(false);
     }
 }

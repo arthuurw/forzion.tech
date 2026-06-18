@@ -20,4 +20,7 @@ public static class TreinadorErrors
     public static Error ConfigureStripePrimeiro => Error.Business("treinador.configure_stripe_primeiro", "Configure sua conta Stripe antes de voltar a receber pela plataforma.");
     public static Error ModoPagamentoInvalido => Error.Business("treinador.modo_pagamento_invalido", "O modo de pagamento informado é inválido.");
     public static Error SemOnboarding => Error.Business("treinador.sem_onboarding", "Configure seus recebimentos (Stripe) antes de aceitar alunos.");
+    public static Error DadosFiscaisObrigatorios => Error.Business("treinador.dados_fiscais_obrigatorios", "Os dados fiscais são obrigatórios.");
+    public static Error DadosFiscaisAnonimizado => Error.Conflict("treinador.dados_fiscais_anonimizado", "Não é possível alterar dados fiscais de um treinador anonimizado.");
+    public static Error NaoEncontrado => Error.NotFound("treinador.nao_encontrado", "Treinador não encontrado.");
 }

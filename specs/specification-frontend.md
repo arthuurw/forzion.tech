@@ -195,7 +195,7 @@ interceptor resposta:
 - **Step-up** (`lib/auth/stepUpController.ts`): registry `registerStepUpHandler`/`requestStepUp` (promise in-flight compartilhada anti-tempestade). `StepUpProvider` (`components/seguranca/`) registra um handler que abre `StepUpDialog` (pede TOTP ou OTP por e-mail → `POST /auth/step-up/iniciar`+`/verificar`) e resolve com o token `step_up`; o interceptor injeta no header e refaz a request. Token NÃO persistido — vive só na request retried.
 - `ASSINATURA_INADIMPLENTE_EVENT` + `ASSINATURA_INADIMPLENTE_MESSAGE` exportados do client.
 - Enforcement server-side: backend `RequireAssinaturaAtivaFilter` retorna 403 `ASSINATURA_INADIMPLENTE` em endpoints restritos (ex.: POST execuções). Cross-ref inadimplência: [specification-stripe].
-- Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`.
+- Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`, `nfse.ts`.
 
 ## APPLAYOUT (autenticado)
 - Verifica `!isLoading && !user` → chama `/api/auth/logout` (limpa cookies) → `router.replace("/login")`.
@@ -279,6 +279,11 @@ Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 ### Aluno sem vínculo ativo
 - `components/aluno/SemVinculoAtivoBanner.tsx`: lê `GET /aluno/vinculo` (`alunoApi.getMeuVinculo`). Estado `ativo` (oculto) | `pendente` (aguardando aprovação) | `sem-vinculo`. Mensagem: histórico consultável, registro de novos treinos bloqueado. Renderizado no dashboard (`(aluno)/aluno/page.tsx`) e no histórico (`(aluno)/aluno/historico/page.tsx`).
 - Execução (`(aluno)/aluno/fichas/[fichaId]/executar/page.tsx`): trata `403` do registro com mensagem clara ("Você não tem um treinador ativo. Não é possível registrar novos treinos.").
+
+### NFS-e (notas fiscais)
+Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/dadosFiscais.ts` (CPF/CNPJ por `tipoDocumento`, CEP, IBGE 7 dígitos, UF; máscara só na UI, payload envia dígitos crus). Enums NFS-e como string-literal no módulo (label/cor de status). Nav item "Notas fiscais" em treinador e admin (`ReceiptLongIcon`).
+- **Treinador** `(treinador)/treinador/dados-fiscais` — form RHF+Zod (tomador da NFS-e); carrega `GET /treinador/dados-fiscais` (null = nunca preenchido), salva `PUT`. `(treinador)/treinador/notas-fiscais` — lista keyset (`proximoCursor` → "Carregar mais"), download DANFSe (`GET .../danfse` → `window.open(danfseRef)`); só notas com `temDanfse`. Botão "Dados fiscais" no header.
+- **Admin** `(admin)/admin/notas-fiscais` — `ResponsiveTable` + filtro de status + retry (`POST .../reprocessar`, só status `Erro` mostra ação); coluna de erro (código+motivo) com tooltip.
 
 ### Contato com suporte (`(aluno)/aluno/suporte` + `(treinador)/treinador/suporte`)
 - Form compartilhado `components/suporte/SuporteForm.tsx`; as duas páginas são thin (só renderizam o form). Item "Suporte" (`SupportAgentIcon`) no `NavConfig` de aluno e treinador (Admin não vê).

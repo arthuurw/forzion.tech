@@ -1,5 +1,7 @@
 using forzion.tech.Api.Extensions;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
+using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
+using forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
 using forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao;
 using Microsoft.AspNetCore.Mvc;
 
@@ -97,6 +99,66 @@ public static class InternalEndpoints
         .Produces<object>()
         .ProducesProblem(StatusCodes.Status401Unauthorized);
 
+        endpoints.MapPost("/internal/gerar-nfse-comissao", async (
+            HttpContext httpContext,
+            [FromBody] GerarNfseComissaoRequest? body,
+            [FromServices] GerarNfseComissaoMensalHandler handler,
+            IConfiguration configuration,
+            TimeProvider timeProvider,
+            CancellationToken cancellationToken) =>
+        {
+            if (!InternalApiKeyValidator.ChaveInternaValida(httpContext, configuration))
+                return Results.Unauthorized();
+
+            DateOnly referencia;
+            if (body is { Ano: { } ano, Mes: { } mes })
+            {
+                if (ano < 2000 || mes < 1 || mes > 12)
+                    return Results.BadRequest(new { erro = "competencia_invalida" });
+                referencia = new DateOnly(ano, mes, 1);
+            }
+            else
+            {
+                var hoje = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+                referencia = new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(-1);
+            }
+
+            var result = await handler.HandleAsync(
+                new GerarNfseComissaoMensalCommand(referencia, referencia.AddMonths(1).AddDays(-1)), cancellationToken)
+                .ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(new { geradas = result.Value.Geradas, puladas = result.Value.Puladas });
+        })
+        .WithTags("Internal")
+        .WithSummary("Gera NFS-e mensal de comissão marketplace (mês anterior por padrão) — requer X-Internal-Key")
+        .AllowAnonymous()
+        .RequireRateLimiting("internal")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        endpoints.MapPost("/internal/reconciliar-nfse", async (
+            HttpContext httpContext,
+            [FromServices] ReconciliarNfseHandler handler,
+            IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            if (!InternalApiKeyValidator.ChaveInternaValida(httpContext, configuration))
+                return Results.Unauthorized();
+
+            var result = await handler.HandleAsync(new ReconciliarNfseCommand(), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithTags("Internal")
+        .WithSummary("Reconcilia NFS-e não-terminais consultando o gov (status divergente) — requer X-Internal-Key")
+        .AllowAnonymous()
+        .RequireRateLimiting("internal")
+        .Produces<ReconciliarNfseResponse>()
+        .ProducesProblem(StatusCodes.Status401Unauthorized);
+
         return endpoints;
     }
+
+    public sealed record GerarNfseComissaoRequest(int? Ano, int? Mes);
 }

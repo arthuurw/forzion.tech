@@ -138,6 +138,7 @@ public class PagamentoTreinador : IHasDomainEvents
 
         Status = PagamentoStatus.Estornado;
         UpdatedAt = agora;
+        _domainEvents.Add(new PagamentoTreinadorEstornadoEvent(Id, TreinadorId, Valor, agora));
         return Result.Success();
     }
 
@@ -148,6 +149,7 @@ public class PagamentoTreinador : IHasDomainEvents
 
         Status = PagamentoStatus.EmDisputa;
         UpdatedAt = agora;
+        _domainEvents.Add(new PagamentoTreinadorEmDisputaEvent(Id, TreinadorId, Valor, agora));
         return Result.Success();
     }
 }

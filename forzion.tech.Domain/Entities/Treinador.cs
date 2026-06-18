@@ -2,6 +2,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using forzion.tech.Domain.ValueObjects;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -23,6 +24,7 @@ public class Treinador : IHasDomainEvents
     public DateTime? ModoPagamentoAlunoAlteradoEm { get; private set; }
     public TreinadorStatus Status { get; private set; }
     public string? Telefone { get; private set; }
+    public DadosFiscais? DadosFiscais { get; private set; }
     public Guid? AprovadoPorId { get; private set; }
     public DateTime? AprovadoEm { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -162,6 +164,18 @@ public class Treinador : IHasDomainEvents
         if (Status != TreinadorStatus.Inativo)
             return Result.Failure(TreinadorErrors.ExclusaoApenasInativos);
 
+        return Result.Success();
+    }
+
+    public Result DefinirDadosFiscais(DadosFiscais dadosFiscais, DateTime agora)
+    {
+        if (dadosFiscais is null)
+            return Result.Failure(TreinadorErrors.DadosFiscaisObrigatorios);
+        if (Anonimizado)
+            return Result.Failure(TreinadorErrors.DadosFiscaisAnonimizado);
+
+        DadosFiscais = dadosFiscais;
+        UpdatedAt = agora;
         return Result.Success();
     }
 

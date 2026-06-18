@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Settings;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
@@ -43,11 +44,9 @@ public sealed class EnvironmentWhatsAppDecorator(
         if (string.IsNullOrWhiteSpace(settings.AllowlistTelefones))
             return false;
 
-        var soDigitos = SoDigitos(phone);
+        var soDigitos = Digitos.Apenas(phone);
         return settings.AllowlistTelefones
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Any(t => SoDigitos(t) == soDigitos);
+            .Any(t => Digitos.Apenas(t) == soDigitos);
     }
-
-    private static string SoDigitos(string s) => new(s.Where(char.IsDigit).ToArray());
 }
