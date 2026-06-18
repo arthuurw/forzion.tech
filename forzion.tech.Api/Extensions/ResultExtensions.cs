@@ -9,18 +9,18 @@ public static class ResultExtensions
     public static IResult ToProblemResult(this Result result)
     {
         var error = result.Error!;
-        var (statusCode, title) = error.Type switch
+        var statusCode = error.Type switch
         {
-            ErrorType.NotFound => (StatusCodes.Status404NotFound, "Não encontrado."),
-            ErrorType.Conflict => (StatusCodes.Status409Conflict, "Conflito."),
-            ErrorType.Validation => (StatusCodes.Status400BadRequest, "Requisição inválida."),
-            _ => (StatusCodes.Status422UnprocessableEntity, "Não foi possível processar."),
+            ErrorType.NotFound => StatusCodes.Status404NotFound,
+            ErrorType.Conflict => StatusCodes.Status409Conflict,
+            ErrorType.Validation => StatusCodes.Status400BadRequest,
+            _ => StatusCodes.Status422UnprocessableEntity,
         };
 
         return Microsoft.AspNetCore.Http.Results.Problem(
             detail: error.Message,
             statusCode: statusCode,
-            title: title,
+            title: ProblemDetailsTitulos.PtBr.GetValueOrDefault(statusCode),
             extensions: new Dictionary<string, object?> { ["code"] = error.Code });
     }
 }

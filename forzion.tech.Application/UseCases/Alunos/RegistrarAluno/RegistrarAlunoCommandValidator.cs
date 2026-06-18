@@ -15,11 +15,11 @@ public class RegistrarAlunoCommandValidator : AbstractValidator<RegistrarAlunoCo
             .MaximumLength(256).WithMessage(EmailErrors.MuitoLongo.Message);
         RuleFor(x => x.Senha).SenhaForte();
         RuleFor(x => x.Nome)
-            .NotEmpty().WithMessage("O nome é obrigatório.")
-            .MaximumLength(100).WithMessage("O nome deve ter no máximo 100 caracteres.");
+            .NotEmpty().WithMessage(NomeErrors.Obrigatorio.Message)
+            .MaximumLength(100).WithMessage(NomeErrors.MuitoLongo.Message);
         RuleFor(x => x.TreinadorId).NotEmpty().WithMessage("O treinador é obrigatório.");
         RuleFor(x => x.PacoteId).NotEmpty().WithMessage("O pacote é obrigatório.");
-        RuleFor(x => x.Telefone).MaximumLength(20).WithMessage("O telefone deve ter no máximo 20 caracteres.").When(x => x.Telefone is not null);
+        RuleFor(x => x.Telefone).MaximumLength(20).WithMessage(TelefoneErrors.MuitoLongo.Message).When(x => x.Telefone is not null);
         RuleFor(x => x.DiasDisponiveis).InclusiveBetween(1, 7).WithMessage("Os dias disponíveis devem estar entre 1 e 7.").When(x => x.DiasDisponiveis.HasValue);
         RuleFor(x => x.TempoDisponivelMinutos)
             .Must(v => Enum.IsDefined((TempoDisponivel)v!.Value))

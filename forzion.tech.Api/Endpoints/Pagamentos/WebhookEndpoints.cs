@@ -52,7 +52,7 @@ public static class WebhookEndpoints
             HttpContext httpContext,
             [FromServices] ProcessarWebhookResendHandler handler,
             [FromServices] IConfiguration configuration,
-            [FromServices] ILoggerFactory loggerFactory,
+            [FromServices] ILogger<ProcessarWebhookResendHandler> logger,
             CancellationToken cancellationToken) =>
         {
             httpContext.Request.Body = new LimitedStream(httpContext.Request.Body, MaxWebhookBodyBytes);
@@ -79,8 +79,7 @@ public static class WebhookEndpoints
                 cancellationToken).ConfigureAwait(false);
 
             if (result.IsSuccess) return Results.Ok();
-            loggerFactory.CreateLogger("Webhooks.Resend")
-                .LogWarning("Webhook Resend rejeitado: {Motivo}", result.Error?.Message);
+            logger.LogWarning("Webhook Resend rejeitado: {Motivo}", result.Error?.Message);
             return Results.Problem(detail: "Webhook inválido.", statusCode: 400);
         })
         .WithTags("Webhooks")
@@ -124,7 +123,7 @@ public static class WebhookEndpoints
             HttpContext httpContext,
             [FromServices] ProcessarWebhookWhatsAppHandler handler,
             [FromServices] IConfiguration configuration,
-            [FromServices] ILoggerFactory loggerFactory,
+            [FromServices] ILogger<ProcessarWebhookWhatsAppHandler> logger,
             CancellationToken cancellationToken) =>
         {
             httpContext.Request.Body = new LimitedStream(httpContext.Request.Body, MaxWebhookBodyBytes);
@@ -149,8 +148,7 @@ public static class WebhookEndpoints
                 cancellationToken).ConfigureAwait(false);
 
             if (result.IsSuccess) return Results.Ok();
-            loggerFactory.CreateLogger("Webhooks.WhatsApp")
-                .LogWarning("Webhook WhatsApp rejeitado: {Motivo}", result.Error?.Message);
+            logger.LogWarning("Webhook WhatsApp rejeitado: {Motivo}", result.Error?.Message);
             return Results.Problem(detail: "Webhook inválido.", statusCode: 400);
         })
         .WithTags("Webhooks")
