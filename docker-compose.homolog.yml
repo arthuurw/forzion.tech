@@ -9,6 +9,7 @@ services:
       Auth__JwtSecret: ${JWT_SECRET}
       Auth__JwtIssuer: ${JWT_ISSUER:-homologacao.forzion.tech}
       Auth__JwtAudience: ${JWT_AUDIENCE:-homologacao.forzion.tech}
+      Mfa__EncryptionKey: ${MFA_ENCRYPTION_KEY}
       Cors__AllowedOrigins: ${CORS_ORIGINS:-https://homologacao.forzion.tech}
       Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
       Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
