@@ -35,8 +35,8 @@ export default function SegurancaPage() {
     try {
       const res = await mfaApi.getStatus();
       setStatus(res.data);
-    } catch {
-      setError("Erro ao carregar configurações de segurança.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar configurações de segurança."));
     } finally {
       setLoading(false);
     }

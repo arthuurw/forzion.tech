@@ -70,7 +70,7 @@ export default function DetalheTreinadorAdminPage() {
     setLoadingHeader(true);
     adminApi.getTreinador(treinadorId)
       .then((res) => setTreinador(res.data))
-      .catch(() => setError("Erro ao carregar dados do treinador."))
+      .catch((err) => setError(extractApiError(err, "Erro ao carregar dados do treinador.")))
       .finally(() => setLoadingHeader(false));
   }, [treinadorId]);
 
@@ -101,7 +101,7 @@ export default function DetalheTreinadorAdminPage() {
       setPacotesLoading(true);
       adminApi.getTreinadorPacotes(treinadorId)
         .then((res) => setPacotes(res.data))
-        .catch(() => setError("Erro ao carregar pacotes."))
+        .catch((err) => setError(extractApiError(err, "Erro ao carregar pacotes.")))
         .finally(() => { setPacotesLoading(false); setPacotesLoaded(true); });
     }
   }, [tab, treinadorId, pacotesLoaded]);

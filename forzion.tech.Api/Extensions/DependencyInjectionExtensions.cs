@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
@@ -99,6 +100,7 @@ using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -107,7 +109,19 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         services.AddExceptionHandler<GlobalExceptionHandler>();
-        services.AddProblemDetails();
+        services.AddProblemDetails(options =>
+        {
+            options.CustomizeProblemDetails = ctx =>
+            {
+                var pd = ctx.ProblemDetails;
+                var status = pd.Status ?? ctx.HttpContext.Response.StatusCode;
+                if (ProblemDetailsTitulos.PtBr.TryGetValue(status, out var titulo)
+                    && (string.IsNullOrEmpty(pd.Title) || pd.Title == ReasonPhrases.GetReasonPhrase(status)))
+                {
+                    pd.Title = titulo;
+                }
+            };
+        });
 
         if (environment.IsEnvironment("Test"))
         {
@@ -222,6 +236,8 @@ public static class DependencyInjectionExtensions
 
     public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)
     {
+        ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("pt-BR");
+
         services.AddValidatorsFromAssembly(typeof(LoginHandler).Assembly);
         services.AddScoped<IValidator<SolicitarTrocaEmailCommand>, SolicitarTrocaEmailCommandValidator>();
 

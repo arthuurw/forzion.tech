@@ -112,6 +112,7 @@ Automation Framework (`zap.yaml`):
 
 ## 7. WEBHOOK SIGNING
 Todos os webhooks: `AllowAnonymous` + rate `webhook` (300/min IP) + body cap **64 KB** (`LimitedStream` em `WebhookEndpoints.cs` — DoS guard, `InvalidDataException`→400). Roteados direto ao backend pelo nginx (`/webhooks/`) p/ preservar headers crus.
+- **Resposta de falha não vaza detalhe** (info-leak guard): handler que rejeita responde `400` com `detail` FIXO `"Webhook inválido."` — nunca o `Error.Message` interno (que poderia revelar estado/segredo de verificação ao chamador anônimo). O `Error.Message` real é registrado via `LogWarning` server-side (logger `Webhooks.Resend`/`Webhooks.WhatsApp`) antes da resposta. Mecânica em [specification-backend] §Webhooks.
 
 | Webhook | Header assinatura | Verificação | Cross-ref |
 |---|---|---|---|

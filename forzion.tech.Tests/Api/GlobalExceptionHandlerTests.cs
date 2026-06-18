@@ -163,7 +163,7 @@ public class GlobalExceptionHandlerTests
         var context = CriarHttpContext();
         await _handler.TryHandleAsync(context, new CredenciaisInvalidasException(), default);
         var body = await LerCorpo(context);
-        body.GetProperty("title").GetString().Should().Be("Não autorizado");
+        body.GetProperty("title").GetString().Should().Be("Não autorizado.");
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class GlobalExceptionHandlerTests
         var context = CriarHttpContext();
         await _handler.TryHandleAsync(context, new AlunoNaoEncontradoException(), default);
         var body = await LerCorpo(context);
-        body.GetProperty("title").GetString().Should().Be("Não encontrado");
+        body.GetProperty("title").GetString().Should().Be("Não encontrado.");
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public class GlobalExceptionHandlerTests
         var context = CriarHttpContext();
         await _handler.TryHandleAsync(context, new Exception("internal"), default);
         var body = await LerCorpo(context);
-        body.GetProperty("title").GetString().Should().Be("Erro interno");
+        body.GetProperty("title").GetString().Should().Be("Erro interno.");
     }
 
     [Fact]

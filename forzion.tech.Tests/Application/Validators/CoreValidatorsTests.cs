@@ -255,3 +255,30 @@ public class AtualizarPerfilCommandValidatorTests
     public void Invalido_QuandoNomeAcimaDe100Chars()
         => _validator.Validate(new AtualizarPerfilCommand(new string('a', 101))).IsValid.Should().BeFalse();
 }
+
+public class ValidacaoPtBrMessagesTests
+{
+    [Fact]
+    public void RegistrarAluno_EmailVazio_MensagemPtBr_SemTermoIngles()
+    {
+        var validator = new RegistrarAlunoCommandValidator();
+        var cmd = new RegistrarAlunoCommand("", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid());
+
+        var msg = validator.Validate(cmd).Errors.First(e => e.PropertyName == "Email").ErrorMessage;
+
+        msg.Should().Be("O e-mail é obrigatório.");
+        msg.Should().NotContainAny("must", "empty", "'Email'");
+    }
+
+    [Fact]
+    public void RegistrarTreinador_NomeVazio_MensagemPtBr_SemTermoIngles()
+    {
+        var validator = new RegistrarTreinadorCommandValidator();
+        var cmd = new RegistrarTreinadorCommand("t@x.com", "Senha123", "", Guid.NewGuid(), ModoPagamentoAluno.Plataforma, null);
+
+        var msg = validator.Validate(cmd).Errors.Single(e => e.PropertyName == "Nome").ErrorMessage;
+
+        msg.Should().Be("O nome é obrigatório.");
+        msg.Should().NotContainAny("must", "empty");
+    }
+}

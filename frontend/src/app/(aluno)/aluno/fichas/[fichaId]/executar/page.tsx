@@ -13,6 +13,7 @@ import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
+import DetalheErro from "@/components/ui/DetalheErro";
 import { alunoApi, type TreinoAlunoDetalheResponse, type ExecucaoExercicioData } from "@/lib/api/aluno";
 import { extractApiErrorInfo } from "@/lib/api/extractApiError";
 import type { TreinoExercicioResponse } from "@/types";
@@ -127,7 +128,15 @@ export default function ExecutarFichaPage() {
   };
 
   if (loading) return <LoadingSpinner />;
-  if (!ficha) return null;
+  if (!ficha) {
+    return (
+      <DetalheErro
+        mensagem={error || "Não foi possível carregar a ficha."}
+        onRetry={load}
+        onVoltar={() => router.push(`/aluno/fichas/${fichaId}`)}
+      />
+    );
+  }
 
   if (done) {
     return (

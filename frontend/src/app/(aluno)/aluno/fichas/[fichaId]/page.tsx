@@ -13,10 +13,12 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import DetalheErro from "@/components/ui/DetalheErro";
 import StatusChip from "@/components/ui/StatusChip";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 import { exportarFichaParaExcel } from "@/lib/utils/excel";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 export default function DetalheFichaAlunoPage() {
   const { fichaId } = useParams<{ fichaId: string }>();
@@ -30,8 +32,8 @@ export default function DetalheFichaAlunoPage() {
     try {
       const res = await alunoApi.getFicha(fichaId);
       setFicha(res.data);
-    } catch {
-      setError("Erro ao carregar ficha.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar ficha."));
     } finally {
       setLoading(false);
     }
@@ -40,7 +42,15 @@ export default function DetalheFichaAlunoPage() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingSpinner />;
-  if (!ficha) return null;
+  if (!ficha) {
+    return (
+      <DetalheErro
+        mensagem={error || "Não foi possível carregar a ficha."}
+        onRetry={load}
+        onVoltar={() => router.push("/aluno/fichas")}
+      />
+    );
+  }
 
   const totalSeries = ficha.exercicios.reduce(
     (acc, ex) => acc + ex.series.reduce((a, s) => a + s.quantidade, 0), 0,

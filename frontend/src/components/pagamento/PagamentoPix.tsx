@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Box, Typography, Chip, CircularProgress, Button, Paper, Stack, Alert } from "@mui/material";
+import { Box, Typography, Chip, CircularProgress, Paper, Stack, Alert } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { isAxiosError } from "axios";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import CopiarPixButton from "@/components/pagamento/CopiarPixButton";
 import type { PagamentoResponse } from "@/types";
 
 const MAX_CONSECUTIVE_ERRORS = 3;
@@ -154,13 +155,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
             >
               {pagamento.pixQrCode.slice(0, 60)}…
             </Box>
-            <Button
-              size="small"
-              sx={{ mt: 1 }}
-              onClick={() => { navigator.clipboard.writeText(pagamento.pixQrCode!).catch(() => {}); }}
-            >
-              Copiar código
-            </Button>
+            <CopiarPixButton codigo={pagamento.pixQrCode} />
           </Box>
         )}
 

@@ -18,6 +18,7 @@ import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import DetalheErro from "@/components/ui/DetalheErro";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi, type AdicionarExercicioData, type SerieConfigData } from "@/lib/api/treinador";
@@ -311,7 +312,15 @@ export default function DetalheFichaPage() {
   );
 
   if (loading) return <LoadingSpinner />;
-  if (!ficha) return null;
+  if (!ficha) {
+    return (
+      <DetalheErro
+        mensagem={error || "Não foi possível carregar a ficha."}
+        onRetry={load}
+        onVoltar={() => router.push("/treinador/treinos")}
+      />
+    );
+  }
 
   return (
     <Box>

@@ -17,6 +17,7 @@ import SemVinculoAtivoBanner from "@/components/aluno/SemVinculoAtivoBanner";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 import { getWeekLabel } from "@/lib/utils/formatting";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 export default function DashboardAlunoPage() {
   const theme = useTheme();
@@ -64,8 +65,8 @@ export default function DashboardAlunoPage() {
           if (w in counts) counts[w]++;
         }
         setSessoesData(weekKeys.map((w) => ({ semana: w, sessoes: counts[w] })));
-      } catch {
-        setError("Erro ao carregar dados.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar dados."));
       } finally {
         setLoading(false);
       }

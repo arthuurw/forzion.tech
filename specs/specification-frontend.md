@@ -54,7 +54,7 @@ src/
     observability/     — WebVitals
     pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
     treinador/         — componentes específicos do treinador
-    ui/                — componentes compartilhados (ErrorBoundary, SnackbarProvider, LoadingSpinner, DataList, etc.)
+    ui/                — componentes compartilhados (ErrorBoundary, AlertBanner, LoadingSpinner, DataList, etc.)
   hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent
   lib/
     api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
@@ -80,9 +80,8 @@ html[lang=pt-BR]
       ThemeRegistry
         ErrorBoundary
           AuthProvider
-            SnackbarProvider
-              ConsentProvider
-              {children}
+            ConsentProvider
+            {children}
 ```
 - `metadata`: title="forzion.tech", description.
 - `viewport`: `width=device-width, initialScale=1, viewportFit=cover`.
@@ -258,7 +257,7 @@ Fluxos de cadastro/cobrança e como o `modoPagamentoAluno` muda a UI. Regra de n
 ### `PagamentoSignup` (`components/pagamento/PagamentoSignup.tsx`)
 Componente ANÔNIMO, props-driven `{ pagamento: IniciarPagamentoPlanoResponse, onPagoCartao }` — NÃO usa `apiClient` autenticado (signup pré-conta).
 - **Pix**: QR (`pixQrCodeUrl`) + copia-e-cola (`pixQrCode`, botão copiar) + expiração. SEM polling — webhook backend finaliza e dispara e-mail de verificação (Alert informa).
-- **Cartão**: Stripe `<Elements>` com `clientSecret` + `<PaymentElement>` → `stripe.confirmPayment({ redirect: "if_required" })` → `onPagoCartao()`. Sem `clientSecret` → Alert de erro. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (ausente → `stripePromise=null`).
+- **Cartão**: Stripe `<Elements>` com `clientSecret` + `<PaymentElement>` → `stripe.confirmPayment({ redirect: "if_required" })` → `onPagoCartao()`. Sem `clientSecret` → Alert de erro. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (ausente → `stripePromise=null`). Erro de recusa exibido via `mapStripeError(error)` (`lib/pagamento/stripeErro`): mapeia `decline_code`/`code` conhecidos → cópia pt-BR curada; desconhecido → SEMPRE `FALLBACK` pt-BR (NUNCA ecoa `error.message` em inglês do Stripe ao usuário).
 
 ### Troca de plano (`(treinador)/treinador/plano/page.tsx`)
 Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinaturaTreinador`) + chip status (Ativa=success, Inadimplente=error, Cancelada=default, demais=warning) + lista de planos (`listarPlanosPlataforma`, exclui `Elite`/inativos). Dialog de troca (`pagamentoApi.trocarPlano`):
@@ -352,7 +351,12 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 ## OBSERVABILIDADE
 - **Sentry**: erros + replay (RUM). DSN configurado no container (no-op sem DSN). Source maps com `SENTRY_AUTH_TOKEN`.
 - **WebVitals** (`src/components/observability/WebVitals.tsx`): coleta e envia Core Web Vitals.
-- **ErrorBoundary** global em root layout + por grupo de rota. `global-error.tsx` para erros fora do layout.
+- **ErrorBoundary**: `app/error.tsx` (root) + `error.tsx` por route-group — `(aluno)`, `(treinador)`, `(admin)` — cada um client (`{error, reset}`) que DELEGA ao componente compartilhado `components/ui/RouteGroupError` (props `homeHref`/`homeLabel`/`bodyText`); layout/Sentry/retry vivem em 1 lugar (sem triplicar markup). Render pt-BR + botão "Tentar novamente" (`reset()`) + link ao painel do grupo + `Sentry.captureException(error)`. `global-error.tsx` para erros fora do layout. O boundary de grupo contém crash de render do segmento preservando o shell.
+
+## TRATAMENTO DE ERRO (padrão canônico)
+- **Erro de chamada de API**: capturar no `catch (err)` e exibir via `AlertBanner` (ou `Alert` MUI) com `extractApiError(err, "<fallback pt-BR>")` — surfaça o `detail` (→`title`→`message`) pt-BR do backend; `<fallback>` só quando a resposta não traz texto útil. `extractApiErrorInfo` quando precisar de `status`/`code` (ex.: telas que mapeiam status, como login/executar). NÃO hardcodar mensagem genérica descartando o `detail` do backend.
+- **Falha de load de página de detalhe**: `return null` em estado de erro é BANIDO (causa tela branca). Renderizar estado de erro (mensagem + retry) — ver `DetalheErro`/`AlertBanner`.
+- `SnackbarProvider`/`useSnackbar` (toast global genérico) foi removido (0 consumidores); o canal de feedback de erro é `AlertBanner` + `extractApiError`. (O MUI `<Snackbar>` do banner de inadimplência no `AppLayout` é caso à parte — ver [specification-stripe].)
 
 ## DICAS / GOTCHAS
 - `legacy-peer-deps=true` em `.npmrc` (madge@8 + TS6) — ver §TYPESCRIPT; NÃO remover sem atualizar madge.

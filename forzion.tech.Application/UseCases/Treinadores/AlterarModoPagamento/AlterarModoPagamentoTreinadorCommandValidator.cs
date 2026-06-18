@@ -6,6 +6,6 @@ public class AlterarModoPagamentoTreinadorCommandValidator : AbstractValidator<A
 {
     public AlterarModoPagamentoTreinadorCommandValidator()
     {
-        RuleFor(x => x.NovoModo).IsInEnum();
+        RuleFor(x => x.NovoModo).IsInEnum().WithMessage("Modo de pagamento inválido.");
     }
 }

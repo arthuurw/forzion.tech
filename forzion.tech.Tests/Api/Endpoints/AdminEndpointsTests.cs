@@ -901,6 +901,10 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .PostAsJsonAsync($"/admin/treinadores/{TreinadorId}/aprovar", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("title").GetString().Should().Be("Não foi possível processar.");
+        problem.GetProperty("detail").GetString().Should().Be("Treinador já aprovado.");
+        problem.GetProperty("code").GetString().Should().Be("treinador.ja_aprovado");
     }
 
     // --- POST /admin/treinadores/{id}/inativar — failure branch ---
@@ -972,6 +976,10 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .DeleteAsync($"/admin/planos/{Guid.NewGuid()}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("title").GetString().Should().Be("Não encontrado.");
+        problem.GetProperty("detail").GetString().Should().Be("Plano não encontrado.");
+        problem.GetProperty("code").GetString().Should().Be("plano_nao_encontrado");
     }
 
     // --- PATCH /admin/grupos-musculares/{id} ---
@@ -1000,6 +1008,19 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .PatchAsJsonAsync($"/admin/grupos-musculares/{Guid.NewGuid()}", new { nome = "X" });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Post_GrupoMuscular_JsonMalformado_RetornaTitlePtBr()
+    {
+        var conteudo = new StringContent("{ nome: ", System.Text.Encoding.UTF8, "application/json");
+
+        var response = await CriarClienteAdmin()
+            .PostAsync("/admin/grupos-musculares", conteudo);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("title").GetString().Should().Be("Requisição inválida.");
     }
 
     // --- DELETE /admin/grupos-musculares/{id} ---

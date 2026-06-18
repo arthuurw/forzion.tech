@@ -20,6 +20,7 @@ public static class ResultExtensions
         return Microsoft.AspNetCore.Http.Results.Problem(
             detail: error.Message,
             statusCode: statusCode,
+            title: ProblemDetailsTitulos.PtBr.GetValueOrDefault(statusCode),
             extensions: new Dictionary<string, object?> { ["code"] = error.Code });
     }
 }

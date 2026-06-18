@@ -77,8 +77,8 @@ export default function DetalheAlunoAdminPage() {
       ]);
       setAluno(alunoRes.data);
       setVinculo(vinculoRes.data);
-    } catch {
-      setError("Erro ao carregar dados do aluno.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar dados do aluno."));
     } finally {
       setLoadingHeader(false);
     }

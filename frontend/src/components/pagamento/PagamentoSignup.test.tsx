@@ -68,8 +68,8 @@ describe("PagamentoSignup — Cartão", () => {
     await waitFor(() => expect(onPagoCartao).toHaveBeenCalledTimes(1));
   });
 
-  it("confirmPayment com erro exibe mensagem e não chama onPagoCartao", async () => {
-    const confirmPayment = vi.fn().mockResolvedValue({ error: { message: "Cartão recusado" } });
+  it("confirmPayment com erro exibe mensagem pt-BR e não chama onPagoCartao", async () => {
+    const confirmPayment = vi.fn().mockResolvedValue({ error: { decline_code: "insufficient_funds" } });
     vi.mocked(useStripe).mockReturnValue({ confirmPayment } as never);
     vi.mocked(useElements).mockReturnValue({} as never);
     const onPagoCartao = vi.fn();
@@ -77,7 +77,7 @@ describe("PagamentoSignup — Cartão", () => {
     render(<PagamentoSignup pagamento={{ ...BASE, metodoPagamento: "Cartao", clientSecret: "cs_test" }} onPagoCartao={onPagoCartao} />);
     fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
 
-    expect(await screen.findByText("Cartão recusado")).toBeInTheDocument();
+    expect(await screen.findByText("Saldo ou limite insuficiente. Tente outro cartão.")).toBeInTheDocument();
     expect(onPagoCartao).not.toHaveBeenCalled();
   });
 });

@@ -331,7 +331,7 @@ describe("PagamentosTreinadorPage", () => {
   it("erro na API → exibe mensagem de erro", async () => {
     server.use(
       http.get("*/treinador/onboarding/status", () =>
-        HttpResponse.json({ title: "boom" }, { status: 500 }),
+        new HttpResponse(null, { status: 500 }),
       ),
     );
 
@@ -427,7 +427,7 @@ describe("PagamentosAlunoPage", () => {
   it("erro na API → exibe mensagem de erro", async () => {
     server.use(
       http.get("*/aluno/assinatura", () =>
-        HttpResponse.json({ title: "fail" }, { status: 500 }),
+        new HttpResponse(null, { status: 500 }),
       ),
     );
     render(<PagamentosAlunoPage />);
