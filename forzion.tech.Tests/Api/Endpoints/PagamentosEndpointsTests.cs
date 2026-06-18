@@ -7,6 +7,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
+using forzion.tech.Application.UseCases.Pagamentos.ListarRecebimentosTreinador;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -22,6 +23,7 @@ namespace forzion.tech.Tests.Api.Endpoints;
 public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.PagamentosWebFactory>
 {
     private static readonly Guid ContaId = Guid.NewGuid();
+    private static readonly Guid PerfilId = Guid.NewGuid();
     private readonly PagamentosWebFactory _factory;
 
     public PagamentosEndpointsTests(PagamentosWebFactory factory) => _factory = factory;
@@ -48,6 +50,32 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
             .PostAsync($"/treinador/pagamentos/cobrar/{Guid.NewGuid()}?metodo=999", content: null);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    private static ListarRecebimentosTreinadorQuery? CapturedRecebimentosQuery;
+
+    [Fact]
+    public async Task Get_Recebimentos_EscopaNoTreinadorAutenticado()
+    {
+        CapturedRecebimentosQuery = null;
+
+        var response = await ClienteTreinador()
+            .GetAsync("/treinador/pagamentos/recebimentos?tamanho=5&cursor=abc");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        CapturedRecebimentosQuery.Should().NotBeNull();
+        CapturedRecebimentosQuery!.TreinadorId.Should().Be(PerfilId);
+        CapturedRecebimentosQuery.Tamanho.Should().Be(5);
+        CapturedRecebimentosQuery.Cursor.Should().Be("abc");
+    }
+
+    [Fact]
+    public async Task Get_Recebimentos_SemToken_Retorna401()
+    {
+        var response = await _factory.CreateClient()
+            .GetAsync("/treinador/pagamentos/recebimentos");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     public class PagamentosWebFactory : WebApplicationFactory<Program>
@@ -85,6 +113,18 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
                 services.RemoveAll<IAssinaturaTreinadorRepository>();
                 services.AddScoped(_ => Mock.Of<IAssinaturaTreinadorRepository>());
 
+                services.RemoveAll<ListarRecebimentosTreinadorHandler>();
+                var recebimentosMock = new Mock<ListarRecebimentosTreinadorHandler>(
+                    Mock.Of<IPagamentoRepository>(), Options.Create(new PaymentSettings()));
+                recebimentosMock
+                    .Setup(h => h.HandleAsync(It.IsAny<ListarRecebimentosTreinadorQuery>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((ListarRecebimentosTreinadorQuery q, CancellationToken _) =>
+                    {
+                        CapturedRecebimentosQuery = q;
+                        return new ListarRecebimentosTreinadorResultado([], null);
+                    });
+                services.AddScoped(_ => recebimentosMock.Object);
+
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, TreinadorTestAuthHandler>("Test", _ => { });
             });
@@ -108,7 +148,7 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
             {
                 new Claim("sub", ContaId.ToString()),
                 new Claim("tipo_conta", "Treinador"),
-                new Claim("perfil_id", Guid.NewGuid().ToString()),
+                new Claim("perfil_id", PerfilId.ToString()),
             };
             var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, "Test")));

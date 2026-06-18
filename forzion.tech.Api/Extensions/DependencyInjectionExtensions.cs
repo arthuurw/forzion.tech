@@ -51,6 +51,7 @@ using forzion.tech.Application.UseCases.Treinos.ListarFichasDoAluno;
 using forzion.tech.Application.UseCases.Treinos.RemoverExercicio;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
+using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
 using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
@@ -338,6 +339,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IniciarOnboardingTreinadorHandler>();
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
         services.AddScoped<AlterarModoPagamentoTreinadorHandler>();
+        services.AddScoped<ObterPreviewModoPagamentoTreinadorHandler>();
         services.AddScoped<CriarAssinaturaAlunoHandler>();
         services.AddScoped<CancelarAssinaturaAlunoHandler>();
         services.AddScoped<CancelarMinhaAssinaturaAlunoHandler>();
@@ -353,6 +355,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Nfse.ReconciliarNfse.ReconciliarNfseHandler>();
         services.AddScoped<ObterStatusPagamentoHandler>();
         services.AddScoped<ListarPagamentosAssinaturaAlunoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.ListarRecebimentosTreinador.ListarRecebimentosTreinadorHandler>();
         services.AddScoped<ProcessarWebhookStripeHandler>();
         services.AddScoped<ReconciliarPagamentosStripeHandler>();
 

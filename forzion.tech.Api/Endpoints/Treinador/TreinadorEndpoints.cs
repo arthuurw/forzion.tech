@@ -3,6 +3,7 @@ using forzion.tech.Api.Helpers;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
+using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
@@ -130,6 +131,22 @@ public static class TreinadorEndpoints
         .Produces<AlterarModoPagamentoResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet("/modo-pagamento/preview", async (
+            [FromServices] ObterPreviewModoPagamentoTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new ObterPreviewModoPagamentoTreinadorQuery(userContext.PerfilId), cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Prévia do impacto da troca de modo de pagamento (read-only)")
+        .Produces<PreviewModoPagamentoResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/vinculos/{id:guid}/aprovar", async (
             Guid id,

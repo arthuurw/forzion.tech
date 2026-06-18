@@ -6,10 +6,105 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { pagamentoApi } from "@/lib/api/pagamento";
 import { extractApiError } from "@/lib/api/extractApiError";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import type { OnboardingStatusResponse } from "@/types";
+import type { OnboardingStatusResponse, PagamentoStatus, RecebimentoTreinadorResponse } from "@/types";
 
 const COOLDOWN_ACEITE =
   "Confirma a alteração? Um novo ajuste só poderá ser feito depois de 90 dias (3 meses).";
+
+const TAXA_PLATAFORMA_PERCENT = 5;
+
+const STATUS_COR: Record<PagamentoStatus, "success" | "warning" | "error" | "default"> = {
+  Pago: "success",
+  Pendente: "default",
+  Expirado: "default",
+  Falhou: "default",
+  Estornado: "warning",
+  EmDisputa: "error",
+};
+
+const STATUS_ROTULO: Record<PagamentoStatus, string> = {
+  Pago: "Pago",
+  Pendente: "Pendente",
+  Expirado: "Expirado",
+  Falhou: "Falhou",
+  Estornado: "Estornado",
+  EmDisputa: "Em disputa",
+};
+
+const formatBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function HistoricoRecebimentos() {
+  const [itens, setItens] = useState<RecebimentoTreinadorResponse[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [carregado, setCarregado] = useState(false);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  const carregarPagina = async (proximo?: string) => {
+    setCarregando(true);
+    setErro("");
+    try {
+      const { data } = await pagamentoApi.listarRecebimentos(proximo);
+      setItens((prev) => (proximo ? [...prev, ...data.itens] : data.itens));
+      setCursor(data.proximoCursor);
+    } catch {
+      setErro("Não foi possível carregar os recebimentos.");
+    } finally {
+      setCarregando(false);
+      setCarregado(true);
+    }
+  };
+
+  useEffect(() => { carregarPagina(); }, []);
+
+  return (
+    <Box sx={{ mt: 4 }}>
+      <Typography variant="h6" sx={{ fontWeight: "bold", mb: 0.5 }}>Histórico de recebimentos</Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+        Líquido estimado já descontada a taxa da plataforma de {TAXA_PLATAFORMA_PERCENT}%.
+      </Typography>
+
+      {erro && <Alert severity="error" sx={{ mb: 2 }}>{erro}</Alert>}
+
+      {!carregado && carregando ? (
+        <CircularProgress size={24} />
+      ) : itens.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          Nenhum recebimento ainda. Cobranças pagas pelos seus alunos aparecem aqui.
+        </Typography>
+      ) : (
+        <Stack spacing={1} component="ul" sx={{ listStyle: "none", p: 0, m: 0 }}>
+          {itens.map((r) => (
+            <Paper key={r.pagamentoId} variant="outlined" component="li" sx={{ p: 2 }}>
+              <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start" }} spacing={1}>
+                <Box>
+                  <Typography variant="subtitle2">{r.nomeAluno}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(r.dataPagamento ?? r.createdAt).toLocaleDateString("pt-BR")} · {r.metodo}
+                  </Typography>
+                </Box>
+                <Chip label={STATUS_ROTULO[r.status]} color={STATUS_COR[r.status]} size="small" />
+              </Stack>
+              <Stack direction="row" spacing={2} sx={{ mt: 1, flexWrap: "wrap" }}>
+                <Typography variant="body2" color="text.secondary">Bruto: {formatBRL(r.bruto)}</Typography>
+                <Typography variant="body2" color="text.secondary">Taxa: {r.taxaPercent}%</Typography>
+                <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                  Líquido estimado: {formatBRL(r.liquidoEstimado)}
+                </Typography>
+              </Stack>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+
+      {cursor && (
+        <Button onClick={() => carregarPagina(cursor)} disabled={carregando} sx={{ mt: 2 }}>
+          {carregando ? "Carregando..." : "Carregar mais"}
+        </Button>
+      )}
+    </Box>
+  );
+}
 
 export default function PagamentosTreinadorPage() {
   const [status, setStatus] = useState<OnboardingStatusResponse | null>(null);
@@ -18,6 +113,8 @@ export default function PagamentosTreinadorPage() {
   const [error, setError] = useState("");
   const [confirmarTroca, setConfirmarTroca] = useState(false);
   const [trocando, setTrocando] = useState(false);
+  const [sucesso, setSucesso] = useState("");
+  const [previewTexto, setPreviewTexto] = useState("");
 
   const carregar = async () => {
     try {
@@ -54,13 +151,37 @@ export default function PagamentosTreinadorPage() {
   const liberadoEm = status?.modoPagamentoPodeAlterarEm ? new Date(status.modoPagamentoPodeAlterarEm) : null;
   const cooldownAtivo = !!liberadoEm && liberadoEm > new Date();
 
-  const abrirTroca = () => { setError(""); setConfirmarTroca(true); };
+  const abrirTroca = async () => {
+    setError("");
+    setSucesso("");
+    setPreviewTexto("");
+    setConfirmarTroca(true);
+    try {
+      const { data } = await pagamentoApi.previewModoPagamento();
+      setPreviewTexto(
+        externo
+          ? `Até ${data.vinculosCobravelSemAssinatura} assinatura(s) serão criadas para seus alunos ativos com pacote cobrável.`
+          : `${data.assinaturasAtivasAlunos} assinatura(s) ativa(s) de alunos serão canceladas.`,
+      );
+    } catch {
+      setPreviewTexto("Não foi possível pré-calcular o impacto. A troca continua segura.");
+    }
+  };
 
   const alternarModo = async () => {
     setTrocando(true);
     setError("");
     try {
-      await pagamentoApi.alterarModoPagamento(externo ? "Plataforma" : "Externo");
+      const res = await pagamentoApi.alterarModoPagamento(externo ? "Plataforma" : "Externo");
+      const { assinaturasCriadas, vinculosIgnorados } = res.data;
+      setSucesso(
+        externo
+          ? `${assinaturasCriadas} assinatura(s) criada(s) para seus alunos ativos.` +
+            (vinculosIgnorados > 0
+              ? ` ${vinculosIgnorados} vínculo(s) sem pacote cobrável foram ignorados.`
+              : "")
+          : "Cobranças via plataforma encerradas. Você passou a cobrar por fora.",
+      );
       setConfirmarTroca(false);
       await carregar();
     } catch (err) {
@@ -75,9 +196,10 @@ export default function PagamentosTreinadorPage() {
       open={confirmarTroca}
       title={externo ? "Voltar a receber pela plataforma" : "Receber por fora da plataforma"}
       description={
-        externo
+        (externo
           ? `Será necessário ter a conta Stripe configurada. Assinaturas serão criadas para seus alunos ativos e a cobrança via plataforma recomeça. ${COOLDOWN_ACEITE}`
-          : `Suas assinaturas ativas de alunos serão canceladas e você passará a cobrar manualmente, por fora da plataforma. ${COOLDOWN_ACEITE}`
+          : `Suas assinaturas ativas de alunos serão canceladas e você passará a cobrar manualmente, por fora da plataforma. ${COOLDOWN_ACEITE}`) +
+        (previewTexto ? ` ${previewTexto}` : "")
       }
       destructive={!externo}
       confirmLabel={externo ? "Voltar à plataforma" : "Receber por fora"}
@@ -119,6 +241,7 @@ export default function PagamentosTreinadorPage() {
         </Typography>
 
         {!confirmarTroca && error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {sucesso && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSucesso("")}>{sucesso}</Alert>}
 
         <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
           <Stack spacing={1.5}>
@@ -131,6 +254,14 @@ export default function PagamentosTreinadorPage() {
             {trocaAcao("Voltar a receber pela plataforma")}
           </Stack>
         </Paper>
+
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" sx={{ fontWeight: "bold", mb: 0.5 }}>Histórico de recebimentos</Typography>
+          <Typography variant="body2" color="text.secondary">
+            No modo externo, os pagamentos são combinados direto com o aluno e não passam pela plataforma — não há
+            histórico de recebimentos aqui.
+          </Typography>
+        </Box>
 
         {trocaDialog}
       </Box>
@@ -145,6 +276,7 @@ export default function PagamentosTreinadorPage() {
       </Typography>
 
       {!confirmarTroca && error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {sucesso && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSucesso("")}>{sucesso}</Alert>}
 
       <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
         <Stack spacing={2}>
@@ -160,9 +292,18 @@ export default function PagamentosTreinadorPage() {
           </Stack>
 
           {status?.onboardingCompleto ? (
-            <Typography variant="body2" color="text.secondary">
-              Sua conta está ativa. Você pode receber pagamentos dos alunos via Pix.
-            </Typography>
+            <>
+              <Typography variant="body2" color="text.secondary">
+                Sua conta está ativa. Você pode receber pagamentos dos alunos via Pix.
+              </Typography>
+              <Chip
+                label={`Taxa da plataforma: ${TAXA_PLATAFORMA_PERCENT}%`}
+                color="primary"
+                variant="outlined"
+                size="small"
+                sx={{ alignSelf: "flex-start" }}
+              />
+            </>
           ) : (
             <>
               <Typography variant="body2" color="text.secondary">
@@ -185,6 +326,8 @@ export default function PagamentosTreinadorPage() {
           {trocaAcao("Receber por fora da plataforma")}
         </Stack>
       </Paper>
+
+      <HistoricoRecebimentos />
 
       {trocaDialog}
     </Box>

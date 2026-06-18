@@ -3964,6 +3964,54 @@
         }
       }
     },
+    "/treinador/pagamentos/recebimentos": {
+      "get": {
+        "tags": [
+          "Pagamentos"
+        ],
+        "summary": "Lista recebimentos do treinador (paginação keyset por cursor)",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListarRecebimentosTreinadorResultado"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/treinador/plano/assinatura": {
       "get": {
         "tags": [
@@ -4372,6 +4420,36 @@
           },
           "422": {
             "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/modo-pagamento/preview": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Prévia do impacto da troca de modo de pagamento (read-only)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewModoPagamentoResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7558,6 +7636,23 @@
         },
         "additionalProperties": false
       },
+      "ListarRecebimentosTreinadorResultado": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecebimentoTreinadorResponse"
+            },
+            "nullable": true
+          },
+          "proximoCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ListarTreinadoresResponse": {
         "type": "object",
         "properties": {
@@ -8127,6 +8222,20 @@
         },
         "additionalProperties": false
       },
+      "PreviewModoPagamentoResponse": {
+        "type": "object",
+        "properties": {
+          "assinaturasAtivasAlunos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "vinculosCobravelSemAssinatura": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -8173,6 +8282,49 @@
           "pacoteId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecebimentoTreinadorResponse": {
+        "type": "object",
+        "properties": {
+          "pagamentoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bruto": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxaPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "liquidoEstimado": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeAluno": {
+            "type": "string",
+            "nullable": true
+          },
+          "metodo": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dataPagamento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false

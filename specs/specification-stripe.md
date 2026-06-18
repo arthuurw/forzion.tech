@@ -104,7 +104,9 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 |-------------|------|---------|---------|-------|
 | POST /treinador/onboarding | Treinador | IniciarOnboardingTreinadorHandler | 200 `{url}` | 400 (URL fora do domínio), 403, 404, 422, 500 (`Stripe:UrlBase` ausente = misconfig + LogError) |
 | POST /treinador/modo-pagamento | Treinador | AlterarModoPagamentoTreinadorHandler | 200 `{modo, alteradoEm}` | 403, 404, 422 (`modo_inalterado`/`cooldown_modo_pagamento`/`configure_stripe_primeiro`) |
+| GET /treinador/modo-pagamento/preview | Treinador | ObterPreviewModoPagamentoTreinadorHandler | 200 `{assinaturasAtivasAlunos, vinculosCobravelSemAssinatura}` (read-only; espelha a contagem que `AlterarModoPagamento` aplicaria) | 403, 404 |
 | GET /treinador/onboarding/status | Treinador | VerificarOnboardingTreinadorHandler | 200 `{onboardingCompleto, contaConfigurada}` | 403, 404 |
+| GET /treinador/pagamentos/recebimentos?cursor&tamanho | Treinador | ListarRecebimentosTreinadorHandler | 200 `{itens[], proximoCursor}` — paginação keyset `(CreatedAt desc, Id)`, escopo `userContext.PerfilId` (anti-IDOR); item traz bruto, taxa%, líquido estimado (bruto×(1−taxa/100)), status, aluno, método, datas | 403 |
 | POST /treinador/pagamentos/cobrar/{id}?metodo=Pix\|Cartao | Treinador | GerarCobrancaMensalHandler | 200 `PagamentoResponse` (treinador, sem ClientSecret) | 403, 404, 409, 422, 500 |
 | GET /aluno/pagamentos/{id} | Aluno | ObterStatusPagamentoHandler | 200 `PagamentoResponse` (aluno, COM ClientSecret) | 403, 404 |
 | GET /aluno/pagamentos/assinatura/{id} | Aluno | ListarPagamentosAssinaturaAlunoHandler | 200 `PagamentoResponse[]` | 403, 404 |

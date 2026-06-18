@@ -53,4 +53,22 @@ public class PagamentoRepository(AppDbContext context) : IPagamentoRepository
             .Take(limite)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<RecebimentoTreinadorItem>> ListarPorTreinadorAsync(
+        Guid treinadorId, DateTime? cursorCreatedAt, Guid? cursorId, int limite,
+        CancellationToken cancellationToken = default) =>
+        await (
+            from p in context.Pagamentos.AsNoTracking()
+            join a in context.AssinaturaAlunos.AsNoTracking() on p.AssinaturaAlunoId equals a.Id
+            join al in context.Alunos.AsNoTracking() on a.AlunoId equals al.Id
+            where a.TreinadorId == treinadorId
+                  && (cursorCreatedAt == null
+                      || p.CreatedAt < cursorCreatedAt
+                      || (p.CreatedAt == cursorCreatedAt && p.Id < cursorId))
+            orderby p.CreatedAt descending, p.Id descending
+            select new RecebimentoTreinadorItem(
+                p.Id, p.Valor, p.Status, p.MetodoPagamento, al.Nome, p.CreatedAt, p.DataPagamento))
+            .Take(limite)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 }

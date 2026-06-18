@@ -201,7 +201,7 @@ interceptor resposta:
 - Verifica `!isLoading && !user` → chama `/api/auth/logout` (limpa cookies) → `router.replace("/login")`.
 - Desktop (≥md): `Drawer` permanente, colapsável (232px ↔ 68px ícones).
 - Mobile (<md): `Drawer` temporário + `BottomNavigation` fixo (inferior, com `safe-area-inset-bottom`).
-- `NavConfig` por `TipoConta`: items de navegação derivados do role.
+- `NavConfig` por `TipoConta`: items de navegação derivados do role. `NavItem.drawerOnly?: boolean` marca itens secundários que aparecem só no `Drawer`, nunca na `BottomNavigation` mobile. Treinador: 8 itens no drawer (Alunos, Fichas, Exercícios, Pacotes, Notas fiscais, Recebimentos[drawerOnly], Plano[drawerOnly], Suporte); bottom-nav filtra `drawerOnly` → 6.
 - **Inatividade**: `useInactivity` — warn aos N minutos, logout automático aos 20 min.
 
 ## SEGURANÇA / MFA (`src/app/seguranca/`)
@@ -219,7 +219,7 @@ Básico aqui; tokens exatos (paleta/radius/tipografia/component-defaults/anti-zo
 - Breakpoints MUI default; layout adapta em `<md` para mobile (detalhes/tokens em [specification-frontend-ui] §RESPONSIVIDADE).
 - **Alvo de verificação = 360px; target-size AA = 24px (não 44px=AAA); CHECKLIST anti-regressão mobile + padrões (kebab de ações, hit-area de dot, ResponsiveTable obrigatória) em [specification-frontend-ui] §RESPONSIVIDADE — aplicar ao mexer em qualquer página/componente.**
 - `viewportFit: "cover"` + `env(safe-area-inset-bottom)` para iPhone notch.
-- BottomNavigation com `showLabels: navItems.length <= 4`.
+- BottomNavigation opera sobre `navItems.filter(i => !i.drawerOnly)` (itens `drawerOnly` ficam só no drawer); `showLabels: bottomNavItems.length <= 4`.
 - Padding do main: `p: {xs:2.5, md:3.5}`, `pb: {xs:"calc(72px+safe-area)", md:3.5}`.
 
 ## TIPOS DE DOMÍNIO (`src/types/index.ts`)
@@ -273,8 +273,10 @@ Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinatura
 ### Recebimentos (`(treinador)/treinador/pagamentos/page.tsx`)
 Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 - **Externo**: orientação de controle manual (sem Stripe; combinar valor direto, gerenciar acesso por vínculo). Chip "Pagamento externo".
-- **Plataforma**: onboarding Stripe (chip status: Ativo/Cadastro incompleto/Não configurado; `iniciarOnboarding` redireciona p/ URL Stripe).
+- **Plataforma**: onboarding Stripe (chip status: Ativo/Cadastro incompleto/Não configurado; `iniciarOnboarding` redireciona p/ URL Stripe). Quando ativo, chip "Taxa da plataforma: 5%" (constante local `TAXA_PLATAFORMA_PERCENT`, espelha `Stripe:TaxaPlataformaPercent`/`PaymentSettings` default 5).
 - **Troca de modo (opt-out/opt-in)**: ambos os modos exibem ação de alternar (`alterarModoPagamento` → `POST /treinador/modo-pagamento`) com `ConfirmDialog` de consequências (→Externo cancela assinaturas dos alunos; →Plataforma cria assinaturas + exige Stripe) + aceite do cooldown. Cooldown lido direto de `OnboardingStatusResponse.modoPagamentoPodeAlterarEm` (sem constante local): se futura, ação desabilitada + "Novo ajuste disponível em <data>". Erro (422 `configure_stripe_primeiro`/`cooldown_modo_pagamento`) exibido DENTRO do dialog via `extractApiError` (dialog permanece aberto p/ retry).
+- **Preview da troca**: `abrirTroca` busca `GET /treinador/modo-pagamento/preview` (`previewModoPagamento`) e injeta frase de impacto no dialog (→Externo "N assinatura(s) serão canceladas"; →Plataforma "Até N assinatura(s) serão criadas"). Falha do preview → dialog abre com aviso e ainda permite confirmar (troca não bloqueada por preview indisponível). Resultado da troca (`assinaturasCriadas`/`vinculosIgnorados`) vira `Alert` de sucesso.
+- **Histórico de recebimentos** (`HistoricoRecebimentos`, só modo Plataforma): lista keyset (`listarRecebimentos(cursor?)` → `GET /treinador/pagamentos/recebimentos`; `proximoCursor` → "Carregar mais"). Cada item: aluno, data, método, status (chip — Estornado=warning, EmDisputa=error), bruto, taxa%, líquido **estimado** (rotulado; bruto×(1−taxa/100), calculado no backend). Vazio = estado amigável. Modo Externo = placeholder (sem lista — pagamentos não passam pela plataforma).
 
 ### Aluno sem vínculo ativo
 - `components/aluno/SemVinculoAtivoBanner.tsx`: lê `GET /aluno/vinculo` (`alunoApi.getMeuVinculo`). Estado `ativo` (oculto) | `pendente` (aguardando aprovação) | `sem-vinculo`. Mensagem: histórico consultável, registro de novos treinos bloqueado. Renderizado no dashboard (`(aluno)/aluno/page.tsx`) e no histórico (`(aluno)/aluno/historico/page.tsx`).

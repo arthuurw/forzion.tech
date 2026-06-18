@@ -307,6 +307,28 @@ export interface OnboardingStatusResponse {
   modoPagamentoPodeAlterarEm: string | null;
 }
 
+export interface PreviewModoPagamentoResponse {
+  assinaturasAtivasAlunos: number;
+  vinculosCobravelSemAssinatura: number;
+}
+
+export interface RecebimentoTreinadorResponse {
+  pagamentoId: string;
+  bruto: number;
+  taxaPercent: number;
+  liquidoEstimado: number;
+  status: PagamentoStatus;
+  nomeAluno: string;
+  metodo: MetodoPagamento;
+  createdAt: string;
+  dataPagamento: string | null;
+}
+
+export interface ListarRecebimentosTreinadorResultado {
+  itens: RecebimentoTreinadorResponse[];
+  proximoCursor: string | null;
+}
+
 export type AssinaturaTreinadorStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
 export type TipoTrocaPlano = "Upgrade" | "Downgrade" | "InadimplenteRegularizacao" | "UpgradeImediato";
 
