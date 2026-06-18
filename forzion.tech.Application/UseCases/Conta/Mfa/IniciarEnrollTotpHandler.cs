@@ -23,7 +23,7 @@ public class IniciarEnrollTotpHandler(
     public virtual async Task<Result<IniciarEnrollTotpResult>> HandleAsync(CancellationToken cancellationToken = default)
     {
         var conta = await contaRepository.ObterPorIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Conta autenticada não encontrada.");
+            ?? throw new EstadoInconsistenteException("Conta autenticada não encontrada.");
 
         var existente = await contaMfaRepository.BuscarPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         if (existente is { Habilitado: true })

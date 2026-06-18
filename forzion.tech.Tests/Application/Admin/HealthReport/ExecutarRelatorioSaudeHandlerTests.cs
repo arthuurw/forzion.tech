@@ -25,13 +25,13 @@ public class ExecutarRelatorioSaudeHandlerTests
             _configRepo.Object, _collector.Object, _snapshotRepo.Object, _sender.Object, _unitOfWork.Object, _time);
 
     [Fact]
-    public async Task HandleAsync_SemConfig_LancaDomainException()
+    public async Task HandleAsync_SemConfig_LancaEstadoInconsistente()
     {
         _configRepo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>())).ReturnsAsync((HealthReportConfig?)null);
 
         var act = async () => await _handler.HandleAsync();
 
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]

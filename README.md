@@ -729,7 +729,7 @@ O treinador assina um `PlanoPlataforma` e paga a plataforma de forma recorrente 
 
 1. **Cadastro em plano pago** (`Preco > 0`): o treinador nasce `AguardandoPagamento` e uma `AssinaturaTreinador` `Pendente` é criada; a verificação de e-mail é adiada. A 1ª cobrança (`Finalidade=Cadastro`) é confirmada via webhook Stripe e **finaliza o cadastro inline** (ativa a conta). Plano `Elite` é bloqueado no cadastro; plano `Free` segue o fluxo normal sem assinatura.
 2. **Renovação mensal**: `POST /internal/processar-renovacoes-treinador` gera cobranças das assinaturas vencidas; o pagamento confirmado (`Finalidade=Renovacao`) reativa e agenda a próxima cobrança.
-3. **Troca de plano** (`POST /treinador/plano/trocar`): upgrade/downgrade/regularização. Downgrade para `Free` **cancela** a assinatura (`plano_free_assinatura_cancelada`). A troca efetiva é aplicada no pagamento confirmado (`Finalidade=TrocaPlano`); `PlanoPlataformaIdAgendado` guarda a troca pendente.
+3. **Troca de plano** (`POST /treinador/plano/trocar`): upgrade/downgrade/regularização. Downgrade para `Free` **encerra** a assinatura sem cobrança (resposta de sucesso com flag `AssinaturaEncerrada`). A troca efetiva é aplicada no pagamento confirmado (`Finalidade=TrocaPlano`); `PlanoPlataformaIdAgendado` guarda a troca pendente.
 4. **Inadimplência**: falha de cobrança recorrente marca `Inadimplente` e dispara e-mail ao treinador.
 
 `Treinador.ModoPagamentoAluno` (`Plataforma`/`Externo`) define se o aluno paga via plataforma (Stripe Connect) ou diretamente ao treinador fora dela.

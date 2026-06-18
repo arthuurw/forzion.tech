@@ -70,7 +70,7 @@ public class AtualizarPerfilHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_PerfilNaoEncontrado_LancaDomainException()
+    public async Task HandleAsync_PerfilNaoEncontrado_LancaEstadoInconsistente()
     {
         var contaId = Guid.NewGuid();
         _userContext.Setup(u => u.ContaId).Returns(contaId);
@@ -78,7 +78,7 @@ public class AtualizarPerfilHandlerTests
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync((Aluno?)null);
 
         var act = async () => await _handler.HandleAsync(new AtualizarPerfilCommand("X"));
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class AtualizarPerfilHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_AdminNaoEncontrado_LancaDomainException()
+    public async Task HandleAsync_AdminNaoEncontrado_LancaEstadoInconsistente()
     {
         var contaId = Guid.NewGuid();
         _userContext.Setup(u => u.ContaId).Returns(contaId);
@@ -114,11 +114,11 @@ public class AtualizarPerfilHandlerTests
         _systemUserRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync((SystemUser?)null);
 
         var act = async () => await _handler.HandleAsync(new AtualizarPerfilCommand("X"));
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]
-    public async Task HandleAsync_TreinadorNaoEncontrado_LancaDomainException()
+    public async Task HandleAsync_TreinadorNaoEncontrado_LancaEstadoInconsistente()
     {
         var contaId = Guid.NewGuid();
         _userContext.Setup(u => u.ContaId).Returns(contaId);
@@ -126,18 +126,18 @@ public class AtualizarPerfilHandlerTests
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
 
         var act = async () => await _handler.HandleAsync(new AtualizarPerfilCommand("X"));
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]
-    public async Task HandleAsync_TipoContaInvalido_RetornaFailure()
+    public async Task HandleAsync_TipoContaInvalido_LancaEstadoInconsistente()
     {
         _userContext.Setup(u => u.ContaId).Returns(Guid.NewGuid());
         _userContext.Setup(u => u.TipoConta).Returns((TipoConta)99);
 
-        var result = await _handler.HandleAsync(new AtualizarPerfilCommand("X"));
+        var act = async () => await _handler.HandleAsync(new AtualizarPerfilCommand("X"));
 
-        result.IsFailure.Should().BeTrue();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

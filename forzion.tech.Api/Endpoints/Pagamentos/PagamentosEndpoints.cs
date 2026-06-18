@@ -182,11 +182,9 @@ public static class PagamentosEndpoints
             var result = await handler.HandleAsync(
                 new GerarCobrancaPlanoTreinadorCommand(assinatura.Id, metodo), cancellationToken).ConfigureAwait(false);
             if (result.IsFailure)
-            {
-                if (result.Error?.Code == "plano_free_assinatura_cancelada")
-                    return Results.Ok(new { mensagem = result.Error.Message });
                 return result.ToProblemResult();
-            }
+            if (result.Value.AssinaturaEncerrada)
+                return Results.Ok(new { mensagem = "Downgrade para plano Free: assinatura encerrada sem cobrança." });
             return Results.Ok(result.Value);
         })
         .WithSummary("Gera cobrança de renovação do plano do treinador (metodo: Pix ou Cartao)")
@@ -224,17 +222,14 @@ public static class PagamentosEndpoints
                         new GerarCobrancaPlanoTreinadorCommand(assinaturaId), cancellationToken).ConfigureAwait(false);
                     if (result.IsFailure)
                     {
-                        if (result.Error?.Code == "plano_free_assinatura_cancelada")
-                        {
-                            logger.LogInformation("Assinatura de treinador {AssinaturaTreinadorId} encerrada por downgrade para Free.",
-                                assinaturaId);
-                        }
-                        else
-                        {
-                            falhas++;
-                            logger.LogWarning("Falha ao renovar assinatura de treinador {AssinaturaTreinadorId}: {Erro}.",
-                                assinaturaId, result.Error?.Message);
-                        }
+                        falhas++;
+                        logger.LogWarning("Falha ao renovar assinatura de treinador {AssinaturaTreinadorId}: {Erro}.",
+                            assinaturaId, result.Error?.Message);
+                    }
+                    else if (result.Value.AssinaturaEncerrada)
+                    {
+                        logger.LogInformation("Assinatura de treinador {AssinaturaTreinadorId} encerrada por downgrade para Free.",
+                            assinaturaId);
                     }
                 }
 

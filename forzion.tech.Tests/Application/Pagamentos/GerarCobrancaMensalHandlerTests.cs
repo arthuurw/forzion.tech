@@ -195,7 +195,7 @@ public class GerarCobrancaMensalHandlerTests
         var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("treinador_sem_conta_stripe");
+        result.Error!.Code.Should().Be("treinador.sem_conta_stripe");
     }
 
     [Fact]

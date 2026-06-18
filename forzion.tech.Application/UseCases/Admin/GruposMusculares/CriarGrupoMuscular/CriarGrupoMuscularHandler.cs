@@ -24,7 +24,7 @@ public class CriarGrupoMuscularHandler(
 
         var existente = await repository.ObterPorNomeAsync(command.Nome, cancellationToken);
         if (existente != null)
-            return Result.Failure<GrupoMuscularResponse>(Error.Business("grupo_muscular.nome_duplicado", "Já existe um grupo muscular com este nome."));
+            return Result.Failure<GrupoMuscularResponse>(Error.Conflict("grupo_muscular.nome_duplicado", "Já existe um grupo muscular com este nome."));
 
         var grupoResult = GrupoMuscular.Criar(command.Nome, timeProvider.GetUtcNow().UtcDateTime);
         if (grupoResult.IsFailure)

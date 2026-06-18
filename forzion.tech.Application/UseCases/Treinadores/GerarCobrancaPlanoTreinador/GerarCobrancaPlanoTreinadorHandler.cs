@@ -54,8 +54,7 @@ public class GerarCobrancaPlanoTreinadorHandler(
                     assinatura.Cancelar(now);
                     await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
                     logger.LogInformation("Assinatura {Id} encerrada por downgrade para plano Free.", assinatura.Id);
-                    return Result.Failure<IniciarPagamentoPlanoResponse>(Error.Business(
-                        "plano_free_assinatura_cancelada", "Downgrade para plano Free: assinatura encerrada sem cobrança."));
+                    return Result.Success(IniciarPagamentoPlanoResponse.Encerrada());
                 }
 
                 var aplicarResult = assinatura.AplicarPlanoAgendado(planoAgendado.Preco, now);

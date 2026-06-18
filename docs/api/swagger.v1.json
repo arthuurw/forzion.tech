@@ -7496,6 +7496,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "assinaturaEncerrada": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

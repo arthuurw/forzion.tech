@@ -29,7 +29,9 @@ DOC PARA AGENTES. Padrões de CORREÇÃO transversais que reviews repetidamente 
 
 ## 5. ERROS & CONTRATO API
 - **Codes de erro namespaceados por agregado** (`assinatura_treinador.offboarding_necessario`, não `offboarding_necessario` cru). [incidente CR#7: code cru divergia dos irmãos e o frontend hardcodava a string.]
-- HTTP status vem do `ErrorType` (`Business`→422, `NotFound`→404) via `ToProblemResult`/`ResultExtensions` — não setar status à mão por code.
+- HTTP status vem do `ErrorType` (`Business`→422, `Validation`→400, `NotFound`→404, `Conflict`→409) via `ToProblemResult`/`ResultExtensions` — não setar status à mão por code.
+- **`Error` sempre via factory com `Type` explícito** (`Error.Validation`/`Conflict`/`NotFound`/`Business`). `new Error(...)` cru e `=> new(...)` proibidos (construtor implícito vira Business silencioso) — gate `ResultPatternConventionTests`. Classificar pela natureza: input→Validation, estado/já-X/em-uso→Conflict, não-achado→NotFound, política→Business (regra canônica em [specification-backend] §2). `code` NUNCA muda ao reclassificar `Type` (FE chaveia por code).
+- **Invariante quebrada (estado impossível) = `EstadoInconsistenteException`→500, nunca `DomainException` cru (422) nem `Result.Failure` disfarçado de sucesso.** `Result.Failure` jamais sinaliza caminho feliz — estado terminal de sucesso vira flag no response (ex.: `AssinaturaEncerrada`), não code-sentinela lido pelo caller. Gate proíbe `throw new DomainException` em `Application/UseCases/**`.
 - `code` do `Error` sai como extension member do ProblemDetails → chega na RAIZ de `response.data.code`. Frontend lê via helper central (`extractApiError`/`extractApiErrorInfo`), NUNCA leitura inline `(err as {...}).response.data.code` espalhada por página. [incidente CR#8.]
 - Contrato backend↔frontend: shape de 200/4xx + casing (camelCase) fixado nos DOIS lados; binding JSON do backend é case-insensitive (PascalCase ↔ camelCase ok).
 

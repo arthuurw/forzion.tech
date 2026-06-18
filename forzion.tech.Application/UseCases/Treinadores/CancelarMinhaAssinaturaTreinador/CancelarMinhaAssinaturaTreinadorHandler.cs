@@ -30,10 +30,9 @@ public class CancelarMinhaAssinaturaTreinadorHandler(
             .ConfigureAwait(false);
 
         if (assinatura is null || assinatura.Status == AssinaturaTreinadorStatus.Cancelada)
-            return Result.Failure<CancelarMinhaAssinaturaTreinadorResponse>(new Error(
+            return Result.Failure<CancelarMinhaAssinaturaTreinadorResponse>(Error.NotFound(
                 AssinaturaNaoEncontradaErrorCode,
-                "Nenhuma assinatura ativa encontrada para cancelar.",
-                ErrorType.NotFound));
+                "Nenhuma assinatura ativa encontrada para cancelar."));
 
         if (await vinculoRepository.TemVinculosAtivosAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false))
             return Result.Failure<CancelarMinhaAssinaturaTreinadorResponse>(AssinaturaTreinadorErrors.OffboardingNecessario);

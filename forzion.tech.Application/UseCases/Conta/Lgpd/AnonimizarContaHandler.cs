@@ -135,9 +135,7 @@ public class AnonimizarContaHandler(
                 var temVinculosAtivos = await vinculoRepository
                     .TemVinculosAtivosAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
                 if (temVinculosAtivos)
-                    return Result.Failure(Error.Business(
-                        "conta.offboarding_necessario",
-                        "O treinador possui vínculos ativos. Encerre todos os vínculos antes de anonimizar a conta."));
+                    return Result.Failure(ContaErrors.OffboardingNecessario);
 
                 var treinadorResult = treinador.Anonimizar(agora);
                 if (treinadorResult.IsFailure)

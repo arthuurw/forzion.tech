@@ -38,7 +38,7 @@ public class AtualizarPerfilHandler(
             case Domain.Enums.TipoConta.Aluno:
                 {
                     var aluno = await alunoRepository.ObterPorContaIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
-                        ?? throw new DomainException("Aluno autenticado não encontrado.");
+                        ?? throw new EstadoInconsistenteException("Aluno autenticado não encontrado.");
                     var atualizarResult = aluno.Atualizar(command.Nome, null, null, agora);
                     if (atualizarResult.IsFailure)
                         return Result.Failure(atualizarResult.Error!);
@@ -47,7 +47,7 @@ public class AtualizarPerfilHandler(
             case Domain.Enums.TipoConta.Treinador:
                 {
                     var treinador = await treinadorRepository.ObterPorContaIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
-                        ?? throw new DomainException("Treinador autenticado não encontrado.");
+                        ?? throw new EstadoInconsistenteException("Treinador autenticado não encontrado.");
                     var atualizarResult = treinador.AtualizarNome(command.Nome, agora);
                     if (atualizarResult.IsFailure)
                         return Result.Failure(atualizarResult.Error!);
@@ -56,14 +56,14 @@ public class AtualizarPerfilHandler(
             case Domain.Enums.TipoConta.SystemAdmin:
                 {
                     var systemUser = await systemUserRepository.ObterPorContaIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
-                        ?? throw new DomainException("Administrador autenticado não encontrado.");
+                        ?? throw new EstadoInconsistenteException("Administrador autenticado não encontrado.");
                     var atualizarResult = systemUser.AtualizarNome(command.Nome, agora);
                     if (atualizarResult.IsFailure)
                         return Result.Failure(atualizarResult.Error!);
                     break;
                 }
             default:
-                return Result.Failure(Error.Business("conta.tipo_invalido", "Tipo de conta inválido."));
+                throw new EstadoInconsistenteException("Tipo de conta inválido.");
         }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

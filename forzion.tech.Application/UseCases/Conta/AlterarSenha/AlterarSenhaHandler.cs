@@ -46,7 +46,7 @@ public class AlterarSenhaHandler(
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
         var conta = await contaRepository.ObterPorIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Conta autenticada não encontrada.");
+            ?? throw new EstadoInconsistenteException("Conta autenticada não encontrada.");
 
         if (!passwordHasher.Verify(command.SenhaAtual, conta.PasswordHash))
             throw new CredenciaisInvalidasException();

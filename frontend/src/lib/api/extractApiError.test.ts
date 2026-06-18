@@ -69,12 +69,12 @@ describe("extractApiError", () => {
 describe("extractApiErrorInfo", () => {
   it("exposes the root-level code extension member", () => {
     const err = {
-      response: { status: 422, data: { detail: "x", code: "assinatura_treinador.offboarding_necessario" } },
+      response: { status: 409, data: { detail: "x", code: "assinatura_treinador.offboarding_necessario" } },
     };
     expect(extractApiErrorInfo(err)).toEqual({
       message: "x",
       code: "assinatura_treinador.offboarding_necessario",
-      status: 422,
+      status: 409,
     });
   });
 

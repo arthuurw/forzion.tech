@@ -98,6 +98,12 @@
     Code: dominio.regra_violada
   },
   {
+    Exception: EstadoInconsistenteException,
+    StatusCode: 500,
+    Title: Erro interno.,
+    Detail: Ocorreu um erro inesperado. Tente novamente mais tarde.
+  },
+  {
     Exception: InvalidOperationException,
     StatusCode: 500,
     Title: Erro interno.,

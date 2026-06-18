@@ -22,7 +22,7 @@ public class ExcluirGrupoMuscularHandler(
             return Result.Failure(Error.NotFound("grupo_muscular_nao_encontrado", "Grupo muscular não encontrado."));
 
         if (await exercicioRepository.ExisteComGrupoMuscularAsync(command.Id, cancellationToken).ConfigureAwait(false))
-            return Result.Failure(Error.Business("grupo_muscular_em_uso", "Não é possível excluir um grupo muscular em uso por exercícios."));
+            return Result.Failure(Error.Conflict("grupo_muscular.em_uso", "Não é possível excluir um grupo muscular em uso por exercícios."));
 
         repository.Excluir(grupo);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

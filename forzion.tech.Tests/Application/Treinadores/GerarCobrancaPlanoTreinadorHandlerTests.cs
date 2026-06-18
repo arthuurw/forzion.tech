@@ -292,7 +292,7 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_FreePlanoAgendado_CancelaAssinaturaRetornaCodigoEspecifico()
+    public async Task HandleAsync_FreePlanoAgendado_CancelaAssinaturaRetornaEncerrada()
     {
         var planoFree = PlanoPlataforma.Criar("Free", TierPlano.Free, 5, 0m, DateTime.UtcNow).Value;
         var assinatura = CriarAssinaturaAtiva();
@@ -305,8 +305,8 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
 
         var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
 
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("plano_free_assinatura_cancelada");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AssinaturaEncerrada.Should().BeTrue();
         assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Cancelada, "assinatura cancelada no downgrade para Free");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never, "sem cobrança no Free");
