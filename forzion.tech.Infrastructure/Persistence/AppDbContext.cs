@@ -4,6 +4,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Services;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -12,8 +13,10 @@ namespace forzion.tech.Infrastructure.Persistence;
 public class AppDbContext(
     DbContextOptions<AppDbContext> options,
     IDomainEventDispatcher? eventDispatcher = null,
-    OutboxDurabilityRegistry? outboxDurabilidade = null) : DbContext(options), IUnitOfWork, IDbContextTransactionProvider
+    OutboxDurabilityRegistry? outboxDurabilidade = null) : DbContext(options), IUnitOfWork, IDbContextTransactionProvider, IDataProtectionKeyContext
 {
+
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     public DbSet<Conta> Contas => Set<Conta>();
     public DbSet<SystemUser> SystemUsers => Set<SystemUser>();
