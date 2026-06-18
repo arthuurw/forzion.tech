@@ -62,6 +62,18 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 - Migrate + Seed no startup **só em Development** (`MigrationStartup.ShouldAutoMigrateOnBoot`). Homolog/Prod: migrate DESACOPLADO do boot (deploy-safety R1) — aplicado pelo step `app migrate` (modo CLI one-shot) pré-deploy; boot normal NÃO toca DDL. Prod: `appsettings.Production.json` (AllowedHosts forzion.tech/www/app, schema `public`, CORS prod) existe, mas SEM deploy automatizado e sem CI de imagem.
 - **Schema NÃO é função do env**: vem do `Search Path` da connection. No local-run há UM só User Secret store (`ConnectionStrings:AppConnection` com `Search Path=develop`), carregado tanto em Development quanto em Homolog (`Program.cs` L8). Logo Dev vs Homolog local muda só os defaults de `appsettings.{Env}.json` (Email markers de teste, CORS, AllowedHosts) — **não** o schema. Pra apontar a outro schema, editar o `Search Path` do próprio secret.
 
+## ISOLAMENTO-PRD-HMG (co-locar prd + homolog) [ALVO]
+Prd NÃO existe ainda. Checklist de host/VM/rede PARA QUANDO subir prd na MESMA VPS (ponte de custo). Postura de DADOS/segredos: [specification-security §10] (project Supabase separado é obrigatório; Stripe LIVE isolado). Lição-âncora desta infra: homolog encheu o disco (61GB build cache) e reiniciou containers sob pressão — se prd estivesse junto SEM limites, cairia junto.
+- **Compose project separado** (`-p prd` / `-p hmg`) → redes Docker isoladas, container de hmg NÃO alcança prd.
+- **`mem_limit` + `cpus` + `pids_limit`** por serviço — impede hmg de matar prd por fome de recurso (CPU/RAM/IO/disco).
+- **NÃO buildar na VM de prd** — imagens de registry (`docker-compose.server.yml`, hoje PREPARADO/sem CI de imagem — montar pipeline antes). Build-on-VM foi a causa-raiz do disco cheio; em prd é inaceitável.
+- **Sem `docker.sock`** montado em container de app (= RCE→host).
+- Firewall: só **80/443 inbound**; resto via tailnet. `/internal/*` e admin de hmg NÃO expostos publicamente (já gap em [specification-security §8]).
+- nginx: server blocks por domínio, TLS+HSTS no domínio de prd, zero rota de hmg vazando no vhost de prd; `X-Robots-Tag noindex` SÓ no server de hmg ([specification-security §3]).
+- `.env` separados, **600 root-only**, valores ZERO compartilhados entre ambientes.
+- Idealmente: **rootless Docker / user namespaces** ou users Linux distintos por ambiente (isolamento real entre envs).
+- Disco: monitor + ALERTA de uso (o incidente de 61GB passou silencioso até encher). `docker builder prune -f` já no deploy (ci.yml) barra a recorrência do cache; log-cap (`x-logging`) barra log ilimitado.
+
 ## LOCAL-RUN SEM DOCKER (receita — Development + schema develop, Supabase REMOTO)
 Caminho mais rápido p/ subir a instância p/ testar à mão (sem Docker). ⚠️ migra/seeda o Supabase REMOTO (schema `develop`) no startup — ver [specification-db].
 - **Pré**: User Secrets do projeto `forzion.tech.Api` preenchidos (`ConnectionStrings:AppConnection` com `Search Path=develop`, `Auth:JwtSecret`, `Stripe:*`, `Seed:*`) — `dotnet user-secrets list --project forzion.tech.Api`.

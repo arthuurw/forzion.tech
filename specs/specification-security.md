@@ -146,3 +146,21 @@ Postura PROATIVA (complementa §2 AuthZ, §5 segredos, §6 scanning — que são
 - §2 define policies (`SystemAdmin`/`Treinador`/`Aluno`) + ownership nos handlers/filters. Lacuna de enforcement: garantir TESTE NEGATIVO por papel.
 - [ALVO/disciplina] Matriz de teste papel × recurso × ação: papel errado → **403**; ownership cross-tenant (treinador acessando aluno de OUTRO treinador; aluno lendo ficha de outro) → **403/404**, não vazamento. O gate é o teste de autorização negativo, não a policy em si (policy sem teste negativo é invariante não-verificada).
 - Cross-ref defense-in-depth: validação de segurança/compliance no SERVIDOR mesmo com trava no frontend ([specification-coding §4]).
+
+## 10. ISOLAMENTO MULTI-AMBIENTE (PRD + HMG) [ALVO]
+Hoje SÓ homolog existe (staging canônico). Produção é ALVO. Esta seção é o checklist de pré-condições de segurança PARA QUANDO prd subir — co-locado ou não. Mecânica de host/VM/compose: [specification-infrastructure §ISOLAMENTO-PRD-HMG]. Verdade-âncora: mesmo kernel + mesmo Docker daemon + mesmo Supabase project = blast radius compartilhado que NENHUMA config remove 100% — pra SaaS de pagamento (Stripe LIVE) + PII (LGPD) a postura defensável é project Supabase separado (obrigatório p/ os dados) e, de preferência, VM separada. Co-locar = ponte de custo curtíssima, tratando hmg como SEMI-confiável-em-direção-a-prd, nunca confiável.
+
+### 10.1 Supabase / DB (elo crítico)
+- ESTADO REAL hoje: prd=`public`, hmg=`homolog`, **MESMA DB, MESMO project** (1 dump cobre os 2 — [specification-db]/db-backup). Pra prd com PII+pagamento isto é anti-pattern.
+- [ALVO/obrigatório] **Project Supabase SEPARADO por ambiente.** Razão não-contornável por schema: num project são COMPARTILHADOS (a) `anon` key e **`service_role` key** (service_role **IGNORA RLS** → vazar em hmg = ler/escrever TODA a base de prd), (b) mesma instância Postgres (hmg satura/derruba → prd cai), (c) mesmo pooler/backups. Separar project mata os 3 de uma vez.
+- [ALVO] Se insistir em 1 project + schemas (INFERIOR, não fecha por causa do service_role compartilhado): roles distintos por ambiente least-privilege (`GRANT` só no schema próprio, `REVOKE` total no schema do outro); nenhum role de app com superuser/`postgres` na connection string; `search_path` fixado por role; **RLS ligado em TODAS as tabelas** (default-deny, não confiar em separação de schema); pooler users/connection strings separados + rotação independente; migration de hmg NUNCA toca `public` (guard no target do migrate).
+
+### 10.2 Segredos — DISTINTOS por ambiente (nunca reusar)
+- **Stripe**: prd = chaves **LIVE**, hmg = **test**. Misturar = cobrança real disparada por teste. Isolamento absoluto.
+- `Auth:JwtSecret` (+ `JwtIssuer`/`Audience` por ambiente → token de hmg NÃO autentica em prd), `Mfa:EncryptionKey` (§5: reuso = mesmo keystream cross-ambiente), `Internal:ApiKey`, `DeliveryLog:RecipientHashKey`, Resend/WhatsApp tokens, cert A1 NFS-e — TODOS por ambiente. CORS de prd = só domínio de prd. Rotação independente (§9.1).
+
+### 10.3 Cross-ref host/rede
+Compose project separado, `mem_limit`/`cpus`/`pids_limit`, NÃO buildar-na-VM em prd (registry images), sem `docker.sock` em container de app, firewall 80/443-only + `/internal/*` não-público, `.env` 600 root-only sem valores compartilhados, idealmente rootless Docker/userns ou users Linux distintos — detalhado em [specification-infrastructure §ISOLAMENTO-PRD-HMG].
+
+### 10.4 Mínimo inegociável p/ prd valer
+1. Project Supabase próprio p/ prd (separa service_role/instância/backups). 2. Stripe LIVE isolado. 3. `mem_limit`/`cpus` + sem build-on-VM em prd. 4. `.env`/segredos 100% separados.
