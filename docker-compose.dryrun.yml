@@ -12,10 +12,11 @@ services:
       POSTGRES_PASSWORD: dryrun
       POSTGRES_DB: dryrun
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dryrun -d dryrun"]
+      test: ["CMD-SHELL", "pg_isready -U dryrun -d dryrun -h 127.0.0.1"]
       interval: 3s
       timeout: 3s
       retries: 30
+      start_period: 10s
 
   migrate:
     build:
