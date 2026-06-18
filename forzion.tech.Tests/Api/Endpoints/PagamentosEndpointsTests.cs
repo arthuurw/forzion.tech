@@ -121,7 +121,7 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
                     .ReturnsAsync((ListarRecebimentosTreinadorQuery q, CancellationToken _) =>
                     {
                         CapturedRecebimentosQuery = q;
-                        return new ListarRecebimentosTreinadorResultado([], null);
+                        return new ListarRecebimentosTreinadorResultado([], null, 5m);
                     });
                 services.AddScoped(_ => recebimentosMock.Object);
 

@@ -19,8 +19,9 @@ public class ListarRecebimentosTreinadorHandlerTests
             _pagamentoRepo.Object, Options.Create(new PaymentSettings { TaxaPlataformaPercent = 10m }));
     }
 
-    private static RecebimentoTreinadorItem Item(decimal valor, DateTime? createdAt = null) =>
-        new(Guid.NewGuid(), valor, PagamentoStatus.Pago, MetodoPagamento.Pix, "Aluno X",
+    private static RecebimentoTreinadorItem Item(
+        decimal valor, DateTime? createdAt = null, PagamentoStatus status = PagamentoStatus.Pago) =>
+        new(Guid.NewGuid(), valor, status, MetodoPagamento.Pix, "Aluno X",
             createdAt ?? DateTime.UtcNow, createdAt ?? DateTime.UtcNow);
 
     [Fact]
@@ -36,6 +37,47 @@ public class ListarRecebimentosTreinadorHandlerTests
         item.Bruto.Should().Be(100m);
         item.TaxaPercent.Should().Be(10m);
         item.LiquidoEstimado.Should().Be(90m);
+    }
+
+    [Fact]
+    public async Task HandleAsync_LiquidoSegueDisciplinaDeCentavosCanonica()
+    {
+        _pagamentoRepo.Setup(r => r.ListarPorTreinadorAsync(
+                It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<RecebimentoTreinadorItem> { Item(99.95m) });
+
+        var resultado = await _handler.HandleAsync(new ListarRecebimentosTreinadorQuery(Guid.NewGuid(), null, 20));
+
+        resultado.Itens.Should().ContainSingle().Which.LiquidoEstimado.Should().Be(89.96m);
+    }
+
+    [Theory]
+    [InlineData(PagamentoStatus.Falhou)]
+    [InlineData(PagamentoStatus.Expirado)]
+    public async Task HandleAsync_StatusSemRecebimento_SuprimeLiquidoETaxa(PagamentoStatus status)
+    {
+        _pagamentoRepo.Setup(r => r.ListarPorTreinadorAsync(
+                It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<RecebimentoTreinadorItem> { Item(100m, status: status) });
+
+        var resultado = await _handler.HandleAsync(new ListarRecebimentosTreinadorQuery(Guid.NewGuid(), null, 20));
+
+        var item = resultado.Itens.Should().ContainSingle().Subject;
+        item.LiquidoEstimado.Should().BeNull();
+        item.TaxaPercent.Should().BeNull();
+        item.Bruto.Should().Be(100m);
+    }
+
+    [Fact]
+    public async Task HandleAsync_RetornaTaxaPlataformaNoEnvelope()
+    {
+        _pagamentoRepo.Setup(r => r.ListarPorTreinadorAsync(
+                It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<RecebimentoTreinadorItem>());
+
+        var resultado = await _handler.HandleAsync(new ListarRecebimentosTreinadorQuery(Guid.NewGuid(), null, 20));
+
+        resultado.TaxaPlataformaPercent.Should().Be(10m);
     }
 
     [Fact]
@@ -63,6 +105,7 @@ public class ListarRecebimentosTreinadorHandlerTests
 
         resultado.Itens.Should().HaveCount(2);
         resultado.ProximoCursor.Should().NotBeNullOrEmpty();
+        resultado.ProximoCursor.Should().MatchRegex("^[A-Za-z0-9_-]+$");
     }
 
     [Fact]

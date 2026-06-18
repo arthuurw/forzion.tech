@@ -315,8 +315,8 @@ export interface PreviewModoPagamentoResponse {
 export interface RecebimentoTreinadorResponse {
   pagamentoId: string;
   bruto: number;
-  taxaPercent: number;
-  liquidoEstimado: number;
+  taxaPercent: number | null;
+  liquidoEstimado: number | null;
   status: PagamentoStatus;
   nomeAluno: string;
   metodo: MetodoPagamento;
@@ -327,6 +327,7 @@ export interface RecebimentoTreinadorResponse {
 export interface ListarRecebimentosTreinadorResultado {
   itens: RecebimentoTreinadorResponse[];
   proximoCursor: string | null;
+  taxaPlataformaPercent: number;
 }
 
 export type AssinaturaTreinadorStatus = "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";

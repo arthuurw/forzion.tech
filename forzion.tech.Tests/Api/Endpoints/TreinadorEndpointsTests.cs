@@ -434,7 +434,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     {
         _factory.ObterPreviewModoPagamentoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ObterPreviewModoPagamentoTreinadorQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(new PreviewModoPagamentoResponse(3, 2)));
+            .ReturnsAsync(new PreviewModoPagamentoResponse(3, 2));
 
         var response = await CriarClienteTreinador().GetAsync("/treinador/modo-pagamento/preview");
 

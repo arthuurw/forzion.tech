@@ -4447,16 +4447,6 @@
                 }
               }
             }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
           }
         }
       }
@@ -7649,6 +7639,10 @@
           "proximoCursor": {
             "type": "string",
             "nullable": true
+          },
+          "taxaPlataformaPercent": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -8299,11 +8293,13 @@
           },
           "taxaPercent": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "liquidoEstimado": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "status": {
             "type": "string",

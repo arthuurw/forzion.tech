@@ -34,7 +34,7 @@ public class ObterPreviewModoPagamentoTreinadorHandlerTests
 
         var result = await CriarHandler().HandleAsync(new ObterPreviewModoPagamentoTreinadorQuery(_treinadorId));
 
-        result.Value.AssinaturasAtivasAlunos.Should().Be(2);
+        result.AssinaturasAtivasAlunos.Should().Be(2);
     }
 
     [Fact]
@@ -49,8 +49,8 @@ public class ObterPreviewModoPagamentoTreinadorHandlerTests
 
         var result = await CriarHandler().HandleAsync(new ObterPreviewModoPagamentoTreinadorQuery(_treinadorId));
 
-        result.Value.VinculosCobravelSemAssinatura.Should().Be(1);
-        result.Value.AssinaturasAtivasAlunos.Should().Be(1);
+        result.VinculosCobravelSemAssinatura.Should().Be(1);
+        result.AssinaturasAtivasAlunos.Should().Be(1);
     }
 
     [Fact]
@@ -61,6 +61,6 @@ public class ObterPreviewModoPagamentoTreinadorHandlerTests
 
         var result = await CriarHandler().HandleAsync(new ObterPreviewModoPagamentoTreinadorQuery(_treinadorId));
 
-        result.Value.Should().Be(new PreviewModoPagamentoResponse(0, 0));
+        result.Should().Be(new PreviewModoPagamentoResponse(0, 0));
     }
 }

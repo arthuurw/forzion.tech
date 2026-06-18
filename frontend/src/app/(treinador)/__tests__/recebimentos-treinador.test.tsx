@@ -192,6 +192,7 @@ describe("PagamentosTreinadorPage (Recebimentos)", () => {
             { pagamentoId: "p2", bruto: 80, taxaPercent: 5, liquidoEstimado: 76, status: "Estornado", nomeAluno: "Bia Souza", metodo: "Pix", createdAt: "2026-04-01T12:00:00Z", dataPagamento: "2026-04-01T12:00:00Z" },
           ],
           proximoCursor: null,
+          taxaPlataformaPercent: 5,
         })),
     );
     const { default: Page } = await import("@/app/(treinador)/treinador/pagamentos/page");
@@ -202,11 +203,31 @@ describe("PagamentosTreinadorPage (Recebimentos)", () => {
     expect(screen.getByText("Estornado")).toBeInTheDocument();
   });
 
+  it("histórico suprime líquido e taxa em status sem recebimento (Falhou)", async () => {
+    onboardingHandler("Plataforma", true);
+    server.use(
+      http.get("*/treinador/pagamentos/recebimentos", () =>
+        HttpResponse.json({
+          itens: [
+            { pagamentoId: "p9", bruto: 120, taxaPercent: null, liquidoEstimado: null, status: "Falhou", nomeAluno: "Dora Reis", metodo: "Pix", createdAt: "2026-05-01T12:00:00Z", dataPagamento: null },
+          ],
+          proximoCursor: null,
+          taxaPlataformaPercent: 5,
+        })),
+    );
+    const { default: Page } = await import("@/app/(treinador)/treinador/pagamentos/page");
+    render(<Page />);
+
+    expect(await screen.findByText("Dora Reis")).toBeInTheDocument();
+    expect(screen.getByText(/Líquido estimado: —/)).toBeInTheDocument();
+    expect(screen.getByText(/Taxa: —/)).toBeInTheDocument();
+  });
+
   it("histórico vazio mostra estado amigável", async () => {
     onboardingHandler("Plataforma", true);
     server.use(
       http.get("*/treinador/pagamentos/recebimentos", () =>
-        HttpResponse.json({ itens: [], proximoCursor: null })),
+        HttpResponse.json({ itens: [], proximoCursor: null, taxaPlataformaPercent: 5 })),
     );
     const { default: Page } = await import("@/app/(treinador)/treinador/pagamentos/page");
     render(<Page />);
@@ -234,11 +255,13 @@ describe("PagamentosTreinadorPage (Recebimentos)", () => {
           return HttpResponse.json({
             itens: [{ pagamentoId: "p1", bruto: 100, taxaPercent: 5, liquidoEstimado: 95, status: "Pago", nomeAluno: "Ana Lima", metodo: "Pix", createdAt: "2026-05-01T12:00:00Z", dataPagamento: null }],
             proximoCursor: "C2",
+            taxaPlataformaPercent: 5,
           });
         }
         return HttpResponse.json({
           itens: [{ pagamentoId: "p2", bruto: 80, taxaPercent: 5, liquidoEstimado: 76, status: "Pago", nomeAluno: "Bia Souza", metodo: "Pix", createdAt: "2026-04-01T12:00:00Z", dataPagamento: null }],
           proximoCursor: null,
+          taxaPlataformaPercent: 5,
         });
       }),
     );

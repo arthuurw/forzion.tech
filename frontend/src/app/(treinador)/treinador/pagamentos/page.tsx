@@ -11,8 +11,6 @@ import type { OnboardingStatusResponse, PagamentoStatus, RecebimentoTreinadorRes
 const COOLDOWN_ACEITE =
   "Confirma a alteração? Um novo ajuste só poderá ser feito depois de 90 dias (3 meses).";
 
-const TAXA_PLATAFORMA_PERCENT = 5;
-
 const STATUS_COR: Record<PagamentoStatus, "success" | "warning" | "error" | "default"> = {
   Pago: "success",
   Pendente: "default",
@@ -36,6 +34,7 @@ const formatBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", 
 function HistoricoRecebimentos() {
   const [itens, setItens] = useState<RecebimentoTreinadorResponse[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [taxaPlataforma, setTaxaPlataforma] = useState<number | null>(null);
   const [carregado, setCarregado] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
@@ -47,6 +46,7 @@ function HistoricoRecebimentos() {
       const { data } = await pagamentoApi.listarRecebimentos(proximo);
       setItens((prev) => (proximo ? [...prev, ...data.itens] : data.itens));
       setCursor(data.proximoCursor);
+      setTaxaPlataforma(data.taxaPlataformaPercent);
     } catch {
       setErro("Não foi possível carregar os recebimentos.");
     } finally {
@@ -59,9 +59,19 @@ function HistoricoRecebimentos() {
 
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h6" sx={{ fontWeight: "bold", mb: 0.5 }}>Histórico de recebimentos</Typography>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5, flexWrap: "wrap" }}>
+        <Typography variant="h6" sx={{ fontWeight: "bold" }}>Histórico de recebimentos</Typography>
+        {taxaPlataforma != null && (
+          <Chip
+            label={`Taxa da plataforma: ${taxaPlataforma}%`}
+            color="primary"
+            variant="outlined"
+            size="small"
+          />
+        )}
+      </Stack>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
-        Líquido estimado já descontada a taxa da plataforma de {TAXA_PLATAFORMA_PERCENT}%.
+        Líquido estimado já descontada a taxa da plataforma{taxaPlataforma != null ? ` de ${taxaPlataforma}%` : ""}.
       </Typography>
 
       {erro && <Alert severity="error" sx={{ mb: 2 }}>{erro}</Alert>}
@@ -87,9 +97,11 @@ function HistoricoRecebimentos() {
               </Stack>
               <Stack direction="row" spacing={2} sx={{ mt: 1, flexWrap: "wrap" }}>
                 <Typography variant="body2" color="text.secondary">Bruto: {formatBRL(r.bruto)}</Typography>
-                <Typography variant="body2" color="text.secondary">Taxa: {r.taxaPercent}%</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Taxa: {r.taxaPercent != null ? `${r.taxaPercent}%` : "—"}
+                </Typography>
                 <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                  Líquido estimado: {formatBRL(r.liquidoEstimado)}
+                  Líquido estimado: {r.liquidoEstimado != null ? formatBRL(r.liquidoEstimado) : "—"}
                 </Typography>
               </Stack>
             </Paper>
@@ -292,18 +304,9 @@ export default function PagamentosTreinadorPage() {
           </Stack>
 
           {status?.onboardingCompleto ? (
-            <>
-              <Typography variant="body2" color="text.secondary">
-                Sua conta está ativa. Você pode receber pagamentos dos alunos via Pix.
-              </Typography>
-              <Chip
-                label={`Taxa da plataforma: ${TAXA_PLATAFORMA_PERCENT}%`}
-                color="primary"
-                variant="outlined"
-                size="small"
-                sx={{ alignSelf: "flex-start" }}
-              />
-            </>
+            <Typography variant="body2" color="text.secondary">
+              Sua conta está ativa. Você pode receber pagamentos dos alunos via Pix.
+            </Typography>
           ) : (
             <>
               <Typography variant="body2" color="text.secondary">

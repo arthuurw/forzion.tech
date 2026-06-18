@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Text;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
+using forzion.tech.Application.UseCases.Pagamentos;
+using forzion.tech.Domain.Enums;
 using Microsoft.Extensions.Options;
 
 namespace forzion.tech.Application.UseCases.Pagamentos.ListarRecebimentosTreinador;
@@ -9,8 +11,8 @@ namespace forzion.tech.Application.UseCases.Pagamentos.ListarRecebimentosTreinad
 public record RecebimentoTreinadorResponse(
     Guid PagamentoId,
     decimal Bruto,
-    decimal TaxaPercent,
-    decimal LiquidoEstimado,
+    decimal? TaxaPercent,
+    decimal? LiquidoEstimado,
     string Status,
     string NomeAluno,
     string Metodo,
@@ -19,7 +21,8 @@ public record RecebimentoTreinadorResponse(
 
 public record ListarRecebimentosTreinadorResultado(
     IReadOnlyList<RecebimentoTreinadorResponse> Itens,
-    string? ProximoCursor);
+    string? ProximoCursor,
+    decimal TaxaPlataformaPercent);
 
 public class ListarRecebimentosTreinadorHandler(
     IPagamentoRepository pagamentoRepository,
@@ -27,6 +30,7 @@ public class ListarRecebimentosTreinadorHandler(
 {
     private const int TamanhoMaximo = 50;
     private const int TamanhoPadrao = 20;
+    private static readonly HashSet<PagamentoStatus> SemRecebimento = [PagamentoStatus.Falhou, PagamentoStatus.Expirado];
     private readonly decimal _taxaPlataformaPercent = paymentSettings.Value.TaxaPlataformaPercent;
 
     public virtual async Task<ListarRecebimentosTreinadorResultado> HandleAsync(
@@ -48,23 +52,31 @@ public class ListarRecebimentosTreinadorHandler(
             itens = itens.Take(tamanho).ToList();
         }
 
-        var resposta = itens.Select(i => new RecebimentoTreinadorResponse(
-            i.PagamentoId,
-            i.Valor,
-            _taxaPlataformaPercent,
-            Math.Round(i.Valor * (1 - _taxaPlataformaPercent / 100m), 2, MidpointRounding.ToZero),
-            i.Status.ToString(),
-            i.NomeAluno,
-            i.Metodo.ToString(),
-            i.CreatedAt,
-            i.DataPagamento)).ToList();
-
-        return new ListarRecebimentosTreinadorResultado(resposta, proximoCursor);
+        var resposta = itens.Select(MapearItem).ToList();
+        return new ListarRecebimentosTreinadorResultado(resposta, proximoCursor, _taxaPlataformaPercent);
     }
 
-    private static string CodificarCursor(DateTime createdAt, Guid id) =>
-        Convert.ToBase64String(Encoding.UTF8.GetBytes(
-            $"{createdAt.Ticks.ToString(CultureInfo.InvariantCulture)}:{id}"));
+    private RecebimentoTreinadorResponse MapearItem(RecebimentoTreinadorItem i)
+    {
+        decimal? taxa = null;
+        decimal? liquido = null;
+        if (!SemRecebimento.Contains(i.Status))
+        {
+            var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(i.Valor, _taxaPlataformaPercent);
+            taxa = _taxaPlataformaPercent;
+            liquido = (valorCentavos - taxaCentavos) / 100m;
+        }
+
+        return new RecebimentoTreinadorResponse(
+            i.PagamentoId, i.Valor, taxa, liquido,
+            i.Status.ToString(), i.NomeAluno, i.Metodo.ToString(), i.CreatedAt, i.DataPagamento);
+    }
+
+    private static string CodificarCursor(DateTime createdAt, Guid id)
+    {
+        var bytes = Encoding.UTF8.GetBytes($"{createdAt.Ticks.ToString(CultureInfo.InvariantCulture)}:{id}");
+        return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
 
     private static (DateTime?, Guid?) DecodificarCursor(string? cursor)
     {
@@ -73,7 +85,10 @@ public class ListarRecebimentosTreinadorHandler(
 
         try
         {
-            var texto = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            var normalizado = cursor.Replace('-', '+').Replace('_', '/');
+            var padding = (4 - normalizado.Length % 4) % 4;
+            var texto = Encoding.UTF8.GetString(
+                Convert.FromBase64String(normalizado.PadRight(normalizado.Length + padding, '=')));
             var sep = texto.IndexOf(':', StringComparison.Ordinal);
             if (sep <= 0)
                 return (null, null);

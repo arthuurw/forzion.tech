@@ -1,5 +1,4 @@
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Domain.Shared;
 
 namespace forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 
@@ -9,7 +8,7 @@ public class ObterPreviewModoPagamentoTreinadorHandler(
     IAssinaturaAlunoRepository assinaturaRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository)
 {
-    public virtual async Task<Result<PreviewModoPagamentoResponse>> HandleAsync(
+    public virtual async Task<PreviewModoPagamentoResponse> HandleAsync(
         ObterPreviewModoPagamentoTreinadorQuery query,
         CancellationToken cancellationToken = default)
     {
@@ -23,6 +22,6 @@ public class ObterPreviewModoPagamentoTreinadorHandler(
             .ListarAtivosPorTreinadorAsync(query.TreinadorId, cancellationToken).ConfigureAwait(false);
         var cobravelSemAssinatura = vinculos.Count(v => v.PacoteId is not null && !jaCobertos.Contains(v.Id));
 
-        return Result.Success(new PreviewModoPagamentoResponse(assinaturas.Count, cobravelSemAssinatura));
+        return new PreviewModoPagamentoResponse(assinaturas.Count, cobravelSemAssinatura);
     }
 }

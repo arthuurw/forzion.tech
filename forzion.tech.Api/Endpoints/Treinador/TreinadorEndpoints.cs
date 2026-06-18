@@ -137,16 +137,13 @@ public static class TreinadorEndpoints
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
-            var result = await handler.HandleAsync(
+            var preview = await handler.HandleAsync(
                 new ObterPreviewModoPagamentoTreinadorQuery(userContext.PerfilId), cancellationToken).ConfigureAwait(false);
-
-            if (result.IsFailure) return result.ToProblemResult();
-            return Results.Ok(result.Value);
+            return Results.Ok(preview);
         })
         .RequireRateLimiting("read")
         .WithSummary("Prévia do impacto da troca de modo de pagamento (read-only)")
-        .Produces<PreviewModoPagamentoResponse>()
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .Produces<PreviewModoPagamentoResponse>();
 
         group.MapPost("/vinculos/{id:guid}/aprovar", async (
             Guid id,
