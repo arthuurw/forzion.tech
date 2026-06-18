@@ -9,6 +9,7 @@ services:
       Auth__JwtIssuer: ${JWT_ISSUER:-forzion.tech}
       Auth__JwtAudience: ${JWT_AUDIENCE:-forzion.tech}
       Mfa__EncryptionKey: ${MFA_ENCRYPTION_KEY}
+      DataProtection__EncryptionKey: ${DATA_PROTECTION_KEY}
       Cors__AllowedOrigins: ${CORS_ORIGINS}
       DeliveryLog__RecipientHashKey: ${DELIVERY_LOG_HASH_KEY}
     restart: unless-stopped
