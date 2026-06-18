@@ -13,6 +13,7 @@ import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
+import ExercicioOrientacao from "@/components/aluno/ExercicioOrientacao";
 import { alunoApi, type TreinoAlunoDetalheResponse, type ExecucaoExercicioData } from "@/lib/api/aluno";
 import { extractApiErrorInfo } from "@/lib/api/extractApiError";
 import type { TreinoExercicioResponse } from "@/types";
@@ -203,6 +204,12 @@ export default function ExecutarFichaPage() {
                 </Typography>
               </Box>
             )}
+
+            <ExercicioOrientacao
+              nomeExercicio={current.nomeExercicio}
+              comoExecutar={current.comoExecutar}
+              videoId={current.videoId}
+            />
 
             {/* Planned */}
             {(current.series ?? []).length > 0 && (

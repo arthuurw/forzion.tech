@@ -388,7 +388,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarExercicioCommand(userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao),
+                new CriarExercicioCommand(userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao, request.ComoExecutar, request.VideoUrl),
                 cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
@@ -423,7 +423,7 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarExercicioCommand(id, userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao),
+                new AtualizarExercicioCommand(id, userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao, request.ComoExecutar, request.VideoUrl),
                 cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
@@ -599,7 +599,7 @@ public record AlterarModoPagamentoRequest(ModoPagamentoAluno Modo);
 public record AprovarVinculoRequest(Guid PacoteId, bool TrarFichas = false);
 public record ReativarVinculoRequest(Guid PacoteId);
 public record DesvincularAlunoRequest(string? Observacao = null);
-public record CriarExercicioTreinadorRequest(string Nome, Guid GrupoMuscularId, string? Descricao = null);
-public record AtualizarExercicioTreinadorRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao);
+public record CriarExercicioTreinadorRequest(string Nome, Guid GrupoMuscularId, string? Descricao = null, string? ComoExecutar = null, string? VideoUrl = null);
+public record AtualizarExercicioTreinadorRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao, string? ComoExecutar = null, string? VideoUrl = null);
 public record CriarPacoteRequest(string Nome, decimal Preco, string? Descricao = null);
 public record AtualizarPacoteRequest(string? Nome, decimal? Preco, string? Descricao);

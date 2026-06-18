@@ -120,7 +120,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         Guid.NewGuid(), TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);
 
     private static readonly ExercicioResponse RespostaExercicio = new(
-        Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null, null, true, DateTime.UtcNow, null);
+        Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null, null, null, null, true, DateTime.UtcNow, null);
 
     private static readonly ListarExerciciosResponse RespostaExercicios =
         new([RespostaExercicio], 1, 1, 20);

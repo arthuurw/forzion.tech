@@ -50,7 +50,7 @@ public class AtualizarExercicioHandler(
             throw new GrupoMuscularNaoEncontradoException();
         }
 
-        var atualizarResult = exercicio.Atualizar(command.Nome, command.GrupoMuscularId, command.Descricao, timeProvider.GetUtcNow().UtcDateTime);
+        var atualizarResult = exercicio.Atualizar(command.Nome, command.GrupoMuscularId, command.Descricao, timeProvider.GetUtcNow().UtcDateTime, command.ComoExecutar, command.VideoUrl);
         if (atualizarResult.IsFailure)
             return Result.Failure<ExercicioResponse>(atualizarResult.Error!);
 

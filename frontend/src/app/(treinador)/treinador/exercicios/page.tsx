@@ -14,6 +14,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
+import { parseYouTubeId } from "@/lib/utils/youtube";
 import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
 import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
 import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
@@ -77,6 +78,8 @@ export default function ExerciciosTreinadorPage() {
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [comoExecutar, setComoExecutar] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [grupoMuscular, setGrupoMuscular] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -84,6 +87,8 @@ export default function ExerciciosTreinadorPage() {
   const [editNome, setEditNome] = useState("");
   const [editGrupo, setEditGrupo] = useState("");
   const [editDescricao, setEditDescricao] = useState("");
+  const [editComoExecutar, setEditComoExecutar] = useState("");
+  const [editVideoUrl, setEditVideoUrl] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [confirmExcluir, setConfirmExcluir] = useState<ExercicioResponse | null>(null);
@@ -150,15 +155,20 @@ export default function ExerciciosTreinadorPage() {
     setTab(v);
   };
 
-  const resetForm = () => { setNome(""); setDescricao(""); setGrupoMuscular(grupos.length > 0 ? grupos[0].id : ""); };
+  const resetForm = () => { setNome(""); setDescricao(""); setComoExecutar(""); setVideoUrl(""); setGrupoMuscular(grupos.length > 0 ? grupos[0].id : ""); };
+
+  const videoUrlInvalido = videoUrl.trim() !== "" && parseYouTubeId(videoUrl) === null;
+  const editVideoUrlInvalido = editVideoUrl.trim() !== "" && parseYouTubeId(editVideoUrl) === null;
 
   const handleCriar = async () => {
-    if (!nome.trim()) return;
+    if (!nome.trim() || videoUrlInvalido) return;
     setSaving(true);
     try {
       await treinadorApi.criarExercicio({
         nome: nome.trim(),
         descricao: descricao.trim() || null,
+        comoExecutar: comoExecutar.trim() || null,
+        videoUrl: videoUrl.trim() || null,
         grupoMuscularId: grupoMuscular,
       });
       setSuccess(`Exercício "${nome.trim()}" criado.`);
@@ -178,16 +188,20 @@ export default function ExerciciosTreinadorPage() {
     setEditNome(ex.nome);
     setEditGrupo(ex.grupoMuscularId);
     setEditDescricao(ex.descricao ?? "");
+    setEditComoExecutar(ex.comoExecutar ?? "");
+    setEditVideoUrl(ex.videoId ?? "");
   };
 
   const handleEditar = async () => {
-    if (!editEx) return;
+    if (!editEx || editVideoUrlInvalido) return;
     setSavingEdit(true);
     try {
       await treinadorApi.atualizarExercicio(editEx.exercicioId, {
         nome: editNome.trim() || undefined,
         grupoMuscularId: editGrupo || undefined,
         descricao: editDescricao.trim() || null,
+        comoExecutar: editComoExecutar.trim() || null,
+        videoUrl: editVideoUrl.trim(),
       });
       setSuccess(`"${editNome}" atualizado.`);
       setEditEx(null);
@@ -357,11 +371,21 @@ export default function ExerciciosTreinadorPage() {
               </Select>
             </FormControl>
             <TextField label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} size="small" fullWidth multiline rows={2} />
+            <TextField label="Como executar (opcional)" value={comoExecutar} onChange={(e) => setComoExecutar(e.target.value)} size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />
+            <TextField
+              label="Link do vídeo (YouTube, opcional)"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              size="small"
+              fullWidth
+              error={videoUrlInvalido}
+              helperText={videoUrlInvalido ? "Informe um link ou ID de vídeo do YouTube válido." : " "}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
-          <Button variant="contained" disabled={!nome.trim() || saving} onClick={handleCriar}>Criar</Button>
+          <Button variant="contained" disabled={!nome.trim() || saving || videoUrlInvalido} onClick={handleCriar}>Criar</Button>
         </DialogActions>
       </Dialog>
 
@@ -378,11 +402,21 @@ export default function ExerciciosTreinadorPage() {
               </Select>
             </FormControl>
             <TextField label="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={2} />
+            <TextField label="Como executar" value={editComoExecutar} onChange={(e) => setEditComoExecutar(e.target.value)} size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />
+            <TextField
+              label="Link do vídeo (YouTube)"
+              value={editVideoUrl}
+              onChange={(e) => setEditVideoUrl(e.target.value)}
+              size="small"
+              fullWidth
+              error={editVideoUrlInvalido}
+              helperText={editVideoUrlInvalido ? "Informe um link ou ID de vídeo do YouTube válido." : " "}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditEx(null)}>Cancelar</Button>
-          <Button variant="contained" disabled={savingEdit} onClick={handleEditar}>Salvar</Button>
+          <Button variant="contained" disabled={savingEdit || editVideoUrlInvalido} onClick={handleEditar}>Salvar</Button>
         </DialogActions>
       </Dialog>
 

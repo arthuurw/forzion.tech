@@ -114,6 +114,31 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     expect(await screen.findByText("Agachamento")).toBeInTheDocument();
   });
 
+  it("exibe orientação de execução (texto + facade de vídeo) quando presente", async () => {
+    respondFicha(
+      makeFicha({
+        exercicios: [
+          makeExercicio({ comoExecutar: "Desça controlado.", videoId: "dQw4w9WgXcQ" }),
+        ],
+      }),
+    );
+    render(<ExecutarFichaPage />);
+
+    expect(await screen.findByText("Desça controlado.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Assistir vídeo de execução: Supino/i })).toBeInTheDocument();
+    // eslint-disable-next-line testing-library/no-node-access
+    expect(document.querySelector("iframe")).toBeNull();
+  });
+
+  it("não exibe orientação quando exercício não tem texto nem vídeo", async () => {
+    respondFicha();
+    render(<ExecutarFichaPage />);
+
+    await screen.findByText("Supino");
+    expect(screen.queryByText("Como executar")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Assistir vídeo/i })).not.toBeInTheDocument();
+  });
+
   it("registro sem treinador ativo (403) exibe mensagem clara de bloqueio", async () => {
     respondFicha();
     server.use(

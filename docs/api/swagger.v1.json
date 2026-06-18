@@ -6552,6 +6552,14 @@
           "descricao": {
             "type": "string",
             "nullable": true
+          },
+          "comoExecutar": {
+            "type": "string",
+            "nullable": true
+          },
+          "videoUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -6569,6 +6577,14 @@
             "nullable": true
           },
           "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "comoExecutar": {
+            "type": "string",
+            "nullable": true
+          },
+          "videoUrl": {
             "type": "string",
             "nullable": true
           }
@@ -6791,6 +6807,14 @@
           "descricao": {
             "type": "string",
             "nullable": true
+          },
+          "comoExecutar": {
+            "type": "string",
+            "nullable": true
+          },
+          "videoUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -6809,6 +6833,14 @@
           "descricao": {
             "type": "string",
             "nullable": true
+          },
+          "comoExecutar": {
+            "type": "string",
+            "nullable": true
+          },
+          "videoUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -6825,6 +6857,14 @@
             "format": "uuid"
           },
           "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "comoExecutar": {
+            "type": "string",
+            "nullable": true
+          },
+          "videoUrl": {
             "type": "string",
             "nullable": true
           }
@@ -7175,6 +7215,14 @@
             "nullable": true
           },
           "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "comoExecutar": {
+            "type": "string",
+            "nullable": true
+          },
+          "videoId": {
             "type": "string",
             "nullable": true
           },
@@ -8917,6 +8965,14 @@
             "format": "int32"
           },
           "observacao": {
+            "type": "string",
+            "nullable": true
+          },
+          "comoExecutar": {
+            "type": "string",
+            "nullable": true
+          },
+          "videoId": {
             "type": "string",
             "nullable": true
           }

@@ -20,8 +20,8 @@ public class ObterFichaAlunoHandlerTests
     public ObterFichaAlunoHandlerTests()
     {
         _exercicioRepo
-            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<Guid, string>());
+            .Setup(r => r.ObterInfoPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, ExercicioInfo>());
         _handler = new ObterFichaAlunoHandler(_treinoAlunoRepo.Object, _exercicioRepo.Object, _userContext.Object);
     }
 
@@ -100,13 +100,17 @@ public class ObterFichaAlunoHandlerTests
     {
         var alunoId = Guid.NewGuid();
         var (detalhe, ex1Id, ex2Id) = CriarDetalheComExercicios(alunoId);
-        var nomes = new Dictionary<Guid, string> { [ex1Id] = "Supino", [ex2Id] = "Agachamento" };
+        var info = new Dictionary<Guid, ExercicioInfo>
+        {
+            [ex1Id] = new ExercicioInfo("Supino", "Mantenha a postura.", "dQw4w9WgXcQ"),
+            [ex2Id] = new ExercicioInfo("Agachamento", null, null)
+        };
 
         _userContext.Setup(u => u.PerfilId).Returns(alunoId);
         _userContext.Setup(u => u.TipoConta).Returns(TipoConta.Aluno);
         _exercicioRepo
-            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(nomes);
+            .Setup(r => r.ObterInfoPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(info);
         _treinoAlunoRepo.Setup(r => r.ObterDetalheAsync(detalhe.TreinoAluno.Id, alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(detalhe);
 
@@ -118,6 +122,8 @@ public class ObterFichaAlunoHandlerTests
         var primeiro = result.Value.Exercicios[0];
         primeiro.Ordem.Should().Be(1);
         primeiro.NomeExercicio.Should().Be("Supino");
+        primeiro.ComoExecutar.Should().Be("Mantenha a postura.");
+        primeiro.VideoId.Should().Be("dQw4w9WgXcQ");
         primeiro.Series.Should().HaveCount(2);
         primeiro.Series[0].Quantidade.Should().Be(4);
         primeiro.Series[0].RepeticoesMin.Should().Be(8);
@@ -129,6 +135,8 @@ public class ObterFichaAlunoHandlerTests
         var segundo = result.Value.Exercicios[1];
         segundo.Ordem.Should().Be(2);
         segundo.NomeExercicio.Should().Be("Agachamento");
+        segundo.ComoExecutar.Should().BeNull();
+        segundo.VideoId.Should().BeNull();
         segundo.Series.Should().ContainSingle();
     }
 
@@ -137,12 +145,11 @@ public class ObterFichaAlunoHandlerTests
     {
         var alunoId = Guid.NewGuid();
         var (detalhe, _, _) = CriarDetalheComExercicios(alunoId);
-        var nomes = new Dictionary<Guid, string>();
 
         _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
         _exercicioRepo
-            .Setup(r => r.ObterNomesPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(nomes);
+            .Setup(r => r.ObterInfoPorIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, ExercicioInfo>());
         _treinoAlunoRepo.Setup(r => r.ObterDetalheAdminAsync(detalhe.TreinoAluno.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(detalhe);
 

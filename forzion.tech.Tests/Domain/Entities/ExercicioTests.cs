@@ -107,4 +107,86 @@ public class ExercicioTests
         r.IsFailure.Should().BeTrue();
         r.Error!.Message.Should().Be("O grupo muscular é obrigatório.");
     }
+
+    // --- Orientação (ComoExecutar + VideoId) ---
+
+    [Fact]
+    public void Criar_ComOrientacaoValida_PersisteTextoEVideoId()
+    {
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId,
+            comoExecutar: "  Mantenha a postura.  ", videoUrl: "https://youtu.be/dQw4w9WgXcQ").Value;
+
+        e.ComoExecutar.Should().Be("Mantenha a postura.");
+        e.VideoId.Should().Be("dQw4w9WgXcQ");
+    }
+
+    [Fact]
+    public void Criar_SemOrientacao_CamposNulos()
+    {
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId).Value;
+        e.ComoExecutar.Should().BeNull();
+        e.VideoId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Criar_ComoExecutarMuitoLongo_RetornaFailure()
+    {
+        var r = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId,
+            comoExecutar: new string('a', 2001));
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("exercicio.como_executar_muito_longo");
+    }
+
+    [Fact]
+    public void Criar_VideoUrlInvalida_RetornaFailure()
+    {
+        var r = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId,
+            videoUrl: "https://vimeo.com/123");
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("exercicio.video_url_invalida");
+    }
+
+    [Fact]
+    public void Atualizar_OrientacaoValida_AtualizaCampos()
+    {
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId).Value;
+        e.Atualizar(null, null, null, TestData.Agora,
+            comoExecutar: "Novo texto", videoUrl: "dQw4w9WgXcQ");
+
+        e.ComoExecutar.Should().Be("Novo texto");
+        e.VideoId.Should().Be("dQw4w9WgXcQ");
+    }
+
+    [Fact]
+    public void Atualizar_OrientacaoVazia_Limpa()
+    {
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId,
+            comoExecutar: "Texto", videoUrl: "dQw4w9WgXcQ").Value;
+
+        e.Atualizar(null, null, null, TestData.Agora, comoExecutar: "", videoUrl: "");
+
+        e.ComoExecutar.Should().BeNull();
+        e.VideoId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Atualizar_VideoUrlInvalida_RetornaFailure()
+    {
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId).Value;
+        var r = e.Atualizar(null, null, null, TestData.Agora, videoUrl: "lixo");
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("exercicio.video_url_invalida");
+    }
+
+    [Fact]
+    public void Atualizar_OrientacaoNull_NaoAlteraCamposExistentes()
+    {
+        var e = Exercicio.Criar("Supino", GrupoMuscularId, TestData.Agora, TreinadorId,
+            comoExecutar: "Texto", videoUrl: "dQw4w9WgXcQ").Value;
+
+        e.Atualizar("Supino Reto", null, null, TestData.Agora);
+
+        e.ComoExecutar.Should().Be("Texto");
+        e.VideoId.Should().Be("dQw4w9WgXcQ");
+    }
 }

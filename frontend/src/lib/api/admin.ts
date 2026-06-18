@@ -105,11 +105,11 @@ export const adminApi = {
     return apiClient.get<ListarExerciciosGlobaisResponse>("/admin/exercicios", { params });
   },
 
-  criarExercicioGlobal(data: { nome: string; grupoMuscularId: string; descricao?: string | null }) {
+  criarExercicioGlobal(data: { nome: string; grupoMuscularId: string; descricao?: string | null; comoExecutar?: string | null; videoUrl?: string | null }) {
     return apiClient.post<ExercicioResponse>("/admin/exercicios", data);
   },
 
-  atualizarExercicioGlobal(exercicioId: string, data: { nome?: string; grupoMuscularId?: string; descricao?: string | null }) {
+  atualizarExercicioGlobal(exercicioId: string, data: { nome?: string; grupoMuscularId?: string; descricao?: string | null; comoExecutar?: string | null; videoUrl?: string | null }) {
     return apiClient.patch<ExercicioResponse>(`/admin/exercicios/${exercicioId}`, data);
   },
 

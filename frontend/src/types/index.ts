@@ -144,6 +144,8 @@ export interface TreinoExercicioResponse {
   series: SerieConfigResponse[];
   ordem: number;
   observacao?: string | null;
+  comoExecutar?: string | null;
+  videoId?: string | null;
 }
 
 export interface TreinoResponse {
@@ -164,6 +166,8 @@ export interface ExercicioResponse {
   exercicioId: string;
   nome: string;
   descricao: string | null;
+  comoExecutar?: string | null;
+  videoId?: string | null;
   grupoMuscularId: string;
   grupoMuscular: string | null;
   treinadorId: string | null;

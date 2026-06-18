@@ -93,4 +93,17 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
             .ToDictionaryAsync(e => e.Id, e => e.Nome, cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public async Task<IReadOnlyDictionary<Guid, ExercicioInfo>> ObterInfoPorIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        var idList = ids.Distinct().ToList();
+        if (idList.Count == 0)
+            return new Dictionary<Guid, ExercicioInfo>();
+
+        return await _context.Exercicios
+            .AsNoTracking()
+            .Where(e => idList.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, e => new ExercicioInfo(e.Nome, e.ComoExecutar, e.VideoId), cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

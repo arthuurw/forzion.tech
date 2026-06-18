@@ -53,7 +53,7 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
     [Fact]
     public async Task Post_Criar_DadosValidos_Retorna201()
     {
-        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", "Desc", TreinadorId, false, DateTime.UtcNow, null);
+        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", "Desc", null, null, TreinadorId, false, DateTime.UtcNow, null);
         _factory.CriarHandlerMock.Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(responseExercicio));
 
@@ -61,6 +61,25 @@ public class ExercicioEndpointsTests : IClassFixture<ExercicioEndpointsTests.Exe
             new { nome = "Supino", grupoMuscularId = Guid.NewGuid(), descricao = "Desc" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_Criar_ComOrientacao_RepassaCamposParaCommand()
+    {
+        CriarExercicioCommand? capturado = null;
+        var responseExercicio = new ExercicioResponse(Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null,
+            "Mantenha a postura.", "dQw4w9WgXcQ", TreinadorId, false, DateTime.UtcNow, null);
+        _factory.CriarHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<CriarExercicioCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<CriarExercicioCommand, CancellationToken>((c, _) => capturado = c)
+            .ReturnsAsync(Result.Success(responseExercicio));
+
+        var response = await CriarClienteAutenticado().PostAsJsonAsync("/exercicios",
+            new { nome = "Supino", grupoMuscularId = Guid.NewGuid(), comoExecutar = "Mantenha a postura.", videoUrl = "https://youtu.be/dQw4w9WgXcQ" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        capturado!.ComoExecutar.Should().Be("Mantenha a postura.");
+        capturado.VideoUrl.Should().Be("https://youtu.be/dQw4w9WgXcQ");
     }
 
     [Fact]
