@@ -88,6 +88,20 @@ public class HandlerDiRegistrationTests
     }
 
     [Fact]
+    public void DI_EmissorNfse_Null_Singleton_InstanciaUnica()
+    {
+        using var provider = BuildProvider();
+
+        using var escopo1 = provider.CreateScope();
+        using var escopo2 = provider.CreateScope();
+
+        var instancia1 = escopo1.ServiceProvider.GetRequiredService<IEmissorNfseService>();
+        var instancia2 = escopo2.ServiceProvider.GetRequiredService<IEmissorNfseService>();
+
+        instancia1.Should().BeSameAs(instancia2);
+    }
+
+    [Fact]
     public void DI_EmissorNfse_Nacional_QuandoHabilitado()
     {
         var pfx = CriarPfxTemporario();

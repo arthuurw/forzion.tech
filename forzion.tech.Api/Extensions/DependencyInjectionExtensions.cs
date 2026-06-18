@@ -221,6 +221,7 @@ public static class DependencyInjectionExtensions
         {
             services.AddInfrastructure(configuration);
             services.AddMfaProtection(configuration);
+            services.AddDataProtectionPersistence(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();
             services.AddHostedService<RelatorioSaudeDiarioService>();
             services.AddHostedService<OutboxProcessorService>();

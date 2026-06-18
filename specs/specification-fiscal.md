@@ -20,8 +20,8 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
   - `NfseResultado.Sucesso=false` ⇒ **rejeição do gov** (4xx; `CodigoErro`/`MotivoErro` preenchidos, SEM retry). Exceção (timeout/5xx) ⇒ propaga p/ retry do outbox. Distinção é o contrato.
 - Impls (Infrastructure/Services):
   - `EmissorNfseNacionalService` — `Habilitado=true`. Monta DPS XML → assina (xmldsig enveloped, `X509Certificate2` A1) → GZip+Base64 → transmite via `HttpClient` nomeado `"nfse"` (mTLS) → parseia retorno. Wrapper fino, SEM retry custom (retry = outbox).
-  - `NullEmissorNfseService` — `Habilitado=false`; no-op + LogWarning. Padrão `Null*` do projeto.
-- GATE (DI `InfrastructureExtensions`): `Nfse:Habilitado=true` → `EmissorNfseNacionalService` + `HttpClient "nfse"` com cert; senão → `NullEmissorNfseService`.
+  - `NullEmissorNfseService` — `Habilitado=false`; no-op + LogWarning. Padrão `Null*` do projeto. Registrado **Singleton** (não Scoped) → o `LogWarning` do construtor "Emissor de NFS-e não configurado" sai **1x no startup**, não por-resolução (issue #180: Scoped logava ~30x conforme escopos do seed/boot resolviam o serviço). `EmitirAsync`/`CancelarAsync` mantêm o warn por-chamada (sinal real de tentativa com emissão off). Stateless ⇒ singleton seguro.
+- GATE (DI `InfrastructureExtensions`): `Nfse:Habilitado=true` → `EmissorNfseNacionalService` (Scoped) + `HttpClient "nfse"` com cert; senão → `NullEmissorNfseService` (Singleton).
 
 ## CONFIG (chaves `Nfse:*`, classe `NfseSettings`)
 | Chave | Função | Ausente / default |
