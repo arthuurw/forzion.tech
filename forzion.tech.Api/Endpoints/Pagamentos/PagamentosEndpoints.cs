@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
+using forzion.tech.Application.UseCases.Pagamentos.ListarRecebimentosTreinador;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStripe;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
@@ -82,6 +83,22 @@ public static class PagamentosEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        treinadorGroup.MapGet("/recebimentos", async (
+            [FromQuery] string? cursor,
+            [FromQuery] int tamanho,
+            [FromServices] ListarRecebimentosTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var resultado = await handler.HandleAsync(
+                new ListarRecebimentosTreinadorQuery(userContext.PerfilId, cursor, tamanho), cancellationToken).ConfigureAwait(false);
+            return Results.Ok(resultado);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Lista recebimentos do treinador (paginação keyset por cursor)")
+        .Produces<ListarRecebimentosTreinadorResultado>()
+        .ProducesProblem(StatusCodes.Status403Forbidden);
 
         var treinadorPlanoGroup = endpoints.MapGroup("/treinador/plano")
             .WithTags("Pagamentos")

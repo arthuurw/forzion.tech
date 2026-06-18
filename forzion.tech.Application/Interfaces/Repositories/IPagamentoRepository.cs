@@ -15,4 +15,8 @@ public interface IPagamentoRepository
     Task<IReadOnlyList<ComissaoTreinadorPeriodo>> ListarComissaoPorTreinadorNoPeriodoAsync(
         DateTime inicio, DateTime fimExclusivo, decimal taxaPlataformaPercent,
         Guid? aposTreinadorId, int limite, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<RecebimentoTreinadorItem>> ListarPorTreinadorAsync(
+        Guid treinadorId, DateTime? cursorCreatedAt, Guid? cursorId, int limite,
+        CancellationToken cancellationToken = default);
 }

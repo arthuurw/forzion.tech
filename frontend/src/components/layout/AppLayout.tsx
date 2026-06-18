@@ -75,6 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isLoading || !user) return <LoadingSpinner fullPage />;
 
   const navItems = NAV_BY_TIPO[user.tipoConta];
+  const bottomNavItems = navItems.filter((i) => !i.drawerOnly);
   const drawerWidth = collapsed ? DRAWER_COLLAPSED : DRAWER_WIDTH;
 
   const drawerContent = (
@@ -213,12 +214,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }}
         >
           <BottomNavigation
-            value={navItems.findIndex(({ href }) => pathname.startsWith(href))}
-            onChange={(_, i) => router.push(navItems[i].href)}
-            showLabels={navItems.length <= 4}
+            value={bottomNavItems.findIndex(({ href }) => pathname.startsWith(href))}
+            onChange={(_, i) => router.push(bottomNavItems[i].href)}
+            showLabels={bottomNavItems.length <= 4}
             sx={{ "& .Mui-selected": { color: "secondary.main" } }}
           >
-            {navItems.map(({ label, Icon }) => (
+            {bottomNavItems.map(({ label, Icon }) => (
               <BottomNavigationAction key={label} label={label} icon={<Icon />} aria-label={label} />
             ))}
           </BottomNavigation>
