@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   backend:
     build:
@@ -32,6 +38,7 @@ services:
       WhatsApp__RedirecionarDestinatariosPara: ${WHATSAPP_REDIRECT_TO:-}
       WhatsApp__AllowlistTelefones: ${WHATSAPP_ALLOWLIST_PHONES:-}
     restart: unless-stopped
+    logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s
@@ -54,6 +61,7 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-homologacao.forzion.tech}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-homologacao.forzion.tech}
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       backend:
         condition: service_healthy
@@ -69,6 +77,7 @@ services:
     volumes:
       - pact_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${PACT_POSTGRES_USER:-pact} -d pact_broker"]
       interval: 15s
@@ -89,12 +98,15 @@ services:
       PACT_BROKER_BASIC_AUTH_USERNAME: ${PACT_BROKER_USERNAME}
       PACT_BROKER_BASIC_AUTH_PASSWORD: ${PACT_BROKER_PASSWORD}
       PACT_BROKER_LOG_LEVEL: warn
+      # basic-auth liga sozinho com user/pass setados → heartbeat tomava 401 no healthcheck.
+      PACT_BROKER_PUBLIC_HEARTBEAT: "true"
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       pact-postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9292/diagnostic/status/heartbeat || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9292/diagnostic/status/heartbeat || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -109,6 +121,7 @@ services:
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       - frontend
 
@@ -124,6 +137,7 @@ services:
         sleep 12h & wait $${!};
       done"
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   pact_pgdata:
