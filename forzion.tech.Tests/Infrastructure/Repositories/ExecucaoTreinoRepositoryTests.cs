@@ -275,4 +275,57 @@ public class ExecucaoTreinoRepositoryTests(InfrastructureTestFixture fixture)
 
         execucaoOutro.Observacao.Should().Be(obsOutro);
     }
+
+    [Fact]
+    public async Task ObterPorIdempotencyKeyAsync_KeyExistente_RetornaExecucao()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (alunoId, treinoId, _, _, _) = await SeedProgressaoGraphAsync(ctx, "Idem1");
+        var agora = DateTime.UtcNow;
+        var key = Guid.NewGuid().ToString();
+
+        var e = ExecucaoTreino.Criar(treinoId, alunoId, agora, agora, null, key).Value;
+        await ctx.ExecucoesTreino.AddAsync(e);
+        await ctx.SaveChangesAsync();
+
+        await using var ctxVerifica = fixture.CreateContext();
+        var encontrada = await Repo(ctxVerifica).ObterPorIdempotencyKeyAsync(alunoId, key);
+
+        encontrada.Should().NotBeNull();
+        encontrada!.Id.Should().Be(e.Id);
+    }
+
+    [Fact]
+    public async Task UniqueIndex_DuplicataAlunoKey_LancaDbUpdateException()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (alunoId, treinoId, _, _, _) = await SeedProgressaoGraphAsync(ctx, "Idem2");
+        var agora = DateTime.UtcNow;
+        var key = Guid.NewGuid().ToString();
+
+        var e1 = ExecucaoTreino.Criar(treinoId, alunoId, agora, agora, null, key).Value;
+        await ctx.ExecucoesTreino.AddAsync(e1);
+        await ctx.SaveChangesAsync();
+
+        var e2 = ExecucaoTreino.Criar(treinoId, alunoId, agora, agora, null, key).Value;
+        await ctx.ExecucoesTreino.AddAsync(e2);
+
+        var act = async () => await ctx.SaveChangesAsync();
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task UniqueIndex_MultiplosNull_Permitido()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (alunoId, treinoId, _, _, _) = await SeedProgressaoGraphAsync(ctx, "Idem3");
+        var agora = DateTime.UtcNow;
+
+        var e1 = ExecucaoTreino.Criar(treinoId, alunoId, agora, agora).Value;
+        var e2 = ExecucaoTreino.Criar(treinoId, alunoId, agora, agora).Value;
+        await ctx.ExecucoesTreino.AddRangeAsync(e1, e2);
+
+        var act = async () => await ctx.SaveChangesAsync();
+        await act.Should().NotThrowAsync();
+    }
 }

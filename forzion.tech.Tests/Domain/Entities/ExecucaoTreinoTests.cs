@@ -48,6 +48,22 @@ public class ExecucaoTreinoTests
         r.IsFailure.Should().BeTrue();
     }
 
+    [Fact]
+    public void Criar_SemIdempotencyKey_KeyNula()
+    {
+        var e = CriarExecucao();
+        e.IdempotencyKey.Should().BeNull();
+    }
+
+    [Fact]
+    public void Criar_ComIdempotencyKey_PersisteKey()
+    {
+        var key = Guid.NewGuid().ToString();
+        var e = ExecucaoTreino.Criar(
+            Guid.NewGuid(), Guid.NewGuid(), TestData.Agora, TestData.Agora, null, key).Value;
+        e.IdempotencyKey.Should().Be(key);
+    }
+
     // --- AdicionarExercicio ---
 
     [Fact]

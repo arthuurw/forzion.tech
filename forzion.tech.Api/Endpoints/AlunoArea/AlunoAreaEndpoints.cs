@@ -157,10 +157,19 @@ public static class AlunoAreaEndpoints
 
         group.MapPost("/execucoes", async (
             [FromBody] RegistrarExecucaoAlunoRequest request,
+            [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
             [FromServices] RegistrarExecucaoHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
+            string? idempotencyNormalizada = null;
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+            {
+                if (!Guid.TryParse(idempotencyKey, out var parsed))
+                    return Results.Problem("Idempotency-Key deve ser um GUID válido.", statusCode: StatusCodes.Status400BadRequest);
+                idempotencyNormalizada = parsed.ToString();
+            }
+
             var exercicios = request.Exercicios
                 .Select(e => new RegistrarExecucaoItemCommand(
                     e.TreinoExercicioId, e.SeriesExecutadas, e.RepeticoesExecutadas, e.CargaExecutada, e.Observacao))
@@ -171,7 +180,8 @@ public static class AlunoAreaEndpoints
                 userContext.PerfilId,
                 request.DataExecucao,
                 request.Observacao,
-                exercicios);
+                exercicios,
+                idempotencyNormalizada);
 
             var result = await handler.HandleAsync(command, cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
@@ -180,6 +190,7 @@ public static class AlunoAreaEndpoints
         .AddEndpointFilter<RequireAssinaturaAtivaFilter>()
         .WithSummary("Registra a execução de um treino pelo aluno")
         .Produces<RegistrarExecucaoResponse>(StatusCodes.Status201Created)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound);
 

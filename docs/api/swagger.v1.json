@@ -1702,6 +1702,15 @@
           "Aluno"
         ],
         "summary": "Registra a execução de um treino pelo aluno",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1719,6 +1728,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegistrarExecucaoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }

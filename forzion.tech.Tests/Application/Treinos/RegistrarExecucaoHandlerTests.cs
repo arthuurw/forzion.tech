@@ -19,6 +19,7 @@ public class RegistrarExecucaoHandlerTests
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUserContext> _userContext = new();
+    private readonly Mock<IDatabaseErrorInspector> _dbErrorInspector = new();
     private readonly Mock<ILogger<RegistrarExecucaoHandler>> _logger = new();
     private readonly RegistrarExecucaoHandler _handler;
 
@@ -26,7 +27,19 @@ public class RegistrarExecucaoHandlerTests
     {
         _handler = new RegistrarExecucaoHandler(
             _treinoRepo.Object, _alunoRepo.Object, _treinoAlunoRepo.Object,
-            _vinculoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, TimeProvider.System, _logger.Object);
+            _vinculoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object, _userContext.Object, TimeProvider.System, _dbErrorInspector.Object, _logger.Object);
+    }
+
+    private void SetupAcessoValido(Treino treino, Guid alunoId, Guid treinadorId, Aluno aluno)
+    {
+        var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, alunoId, DateTime.UtcNow).Value;
+        vinculo.Aprovar(treinadorId, Guid.NewGuid(), DateTime.UtcNow);
+        _userContext.Setup(u => u.PerfilId).Returns(alunoId);
+        _treinoRepo.Setup(r => r.ObterPorIdAsync(treino.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treino);
+        _treinoAlunoRepo.Setup(r => r.ObterAsync(treino.Id, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(treinoAluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(alunoId, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
     }
 
     private static RegistrarExecucaoCommand ComandoValido(Guid treinoId, Guid alunoId) =>
@@ -222,6 +235,74 @@ public class RegistrarExecucaoHandlerTests
                 && e.Exercicios[0].CargaExecutada == 80.5m),
             It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_KeyExistente_RetornaExistenteSemCriarNemComitar()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        var alunoId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
+        SetupAcessoValido(treino, alunoId, treinadorId, aluno);
+
+        var key = Guid.NewGuid().ToString();
+        var existente = ExecucaoTreino.Criar(treino.Id, alunoId, DateTime.UtcNow, DateTime.UtcNow, null, key).Value;
+        _execucaoRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(alunoId, key, It.IsAny<CancellationToken>())).ReturnsAsync(existente);
+
+        var command = new RegistrarExecucaoCommand(treino.Id, alunoId, DateTime.UtcNow, null, [], key);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ExecucaoId.Should().Be(existente.Id);
+        _execucaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<ExecucaoTreino>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_KeyNova_CriaEPropagaKey()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        var alunoId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
+        SetupAcessoValido(treino, alunoId, treinadorId, aluno);
+
+        var key = Guid.NewGuid().ToString();
+        _execucaoRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(alunoId, key, It.IsAny<CancellationToken>())).ReturnsAsync((ExecucaoTreino?)null);
+
+        var command = new RegistrarExecucaoCommand(treino.Id, alunoId, DateTime.UtcNow, null, [], key);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        _execucaoRepo.Verify(r => r.AdicionarAsync(
+            It.Is<ExecucaoTreino>(e => e.IdempotencyKey == key), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_CorridaUniqueViolation_RetornaExistente()
+    {
+        var treinadorId = Guid.NewGuid();
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, treinadorId, DateTime.UtcNow).Value;
+        var alunoId = Guid.NewGuid();
+        var aluno = Aluno.Criar(alunoId, "João", DateTime.UtcNow).Value;
+        SetupAcessoValido(treino, alunoId, treinadorId, aluno);
+
+        var key = Guid.NewGuid().ToString();
+        var existente = ExecucaoTreino.Criar(treino.Id, alunoId, DateTime.UtcNow, DateTime.UtcNow, null, key).Value;
+        _execucaoRepo.SetupSequence(r => r.ObterPorIdempotencyKeyAsync(alunoId, key, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExecucaoTreino?)null)
+            .ReturnsAsync(existente);
+        var dbEx = new InvalidOperationException("unique");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(dbEx);
+        _dbErrorInspector.Setup(i => i.EhViolacaoDeUnicidade(dbEx)).Returns(true);
+
+        var command = new RegistrarExecucaoCommand(treino.Id, alunoId, DateTime.UtcNow, null, [], key);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ExecucaoId.Should().Be(existente.Id);
     }
 
     [Fact]

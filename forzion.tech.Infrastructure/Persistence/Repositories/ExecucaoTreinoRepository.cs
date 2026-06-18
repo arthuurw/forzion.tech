@@ -11,6 +11,11 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
     public async Task AdicionarAsync(ExecucaoTreino execucao, CancellationToken cancellationToken = default) =>
         await _context.ExecucoesTreino.AddAsync(execucao, cancellationToken).ConfigureAwait(false);
 
+    public async Task<ExecucaoTreino?> ObterPorIdempotencyKeyAsync(Guid alunoId, string idempotencyKey, CancellationToken cancellationToken = default) =>
+        await _context.ExecucoesTreino
+            .FirstOrDefaultAsync(e => e.AlunoId == alunoId && e.IdempotencyKey == idempotencyKey, cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<bool> ExisteParaTreinoComAlunoAtivoAsync(Guid treinoId, CancellationToken cancellationToken = default) =>
         await _context.ExecucoesTreino
             .AnyAsync(e => e.TreinoId == treinoId &&
