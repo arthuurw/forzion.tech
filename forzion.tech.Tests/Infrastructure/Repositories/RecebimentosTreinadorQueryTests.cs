@@ -43,6 +43,7 @@ public class RecebimentosTreinadorQueryTests(InfrastructureTestFixture fixture)
     {
         var assinatura = await ctx.AssinaturaAlunos.FirstAsync(a => a.TreinadorId == treinadorId);
         var pagamento = Pagamento.Criar(assinatura.Id, valor, criadoEm).Value;
+        pagamento.MarcarPago(criadoEm);
         await ctx.Pagamentos.AddAsync(pagamento);
         await ctx.SaveChangesAsync();
         return pagamento.Id;
