@@ -108,7 +108,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
         captured!.AssinaturaAlunoStripe.Should().Be("t=1,v1=deadbeef");
     }
 
-    // --- POST /webhooks/resend / /webhooks/whatsapp — não vazam Error.Message ---
+    // --- POST /webhooks/resend / /webhooks/whatsapp ---
 
     [Fact]
     public async Task Post_WebhookResend_Invalido_NaoEcoaErrorMessage()

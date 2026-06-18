@@ -1,27 +1,44 @@
+using System.Reflection;
 using FluentAssertions;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Tests.Domain.Shared.Errors;
 
 public class MensagensErroSemTermoInternoTests
 {
-    public static IEnumerable<object[]> MensagensDisplayaveis()
+    private static readonly Type[] ClassesDeErro = typeof(Error).Assembly.GetTypes()
+        .Where(t => t.IsAbstract && t.IsSealed
+            && t.Namespace == "forzion.tech.Domain.Shared.Errors"
+            && t.Name.EndsWith("Errors", StringComparison.Ordinal))
+        .ToArray();
+
+    private static readonly string[] TermosInternos = ClassesDeErro
+        .Select(t => t.Name[..^"Errors".Length])
+        .Where(n => n.Skip(1).Any(char.IsUpper))
+        .Append("RegistrarPagamentoRegularizado")
+        .Distinct()
+        .ToArray();
+
+    public static IEnumerable<object[]> TodasAsMensagens()
     {
-        yield return [AssinaturaAlunoErrors.CanceladaNaoAtivavel.Code, AssinaturaAlunoErrors.CanceladaNaoAtivavel.Message];
-        yield return [AssinaturaAlunoErrors.InadimplenteDeveUsarRegularizacao.Code, AssinaturaAlunoErrors.InadimplenteDeveUsarRegularizacao.Message];
-        yield return [AssinaturaAlunoErrors.NaoEncontrada.Code, AssinaturaAlunoErrors.NaoEncontrada.Message];
-        yield return [AssinaturaAlunoErrors.CanceladaNaoCobravel.Code, AssinaturaAlunoErrors.CanceladaNaoCobravel.Message];
-        yield return [AssinaturaTreinadorErrors.CanceladaNaoAtivavel.Code, AssinaturaTreinadorErrors.CanceladaNaoAtivavel.Message];
-        yield return [AssinaturaTreinadorErrors.InadimplenteDeveUsarRegularizacao.Code, AssinaturaTreinadorErrors.InadimplenteDeveUsarRegularizacao.Message];
-        yield return [AssinaturaTreinadorErrors.NaoEncontrada.Code, AssinaturaTreinadorErrors.NaoEncontrada.Message];
+        foreach (var classe in ClassesDeErro)
+        {
+            var membros = classe.GetProperties(BindingFlags.Public | BindingFlags.Static)
+                .Where(p => p.PropertyType == typeof(Error) && p.GetIndexParameters().Length == 0);
+            foreach (var membro in membros)
+            {
+                var erro = (Error)membro.GetValue(null)!;
+                yield return [$"{classe.Name}.{membro.Name}", erro.Message];
+            }
+        }
     }
 
     [Theory]
-    [MemberData(nameof(MensagensDisplayaveis))]
-    public void MensagemDeErro_NaoContemTermoInterno(string code, string mensagem)
+    [MemberData(nameof(TodasAsMensagens))]
+    public void MensagemDeErro_NaoContemTermoInterno(string origem, string mensagem)
     {
-        _ = code;
-        mensagem.Should().NotContainAny(
-            "AssinaturaAluno", "AssinaturaTreinador", "RegistrarPagamentoRegularizado");
+        _ = origem;
+        mensagem.Should().NotContainAny(TermosInternos);
     }
 }
