@@ -13,5 +13,6 @@ public static class AssinaturaAlunoErrors
     public static Error ProximaCobrancaNaoFutura => new("assinatura_aluno.proxima_cobranca_nao_futura", "A data da próxima cobrança deve ser futura.");
     public static Error InadimplenteDeveUsarRegularizacao => Error.Conflict("assinatura_aluno.inadimplente_deve_usar_regularizacao", "A assinatura inadimplente não pode ser ativada diretamente; registre um pagamento de regularização.");
     public static Error NaoEncontrada => Error.NotFound("assinatura_aluno.nao_encontrada", "Assinatura não encontrada.");
+    public static Error CanceladaNaoCobravel => Error.Business("assinatura_aluno.cancelada_nao_cobravel", "Assinatura cancelada não pode ser cobrada.");
     public static Error NaoEncontradaParaCancelar => new("assinatura_aluno.nao_encontrada_para_cancelar", "Nenhuma assinatura ativa encontrada para cancelar.");
 }

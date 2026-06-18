@@ -10,6 +10,7 @@ public class MensagensErroSemTermoInternoTests
         yield return [AssinaturaAlunoErrors.CanceladaNaoAtivavel.Code, AssinaturaAlunoErrors.CanceladaNaoAtivavel.Message];
         yield return [AssinaturaAlunoErrors.InadimplenteDeveUsarRegularizacao.Code, AssinaturaAlunoErrors.InadimplenteDeveUsarRegularizacao.Message];
         yield return [AssinaturaAlunoErrors.NaoEncontrada.Code, AssinaturaAlunoErrors.NaoEncontrada.Message];
+        yield return [AssinaturaAlunoErrors.CanceladaNaoCobravel.Code, AssinaturaAlunoErrors.CanceladaNaoCobravel.Message];
         yield return [AssinaturaTreinadorErrors.CanceladaNaoAtivavel.Code, AssinaturaTreinadorErrors.CanceladaNaoAtivavel.Message];
         yield return [AssinaturaTreinadorErrors.InadimplenteDeveUsarRegularizacao.Code, AssinaturaTreinadorErrors.InadimplenteDeveUsarRegularizacao.Message];
         yield return [AssinaturaTreinadorErrors.NaoEncontrada.Code, AssinaturaTreinadorErrors.NaoEncontrada.Message];
