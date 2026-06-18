@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.DataProtection.XmlEncryption;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace forzion.tech.Api.Security;
 
@@ -8,10 +9,10 @@ public sealed class AesGcmXmlDecryptor : IXmlDecryptor
 {
     private readonly DataProtectionAesGcmKey _chave;
 
-    public AesGcmXmlDecryptor(DataProtectionAesGcmKey chave)
+    public AesGcmXmlDecryptor(IServiceProvider services)
     {
-        ArgumentNullException.ThrowIfNull(chave);
-        _chave = chave;
+        ArgumentNullException.ThrowIfNull(services);
+        _chave = services.GetRequiredService<DataProtectionAesGcmKey>();
     }
 
     public XElement Decrypt(XElement encryptedElement)
