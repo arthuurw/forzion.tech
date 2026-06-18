@@ -42,6 +42,18 @@ describe("alunoApi", () => {
     expect(mock.post).toHaveBeenCalledWith("/aluno/execucoes", data);
   });
 
+  it("criarExecucao POST com idempotencyKey envia header Idempotency-Key", () => {
+    const data = {
+      treinoId: "t1",
+      dataExecucao: "2026-06-01",
+      exercicios: [{ treinoExercicioId: "te1", seriesExecutadas: 3, repeticoesExecutadas: 10 }],
+    };
+    alunoApi.criarExecucao(data, { idempotencyKey: "11111111-1111-1111-1111-111111111111" });
+    expect(mock.post).toHaveBeenCalledWith("/aluno/execucoes", data, {
+      headers: { "Idempotency-Key": "11111111-1111-1111-1111-111111111111" },
+    });
+  });
+
   it("getMinhaProgressao GET com de/ate", () => {
     alunoApi.getMinhaProgressao("2026-01-01", "2026-02-01");
     expect(mock.get).toHaveBeenCalledWith("/aluno/progressao", {

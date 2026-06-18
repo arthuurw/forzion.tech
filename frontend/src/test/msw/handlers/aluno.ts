@@ -12,6 +12,7 @@ export const alunoHandlers: HttpHandler[] = [
   http.get("*/aluno/fichas/:id", unauthorized),
   http.post("*/aluno/fichas/:id/executar", unauthorized),
   http.get("*/aluno/execucoes", unauthorized),
+  http.post("*/aluno/execucoes", unauthorized),
   http.get("*/aluno/progressao", unauthorized),
   http.get("*/aluno/assinatura", unauthorized),
   http.post("*/aluno/assinatura/cancelar", unauthorized),

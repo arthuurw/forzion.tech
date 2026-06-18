@@ -112,6 +112,8 @@ export default defineConfig({
             "src/hooks/usePaginatedList.test.ts",
             "src/hooks/useCRUDDialog.test.ts",
             "src/hooks/useCursorList.test.ts",
+            "src/hooks/useExecucaoDraft.test.ts",
+            "src/hooks/useExecucaoRetryQueue.test.ts",
           ],
         },
       },
@@ -137,6 +139,8 @@ export default defineConfig({
             "src/hooks/usePaginatedList.test.ts",
             "src/hooks/useCRUDDialog.test.ts",
             "src/hooks/useCursorList.test.ts",
+            "src/hooks/useExecucaoDraft.test.ts",
+            "src/hooks/useExecucaoRetryQueue.test.ts",
             // Pilot MSW com apiClient real
             "src/lib/api/admin.msw.test.ts",
           ],

@@ -35,8 +35,12 @@ export const alunoApi = {
   listExecucoes(params?: { pagina?: number; tamanhoPagina?: number }) {
     return apiClient.get<PaginatedResponse<ExecucaoTreinoResponse>>("/aluno/execucoes", { params });
   },
-  criarExecucao(data: CriarExecucaoData) {
-    return apiClient.post<ExecucaoTreinoResponse>("/aluno/execucoes", data);
+  criarExecucao(data: CriarExecucaoData, opts?: { idempotencyKey?: string }) {
+    return opts?.idempotencyKey
+      ? apiClient.post<ExecucaoTreinoResponse>("/aluno/execucoes", data, {
+          headers: { "Idempotency-Key": opts.idempotencyKey },
+        })
+      : apiClient.post<ExecucaoTreinoResponse>("/aluno/execucoes", data);
   },
 
   getMinhaProgressao(de?: string, ate?: string) {
