@@ -12,13 +12,13 @@ describe("mapStripeError", () => {
       .toBe("Cartão expirado. Use um cartão válido.");
   });
 
-  it("code desconhecido → usa error.message quando presente", () => {
-    expect(mapStripeError({ code: "algo_novo", message: "msg do stripe em pt" }))
-      .toBe("msg do stripe em pt");
+  it("code desconhecido → fallback pt-BR (não vaza mensagem inglesa do Stripe)", () => {
+    expect(mapStripeError({ code: "card_velocity_exceeded" }))
+      .toBe("Não foi possível processar o pagamento. Verifique os dados do cartão.");
   });
 
-  it("desconhecido sem message → fallback pt-BR", () => {
-    expect(mapStripeError({ code: "algo_novo" }))
+  it("sem code nem decline_code → fallback pt-BR", () => {
+    expect(mapStripeError({}))
       .toBe("Não foi possível processar o pagamento. Verifique os dados do cartão.");
   });
 });

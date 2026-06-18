@@ -13,8 +13,8 @@ const MENSAGENS: Record<string, string> = {
     "Erro ao processar o pagamento. Aguarde um instante e tente novamente.",
 };
 
-export function mapStripeError(error: Pick<StripeError, "code" | "decline_code" | "message">): string {
+export function mapStripeError(error: Pick<StripeError, "code" | "decline_code">): string {
   const chave = error.decline_code ?? error.code;
   if (chave && MENSAGENS[chave]) return MENSAGENS[chave];
-  return error.message ?? FALLBACK;
+  return FALLBACK;
 }

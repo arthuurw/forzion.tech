@@ -110,7 +110,7 @@ describe("PagamentoCartao — formulário", () => {
 });
 
 describe("CartaoForm — submit com erro Stripe", () => {
-  it("exibe mensagem de erro e remove loading", async () => {
+  it("exibe mensagem de erro pt-BR e remove loading (não vaza message inglês do Stripe)", async () => {
     const mockStripe = {
       confirmPayment: vi.fn().mockResolvedValue({ error: { message: "Card declined" } }),
     };
@@ -123,7 +123,10 @@ describe("CartaoForm — submit com erro Stripe", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
 
-    expect(await screen.findByText("Card declined")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Não foi possível processar o pagamento. Verifique os dados do cartão."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Card declined")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pagar" })).toBeEnabled();
   });
 
