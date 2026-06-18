@@ -34,6 +34,7 @@ using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
+using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 using forzion.tech.Application.UseCases.Nfse.ListarNotasFiscaisTreinador;
 using forzion.tech.Application.UseCases.Nfse.ObterDanfseTreinador;
@@ -424,6 +425,31 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         var response = await CriarClienteTreinador().PostAsync("/treinador/modo-pagamento", corpo);
 
         response.StatusCode.Should().BeOneOf(HttpStatusCode.UnprocessableEntity, HttpStatusCode.BadRequest);
+    }
+
+    // --- GET /treinador/modo-pagamento/preview ---
+
+    [Fact]
+    public async Task Get_PreviewModoPagamento_Treinador_Retorna200()
+    {
+        _factory.ObterPreviewModoPagamentoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ObterPreviewModoPagamentoTreinadorQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PreviewModoPagamentoResponse(3, 2));
+
+        var response = await CriarClienteTreinador().GetAsync("/treinador/modo-pagamento/preview");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PreviewModoPagamentoResponse>();
+        body!.AssinaturasAtivasAlunos.Should().Be(3);
+        body.VinculosCobravelSemAssinatura.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Get_PreviewModoPagamento_RoleErrada_Retorna403()
+    {
+        var response = await CriarClienteAdmin().GetAsync("/treinador/modo-pagamento/preview");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     // --- GET /treinador/onboarding/status ---
@@ -1039,6 +1065,10 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             TimeProvider.System,
             Mock.Of<ILogger<AlterarModoPagamentoTreinadorHandler>>());
 
+        public Mock<ObterPreviewModoPagamentoTreinadorHandler> ObterPreviewModoPagamentoHandlerMock { get; } = new(
+            Mock.Of<IAssinaturaAlunoRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>());
+
         public Mock<CancelarMinhaAssinaturaTreinadorHandler> CancelarPlanoHandlerMock { get; } = new(
             Mock.Of<IAssinaturaTreinadorRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
@@ -1158,6 +1188,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<ExcluirPacoteHandler>();
                 services.RemoveAll<IniciarOnboardingTreinadorHandler>();
                 services.RemoveAll<AlterarModoPagamentoTreinadorHandler>();
+                services.RemoveAll<ObterPreviewModoPagamentoTreinadorHandler>();
                 services.RemoveAll<CancelarMinhaAssinaturaTreinadorHandler>();
                 services.RemoveAll<VerificarOnboardingTreinadorHandler>();
                 services.RemoveAll<GerarCobrancaMensalHandler>();
@@ -1191,6 +1222,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.AddScoped(_ => ExcluirPacoteHandlerMock.Object);
                 services.AddScoped(_ => IniciarOnboardingHandlerMock.Object);
                 services.AddScoped(_ => AlterarModoPagamentoHandlerMock.Object);
+                services.AddScoped(_ => ObterPreviewModoPagamentoHandlerMock.Object);
                 services.AddScoped(_ => CancelarPlanoHandlerMock.Object);
                 services.AddScoped(_ => VerificarOnboardingHandlerMock.Object);
                 services.AddScoped(_ => GerarCobrancaHandlerMock.Object);

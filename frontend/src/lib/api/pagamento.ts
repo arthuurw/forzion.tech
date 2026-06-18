@@ -2,8 +2,10 @@ import { apiClient } from "./client";
 import type {
   AssinaturaAlunoResponse,
   AssinaturaTreinadorResponse,
+  ListarRecebimentosTreinadorResultado,
   MetodoPagamento,
   OnboardingStatusResponse,
+  PreviewModoPagamentoResponse,
   PagamentoResponse,
   PagamentoTreinadorStatusResponse,
   TrocarPlanoTreinadorResponse,
@@ -19,6 +21,14 @@ export const pagamentoApi = {
   alterarModoPagamento(modo: "Plataforma" | "Externo") {
     return apiClient.post<{ modo: string; alteradoEm: string; assinaturasCriadas: number; vinculosIgnorados: number }>(
       "/treinador/modo-pagamento", { modo });
+  },
+  previewModoPagamento() {
+    return apiClient.get<PreviewModoPagamentoResponse>("/treinador/modo-pagamento/preview");
+  },
+  listarRecebimentos(cursor?: string, tamanho = 20) {
+    return apiClient.get<ListarRecebimentosTreinadorResultado>("/treinador/pagamentos/recebimentos", {
+      params: { tamanho, ...(cursor ? { cursor } : {}) },
+    });
   },
   gerarCobranca(assinaturaId: string, metodo: MetodoPagamento = "Pix") {
     return apiClient.post<PagamentoResponse>(`/treinador/pagamentos/cobrar/${assinaturaId}`, undefined, { params: { metodo } });

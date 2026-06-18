@@ -14,4 +14,8 @@ const unauthorized = () => HttpResponse.json({ title: "Não autenticado", status
 export const pagamentoHandlers: HttpHandler[] = [
   http.get("*/pagamentos/:id/status", unauthorized),
   http.get("*/pagamentos/assinatura/:assinaturaId", unauthorized),
+  http.get("*/treinador/modo-pagamento/preview", () =>
+    HttpResponse.json({ assinaturasAtivasAlunos: 0, vinculosCobravelSemAssinatura: 0 })),
+  http.get("*/treinador/pagamentos/recebimentos", () =>
+    HttpResponse.json({ itens: [], proximoCursor: null, taxaPlataformaPercent: 5 })),
 ];

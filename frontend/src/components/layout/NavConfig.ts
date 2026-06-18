@@ -8,6 +8,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import PaymentsIcon from "@mui/icons-material/Payments";
 import type { ElementType } from "react";
 import type { TipoConta } from "@/types";
 
@@ -15,6 +16,7 @@ export interface NavItem {
   label: string;
   href: string;
   Icon: ElementType;
+  drawerOnly?: boolean;
 }
 
 const adminNav: NavItem[] = [
@@ -33,6 +35,8 @@ const treinadorNav: NavItem[] = [
   { label: "Exercícios", href: "/treinador/exercicios", Icon: FitnessCenterIcon },
   { label: "Pacotes", href: "/treinador/pacotes", Icon: InventoryIcon },
   { label: "Notas fiscais", href: "/treinador/notas-fiscais", Icon: ReceiptLongIcon },
+  { label: "Recebimentos", href: "/treinador/pagamentos", Icon: PaymentsIcon, drawerOnly: true },
+  { label: "Plano", href: "/treinador/plano", Icon: CardMembershipIcon, drawerOnly: true },
   { label: "Suporte", href: "/treinador/suporte", Icon: SupportAgentIcon },
 ];
 
