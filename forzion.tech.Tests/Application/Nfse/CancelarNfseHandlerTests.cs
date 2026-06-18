@@ -71,7 +71,7 @@ public class CancelarNfseHandlerTests
     }
 
     [Fact]
-    public async Task NotaNaoEmitida_NaoSolicita()
+    public async Task EstornoAntesDaEmissao_RegistraCancelamentoPendentePreEmissao()
     {
         var pagamentoId = Guid.NewGuid();
         var nota = NotaFiscal.CriarAssinatura(Guid.NewGuid(), pagamentoId, 99.90m, Agora).Value;
@@ -80,6 +80,24 @@ public class CancelarNfseHandlerTests
         await _handler.HandleAsync(new PagamentoTreinadorEstornadoEvent(pagamentoId, Guid.NewGuid(), 99.90m, Agora));
 
         nota.Status.Should().Be(NotaFiscalStatus.Pendente);
+        nota.CancelamentoPendentePreEmissao.Should().BeTrue();
+        nota.MotivoCancelamentoPendente.Should().NotBeNullOrEmpty();
+        _enfileirador.Verify(e => e.Enfileirar(It.IsAny<string>(), It.IsAny<CancelarNfsePayload>(), It.IsAny<string>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task NotaJaCancelada_NaoAplica()
+    {
+        var pagamentoId = Guid.NewGuid();
+        var nota = NotaEmitida(pagamentoId);
+        nota.SolicitarCancelamento(Agora);
+        nota.MarcarCancelada(Agora);
+        _notaRepo.Setup(r => r.ObterPorPagamentoTreinadorAsync(pagamentoId, It.IsAny<CancellationToken>())).ReturnsAsync(nota);
+
+        await _handler.HandleAsync(new PagamentoTreinadorEstornadoEvent(pagamentoId, Guid.NewGuid(), 99.90m, Agora));
+
+        nota.CancelamentoPendentePreEmissao.Should().BeFalse();
         _enfileirador.Verify(e => e.Enfileirar(It.IsAny<string>(), It.IsAny<CancelarNfsePayload>(), It.IsAny<string>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

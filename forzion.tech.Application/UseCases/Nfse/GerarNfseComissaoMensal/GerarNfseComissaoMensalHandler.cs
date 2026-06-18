@@ -14,6 +14,7 @@ public class GerarNfseComissaoMensalHandler(
     INotaFiscalRepository notaFiscalRepository,
     IOutboxEnfileirador enfileirador,
     IUnitOfWork unitOfWork,
+    IDatabaseErrorInspector databaseErrorInspector,
     IOptions<PaymentSettings> paymentSettings,
     TimeProvider timeProvider,
     ILogger<GerarNfseComissaoMensalHandler> logger)
@@ -44,12 +45,16 @@ public class GerarNfseComissaoMensalHandler(
                 .ConfigureAwait(false);
             if (lote.Count == 0) break;
 
+            var jaComissionados = await notaFiscalRepository.ListarTreinadoresComComissaoAsync(
+                lote.Select(i => i.TreinadorId).ToList(), command.CompetenciaInicio, cancellationToken)
+                .ConfigureAwait(false);
+
             foreach (var item in lote)
             {
                 if (item.SomaFeeCentavos <= 0)
                     continue;
 
-                if (await notaFiscalRepository.ExisteComissaoAsync(item.TreinadorId, command.CompetenciaInicio, cancellationToken).ConfigureAwait(false))
+                if (jaComissionados.Contains(item.TreinadorId))
                 {
                     puladas++;
                     continue;
@@ -68,8 +73,18 @@ public class GerarNfseComissaoMensalHandler(
                 await notaFiscalRepository.AdicionarAsync(nota, cancellationToken).ConfigureAwait(false);
                 enfileirador.Enfileirar("fx:emitir_nfse", new EmitirNfsePayload(nota.Id),
                     $"fx:emitir_nfse:comissao:{item.TreinadorId}:{command.CompetenciaInicio:yyyyMM}");
-                await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-                geradas++;
+                try
+                {
+                    await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    geradas++;
+                }
+                catch (Exception ex) when (databaseErrorInspector.EhViolacaoDeUnicidade(ex))
+                {
+                    unitOfWork.DescartarAlteracoesPendentes();
+                    puladas++;
+                    logger.LogInformation(ex, "NFS-e de comissão do treinador {TreinadorId} ({Competencia}) já existente (corrida).",
+                        item.TreinadorId, command.CompetenciaInicio.ToString("yyyy-MM"));
+                }
             }
 
             aposTreinadorId = lote[^1].TreinadorId;

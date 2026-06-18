@@ -2,6 +2,7 @@ using System.Text.Json;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Outbox;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Infrastructure.Services;
@@ -14,6 +15,7 @@ public sealed class EmitirNfseEfeitoHandler(
     INotaFiscalRepository notaFiscalRepository,
     ITreinadorRepository treinadorRepository,
     IEmissorNfseService emissor,
+    IOutboxEnfileirador enfileirador,
     IOptions<NfseSettings> settings,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
@@ -35,13 +37,19 @@ public sealed class EmitirNfseEfeitoHandler(
             return;
         }
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        if (nota.Status == NotaFiscalStatus.Emitida && nota.CancelamentoPendentePreEmissao)
+        {
+            await ConcluirCancelamentoPendenteAsync(nota, agora, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         if (nota.Status is not (NotaFiscalStatus.Pendente or NotaFiscalStatus.Erro))
         {
             logger.LogInformation("NotaFiscal {NotaFiscalId} em status {Status} não é emitível. Ignorado.", nota.Id, nota.Status);
             return;
         }
-
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
 
         var treinador = await treinadorRepository.ObterPorIdAsync(nota.TreinadorId, cancellationToken).ConfigureAwait(false);
         if (treinador?.DadosFiscais is null)
@@ -95,6 +103,20 @@ public sealed class EmitirNfseEfeitoHandler(
             return;
         }
 
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        if (resultado.Sucesso && nota.CancelamentoPendentePreEmissao)
+            await ConcluirCancelamentoPendenteAsync(nota, agora, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task ConcluirCancelamentoPendenteAsync(NotaFiscal nota, DateTime agora, CancellationToken cancellationToken)
+    {
+        var motivo = nota.MotivoCancelamentoPendente ?? "Cancelamento por estorno do pagamento ao prestador.";
+        var solicitar = nota.SolicitarCancelamento(agora);
+        if (solicitar.IsFailure)
+            return;
+
+        enfileirador.Enfileirar("fx:cancelar_nfse", new CancelarNfsePayload(nota.Id, motivo), $"fx:cancelar_nfse:{nota.Id}");
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 }

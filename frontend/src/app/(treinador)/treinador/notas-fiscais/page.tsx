@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { Box, Typography, Card, CardContent, Chip, Button, IconButton, Tooltip } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -14,7 +14,8 @@ import {
   NOTA_FISCAL_STATUS_LABEL, NOTA_FISCAL_STATUS_COLOR, TIPO_NOTA_FISCAL_LABEL,
 } from "@/lib/api/nfse";
 import { extractApiError } from "@/lib/api/extractApiError";
-import { formatarBRL } from "@/lib/utils/formatting";
+import { formatarBRL, formatarDataHora } from "@/lib/utils/formatting";
+import { useCursorList } from "@/hooks/useCursorList";
 
 const COLUMNS: Column[] = [
   { label: "Tipo" },
@@ -24,39 +25,22 @@ const COLUMNS: Column[] = [
   { label: "DANFSe", align: "right" },
 ];
 
-function formatarDataHora(iso?: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR");
-}
-
 export default function NotasFiscaisTreinadorPage() {
-  const [notas, setNotas] = useState<NotaFiscalResumo[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMais, setLoadingMais] = useState(false);
   const [baixando, setBaixando] = useState<string | null>(null);
-  const [error, setError] = useState("");
 
-  const load = useCallback(async (aposId?: string) => {
-    try {
-      const res = await nfseApi.listNotasTreinador(aposId ? { aposId } : undefined);
-      setNotas((prev) => (aposId ? [...prev, ...res.data.itens] : res.data.itens));
-      setCursor(res.data.proximoCursor ?? null);
-    } catch (err) {
-      setError(extractApiError(err, "Erro ao carregar notas fiscais."));
-    }
-  }, []);
+  const fetcher = useCallback(
+    (_filtro: undefined, aposId: string | undefined, signal: AbortSignal) =>
+      nfseApi.listNotasTreinador(aposId ? { aposId } : undefined, signal),
+    [],
+  );
 
-  useEffect(() => {
-    load().finally(() => setLoading(false));
-  }, [load]);
-
-  const carregarMais = async () => {
-    if (!cursor) return;
-    setLoadingMais(true);
-    await load(cursor);
-    setLoadingMais(false);
-  };
+  const {
+    itens: notas, cursor, loading, loadingMais, error, setError, carregarMais,
+  } = useCursorList<NotaFiscalResumo, undefined>({
+    fetcher,
+    filtro: undefined,
+    errorMessage: "Erro ao carregar notas fiscais.",
+  });
 
   const baixarDanfse = async (nota: NotaFiscalResumo) => {
     setError("");

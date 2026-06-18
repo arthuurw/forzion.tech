@@ -1,4 +1,5 @@
 using FluentAssertions;
+using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
@@ -108,5 +109,23 @@ public class PagamentoComissaoQueryTests(InfrastructureTestFixture fixture)
 
         resultado.Should().Contain(c => c.TreinadorId == maior);
         resultado.Should().NotContain(c => c.TreinadorId == menor);
+    }
+
+    [Fact]
+    public async Task SomaFeeCentavos_IgualSomaMoneyCentavos_ValoresComFloorStressado()
+    {
+        const decimal taxa = 10m;
+        decimal[] valores = [29.90m, 19.99m, 9.95m, 100.00m, 49.99m];
+
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedAssinaturaAsync(ctx);
+        foreach (var v in valores)
+            await SeedPagamentoAsync(ctx, treinadorId, v, EmMaio);
+
+        var resultado = await Repo(ctx).ListarComissaoPorTreinadorNoPeriodoAsync(Inicio, FimExclusivo, taxa, null, 100);
+
+        var esperado = valores.Sum(v => (decimal)MoneyCentavos.CalcularTaxaCentavos((long)(v * 100m), taxa));
+        resultado.Should().ContainSingle(c => c.TreinadorId == treinadorId)
+            .Which.SomaFeeCentavos.Should().Be(esperado);
     }
 }

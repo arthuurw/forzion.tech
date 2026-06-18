@@ -48,7 +48,7 @@ public sealed record EnderecoFiscal
         if (string.IsNullOrWhiteSpace(bairro))
             return Result.Failure<EnderecoFiscal>(EnderecoFiscalErrors.BairroObrigatorio);
 
-        var ibge = SomenteDigitos(codigoMunicipioIbge);
+        var ibge = Digitos.Apenas(codigoMunicipioIbge);
         if (ibge.Length != 7)
             return Result.Failure<EnderecoFiscal>(EnderecoFiscalErrors.MunicipioIbgeInvalido);
 
@@ -56,7 +56,7 @@ public sealed record EnderecoFiscal
         if (!UfsValidas.Contains(ufNormalizada))
             return Result.Failure<EnderecoFiscal>(EnderecoFiscalErrors.UfInvalida);
 
-        var cepDigitos = SomenteDigitos(cep);
+        var cepDigitos = Digitos.Apenas(cep);
         if (cepDigitos.Length != 8)
             return Result.Failure<EnderecoFiscal>(EnderecoFiscalErrors.CepInvalido);
 
@@ -65,7 +65,4 @@ public sealed record EnderecoFiscal
         return Result.Success(new EnderecoFiscal(
             logradouro.Trim(), numero.Trim(), complementoNormalizado, bairro.Trim(), ibge, ufNormalizada, cepDigitos));
     }
-
-    private static string SomenteDigitos(string? valor) =>
-        string.IsNullOrEmpty(valor) ? string.Empty : new string(valor.Where(char.IsDigit).ToArray());
 }

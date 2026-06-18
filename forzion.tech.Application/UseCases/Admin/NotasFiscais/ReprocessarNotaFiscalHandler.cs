@@ -12,7 +12,6 @@ public class ReprocessarNotaFiscalHandler(
     INotaFiscalRepository notaFiscalRepository,
     IOutboxEnfileirador enfileirador,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider,
     ILogger<ReprocessarNotaFiscalHandler> logger)
 {
     public virtual async Task<Result> HandleAsync(Guid notaFiscalId, CancellationToken cancellationToken = default)
@@ -24,10 +23,8 @@ public class ReprocessarNotaFiscalHandler(
         if (nota.Status != NotaFiscalStatus.Erro)
             return Result.Failure(NotaFiscalErrors.ReprocessamentoInvalido);
 
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
-
         enfileirador.Enfileirar("fx:emitir_nfse", new EmitirNfsePayload(nota.Id),
-            $"fx:emitir_nfse:reprocessar:{nota.Id}:{agora.Ticks}");
+            $"fx:emitir_nfse:reprocessar:{nota.Id}");
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("NotaFiscal {NotaFiscalId} reenfileirada para emissão (reprocessamento admin).", nota.Id);

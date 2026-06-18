@@ -26,6 +26,8 @@ public class NotaFiscal : IHasDomainEvents
     public string? DanfseRef { get; private set; }
     public string? CodigoErro { get; private set; }
     public string? MotivoErro { get; private set; }
+    public bool CancelamentoPendentePreEmissao { get; private set; }
+    public string? MotivoCancelamentoPendente { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -127,12 +129,24 @@ public class NotaFiscal : IHasDomainEvents
         return Result.Success();
     }
 
+    public Result RegistrarCancelamentoPendentePreEmissao(string motivo, DateTime agora)
+    {
+        if (Status is not (NotaFiscalStatus.Pendente or NotaFiscalStatus.Erro or NotaFiscalStatus.BloqueadaDadosFiscais))
+            return Result.Failure(NotaFiscalErrors.TransicaoCancelamentoPendenteInvalida);
+
+        CancelamentoPendentePreEmissao = true;
+        MotivoCancelamentoPendente = motivo;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
     public Result SolicitarCancelamento(DateTime agora)
     {
         if (Status != NotaFiscalStatus.Emitida)
             return Result.Failure(NotaFiscalErrors.TransicaoCancelamentoInvalida);
 
         Status = NotaFiscalStatus.CancelamentoSolicitado;
+        CancelamentoPendentePreEmissao = false;
         UpdatedAt = agora;
         return Result.Success();
     }

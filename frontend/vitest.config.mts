@@ -111,6 +111,7 @@ export default defineConfig({
             "src/hooks/useConsent.test.ts",
             "src/hooks/usePaginatedList.test.ts",
             "src/hooks/useCRUDDialog.test.ts",
+            "src/hooks/useCursorList.test.ts",
           ],
         },
       },
@@ -135,6 +136,7 @@ export default defineConfig({
             "src/hooks/useConsent.test.ts",
             "src/hooks/usePaginatedList.test.ts",
             "src/hooks/useCRUDDialog.test.ts",
+            "src/hooks/useCursorList.test.ts",
             // Pilot MSW com apiClient real
             "src/lib/api/admin.msw.test.ts",
           ],

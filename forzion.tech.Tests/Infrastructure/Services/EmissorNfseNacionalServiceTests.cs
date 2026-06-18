@@ -151,6 +151,94 @@ public class EmissorNfseNacionalServiceTests
         await act.Should().ThrowAsync<HttpRequestException>();
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.RequestTimeout)]
+    public async Task CancelarAsync_Transiente_PropagaParaRetry(HttpStatusCode status)
+    {
+        var (servico, _) = Criar(_ => Resposta(status, string.Empty));
+
+        var act = () => servico.CancelarAsync("CHV-X", "motivo de cancelamento");
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.RequestTimeout)]
+    public async Task EmitirAsync_Transiente_PropagaParaRetry(HttpStatusCode status)
+    {
+        var (servico, _) = Criar(_ => Resposta(status, string.Empty));
+
+        var act = () => servico.EmitirAsync(Dps());
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [Fact]
+    public async Task EmitirAsync_DhEmiEDhEvento_TerminamComOffsetMenos3()
+    {
+        var (servico, handler) = Criar(_ => Resposta(HttpStatusCode.Created, "{\"chaveAcesso\":\"CHV1\"}"));
+
+        await servico.EmitirAsync(Dps());
+
+        var doc = DescompactarDps(handler.Bodies[0]);
+        doc.GetElementsByTagName("dhEmi")[0]!.InnerText.Should().EndWith("-03:00");
+    }
+
+    [Fact]
+    public async Task EmitirAsync_InstanteApos2UtcRefleteDiaAnteriorEmHorarioBrasileiro()
+    {
+        var instanteUtc = new DateTimeOffset(2026, 2, 1, 2, 0, 0, TimeSpan.Zero);
+        var handler = new CapturingHandler(_ => Resposta(HttpStatusCode.Created, "{\"chaveAcesso\":\"CHV1\"}"));
+        var tempo = new FakeTimeProvider(instanteUtc);
+        var servico = new ServicoTestavel(
+            Certificado,
+            new HttpClient(handler),
+            Settings(),
+            Mock.Of<ILogger<EmissorNfseNacionalService>>(),
+            tempo);
+
+        await servico.EmitirAsync(Dps());
+
+        var doc = DescompactarDps(handler.Bodies[0]);
+        var dhEmi = doc.GetElementsByTagName("dhEmi")[0]!.InnerText;
+        dhEmi.Should().StartWith("2026-01-31").And.EndWith("-03:00");
+    }
+
+    [Fact]
+    public async Task CancelarAsync_DhEvento_TerminaComOffsetMenos3()
+    {
+        var (servico, handler) = Criar(_ => Resposta(HttpStatusCode.OK, "{}"));
+
+        await servico.CancelarAsync("CHV-TZ", "motivo");
+
+        var doc = DescompactarEvento(handler.Bodies[0]);
+        doc.GetElementsByTagName("dhEvento")[0]!.InnerText.Should().EndWith("-03:00");
+    }
+
+    [Fact]
+    public async Task EmitirAsync_TribISSQNETpRetISSQNCustomizados_FluemParaODPS()
+    {
+        var settings = Options.Create(new NfseSettings
+        {
+            Habilitado = true,
+            Ambiente = NfseAmbiente.Restrita,
+            UrlBase = "https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional",
+            SerieDps = "1",
+            CertificadoSenha = "x",
+            TribISSQN = "3",
+            TpRetISSQN = "2",
+        });
+        var (servico, handler) = Criar(_ => Resposta(HttpStatusCode.Created, "{\"chaveAcesso\":\"CHV1\"}"), settings: settings);
+
+        await servico.EmitirAsync(Dps());
+
+        var doc = DescompactarDps(handler.Bodies[0]);
+        doc.GetElementsByTagName("tribISSQN")[0]!.InnerText.Should().Be("3");
+        doc.GetElementsByTagName("tpRetISSQN")[0]!.InnerText.Should().Be("2");
+    }
+
     private static (EmissorNfseNacionalService servico, CapturingHandler handler) Criar(
         Func<HttpRequestMessage, HttpResponseMessage> responder,
         IOptions<NfseSettings>? settings = null,
@@ -228,6 +316,10 @@ public class EmissorNfseNacionalServiceTests
         TimeProvider timeProvider) : EmissorNfseNacionalService(httpClient, settings, logger, timeProvider)
     {
         protected override X509Certificate2 CarregarCertificadoAssinatura() => certificado;
+
+        protected override void Dispose(bool disposing)
+        {
+        }
     }
 
     private sealed class CapturingHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler

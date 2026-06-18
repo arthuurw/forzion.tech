@@ -1436,7 +1436,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<ReprocessarNotaFiscalHandler> ReprocessarNotaFiscalHandlerMock { get; } = new(
             Mock.Of<INotaFiscalRepository>(),
             Mock.Of<IOutboxEnfileirador>(),
-            Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogger<ReprocessarNotaFiscalHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

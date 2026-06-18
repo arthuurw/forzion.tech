@@ -22,6 +22,7 @@ public class EmitirNfseEfeitoHandlerTests
     private readonly Mock<INotaFiscalRepository> _notaRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IEmissorNfseService> _emissor = new();
+    private readonly Mock<IOutboxEnfileirador> _enfileirador = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _time = new(Instante);
     private readonly EmitirNfseEfeitoHandler _handler;
@@ -32,6 +33,7 @@ public class EmitirNfseEfeitoHandlerTests
             _notaRepo.Object,
             _treinadorRepo.Object,
             _emissor.Object,
+            _enfileirador.Object,
             Options.Create(Settings()),
             _unitOfWork.Object,
             _time,
@@ -126,6 +128,75 @@ public class EmitirNfseEfeitoHandlerTests
         nota.Status.Should().Be(NotaFiscalStatus.BloqueadaDadosFiscais);
         _emissor.Verify(e => e.EmitirAsync(It.IsAny<DpsInput>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelamentoPendentePreEmissao_AoEmitir_SolicitaCancelamentoEEnfileira()
+    {
+        var (nota, _) = CriarCenario(comDadosFiscais: true);
+        nota.RegistrarCancelamentoPendentePreEmissao("estorno do pagamento", Agora);
+        _emissor.Setup(e => e.EmitirAsync(It.IsAny<DpsInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NfseResultado(true, "CHV-1", "10", Agora, "danfse-ref", null, null));
+
+        await _handler.ExecutarAsync(Payload(nota.Id));
+
+        nota.Status.Should().Be(NotaFiscalStatus.CancelamentoSolicitado);
+        nota.CancelamentoPendentePreEmissao.Should().BeFalse();
+        _enfileirador.Verify(e => e.Enfileirar(
+            "fx:cancelar_nfse", It.IsAny<CancelarNfsePayload>(), $"fx:cancelar_nfse:{nota.Id}"), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task NotaJaEmitidaComCancelamentoPendente_ConcluiCancelamentoSemReemitir()
+    {
+        var (nota, _) = CriarCenario(comDadosFiscais: true);
+        nota.RegistrarCancelamentoPendentePreEmissao("estorno do pagamento", Agora);
+        nota.MarcarEmitida("CHV-1", "10", Agora, null, Agora);
+
+        await _handler.ExecutarAsync(Payload(nota.Id));
+
+        _emissor.Verify(e => e.EmitirAsync(It.IsAny<DpsInput>(), It.IsAny<CancellationToken>()), Times.Never);
+        nota.Status.Should().Be(NotaFiscalStatus.CancelamentoSolicitado);
+        _enfileirador.Verify(e => e.Enfileirar(
+            "fx:cancelar_nfse", It.IsAny<CancelarNfsePayload>(), $"fx:cancelar_nfse:{nota.Id}"), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SemCancelamentoPendente_AoEmitir_NaoEnfileiraCancelamento()
+    {
+        var (nota, _) = CriarCenario(comDadosFiscais: true);
+        _emissor.Setup(e => e.EmitirAsync(It.IsAny<DpsInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NfseResultado(true, "CHV-1", "10", Agora, "danfse-ref", null, null));
+
+        await _handler.ExecutarAsync(Payload(nota.Id));
+
+        _enfileirador.Verify(e => e.Enfileirar(
+            It.IsAny<string>(), It.IsAny<CancelarNfsePayload>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RetryPosAutorizacao_TransmiteMesmoNumeroDps_PermitindoDedupGov()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Treinador X", Agora).Value;
+        var endereco = EnderecoFiscal.Criar("Rua A", "100", "Centro", "3550308", "SP", "01001000").Value;
+        var dados = DadosFiscais.Criar(TipoDocumentoFiscal.Cnpj, "11222333000181", "Treinador X LTDA", endereco).Value;
+        treinador.DefinirDadosFiscais(dados, Agora);
+        var pagamentoId = Guid.NewGuid();
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _notaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => NotaFiscal.CriarAssinatura(treinador.Id, pagamentoId, 99.90m, Agora).Value);
+        var nDpsEnviados = new List<string>();
+        _emissor.Setup(e => e.EmitirAsync(It.IsAny<DpsInput>(), It.IsAny<CancellationToken>()))
+            .Callback<DpsInput, CancellationToken>((i, _) => nDpsEnviados.Add(i.NumeroDpsEstavel))
+            .ReturnsAsync(new NfseResultado(true, "CHV-1", "10", Agora, "danfse-ref", null, null));
+
+        await _handler.ExecutarAsync(Payload(Guid.NewGuid()));
+        await _handler.ExecutarAsync(Payload(Guid.NewGuid()));
+
+        nDpsEnviados.Should().HaveCount(2);
+        nDpsEnviados.Distinct().Should().ContainSingle().Which.Should().Be($"AS-{pagamentoId}");
     }
 
     private (NotaFiscal nota, Treinador treinador) CriarCenario(bool comDadosFiscais)

@@ -31,7 +31,6 @@ public class NotaFiscalRepository(AppDbContext context) : INotaFiscalRepository
 
     public async Task<IReadOnlyList<NotaFiscal>> ListarPorStatusAsync(NotaFiscalStatus status, Guid? aposId, int limite, CancellationToken cancellationToken = default) =>
         await context.NotasFiscais
-            .AsNoTracking()
             .Where(n => n.Status == status && (aposId == null || n.Id > aposId))
             .OrderBy(n => n.Id)
             .Take(limite)
@@ -55,4 +54,17 @@ public class NotaFiscalRepository(AppDbContext context) : INotaFiscalRepository
                            && n.Tipo == TipoNotaFiscal.ComissaoMarketplace
                            && n.CompetenciaInicio == competenciaInicio, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<HashSet<Guid>> ListarTreinadoresComComissaoAsync(IReadOnlyCollection<Guid> treinadorIds, DateOnly competenciaInicio, CancellationToken cancellationToken = default)
+    {
+        var ids = await context.NotasFiscais
+            .Where(n => n.Tipo == TipoNotaFiscal.ComissaoMarketplace
+                        && n.CompetenciaInicio == competenciaInicio
+                        && treinadorIds.Contains(n.TreinadorId))
+            .Select(n => n.TreinadorId)
+            .Distinct()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return ids.ToHashSet();
+    }
 }

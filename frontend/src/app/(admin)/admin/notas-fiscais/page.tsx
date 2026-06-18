@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Chip, Button, IconButton, Tooltip,
   TextField, MenuItem, Stack,
@@ -15,7 +15,8 @@ import {
   NOTA_FISCAL_STATUS_LABEL, NOTA_FISCAL_STATUS_COLOR, TIPO_NOTA_FISCAL_LABEL,
 } from "@/lib/api/nfse";
 import { extractApiError } from "@/lib/api/extractApiError";
-import { formatarBRL } from "@/lib/utils/formatting";
+import { formatarBRL, formatarDataHora } from "@/lib/utils/formatting";
+import { useCursorList } from "@/hooks/useCursorList";
 
 const COLUMNS: Column[] = [
   { label: "Treinador" },
@@ -32,48 +33,24 @@ const STATUS_FILTROS: (NotaFiscalStatus | "")[] = [
   "CancelamentoSolicitado", "Cancelada", "CancelamentoExpirado",
 ];
 
-function formatarDataHora(iso?: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR");
-}
-
 export default function NotasFiscaisAdminPage() {
-  const [notas, setNotas] = useState<NotaFiscalAdmin[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
   const [statusFiltro, setStatusFiltro] = useState<NotaFiscalStatus | "">("");
-  const [loading, setLoading] = useState(true);
-  const [loadingMais, setLoadingMais] = useState(false);
   const [reprocessando, setReprocessando] = useState<string | null>(null);
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const load = useCallback(async (status: NotaFiscalStatus | "", aposId?: string) => {
-    const res = await nfseApi.listNotasAdmin({
-      status: status || undefined,
-      aposId,
-    });
-    setNotas((prev) => (aposId ? [...prev, ...res.data.itens] : res.data.itens));
-    setCursor(res.data.proximoCursor ?? null);
-  }, []);
+  const fetcher = useCallback(
+    (filtro: NotaFiscalStatus | "", aposId: string | undefined, signal: AbortSignal) =>
+      nfseApi.listNotasAdmin({ status: filtro || undefined, aposId }, signal),
+    [],
+  );
 
-  useEffect(() => {
-    setLoading(true);
-    load(statusFiltro)
-      .catch((err) => setError(extractApiError(err, "Erro ao carregar notas fiscais.")))
-      .finally(() => setLoading(false));
-  }, [load, statusFiltro]);
-
-  const carregarMais = async () => {
-    if (!cursor) return;
-    setLoadingMais(true);
-    try {
-      await load(statusFiltro, cursor);
-    } catch (err) {
-      setError(extractApiError(err, "Erro ao carregar notas fiscais."));
-    } finally {
-      setLoadingMais(false);
-    }
-  };
+  const {
+    itens: notas, cursor, loading, loadingMais, error, setError, carregarMais, reload,
+  } = useCursorList<NotaFiscalAdmin, NotaFiscalStatus | "">({
+    fetcher,
+    filtro: statusFiltro,
+    errorMessage: "Erro ao carregar notas fiscais.",
+  });
 
   const reprocessar = async (nota: NotaFiscalAdmin) => {
     setError("");
@@ -82,7 +59,7 @@ export default function NotasFiscaisAdminPage() {
     try {
       await nfseApi.reprocessarNota(nota.id);
       setSuccess("Emissão reenfileirada.");
-      await load(statusFiltro);
+      reload();
     } catch (err) {
       setError(extractApiError(err, "Não foi possível reprocessar a nota."));
     } finally {

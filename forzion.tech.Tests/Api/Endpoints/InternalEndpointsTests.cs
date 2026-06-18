@@ -44,7 +44,7 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
 
         public Mock<GerarNfseComissaoMensalHandler> GerarNfseComissaoMock { get; } = new(
             Mock.Of<IPagamentoRepository>(), Mock.Of<INotaFiscalRepository>(), Mock.Of<IOutboxEnfileirador>(),
-            Mock.Of<IUnitOfWork>(), Options.Create(new PaymentSettings()), TimeProvider.System,
+            Mock.Of<IUnitOfWork>(), Mock.Of<IDatabaseErrorInspector>(), Options.Create(new PaymentSettings()), TimeProvider.System,
             Mock.Of<ILogger<GerarNfseComissaoMensalHandler>>());
 
         public Mock<ReconciliarNfseHandler> ReconciliarNfseMock { get; } = new(

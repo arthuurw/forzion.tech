@@ -41,13 +41,28 @@ public sealed class CancelarNfseHandler(
         if (nota is null)
             return;
 
-        if (nota.Status != NotaFiscalStatus.Emitida)
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        if (nota.Status is NotaFiscalStatus.Pendente or NotaFiscalStatus.Erro or NotaFiscalStatus.BloqueadaDadosFiscais)
         {
-            logger.LogInformation("NotaFiscal {NotaFiscalId} em status {Status}; cancelamento não solicitado.", nota.Id, nota.Status);
+            var registrar = nota.RegistrarCancelamentoPendentePreEmissao(motivo, agora);
+            if (registrar.IsFailure)
+            {
+                logger.LogWarning("Falha ao registrar cancelamento pré-emissão da NotaFiscal {NotaFiscalId}: {Erro}.", nota.Id, registrar.Error!.Message);
+                return;
+            }
+
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        var solicitar = nota.SolicitarCancelamento(timeProvider.GetUtcNow().UtcDateTime);
+        if (nota.Status != NotaFiscalStatus.Emitida)
+        {
+            logger.LogInformation("NotaFiscal {NotaFiscalId} em status {Status}; cancelamento não aplicável.", nota.Id, nota.Status);
+            return;
+        }
+
+        var solicitar = nota.SolicitarCancelamento(agora);
         if (solicitar.IsFailure)
         {
             logger.LogWarning("Falha ao solicitar cancelamento da NotaFiscal {NotaFiscalId}: {Erro}.", nota.Id, solicitar.Error!.Message);

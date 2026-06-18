@@ -22,4 +22,6 @@ public class NfseSettings
     public string CertificadoSenha { get; set; } = string.Empty;
     public string RegimeTributario { get; set; } = "SimplesNacional";
     public int PrazoCancelamentoDias { get; set; } = 90;
+    public string TribISSQN { get; set; } = "1";
+    public string TpRetISSQN { get; set; } = "1";
 }

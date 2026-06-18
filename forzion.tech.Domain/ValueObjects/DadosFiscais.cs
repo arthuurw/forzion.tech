@@ -43,7 +43,7 @@ public sealed record DadosFiscais
         if (razao.Length > 150)
             return Result.Failure<DadosFiscais>(DadosFiscaisErrors.RazaoSocialMuitoLonga);
 
-        var docDigitos = SomenteDigitos(documento);
+        var docDigitos = Digitos.Apenas(documento);
         var documentoValido = tipoDocumento switch
         {
             TipoDocumentoFiscal.Cpf => CpfValido(docDigitos),
@@ -55,13 +55,10 @@ public sealed record DadosFiscais
         if (!documentoValido)
             return Result.Failure<DadosFiscais>(DadosFiscaisErrors.DocumentoInvalido);
 
-        var inscricao = string.IsNullOrWhiteSpace(inscricaoMunicipal) ? null : SomenteDigitos(inscricaoMunicipal);
+        var inscricao = string.IsNullOrWhiteSpace(inscricaoMunicipal) ? null : Digitos.Apenas(inscricaoMunicipal);
 
         return Result.Success(new DadosFiscais(tipoDocumento, docDigitos, razao, endereco, inscricao));
     }
-
-    private static string SomenteDigitos(string? valor) =>
-        string.IsNullOrEmpty(valor) ? string.Empty : new string(valor.Where(char.IsDigit).ToArray());
 
     private static bool CpfValido(string cpf)
     {

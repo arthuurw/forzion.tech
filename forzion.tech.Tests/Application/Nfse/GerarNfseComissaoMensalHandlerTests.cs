@@ -21,6 +21,7 @@ public class GerarNfseComissaoMensalHandlerTests
     private readonly Mock<INotaFiscalRepository> _notaRepo = new();
     private readonly Mock<IOutboxEnfileirador> _enfileirador = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDatabaseErrorInspector> _dbErrorInspector = new();
     private readonly FakeTimeProvider _time = new(Instante);
     private readonly GerarNfseComissaoMensalHandler _handler;
 
@@ -34,6 +35,7 @@ public class GerarNfseComissaoMensalHandlerTests
             _notaRepo.Object,
             _enfileirador.Object,
             _unitOfWork.Object,
+            _dbErrorInspector.Object,
             Options.Create(new PaymentSettings { TaxaPlataformaPercent = 10m }),
             _time,
             Mock.Of<ILogger<GerarNfseComissaoMensalHandler>>());
@@ -51,7 +53,8 @@ public class GerarNfseComissaoMensalHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         SetupLote(new ComissaoTreinadorPeriodo(treinadorId, 690m));
-        _notaRepo.Setup(r => r.ExisteComissaoAsync(treinadorId, Inicio, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _notaRepo.Setup(r => r.ListarTreinadoresComComissaoAsync(It.IsAny<IReadOnlyCollection<Guid>>(), Inicio, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HashSet<Guid>());
         NotaFiscal? adicionada = null;
         _notaRepo.Setup(r => r.AdicionarAsync(It.IsAny<NotaFiscal>(), It.IsAny<CancellationToken>()))
             .Callback<NotaFiscal, CancellationToken>((n, _) => adicionada = n);
@@ -90,7 +93,8 @@ public class GerarNfseComissaoMensalHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         SetupLote(new ComissaoTreinadorPeriodo(treinadorId, 690m));
-        _notaRepo.Setup(r => r.ExisteComissaoAsync(treinadorId, Inicio, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _notaRepo.Setup(r => r.ListarTreinadoresComComissaoAsync(It.IsAny<IReadOnlyCollection<Guid>>(), Inicio, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HashSet<Guid> { treinadorId });
 
         var result = await _handler.HandleAsync(Cmd());
 
@@ -101,14 +105,39 @@ public class GerarNfseComissaoMensalHandlerTests
     }
 
     [Fact]
+    public async Task CorridaUniqueViolation_PulaEContinuaLote()
+    {
+        var t1 = Guid.NewGuid();
+        var t2 = Guid.NewGuid();
+        SetupLote(new ComissaoTreinadorPeriodo(t1, 690m), new ComissaoTreinadorPeriodo(t2, 500m));
+        _notaRepo.Setup(r => r.ListarTreinadoresComComissaoAsync(It.IsAny<IReadOnlyCollection<Guid>>(), Inicio, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HashSet<Guid>());
+        var violacao = new InvalidOperationException("unique");
+        _unitOfWork.SetupSequence(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(violacao)
+            .Returns(Task.CompletedTask);
+        _dbErrorInspector.Setup(i => i.EhViolacaoDeUnicidade(violacao)).Returns(true);
+
+        var result = await _handler.HandleAsync(Cmd());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Geradas.Should().Be(1);
+        result.Value.Puladas.Should().Be(1);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _unitOfWork.Verify(u => u.DescartarAlteracoesPendentes(), Times.Once);
+    }
+
+    [Fact]
     public async Task FeeZeroOuNegativo_Ignora()
     {
         SetupLote(new ComissaoTreinadorPeriodo(Guid.NewGuid(), 0m));
+        _notaRepo.Setup(r => r.ListarTreinadoresComComissaoAsync(It.IsAny<IReadOnlyCollection<Guid>>(), Inicio, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HashSet<Guid>());
 
         var result = await _handler.HandleAsync(Cmd());
 
         result.Value.Geradas.Should().Be(0);
-        _notaRepo.Verify(r => r.ExisteComissaoAsync(It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Never);
+        _notaRepo.Verify(r => r.AdicionarAsync(It.IsAny<NotaFiscal>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

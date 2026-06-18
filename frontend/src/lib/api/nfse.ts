@@ -91,14 +91,14 @@ export const nfseApi = {
   salvarDadosFiscais(payload: DadosFiscaisPayload) {
     return apiClient.put<DadosFiscaisResponse>("/treinador/dados-fiscais", payload);
   },
-  listNotasTreinador(params?: { aposId?: string; limite?: number }) {
-    return apiClient.get<ListarNotasFiscaisResponse>("/treinador/notas-fiscais", { params });
+  listNotasTreinador(params?: { aposId?: string; limite?: number }, signal?: AbortSignal) {
+    return apiClient.get<ListarNotasFiscaisResponse>("/treinador/notas-fiscais", { params, signal });
   },
   getDanfse(notaFiscalId: string) {
     return apiClient.get<{ danfseRef: string }>(`/treinador/notas-fiscais/${notaFiscalId}/danfse`);
   },
-  listNotasAdmin(params?: { status?: NotaFiscalStatus; treinadorId?: string; aposId?: string; limite?: number }) {
-    return apiClient.get<ListarNotasFiscaisAdminResponse>("/admin/notas-fiscais", { params });
+  listNotasAdmin(params?: { status?: NotaFiscalStatus; treinadorId?: string; aposId?: string; limite?: number }, signal?: AbortSignal) {
+    return apiClient.get<ListarNotasFiscaisAdminResponse>("/admin/notas-fiscais", { params, signal });
   },
   reprocessarNota(notaFiscalId: string) {
     return apiClient.post(`/admin/notas-fiscais/${notaFiscalId}/reprocessar`);

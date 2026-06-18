@@ -49,6 +49,8 @@ public class NotaFiscalConfiguration : IEntityTypeConfiguration<NotaFiscal>
         builder.Property(n => n.DanfseRef).HasMaxLength(500);
         builder.Property(n => n.CodigoErro).HasMaxLength(100);
         builder.Property(n => n.MotivoErro).HasMaxLength(2000);
+        builder.Property(n => n.CancelamentoPendentePreEmissao).IsRequired().HasDefaultValue(false);
+        builder.Property(n => n.MotivoCancelamentoPendente).HasMaxLength(500);
 
         builder.Property(n => n.CreatedAt).IsRequired();
         builder.Property(n => n.UpdatedAt);

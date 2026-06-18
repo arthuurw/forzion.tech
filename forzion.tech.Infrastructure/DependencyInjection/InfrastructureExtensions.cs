@@ -1,4 +1,3 @@
-using System.Security.Cryptography.X509Certificates;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
@@ -166,13 +165,12 @@ public static class InfrastructureExtensions
 
         if (configuration.GetValue<bool>("Nfse:Habilitado"))
         {
+            services.AddSingleton<NfseMtlsCertificate>();
             services.AddHttpClient("nfse", client => client.Timeout = TimeSpan.FromSeconds(30))
                 .ConfigurePrimaryHttpMessageHandler(sp =>
                 {
-                    var s = sp.GetRequiredService<IOptions<NfseSettings>>().Value;
                     var handler = new HttpClientHandler();
-                    handler.ClientCertificates.Add(
-                        new X509Certificate2(s.CertificadoPath, s.CertificadoSenha, X509KeyStorageFlags.EphemeralKeySet));
+                    handler.ClientCertificates.Add(sp.GetRequiredService<NfseMtlsCertificate>().Certificado);
                     return handler;
                 });
             services.AddScoped<IEmissorNfseService>(sp =>

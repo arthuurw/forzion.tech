@@ -8,13 +8,14 @@ using System.Text.Json;
 using System.Xml;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace forzion.tech.Infrastructure.Services;
 
-public class EmissorNfseNacionalService : IEmissorNfseService
+public class EmissorNfseNacionalService : IEmissorNfseService, IDisposable
 {
     private const string Namespace = "http://www.sped.fazenda.gov.br/nfse";
     private const string VersaoLayout = "1.01";
@@ -44,6 +45,18 @@ public class EmissorNfseNacionalService : IEmissorNfseService
     protected virtual X509Certificate2 CarregarCertificadoAssinatura() =>
         new(_settings.CertificadoPath, _settings.CertificadoSenha, X509KeyStorageFlags.EphemeralKeySet);
 
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing && _certificado.IsValueCreated)
+            _certificado.Value.Dispose();
+    }
+
     public async Task<NfseResultado> EmitirAsync(DpsInput input, CancellationToken cancellationToken = default)
     {
         var dpsXmlGZipB64 = MontarAssinarCompactar(input);
@@ -54,7 +67,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService
         using var resposta = await _httpClient.PostAsync(Endpoint("nfse"), content, cancellationToken).ConfigureAwait(false);
         var corpo = await resposta.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
-        if ((int)resposta.StatusCode >= 500)
+        if (EhTransiente(resposta.StatusCode))
         {
             _logger.LogError("Falha {Status} ao transmitir DPS {NumeroDps}.", (int)resposta.StatusCode, input.NumeroDpsEstavel);
             throw new HttpRequestException($"Sistema Nacional NFS-e respondeu {(int)resposta.StatusCode}.");
@@ -83,7 +96,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService
             return new NfseStatus(NfseSituacao.NaoEncontrada, null, null, null, null, null);
         }
 
-        if ((int)resposta.StatusCode >= 500)
+        if (EhTransiente(resposta.StatusCode))
         {
             throw new HttpRequestException($"Sistema Nacional NFS-e respondeu {(int)resposta.StatusCode}.");
         }
@@ -112,7 +125,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService
             .ConfigureAwait(false);
         var corpo = await resposta.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
-        if ((int)resposta.StatusCode >= 500)
+        if (EhTransiente(resposta.StatusCode))
         {
             _logger.LogError("Falha {Status} ao cancelar NFS-e {ChaveAcesso}.", (int)resposta.StatusCode, chaveAcesso);
             throw new HttpRequestException($"Sistema Nacional NFS-e respondeu {(int)resposta.StatusCode}.");
@@ -153,15 +166,15 @@ public class EmissorNfseNacionalService : IEmissorNfseService
         raiz.SetAttribute("versao", VersaoLayout);
         doc.AppendChild(raiz);
 
-        idInfPedReg = $"PRE{SoDigitos(chaveAcesso)}{CodigoEventoCancelamento}001";
+        idInfPedReg = $"PRE{Digitos.Apenas(chaveAcesso)}{CodigoEventoCancelamento}001";
         var inf = G("infPedReg");
         inf.SetAttribute("Id", idInfPedReg);
         raiz.AppendChild(inf);
 
         inf.AppendChild(E("tpAmb", _settings.Ambiente == NfseAmbiente.Producao ? "1" : "2"));
         inf.AppendChild(E("verAplic", VersaoAplicativo));
-        inf.AppendChild(E("dhEvento", _timeProvider.GetUtcNow().ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture)));
-        inf.AppendChild(E("CNPJAutor", SoDigitos(_settings.CnpjPrestador)));
+        inf.AppendChild(E("dhEvento", new DateTimeOffset(_timeProvider.GetUtcNow().UtcDateTime, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(-3)).ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture)));
+        inf.AppendChild(E("CNPJAutor", Digitos.Apenas(_settings.CnpjPrestador)));
         inf.AppendChild(E("chNFSe", chaveAcesso));
         inf.AppendChild(E("nPedRegEvento", "1"));
 
@@ -204,7 +217,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService
         raiz.AppendChild(inf);
 
         inf.AppendChild(E("tpAmb", _settings.Ambiente == NfseAmbiente.Producao ? "1" : "2"));
-        inf.AppendChild(E("dhEmi", _timeProvider.GetUtcNow().ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture)));
+        inf.AppendChild(E("dhEmi", new DateTimeOffset(_timeProvider.GetUtcNow().UtcDateTime, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(-3)).ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture)));
         inf.AppendChild(E("verAplic", VersaoAplicativo));
         inf.AppendChild(E("serie", SerieDps()));
         inf.AppendChild(E("nDPS", NumeroDps(input)));
@@ -213,7 +226,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService
         inf.AppendChild(E("cLocEmi", input.Prestador.CodigoMunicipioIbge));
 
         var prest = G("prest");
-        prest.AppendChild(E("CNPJ", SoDigitos(input.Prestador.Cnpj)));
+        prest.AppendChild(E("CNPJ", Digitos.Apenas(input.Prestador.Cnpj)));
         if (!string.IsNullOrWhiteSpace(input.Prestador.InscricaoMunicipal))
         {
             prest.AppendChild(E("IM", input.Prestador.InscricaoMunicipal));
@@ -243,8 +256,8 @@ public class EmissorNfseNacionalService : IEmissorNfseService
         valores.AppendChild(vServPrest);
         var trib = G("trib");
         var tribMun = G("tribMun");
-        tribMun.AppendChild(E("tribISSQN", "1"));
-        tribMun.AppendChild(E("tpRetISSQN", "1"));
+        tribMun.AppendChild(E("tribISSQN", _settings.TribISSQN));
+        tribMun.AppendChild(E("tpRetISSQN", _settings.TpRetISSQN));
         tribMun.AppendChild(E("pAliq", input.Aliquota.ToString("0.00", CultureInfo.InvariantCulture)));
         trib.AppendChild(tribMun);
         var totTrib = G("totTrib");
@@ -260,7 +273,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService
     {
         var toma = g("toma");
         var tagDoc = tomador.TipoDocumento == TipoDocumentoFiscal.Cnpj ? "CNPJ" : "CPF";
-        toma.AppendChild(e(tagDoc, SoDigitos(tomador.Documento)));
+        toma.AppendChild(e(tagDoc, Digitos.Apenas(tomador.Documento)));
         if (!string.IsNullOrWhiteSpace(tomador.InscricaoMunicipal))
         {
             toma.AppendChild(e("IM", tomador.InscricaoMunicipal));
@@ -271,7 +284,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService
         var end = g("end");
         var endNac = g("endNac");
         endNac.AppendChild(e("cMun", tomador.Endereco.CodigoMunicipioIbge));
-        endNac.AppendChild(e("CEP", SoDigitos(tomador.Endereco.Cep)));
+        endNac.AppendChild(e("CEP", Digitos.Apenas(tomador.Endereco.Cep)));
         end.AppendChild(endNac);
         end.AppendChild(e("xLgr", tomador.Endereco.Logradouro));
         end.AppendChild(e("nro", tomador.Endereco.Numero));
@@ -322,8 +335,8 @@ public class EmissorNfseNacionalService : IEmissorNfseService
 
     private string MontarId(DpsInput input)
     {
-        var cMun = SoDigitos(input.Prestador.CodigoMunicipioIbge).PadLeft(7, '0');
-        var inscFed = SoDigitos(input.Prestador.Cnpj).PadLeft(14, '0');
+        var cMun = Digitos.Apenas(input.Prestador.CodigoMunicipioIbge).PadLeft(7, '0');
+        var inscFed = Digitos.Apenas(input.Prestador.Cnpj).PadLeft(14, '0');
         var serie = SerieDps().PadLeft(5, '0');
         var numero = NumeroDps(input).PadLeft(15, '0');
         return $"DPS{cMun}2{inscFed}{serie}{numero}";
@@ -331,19 +344,19 @@ public class EmissorNfseNacionalService : IEmissorNfseService
 
     private string SerieDps()
     {
-        var serie = SoDigitos(_settings.SerieDps).TrimStart('0');
+        var serie = Digitos.Apenas(_settings.SerieDps).TrimStart('0');
         return serie.Length == 0 ? "1" : serie;
     }
 
     private static string NumeroDps(DpsInput input)
     {
-        var numero = SoDigitos(input.NumeroDpsEstavel).TrimStart('0');
+        var numero = Digitos.Apenas(input.NumeroDpsEstavel).TrimStart('0');
         return numero.Length == 0 ? "1" : numero;
     }
 
     private static string CodigoTributacaoNacional(string codigoServico)
     {
-        var digitos = SoDigitos(codigoServico);
+        var digitos = Digitos.Apenas(codigoServico);
         return digitos.Length >= 6 ? digitos[..6] : digitos.PadRight(6, '0');
     }
 
@@ -354,8 +367,8 @@ public class EmissorNfseNacionalService : IEmissorNfseService
         _ => "1",
     };
 
-    private static string SoDigitos(string? valor) =>
-        valor is null ? string.Empty : new string(valor.Where(char.IsDigit).ToArray());
+    private static bool EhTransiente(HttpStatusCode status) =>
+        (int)status >= 500 || status is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests;
 
     private static (string? Chave, string? Numero, DateTime? Data, string? Danfse) LerEmissao(string corpo)
     {

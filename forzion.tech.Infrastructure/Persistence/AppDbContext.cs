@@ -85,6 +85,8 @@ public class AppDbContext(
             await eventDispatcher.DispatchAsync(domainEvents, cancellationToken).ConfigureAwait(false);
     }
 
+    public void DescartarAlteracoesPendentes() => ChangeTracker.Clear();
+
     private static OutboxEfeito CriarEfeitoDuravel(IDomainEvent evento, OutboxDurabilityRegistry registry)
     {
         // tipo = evt:<FullName> → o worker resolve o tipo CLR pelo registry e desserializa.
