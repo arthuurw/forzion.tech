@@ -13,7 +13,16 @@ jobs:
   gerar:
     name: Gerar NFS-e mensal de comissão (mês anterior)
     runs-on: ubuntu-latest
+    environment: homolog
     steps:
+      - name: Conecta no tailnet
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          version: latest
+
       - name: Gerar NFS-e de comissão
         run: |
           curl -f -X POST \
