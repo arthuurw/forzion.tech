@@ -559,7 +559,7 @@ jobs:
             $DC restart nginx
 
             docker image prune -f
-            docker builder prune -f
+            docker builder prune -f --keep-storage 20g
 
             echo "Deploy homolog OK -- $(date)"
 
