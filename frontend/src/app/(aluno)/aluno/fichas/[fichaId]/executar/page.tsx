@@ -148,7 +148,7 @@ export default function ExecutarFichaPage() {
       const permanent = status === 400 || status === 403 || status === 404 || status === 422;
       if (permanent) {
         if (status === 404) setError("Ficha não encontrada.");
-        else if (status === 422) setError(message ?? "Dados inválidos para registrar o treino.");
+        else if (status === 422 || status === 400) setError(message ?? "Dados inválidos para registrar o treino.");
         else if (status === 403) setError("Você não tem um vínculo ativo. Não é possível registrar novos treinos.");
         else setError("Erro ao registrar treino. Tente novamente.");
       } else {

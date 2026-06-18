@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TreinoExercicioResponse } from "@/types";
 import { initExecData, type SetState } from "@/lib/execucao/execData";
+import { safeGet, safeRemove, safeSet } from "@/lib/storage/safeStorage";
 
 const DRAFT_VERSION = 1;
 const TTL_MS = 48 * 60 * 60 * 1000;
@@ -54,33 +55,6 @@ function genId(): string {
   });
 }
 
-function safeGet(key: string): string | null {
-  try {
-    if (typeof localStorage === "undefined") return null;
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function safeSet(key: string, value: string): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    localStorage.setItem(key, value);
-  } catch {
-    // quota cheia / Safari privado → no-op (EXOFF-06)
-  }
-}
-
-function safeRemove(key: string): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    localStorage.removeItem(key);
-  } catch {
-    // no-op
-  }
-}
-
 function readPayload(key: string): DraftPayload | null {
   const raw = safeGet(key);
   if (!raw) return null;
@@ -98,15 +72,15 @@ export function useExecucaoDraft(alunoId: string, treinoId: string): UseExecucao
   const key = storageKey(alunoId, treinoId);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [idempotencyKey, setIdempotencyKey] = useState<string>(() => {
-    const existing = readPayload(key);
-    return existing?.idempotencyKey ?? genId();
-  });
-  const [hasDraft, setHasDraft] = useState<boolean>(() => readPayload(key) !== null);
-  const [draftMeta, setDraftMeta] = useState<{ updatedAt: number } | null>(() => {
-    const existing = readPayload(key);
-    return existing ? { updatedAt: existing.updatedAt } : null;
-  });
+  const [initial] = useState<DraftPayload | null>(() => readPayload(key));
+
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(
+    () => initial?.idempotencyKey ?? genId(),
+  );
+  const [draftMeta, setDraftMeta] = useState<{ updatedAt: number } | null>(() =>
+    initial ? { updatedAt: initial.updatedAt } : null,
+  );
+  const hasDraft = draftMeta !== null;
 
   useEffect(() => {
     const expired = safeGet(key) !== null && readPayload(key) === null;
@@ -119,7 +93,6 @@ export function useExecucaoDraft(alunoId: string, treinoId: string): UseExecucao
       timer.current = null;
     }
     safeRemove(key);
-    setHasDraft(false);
     setDraftMeta(null);
     setIdempotencyKey(genId());
   }, [key]);
@@ -137,7 +110,6 @@ export function useExecucaoDraft(alunoId: string, treinoId: string): UseExecucao
           ...state,
         };
         safeSet(key, JSON.stringify(payload));
-        setHasDraft(true);
         setDraftMeta({ updatedAt });
       }, AUTOSAVE_DEBOUNCE_MS);
     },

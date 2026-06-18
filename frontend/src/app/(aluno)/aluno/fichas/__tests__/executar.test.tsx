@@ -161,6 +161,28 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     expect(await screen.findByText(/não tem um vínculo ativo/i)).toBeInTheDocument();
   });
 
+  it("registro inválido (400) exibe a mensagem do servidor, não o genérico", async () => {
+    respondFicha();
+    server.use(
+      http.post("*/aluno/execucoes", () =>
+        HttpResponse.json(
+          { detail: "A observação deve ter no máximo 500 caracteres." },
+          { status: 400 },
+        ),
+      ),
+    );
+    render(<ExecutarFichaPage />);
+
+    await screen.findByText("Supino");
+    fireEvent.click(screen.getByRole("button", { name: /Finalizar treino/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Confirmar registro/ }));
+
+    expect(
+      await screen.findByText("A observação deve ter no máximo 500 caracteres."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tente novamente/i)).not.toBeInTheDocument();
+  });
+
   it("draft existente exibe banner de restauração e Continuar aplica o estado salvo (EXOFF-02)", async () => {
     seedDraft({ "ex-1": [{ reps: "99", carga: "50" }] });
     respondFicha();
