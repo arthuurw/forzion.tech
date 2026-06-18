@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatarBRL, formatarData, formatarSeries, formatarTelefone, getWeekLabel, periodoParaDatas } from "@/lib/utils/formatting";
+import { formatarBRL, formatarData, formatarDataHora, formatarSeries, formatarTelefone, getWeekLabel, periodoParaDatas } from "@/lib/utils/formatting";
 import type { SerieConfigResponse } from "@/types";
 
 describe("formatarBRL", () => {
@@ -85,6 +85,20 @@ describe("formatarSeries", () => {
       makeSerie({ serieConfigId: "s2", quantidade: 4, repeticoesMin: 12, repeticoesMax: 15, ordem: 2 }),
     ];
     expect(formatarSeries(series)).toBe("3×10 / 4×12–15");
+  });
+});
+
+describe("formatarDataHora", () => {
+  it("ISO válido → data no locale pt-BR", () => {
+    expect(formatarDataHora("2025-03-15T10:00:00Z")).toMatch(/15\/03\/2025/);
+  });
+
+  it("undefined → —", () => {
+    expect(formatarDataHora(undefined)).toBe("—");
+  });
+
+  it("null → —", () => {
+    expect(formatarDataHora(null)).toBe("—");
   });
 });
 

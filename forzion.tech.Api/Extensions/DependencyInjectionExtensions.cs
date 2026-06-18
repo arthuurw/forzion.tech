@@ -88,6 +88,7 @@ using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarMinhaAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
+using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
@@ -370,6 +371,14 @@ public static class DependencyInjectionExtensions
         services.AddScoped<CancelarMinhaAssinaturaAlunoHandler>();
         services.AddScoped<ObterAssinaturaAlunoHandler>();
         services.AddScoped<GerarCobrancaMensalHandler>();
+        services.AddScoped<GerarNfseComissaoMensalHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Treinadores.DadosFiscais.DefinirDadosFiscaisTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Treinadores.DadosFiscais.ObterDadosFiscaisTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Nfse.ListarNotasFiscaisTreinador.ListarNotasFiscaisTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Nfse.ObterDanfseTreinador.ObterDanfseTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Admin.NotasFiscais.ListarNotasFiscaisAdminHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Admin.NotasFiscais.ReprocessarNotaFiscalHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Nfse.ReconciliarNfse.ReconciliarNfseHandler>();
         services.AddScoped<ObterStatusPagamentoHandler>();
         services.AddScoped<ListarPagamentosAssinaturaAlunoHandler>();
         services.AddScoped<ProcessarWebhookStripeHandler>();

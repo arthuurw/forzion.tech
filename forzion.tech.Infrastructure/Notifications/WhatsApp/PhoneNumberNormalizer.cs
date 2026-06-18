@@ -1,3 +1,5 @@
+using forzion.tech.Domain.Shared;
+
 namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 
 /// <summary>
@@ -11,7 +13,7 @@ public static class PhoneNumberNormalizer
         if (string.IsNullOrWhiteSpace(phone))
             return null;
 
-        var digitos = new string(phone.Where(char.IsDigit).ToArray());
+        var digitos = Digitos.Apenas(phone);
         if (digitos.Length == 0)
             return null;
 

@@ -48,6 +48,7 @@ public class AppDbContext(
     public DbSet<ErrorLogEntry> ErrorLogs => Set<ErrorLogEntry>();
     public DbSet<OutboxEfeito> OutboxEfeitos => Set<OutboxEfeito>();
     public DbSet<MensagemSuporte> MensagensSuporte => Set<MensagemSuporte>();
+    public DbSet<NotaFiscal> NotasFiscais => Set<NotaFiscal>();
     public DbSet<ContaMfa> ContasMfa => Set<ContaMfa>();
     public DbSet<MfaRecoveryCode> MfaRecoveryCodes => Set<MfaRecoveryCode>();
     public DbSet<MfaChallenge> MfaChallenges => Set<MfaChallenge>();
@@ -83,6 +84,8 @@ public class AppDbContext(
         if (domainEvents.Count > 0 && eventDispatcher is not null)
             await eventDispatcher.DispatchAsync(domainEvents, cancellationToken).ConfigureAwait(false);
     }
+
+    public void DescartarAlteracoesPendentes() => ChangeTracker.Clear();
 
     private static OutboxEfeito CriarEfeitoDuravel(IDomainEvent evento, OutboxDurabilityRegistry registry)
     {

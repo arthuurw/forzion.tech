@@ -1,0 +1,50 @@
+name: Reconciliar NFS-e
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  reconciliar:
+    name: Reconciliar NFS-e não-terminais com o gov
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reconciliar NFS-e
+        run: |
+          curl -f -X POST \
+            -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            "https://${{ secrets.HOMOLOG_HOST }}/internal/reconciliar-nfse"
+
+      - name: Notificar falha via issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `[reconciliar-nfse] Falha em ${new Date().toISOString().slice(0, 10)}`;
+            const body = [
+              '⚠️ Workflow **Reconciliar NFS-e** falhou.',
+              '',
+              `**Run:** ${runUrl}`,
+              `**Trigger:** ${context.eventName} (${context.ref})`,
+              '',
+              'Sem reconciliação = NFS-e não-terminais podem divergir do estado real no gov (cancelamento confirmado, emissão tardia).',
+              '',
+              'Investigar:',
+              '1. Endpoint `/internal/reconciliar-nfse` respondeu?',
+              '2. `INTERNAL_API_KEY` da VM bate com secret do environment?',
+              '3. Backend logs (`docker compose logs backend --tail 200`)',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ops', 'reconciliar-nfse-failed']
+            });

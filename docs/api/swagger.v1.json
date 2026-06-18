@@ -1313,6 +1313,70 @@
         }
       }
     },
+    "/admin/notas-fiscais": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Lista notas fiscais do sistema com filtros (status, treinador) e paginação keyset",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListarNotasFiscaisAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notas-fiscais/{id}/reprocessar": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reenfileira a emissão de uma nota fiscal em erro",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/health-report/config": {
       "get": {
         "tags": [
@@ -3659,6 +3723,83 @@
         }
       }
     },
+    "/internal/gerar-nfse-comissao": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Gera NFS-e mensal de comissão marketplace (mês anterior por padrão) — requer X-Internal-Key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GerarNfseComissaoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/reconciliar-nfse": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Reconcilia NFS-e não-terminais consultando o gov (status divergente) — requer X-Internal-Key",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliarNfseResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/aluno/pagamentos/{pagamentoId}": {
       "get": {
         "tags": [
@@ -5075,6 +5216,143 @@
           },
           "422": {
             "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/dados-fiscais": {
+      "put": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Salva os dados fiscais do treinador (tomador) usados na emissão das NFS-e",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DadosFiscaisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DadosFiscaisResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Lê os dados fiscais do treinador autenticado",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DadosFiscaisResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/notas-fiscais": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Lista as notas fiscais do treinador autenticado (keyset)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListarNotasFiscaisResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/treinador/notas-fiscais/{id}/danfse": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Retorna a referência (URL) da DANFSe de uma nota fiscal do treinador",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6569,6 +6847,79 @@
         },
         "additionalProperties": false
       },
+      "DadosFiscaisRequest": {
+        "type": "object",
+        "properties": {
+          "tipoDocumento": {
+            "$ref": "#/components/schemas/TipoDocumentoFiscal"
+          },
+          "documento": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "type": "string",
+            "nullable": true
+          },
+          "logradouro": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "codigoMunicipioIbge": {
+            "type": "string",
+            "nullable": true
+          },
+          "uf": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "inscricaoMunicipal": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DadosFiscaisResponse": {
+        "type": "object",
+        "properties": {
+          "tipoDocumento": {
+            "$ref": "#/components/schemas/TipoDocumentoFiscal"
+          },
+          "documento": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "type": "string",
+            "nullable": true
+          },
+          "inscricaoMunicipal": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "$ref": "#/components/schemas/EnderecoFiscalResponse"
+          }
+        },
+        "additionalProperties": false
+      },
       "DashboardStatsResponse": {
         "type": "object",
         "properties": {
@@ -6616,6 +6967,40 @@
             "items": {
               "$ref": "#/components/schemas/SerieConfigRequest"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EnderecoFiscalResponse": {
+        "type": "object",
+        "properties": {
+          "logradouro": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "codigoMunicipioIbge": {
+            "type": "string",
+            "nullable": true
+          },
+          "uf": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -6826,6 +7211,22 @@
         "properties": {
           "email": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GerarNfseComissaoRequest": {
+        "type": "object",
+        "properties": {
+          "ano": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "mes": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -7121,6 +7522,42 @@
         },
         "additionalProperties": false
       },
+      "ListarNotasFiscaisAdminResponse": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotaFiscalAdminResponse"
+            },
+            "nullable": true
+          },
+          "proximoCursor": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ListarNotasFiscaisResponse": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotaFiscalResumoResponse"
+            },
+            "nullable": true
+          },
+          "proximoCursor": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ListarTreinadoresResponse": {
         "type": "object",
         "properties": {
@@ -7329,6 +7766,124 @@
           1,
           2,
           3
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "NotaFiscalAdminResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "treinadorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoNotaFiscal"
+          },
+          "status": {
+            "$ref": "#/components/schemas/NotaFiscalStatus"
+          },
+          "valor": {
+            "type": "number",
+            "format": "double"
+          },
+          "competenciaInicio": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "competenciaFim": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "numeroNfse": {
+            "type": "string",
+            "nullable": true
+          },
+          "chaveAcesso": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataEmissao": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "codigoErro": {
+            "type": "string",
+            "nullable": true
+          },
+          "motivoErro": {
+            "type": "string",
+            "nullable": true
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotaFiscalResumoResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoNotaFiscal"
+          },
+          "status": {
+            "$ref": "#/components/schemas/NotaFiscalStatus"
+          },
+          "valor": {
+            "type": "number",
+            "format": "double"
+          },
+          "competenciaInicio": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "competenciaFim": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "numeroNfse": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataEmissao": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "temDanfse": {
+            "type": "boolean"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotaFiscalStatus": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
         ],
         "type": "integer",
         "format": "int32"
@@ -7618,6 +8173,28 @@
           "pacoteId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReconciliarNfseResponse": {
+        "type": "object",
+        "properties": {
+          "consultadas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "atualizadas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "semAlteracao": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "erros": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -8044,6 +8621,22 @@
           0,
           1,
           2
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "TipoDocumentoFiscal": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "TipoNotaFiscal": {
+        "enum": [
+          0,
+          1
         ],
         "type": "integer",
         "format": "int32"

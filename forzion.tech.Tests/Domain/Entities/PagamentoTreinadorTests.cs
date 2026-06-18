@@ -140,6 +140,10 @@ public class PagamentoTreinadorTests
         p.MarcarPago(Agora);
         p.MarcarEstornado(Agora).IsSuccess.Should().BeTrue();
         p.Status.Should().Be(PagamentoStatus.Estornado);
+        var evt = p.DomainEvents.OfType<PagamentoTreinadorEstornadoEvent>().Should().ContainSingle().Subject;
+        evt.PagamentoTreinadorId.Should().Be(p.Id);
+        evt.TreinadorId.Should().Be(p.TreinadorId);
+        evt.Valor.Should().Be(p.Valor);
     }
 
     [Fact]
@@ -166,6 +170,10 @@ public class PagamentoTreinadorTests
         p.MarcarPago(Agora);
         p.MarcarEmDisputa(Agora).IsSuccess.Should().BeTrue();
         p.Status.Should().Be(PagamentoStatus.EmDisputa);
+        var evt = p.DomainEvents.OfType<PagamentoTreinadorEmDisputaEvent>().Should().ContainSingle().Subject;
+        evt.PagamentoTreinadorId.Should().Be(p.Id);
+        evt.TreinadorId.Should().Be(p.TreinadorId);
+        evt.Valor.Should().Be(p.Valor);
     }
 
     [Fact]

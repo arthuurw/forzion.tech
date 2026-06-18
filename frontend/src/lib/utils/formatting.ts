@@ -35,6 +35,11 @@ export function formatarSeries(series: SerieConfigResponse[]): string {
     .join(" / ");
 }
 
+export function formatarDataHora(iso?: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-BR");
+}
+
 export function formatarData(iso: string): string {
   const [, m, day] = iso.split("T")[0].split("-");
   return `${day}/${m}`;
