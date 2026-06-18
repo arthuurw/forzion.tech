@@ -182,7 +182,7 @@ public static class InfrastructureExtensions
         }
         else
         {
-            services.AddScoped<IEmissorNfseService>(sp =>
+            services.AddSingleton<IEmissorNfseService>(sp =>
                 new NullEmissorNfseService(sp.GetRequiredService<ILogger<NullEmissorNfseService>>()));
         }
 
