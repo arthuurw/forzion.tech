@@ -55,7 +55,7 @@ src/
     pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
     treinador/         — componentes específicos do treinador
     ui/                — componentes compartilhados (ErrorBoundary, AlertBanner, LoadingSpinner, DataList, etc.)
-  hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent
+  hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent, useCursorList, useExecucaoDraft, useExecucaoRetryQueue
   lib/
     api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
     auth/              — context.tsx, jwt.ts, helpers.ts, buildPlaceholder.ts
@@ -279,6 +279,15 @@ Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 - `components/aluno/SemVinculoAtivoBanner.tsx`: lê `GET /aluno/vinculo` (`alunoApi.getMeuVinculo`). Estado `ativo` (oculto) | `pendente` (aguardando aprovação) | `sem-vinculo`. Mensagem: histórico consultável, registro de novos treinos bloqueado. Renderizado no dashboard (`(aluno)/aluno/page.tsx`) e no histórico (`(aluno)/aluno/historico/page.tsx`).
 - Execução (`(aluno)/aluno/fichas/[fichaId]/executar/page.tsx`): trata `403` do registro com mensagem clara ("Você não tem um treinador ativo. Não é possível registrar novos treinos.").
 
+### Execução de treino resiliente offline (draft + retry idempotente)
+Sessão de execução não perde dados em reload/queda de rede; finalização sobrevive offline sem duplicar. SEM Service Worker/PWA — só `localStorage` + idempotência server-side ([specification-backend], [specification-concurrency §4]).
+- **`hooks/useExecucaoDraft.ts`** — autosave/restore/reconcile do rascunho vivo. Chave `exec-draft:{alunoId}:{treinoId}` (NOTA: `treinoId` aqui = `fichaId` da rota = `treinoAlunoId`, escolhido por estar disponível no 1º render e estável no ciclo de load; o hook fica incondicional). Payload versionado `v:1` { idempotencyKey, treinoExercicioIds, execData, obsData, observacao, currentIndex, updatedAt }. `idempotencyKey` = `crypto.randomUUID()` (fallback RFC4122 manual em contexto inseguro), REUSADO entre reloads (mesma sessão → mesma key → dedup) e REGENERADO no `discard`. Autosave debounced 500ms; `restore()` lê sem aplicar (decisão do usuário); `reconcile(exercicios)` casa por `treinoExercicioId` (mantém set do draft, `initExecData` p/ exercício novo, dropa órfão, clampa currentIndex, filtra obsData) e sinaliza `reconciled`; TTL 48h (expirado → descarta + remove); JSON corrompido → descarta seguro.
+- **`hooks/useExecucaoRetryQueue.ts`** — fila de finalização offline em `exec-queue` (array de { idempotencyKey, payload, alunoId, treinoId, enqueuedAt, lastError? }). `enqueue`; `drain` reenvia em ordem via `alunoApi.criarExecucao(payload, { idempotencyKey })`: 2xx → remove + `onSuccess(treinoId)`; transitório (status null/offline ou ≥500) → MANTÉM e PARA (preserva ordem); permanente (4xx) → mantém com `lastError` e CONTINUA (sem loop infinito). Drain dispara no mount, no evento `window 'online'`, e manual. Idempotência server-side garante que reenvio/double-drain não duplica.
+- **Degradação graciosa (EXOFF-06)**: todo acesso a `localStorage`/`crypto` envolto em try/catch + guard `typeof ... === "undefined"` (SSR/Safari privado/quota) → no-op silencioso, a página NUNCA quebra; sem persistência apenas perde-se o draft/fila.
+- **Página executar** integra: autosave do state vivo; banner "Treino em andamento encontrado" (Continuar aplica reconcile + aviso `AlertBanner` se a ficha mudou / Descartar limpa); `handleSubmit` POST com `idempotencyKey` → sucesso limpa draft + tela "Sessão registrada"; offline/5xx → `enqueue` + draft limpo + tela "Sessão salva no aparelho / enviada ao reconectar"; permanente (400/403/404/422) mantém mensagem de erro existente (sem enfileirar falso-pendente).
+- **`components/aluno/ExecucaoPendenteBanner.tsx`** (montado no `(aluno)/layout.tsx`): usa `useExecucaoRetryQueue`; oculto quando fila vazia; mostra contagem (singular/plural) + botão "Tentar enviar agora" (dispara `drain`, rotula "Enviando…"/desabilita durante). `role="status"` (info não-bloqueante, contraste com o `role="alert"` do `AlunoInadimplenteBanner`).
+- **`lib/execucao/execData.ts`**: `initExecData` + tipo `SetState` extraídos da página p/ reuso pelo hook (módulo compartilhável).
+
 ### NFS-e (notas fiscais)
 Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/dadosFiscais.ts` (CPF/CNPJ por `tipoDocumento`, CEP, IBGE 7 dígitos, UF; máscara só na UI, payload envia dígitos crus). Enums NFS-e como string-literal no módulo (label/cor de status). Nav item "Notas fiscais" em treinador e admin (`ReceiptLongIcon`).
 - **Treinador** `(treinador)/treinador/dados-fiscais` — form RHF+Zod (tomador da NFS-e); carrega `GET /treinador/dados-fiscais` (null = nunca preenchido), salva `PUT`. `(treinador)/treinador/notas-fiscais` — lista keyset (`proximoCursor` → "Carregar mais"), download DANFSe (`GET .../danfse` → `window.open(danfseRef)`); só notas com `temDanfse`. Botão "Dados fiscais" no header.
@@ -295,7 +304,7 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 | Project | Env | Pool | Setup | Include |
 |---------|-----|------|-------|---------|
 | `unit` | node | threads | `src/test/setup/unit.ts` | `src/lib/**/*.test.ts`, `src/lib/**/*.property.test.ts`, `src/hooks/**/*.test.ts`, `src/hooks/**/*.property.test.ts`, `src/middleware.test.ts`, `src/middleware.signature.test.ts` (exclui: hooks RTL/DOM e excel/downloadBlob/admin.msw/auth-context que rodam em `integration`) |
-| `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/components/**/__tests__/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/utils/downloadBlob.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts`, hooks RTL: `useInactivity`, `useConsent`, `usePaginatedList`, `useCRUDDialog` |
+| `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/components/**/__tests__/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/utils/downloadBlob.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts`, hooks RTL: `useInactivity`, `useConsent`, `usePaginatedList`, `useCRUDDialog`, `useCursorList`, `useExecucaoDraft`, `useExecucaoRetryQueue` |
 | `api` | node | threads | `src/test/setup/api.ts` | `src/app/api/**/*.test.ts` |
 
 **Coverage (v8)**: thresholds por glob (l/b/f por camada) — canônico em [specification-tests] §8 (enforced em `vitest run --coverage`).
