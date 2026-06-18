@@ -1,8 +1,9 @@
 "use client";
 import { useEffect } from "react";
+import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
 import { Box, Typography, Button } from "@mui/material";
-import ErrorOutlineIcon from "@mui/icons-material/ReportProblem";
+import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 
 export interface RouteGroupErrorProps {
   error: Error & { digest?: string };
@@ -36,7 +37,7 @@ export default function RouteGroupError({
         textAlign: "center",
       }}
     >
-      <ErrorOutlineIcon sx={{ fontSize: 64, color: "error.main" }} />
+      <ReportProblemIcon sx={{ fontSize: 64, color: "error.main" }} />
       <Typography variant="h5" sx={{ fontWeight: 700 }}>
         Não foi possível carregar esta página
       </Typography>
@@ -47,7 +48,7 @@ export default function RouteGroupError({
         <Button variant="outlined" onClick={reset}>
           Tentar novamente
         </Button>
-        <Button variant="contained" href={homeHref}>
+        <Button variant="contained" component={Link} href={homeHref}>
           {homeLabel}
         </Button>
       </Box>

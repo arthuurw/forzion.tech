@@ -1,9 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Button, Typography } from "@mui/material";
 
 export default function CopiarPixButton({ codigo }: { codigo: string }) {
   const [status, setStatus] = useState<"idle" | "ok" | "erro">("idle");
+
+  useEffect(() => {
+    if (status === "idle") return;
+    const t = setTimeout(() => setStatus("idle"), 2500);
+    return () => clearTimeout(t);
+  }, [status]);
 
   const copiar = async () => {
     try {

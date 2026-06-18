@@ -14,7 +14,10 @@ const MENSAGENS: Record<string, string> = {
 };
 
 export function mapStripeError(error: Pick<StripeError, "code" | "decline_code">): string {
-  const chave = error.decline_code ?? error.code;
-  if (chave && MENSAGENS[chave]) return MENSAGENS[chave];
-  return FALLBACK;
+  const { code, decline_code } = error;
+  return (
+    (decline_code && MENSAGENS[decline_code]) ||
+    (code && MENSAGENS[code]) ||
+    FALLBACK
+  );
 }
