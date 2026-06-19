@@ -21,6 +21,7 @@ public class TrocarPlanoTreinadorHandlerTests
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
+    private readonly Mock<IDatabaseErrorInspector> _errorInspector = new();
     private readonly TrocarPlanoTreinadorHandler _handler;
 
     private sealed class NoopTransaction : ITransaction
@@ -36,11 +37,11 @@ public class TrocarPlanoTreinadorHandlerTests
         _transactionProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NoopTransaction());
         _stripeService.Setup(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PixResult);
 
         var criarPagamentoService = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
         _handler = new TrocarPlanoTreinadorHandler(
@@ -51,7 +52,7 @@ public class TrocarPlanoTreinadorHandlerTests
     }
 
     private CriarPagamentoComIntentService BuildService() =>
-        new(_unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+        new(_unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
     private static Treinador CriarTreinador(Guid? planoId = null)
@@ -95,7 +96,7 @@ public class TrocarPlanoTreinadorHandlerTests
         result.Value.PagamentoId.Should().NotBeNull();
         result.Value.ValorPagamento.Should().BeGreaterThan(0, "proração positiva com dias restantes no ciclo");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -117,7 +118,7 @@ public class TrocarPlanoTreinadorHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Tipo.Should().Be(TipoTrocaPlano.UpgradeImediato, "upgrade sem cobrança deve retornar UpgradeImediato, não Downgrade");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -144,7 +145,7 @@ public class TrocarPlanoTreinadorHandlerTests
         result.Value.Tipo.Should().Be(TipoTrocaPlano.Upgrade);
         pendenteA.Status.Should().Be(PagamentoStatus.Falhou, "pending para plano diferente deve ser descartado para evitar aplicação de plano errado via webhook tardio");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once, "novo intent criado para PlanoB");
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once, "novo intent criado para PlanoB");
     }
 
     [Fact]
@@ -193,7 +194,7 @@ public class TrocarPlanoTreinadorHandlerTests
         result.Value.PagamentoId.Should().BeNull("downgrade não gera pagamento");
         assinatura.PlanoPlataformaIdAgendado.Should().Be(planoNovo.Id);
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -350,7 +351,7 @@ public class TrocarPlanoTreinadorHandlerTests
 
         var cartaoResult = new CartaoPaymentResult("pi_cartao_troca", "secret_troca");
         _stripeService.Setup(s => s.CriarCartaoPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cartaoResult);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -366,9 +367,9 @@ public class TrocarPlanoTreinadorHandlerTests
         result.Value.ClientSecret.Should().Be("secret_troca");
         result.Value.PixQrCode.Should().BeNull();
         _stripeService.Verify(s => s.CriarCartaoPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -382,7 +383,7 @@ public class TrocarPlanoTreinadorHandlerTests
 
         var cartaoResult = new CartaoPaymentResult("pi_cartao_inadimplente", "secret_inadimplente");
         _stripeService.Setup(s => s.CriarCartaoPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cartaoResult);
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
@@ -397,7 +398,7 @@ public class TrocarPlanoTreinadorHandlerTests
         result.Value.Tipo.Should().Be(TipoTrocaPlano.InadimplenteRegularizacao);
         result.Value.ClientSecret.Should().Be("secret_inadimplente");
         _stripeService.Verify(s => s.CriarCartaoPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -423,7 +424,7 @@ public class TrocarPlanoTreinadorHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.PagamentoId.Should().Be(pendenteExistente.Id, "idempotência: reutiliza o intent em curso");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _pagamentoRepo.Verify(r => r.AdicionarAsync(It.IsAny<PagamentoTreinador>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -452,7 +453,7 @@ public class TrocarPlanoTreinadorHandlerTests
         result.Value.Tipo.Should().Be(TipoTrocaPlano.InadimplenteRegularizacao);
         result.Value.PagamentoId.Should().Be(pendenteExistente.Id);
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

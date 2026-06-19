@@ -17,4 +17,17 @@ public sealed class NpgsqlDatabaseErrorInspector : IDatabaseErrorInspector
 
         return pg?.SqlState == PostgresErrorCodes.UniqueViolation;
     }
+
+    public bool EhConflitoDeSerializacao(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        if (exception is DbUpdateConcurrencyException)
+            return true;
+
+        var pg = (exception as PostgresException)
+            ?? (exception as DbUpdateException)?.InnerException as PostgresException;
+
+        return pg?.SqlState is PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected;
+    }
 }

@@ -26,6 +26,7 @@ DOC PARA AGENTES. Armadilhas de PERFORMANCE no backend .NET/EF Core/PG que revie
 - **Async all-the-way** — `async`/`await` ponta-a-ponta; NUNCA `.Result`/`.Wait()`/`.GetAwaiter().GetResult()` (deadlock / thread-pool starvation). [disciplina — propor analyzer]
 - **`CancellationToken` propagado** — do endpoint Minimal API até a query EF (`ToListAsync(ct)`); request abortado pelo cliente não deve segurar conexão/CPU. [disciplina]
 - **Timeout explícito em I/O externo** (Stripe/Resend/WhatsApp via `HttpClient`) — sem timeout = thread presa indefinida se o provider pendurar. Efeitos externos garantidos vão por outbox ([specification-concurrency] §2), que isola a latência do provider do request do usuário.
+- **NUNCA chamar I/O externo com tx aberta** (PERF-01) — chamada HTTP (Stripe `Create PaymentIntent`) dentro de uma tx `Serializable` segura o lock pelo RTT do provider → serializa cobranças concorrentes e desperdiça conexão do pool. Mover o I/O p/ ANTES da tx; tx só persiste o resultado (curta). Idem-key determinística + retry de 40001 cobrem a corrida ([specification-concurrency] §1/§3, [specification-stripe §IDEMPOTÊNCIA DA COBRANÇA]). Padrão: `CriarPagamentoComIntentService`.
 
 ## 5. ÍNDICES
 - Coluna de filtro/join de query quente tem índice. FKs e UQ já indexadas (ver [specification-db] por tabela: `idx(conta_id)`, `idx(resend_message_id)`, `idx(status,proxima_tentativa)` no outbox, etc.). Migration que introduz query de filtro nova AVALIA índice — e atualiza [specification-db]. [gate parcial: revisão de migration]

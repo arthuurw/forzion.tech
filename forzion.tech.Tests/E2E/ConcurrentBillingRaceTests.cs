@@ -1,20 +1,3 @@
-// F12 (Fase 3 test remediation) — concorrência em GerarCobrancaMensal.
-//
-// Sessão anterior (commit 18c3adc) envolveu a leitura+inserção de pagamento
-// pendente numa transação serializable, mas o teste unit do handler usa um
-// NoopTransaction — NÃO prova isolamento real. Aqui spawnamos 2 tarefas
-// paralelas contra o MESMO assinaturaId via Postgres real (Testcontainers)
-// e validamos que:
-//   1) pelo menos uma tarefa retorna sucesso (idempotência ou criação inicial);
-//   2) nunca há mais de 1 pagamento pendente persistido pra mesma assinatura;
-//   3) se a 2a tarefa falhar, é com erro de serialização Postgres (40001),
-//      NÃO com violação de constraint ou estado inconsistente.
-//
-// Sem a transação serializable, a janela entre leitura ("não há pendente")
-// e inserção permitiria que ambas vissem null, ambas inserissem, e o índice
-// parcial único quebraria a 2a com FK/conflict tardio — exatamente o que
-// queríamos provar coberto.
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -24,11 +7,12 @@ using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
+using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 
 namespace forzion.tech.Tests.E2E;
 
@@ -45,10 +29,8 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
 
         var command = new GerarCobrancaMensalCommand(assinaturaId, treinadorId, MetodoPagamento.Pix);
 
-        // Barrier sincroniza início — sem isso, uma task pode terminar antes da
-        // outra começar e nunca disparar a race. Com barrier, ambas entram em
-        // BeginTransactionAsync praticamente juntas.
         using var startBarrier = new Barrier(participantCount: 2);
+        var intentsAntes = fixture.Stripe.PaymentIntentsCriados;
 
         Task<HandlerOutcome> Run() => Task.Run(async () =>
         {
@@ -70,54 +52,91 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
 
         var resultados = await Task.WhenAll(Run(), Run());
 
-        // Pelo menos uma sucede (idempotente ou criação inicial). Sem proteção,
-        // ambas falhariam tarde com violação de constraint OU ambas sucederiam
-        // com 2 pagamentos órfãos — ambos cenários quebrariam invariantes.
-        resultados.Count(r => r.Success).Should().BeGreaterThanOrEqualTo(1,
-            "pelo menos uma das chamadas paralelas deve produzir um pagamento. Falhas: {0}",
+        resultados.Should().OnlyContain(r => r.Success,
+            "com retry de 40001 ambas as chamadas concorrentes concluem (a perdedora reusa o pendente da vencedora). Falhas: {0}",
             string.Join(" || ", resultados.Where(r => !r.Success).Select(FormatFalha)));
 
-        // Falhas devem ser por race detectada (serialization failure 40001) —
-        // qualquer outra exception indica gap no design da transação.
-        foreach (var falha in resultados.Where(r => !r.Success && r.Exception is not null))
-        {
-            EhSerializationFailure(falha.Exception!).Should().BeTrue(
-                "única falha aceitável é serialization failure 40001; recebi: {0}", falha.Exception);
-        }
+        resultados.Select(r => r.PagamentoId).Distinct().Should().HaveCount(1,
+            "ambas retornam o MESMO pagamento (idempotência via re-uso do pendente)");
 
-        // Invariante final: 0 ou 1 pagamento pendente persistido pra assinatura.
-        // 2+ pendentes => proteção transacional falhou.
+        (fixture.Stripe.PaymentIntentsCriados - intentsAntes).Should().Be(1,
+            "idem-key determinística (mesma assinatura + bucket de minuto) ⇒ um único PaymentIntent no Stripe");
+
         using var queryScope = fixture.Services.CreateScope();
         var db = queryScope.ServiceProvider.GetRequiredService<AppDbContext>();
         var pendentes = await db.Pagamentos
             .Where(p => p.AssinaturaAlunoId == assinaturaId && p.Status == PagamentoStatus.Pendente)
             .CountAsync();
-        pendentes.Should().BeLessThanOrEqualTo(1, "no máximo 1 pagamento pendente por assinatura");
+        pendentes.Should().Be(1, "exatamente 1 pagamento pendente por assinatura");
+    }
 
-        var totalSucessos = resultados.Count(r => r.Success);
-        var idsRetornados = resultados.Where(r => r.Success).Select(r => r.PagamentoId).Distinct().Count();
-        if (totalSucessos == 2)
+    [Fact]
+    public async Task GerarCobrancaPlanoTreinador_DuasChamadasParalelas_NaoCriaDuplicidade()
+    {
+        var assinaturaId = await CriarAssinaturaTreinadorAtivaAsync();
+
+        var command = new GerarCobrancaPlanoTreinadorCommand(assinaturaId, MetodoPagamento.Pix);
+
+        using var startBarrier = new Barrier(participantCount: 2);
+        var intentsAntes = fixture.Stripe.PaymentIntentsCriados;
+
+        Task<HandlerOutcome> Run() => Task.Run(async () =>
         {
-            idsRetornados.Should().Be(1,
-                "ambas as chamadas que sucederam devem retornar o MESMO pagamento (idempotência via re-uso de pendente)");
-        }
+            startBarrier.SignalAndWait();
+            using var scope = fixture.Services.CreateScope();
+            var handler = scope.ServiceProvider.GetRequiredService<GerarCobrancaPlanoTreinadorHandler>();
+            try
+            {
+                var result = await handler.HandleAsync(command);
+                return new HandlerOutcome(Success: result.IsSuccess,
+                    PagamentoId: result.IsSuccess ? result.Value.PagamentoId : null,
+                    Exception: null);
+            }
+            catch (Exception ex)
+            {
+                return new HandlerOutcome(Success: false, PagamentoId: null, Exception: ex);
+            }
+        });
+
+        var resultados = await Task.WhenAll(Run(), Run());
+
+        resultados.Should().OnlyContain(r => r.Success,
+            "com retry de 40001 ambas as chamadas concorrentes concluem. Falhas: {0}",
+            string.Join(" || ", resultados.Where(r => !r.Success).Select(FormatFalha)));
+
+        resultados.Select(r => r.PagamentoId).Distinct().Should().HaveCount(1,
+            "ambas retornam o MESMO pagamento de renovação (idempotência via re-uso do pendente)");
+
+        (fixture.Stripe.PaymentIntentsCriados - intentsAntes).Should().Be(1,
+            "idem-key determinística (mesma assinatura + bucket de minuto) ⇒ um único PaymentIntent no Stripe");
+
+        using var queryScope = fixture.Services.CreateScope();
+        var db = queryScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var pendentes = await db.PagamentosTreinador
+            .Where(p => p.AssinaturaTreinadorId == assinaturaId && p.Status == PagamentoStatus.Pendente)
+            .CountAsync();
+        pendentes.Should().Be(1, "exatamente 1 pagamento pendente por assinatura de treinador");
+    }
+
+    private async Task<Guid> CriarAssinaturaTreinadorAtivaAsync()
+    {
+        var (treinadorId, _) = await TreinadorAprovadoComPlanoAsync();
+        var planoId = await ObterPlanoFreeIdAsync();
+
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var now = DateTime.UtcNow;
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, planoId, 50m, now).Value;
+        assinatura.Ativar(now);
+        db.AssinaturasTreinador.Add(assinatura);
+        await db.SaveChangesAsync();
+        return assinatura.Id;
     }
 
     private record HandlerOutcome(bool Success, Guid? PagamentoId, Exception? Exception);
 
     private static string FormatFalha(HandlerOutcome r) =>
         r.Exception?.GetType().Name + ": " + (r.Exception?.Message ?? "<sem exception>");
-
-    private static bool EhSerializationFailure(Exception ex)
-    {
-        for (var cur = ex; cur is not null; cur = cur.InnerException)
-        {
-            if (cur is PostgresException pg && pg.SqlState == "40001") return true;
-        }
-        return false;
-    }
-
-    // ─── Setup: cria treinador aprovado + onboarding + aluno + vinculo aprovado ─
 
     private async Task<(Guid assinaturaId, Guid treinadorId)> CriarAssinaturaProntaAsync()
     {

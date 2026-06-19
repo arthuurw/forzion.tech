@@ -6,4 +6,6 @@ namespace forzion.tech.Application.Interfaces;
 public interface IDatabaseErrorInspector
 {
     bool EhViolacaoDeUnicidade(Exception exception);
+
+    bool EhConflitoDeSerializacao(Exception exception);
 }
