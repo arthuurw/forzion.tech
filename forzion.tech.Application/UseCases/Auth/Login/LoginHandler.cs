@@ -23,6 +23,8 @@ public class LoginHandler(
 {
     private static readonly TimeSpan ValidadePendente = TimeSpan.FromMinutes(5);
 
+    private const string DummyHash = "$2b$12$dS9gNbdvAsTsWl5Yvp3y9OBLp.XVv2HakNs0S32YhNpTf7KOI46y6";
+
     public virtual Task<LoginResponse> HandleAsync(
         LoginCommand command,
         CancellationToken cancellationToken = default)
@@ -42,7 +44,13 @@ public class LoginHandler(
             .ConfigureAwait(false);
 
         // Resposta genérica para não revelar se o e-mail existe
-        if (conta is null || !passwordHasher.Verify(command.Senha, conta.PasswordHash))
+        if (conta is null)
+        {
+            passwordHasher.Verify(command.Senha, DummyHash);
+            throw new CredenciaisInvalidasException();
+        }
+
+        if (!passwordHasher.Verify(command.Senha, conta.PasswordHash))
             throw new CredenciaisInvalidasException();
 
         if (!conta.EmailVerificado)
