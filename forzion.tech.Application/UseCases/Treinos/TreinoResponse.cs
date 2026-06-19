@@ -19,7 +19,9 @@ public record TreinoExercicioResponse(
     string NomeExercicio,
     IReadOnlyList<SerieConfigResponse> Series,
     int Ordem,
-    string? Observacao = null);
+    string? Observacao = null,
+    string? ComoExecutar = null,
+    string? VideoId = null);
 
 public record TreinoResponse(
     Guid TreinoId,

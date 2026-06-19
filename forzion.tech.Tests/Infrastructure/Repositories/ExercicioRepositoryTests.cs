@@ -100,6 +100,57 @@ public class ExercicioRepositoryTests(InfrastructureTestFixture fixture)
         result.Should().HaveCount(1);
     }
 
+    // --- ObterInfoPorIdsAsync ---
+
+    [Fact]
+    public async Task ObterInfoPorIdsAsync_ComOrientacao_RetornaNomeTextoEVideoId()
+    {
+        await using var ctx = fixture.CreateContext();
+        var ex = Exercicio.Criar($"Supino-{Guid.NewGuid():N}", await SeedGrupoAsync(ctx), DateTime.UtcNow,
+            comoExecutar: "Mantenha a postura.", videoUrl: "https://youtu.be/dQw4w9WgXcQ").Value;
+        await ctx.Exercicios.AddAsync(ex);
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ObterInfoPorIdsAsync([ex.Id]);
+
+        result.Should().ContainKey(ex.Id);
+        result[ex.Id].Nome.Should().Be(ex.Nome);
+        result[ex.Id].ComoExecutar.Should().Be("Mantenha a postura.");
+        result[ex.Id].VideoId.Should().Be("dQw4w9WgXcQ");
+    }
+
+    [Fact]
+    public async Task ObterInfoPorIdsAsync_SemOrientacao_CamposNulos()
+    {
+        await using var ctx = fixture.CreateContext();
+        var ex = await SeedAsync(ctx, $"Remada-{Guid.NewGuid():N}", await SeedGrupoAsync(ctx));
+
+        var result = await Repo(ctx).ObterInfoPorIdsAsync([ex.Id]);
+
+        result[ex.Id].ComoExecutar.Should().BeNull();
+        result[ex.Id].VideoId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ObterInfoPorIdsAsync_ListaVazia_RetornaDicionarioVazio()
+    {
+        await using var ctx = fixture.CreateContext();
+
+        var result = await Repo(ctx).ObterInfoPorIdsAsync([]);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ObterInfoPorIdsAsync_IdInexistente_AusenteDoMapa()
+    {
+        await using var ctx = fixture.CreateContext();
+
+        var result = await Repo(ctx).ObterInfoPorIdsAsync([Guid.NewGuid()]);
+
+        result.Should().BeEmpty();
+    }
+
     // --- ListarAsync ---
 
     [Fact]

@@ -12,6 +12,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
+import { parseYouTubeId } from "@/lib/utils/youtube";
 import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { useCRUDDialog } from "@/hooks/useCRUDDialog";
@@ -42,9 +43,13 @@ export default function ExerciciosAdminPage() {
   const [nome, setNome] = useState("");
   const [grupoMuscular, setGrupoMuscular] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [comoExecutar, setComoExecutar] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [editNome, setEditNome] = useState("");
   const [editGrupo, setEditGrupo] = useState("");
   const [editDescricao, setEditDescricao] = useState("");
+  const [editComoExecutar, setEditComoExecutar] = useState("");
+  const [editVideoUrl, setEditVideoUrl] = useState("");
 
   const fetcher = useCallback(
     (p: number, ps: number) =>
@@ -80,13 +85,18 @@ export default function ExerciciosAdminPage() {
     setNome("");
     if (grupos.length > 0) setGrupoMuscular(grupos[0].id);
     setDescricao("");
+    setComoExecutar("");
+    setVideoUrl("");
   };
 
+  const videoUrlInvalido = videoUrl.trim() !== "" && parseYouTubeId(videoUrl) === null;
+  const editVideoUrlInvalido = editVideoUrl.trim() !== "" && parseYouTubeId(editVideoUrl) === null;
+
   const handleCriar = async () => {
-    if (!nome.trim()) return;
+    if (!nome.trim() || videoUrlInvalido) return;
     setSaving(true);
     try {
-      await adminApi.criarExercicioGlobal({ nome: nome.trim(), grupoMuscularId: grupoMuscular, descricao: descricao.trim() || null });
+      await adminApi.criarExercicioGlobal({ nome: nome.trim(), grupoMuscularId: grupoMuscular, descricao: descricao.trim() || null, comoExecutar: comoExecutar.trim() || null, videoUrl: videoUrl.trim() || null });
       setSuccess(`"${nome.trim()}" adicionado.`);
       closeCriar();
       resetForm();
@@ -103,16 +113,20 @@ export default function ExerciciosAdminPage() {
     setEditNome(ex.nome);
     setEditGrupo(ex.grupoMuscularId);
     setEditDescricao(ex.descricao ?? "");
+    setEditComoExecutar(ex.comoExecutar ?? "");
+    setEditVideoUrl(ex.videoId ?? "");
   };
 
   const handleEditar = async () => {
-    if (!editEx) return;
+    if (!editEx || editVideoUrlInvalido) return;
     setSavingEdit(true);
     try {
       await adminApi.atualizarExercicioGlobal(editEx.exercicioId, {
         nome: editNome.trim() || undefined,
         grupoMuscularId: editGrupo || undefined,
         descricao: editDescricao.trim() || null,
+        comoExecutar: editComoExecutar.trim(),
+        videoUrl: editVideoUrl.trim(),
       });
       setSuccess(`"${editNome}" atualizado.`);
       closeEdit();
@@ -223,11 +237,21 @@ export default function ExerciciosAdminPage() {
               </Select>
             </FormControl>
             <TextField label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} size="small" fullWidth multiline rows={3} />
+            <TextField label="Como executar (opcional)" value={comoExecutar} onChange={(e) => setComoExecutar(e.target.value)} size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />
+            <TextField
+              label="Link do vídeo (YouTube, opcional)"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              size="small"
+              fullWidth
+              error={videoUrlInvalido}
+              helperText={videoUrlInvalido ? "Informe um link ou ID de vídeo do YouTube válido." : " "}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => { closeCriar(); resetForm(); }}>Cancelar</Button>
-          <Button variant="contained" disabled={!nome.trim() || saving} onClick={handleCriar}>Adicionar</Button>
+          <Button variant="contained" disabled={!nome.trim() || saving || videoUrlInvalido} onClick={handleCriar}>Adicionar</Button>
         </DialogActions>
       </Dialog>
 
@@ -244,11 +268,21 @@ export default function ExerciciosAdminPage() {
               </Select>
             </FormControl>
             <TextField label="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={3} />
+            <TextField label="Como executar" value={editComoExecutar} onChange={(e) => setEditComoExecutar(e.target.value)} size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />
+            <TextField
+              label="Link do vídeo (YouTube)"
+              value={editVideoUrl}
+              onChange={(e) => setEditVideoUrl(e.target.value)}
+              size="small"
+              fullWidth
+              error={editVideoUrlInvalido}
+              helperText={editVideoUrlInvalido ? "Informe um link ou ID de vídeo do YouTube válido." : " "}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeEdit}>Cancelar</Button>
-          <Button variant="contained" disabled={savingEdit} onClick={handleEditar}>Salvar</Button>
+          <Button variant="contained" disabled={savingEdit || editVideoUrlInvalido} onClick={handleEditar}>Salvar</Button>
         </DialogActions>
       </Dialog>
 

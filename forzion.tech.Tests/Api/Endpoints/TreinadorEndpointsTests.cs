@@ -93,7 +93,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         "qrcode", "https://example.com/qr", DateTime.UtcNow.AddHours(1), null, null, DateTime.UtcNow);
 
     private static readonly ExercicioResponse RespostaExercicio = new(
-        Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null, TreinadorId, false, DateTime.UtcNow, null);
+        Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null, null, null, TreinadorId, false, DateTime.UtcNow, null);
 
     private static readonly GrupoMuscularResponse RespostaGrupoMuscular = new(
         Guid.NewGuid(), "Peitoral", DateTime.UtcNow, null);

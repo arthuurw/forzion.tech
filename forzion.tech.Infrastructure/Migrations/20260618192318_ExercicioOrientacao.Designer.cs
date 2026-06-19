@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using forzion.tech.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using forzion.tech.Infrastructure.Persistence;
 namespace forzion.tech.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618192318_ExercicioOrientacao")]
+    partial class ExercicioOrientacao
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -682,11 +685,6 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_execucao");
 
-                    b.Property<string>("IdempotencyKey")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("idempotency_key");
-
                     b.Property<string>("Observacao")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -704,11 +702,6 @@ namespace forzion.tech.Infrastructure.Migrations
 
                     b.HasIndex("TreinoId")
                         .HasDatabaseName("ix_execucoes_treino_treino_id");
-
-                    b.HasIndex("AlunoId", "IdempotencyKey")
-                        .IsUnique()
-                        .HasDatabaseName("ix_execucoes_treino_aluno_id_idempotency_key_unique")
-                        .HasFilter("idempotency_key IS NOT NULL");
 
                     b.ToTable("execucoes_treino", (string)null);
                 });

@@ -38,8 +38,8 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
         if (detalhe is null)
             return Result.Failure<FichaAlunoDetalheResponse>(Error.NotFound("ficha_nao_encontrada", "Ficha não encontrada."));
 
-        var nomesExercicio = await exercicioRepository
-            .ObterNomesPorIdsAsync(detalhe.Treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
+        var infoExercicio = await exercicioRepository
+            .ObterInfoPorIdsAsync(detalhe.Treino.Exercicios.Select(e => e.ExercicioId), cancellationToken)
             .ConfigureAwait(false);
 
         return Result.Success(new FichaAlunoDetalheResponse(
@@ -48,14 +48,20 @@ public class ObterFichaAlunoHandler(ITreinoAlunoRepository treinoAlunoRepository
             detalhe.Treino.Nome,
             detalhe.Treino.Objetivo,
             detalhe.TreinoAluno.Status.ToString(),
-            [.. detalhe.Treino.Exercicios.OrderBy(te => te.Ordem).Select(te => new TreinoExercicioResponse(
-                te.Id,
-                te.ExercicioId,
-                nomesExercicio?.GetValueOrDefault(te.ExercicioId) ?? string.Empty,
-                te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
-                    s.Id, s.Quantidade, s.RepeticoesMin, s.RepeticoesMax,
-                    s.Descricao, s.Carga, s.Descanso, s.Ordem)).ToList(),
-                te.Ordem,
-                te.Observacao))]));
+            [.. detalhe.Treino.Exercicios.OrderBy(te => te.Ordem).Select(te =>
+            {
+                var info = infoExercicio?.GetValueOrDefault(te.ExercicioId);
+                return new TreinoExercicioResponse(
+                    te.Id,
+                    te.ExercicioId,
+                    info?.Nome ?? string.Empty,
+                    te.Series.OrderBy(s => s.Ordem).Select(s => new SerieConfigResponse(
+                        s.Id, s.Quantidade, s.RepeticoesMin, s.RepeticoesMax,
+                        s.Descricao, s.Carga, s.Descanso, s.Ordem)).ToList(),
+                    te.Ordem,
+                    te.Observacao,
+                    info?.ComoExecutar,
+                    info?.VideoId);
+            })]));
     }
 }

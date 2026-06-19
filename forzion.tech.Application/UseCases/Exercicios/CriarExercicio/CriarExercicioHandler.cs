@@ -36,7 +36,7 @@ public class CriarExercicioHandler(
         if (await exercicioRepository.NomeJaExisteAsync(command.Nome, command.TreinadorId, cancellationToken: cancellationToken).ConfigureAwait(false))
             return Result.Failure<ExercicioResponse>(Error.Conflict("exercicio.nome_duplicado", "Já existe um exercício com este nome nesta biblioteca."));
 
-        var exercicioResult = Exercicio.Criar(command.Nome, command.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, command.Descricao);
+        var exercicioResult = Exercicio.Criar(command.Nome, command.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, command.Descricao, command.ComoExecutar, command.VideoUrl);
         if (exercicioResult.IsFailure)
             return Result.Failure<ExercicioResponse>(exercicioResult.Error!);
         var exercicio = exercicioResult.Value;

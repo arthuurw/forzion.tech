@@ -320,7 +320,7 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarExercicioCommand(null, request.Nome, request.GrupoMuscularId, request.Descricao),
+                new CriarExercicioCommand(null, request.Nome, request.GrupoMuscularId, request.Descricao, request.ComoExecutar, request.VideoUrl),
                 cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Created($"/admin/exercicios/{result.Value.ExercicioId}", result.Value);
@@ -336,7 +336,7 @@ public static class AdminEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarExercicioCommand(id, null, request.Nome, request.GrupoMuscularId, request.Descricao),
+                new AtualizarExercicioCommand(id, null, request.Nome, request.GrupoMuscularId, request.Descricao, request.ComoExecutar, request.VideoUrl),
                 cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
@@ -639,5 +639,5 @@ public record CriarPlanoPlataformaRequest(string Nome, forzion.tech.Domain.Enums
 public record AtualizarPlanoPlataformaRequest(string? Nome, forzion.tech.Domain.Enums.TierPlano? Tier, int? MaxAlunos, decimal? Preco, string? Descricao = null);
 public record CriarGrupoMuscularRequest(string Nome);
 public record AtualizarGrupoMuscularRequest(string Nome);
-public record CriarExercicioGlobalRequest(string Nome, Guid GrupoMuscularId, string? Descricao);
-public record AtualizarExercicioGlobalRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao);
+public record CriarExercicioGlobalRequest(string Nome, Guid GrupoMuscularId, string? Descricao, string? ComoExecutar = null, string? VideoUrl = null);
+public record AtualizarExercicioGlobalRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao, string? ComoExecutar = null, string? VideoUrl = null);

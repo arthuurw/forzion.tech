@@ -1,5 +1,6 @@
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using forzion.tech.Domain.ValueObjects;
 
 namespace forzion.tech.Domain.Entities;
 
@@ -10,6 +11,8 @@ public class Exercicio
     public string Nome { get; private set; } = string.Empty;
     public Guid GrupoMuscularId { get; private set; }
     public string? Descricao { get; private set; }
+    public string? ComoExecutar { get; private set; }
+    public string? VideoId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -18,7 +21,7 @@ public class Exercicio
     private Exercicio() { }
 
     /// <param name="treinadorId">Null indica exercício da biblioteca global (gerenciado por admins).</param>
-    public static Result<Exercicio> Criar(string nome, Guid grupoMuscularId, DateTime agora, Guid? treinadorId = null, string? descricao = null)
+    public static Result<Exercicio> Criar(string nome, Guid grupoMuscularId, DateTime agora, Guid? treinadorId = null, string? descricao = null, string? comoExecutar = null, string? videoUrl = null)
     {
         if (string.IsNullOrWhiteSpace(nome))
             return Result.Failure<Exercicio>(ExercicioErrors.NomeObrigatorio);
@@ -31,6 +34,24 @@ public class Exercicio
         if (descricao is not null && descricao.Length > 500)
             return Result.Failure<Exercicio>(ExercicioErrors.DescricaoMuitoLonga);
 
+        string? comoExecutarNormalizado = null;
+        if (!string.IsNullOrWhiteSpace(comoExecutar))
+        {
+            var trimmed = comoExecutar.Trim();
+            if (trimmed.Length > 2000)
+                return Result.Failure<Exercicio>(ExercicioErrors.ComoExecutarMuitoLongo);
+            comoExecutarNormalizado = trimmed;
+        }
+
+        string? videoId = null;
+        if (!string.IsNullOrWhiteSpace(videoUrl))
+        {
+            var videoResult = YouTubeVideoId.Criar(videoUrl);
+            if (videoResult.IsFailure)
+                return Result.Failure<Exercicio>(videoResult.Error!);
+            videoId = videoResult.Value.Value;
+        }
+
         return Result.Success(new Exercicio
         {
             Id = Guid.NewGuid(),
@@ -38,11 +59,13 @@ public class Exercicio
             Nome = nome.Trim(),
             GrupoMuscularId = grupoMuscularId,
             Descricao = descricao,
+            ComoExecutar = comoExecutarNormalizado,
+            VideoId = videoId,
             CreatedAt = agora
         });
     }
 
-    public Result Atualizar(string? nome, Guid? grupoMuscularId, string? descricao, DateTime agora)
+    public Result Atualizar(string? nome, Guid? grupoMuscularId, string? descricao, DateTime agora, string? comoExecutar = null, string? videoUrl = null)
     {
         if (nome is not null)
         {
@@ -65,6 +88,29 @@ public class Exercicio
             if (descricao.Length > 500)
                 return Result.Failure(ExercicioErrors.DescricaoMuitoLonga);
             Descricao = descricao.Length == 0 ? null : descricao;
+        }
+
+        if (comoExecutar is not null)
+        {
+            var trimmed = comoExecutar.Trim();
+            if (trimmed.Length > 2000)
+                return Result.Failure(ExercicioErrors.ComoExecutarMuitoLongo);
+            ComoExecutar = trimmed.Length == 0 ? null : trimmed;
+        }
+
+        if (videoUrl is not null)
+        {
+            if (videoUrl.Trim().Length == 0)
+            {
+                VideoId = null;
+            }
+            else
+            {
+                var videoResult = YouTubeVideoId.Criar(videoUrl);
+                if (videoResult.IsFailure)
+                    return Result.Failure(videoResult.Error!);
+                VideoId = videoResult.Value.Value;
+            }
         }
 
         UpdatedAt = agora;

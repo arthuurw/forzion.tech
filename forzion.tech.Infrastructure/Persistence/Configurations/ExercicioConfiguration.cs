@@ -35,6 +35,12 @@ public class ExercicioConfiguration : IEntityTypeConfiguration<Exercicio>
         builder.Property(e => e.Descricao)
             .HasMaxLength(500);
 
+        builder.Property(e => e.ComoExecutar)
+            .HasMaxLength(2000);
+
+        builder.Property(e => e.VideoId)
+            .HasMaxLength(16);
+
         builder.Property(e => e.CreatedAt).IsRequired();
         builder.Property(e => e.UpdatedAt);
 

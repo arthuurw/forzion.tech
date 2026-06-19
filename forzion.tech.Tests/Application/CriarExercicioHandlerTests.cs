@@ -61,4 +61,33 @@ public class CriarExercicioHandlerTests
         var act = async () => await _handler.HandleAsync(command);
         await act.Should().ThrowAsync<ValidationException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_OrientacaoValida_PersisteTextoEVideoId()
+    {
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
+        _grupoRepo.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
+        var command = new CriarExercicioCommand(Guid.NewGuid(), "Supino", grupo.Id, null,
+            ComoExecutar: "Mantenha a postura.", VideoUrl: "https://youtu.be/dQw4w9WgXcQ");
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ComoExecutar.Should().Be("Mantenha a postura.");
+        result.Value.VideoId.Should().Be("dQw4w9WgXcQ");
+    }
+
+    [Fact]
+    public async Task HandleAsync_VideoUrlInvalida_RetornaFailure()
+    {
+        var grupo = GrupoMuscular.Criar("Peito", DateTime.UtcNow).Value;
+        _grupoRepo.Setup(r => r.ObterPorIdAsync(grupo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(grupo);
+        var command = new CriarExercicioCommand(Guid.NewGuid(), "Supino", grupo.Id, null, VideoUrl: "https://vimeo.com/123");
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("exercicio.video_url_invalida");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

@@ -32,7 +32,7 @@ public class CopiarExercicioGlobalHandler(
         if (!original.IsGlobal)
             throw new AcessoNegadoException();
 
-        var copiaResult = Exercicio.Criar(original.Nome, original.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, original.Descricao);
+        var copiaResult = Exercicio.Criar(original.Nome, original.GrupoMuscularId, timeProvider.GetUtcNow().UtcDateTime, command.TreinadorId, original.Descricao, original.ComoExecutar, original.VideoId);
         if (copiaResult.IsFailure)
             return Result.Failure<ExercicioResponse>(copiaResult.Error!);
         var copia = copiaResult.Value;
