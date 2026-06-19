@@ -1,0 +1,8 @@
+[Unit]
+Description=Forzion — poda do store Docker (build cache + imagens dangling)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash /opt/forzion/app/scripts/docker-prune.sh

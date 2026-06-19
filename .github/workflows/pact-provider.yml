@@ -26,7 +26,7 @@ jobs:
       PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
       PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
       PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
-      HOMOLOG_HOST: ${{ secrets.HOMOLOG_HOST }}
+      VM_TAILNET_IP: ${{ secrets.VM_TAILNET_IP }}
     steps:
       - uses: actions/checkout@v6
 
@@ -50,7 +50,7 @@ jobs:
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           BROKER_HOST="$(printf '%s' "$PACT_BROKER_BASE_URL" | sed -E 's#^https?://##; s#/.*$##')"
-          echo "$HOMOLOG_HOST $BROKER_HOST" | sudo tee -a /etc/hosts
+          echo "$VM_TAILNET_IP $BROKER_HOST" | sudo tee -a /etc/hosts
 
       - name: Aguarda broker disponivel
         # Rede de seguranca: o broker pode estar reiniciando. curl --max-time falha rapido.
