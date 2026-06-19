@@ -49,8 +49,8 @@ export default function AssinaturaAlunoPage() {
 
       const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
       setPagamentoPendente(pgRes.data.find(p => p.status === "Pendente") ?? null);
-    } catch {
-      setError("Erro ao carregar assinatura.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar assinatura."));
     } finally {
       setLoading(false);
     }

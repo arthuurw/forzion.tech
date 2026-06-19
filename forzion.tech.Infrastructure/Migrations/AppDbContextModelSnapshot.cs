@@ -682,6 +682,11 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_execucao");
 
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("idempotency_key");
+
                     b.Property<string>("Observacao")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -699,6 +704,11 @@ namespace forzion.tech.Infrastructure.Migrations
 
                     b.HasIndex("TreinoId")
                         .HasDatabaseName("ix_execucoes_treino_treino_id");
+
+                    b.HasIndex("AlunoId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_execucoes_treino_aluno_id_idempotency_key_unique")
+                        .HasFilter("idempotency_key IS NOT NULL");
 
                     b.ToTable("execucoes_treino", (string)null);
                 });

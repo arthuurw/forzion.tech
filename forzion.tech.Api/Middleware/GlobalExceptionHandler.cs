@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentValidation;
+using forzion.tech.Api.Extensions;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace forzion.tech.Api.Middleware;
 
 public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
-    const string defaultMessage = "Não encontrado";
+    private static readonly string defaultMessage = ProblemDetailsTitulos.PtBr[StatusCodes.Status404NotFound];
     private readonly ILogger<GlobalExceptionHandler> _logger = logger;
 
     public async ValueTask<bool> TryHandleAsync(
@@ -101,7 +102,7 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
     private static (int StatusCode, string Title, string Detail) MapException(Exception exception) =>
         exception switch
         {
-            CredenciaisInvalidasException ex => (StatusCodes.Status401Unauthorized, "Não autorizado", ex.Message),
+            CredenciaisInvalidasException ex => (StatusCodes.Status401Unauthorized, ProblemDetailsTitulos.PtBr[StatusCodes.Status401Unauthorized], ex.Message),
 
             AlunoNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
             TreinadorNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
@@ -112,19 +113,21 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             GrupoMuscularNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
             PlanoPlataformaNaoEncontradoException ex => (StatusCodes.Status404NotFound, defaultMessage, ex.Message),
 
-            AlunoInativoException ex => (StatusCodes.Status403Forbidden, "Inativo", ex.Message),
-            AcessoNegadoException ex => (StatusCodes.Status403Forbidden, "Acesso negado", ex.Message),
-            EmailNaoVerificadoException ex => (StatusCodes.Status403Forbidden, "E-mail não verificado", ex.Message),
-            TreinadorAguardandoAprovacaoException ex => (StatusCodes.Status403Forbidden, "Aguardando aprovação", ex.Message),
-            TreinadorInativoException ex => (StatusCodes.Status403Forbidden, "Conta inativa", ex.Message),
-            TreinadorPagamentoPendenteException ex => (StatusCodes.Status403Forbidden, "Pagamento pendente", ex.Message),
+            AlunoInativoException ex => (StatusCodes.Status403Forbidden, "Inativo.", ex.Message),
+            AcessoNegadoException ex => (StatusCodes.Status403Forbidden, "Acesso negado.", ex.Message),
+            EmailNaoVerificadoException ex => (StatusCodes.Status403Forbidden, "E-mail não verificado.", ex.Message),
+            TreinadorAguardandoAprovacaoException ex => (StatusCodes.Status403Forbidden, "Aguardando aprovação.", ex.Message),
+            TreinadorInativoException ex => (StatusCodes.Status403Forbidden, "Conta inativa.", ex.Message),
+            TreinadorPagamentoPendenteException ex => (StatusCodes.Status403Forbidden, "Pagamento pendente.", ex.Message),
 
-            EmailJaCadastradoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
-            AlunoJaVinculadoException ex => (StatusCodes.Status409Conflict, "Conflito", ex.Message),
+            EmailJaCadastradoException ex => (StatusCodes.Status409Conflict, ProblemDetailsTitulos.PtBr[StatusCodes.Status409Conflict], ex.Message),
+            AlunoJaVinculadoException ex => (StatusCodes.Status409Conflict, ProblemDetailsTitulos.PtBr[StatusCodes.Status409Conflict], ex.Message),
 
-            DomainException ex => (StatusCodes.Status422UnprocessableEntity, "Erro de domínio", ex.Message),
+            DomainException ex => (StatusCodes.Status422UnprocessableEntity, ProblemDetailsTitulos.PtBr[StatusCodes.Status422UnprocessableEntity], ex.Message),
 
-            _ => (StatusCodes.Status500InternalServerError, "Erro interno", "Ocorreu um erro inesperado. Tente novamente mais tarde.")
+            EstadoInconsistenteException => (StatusCodes.Status500InternalServerError, ProblemDetailsTitulos.PtBr[StatusCodes.Status500InternalServerError], "Ocorreu um erro inesperado. Tente novamente mais tarde."),
+
+            _ => (StatusCodes.Status500InternalServerError, ProblemDetailsTitulos.PtBr[StatusCodes.Status500InternalServerError], "Ocorreu um erro inesperado. Tente novamente mais tarde.")
         };
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Erro inesperado: {Message}")]

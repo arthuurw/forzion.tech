@@ -43,11 +43,11 @@ public class SolicitarTrocaTreinadorHandler(
             return Result.Failure<VinculoResponse>(Error.Business("vinculo.sem_vinculo_ativo", "Você precisa ter um vínculo ativo para solicitar a troca de treinador."));
 
         if (vinculoAtivo.TreinadorId == command.NovoTreinadorId)
-            return Result.Failure<VinculoResponse>(Error.Business("vinculo.ja_vinculado", "Você já está vinculado a este treinador."));
+            return Result.Failure<VinculoResponse>(Error.Conflict("vinculo.ja_vinculado", "Você já está vinculado a este treinador."));
 
         var vinculoPendente = await vinculoRepository.ObterPendentePorParAsync(command.NovoTreinadorId, command.AlunoId, cancellationToken).ConfigureAwait(false);
         if (vinculoPendente is not null)
-            return Result.Failure<VinculoResponse>(Error.Business("vinculo.solicitacao_pendente", "Você já possui uma solicitação pendente com este treinador."));
+            return Result.Failure<VinculoResponse>(Error.Conflict("vinculo.solicitacao_pendente", "Você já possui uma solicitação pendente com este treinador."));
 
         var novoVinculoResult = VinculoTreinadorAluno.Criar(command.NovoTreinadorId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime, command.PacoteId);
         if (novoVinculoResult.IsFailure)

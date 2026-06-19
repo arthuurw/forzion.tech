@@ -195,7 +195,7 @@ public class GerarCobrancaMensalHandlerTests
         var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("treinador_sem_conta_stripe");
+        result.Error!.Code.Should().Be("treinador.sem_conta_stripe");
     }
 
     [Fact]
@@ -207,7 +207,23 @@ public class GerarCobrancaMensalHandlerTests
         var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(Guid.NewGuid(), Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("assinatura_aluno_nao_encontrada");
+        result.Error!.Code.Should().Be("assinatura_aluno.nao_encontrada");
+        result.Error!.Message.Should().NotContain("AssinaturaAluno");
+    }
+
+    [Fact]
+    public async Task HandleAsync_AssinaturaCancelada_RetornaFailureSemTermoInterno()
+    {
+        var treinador = CriarTreinadorComOnboarding();
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
+        assinatura.Cancelar(DateTime.UtcNow);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("assinatura_aluno.cancelada_nao_cobravel");
+        result.Error!.Message.Should().NotContain("AssinaturaAluno");
     }
 
     [Fact]

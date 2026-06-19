@@ -484,7 +484,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     }
 
     [Fact]
-    public async Task Post_CancelarPlano_ComVinculosAtivos_Retorna422OffboardingNecessario()
+    public async Task Post_CancelarPlano_ComVinculosAtivos_Retorna409OffboardingNecessario()
     {
         _factory.CancelarPlanoHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<CancelarMinhaAssinaturaTreinadorCommand>(), It.IsAny<CancellationToken>()))
@@ -492,7 +492,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         var response = await CriarClienteTreinador().PostAsJsonAsync("/treinador/plano/cancelar", (object?)null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
         var problem = await response.Content.ReadFromJsonAsync<ProblemWithCode>();
         problem!.Code.Should().Be("assinatura_treinador.offboarding_necessario");
     }
@@ -911,7 +911,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     }
 
     [Fact]
-    public async Task Put_DadosFiscais_DocumentoInvalido_Retorna422()
+    public async Task Put_DadosFiscais_DocumentoInvalido_Retorna400()
     {
         _factory.DefinirDadosFiscaisHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<DefinirDadosFiscaisTreinadorCommand>(), It.IsAny<CancellationToken>()))
@@ -919,7 +919,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         var response = await CriarClienteTreinador().PutAsJsonAsync("/treinador/dados-fiscais", DadosFiscaisBody());
 
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

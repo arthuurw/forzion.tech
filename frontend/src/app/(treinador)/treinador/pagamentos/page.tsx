@@ -132,8 +132,8 @@ export default function PagamentosTreinadorPage() {
     try {
       const res = await pagamentoApi.verificarOnboarding();
       setStatus(res.data);
-    } catch {
-      setError("Erro ao verificar status do cadastro Stripe.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao verificar status do cadastro Stripe."));
     } finally {
       setLoading(false);
     }

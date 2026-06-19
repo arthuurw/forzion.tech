@@ -62,8 +62,8 @@ export default function PerfilPage() {
           const vinculoRes = await alunoApi.getMeuVinculo();
           setMeuVinculo(vinculoRes.data);
         }
-      } catch {
-        setError("Erro ao carregar perfil.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar perfil."));
       } finally {
         setLoading(false);
       }
@@ -80,8 +80,8 @@ export default function PerfilPage() {
       try {
         const res = await apiClient.get<TreinadorResponse[]>("/auth/treinadores");
         setTreinadores(res.data.filter((t) => t.treinadorId !== meuVinculo?.vinculoAtivo?.treinadorId));
-      } catch {
-        setError("Erro ao carregar treinadores.");
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar treinadores."));
       }
     }
   };
@@ -95,8 +95,8 @@ export default function PerfilPage() {
     try {
       const res = await apiClient.get<PacoteResponse[]>(`/auth/treinadores/${treinador.treinadorId}/pacotes`);
       setPacotesTroca(res.data);
-    } catch {
-      setError("Erro ao carregar pacotes.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar pacotes."));
     } finally {
       setLoadingTrocaPacotes(false);
     }
@@ -111,8 +111,8 @@ export default function PerfilPage() {
       setTrocaDialog(false);
       const vinculoRes = await alunoApi.getMeuVinculo();
       setMeuVinculo(vinculoRes.data);
-    } catch {
-      setError("Erro ao solicitar troca de treinador.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao solicitar troca de treinador."));
     } finally {
       setSavingTroca(false);
     }
@@ -155,8 +155,8 @@ export default function PerfilPage() {
       await contaApi.atualizarPerfil({ nome: nome.trim() });
       setSuccess("Perfil atualizado com sucesso.");
       setPerfil((current) => current ? { ...current, nome: nome.trim() } : current);
-    } catch {
-      setError("Erro ao atualizar perfil.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar perfil."));
     } finally {
       setSavingPerfil(false);
     }
@@ -172,8 +172,8 @@ export default function PerfilPage() {
       await contaApi.alterarSenha({ senhaAtual, novaSenha });
       setSuccess("Senha alterada com sucesso.");
       setSenhaAtual(""); setNovaSenha(""); setConfirmarSenha("");
-    } catch {
-      setError("Erro ao alterar senha. Verifique a senha atual.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao alterar senha. Verifique a senha atual."));
     } finally {
       setSavingSenha(false);
     }

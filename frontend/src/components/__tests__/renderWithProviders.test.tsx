@@ -4,11 +4,10 @@ import { renderWithProviders } from "@/test/render";
 import { buildSessionUser, buildConta } from "@/test/factories";
 
 describe("renderWithProviders skip flags + session factories", () => {
-  it("renders with skipAuth and skipSnackbar without mounting those providers", () => {
+  it("renders with skipAuth without mounting the auth provider", () => {
     const user = buildSessionUser({ tipoConta: "Treinador" });
     renderWithProviders(<div>{`conta:${user.contaId}`}</div>, {
       skipAuth: true,
-      skipSnackbar: true,
     });
     expect(screen.getByText(`conta:${user.contaId}`)).toBeInTheDocument();
   });

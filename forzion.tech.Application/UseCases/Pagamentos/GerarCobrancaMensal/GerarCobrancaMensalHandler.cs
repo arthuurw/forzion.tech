@@ -2,6 +2,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -31,19 +32,19 @@ public class GerarCobrancaMensalHandler(
 
         var assinatura = await assinaturaRepository.ObterPorIdAsync(command.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false);
         if (assinatura is null)
-            return Result.Failure<PagamentoResponse>(Error.NotFound("assinatura_aluno_nao_encontrada", "AssinaturaAluno não encontrada."));
+            return Result.Failure<PagamentoResponse>(AssinaturaAlunoErrors.NaoEncontrada);
 
         if (assinatura.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
 
         if (assinatura.Status == AssinaturaAlunoStatus.Cancelada)
-            return Result.Failure<PagamentoResponse>(Error.Business("assinatura_aluno.cancelada", "AssinaturaAluno cancelada não pode ser cobrada."));
+            return Result.Failure<PagamentoResponse>(AssinaturaAlunoErrors.CanceladaNaoCobravel);
 
         // Verificação antecipada da conta Stripe: evita entrar na transação serializable
         // para descobrir um erro determinístico.
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(assinatura.TreinadorId, cancellationToken).ConfigureAwait(false);
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
-            return Result.Failure<PagamentoResponse>(Error.Business("treinador_sem_conta_stripe", "Treinador sem conta Stripe configurada."));
+            return Result.Failure<PagamentoResponse>(Error.Business("treinador.sem_conta_stripe", "Treinador sem conta Stripe configurada."));
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var accountId = contaRecebimento.StripeConnectAccountId;

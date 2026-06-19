@@ -234,7 +234,7 @@ public class TrocarPlanoTreinadorHandlerTests
         var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, plano.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("mesmo_plano");
+        result.Error!.Code.Should().Be("treinador.mesmo_plano");
     }
 
     [Fact]
@@ -468,7 +468,7 @@ public class TrocarPlanoTreinadorHandlerTests
         var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, planoInativo.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("plano_plataforma_inativo");
+        result.Error!.Code.Should().Be("plano_plataforma.inativo");
     }
 
     [Fact]

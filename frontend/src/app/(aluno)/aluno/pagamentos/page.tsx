@@ -11,6 +11,7 @@ import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { PAGAMENTO_STATUS_COLORS, PAGAMENTO_STATUS_LABEL } from "@/lib/constants/labels";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 const COLUNAS: Column[] = [
   { label: "Data" },
@@ -106,8 +107,8 @@ export default function PagamentosAlunoPage() {
       }
       const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
       setPagamentos(pgRes.data);
-    } catch {
-      setError("Erro ao carregar pagamentos.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar pagamentos."));
     } finally {
       setLoading(false);
     }

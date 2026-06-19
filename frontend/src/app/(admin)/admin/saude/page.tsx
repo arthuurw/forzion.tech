@@ -9,6 +9,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { adminApi } from "@/lib/api/admin";
 import type { HealthSnapshotResponse, StatusSaude } from "@/types";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 const STATUS_COLOR: Record<StatusSaude, "success" | "warning" | "error"> = {
   Ok: "success",
@@ -69,8 +70,8 @@ export default function SaudeAdminPage() {
         setUltimoEnvioEm(c.ultimoEnvioEm);
       }
       await loadSnapshots();
-    } catch {
-      setError("Erro ao carregar a configuração do relatório de saúde.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar a configuração do relatório de saúde."));
     } finally {
       setLoading(false);
     }
@@ -96,8 +97,8 @@ export default function SaudeAdminPage() {
       });
       setUltimoEnvioEm(res.data.ultimoEnvioEm);
       setSuccess("Configuração salva.");
-    } catch {
-      setError("Erro ao salvar. Verifique os destinatários quando o relatório está ativo.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao salvar. Verifique os destinatários quando o relatório está ativo."));
     } finally {
       setSaving(false);
     }
@@ -110,8 +111,8 @@ export default function SaudeAdminPage() {
       await adminApi.runHealthReport();
       setSuccess("Relatório enviado e snapshot gerado.");
       await loadSnapshots();
-    } catch {
-      setError("Erro ao executar o relatório. Salve uma configuração antes de enviar.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao executar o relatório. Salve uma configuração antes de enviar."));
     } finally {
       setRunning(false);
     }

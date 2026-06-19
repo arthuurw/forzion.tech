@@ -66,6 +66,7 @@ public static class RouteBuilderExtensions
 
         app.UseSwaggerInDevelopment();
         app.UseExceptionHandler();
+        app.UseStatusCodePages();
 
         // Atrás do nginx (Homolog/Production): reescreve RemoteIpAddress/scheme a partir
         // do X-Forwarded-*. Precisa rodar ANTES de HttpsRedirection/Auth/RateLimiter. Sem isso

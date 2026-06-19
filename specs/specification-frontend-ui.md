@@ -23,7 +23,7 @@ Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` ap
 | `divider` | `rgba(0,0,0,0.08)` | (MuiDivider override → `rgba(0,0,0,0.07)`) |
 | `brand.label` | `#7a6300` | **LEGADO** — era overline accent dos labels de seção da landing; substituído por `SectionEyebrow` (ver §LANDING). Sobrevive só em `SocialProof` (renderiza null no beta). Chave custom via module augmentation; não hardcodar. |
 
-NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip/Snackbar herdam paleta MUI default desses severities.
+NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip herdam paleta MUI default desses severities.
 
 ### Tipografia
 - `fontFamily`: `'Inter', 'Roboto', sans-serif`. Inter via Google Fonts (pesos 400/500/600/700, `display: swap` — ver [specification-frontend]).
@@ -73,7 +73,6 @@ Story = `*.stories.tsx`. A11y test (vitest-axe dedicado) = `*.a11y.test.tsx`. Co
 | `DataList<T>` | wrapper loading/empty/table | `loading`, `items`, `emptyMessage`, `columns`, `rowKey`, `renderCell`, `onRowClick?`, `pagination?` | ❌ | ❌ (compõe LoadingSpinner+EmptyState+ResponsiveTable já testados) |
 | `ConsentBanner` | dialog consentimento LGPD (cookies) | `forceOpen?`, `onClose?` — ver [specification-lgpd] | ❌ | ⚠️ `__tests__/ConsentBanner.test.tsx` (comportamento, não axe) |
 | `ConsentProvider` | wrapper `dynamic(ssr:false)` do ConsentBanner (evita hydration mismatch — lê cookie) | — | ❌ | ❌ |
-| `SnackbarProvider` | provider toast global + `useSnackbar()` | `showSnackbar(msg, severity?)`; autoHide 4000ms; bottom-center; Alert `variant:filled` | ❌ | ❌ |
 | `ErrorBoundary` | class boundary + Sentry capture | `children`, `fallback?` | ❌ | ❌ |
 | `InfoLine` | label:value inline (sem `"use client"`) | `label`, `value` | ❌ | ❌ |
 | `Logo` | wordmark "forzion.tech" | `size`(sm\|md\|lg), `sx?` | ❌ | ❌ |
@@ -98,6 +97,7 @@ NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/form
 - **Requisito ao CRIAR componente em `ui/`**: idealmente story (`*.stories.tsx`) + a11y test. ESTADO REAL: cumprido só pelos 4 primeiros da tabela (AlertBanner/StatusChip/EmptyState/LoadingSpinner têm story+vitest-axe); ConfirmDialog/ResponsiveTable têm story+a11y-unit; demais não têm nenhum. Padrão a alvejar, não invariante atual.
 - **Padrão de props**: discriminantes via enum string — `severity`(error\|warning\|info\|success), `size`(small\|medium), `status`(enums domínio), `mobileRole`(primary\|secondary\|actions\|hidden). Booleans de modo: `destructive`, `loading`, `fullPage`, `forceOpen`. Callbacks `on*` opcionais habilitam comportamento (ex. `onRowClick` ⇒ row vira `role=button` focável).
 - **Imports**: NÃO há barrel (`ui/index.ts`/`forms/index.ts` inexistentes); sempre path direto.
+- **Canal de erro canônico**: `AlertBanner` (inline) alimentado por `extractApiError` é o canal de feedback de erro — o `SnackbarProvider`/`useSnackbar` (toast global genérico) foi removido. Padrão e regra "`return null` em falha de load = BANIDO" em [specification-frontend] §TRATAMENTO DE ERRO.
 - **Componentes de domínio (não-`ui/`)**: `components/aluno/AlunoInadimplenteBanner.tsx` (banner persistente `role=alert`); `components/aluno/AlunoInadimplenteGate.tsx` (wrapper client-side: fetch on-mount de `obterMinhaAssinatura`, renderiza o banner quando status `Inadimplente`, falha silenciosa); `components/treinador/ProgressaoAluno.tsx` (gráficos recharts de progressão por exercício, props `alunoId`, seletor de período 7d/30d/60d/90d/6m/1a/tudo).
 
 ## LINGUAGEM NEUTRA DE GÊNERO (copy user-facing)
@@ -161,7 +161,7 @@ Frontend: `grep -rniE "<regex>" frontend/src --include=*.tsx --include=*.ts | gr
   - `ConfirmDialog`: `aria-describedby` → id da descrição; `autoFocus` condicional — destrutivo ⇒ foco no **Cancelar** (`autoFocus={destructive}`), não-destrutivo ⇒ foco no **Confirmar** (anti-clique-acidental).
   - `ResponsiveTable`: linha clicável (desktop `TableRow`, mobile card `Box`) recebe `role="button"` + `tabIndex={0}` + `onKeyDown` (Enter/Space com `preventDefault`) SOMENTE quando `onRowClick` definido; coluna `actions` faz `stopPropagation`.
 - **`aria-label`**: `LoadingSpinner` (`CircularProgress aria-label={label}`); `StatusChip` (`Chip aria-label={\`Status: ${label}\`}` — `src/components/ui/StatusChip.tsx`, nome acessível explícito do status); `PasswordField` IconButton ("Mostrar/Ocultar senha"); `ConsentBanner` Dialog ("Consentimento de cookies e privacidade LGPD"); IconButtons de ação em páginas treinador/aluno/admin; charts admin via `<figure aria-label=...>` (testado em `admin/__tests__/a11y-dashboard.test.tsx`). **MFA/step-up** (feature em `components/seguranca/`, fora de `ui/`): `StepUpDialog` segue o padrão de dialog (foco no campo de código + `aria` da descrição); login 2ª etapa e `RecoveryCodesPanel` com labels/erros acessíveis (testes `seguranca/__tests__/seguranca.test.tsx`, `login/__tests__/login-mfa.test.tsx`).
-- **`role="alert"`**: `components/aluno/AlunoInadimplenteBanner.tsx` (anúncio assertivo). NOTA: AlertBanner/Snackbar usam MUI `Alert` (role implícito); **não há `aria-live` explícito** custom para erros de formulário — erros vão via `helperText` (associação `aria-describedby` provida pelo MUI TextField/FormControl).
+- **`role="alert"`**: `components/aluno/AlunoInadimplenteBanner.tsx` (anúncio assertivo). NOTA: AlertBanner usa MUI `Alert` (role implícito); **não há `aria-live` explícito** custom para erros de formulário — erros vão via `helperText` (associação `aria-describedby` provida pelo MUI TextField/FormControl).
 - **`prefers-reduced-motion`**: HONRADO em runtime. `src/styles/globals.css` tem `@media (prefers-reduced-motion: reduce)` que neutraliza animações/transições globalmente (`animation-duration`/`transition-duration: 0.01ms !important`, `animation-iteration-count: 1`, `scroll-behavior: auto`) em `*, *::before, *::after` — cobre transições MUI (`transition: all 0.15s ease` em Button/ListItemButton). Harness de teste `src/test/determinism/motion.ts` força `reduce` via `matchMedia` stub p/ determinismo.
 
 ## RESPONSIVIDADE (REFERENCIAR [specification-frontend] §RESPONSIVIDADE — não duplicar)

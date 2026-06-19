@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { mapStripeError } from "@/lib/pagamento/stripeErro";
 import type { PagamentoResponse } from "@/types";
 
 const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
@@ -39,7 +40,7 @@ function CartaoForm({ pagamento, onPago }: FormProps) {
     });
 
     if (error) {
-      setErro(error.message ?? "Erro ao processar pagamento.");
+      setErro(mapStripeError(error));
       setProcessando(false);
       return;
     }
@@ -128,7 +129,7 @@ export default function PagamentoCartao({ pagamentoId, onPago }: Props) {
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret: pagamento.clientSecret }}>
+    <Elements stripe={stripePromise} options={{ clientSecret: pagamento.clientSecret, locale: "pt-BR" }}>
       <CartaoForm pagamento={pagamento} onPago={onPago} />
     </Elements>
   );

@@ -14,6 +14,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import type { GrupoMuscularResponse } from "@/types";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 const COLUMNS: Column[] = [
   { label: "Nome" },
@@ -44,8 +45,8 @@ export default function GruposMuscularesAdminPage() {
     try {
       const res = await adminApi.listGruposMusculares();
       setGrupos(res.data);
-    } catch {
-      setError("Erro ao carregar grupos musculares.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar grupos musculares."));
     } finally {
       setLoading(false);
     }
@@ -62,8 +63,8 @@ export default function GruposMuscularesAdminPage() {
       setCriarOpen(false);
       setNome("");
       load();
-    } catch {
-      setError("Erro ao criar grupo muscular.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao criar grupo muscular."));
     } finally {
       setSaving(false);
     }
@@ -82,8 +83,8 @@ export default function GruposMuscularesAdminPage() {
       setSuccess(`"${editNome}" atualizado.`);
       setEditGrupo(null);
       load();
-    } catch {
-      setError("Erro ao atualizar grupo muscular.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar grupo muscular."));
     } finally {
       setSavingEdit(false);
     }
@@ -97,8 +98,8 @@ export default function GruposMuscularesAdminPage() {
       setSuccess(`"${confirmExcluir.nome}" excluído.`);
       setConfirmExcluir(null);
       load();
-    } catch {
-      setError("Erro ao excluir grupo muscular. Pode estar vinculado a exercícios.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir grupo muscular. Pode estar vinculado a exercícios."));
     } finally {
       setLoadingExcluir(false);
     }

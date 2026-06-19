@@ -90,7 +90,7 @@ public class RegistrarTreinadorHandlerTests
         var planoId = SetupPlano(TierPlano.Basic, 50m, ativo: false);
         var result = await _handler.HandleAsync(Cmd(planoId));
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("plano_inativo");
+        result.Error!.Code.Should().Be("plano.inativo");
     }
 
     [Fact]

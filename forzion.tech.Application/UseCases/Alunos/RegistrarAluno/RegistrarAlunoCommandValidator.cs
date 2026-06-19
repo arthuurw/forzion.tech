@@ -1,6 +1,7 @@
 using FluentValidation;
 using forzion.tech.Application.Validation;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 
@@ -8,13 +9,18 @@ public class RegistrarAlunoCommandValidator : AbstractValidator<RegistrarAlunoCo
 {
     public RegistrarAlunoCommandValidator()
     {
-        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage(EmailErrors.Obrigatorio.Message)
+            .EmailAddress().WithMessage(EmailErrors.Invalido.Message)
+            .MaximumLength(256).WithMessage(EmailErrors.MuitoLongo.Message);
         RuleFor(x => x.Senha).SenhaForte();
-        RuleFor(x => x.Nome).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.TreinadorId).NotEmpty();
-        RuleFor(x => x.PacoteId).NotEmpty();
-        RuleFor(x => x.Telefone).MaximumLength(20).When(x => x.Telefone is not null);
-        RuleFor(x => x.DiasDisponiveis).InclusiveBetween(1, 7).When(x => x.DiasDisponiveis.HasValue);
+        RuleFor(x => x.Nome)
+            .NotEmpty().WithMessage(NomeErrors.Obrigatorio.Message)
+            .MaximumLength(100).WithMessage(NomeErrors.MuitoLongo.Message);
+        RuleFor(x => x.TreinadorId).NotEmpty().WithMessage("O treinador é obrigatório.");
+        RuleFor(x => x.PacoteId).NotEmpty().WithMessage("O pacote é obrigatório.");
+        RuleFor(x => x.Telefone).MaximumLength(20).WithMessage(TelefoneErrors.MuitoLongo.Message).When(x => x.Telefone is not null);
+        RuleFor(x => x.DiasDisponiveis).InclusiveBetween(1, 7).WithMessage("Os dias disponíveis devem estar entre 1 e 7.").When(x => x.DiasDisponiveis.HasValue);
         RuleFor(x => x.TempoDisponivelMinutos)
             .Must(v => Enum.IsDefined((TempoDisponivel)v!.Value))
             .When(x => x.TempoDisponivelMinutos.HasValue)

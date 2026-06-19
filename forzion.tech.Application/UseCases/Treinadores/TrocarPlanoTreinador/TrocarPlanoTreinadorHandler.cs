@@ -43,7 +43,7 @@ public class TrocarPlanoTreinadorHandler(
             return Result.Failure<TrocarPlanoTreinadorResponse>(Error.NotFound("plano_plataforma_nao_encontrado", "Plano não encontrado."));
 
         if (!novoPlano.IsAtivo)
-            return Result.Failure<TrocarPlanoTreinadorResponse>(Error.Business("plano_plataforma_inativo", "O plano selecionado não está ativo."));
+            return Result.Failure<TrocarPlanoTreinadorResponse>(Error.Business("plano_plataforma.inativo", "O plano selecionado não está ativo."));
 
         if (novoPlano.Tier == TierPlano.Elite)
             return Result.Failure<TrocarPlanoTreinadorResponse>(PlanoPlataformaErrors.EliteIndisponivel);
@@ -56,7 +56,7 @@ public class TrocarPlanoTreinadorHandler(
             return Result.Failure<TrocarPlanoTreinadorResponse>(AssinaturaTreinadorErrors.JaCancelada);
 
         if (assinatura.PlanoPlataformaId == command.NovoPlanoPlataformaId)
-            return Result.Failure<TrocarPlanoTreinadorResponse>(Error.Business("mesmo_plano", "O treinador já está neste plano."));
+            return Result.Failure<TrocarPlanoTreinadorResponse>(Error.Conflict("treinador.mesmo_plano", "O treinador já está neste plano."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 

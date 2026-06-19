@@ -111,9 +111,9 @@ describe("treinador/plano — cancelamento self-service", () => {
     await waitFor(() => expect(logoutMock).toHaveBeenCalled());
   });
 
-  it("422 assinatura_treinador.offboarding_necessario mostra mensagem específica", async () => {
+  it("409 assinatura_treinador.offboarding_necessario mostra mensagem específica", async () => {
     api.cancelarPlanoTreinador.mockRejectedValue({
-      response: { status: 422, data: { code: "assinatura_treinador.offboarding_necessario" } },
+      response: { status: 409, data: { code: "assinatura_treinador.offboarding_necessario" } },
     });
 
     await abrirDialogCancelar();

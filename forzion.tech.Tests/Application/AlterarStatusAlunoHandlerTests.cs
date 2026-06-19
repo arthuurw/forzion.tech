@@ -83,7 +83,7 @@ public class AlterarStatusAlunoHandlerTests
             new AlterarStatusAlunoCommand(aluno.Id, AlunoStatus.AguardandoAprovacao));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Message.Should().Contain("não permitida");
+        result.Error!.Message.Should().Be("Esta transição de status não é permitida.");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

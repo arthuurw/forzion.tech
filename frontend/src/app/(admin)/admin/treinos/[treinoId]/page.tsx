@@ -13,6 +13,7 @@ import { adminApi } from "@/lib/api/admin";
 import type { TreinoResponse } from "@/types";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 import { formatarSeries } from "@/lib/utils/formatting";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 const COLUMNS: Column[] = [
   { label: "Exercício" },
@@ -32,8 +33,8 @@ export default function DetalheTreinoAdminPage() {
     try {
       const res = await adminApi.getTreino(treinoId);
       setTreino(res.data);
-    } catch {
-      setError("Erro ao carregar treino.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao carregar treino."));
     } finally {
       setLoading(false);
     }

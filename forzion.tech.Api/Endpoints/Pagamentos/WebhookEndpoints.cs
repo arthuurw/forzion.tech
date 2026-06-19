@@ -5,6 +5,7 @@ using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Api.Endpoints.Pagamentos;
 
@@ -51,6 +52,7 @@ public static class WebhookEndpoints
             HttpContext httpContext,
             [FromServices] ProcessarWebhookResendHandler handler,
             [FromServices] IConfiguration configuration,
+            [FromServices] ILogger<ProcessarWebhookResendHandler> logger,
             CancellationToken cancellationToken) =>
         {
             httpContext.Request.Body = new LimitedStream(httpContext.Request.Body, MaxWebhookBodyBytes);
@@ -76,7 +78,9 @@ public static class WebhookEndpoints
                 webhookSecret,
                 cancellationToken).ConfigureAwait(false);
 
-            return result.IsSuccess ? Results.Ok() : Results.Problem(detail: result.Error?.Message ?? "Webhook inválido.", statusCode: 400);
+            if (result.IsSuccess) return Results.Ok();
+            logger.LogWarning("Webhook Resend rejeitado: {Motivo}", result.Error?.Message);
+            return Results.Problem(detail: "Webhook inválido.", statusCode: 400);
         })
         .WithTags("Webhooks")
         .WithSummary("Recebe eventos de entrega de e-mail via Resend/Svix webhook")
@@ -119,6 +123,7 @@ public static class WebhookEndpoints
             HttpContext httpContext,
             [FromServices] ProcessarWebhookWhatsAppHandler handler,
             [FromServices] IConfiguration configuration,
+            [FromServices] ILogger<ProcessarWebhookWhatsAppHandler> logger,
             CancellationToken cancellationToken) =>
         {
             httpContext.Request.Body = new LimitedStream(httpContext.Request.Body, MaxWebhookBodyBytes);
@@ -142,7 +147,9 @@ public static class WebhookEndpoints
                 appSecret,
                 cancellationToken).ConfigureAwait(false);
 
-            return result.IsSuccess ? Results.Ok() : Results.Problem(detail: result.Error?.Message ?? "Webhook inválido.", statusCode: 400);
+            if (result.IsSuccess) return Results.Ok();
+            logger.LogWarning("Webhook WhatsApp rejeitado: {Motivo}", result.Error?.Message);
+            return Results.Problem(detail: "Webhook inválido.", statusCode: 400);
         })
         .WithTags("Webhooks")
         .WithSummary("Recebe eventos de entrega de WhatsApp via Meta Cloud API webhook")

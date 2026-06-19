@@ -12,13 +12,14 @@ public class ExecucaoTreino
     public Guid AlunoId { get; private set; }
     public DateTime DataExecucao { get; private set; }
     public string? Observacao { get; private set; }
+    public string? IdempotencyKey { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     public IReadOnlyList<ExecucaoExercicio> Exercicios => _exercicios.AsReadOnly();
 
     private ExecucaoTreino() { }
 
-    public static Result<ExecucaoTreino> Criar(Guid treinoId, Guid alunoId, DateTime dataExecucao, DateTime agora, string? observacao = null)
+    public static Result<ExecucaoTreino> Criar(Guid treinoId, Guid alunoId, DateTime dataExecucao, DateTime agora, string? observacao = null, string? idempotencyKey = null)
     {
         if (treinoId == Guid.Empty)
             return Result.Failure<ExecucaoTreino>(ExecucaoTreinoErrors.TreinoInvalido);
@@ -36,6 +37,7 @@ public class ExecucaoTreino
             AlunoId = alunoId,
             DataExecucao = dataExecucao,
             Observacao = observacao,
+            IdempotencyKey = idempotencyKey,
             CreatedAt = agora
         });
     }

@@ -17,6 +17,7 @@ public class RegistrarExecucaoHandler(
     IUnitOfWork unitOfWork,
     IUserContext userContext,
     TimeProvider timeProvider,
+    IDatabaseErrorInspector databaseErrorInspector,
     ILogger<RegistrarExecucaoHandler> logger)
 {
     public virtual Task<Result<RegistrarExecucaoResponse>> HandleAsync(
@@ -58,8 +59,17 @@ public class RegistrarExecucaoHandler(
         if (aluno.Status == Domain.Enums.AlunoStatus.Inativo)
             throw new AlunoInativoException();
 
+        if (command.IdempotencyKey is not null)
+        {
+            var existente = await execucaoTreinoRepository
+                .ObterPorIdempotencyKeyAsync(command.AlunoId, command.IdempotencyKey, cancellationToken)
+                .ConfigureAwait(false);
+            if (existente is not null)
+                return Result.Success(MapToResponse(existente));
+        }
+
         var execucaoResult = ExecucaoTreino.Criar(
-            command.TreinoId, command.AlunoId, command.DataExecucao, timeProvider.GetUtcNow().UtcDateTime, command.Observacao);
+            command.TreinoId, command.AlunoId, command.DataExecucao, timeProvider.GetUtcNow().UtcDateTime, command.Observacao, command.IdempotencyKey);
         if (execucaoResult.IsFailure)
             return Result.Failure<RegistrarExecucaoResponse>(execucaoResult.Error!);
         var execucao = execucaoResult.Value;
@@ -77,17 +87,34 @@ public class RegistrarExecucaoHandler(
         }
 
         await execucaoTreinoRepository.AdicionarAsync(execucao, cancellationToken).ConfigureAwait(false);
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        // Corrida: dois requests com a mesma key passam o lookup acima e colidem no unique index.
+        // A violação significa que o concorrente já gravou → re-consulta e retorna idempotente.
+        catch (Exception ex) when (command.IdempotencyKey is not null && databaseErrorInspector.EhViolacaoDeUnicidade(ex))
+        {
+            var existente = await execucaoTreinoRepository
+                .ObterPorIdempotencyKeyAsync(command.AlunoId, command.IdempotencyKey, cancellationToken)
+                .ConfigureAwait(false);
+            if (existente is null)
+                throw;
+            return Result.Success(MapToResponse(existente));
+        }
 
         logger.LogInformation("Execução {ExecucaoId} registrada para o treino {TreinoId} pelo aluno {AlunoId}.",
             execucao.Id, command.TreinoId, command.AlunoId);
 
-        return Result.Success(new RegistrarExecucaoResponse(
-            execucao.Id,
+        return Result.Success(MapToResponse(execucao));
+    }
+
+    private static RegistrarExecucaoResponse MapToResponse(ExecucaoTreino execucao) =>
+        new(execucao.Id,
             execucao.TreinoId,
             execucao.AlunoId,
             execucao.DataExecucao,
             execucao.Observacao,
-            execucao.CreatedAt));
-    }
+            execucao.CreatedAt);
 }

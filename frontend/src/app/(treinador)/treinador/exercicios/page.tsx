@@ -18,6 +18,7 @@ import { parseYouTubeId } from "@/lib/utils/youtube";
 import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
 import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
 import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
+import { extractApiError } from "@/lib/api/extractApiError";
 
 const COLS_MEUS: Column[] = [
   { label: "Nome" },
@@ -176,8 +177,8 @@ export default function ExerciciosTreinadorPage() {
       resetForm();
       load();
       loadMeusNomes();
-    } catch {
-      setError("Erro ao criar exercício.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao criar exercício."));
     } finally {
       setSaving(false);
     }
@@ -206,8 +207,8 @@ export default function ExerciciosTreinadorPage() {
       setSuccess(`"${editNome}" atualizado.`);
       setEditEx(null);
       load();
-    } catch {
-      setError("Erro ao atualizar exercício.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar exercício."));
     } finally {
       setSavingEdit(false);
     }
@@ -221,8 +222,8 @@ export default function ExerciciosTreinadorPage() {
       setSuccess(`"${confirmExcluir.nome}" excluído.`);
       setConfirmExcluir(null);
       load();
-    } catch {
-      setError("Erro ao excluir exercício. Pode estar em uso em fichas.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao excluir exercício. Pode estar em uso em fichas."));
     } finally {
       setLoadingExcluir(false);
     }
@@ -235,8 +236,8 @@ export default function ExerciciosTreinadorPage() {
       setSuccess(`"${ex.nome}" copiado para sua biblioteca.`);
       setConfirmCopiarDuplicado(null);
       setMeusNomes((prev) => new Set([...prev, ex.nome.toLowerCase()]));
-    } catch {
-      setError("Erro ao copiar exercício.");
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao copiar exercício."));
     } finally {
       setCopiando(null);
     }
