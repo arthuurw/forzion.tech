@@ -11,4 +11,7 @@ public class StripeSettings
     // SEC-03: modo esperado dos eventos de webhook. null = sem enforcement. Default derivado do
     // ambiente em DI (Production⇒true; demais⇒false, p/ não bloquear test-mode em Homolog público).
     public bool? ExpectLivemode { get; set; }
+
+    public int TimeoutSegundos { get; set; } = 30;
+    public int MaxNetworkRetries { get; set; } = 2;
 }

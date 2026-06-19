@@ -24,6 +24,7 @@ namespace forzion.tech.Infrastructure.Logging;
 public sealed class ErrorLogDbSinkProvider : ILoggerProvider
 {
     private const int CapacidadeCanal = 1000;
+    private const int TamanhoLote = 100;
 
     private readonly Channel<LogEntry> _canal;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -87,13 +88,19 @@ public sealed class ErrorLogDbSinkProvider : ILoggerProvider
 
     private async Task ProcessarCanalAsync()
     {
-        await foreach (var entry in _canal.Reader.ReadAllAsync().ConfigureAwait(false))
+        var reader = _canal.Reader;
+        while (await reader.WaitToReadAsync().ConfigureAwait(false))
         {
-            await PersistirAsync(entry).ConfigureAwait(false);
+            var lote = new List<LogEntry>(TamanhoLote);
+            while (lote.Count < TamanhoLote && reader.TryRead(out var entry))
+                lote.Add(entry);
+
+            if (lote.Count > 0)
+                await PersistirLoteAsync(lote).ConfigureAwait(false);
         }
     }
 
-    private async Task PersistirAsync(LogEntry entry)
+    private async Task PersistirLoteAsync(IReadOnlyList<LogEntry> entries)
     {
         try
         {
@@ -102,12 +109,15 @@ public sealed class ErrorLogDbSinkProvider : ILoggerProvider
             // CreatedAt = hora de inserção (agora), não a de ocorrência — o canal é assíncrono,
             // os dois instantes divergem e CreatedAt registra quando a linha foi de fato persistida.
             var agora = _timeProvider.GetUtcNow().UtcDateTime;
-            var resultado = ErrorLogEntry.Criar(entry.OcorridoEm, entry.Nivel, entry.Origem, entry.Mensagem, agora);
-            if (resultado.IsFailure)
-                return;
+            foreach (var entry in entries)
+            {
+                var resultado = ErrorLogEntry.Criar(entry.OcorridoEm, entry.Nivel, entry.Origem, entry.Mensagem, agora);
+                if (resultado.IsSuccess)
+                    context.ErrorLogs.Add(resultado.Value);
+            }
 
-            context.ErrorLogs.Add(resultado.Value);
-            await context.SaveChangesAsync().ConfigureAwait(false);
+            if (context.ChangeTracker.HasChanges())
+                await context.SaveChangesAsync().ConfigureAwait(false);
         }
         catch
         {

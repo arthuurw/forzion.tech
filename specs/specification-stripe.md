@@ -22,7 +22,8 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
   - `CancelarPaymentIntentAsync(paymentIntentId, ct)` → `CancelarPaymentIntentResultado` (`Cancelado`/`JaCancelado`/`JaCapturado`). Cancela PI não-capturado (ex.: Pix pendente ao treinador trocar p/ modo Externo). Faz GET do status antes de cancelar (evita falha em PI já terminal).
   - `EnviarEvidenciaDisputaAsync(disputeId, DisputaEvidencia, ct)` → `Dispute.Update(disputeId, { Evidence })` — resposta automática a chargeback (ver §CHARGEBACKS). **disputeId, NÃO chargeId/paymentIntentId.** `DisputaEvidencia(EmailCliente, DataAtivacao, DataUltimaAtividade, DataUltimoPagamento)` → `CustomerEmailAddress`, `ServiceDate` (yyyy-MM-dd), `UncategorizedText` (datas concatenadas).
 - Impl única: `StripeService` (Infrastructure/Services). Sem `NullStripeService` — `StripeSettings.ValidateOnStart` exige `SecretKey`/`WebhookSecret` não-vazios (boot falha sem config).
-- `RequestOptions { ApiKey }` passada em cada chamada (sem estado global).
+- `RequestOptions { ApiKey }` passada em cada chamada (sem estado global do ApiKey).
+- **Cliente global com timeout/retries** (PERF-04): `StripeConfiguration.StripeClient` é setado no startup (`AddInfrastructure`, só se `SecretKey` presente) via `StripeClientFactory.Construir` — `HttpClient.Timeout` = `Stripe:TimeoutSegundos` (default 30, vs 80s default do SDK) + `SystemNetHttpClient(maxNetworkRetries=Stripe:MaxNetworkRetries`, default 2). Os `new XService()` consomem esse cliente; a `ApiKey` do `RequestOptions` por chamada sobrepõe a do cliente. [specification-performance §4]
 - Métodos `Create*PaymentIntent`: usam `MoneyCentavos.ValorETaxaCentavos(valor, taxaPercent)` (Application/UseCases/Pagamentos) — extração de F16 (truncamento via `(long)`; sum preservation ≤1 centavo). NÃO usar Math.Round / banker's rounding.
 - Connect flow: `ApplicationFeeAmount=taxaCentavos` + `TransferData.Destination=stripeAccountId` (taxa fica na plataforma, restante vai pro treinador).
 - Metadata: `["pagamento_id"]=pagamento.Id.ToString()` — útil pra reconciliação.
@@ -46,6 +47,8 @@ A idem-key do PaymentIntent é DETERMINÍSTICA e montada pelo CALLER, não deriv
 | `Stripe:WebhookSecret` | `StripeService.ValidarWebhookAsync` | HMAC-SHA256 verify | boot falha |
 | `Stripe:TaxaPlataformaPercent` | `StripeSettings` + `PaymentSettings` (espelho App) | taxa plataforma (0,100] | default `5m`; ValidateOnStart falha se fora do range |
 | `Stripe:UrlBase` | frontend base usada em URLs de retorno onboarding | retorno Stripe → app | vazio → links quebram |
+| `Stripe:TimeoutSegundos` | `StripeClientFactory` (cliente global) | timeout HttpClient (PERF-04) | default `30` (SDK default 80s) |
+| `Stripe:MaxNetworkRetries` | `StripeClientFactory` (cliente global) | retries de transporte | default `2` |
 | `Internal:ApiKey` | endpoint `/internal/processar-renovacoes` (FixedTimeEquals) | autoriza GH Actions cron | endpoint → 401 |
 
 - Local (dev): User Secrets ou `.env` na raiz (compose pega `STRIPE_SECRET_KEY`, etc).

@@ -143,6 +143,10 @@ public static class InfrastructureExtensions
         services.PostConfigure<StripeSettings>(s => s.ExpectLivemode ??= isProduction);
         services.AddScoped<IStripeService, StripeService>();
 
+        var stripeSettings = configuration.GetSection("Stripe").Get<StripeSettings>();
+        if (!string.IsNullOrWhiteSpace(stripeSettings?.SecretKey))
+            Stripe.StripeConfiguration.StripeClient = StripeClientFactory.Construir(stripeSettings);
+
         services.AddOptions<NfseSettings>()
             .BindConfiguration("Nfse")
             .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CertificadoPath),
@@ -197,7 +201,8 @@ public static class InfrastructureExtensions
                 s.RecipientHashKey = DeliveryLogSettings.DevDefaultKey;
         });
         services.AddSingleton<IRecipientHasher, RecipientHasher>();
-        services.AddSingleton<IEmailBackgroundDispatcher, EmailBackgroundDispatcher>();
+        services.AddSingleton<EmailBackgroundDispatcher>();
+        services.AddSingleton<IEmailBackgroundDispatcher>(sp => sp.GetRequiredService<EmailBackgroundDispatcher>());
 
         // PaymentSettings — expõe taxa de plataforma para a camada Application
         services.AddOptions<PaymentSettings>()

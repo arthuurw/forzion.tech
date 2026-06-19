@@ -47,4 +47,23 @@ public class EmailBackgroundDispatcherTests
         disparar.Should().NotThrow();
         await logado.Task.WaitAsync(TimeSpan.FromSeconds(5));
     }
+
+    [Fact]
+    public void Disparar_FilaCheia_ContabilizaDescarteSemBloquear()
+    {
+        var bloqueio = new TaskCompletionSource();
+        var services = new ServiceCollection();
+        services.AddScoped(_ => Mock.Of<IEmailService>());
+        using var provider = services.BuildServiceProvider();
+        using var dispatcher = new EmailBackgroundDispatcher(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            Mock.Of<ILogger<EmailBackgroundDispatcher>>());
+
+        dispatcher.Disparar((_, _) => bloqueio.Task);
+        for (var i = 0; i < 700; i++)
+            dispatcher.Disparar((_, _) => Task.CompletedTask);
+
+        dispatcher.DropsContados.Should().BeGreaterThan(0);
+        bloqueio.TrySetResult();
+    }
 }
