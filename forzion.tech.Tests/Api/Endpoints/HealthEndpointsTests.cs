@@ -54,4 +54,14 @@ public class HealthEndpointsTests(HealthEndpointsTests.HealthWebFactory factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task Get_HealthReady_AnonimoNaoExpoeNomesDeDependencias()
+    {
+        var response = await factory.CreateClient().GetAsync("/health/ready");
+        var body = await response.Content.ReadAsStringAsync();
+
+        body.Should().Contain("status");
+        body.Should().NotContainAny("db", "stripe", "resend");
+    }
 }
