@@ -114,7 +114,7 @@ alunos — perfil aluno + anamnese. id(uuid,NN); conta_id(uuid,NN); nome(varchar
 ### Treinos & Exercícios
 grupos_musculares — catálogo (seedado). id(uuid,NN); nome(varchar,NN); created_at(NN); updated_at(null). PK(id) UQ(nome).
 
-exercicios — global (treinador_id null) ou do treinador. id(uuid,NN); treinador_id(uuid,null); grupo_muscular_id(uuid,NN); nome(varchar,NN); descricao(varchar,null); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,RESTRICT,null=global) FK(grupo_muscular_id→grupos_musculares,RESTRICT).
+exercicios — global (treinador_id null) ou do treinador. id(uuid,NN); treinador_id(uuid,null); grupo_muscular_id(uuid,NN); nome(varchar,NN); descricao(varchar,null); como_executar(varchar2000,null); video_id(varchar16,null,id YouTube 11ch); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,RESTRICT,null=global) FK(grupo_muscular_id→grupos_musculares,RESTRICT). Migração `ExercicioOrientacao` (aditiva, 2 colunas nullable).
 
 treinos — ficha de treino. id(uuid,NN); treinador_id(uuid,NN); nome(varchar,NN); objetivo(text,NN,ObjetivoTreino); dificuldade(text,NN,default Iniciante,DificuldadeTreino); data_inicio(date,null); data_fim(date,null); created_at(NN); updated_at(null). PK(id) FK(treinador_id→treinadores,RESTRICT).
 

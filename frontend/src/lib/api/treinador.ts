@@ -43,6 +43,8 @@ export interface CriarExercicioData {
   nome: string;
   descricao?: string | null;
   grupoMuscularId: string;
+  comoExecutar?: string | null;
+  videoUrl?: string | null;
 }
 
 export interface CriarPacoteData {
@@ -126,7 +128,7 @@ export const treinadorApi = {
   copiarExercicioGlobal(exercicioId: string) {
     return apiClient.post<ExercicioResponse>(`/treinador/exercicios/${exercicioId}/copiar`);
   },
-  atualizarExercicio(exercicioId: string, data: { nome?: string; grupoMuscularId?: string; descricao?: string | null }) {
+  atualizarExercicio(exercicioId: string, data: { nome?: string; grupoMuscularId?: string; descricao?: string | null; comoExecutar?: string | null; videoUrl?: string | null }) {
     return apiClient.patch<ExercicioResponse>(`/treinador/exercicios/${exercicioId}`, data);
   },
   excluirExercicio(exercicioId: string) {

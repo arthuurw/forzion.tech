@@ -2,6 +2,8 @@ using forzion.tech.Domain.Entities;
 
 namespace forzion.tech.Application.Interfaces.Repositories;
 
+public record ExercicioInfo(string Nome, string? ComoExecutar, string? VideoId);
+
 public interface IExercicioRepository
 {
     Task<Exercicio?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
@@ -15,4 +17,5 @@ public interface IExercicioRepository
     Task<bool> EstaEmUsoAsync(Guid exercicioId, CancellationToken cancellationToken = default);
     Task<bool> ExisteComGrupoMuscularAsync(Guid grupoMuscularId, CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<Guid, string>> ObterNomesPorIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, ExercicioInfo>> ObterInfoPorIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
 }

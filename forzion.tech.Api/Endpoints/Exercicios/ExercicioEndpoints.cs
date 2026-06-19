@@ -26,7 +26,7 @@ public static class ExercicioEndpoints
             CancellationToken cancellationToken) =>
         {
             var command = new CriarExercicioCommand(
-                userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao);
+                userContext.PerfilId, request.Nome, request.GrupoMuscularId, request.Descricao, request.ComoExecutar, request.VideoUrl);
             var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Created($"/exercicios/{result.Value.ExercicioId}", result.Value);
@@ -56,4 +56,4 @@ public static class ExercicioEndpoints
     }
 }
 
-public record CriarExercicioRequest(string Nome, Guid GrupoMuscularId, string? Descricao);
+public record CriarExercicioRequest(string Nome, Guid GrupoMuscularId, string? Descricao, string? ComoExecutar = null, string? VideoUrl = null);

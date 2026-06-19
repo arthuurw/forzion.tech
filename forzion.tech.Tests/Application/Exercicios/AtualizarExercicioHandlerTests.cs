@@ -107,4 +107,35 @@ public class AtualizarExercicioHandlerTests
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_OrientacaoValida_AtualizaCampos()
+    {
+        var treinadorId = Guid.NewGuid();
+        var exercicio = CriarExercicioTreinador(treinadorId);
+        _exercicioRepo.Setup(r => r.ObterPorIdAsync(exercicio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(exercicio);
+
+        var command = new AtualizarExercicioCommand(exercicio.Id, treinadorId, null, null, null,
+            ComoExecutar: "Novo texto", VideoUrl: "dQw4w9WgXcQ");
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ComoExecutar.Should().Be("Novo texto");
+        result.Value.VideoId.Should().Be("dQw4w9WgXcQ");
+    }
+
+    [Fact]
+    public async Task HandleAsync_VideoUrlInvalida_RetornaFailure()
+    {
+        var treinadorId = Guid.NewGuid();
+        var exercicio = CriarExercicioTreinador(treinadorId);
+        _exercicioRepo.Setup(r => r.ObterPorIdAsync(exercicio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(exercicio);
+
+        var command = new AtualizarExercicioCommand(exercicio.Id, treinadorId, null, null, null, VideoUrl: "lixo");
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("exercicio.video_url_invalida");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

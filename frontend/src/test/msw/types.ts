@@ -4785,11 +4785,15 @@ export interface components {
             nome?: string | null;
             grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
             descricao?: string | null;
+            comoExecutar?: string | null;
+            videoUrl?: string | null;
         };
         AtualizarExercicioTreinadorRequest: {
             nome?: string | null;
             grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
             descricao?: string | null;
+            comoExecutar?: string | null;
+            videoUrl?: string | null;
         };
         AtualizarGrupoMuscularRequest: {
             nome?: string | null;
@@ -4830,16 +4834,22 @@ export interface components {
             nome?: string | null;
             grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
             descricao?: string | null;
+            comoExecutar?: string | null;
+            videoUrl?: string | null;
         };
         CriarExercicioRequest: {
             nome?: string | null;
             grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
             descricao?: string | null;
+            comoExecutar?: string | null;
+            videoUrl?: string | null;
         };
         CriarExercicioTreinadorRequest: {
             nome?: string | null;
             grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
             descricao?: string | null;
+            comoExecutar?: string | null;
+            videoUrl?: string | null;
         };
         CriarGrupoMuscularRequest: {
             nome?: string | null;
@@ -4910,6 +4920,8 @@ export interface components {
             nome?: string | null;
             grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
             descricao?: string | null;
+            comoExecutar?: string | null;
+            videoId?: string | null;
             /** Format: uuid */
             treinadorId?: string | null;
             isGlobal?: boolean;
@@ -5318,6 +5330,8 @@ export interface components {
             /** Format: int32 */
             ordem?: number;
             observacao?: string | null;
+            comoExecutar?: string | null;
+            videoId?: string | null;
         };
         TreinoResponse: {
             /** Format: uuid */
