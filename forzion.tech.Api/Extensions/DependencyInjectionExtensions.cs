@@ -146,6 +146,15 @@ public static class DependencyInjectionExtensions
             {
                 opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+                opt.OnRejected = (context, _) =>
+                {
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("RateLimit.AuthAbuse");
+                    RegistrarRejeicaoAuth(context.HttpContext, logger);
+                    return ValueTask.CompletedTask;
+                };
+
                 static string KeyFromIpOrSub(HttpContext ctx)
                 {
                     var sub = ctx.User?.FindFirst("sub")?.Value
@@ -406,10 +415,26 @@ public static class DependencyInjectionExtensions
                 builder
                     .WithOrigins(allowedOrigins)
                     .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-                    .WithHeaders("Content-Type", "Authorization", "Accept", "X-Requested-With")
+                    .WithHeaders("Content-Type", "Authorization", "Accept", "X-Requested-With", "X-Step-Up-Token")
                     .AllowCredentials());
         });
 
         return services;
+    }
+
+    internal static void RegistrarRejeicaoAuth(HttpContext httpContext, ILogger logger)
+    {
+        var politica = httpContext.GetEndpoint()?
+            .Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
+
+        if (politica is not ("auth" or "mfa"))
+            return;
+
+        logger.LogWarning(
+            "Rate limit excedido — Politica: {Politica} Rota: {Rota} Metodo: {Metodo} Ip: {Ip}",
+            politica,
+            httpContext.Request.Path.Value,
+            httpContext.Request.Method,
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
     }
 }
