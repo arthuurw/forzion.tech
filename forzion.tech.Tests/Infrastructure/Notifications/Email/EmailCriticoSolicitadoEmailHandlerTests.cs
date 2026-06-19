@@ -6,6 +6,8 @@ using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -35,10 +37,17 @@ public class EmailCriticoSolicitadoEmailHandlerTests
         _emailService.SetupGet(s => s.Habilitado).Returns(true);
     }
 
-    private EmailCriticoSolicitadoEmailHandler BuildHandler() =>
-        new(_emailService.Object, _dataProtection,
+    private EmailCriticoSolicitadoEmailHandler BuildHandler(
+        string environmentName = "Production",
+        ILogger<EmailCriticoSolicitadoEmailHandler>? logger = null)
+    {
+        var environment = new Mock<IHostEnvironment>();
+        environment.SetupGet(e => e.EnvironmentName).Returns(environmentName);
+        return new(_emailService.Object, _dataProtection,
             Options.Create(new AppSettings { FrontendBaseUrl = BaseUrl }),
-            NullLogger<EmailCriticoSolicitadoEmailHandler>.Instance);
+            environment.Object,
+            logger ?? NullLogger<EmailCriticoSolicitadoEmailHandler>.Instance);
+    }
 
     private EmailCriticoSolicitadoEvent Evento(EmailCriticoTemplate template, string segredo)
     {
@@ -116,6 +125,28 @@ public class EmailCriticoSolicitadoEmailHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_EmailDesabilitadoForaDeDevelopment_NaoLogaSegredo()
+    {
+        _emailService.SetupGet(s => s.Habilitado).Returns(false);
+        var coletor = new ColetorLog<EmailCriticoSolicitadoEmailHandler>();
+
+        await BuildHandler("Homolog", coletor).HandleAsync(Evento(EmailCriticoTemplate.CodigoMfa, "123456"));
+
+        coletor.Mensagens.Should().NotContain(m => m.Contains("123456"));
+    }
+
+    [Fact]
+    public async Task HandleAsync_EmailDesabilitadoEmDevelopment_LogaSegredoParaDebug()
+    {
+        _emailService.SetupGet(s => s.Habilitado).Returns(false);
+        var coletor = new ColetorLog<EmailCriticoSolicitadoEmailHandler>();
+
+        await BuildHandler("Development", coletor).HandleAsync(Evento(EmailCriticoTemplate.CodigoMfa, "123456"));
+
+        coletor.Mensagens.Should().Contain(m => m.Contains("123456"));
+    }
+
+    [Fact]
     public async Task HandleAsync_EnvioFalha_PropagaExcecaoParaRetry()
     {
         _emailService.Setup(s => s.EnviarAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
@@ -136,5 +167,26 @@ public class EmailCriticoSolicitadoEmailHandlerTests
         var act = async () => await BuildHandler().HandleAsync(adulterado);
 
         await act.Should().ThrowAsync<Exception>();
+    }
+
+    private sealed class ColetorLog<T> : ILogger<T>
+    {
+        public List<string> Mensagens { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Mensagens.Add(formatter(state, exception));
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
+        }
     }
 }
