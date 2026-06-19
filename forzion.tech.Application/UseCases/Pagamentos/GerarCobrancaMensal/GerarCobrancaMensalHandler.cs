@@ -49,7 +49,7 @@ public class GerarCobrancaMensalHandler(
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var accountId = contaRecebimento.StripeConnectAccountId;
         var taxa = _taxaPlataformaPercent;
-        var chave = $"cobr:aluno:{assinatura.Id}:{now:yyyyMMddHHmm}";
+        var chave = IdempotencyKey.Cobranca("aluno", assinatura.Id, now);
 
         PixPaymentResult? pix = null;
         CartaoPaymentResult? cartao = null;

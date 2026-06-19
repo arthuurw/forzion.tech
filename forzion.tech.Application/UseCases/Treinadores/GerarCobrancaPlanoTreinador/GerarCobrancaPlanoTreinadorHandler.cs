@@ -70,7 +70,7 @@ public class GerarCobrancaPlanoTreinadorHandler(
             }
         }
 
-        var chave = $"cobr:treinador:{assinatura.Id}:{now:yyyyMMddHHmm}";
+        var chave = IdempotencyKey.Cobranca("treinador", assinatura.Id, now);
 
         PixPaymentResult? pix = null;
         CartaoPaymentResult? cartao = null;

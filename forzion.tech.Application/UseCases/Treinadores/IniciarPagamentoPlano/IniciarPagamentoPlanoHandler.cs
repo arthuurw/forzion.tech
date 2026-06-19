@@ -45,7 +45,7 @@ public class IniciarPagamentoPlanoHandler(
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
-        var chave = $"cobr:treinador-cadastro:{assinatura.Id}:{now:yyyyMMddHHmm}";
+        var chave = IdempotencyKey.Cobranca("treinador-cadastro", assinatura.Id, now);
 
         PixPaymentResult? pix = null;
         CartaoPaymentResult? cartao = null;

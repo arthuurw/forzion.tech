@@ -85,7 +85,7 @@ public class TrocarPlanoTreinadorHandler(
             return Result.Success(TrocarPlanoTreinadorResponse.UpgradeImediato(agora));
         }
 
-        var chave = $"cobr:troca:{assinatura.Id}:{novoPlano.Id}:{agora:yyyyMMddHHmm}";
+        var chave = IdempotencyKey.Cobranca("troca-upgrade", assinatura.Id, agora, novoPlano.Id);
 
         PixPaymentResult? pix = null;
         CartaoPaymentResult? cartao = null;
@@ -150,7 +150,7 @@ public class TrocarPlanoTreinadorHandler(
     private async Task<Result<TrocarPlanoTreinadorResponse>> ProcessarInadimplenteAsync(
         AssinaturaTreinador assinatura, PlanoPlataforma novoPlano, MetodoPagamento metodo, DateTime agora, CancellationToken ct)
     {
-        var chave = $"cobr:troca:{assinatura.Id}:{novoPlano.Id}:{agora:yyyyMMddHHmm}";
+        var chave = IdempotencyKey.Cobranca("troca-regular", assinatura.Id, agora, novoPlano.Id);
 
         PixPaymentResult? pix = null;
         CartaoPaymentResult? cartao = null;

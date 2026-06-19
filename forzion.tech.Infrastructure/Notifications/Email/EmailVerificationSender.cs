@@ -2,17 +2,15 @@ using System.Security.Cryptography;
 using System.Text;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
-using Microsoft.Extensions.Options;
+using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
 
 public class EmailVerificationSender(
     IEmailVerificationTokenRepository tokenRepository,
-    IEmailBackgroundDispatcher emailBackground,
+    IEmailCriticoDispatcher emailCritico,
     IUnitOfWork unitOfWork,
-    IOptions<AppSettings> appSettings,
     TimeProvider timeProvider)
 {
     public virtual async Task EnviarAsync(Guid contaId, string email, CancellationToken cancellationToken = default)
@@ -28,13 +26,8 @@ public class EmailVerificationSender(
             agora).Value;
 
         await tokenRepository.AdicionarAsync(token, cancellationToken).ConfigureAwait(false);
+        emailCritico.Enfileirar(EmailCriticoTemplate.VerificarEmail, email, rawToken);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-
-        var verifyLink = $"{appSettings.Value.FrontendBaseUrl}/verify-email?token={rawToken}";
-        emailBackground.Disparar((svc, ct) =>
-            svc.Habilitado
-                ? svc.EnviarAsync(email, "Confirme seu e-mail — forzion.tech", EmailTemplates.VerificarEmail(email, verifyLink), ct)
-                : Task.CompletedTask);
     }
 
     private static string GenerateRawToken()

@@ -5,16 +5,14 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
-using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
 
 public sealed class EnviarCodigoMfaService(
     IMfaChallengeRepository challengeRepository,
-    IEmailBackgroundDispatcher emailBackground,
+    IEmailCriticoDispatcher emailCritico,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider,
-    ILogger<EnviarCodigoMfaService> logger) : IEnviarCodigoMfaService
+    TimeProvider timeProvider) : IEnviarCodigoMfaService
 {
     private const int ValidadeMinutos = 10;
 
@@ -32,17 +30,8 @@ public sealed class EnviarCodigoMfaService(
 
         var challenge = MfaChallenge.Criar(conta.Id, codigoHash, proposito, agora.AddMinutes(ValidadeMinutos), agora).Value;
         await challengeRepository.AdicionarAsync(challenge, cancellationToken).ConfigureAwait(false);
+        emailCritico.Enfileirar(EmailCriticoTemplate.CodigoMfa, conta.Email.Value, codigo);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-
-        var destino = conta.Email.Value;
-        emailBackground.Disparar((email, ct) =>
-        {
-            if (email.Habilitado)
-                return email.EnviarAsync(destino, "Seu código de verificação — forzion.tech", EmailTemplates.CodigoMfa(codigo), ct);
-
-            logger.LogInformation("MFA: e-mail desabilitado; código {Proposito} da conta {ContaId} = {Codigo}", proposito, conta.Id, codigo);
-            return Task.CompletedTask;
-        });
     }
 
     private static string GerarCodigo() =>

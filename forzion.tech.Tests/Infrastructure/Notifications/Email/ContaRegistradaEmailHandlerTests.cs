@@ -7,7 +7,7 @@ namespace forzion.tech.Tests.Infrastructure.Notifications.Email;
 public class ContaRegistradaEmailHandlerTests
 {
     private readonly Mock<EmailVerificationSender> _sender =
-        new(null!, null!, null!, null!, null!);
+        new(null!, null!, null!, null!);
     private readonly ContaRegistradaEmailHandler _handler;
 
     public ContaRegistradaEmailHandlerTests()

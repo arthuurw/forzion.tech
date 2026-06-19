@@ -1,10 +1,11 @@
+using System.Security.Cryptography;
+using System.Text;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Infrastructure.Notifications.Email;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -17,22 +18,17 @@ public class EmailVerificationSenderTests
     private const string EmailDestino = "aluno@example.com";
 
     private readonly Mock<IEmailVerificationTokenRepository> _tokenRepo = new();
-    private readonly Mock<IEmailService> _emailService = new();
-    private readonly Mock<IEmailBackgroundDispatcher> _dispatcher = new();
+    private readonly Mock<IEmailCriticoDispatcher> _emailCritico = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _time = new(Agora);
     private readonly EmailVerificationSender _sender;
 
     public EmailVerificationSenderTests()
     {
-        _emailService.SetupGet(e => e.Habilitado).Returns(true);
-        _dispatcher.Setup(d => d.Disparar(It.IsAny<Func<IEmailService, CancellationToken, Task>>()))
-            .Callback<Func<IEmailService, CancellationToken, Task>>(f => f(_emailService.Object, CancellationToken.None).GetAwaiter().GetResult());
         _sender = new EmailVerificationSender(
             _tokenRepo.Object,
-            _dispatcher.Object,
+            _emailCritico.Object,
             _unitOfWork.Object,
-            Options.Create(new AppSettings { FrontendBaseUrl = "https://app.test" }),
             _time);
     }
 
@@ -55,29 +51,24 @@ public class EmailVerificationSenderTests
     }
 
     [Fact]
-    public async Task EnviarAsync_EmailHabilitado_EnviaComLinkDeVerificacao()
+    public async Task EnviarAsync_EnfileiraEmailCriticoComTokenRawCorrespondenteAoHash()
     {
-        await _sender.EnviarAsync(ContaId, EmailDestino);
+        EmailVerificationToken? token = null;
+        _tokenRepo.Setup(r => r.AdicionarAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailVerificationToken, CancellationToken>((t, _) => token = t)
+            .Returns(Task.CompletedTask);
 
-        _emailService.Verify(e => e.EnviarAsync(
-            EmailDestino,
-            "Confirme seu e-mail — forzion.tech",
-            It.Is<string>(html => html.Contains("https://app.test/verify-email?token=")),
-            It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task EnviarAsync_EmailDesabilitado_PersisteTokenMasNaoEnvia()
-    {
-        _emailService.SetupGet(e => e.Habilitado).Returns(false);
+        string? segredo = null;
+        _emailCritico.Setup(d => d.Enfileirar(EmailCriticoTemplate.VerificarEmail, EmailDestino, It.IsAny<string>()))
+            .Callback<EmailCriticoTemplate, string, string>((_, _, s) => segredo = s);
 
         await _sender.EnviarAsync(ContaId, EmailDestino);
 
-        _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _emailService.Verify(e => e.EnviarAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        segredo.Should().NotBeNullOrEmpty();
+        Hash(segredo!).Should().Be(token!.TokenHash);
+        _emailCritico.Verify(d => d.Enfileirar(EmailCriticoTemplate.VerificarEmail, EmailDestino, It.IsAny<string>()), Times.Once);
     }
+
+    private static string Hash(string raw) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 }

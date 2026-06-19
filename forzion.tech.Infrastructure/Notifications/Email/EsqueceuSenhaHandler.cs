@@ -2,10 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
 
@@ -14,9 +13,8 @@ public record EsqueceuSenhaCommand(string Email);
 public class EsqueceuSenhaHandler(
     IContaRepository contaRepository,
     IPasswordResetTokenRepository tokenRepository,
-    IEmailBackgroundDispatcher emailBackground,
+    IEmailCriticoDispatcher emailCritico,
     IUnitOfWork unitOfWork,
-    IOptions<AppSettings> appSettings,
     TimeProvider timeProvider,
     ILogger<EsqueceuSenhaHandler> logger)
 {
@@ -56,14 +54,8 @@ public class EsqueceuSenhaHandler(
             agora).Value;
 
         await tokenRepository.AdicionarAsync(resetToken, cancellationToken).ConfigureAwait(false);
+        emailCritico.Enfileirar(EmailCriticoTemplate.RedefinirSenha, conta.Email.Value, rawToken);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-
-        var destino = conta.Email.Value;
-        var resetLink = $"{appSettings.Value.FrontendBaseUrl}/reset-password?token={rawToken}";
-        emailBackground.Disparar((email, ct) =>
-            email.Habilitado
-                ? email.EnviarAsync(destino, "Redefinição de senha — forzion.tech", EmailTemplates.RedefinirSenha(destino, resetLink), ct)
-                : Task.CompletedTask);
     }
 
     private static string GenerateRawToken()

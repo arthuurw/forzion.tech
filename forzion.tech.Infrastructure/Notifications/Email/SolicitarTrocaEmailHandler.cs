@@ -4,6 +4,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ public class SolicitarTrocaEmailCommandValidator : AbstractValidator<SolicitarTr
 public class SolicitarTrocaEmailHandler(
     IContaRepository contaRepository,
     ITrocaEmailTokenRepository tokenRepository,
-    IEmailBackgroundDispatcher emailBackground,
+    IEmailCriticoDispatcher emailCritico,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     ILogger<SolicitarTrocaEmailHandler> logger,
@@ -73,18 +74,8 @@ public class SolicitarTrocaEmailHandler(
             return;
 
         await tokenRepository.AdicionarAsync(tokenResult.Value, cancellationToken).ConfigureAwait(false);
+        emailCritico.Enfileirar(EmailCriticoTemplate.TrocaEmail, novoEmail.Value, rawToken);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-
-        var destino = novoEmail.Value;
-        emailBackground.Disparar((email, ct) =>
-        {
-            if (email.Habilitado)
-                return email.EnviarAsync(destino, "Confirmação de troca de e-mail — forzion.tech",
-                    EmailTemplates.TrocaEmailCodigo(rawToken), ct);
-
-            logger.LogInformation("SolicitarTrocaEmailHandler: e-mail desabilitado; código de troca para conta {ContaId} = {Codigo}", conta.Id, rawToken);
-            return Task.CompletedTask;
-        });
     }
 
     private static string GenerateRawToken()

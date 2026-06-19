@@ -164,6 +164,7 @@ public class HandlerDiRegistrationTests
             (typeof(PagamentoTreinadorEmDisputaEvent), typeof(CancelarNfseHandler)),
             (typeof(VinculoAprovadoEvent), typeof(VinculoAprovadoCriarAssinaturaAlunoHandler)),
             (typeof(MensagemSuporteCriadaEvent), typeof(MensagemSuporteCriadaEmailHandler)),
+            (typeof(EmailCriticoSolicitadoEvent), typeof(EmailCriticoSolicitadoEmailHandler)),
         };
 
         registry.ParesDuraveis().Should().BeEquivalentTo(esperados,

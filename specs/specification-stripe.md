@@ -38,6 +38,7 @@ A idem-key do PaymentIntent é DETERMINÍSTICA e montada pelo CALLER, não deriv
   - treinador (cadastro): `cobr:treinador-cadastro:{assinatura.Id}:{minuto}` — `IniciarPagamentoPlanoHandler`.
   - troca de plano: `cobr:troca:{assinatura.Id}:{novoPlano.Id}:{minuto}` — `TrocarPlanoTreinadorHandler` (upgrade + inadimplente). `novoPlano.Id` discrimina trocas distintas no mesmo minuto.
 - **Defesa em 3 camadas (PERF-01)**: (1) idem-key determinística no Stripe (retry de transporte não duplica intent), (2) pré-check + re-check de pendente reusável na app (evita Stripe na reuse), (3) UNIQUE parcial `pagamentos[_treinador] WHERE status='Pendente'` no banco (corrida real → 23505 → reuse). Ver §COMPONENTES (`CriarPagamentoComIntentService`) e [specification-concurrency §4].
+- **RESÍDUO ACEITO — crash cruzando o minuto** (E1, decisão do usuário 2026-06-18): como o bucket é de minuto e o intent é criado ANTES do commit, um crash entre `CriarIntent` e `CommitAsync` recuperado em minuto DIFERENTE muda a key → 2º intent (Pix: 2 QRs pagáveis). Janela ~ms, sev BAIXA; aceita conscientemente (sem migration/escrita extra no caminho feliz). NÃO eliminada pelas 3 camadas (o pendente só é reusável se commitou; no crash não commitou). Hardening futuro: persistir a idem-key na row e reusá-la pós-crash. Detalhe/3 eixos em [specification-concurrency §1].
 
 ## CONFIG (chaves)
 | Chave | Onde lida | Função | Ausente |

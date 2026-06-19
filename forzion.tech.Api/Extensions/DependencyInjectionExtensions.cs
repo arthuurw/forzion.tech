@@ -231,7 +231,6 @@ public static class DependencyInjectionExtensions
             services.AddSingleton<ErrorLogDbSinkProvider>();
             services.AddSingleton<ILoggerProvider>(sp => sp.GetRequiredService<ErrorLogDbSinkProvider>());
             services.AddHostedService<ErrorLogDbSinkDrenoService>();
-            services.AddHostedService<EmailBackgroundDrenoService>();
         }
 
         return services;
