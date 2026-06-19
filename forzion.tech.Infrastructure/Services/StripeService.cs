@@ -17,16 +17,10 @@ public class StripeService(
     // C4: Chave passada explicitamente em cada chamada — sem dependência de estado global
     private RequestOptions RequestOptions => new() { ApiKey = _settings.SecretKey };
 
-    /// <summary>
-    /// Belt-and-suspenders sobre F12 (serializable tx app-side): Stripe-Idempotency-Key
-    /// garante que retry de network/transport NÃO crie 2º PaymentIntent. Stripe responde
-    /// idêntico até 24h depois com a mesma key. Key = `pagamento-{guid_n}` é único e
-    /// estável por pagamento (re-criar Pagamento gera novo Guid → nova key).
-    /// </summary>
-    private RequestOptions PaymentIntentRequestOptions(Guid pagamentoId) => new()
+    private RequestOptions PaymentIntentRequestOptions(string idempotencyKey) => new()
     {
         ApiKey = _settings.SecretKey,
-        IdempotencyKey = $"pagamento-{pagamentoId:N}"
+        IdempotencyKey = idempotencyKey
     };
 
     // Mesma garantia do PaymentIntent: retry de transporte após resposta perdida vira no-op no
@@ -84,8 +78,8 @@ public class StripeService(
     public async Task<PixPaymentResult> CriarPixPaymentIntentAsync(
         decimal valor,
         string stripeAccountId,
-        Guid pagamentoId,
         decimal taxaPlataformaPercent,
+        string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(valor, taxaPlataformaPercent);
@@ -103,10 +97,6 @@ public class StripeService(
                     ExpiresAfterSeconds = 3600,
                 },
             },
-            Metadata = new Dictionary<string, string>
-            {
-                ["pagamento_id"] = pagamentoId.ToString(),
-            },
             ApplicationFeeAmount = taxaCentavos,
             TransferData = new PaymentIntentTransferDataOptions
             {
@@ -114,7 +104,7 @@ public class StripeService(
             },
         };
 
-        var intent = await service.CreateAsync(options, requestOptions: PaymentIntentRequestOptions(pagamentoId), cancellationToken: cancellationToken).ConfigureAwait(false);
+        var intent = await service.CreateAsync(options, requestOptions: PaymentIntentRequestOptions(idempotencyKey), cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var pix = intent.NextAction?.PixDisplayQrCode
             ?? throw new InvalidOperationException("Stripe não retornou dados Pix.");
@@ -129,8 +119,8 @@ public class StripeService(
     public async Task<CartaoPaymentResult> CriarCartaoPaymentIntentAsync(
         decimal valor,
         string stripeAccountId,
-        Guid pagamentoId,
         decimal taxaPlataformaPercent,
+        string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(valor, taxaPlataformaPercent);
@@ -141,10 +131,6 @@ public class StripeService(
             Amount = valorCentavos,
             Currency = "brl",
             PaymentMethodTypes = ["card"],
-            Metadata = new Dictionary<string, string>
-            {
-                ["pagamento_id"] = pagamentoId.ToString(),
-            },
             ApplicationFeeAmount = taxaCentavos,
             TransferData = new PaymentIntentTransferDataOptions
             {
@@ -152,22 +138,16 @@ public class StripeService(
             },
         };
 
-        var intent = await service.CreateAsync(options, requestOptions: PaymentIntentRequestOptions(pagamentoId), cancellationToken: cancellationToken).ConfigureAwait(false);
+        var intent = await service.CreateAsync(options, requestOptions: PaymentIntentRequestOptions(idempotencyKey), cancellationToken: cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("PaymentIntent Cartão {IntentId} criado para conta {AccountId}.", intent.Id, stripeAccountId);
 
         return new CartaoPaymentResult(intent.Id, intent.ClientSecret);
     }
 
-    private RequestOptions PagamentoTreinadorRequestOptions(Guid pagamentoTreinadorId) => new()
-    {
-        ApiKey = _settings.SecretKey,
-        IdempotencyKey = $"pagamento-treinador-{pagamentoTreinadorId:N}"
-    };
-
     public async Task<PixPaymentResult> CriarPixPlataformaPaymentIntentAsync(
         decimal valor,
-        Guid pagamentoTreinadorId,
+        string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         var (valorCentavos, _) = MoneyCentavos.ValorETaxaCentavos(valor, 0m);
@@ -187,12 +167,11 @@ public class StripeService(
             },
             Metadata = new Dictionary<string, string>
             {
-                ["pagamento_treinador_id"] = pagamentoTreinadorId.ToString(),
                 ["tipo"] = "plano_treinador",
             },
         };
 
-        var intent = await service.CreateAsync(options, requestOptions: PagamentoTreinadorRequestOptions(pagamentoTreinadorId), cancellationToken: cancellationToken).ConfigureAwait(false);
+        var intent = await service.CreateAsync(options, requestOptions: PaymentIntentRequestOptions(idempotencyKey), cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var pix = intent.NextAction?.PixDisplayQrCode
             ?? throw new InvalidOperationException("Stripe não retornou dados Pix.");
@@ -206,7 +185,7 @@ public class StripeService(
 
     public async Task<CartaoPaymentResult> CriarCartaoPlataformaPaymentIntentAsync(
         decimal valor,
-        Guid pagamentoTreinadorId,
+        string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         var (valorCentavos, _) = MoneyCentavos.ValorETaxaCentavos(valor, 0m);
@@ -219,12 +198,11 @@ public class StripeService(
             PaymentMethodTypes = ["card"],
             Metadata = new Dictionary<string, string>
             {
-                ["pagamento_treinador_id"] = pagamentoTreinadorId.ToString(),
                 ["tipo"] = "plano_treinador",
             },
         };
 
-        var intent = await service.CreateAsync(options, requestOptions: PagamentoTreinadorRequestOptions(pagamentoTreinadorId), cancellationToken: cancellationToken).ConfigureAwait(false);
+        var intent = await service.CreateAsync(options, requestOptions: PaymentIntentRequestOptions(idempotencyKey), cancellationToken: cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("PaymentIntent Cartão plano-treinador {IntentId} criado.", intent.Id);
 

@@ -12,6 +12,7 @@ using forzion.tech.Application.UseCases.Treinadores.TrocarPlanoTreinador;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Api.Endpoints.Pagamentos;
@@ -195,7 +196,7 @@ public static class PagamentosEndpoints
 
         endpoints.MapPost("/internal/processar-renovacoes-treinador", async (
             HttpContext httpContext,
-            [FromServices] GerarCobrancaPlanoTreinadorHandler gerarHandler,
+            [FromServices] IServiceScopeFactory scopeFactory,
             [FromServices] IAssinaturaTreinadorRepository assinaturaTreinadorRepository,
             [FromServices] ILogger<Program> logger,
             [FromServices] TimeProvider timeProvider,
@@ -218,6 +219,8 @@ public static class PagamentosEndpoints
                 foreach (var assinaturaId in lote.Select(a => a.Id))
                 {
                     processadas++;
+                    using var scope = scopeFactory.CreateScope();
+                    var gerarHandler = scope.ServiceProvider.GetRequiredService<GerarCobrancaPlanoTreinadorHandler>();
                     var result = await gerarHandler.HandleAsync(
                         new GerarCobrancaPlanoTreinadorCommand(assinaturaId), cancellationToken).ConfigureAwait(false);
                     if (result.IsFailure)
@@ -248,7 +251,7 @@ public static class PagamentosEndpoints
 
         endpoints.MapPost("/internal/processar-renovacoes", async (
             HttpContext httpContext,
-            [FromServices] GerarCobrancaMensalHandler gerarHandler,
+            [FromServices] IServiceScopeFactory scopeFactory,
             [FromServices] IAssinaturaAlunoRepository assinaturaRepository,
             [FromServices] ILogger<Program> logger,
             [FromServices] TimeProvider timeProvider,
@@ -271,6 +274,8 @@ public static class PagamentosEndpoints
                 foreach (var assinatura in lote)
                 {
                     processadas++;
+                    using var scope = scopeFactory.CreateScope();
+                    var gerarHandler = scope.ServiceProvider.GetRequiredService<GerarCobrancaMensalHandler>();
                     var result = await gerarHandler.HandleAsync(
                         new GerarCobrancaMensalCommand(assinatura.Id, assinatura.TreinadorId), cancellationToken).ConfigureAwait(false);
 

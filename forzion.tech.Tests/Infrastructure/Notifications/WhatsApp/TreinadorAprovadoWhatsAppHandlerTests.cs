@@ -13,6 +13,7 @@ public class TreinadorAprovadoWhatsAppHandlerTests
 {
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IWhatsAppNotifier> _notifier = new();
+    private readonly Mock<IPlanoNotificationPolicy> _planoPolicy = new();
     private readonly Mock<ILogger<TreinadorAprovadoWhatsAppHandler>> _logger = new();
     private readonly TreinadorAprovadoWhatsAppHandler _handler;
 
@@ -26,9 +27,11 @@ public class TreinadorAprovadoWhatsAppHandlerTests
         _notifier.Setup(n => n.Habilitado).Returns(true);
         _notifier.Setup(n => n.SendTemplateAsync(It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, true));
 
         _handler = new TreinadorAprovadoWhatsAppHandler(
-            _treinadorRepo.Object, _notifier.Object, _logger.Object);
+            _treinadorRepo.Object, _notifier.Object, _planoPolicy.Object, _logger.Object);
     }
 
     [Fact]
@@ -86,5 +89,21 @@ public class TreinadorAprovadoWhatsAppHandlerTests
                 m.BodyParameters.Contains("Carlos")),
             It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PlanoSemWhatsApp_NaoEnvia()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", TestData.Agora, telefone: "11999998888").Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(treinador);
+        _planoPolicy.Setup(p => p.ResolverPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CanaisNotificacao(true, false));
+
+        await _handler.HandleAsync(Evento);
+
+        _notifier.Verify(n => n.SendTemplateAsync(
+            It.IsAny<string>(), It.IsAny<WhatsAppTemplateMessage>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

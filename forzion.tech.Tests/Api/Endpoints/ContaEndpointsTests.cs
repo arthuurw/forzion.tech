@@ -266,7 +266,7 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
         public Mock<SolicitarTrocaEmailHandler> SolicitarTrocaEmailHandlerMock { get; } = new(
             Mock.Of<IContaRepository>(),
             Mock.Of<ITrocaEmailTokenRepository>(),
-            Mock.Of<IEmailBackgroundDispatcher>(),
+            Mock.Of<IEmailCriticoDispatcher>(),
             Mock.Of<IUnitOfWork>(),
             TimeProvider.System,
             Mock.Of<ILogger<SolicitarTrocaEmailHandler>>(),

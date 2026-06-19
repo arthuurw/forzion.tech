@@ -19,6 +19,7 @@ public class IniciarPagamentoPlanoHandlerTests
     private readonly Mock<IStripeService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
+    private readonly Mock<IDatabaseErrorInspector> _errorInspector = new();
     private readonly Mock<ILogger<IniciarPagamentoPlanoHandler>> _logger = new();
     private readonly IniciarPagamentoPlanoHandler _handler;
 
@@ -37,14 +38,14 @@ public class IniciarPagamentoPlanoHandlerTests
             .ReturnsAsync(new NoopTransaction());
 
         _stripeService.Setup(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PixResult);
         _stripeService.Setup(s => s.CriarCartaoPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CartaoResult);
 
         var criarPagamentoService = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
         _handler = new IniciarPagamentoPlanoHandler(
@@ -91,7 +92,7 @@ public class IniciarPagamentoPlanoHandlerTests
             because: "o pagamento só é persistido após o Stripe retornar o intent id");
 
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            assinatura.Valor, It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+            assinatura.Valor, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -108,9 +109,9 @@ public class IniciarPagamentoPlanoHandlerTests
         result.Value.MetodoPagamento.Should().Be(MetodoPagamento.Cartao);
         result.Value.ClientSecret.Should().Be("secret_abc");
         _stripeService.Verify(s => s.CriarCartaoPlataformaPaymentIntentAsync(
-            assinatura.Valor, It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+            assinatura.Valor, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -124,7 +125,7 @@ public class IniciarPagamentoPlanoHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("treinador.nao_aguardando_pagamento");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -150,7 +151,7 @@ public class IniciarPagamentoPlanoHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("assinatura_treinador.invalida");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -184,7 +185,7 @@ public class IniciarPagamentoPlanoHandlerTests
         result.Value.PagamentoId.Should().Be(existente.Id);
         result.Value.StripePaymentIntentId.Should().Be("pi_old");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _pagamentoRepo.Verify(r => r.AdicionarAsync(It.IsAny<PagamentoTreinador>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -203,7 +204,7 @@ public class IniciarPagamentoPlanoHandlerTests
         zumbi.Status.Should().Be(PagamentoStatus.Falhou);
         result.Value.StripePaymentIntentId.Should().Be("pi_plat_123");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
-            It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

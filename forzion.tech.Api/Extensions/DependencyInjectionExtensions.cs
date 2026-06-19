@@ -99,6 +99,7 @@ using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.Settings;
 using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Logging;
+using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.WebUtilities;

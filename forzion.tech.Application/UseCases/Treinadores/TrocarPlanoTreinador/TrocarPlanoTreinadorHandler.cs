@@ -85,7 +85,19 @@ public class TrocarPlanoTreinadorHandler(
             return Result.Success(TrocarPlanoTreinadorResponse.UpgradeImediato(agora));
         }
 
+        var chave = IdempotencyKey.Cobranca("troca-upgrade", assinatura.Id, agora, novoPlano.Id);
+
+        PixPaymentResult? pix = null;
+        CartaoPaymentResult? cartao = null;
+
         var params_ = new CriarPagamentoComIntentParams<PagamentoTreinador>(
+            CriarIntent: async ct2 =>
+            {
+                if (metodo == MetodoPagamento.Cartao)
+                    cartao = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(valorProracao, chave, ct2).ConfigureAwait(false);
+                else
+                    pix = await stripeService.CriarPixPlataformaPaymentIntentAsync(valorProracao, chave, ct2).ConfigureAwait(false);
+            },
             ObterPendente: ct2 => pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct2),
             VerificarIdempotencia: pendente =>
                 pendente.Finalidade == FinalidadePagamentoTreinador.TrocaPlano
@@ -95,18 +107,10 @@ public class TrocarPlanoTreinadorHandler(
             CriarPagamento: () => PagamentoTreinador.Criar(
                 assinatura.TreinadorId, assinatura.Id, valorProracao,
                 FinalidadePagamentoTreinador.TrocaPlano, agora, metodo, novoPlano.Id),
-            AplicarIntentPix: async (pag, ct2) =>
-            {
-                var r = await stripeService.CriarPixPlataformaPaymentIntentAsync(valorProracao, pag.Id, ct2).ConfigureAwait(false);
-                return pag.DefinirDadosPix(r.PaymentIntentId, r.QrCode, r.QrCodeUrl, r.Expiracao, agora);
-            },
-            AplicarIntentCartao: async (pag, ct2) =>
-            {
-                var r = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(valorProracao, pag.Id, ct2).ConfigureAwait(false);
-                return pag.DefinirDadosCartao(r.PaymentIntentId, r.ClientSecret, agora);
-            },
-            AdicionarAsync: (pag, ct2) => pagamentoRepository.AdicionarAsync(pag, ct2),
-            Metodo: metodo
+            AplicarIntent: pag => metodo == MetodoPagamento.Cartao
+                ? pag.DefinirDadosCartao(cartao!.PaymentIntentId, cartao.ClientSecret, agora)
+                : pag.DefinirDadosPix(pix!.PaymentIntentId, pix.QrCode, pix.QrCodeUrl, pix.Expiracao, agora),
+            AdicionarAsync: (pag, ct2) => pagamentoRepository.AdicionarAsync(pag, ct2)
         )
         {
             // Webhook tardio para o intent descartado encontrará Status != Pendente → JaConsistente.
@@ -146,7 +150,19 @@ public class TrocarPlanoTreinadorHandler(
     private async Task<Result<TrocarPlanoTreinadorResponse>> ProcessarInadimplenteAsync(
         AssinaturaTreinador assinatura, PlanoPlataforma novoPlano, MetodoPagamento metodo, DateTime agora, CancellationToken ct)
     {
+        var chave = IdempotencyKey.Cobranca("troca-regular", assinatura.Id, agora, novoPlano.Id);
+
+        PixPaymentResult? pix = null;
+        CartaoPaymentResult? cartao = null;
+
         var params_ = new CriarPagamentoComIntentParams<PagamentoTreinador>(
+            CriarIntent: async ct2 =>
+            {
+                if (metodo == MetodoPagamento.Cartao)
+                    cartao = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(novoPlano.Preco, chave, ct2).ConfigureAwait(false);
+                else
+                    pix = await stripeService.CriarPixPlataformaPaymentIntentAsync(novoPlano.Preco, chave, ct2).ConfigureAwait(false);
+            },
             ObterPendente: ct2 => pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct2),
             VerificarIdempotencia: pendente =>
                 pendente.Finalidade == FinalidadePagamentoTreinador.TrocaPlano
@@ -156,18 +172,10 @@ public class TrocarPlanoTreinadorHandler(
             CriarPagamento: () => PagamentoTreinador.Criar(
                 assinatura.TreinadorId, assinatura.Id, novoPlano.Preco,
                 FinalidadePagamentoTreinador.TrocaPlano, agora, metodo, novoPlano.Id),
-            AplicarIntentPix: async (pag, ct2) =>
-            {
-                var r = await stripeService.CriarPixPlataformaPaymentIntentAsync(novoPlano.Preco, pag.Id, ct2).ConfigureAwait(false);
-                return pag.DefinirDadosPix(r.PaymentIntentId, r.QrCode, r.QrCodeUrl, r.Expiracao, agora);
-            },
-            AplicarIntentCartao: async (pag, ct2) =>
-            {
-                var r = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(novoPlano.Preco, pag.Id, ct2).ConfigureAwait(false);
-                return pag.DefinirDadosCartao(r.PaymentIntentId, r.ClientSecret, agora);
-            },
-            AdicionarAsync: (pag, ct2) => pagamentoRepository.AdicionarAsync(pag, ct2),
-            Metodo: metodo
+            AplicarIntent: pag => metodo == MetodoPagamento.Cartao
+                ? pag.DefinirDadosCartao(cartao!.PaymentIntentId, cartao.ClientSecret, agora)
+                : pag.DefinirDadosPix(pix!.PaymentIntentId, pix.QrCode, pix.QrCodeUrl, pix.Expiracao, agora),
+            AdicionarAsync: (pag, ct2) => pagamentoRepository.AdicionarAsync(pag, ct2)
         )
         {
             MarcarFalhou = (pendente, dataAgora) =>

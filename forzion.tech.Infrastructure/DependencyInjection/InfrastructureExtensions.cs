@@ -55,6 +55,7 @@ public static class InfrastructureExtensions
         // idempotência por par evita re-enfileiramento do mesmo efeito (índice único na tabela).
         services.AddSingleton(BuildOutboxDurabilityRegistry());
         services.AddScoped<IOutboxEnfileirador, OutboxEnfileirador>();
+        services.AddScoped<IEmailCriticoDispatcher, EmailCriticoDispatcher>();
         services.AddScoped<IOutboxEfeitoHandler, EvidenciaDisputaEfeitoHandler>();
         services.AddScoped<IOutboxEfeitoHandler, EmitirNfseEfeitoHandler>();
         services.AddScoped<IOutboxEfeitoHandler, CancelarNfseEfeitoHandler>();
@@ -143,6 +144,10 @@ public static class InfrastructureExtensions
         services.PostConfigure<StripeSettings>(s => s.ExpectLivemode ??= isProduction);
         services.AddScoped<IStripeService, StripeService>();
 
+        var stripeSettings = configuration.GetSection("Stripe").Get<StripeSettings>();
+        if (!string.IsNullOrWhiteSpace(stripeSettings?.SecretKey))
+            Stripe.StripeConfiguration.StripeClient = StripeClientFactory.Construir(stripeSettings);
+
         services.AddOptions<NfseSettings>()
             .BindConfiguration("Nfse")
             .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CertificadoPath),
@@ -197,7 +202,6 @@ public static class InfrastructureExtensions
                 s.RecipientHashKey = DeliveryLogSettings.DevDefaultKey;
         });
         services.AddSingleton<IRecipientHasher, RecipientHasher>();
-        services.AddSingleton<IEmailBackgroundDispatcher, EmailBackgroundDispatcher>();
 
         // PaymentSettings — expõe taxa de plataforma para a camada Application
         services.AddOptions<PaymentSettings>()
@@ -253,6 +257,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<VinculoPendenteCriadoEvent>, VinculoPendenteCriadoEmailTreinadorHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoReativadaEvent>, AssinaturaAlunoReativadaEmailAlunoHandler>();
         services.AddScoped<IDomainEventHandler<MensagemSuporteCriadaEvent>, MensagemSuporteCriadaEmailHandler>();
+        services.AddScoped<IDomainEventHandler<EmailCriticoSolicitadoEvent>, EmailCriticoSolicitadoEmailHandler>();
 
         services.AddScoped<IDomainEventHandler<AssinaturaTreinadorPagamentoFalhouEvent>, AssinaturaTreinadorPagamentoFalhouEmailHandler>();
         services.AddScoped<IDomainEventHandler<AssinaturaTreinadorMarcadaInadimplenteEvent>, AssinaturaTreinadorMarcadaInadimplenteEmailHandler>();
@@ -332,5 +337,7 @@ public static class InfrastructureExtensions
             // E-mail ao suporte é durável (FR-05): nunca perdido por falha transitória do Resend.
             // Diferente das demais notificações best-effort — aqui o usuário escolheu garantia de entrega.
             .Registrar<MensagemSuporteCriadaEvent, MensagemSuporteCriadaEmailHandler>(
-                e => $"evt:MensagemSuporteCriada:{e.MensagemSuporteId}");
+                e => $"evt:MensagemSuporteCriada:{e.MensagemSuporteId}")
+            .Registrar<EmailCriticoSolicitadoEvent, EmailCriticoSolicitadoEmailHandler>(
+                e => $"evt:EmailCritico:{e.Id}");
 }

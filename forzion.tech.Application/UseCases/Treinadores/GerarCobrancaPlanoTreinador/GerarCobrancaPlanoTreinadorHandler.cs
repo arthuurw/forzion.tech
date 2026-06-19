@@ -70,24 +70,28 @@ public class GerarCobrancaPlanoTreinadorHandler(
             }
         }
 
+        var chave = IdempotencyKey.Cobranca("treinador", assinatura.Id, now);
+
+        PixPaymentResult? pix = null;
+        CartaoPaymentResult? cartao = null;
+
         var params_ = new CriarPagamentoComIntentParams<PagamentoTreinador>(
+            CriarIntent: async ct =>
+            {
+                if (command.Metodo == MetodoPagamento.Cartao)
+                    cartao = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(assinatura.Valor, chave, ct).ConfigureAwait(false);
+                else
+                    pix = await stripeService.CriarPixPlataformaPaymentIntentAsync(assinatura.Valor, chave, ct).ConfigureAwait(false);
+            },
             ObterPendente: ct => pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct),
             VerificarIdempotencia: pendente => pendente.StripePaymentIntentId is not null ? pendente : null,
             CriarPagamento: () => PagamentoTreinador.Criar(
                 assinatura.TreinadorId, assinatura.Id, assinatura.Valor,
                 FinalidadePagamentoTreinador.Renovacao, now, command.Metodo),
-            AplicarIntentPix: async (pag, ct) =>
-            {
-                var r = await stripeService.CriarPixPlataformaPaymentIntentAsync(assinatura.Valor, pag.Id, ct).ConfigureAwait(false);
-                return pag.DefinirDadosPix(r.PaymentIntentId, r.QrCode, r.QrCodeUrl, r.Expiracao, now);
-            },
-            AplicarIntentCartao: async (pag, ct) =>
-            {
-                var r = await stripeService.CriarCartaoPlataformaPaymentIntentAsync(assinatura.Valor, pag.Id, ct).ConfigureAwait(false);
-                return pag.DefinirDadosCartao(r.PaymentIntentId, r.ClientSecret, now);
-            },
-            AdicionarAsync: (pag, ct) => pagamentoRepository.AdicionarAsync(pag, ct),
-            Metodo: command.Metodo
+            AplicarIntent: pag => command.Metodo == MetodoPagamento.Cartao
+                ? pag.DefinirDadosCartao(cartao!.PaymentIntentId, cartao.ClientSecret, now)
+                : pag.DefinirDadosPix(pix!.PaymentIntentId, pix.QrCode, pix.QrCodeUrl, pix.Expiracao, now),
+            AdicionarAsync: (pag, ct) => pagamentoRepository.AdicionarAsync(pag, ct)
         )
         { MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
 

@@ -4,7 +4,6 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
-using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -14,6 +13,7 @@ public class CriarPagamentoComIntentServiceTests
 {
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
+    private readonly Mock<IDatabaseErrorInspector> _errorInspector = new();
     private readonly CriarPagamentoComIntentService _service;
 
     private sealed class NoopTransaction : ITransaction
@@ -28,7 +28,7 @@ public class CriarPagamentoComIntentServiceTests
             .ReturnsAsync(new NoopTransaction());
 
         _service = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
     }
 
@@ -44,32 +44,28 @@ public class CriarPagamentoComIntentServiceTests
         PagamentoTreinador? pendente = null,
         bool stripeThrows = false,
         Func<PagamentoTreinador, PagamentoTreinador?>? verificarIdempotencia = null,
-        Mock<IPagamentoTreinadorRepository>? pagamentoRepo = null)
+        Mock<IPagamentoTreinadorRepository>? pagamentoRepo = null,
+        Action? onCriarIntent = null)
     {
         var repo = pagamentoRepo ?? new Mock<IPagamentoTreinadorRepository>();
         repo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pendente);
 
         return new CriarPagamentoComIntentParams<PagamentoTreinador>(
+            CriarIntent: _ =>
+            {
+                onCriarIntent?.Invoke();
+                if (stripeThrows)
+                    throw new InvalidOperationException("Stripe indisponível");
+                return Task.CompletedTask;
+            },
             ObterPendente: ct => repo.Object.ObterPendentePorAssinaturaAsync(assinatura.Id, ct),
             VerificarIdempotencia: verificarIdempotencia ?? (p => p.StripePaymentIntentId is not null ? p : null),
             CriarPagamento: () => PagamentoTreinador.Criar(
                 assinatura.TreinadorId, assinatura.Id, assinatura.Valor,
                 FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow),
-            AplicarIntentPix: stripeThrows
-                ? (_, _) => throw new InvalidOperationException("Stripe indisponível")
-                : async (pag, _) =>
-                {
-                    await Task.CompletedTask;
-                    return pag.DefinirDadosPix("pi_test", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
-                },
-            AplicarIntentCartao: (pag, _) =>
-            {
-                pag.DefinirDadosCartao("pi_cartao", "secret", DateTime.UtcNow);
-                return Task.FromResult(Result.Success());
-            },
-            AdicionarAsync: (pag, ct) => repo.Object.AdicionarAsync(pag, ct),
-            Metodo: MetodoPagamento.Pix
+            AplicarIntent: pag => pag.DefinirDadosPix("pi_test", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow),
+            AdicionarAsync: (pag, ct) => repo.Object.AdicionarAsync(pag, ct)
         )
         { MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
     }
@@ -155,42 +151,56 @@ public class CriarPagamentoComIntentServiceTests
     }
 
     [Fact]
-    public async Task ExecutarAsync_MetodoCartao_ChamaAplicarIntentCartao()
+    public async Task ExecutarAsync_CriaIntentAntesDeAbrirTransacao()
     {
         var assinatura = CriarAssinaturaAtiva();
         var pagamentoRepo = new Mock<IPagamentoTreinadorRepository>();
         pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((PagamentoTreinador?)null);
 
-        bool cartaoChamado = false;
-        bool pixChamado = false;
+        var ordem = new List<string>();
+        _transactionProvider.Setup(t => t.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                ordem.Add("tx");
+                return Task.FromResult<ITransaction>(new NoopTransaction());
+            });
 
-        var p = new CriarPagamentoComIntentParams<PagamentoTreinador>(
-            ObterPendente: ct => pagamentoRepo.Object.ObterPendentePorAssinaturaAsync(assinatura.Id, ct),
-            VerificarIdempotencia: pend => pend.StripePaymentIntentId is not null ? pend : null,
-            CriarPagamento: () => PagamentoTreinador.Criar(
-                assinatura.TreinadorId, assinatura.Id, assinatura.Valor,
-                FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow, MetodoPagamento.Cartao),
-            AplicarIntentPix: (pag, _) =>
+        var p = BuildParams(assinatura, pagamentoRepo: pagamentoRepo, onCriarIntent: () => ordem.Add("intent"));
+
+        await _service.ExecutarAsync(p);
+
+        ordem.IndexOf("intent").Should().BeLessThan(ordem.IndexOf("tx"),
+            "PERF-01: chamada Stripe ocorre fora da transação Serializable");
+    }
+
+    [Fact]
+    public async Task ExecutarAsync_ConflitoSerializacao_RetentaEConclui()
+    {
+        var assinatura = CriarAssinaturaAtiva();
+        var pagamentoRepo = new Mock<IPagamentoTreinadorRepository>();
+        pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PagamentoTreinador?)null);
+
+        var conflito = new InvalidOperationException("serialization_failure");
+        _errorInspector.Setup(i => i.EhConflitoDeSerializacao(conflito)).Returns(true);
+
+        var commits = 0;
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(() =>
             {
-                pixChamado = true;
-                return Task.FromResult(pag.DefinirDadosPix("pi_pix", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow));
-            },
-            AplicarIntentCartao: (pag, _) =>
-            {
-                cartaoChamado = true;
-                return Task.FromResult(pag.DefinirDadosCartao("pi_cartao", "secret", DateTime.UtcNow));
-            },
-            AdicionarAsync: (pag, ct) => pagamentoRepo.Object.AdicionarAsync(pag, ct),
-            Metodo: MetodoPagamento.Cartao
-        )
-        { MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
+                commits++;
+                return commits == 1 ? throw conflito : Task.CompletedTask;
+            });
+
+        var criarIntentCalls = 0;
+        var p = BuildParams(assinatura, pagamentoRepo: pagamentoRepo, onCriarIntent: () => criarIntentCalls++);
 
         var result = await _service.ExecutarAsync(p);
 
         result.IsSuccess.Should().BeTrue();
-        cartaoChamado.Should().BeTrue("Cartão selecionado deve chamar AplicarIntentCartao");
-        pixChamado.Should().BeFalse("Cartão selecionado não deve chamar AplicarIntentPix");
+        commits.Should().Be(2, "primeira tentativa falha com serialization_failure, segunda conclui");
+        criarIntentCalls.Should().Be(1, "intent criado uma vez antes do loop de retry, não recriado por tentativa");
     }
 
     [Fact]

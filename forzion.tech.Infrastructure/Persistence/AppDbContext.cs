@@ -58,6 +58,9 @@ public class AppDbContext(
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
     public DbSet<TrocaEmailToken> TrocaEmailTokens => Set<TrocaEmailToken>();
 
+    private EfCoreTransactionAdapter? _transacaoAtiva;
+    private List<IDomainEvent>? _eventosBestEffortPosCommit;
+
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
         var entitiesWithEvents = eventDispatcher is null
@@ -84,8 +87,34 @@ public class AppDbContext(
 
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        if (domainEvents.Count > 0 && eventDispatcher is not null)
-            await eventDispatcher.DispatchAsync(domainEvents, cancellationToken).ConfigureAwait(false);
+        if (domainEvents.Count == 0 || eventDispatcher is null)
+            return;
+
+        if (_transacaoAtiva is not null)
+        {
+            (_eventosBestEffortPosCommit ??= []).AddRange(domainEvents);
+            return;
+        }
+
+        await eventDispatcher.DispatchAsync(domainEvents, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task DespacharEventosPosCommitAsync(CancellationToken cancellationToken)
+    {
+        var eventos = _eventosBestEffortPosCommit;
+        _eventosBestEffortPosCommit = null;
+        _transacaoAtiva = null;
+
+        if (eventos is { Count: > 0 } && eventDispatcher is not null)
+            await eventDispatcher.DispatchAsync(eventos, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void DescartarEventosPosCommit(EfCoreTransactionAdapter adapter)
+    {
+        if (!ReferenceEquals(_transacaoAtiva, adapter))
+            return;
+        _eventosBestEffortPosCommit = null;
+        _transacaoAtiva = null;
     }
 
     public void DescartarAlteracoesPendentes() => ChangeTracker.Clear();
@@ -104,15 +133,28 @@ public class AppDbContext(
     public async Task<ITransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken = default)
     {
         var tx = await Database.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
-        return new EfCoreTransactionAdapter(tx);
+        var adapter = new EfCoreTransactionAdapter(tx, this);
+        _transacaoAtiva = adapter;
+        return adapter;
     }
 
-    private sealed class EfCoreTransactionAdapter(IDbContextTransaction inner) : ITransaction
+    private sealed class EfCoreTransactionAdapter(IDbContextTransaction inner, AppDbContext context) : ITransaction
     {
-        public Task CommitAsync(CancellationToken cancellationToken = default) =>
-            inner.CommitAsync(cancellationToken);
+        private bool _committed;
 
-        public ValueTask DisposeAsync() => inner.DisposeAsync();
+        public async Task CommitAsync(CancellationToken cancellationToken = default)
+        {
+            await inner.CommitAsync(cancellationToken).ConfigureAwait(false);
+            _committed = true;
+            await context.DespacharEventosPosCommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (!_committed)
+                context.DescartarEventosPosCommit(this);
+            await inner.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

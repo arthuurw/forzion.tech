@@ -3,14 +3,12 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Settings;
 using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 
 namespace forzion.tech.Tests.Api.Endpoints;
@@ -83,9 +81,8 @@ public class AuthEmailDetachedEndpointsTests : IClassFixture<AuthEmailDetachedEn
             EsqueceuSenhaHandlerMock = new Mock<EsqueceuSenhaHandler>(
                 Mock.Of<IContaRepository>(),
                 Mock.Of<IPasswordResetTokenRepository>(),
-                Mock.Of<IEmailBackgroundDispatcher>(),
+                Mock.Of<IEmailCriticoDispatcher>(),
                 Mock.Of<IUnitOfWork>(),
-                Options.Create(new AppSettings()),
                 TimeProvider.System,
                 Mock.Of<ILogger<EsqueceuSenhaHandler>>());
 

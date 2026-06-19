@@ -2,8 +2,8 @@ using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Services;
+using forzion.tech.Tests.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace forzion.tech.Tests.Infrastructure.Outbox;
 
@@ -50,9 +50,10 @@ public class OutboxDurabilityDispatchTests
 
         var registry = new OutboxDurabilityRegistry()
             .Registrar<EventoFake, HandlerDuravel>(_ => "k");
-        var dispatcher = new DomainEventDispatcher(sp, registry, NullLogger<DomainEventDispatcher>.Instance);
+        var dispatcher = new DispatcherComCapturaBackground(sp, registry);
 
         await dispatcher.DispatchAsync([new EventoFake(DateTime.UtcNow)]);
+        await dispatcher.DrenarAsync();
 
         duravel.Executado.Should().BeFalse("handler durável roda no worker, não in-memory");
         notificacao.Executado.Should().BeTrue("notificação best-effort do mesmo evento continua in-memory");
@@ -69,7 +70,7 @@ public class OutboxDurabilityDispatchTests
 
         var registry = new OutboxDurabilityRegistry()
             .Registrar<EventoFake, HandlerDuravelQueLanca>(_ => "k");
-        var dispatcher = new DomainEventDispatcher(sp, registry, NullLogger<DomainEventDispatcher>.Instance);
+        var dispatcher = new DispatcherComCapturaBackground(sp, registry);
 
         var act = async () => await dispatcher.DispatchDuravelAsync(new EventoFake(DateTime.UtcNow));
 

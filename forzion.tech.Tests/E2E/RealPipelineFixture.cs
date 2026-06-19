@@ -5,6 +5,7 @@ using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Seed;
 using forzion.tech.Infrastructure.Services;
+using forzion.tech.Tests.Infrastructure.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -76,6 +77,8 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
             services.AddInfrastructure(ctx.Configuration);
             services.RemoveAll<IStripeService>();
             services.AddSingleton<IStripeService>(Stripe);
+            services.RemoveAll<IDomainEventDispatcher>();
+            services.AddScoped<IDomainEventDispatcher, DispatcherBestEffortSincrono>();
             services.AddSingleton<ILoggerProvider>(new CapturaErroLoggerProvider(ErrosCapturados));
         });
     }

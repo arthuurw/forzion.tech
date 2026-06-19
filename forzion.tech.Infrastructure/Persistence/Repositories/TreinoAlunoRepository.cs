@@ -88,7 +88,7 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
 
         var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await baseQuery
-            .OrderByDescending(ta => ta.CreatedAt)
+            .OrderByDescending(ta => ta.CreatedAt).ThenBy(ta => ta.Id)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
             .Join(
@@ -97,6 +97,7 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
                 ta => ta.TreinoId,
                 t => t.Id,
                 (ta, t) => new TreinoAlunoDetalhe(ta, t))
+            .AsSplitQuery()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

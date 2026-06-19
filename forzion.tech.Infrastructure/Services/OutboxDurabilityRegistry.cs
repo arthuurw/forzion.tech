@@ -48,6 +48,9 @@ public sealed class OutboxDurabilityRegistry
 
     public bool EhDuravel(Type tipoEvento) => _porEvento.ContainsKey(tipoEvento);
 
+    public IEnumerable<(Type Evento, Type Handler)> ParesDuraveis() =>
+        _porEvento.SelectMany(par => par.Value.Handlers.Select(handler => (par.Key, handler)));
+
     public bool EhHandlerDuravel(Type tipoEvento, Type tipoHandler) =>
         _porEvento.TryGetValue(tipoEvento, out var registro) && registro.Handlers.Contains(tipoHandler);
 

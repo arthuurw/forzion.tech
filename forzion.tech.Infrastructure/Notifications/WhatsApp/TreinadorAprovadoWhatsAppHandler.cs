@@ -12,6 +12,7 @@ namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 public sealed class TreinadorAprovadoWhatsAppHandler(
     ITreinadorRepository treinadorRepository,
     IWhatsAppNotifier whatsAppNotifier,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<TreinadorAprovadoWhatsAppHandler> logger) : IDomainEventHandler<TreinadorAprovadoEvent>
 {
     public async Task HandleAsync(TreinadorAprovadoEvent domainEvent, CancellationToken cancellationToken = default)
@@ -34,6 +35,11 @@ public sealed class TreinadorAprovadoWhatsAppHandler(
             logger.LogDebug("TreinadorAprovadoWhatsAppHandler: treinador {Id} sem telefone — ignorado.", treinador.Id);
             return;
         }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(domainEvent.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.WhatsApp) return;
 
         await whatsAppNotifier
             .SendTemplateAsync(treinador.Telefone, WhatsAppTemplates.TreinadorAprovado(treinador.Nome), cancellationToken)

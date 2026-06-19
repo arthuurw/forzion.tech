@@ -12,6 +12,8 @@ namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
 public sealed class AlunoRegistradoWhatsAppHandler(
     IAlunoRepository alunoRepository,
     IWhatsAppNotifier whatsAppNotifier,
+    IVinculoTreinadorAlunoRepository vinculoRepository,
+    IPlanoNotificationPolicy planoNotificationPolicy,
     ILogger<AlunoRegistradoWhatsAppHandler> logger) : IDomainEventHandler<AlunoRegistradoEvent>
 {
     public async Task HandleAsync(AlunoRegistradoEvent domainEvent, CancellationToken cancellationToken = default)
@@ -34,6 +36,20 @@ public sealed class AlunoRegistradoWhatsAppHandler(
             logger.LogDebug("AlunoRegistradoWhatsAppHandler: aluno {Id} sem telefone — ignorado.", aluno.Id);
             return;
         }
+
+        var vinculo = await vinculoRepository
+            .ObterPendentePorAlunoAsync(domainEvent.AlunoId, cancellationToken)
+            .ConfigureAwait(false);
+        if (vinculo is null)
+        {
+            logger.LogDebug("AlunoRegistradoWhatsAppHandler: aluno {Id} sem vínculo pendente — ignorado.", aluno.Id);
+            return;
+        }
+
+        var canais = await planoNotificationPolicy
+            .ResolverPorTreinadorAsync(vinculo.TreinadorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canais.WhatsApp) return;
 
         await whatsAppNotifier
             .SendTemplateAsync(aluno.Telefone, WhatsAppTemplates.BemVindoAluno(aluno.Nome), cancellationToken)

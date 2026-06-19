@@ -34,4 +34,35 @@ public class NpgsqlDatabaseErrorInspectorTests
     [Fact]
     public void EhViolacaoDeUnicidade_ExcecaoGenerica_False() =>
         _inspector.EhViolacaoDeUnicidade(new InvalidOperationException("23505 na mensagem")).Should().BeFalse();
+
+    [Fact]
+    public void EhConflitoDeSerializacao_PostgresExceptionCru_40001_True() =>
+        _inspector.EhConflitoDeSerializacao(Pg(PostgresErrorCodes.SerializationFailure)).Should().BeTrue();
+
+    [Fact]
+    public void EhConflitoDeSerializacao_DbUpdateEnvolvendo40001_True() =>
+        _inspector.EhConflitoDeSerializacao(
+            new DbUpdateException("save falhou", Pg(PostgresErrorCodes.SerializationFailure))).Should().BeTrue();
+
+    [Fact]
+    public void EhConflitoDeSerializacao_ExecutionStrategyEnvolvendo40001_True() =>
+        _inspector.EhConflitoDeSerializacao(
+            new InvalidOperationException("transient failure",
+                new DbUpdateException("save falhou", Pg(PostgresErrorCodes.SerializationFailure)))).Should().BeTrue();
+
+    [Fact]
+    public void EhConflitoDeSerializacao_DeadlockDetected_True() =>
+        _inspector.EhConflitoDeSerializacao(Pg(PostgresErrorCodes.DeadlockDetected)).Should().BeTrue();
+
+    [Fact]
+    public void EhConflitoDeSerializacao_DbUpdateConcurrencyException_True() =>
+        _inspector.EhConflitoDeSerializacao(new DbUpdateConcurrencyException("conflito")).Should().BeTrue();
+
+    [Fact]
+    public void EhConflitoDeSerializacao_OutroSqlState_False() =>
+        _inspector.EhConflitoDeSerializacao(Pg(PostgresErrorCodes.UniqueViolation)).Should().BeFalse();
+
+    [Fact]
+    public void EhConflitoDeSerializacao_ExcecaoGenerica_False() =>
+        _inspector.EhConflitoDeSerializacao(new InvalidOperationException("sem causa pg")).Should().BeFalse();
 }

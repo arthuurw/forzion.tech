@@ -1,10 +1,11 @@
+using System.Security.Cryptography;
+using System.Text;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Infrastructure.Notifications.Email;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 using DomainEmail = forzion.tech.Domain.ValueObjects.Email;
@@ -14,34 +15,32 @@ namespace forzion.tech.Tests.Infrastructure.Notifications.Email;
 public class EnviarCodigoMfaServiceTests
 {
     private readonly Mock<IMfaChallengeRepository> _challengeRepo = new();
-    private readonly Mock<IEmailService> _emailService = new();
-    private readonly Mock<IEmailBackgroundDispatcher> _dispatcher = new();
+    private readonly Mock<IEmailCriticoDispatcher> _emailCritico = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 6, 17, 12, 0, 0, TimeSpan.Zero));
-    private readonly Mock<ILogger<EnviarCodigoMfaService>> _logger = new();
     private readonly EnviarCodigoMfaService _service;
 
     public EnviarCodigoMfaServiceTests()
     {
-        _emailService.SetupGet(s => s.Habilitado).Returns(true);
-        _dispatcher.Setup(d => d.Disparar(It.IsAny<Func<IEmailService, CancellationToken, Task>>()))
-            .Callback<Func<IEmailService, CancellationToken, Task>>(f => f(_emailService.Object, CancellationToken.None).GetAwaiter().GetResult());
-
         _service = new EnviarCodigoMfaService(
-            _challengeRepo.Object, _dispatcher.Object, _unitOfWork.Object, _timeProvider, _logger.Object);
+            _challengeRepo.Object, _emailCritico.Object, _unitOfWork.Object, _timeProvider);
     }
 
     private static Conta BuildConta(string email = "user@example.com") =>
         Conta.Criar(DomainEmail.Criar(email).Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
 
     [Fact]
-    public async Task EnviarAsync_EmailHabilitado_PersisteChallengeHasheadoEEnviaCodigo()
+    public async Task EnviarAsync_PersisteChallengeHasheadoEEnfileiraCodigoCorrespondente()
     {
         var conta = BuildConta();
         MfaChallenge? captured = null;
         _challengeRepo.Setup(r => r.AdicionarAsync(It.IsAny<MfaChallenge>(), It.IsAny<CancellationToken>()))
             .Callback<MfaChallenge, CancellationToken>((c, _) => captured = c)
             .Returns(Task.CompletedTask);
+
+        string? segredo = null;
+        _emailCritico.Setup(d => d.Enfileirar(EmailCriticoTemplate.CodigoMfa, "user@example.com", It.IsAny<string>()))
+            .Callback<EmailCriticoTemplate, string, string>((_, _, s) => segredo = s);
 
         await _service.EnviarAsync(conta, MfaProposito.StepUp);
 
@@ -52,28 +51,9 @@ public class EnviarCodigoMfaServiceTests
         captured.UsadoEm.Should().BeNull();
         captured.CodigoHash.Should().MatchRegex("^[0-9a-f]{64}$");
 
-        _emailService.Verify(s => s.EnviarAsync(
-            "user@example.com",
-            It.Is<string>(a => a.Contains("código de verificação", StringComparison.Ordinal)),
-            It.IsAny<string>(),
-            It.IsAny<CancellationToken>(),
-            It.IsAny<string?>()), Times.Once);
+        segredo.Should().NotBeNullOrEmpty();
+        Hash(segredo!).Should().Be(captured.CodigoHash);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task EnviarAsync_EmailDesabilitado_PersisteChallengeMasNaoEnvia()
-    {
-        _emailService.SetupGet(s => s.Habilitado).Returns(false);
-        var conta = BuildConta();
-
-        var act = async () => await _service.EnviarAsync(conta, MfaProposito.LoginFallback);
-
-        await act.Should().NotThrowAsync();
-        _challengeRepo.Verify(r => r.AdicionarAsync(It.IsAny<MfaChallenge>(), It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _emailService.Verify(s => s.EnviarAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -110,4 +90,7 @@ public class EnviarCodigoMfaServiceTests
         _challengeRepo.Verify(r => r.AdicionarAsync(It.IsAny<MfaChallenge>(), cts.Token), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(cts.Token), Times.Once);
     }
+
+    private static string Hash(string raw) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 }
