@@ -10,24 +10,30 @@ public sealed class NpgsqlDatabaseErrorInspector : IDatabaseErrorInspector
     {
         ArgumentNullException.ThrowIfNull(exception);
 
-        // EF embrulha a PostgresException do driver em DbUpdateException no SaveChanges;
-        // o ExecuteUpdate cru a propaga direta. 23505 = unique_violation.
-        var pg = (exception as PostgresException)
-            ?? (exception as DbUpdateException)?.InnerException as PostgresException;
-
-        return pg?.SqlState == PostgresErrorCodes.UniqueViolation;
+        return EncontrarPostgres(exception)?.SqlState == PostgresErrorCodes.UniqueViolation;
     }
 
     public bool EhConflitoDeSerializacao(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
 
-        if (exception is DbUpdateConcurrencyException)
-            return true;
+        for (Exception? atual = exception; atual is not null; atual = atual.InnerException)
+        {
+            if (atual is DbUpdateConcurrencyException)
+                return true;
+            if (atual is PostgresException pg)
+                return pg.SqlState is PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected;
+        }
 
-        var pg = (exception as PostgresException)
-            ?? (exception as DbUpdateException)?.InnerException as PostgresException;
+        return false;
+    }
 
-        return pg?.SqlState is PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected;
+    private static PostgresException? EncontrarPostgres(Exception exception)
+    {
+        for (Exception? atual = exception; atual is not null; atual = atual.InnerException)
+            if (atual is PostgresException pg)
+                return pg;
+
+        return null;
     }
 }
