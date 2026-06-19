@@ -36,12 +36,12 @@ public class IniciarPagamentoPlanoHandler(
 
         if (treinador.Status != TreinadorStatus.AguardandoPagamento)
             return Result.Failure<IniciarPagamentoPlanoResponse>(
-                Error.Business("treinador_nao_aguardando_pagamento", "O treinador não está aguardando pagamento."));
+                Error.Conflict("treinador.nao_aguardando_pagamento", "O treinador não está aguardando pagamento."));
 
         var assinatura = await assinaturaRepository.ObterAtualPorTreinadorAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
         if (assinatura is null || assinatura.Status != AssinaturaTreinadorStatus.Pendente)
             return Result.Failure<IniciarPagamentoPlanoResponse>(
-                Error.Business("assinatura_treinador_invalida", "Não há assinatura de treinador pendente para pagamento."));
+                Error.Conflict("assinatura_treinador.invalida", "Não há assinatura de treinador pendente para pagamento."));
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
 

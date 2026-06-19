@@ -87,18 +87,18 @@ public class ObterPerfilHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ContaNaoEncontrada_LancaDomainException()
+    public async Task HandleAsync_ContaNaoEncontrada_LancaEstadoInconsistente()
     {
         var contaId = Guid.NewGuid();
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync((DomainConta?)null);
 
         var act = async () => await _handler.HandleAsync();
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]
-    public async Task HandleAsync_PerfilAlunoInexistente_LancaDomainException()
+    public async Task HandleAsync_PerfilAlunoInexistente_LancaEstadoInconsistente()
     {
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.Aluno);
@@ -108,11 +108,11 @@ public class ObterPerfilHandlerTests
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync((Aluno?)null);
 
         var act = async () => await _handler.HandleAsync();
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]
-    public async Task HandleAsync_TipoContaInvalido_LancaDomainException()
+    public async Task HandleAsync_TipoContaInvalido_LancaEstadoInconsistente()
     {
         var contaId = Guid.NewGuid();
         var conta = CriarConta(TipoConta.Aluno);
@@ -121,6 +121,6 @@ public class ObterPerfilHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
         var act = async () => await _handler.HandleAsync();
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 }

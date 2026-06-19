@@ -40,7 +40,7 @@ public class IniciarOnboardingTreinadorHandler(
         if (string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
         {
             var conta = await contaRepository.ObterPorIdAsync(treinador.ContaId, cancellationToken).ConfigureAwait(false)
-                ?? throw new DomainException("Conta do treinador não encontrada.");
+                ?? throw new EstadoInconsistenteException("Conta do treinador não encontrada.");
 
             var accountId = await stripeService.CriarContaConnectAsync(
                 conta.Email.Value, treinador.Nome, cancellationToken).ConfigureAwait(false);

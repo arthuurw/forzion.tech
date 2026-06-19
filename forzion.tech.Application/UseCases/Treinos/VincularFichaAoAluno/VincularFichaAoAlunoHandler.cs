@@ -53,7 +53,7 @@ public class VincularFichaAoAlunoHandler(
         if (alunosVinculados.Count > 0)
         {
             var nomeExistente = alunosVinculados[0].NomeAluno;
-            return Result.Failure(Error.Business("ficha.ja_vinculada", $"Esta ficha já está vinculada ao aluno {nomeExistente}."));
+            return Result.Failure(Error.Conflict("ficha.ja_vinculada", $"Esta ficha já está vinculada ao aluno {nomeExistente}."));
         }
 
         var treinoAlunoResult = TreinoAluno.Criar(command.TreinoId, command.AlunoId, timeProvider.GetUtcNow().UtcDateTime);

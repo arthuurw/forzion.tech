@@ -147,6 +147,57 @@ public class GlobalExceptionHandlerTests
     }
 
     [Fact]
+    public async Task TryHandleAsync_EstadoInconsistenteException_Retorna500()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new EstadoInconsistenteException("conta autenticada não encontrada"), default);
+        context.Response.StatusCode.Should().Be(500);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_EstadoInconsistenteException_CorpoContemTitleErroInterno()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new EstadoInconsistenteException("conta autenticada não encontrada"), default);
+        var body = await LerCorpo(context);
+        body.GetProperty("title").GetString().Should().Be("Erro interno.");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_EstadoInconsistenteException_NaoExpoeCode()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new EstadoInconsistenteException("diagnóstico interno"), default);
+        var body = await LerCorpo(context);
+        body.TryGetProperty("code", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_EstadoInconsistenteException_DetailNaoExpoeMensagemInterna()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new EstadoInconsistenteException("conta autenticada não encontrada"), default);
+        var body = await LerCorpo(context);
+        body.GetProperty("detail").GetString().Should().NotContain("autenticada");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_EstadoInconsistenteException_LogaError()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new EstadoInconsistenteException("drift detectado"), default);
+
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task TryHandleAsync_ValidationException_Retorna400()
     {
         var failures = new[] { new ValidationFailure("Nome", "Nome é obrigatório") };

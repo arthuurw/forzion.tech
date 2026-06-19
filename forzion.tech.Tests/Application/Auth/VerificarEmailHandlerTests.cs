@@ -147,7 +147,7 @@ public class VerificarEmailHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ContaNaoEncontrada_LancaDomainException()
+    public async Task HandleAsync_ContaNaoEncontrada_LancaEstadoInconsistente()
     {
         var token = BuildToken();
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
@@ -156,7 +156,7 @@ public class VerificarEmailHandlerTests
             .ReturnsAsync((Conta?)null);
 
         var act = async () => await _handler.HandleAsync(new VerificarEmailCommand(RawToken));
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*Conta não encontrada*");
+        await act.Should().ThrowAsync<EstadoInconsistenteException>().WithMessage("*Conta não encontrada*");
     }
 
     [Theory]

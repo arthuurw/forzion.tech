@@ -54,7 +54,7 @@ public class VerificarEmailHandler(
             return Result.Failure(Error.Business("auth_verify.token_expirado", "Token expirado. Solicite um novo e-mail de verificação."));
 
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Conta não encontrada.");
+            ?? throw new EstadoInconsistenteException("Conta não encontrada.");
 
         conta.MarcarEmailVerificado(agora);
 

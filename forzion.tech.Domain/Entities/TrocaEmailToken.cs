@@ -21,7 +21,7 @@ public class TrocaEmailToken
             return Result.Failure<TrocaEmailToken>(TokenErrors.ContaIdInvalido);
 
         if (string.IsNullOrWhiteSpace(novoEmail))
-            return Result.Failure<TrocaEmailToken>(new Error("troca_email.novo_email_obrigatorio", "O novo e-mail é obrigatório."));
+            return Result.Failure<TrocaEmailToken>(Error.Validation("troca_email.novo_email_obrigatorio", "O novo e-mail é obrigatório."));
 
         if (string.IsNullOrWhiteSpace(tokenHash))
             return Result.Failure<TrocaEmailToken>(TokenErrors.TokenHashObrigatorio);

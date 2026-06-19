@@ -62,7 +62,7 @@ public class ConfirmarTrocaEmailHandler(
             return Result.Failure(Error.Business("troca_email.codigo_invalido", "Código inválido ou já utilizado."));
 
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Conta não encontrada.");
+            ?? throw new EstadoInconsistenteException("Conta não encontrada.");
 
         var emailResult = Email.Criar(token.NovoEmail);
         if (emailResult.IsFailure)
@@ -70,7 +70,7 @@ public class ConfirmarTrocaEmailHandler(
 
         var emailEmUso = await contaRepository.ObterPorEmailAsync(emailResult.Value.Value, cancellationToken).ConfigureAwait(false);
         if (emailEmUso is not null && emailEmUso.Id != conta.Id)
-            return Result.Failure(Error.Business("troca_email.email_em_uso", "O e-mail não está mais disponível."));
+            return Result.Failure(Error.Conflict("troca_email.email_em_uso", "O e-mail não está mais disponível."));
 
         var atualizarResult = conta.AtualizarEmail(emailResult.Value, agora);
         if (atualizarResult.IsFailure)

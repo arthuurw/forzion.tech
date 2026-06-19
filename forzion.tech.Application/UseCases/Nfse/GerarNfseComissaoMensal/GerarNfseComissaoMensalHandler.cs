@@ -28,7 +28,7 @@ public class GerarNfseComissaoMensalHandler(
         ArgumentNullException.ThrowIfNull(command);
         if (command.CompetenciaFim < command.CompetenciaInicio)
             return Result.Failure<GerarNfseComissaoMensalResultado>(
-                Error.Business("nfse_comissao.competencia_invalida", "Competência final anterior à inicial."));
+                Error.Validation("nfse_comissao.competencia_invalida", "Competência final anterior à inicial."));
 
         var inicio = command.CompetenciaInicio.ToDateTime(TimeOnly.MinValue);
         var fimExclusivo = command.CompetenciaFim.AddDays(1).ToDateTime(TimeOnly.MinValue);

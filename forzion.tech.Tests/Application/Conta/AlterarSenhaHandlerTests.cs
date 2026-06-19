@@ -151,14 +151,14 @@ public class AlterarSenhaHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ContaNaoEncontrada_LancaDomainException()
+    public async Task HandleAsync_ContaNaoEncontrada_LancaEstadoInconsistente()
     {
         var contaId = Guid.NewGuid();
         _userContext.Setup(u => u.ContaId).Returns(contaId);
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync((DomainConta?)null);
 
         var act = async () => await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ListarPagamentosAssinaturaAluno;
+using forzion.tech.Application.UseCases.Pagamentos.ListarRecebimentosTreinador;
 using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStripe;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
@@ -82,6 +83,22 @@ public static class PagamentosEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        treinadorGroup.MapGet("/recebimentos", async (
+            [FromQuery] string? cursor,
+            [FromQuery] int tamanho,
+            [FromServices] ListarRecebimentosTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var resultado = await handler.HandleAsync(
+                new ListarRecebimentosTreinadorQuery(userContext.PerfilId, cursor, tamanho), cancellationToken).ConfigureAwait(false);
+            return Results.Ok(resultado);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Lista recebimentos do treinador (paginação keyset por cursor)")
+        .Produces<ListarRecebimentosTreinadorResultado>()
+        .ProducesProblem(StatusCodes.Status403Forbidden);
 
         var treinadorPlanoGroup = endpoints.MapGroup("/treinador/plano")
             .WithTags("Pagamentos")
@@ -165,11 +182,9 @@ public static class PagamentosEndpoints
             var result = await handler.HandleAsync(
                 new GerarCobrancaPlanoTreinadorCommand(assinatura.Id, metodo), cancellationToken).ConfigureAwait(false);
             if (result.IsFailure)
-            {
-                if (result.Error?.Code == "plano_free_assinatura_cancelada")
-                    return Results.Ok(new { mensagem = result.Error.Message });
                 return result.ToProblemResult();
-            }
+            if (result.Value.AssinaturaEncerrada)
+                return Results.Ok(new { mensagem = "Downgrade para plano Free: assinatura encerrada sem cobrança." });
             return Results.Ok(result.Value);
         })
         .WithSummary("Gera cobrança de renovação do plano do treinador (metodo: Pix ou Cartao)")
@@ -207,17 +222,14 @@ public static class PagamentosEndpoints
                         new GerarCobrancaPlanoTreinadorCommand(assinaturaId), cancellationToken).ConfigureAwait(false);
                     if (result.IsFailure)
                     {
-                        if (result.Error?.Code == "plano_free_assinatura_cancelada")
-                        {
-                            logger.LogInformation("Assinatura de treinador {AssinaturaTreinadorId} encerrada por downgrade para Free.",
-                                assinaturaId);
-                        }
-                        else
-                        {
-                            falhas++;
-                            logger.LogWarning("Falha ao renovar assinatura de treinador {AssinaturaTreinadorId}: {Erro}.",
-                                assinaturaId, result.Error?.Message);
-                        }
+                        falhas++;
+                        logger.LogWarning("Falha ao renovar assinatura de treinador {AssinaturaTreinadorId}: {Erro}.",
+                            assinaturaId, result.Error?.Message);
+                    }
+                    else if (result.Value.AssinaturaEncerrada)
+                    {
+                        logger.LogInformation("Assinatura de treinador {AssinaturaTreinadorId} encerrada por downgrade para Free.",
+                            assinaturaId);
                     }
                 }
 

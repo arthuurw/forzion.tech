@@ -13,10 +13,16 @@ public class ExecucaoTreinoConfiguration : IEntityTypeConfiguration<ExecucaoTrei
 
         builder.Property(e => e.DataExecucao).IsRequired();
         builder.Property(e => e.Observacao).HasMaxLength(500);
+        builder.Property(e => e.IdempotencyKey).HasMaxLength(64);
         builder.Property(e => e.CreatedAt).IsRequired();
 
         builder.HasIndex(e => e.TreinoId);
         builder.HasIndex(e => e.AlunoId);
+
+        builder.HasIndex(e => new { e.AlunoId, e.IdempotencyKey })
+               .IsUnique()
+               .HasFilter("idempotency_key IS NOT NULL")
+               .HasDatabaseName("ix_execucoes_treino_aluno_id_idempotency_key_unique");
 
         builder.HasOne<Treino>()
                .WithMany()

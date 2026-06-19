@@ -43,7 +43,7 @@ public class RegistrarTreinadorHandler(
         var plano = await planoRepository.ObterPorIdAsync(command.PlanoPlataformaId, cancellationToken).ConfigureAwait(false)
             ?? throw new PlanoPlataformaNaoEncontradoException();
         if (!plano.IsAtivo)
-            return Result.Failure<TreinadorResponse>(Error.Business("plano_inativo", "Plano indisponível para cadastro."));
+            return Result.Failure<TreinadorResponse>(Error.Business("plano.inativo", "Plano indisponível para cadastro."));
         if (plano.Tier == TierPlano.Elite)
             return Result.Failure<TreinadorResponse>(PlanoPlataformaErrors.EliteIndisponivel);
 

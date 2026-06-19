@@ -198,7 +198,7 @@ public class FluxoCompletoTests
         var handler = new RegistrarExecucaoHandler(
             _treinoRepo.Object, _alunoRepo.Object, _treinoAlunoRepo.Object,
             _vinculoRepo.Object, _execucaoRepo.Object, _unitOfWork.Object,
-            _userContext.Object, TimeProvider.System, Mock.Of<ILogger<RegistrarExecucaoHandler>>());
+            _userContext.Object, TimeProvider.System, Mock.Of<IDatabaseErrorInspector>(), Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
         var execucao = await handler.HandleAsync(new RegistrarExecucaoCommand(
             treino.Id, aluno.Id, DateTime.UtcNow, null, []));

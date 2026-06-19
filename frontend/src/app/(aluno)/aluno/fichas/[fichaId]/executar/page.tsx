@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Button, Stack, LinearProgress,
@@ -17,27 +17,11 @@ import DetalheErro from "@/components/ui/DetalheErro";
 import { alunoApi, type TreinoAlunoDetalheResponse, type ExecucaoExercicioData } from "@/lib/api/aluno";
 import { extractApiErrorInfo } from "@/lib/api/extractApiError";
 import type { TreinoExercicioResponse } from "@/types";
+import { initExecData, type SetState } from "@/lib/execucao/execData";
+import { useExecucaoDraft } from "@/hooks/useExecucaoDraft";
+import { useExecucaoRetryQueue } from "@/hooks/useExecucaoRetryQueue";
+import { useAuth } from "@/lib/auth/context";
 import { alpha, useTheme } from "@mui/material/styles";
-
-type SetState = { reps: string; carga: string; groupLabel?: string };
-
-function initExecData(exercicios: TreinoExercicioResponse[]): Record<string, SetState[]> {
-  const map: Record<string, SetState[]> = {};
-  for (const ex of exercicios) {
-    const sets: SetState[] = [];
-    for (const s of [...(ex.series ?? [])].sort((a, b) => a.ordem - b.ordem)) {
-      for (let i = 0; i < s.quantidade; i++) {
-        sets.push({
-          reps: String(s.repeticoesMin),
-          carga: s.carga != null ? String(s.carga) : "",
-          groupLabel: s.descricao || undefined,
-        });
-      }
-    }
-    map[ex.treinoExercicioId] = sets;
-  }
-  return map;
-}
 
 function buildExecPayload(
   exercicios: TreinoExercicioResponse[],
@@ -76,7 +60,16 @@ export default function ExecutarFichaPage() {
   const [observacao, setObservacao] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [savedOffline, setSavedOffline] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showRestore, setShowRestore] = useState(false);
+  const [reconciledWarning, setReconciledWarning] = useState(false);
+
+  const { user } = useAuth();
+  const alunoId = user?.perfilId ?? "";
+  const { idempotencyKey, save, restore, reconcile, discard } = useExecucaoDraft(alunoId, fichaId);
+  const { enqueue } = useExecucaoRetryQueue();
+  const restorePendingRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +87,38 @@ export default function ExecutarFichaPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (ficha && restore()) {
+      restorePendingRef.current = true;
+      setShowRestore(true);
+    }
+  }, [ficha, restore]);
+
+  useEffect(() => {
+    if (!ficha || restorePendingRef.current || done) return;
+    save({ execData, obsData, observacao, currentIndex });
+  }, [ficha, done, execData, obsData, observacao, currentIndex, save]);
+
+  const handleContinuar = () => {
+    if (!ficha) return;
+    const r = reconcile(ficha.exercicios);
+    if (r) {
+      setExecData(r.execData);
+      setObsData(r.obsData);
+      setObservacao(r.observacao);
+      setCurrentIndex(r.currentIndex);
+      setReconciledWarning(r.reconciled);
+    }
+    restorePendingRef.current = false;
+    setShowRestore(false);
+  };
+
+  const handleDescartar = () => {
+    discard();
+    restorePendingRef.current = false;
+    setShowRestore(false);
+  };
+
   const setSetField = (exId: string, idx: number, field: keyof SetState, value: string) =>
     setExecData((prev) => {
       const sets = [...(prev[exId] ?? [])];
@@ -107,21 +132,32 @@ export default function ExecutarFichaPage() {
   const handleSubmit = async () => {
     if (!ficha) return;
     setSubmitting(true);
+    const payload = {
+      treinoId: ficha.treinoId,
+      dataExecucao: new Date().toISOString(),
+      observacao: observacao.trim() || null,
+      exercicios: buildExecPayload(ficha.exercicios, execData, obsData),
+    };
     try {
-      await alunoApi.criarExecucao({
-        treinoId: ficha.treinoId,
-        dataExecucao: new Date().toISOString(),
-        observacao: observacao.trim() || null,
-        exercicios: buildExecPayload(ficha.exercicios, execData, obsData),
-      });
+      await alunoApi.criarExecucao(payload, { idempotencyKey });
+      discard();
       setDone(true);
       setConfirmOpen(false);
     } catch (err) {
       const { status, message } = extractApiErrorInfo(err);
-      if (status === 404) setError("Ficha não encontrada.");
-      else if (status === 422) setError(message ?? "Dados inválidos para registrar o treino.");
-      else if (status === 403) setError("Você não tem um vínculo ativo. Não é possível registrar novos treinos.");
-      else setError("Erro ao registrar treino. Tente novamente.");
+      const permanent = status === 400 || status === 403 || status === 404 || status === 422;
+      if (permanent) {
+        if (status === 404) setError("Ficha não encontrada.");
+        else if (status === 422 || status === 400) setError(message ?? "Dados inválidos para registrar o treino.");
+        else if (status === 403) setError("Você não tem um vínculo ativo. Não é possível registrar novos treinos.");
+        else setError("Erro ao registrar treino. Tente novamente.");
+      } else {
+        enqueue({ idempotencyKey, payload, alunoId, treinoId: ficha.treinoId });
+        discard();
+        setSavedOffline(true);
+        setDone(true);
+        setConfirmOpen(false);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -145,9 +181,13 @@ export default function ExecutarFichaPage() {
           <CheckIcon sx={{ color: "white", fontSize: 44 }} />
         </Box>
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Sessão registrada</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            {savedOffline ? "Sessão salva no aparelho" : "Sessão registrada"}
+          </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {ficha.nomeTreino} — {ficha.exercicios.length} exercício(s) concluído(s)
+            {savedOffline
+              ? "Será enviada automaticamente quando você reconectar."
+              : `${ficha.nomeTreino} — ${ficha.exercicios.length} exercício(s) concluído(s)`}
           </Typography>
         </Box>
         <Stack direction="row" spacing={2}>
@@ -184,6 +224,30 @@ export default function ExecutarFichaPage() {
       <LinearProgress variant="determinate" value={progress} sx={{ mb: 3, borderRadius: 1 }} />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+
+      {showRestore && (
+        <Card variant="outlined" sx={{ mb: 3, borderColor: "warning.main", borderWidth: 2 }} role="alert">
+          <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Treino em andamento encontrado
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Você tem um registro não finalizado deste treino neste aparelho. Deseja continuar de onde parou?
+            </Typography>
+            <Stack direction="row" spacing={1.5}>
+              <Button variant="contained" size="small" onClick={handleContinuar}>Continuar</Button>
+              <Button variant="outlined" size="small" color="inherit" onClick={handleDescartar}>Descartar</Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      <AlertBanner
+        open={reconciledWarning}
+        severity="info"
+        message="Sua ficha mudou desde o último registro. Ajustamos os exercícios; confira antes de finalizar."
+        onClose={() => setReconciledWarning(false)}
+      />
 
       {current && (
         <Card variant="outlined" sx={{ mb: 3, borderColor: "primary.main", borderWidth: 2 }}>

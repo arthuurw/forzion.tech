@@ -16,7 +16,7 @@ public class ObterPerfilHandler(
     public virtual async Task<PerfilResponse> HandleAsync(CancellationToken cancellationToken = default)
     {
         var conta = await contaRepository.ObterPorIdAsync(userContext.ContaId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Conta autenticada não encontrada.");
+            ?? throw new EstadoInconsistenteException("Conta autenticada não encontrada.");
 
         var nome = userContext.TipoConta switch
         {
@@ -24,7 +24,7 @@ public class ObterPerfilHandler(
             Domain.Enums.TipoConta.Treinador => (await treinadorRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Nome,
             Domain.Enums.TipoConta.SystemAdmin => (await systemUserRepository.ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false))?.Nome,
             _ => null
-        } ?? throw new DomainException("Perfil autenticado não encontrado.");
+        } ?? throw new EstadoInconsistenteException("Perfil autenticado não encontrado.");
 
         return new PerfilResponse(nome, conta.Email.Value, conta.TipoConta.ToString());
     }

@@ -55,7 +55,7 @@ src/
     pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
     treinador/         — componentes específicos do treinador
     ui/                — componentes compartilhados (ErrorBoundary, AlertBanner, LoadingSpinner, DataList, etc.)
-  hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent
+  hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent, useCursorList, useExecucaoDraft, useExecucaoRetryQueue
   lib/
     api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
     auth/              — context.tsx, jwt.ts, helpers.ts, buildPlaceholder.ts
@@ -200,7 +200,7 @@ interceptor resposta:
 - Verifica `!isLoading && !user` → chama `/api/auth/logout` (limpa cookies) → `router.replace("/login")`.
 - Desktop (≥md): `Drawer` permanente, colapsável (232px ↔ 68px ícones).
 - Mobile (<md): `Drawer` temporário + `BottomNavigation` fixo (inferior, com `safe-area-inset-bottom`).
-- `NavConfig` por `TipoConta`: items de navegação derivados do role.
+- `NavConfig` por `TipoConta`: items de navegação derivados do role. `NavItem.drawerOnly?: boolean` marca itens secundários que aparecem só no `Drawer`, nunca na `BottomNavigation` mobile. Treinador: 8 itens no drawer (Alunos, Fichas, Exercícios, Pacotes, Notas fiscais, Recebimentos[drawerOnly], Plano[drawerOnly], Suporte); bottom-nav filtra `drawerOnly` → 6.
 - **Inatividade**: `useInactivity` — warn aos N minutos, logout automático aos 20 min.
 
 ## SEGURANÇA / MFA (`src/app/seguranca/`)
@@ -218,7 +218,7 @@ Básico aqui; tokens exatos (paleta/radius/tipografia/component-defaults/anti-zo
 - Breakpoints MUI default; layout adapta em `<md` para mobile (detalhes/tokens em [specification-frontend-ui] §RESPONSIVIDADE).
 - **Alvo de verificação = 360px; target-size AA = 24px (não 44px=AAA); CHECKLIST anti-regressão mobile + padrões (kebab de ações, hit-area de dot, ResponsiveTable obrigatória) em [specification-frontend-ui] §RESPONSIVIDADE — aplicar ao mexer em qualquer página/componente.**
 - `viewportFit: "cover"` + `env(safe-area-inset-bottom)` para iPhone notch.
-- BottomNavigation com `showLabels: navItems.length <= 4`.
+- BottomNavigation opera sobre `navItems.filter(i => !i.drawerOnly)` (itens `drawerOnly` ficam só no drawer); `showLabels: bottomNavItems.length <= 4`.
 - Padding do main: `p: {xs:2.5, md:3.5}`, `pb: {xs:"calc(72px+safe-area)", md:3.5}`.
 
 ## TIPOS DE DOMÍNIO (`src/types/index.ts`)
@@ -272,12 +272,23 @@ Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinatura
 ### Recebimentos (`(treinador)/treinador/pagamentos/page.tsx`)
 Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 - **Externo**: orientação de controle manual (sem Stripe; combinar valor direto, gerenciar acesso por vínculo). Chip "Pagamento externo".
-- **Plataforma**: onboarding Stripe (chip status: Ativo/Cadastro incompleto/Não configurado; `iniciarOnboarding` redireciona p/ URL Stripe).
+- **Plataforma**: onboarding Stripe (chip status: Ativo/Cadastro incompleto/Não configurado; `iniciarOnboarding` redireciona p/ URL Stripe). A taxa da plataforma NÃO é hardcoded no front — vem do backend (`taxaPlataformaPercent` no envelope de `listarRecebimentos`, authoritative do `PaymentSettings`) e o chip "Taxa da plataforma: N%" mora no bloco de histórico (onde a taxa é aplicada).
 - **Troca de modo (opt-out/opt-in)**: ambos os modos exibem ação de alternar (`alterarModoPagamento` → `POST /treinador/modo-pagamento`) com `ConfirmDialog` de consequências (→Externo cancela assinaturas dos alunos; →Plataforma cria assinaturas + exige Stripe) + aceite do cooldown. Cooldown lido direto de `OnboardingStatusResponse.modoPagamentoPodeAlterarEm` (sem constante local): se futura, ação desabilitada + "Novo ajuste disponível em <data>". Erro (422 `configure_stripe_primeiro`/`cooldown_modo_pagamento`) exibido DENTRO do dialog via `extractApiError` (dialog permanece aberto p/ retry).
+- **Preview da troca**: `abrirTroca` busca `GET /treinador/modo-pagamento/preview` (`previewModoPagamento`) e injeta frase de impacto no dialog (→Externo "N assinatura(s) serão canceladas"; →Plataforma "Até N assinatura(s) serão criadas"). Falha do preview → dialog abre com aviso e ainda permite confirmar (troca não bloqueada por preview indisponível). Resultado da troca (`assinaturasCriadas`/`vinculosIgnorados`) vira `Alert` de sucesso.
+- **Histórico de recebimentos** (`HistoricoRecebimentos`, só modo Plataforma): lista keyset (`listarRecebimentos(cursor?)` → `GET /treinador/pagamentos/recebimentos`; `proximoCursor` → "Carregar mais"). Header tem o chip "Taxa da plataforma: N%" (de `taxaPlataformaPercent` do envelope). Lista TODOS os 6 status; cada item: aluno, data, método, status (chip — Estornado=warning, EmDisputa=error), bruto, taxa%, líquido **estimado** (rotulado; calculado no backend via centavos). `taxaPercent`/`liquidoEstimado` `null` (status `Falhou`/`Expirado` — nunca houve recebimento) → renderiza "—" (não `R$ 0,00`). Vazio = estado amigável. Modo Externo = placeholder (sem lista — pagamentos não passam pela plataforma).
 
 ### Aluno sem vínculo ativo
 - `components/aluno/SemVinculoAtivoBanner.tsx`: lê `GET /aluno/vinculo` (`alunoApi.getMeuVinculo`). Estado `ativo` (oculto) | `pendente` (aguardando aprovação) | `sem-vinculo`. Mensagem: histórico consultável, registro de novos treinos bloqueado. Renderizado no dashboard (`(aluno)/aluno/page.tsx`) e no histórico (`(aluno)/aluno/historico/page.tsx`).
 - Execução (`(aluno)/aluno/fichas/[fichaId]/executar/page.tsx`): trata `403` do registro com mensagem clara ("Você não tem um treinador ativo. Não é possível registrar novos treinos.").
+
+### Execução de treino resiliente offline (draft + retry idempotente)
+Sessão de execução não perde dados em reload/queda de rede; finalização sobrevive offline sem duplicar. SEM Service Worker/PWA — só `localStorage` + idempotência server-side ([specification-backend], [specification-concurrency §4]).
+- **`hooks/useExecucaoDraft.ts`** — autosave/restore/reconcile do rascunho vivo. Chave `exec-draft:{alunoId}:{treinoId}` (NOTA: `treinoId` aqui = `fichaId` da rota = `treinoAlunoId`, escolhido por estar disponível no 1º render e estável no ciclo de load; o hook fica incondicional). Payload versionado `v:1` { idempotencyKey, treinoExercicioIds, execData, obsData, observacao, currentIndex, updatedAt }. `idempotencyKey` = `crypto.randomUUID()` (fallback RFC4122 manual em contexto inseguro), REUSADO entre reloads (mesma sessão → mesma key → dedup) e REGENERADO no `discard`. Autosave debounced 500ms; `restore()` lê sem aplicar (decisão do usuário); `reconcile(exercicios)` casa por `treinoExercicioId` (mantém set do draft, `initExecData` p/ exercício novo, dropa órfão, clampa currentIndex, filtra obsData) e sinaliza `reconciled`; TTL 48h (expirado → descarta + remove); JSON corrompido → descarta seguro.
+- **`hooks/useExecucaoRetryQueue.ts`** — fila de finalização offline em `exec-queue` (array de { idempotencyKey, payload, alunoId, treinoId, enqueuedAt, lastError? }). `enqueue`; `drain` reenvia em ordem via `alunoApi.criarExecucao(payload, { idempotencyKey })`: 2xx → remove + `onSuccess(treinoId)`; transitório (status null/offline ou ≥500) → MANTÉM e PARA (preserva ordem); permanente (4xx) → mantém com `lastError` e CONTINUA (sem loop infinito). Drain dispara no mount, no evento `window 'online'`, e manual. Idempotência server-side garante que reenvio/double-drain não duplica.
+- **Degradação graciosa (EXOFF-06)**: todo acesso a `localStorage`/`crypto` envolto em try/catch + guard `typeof ... === "undefined"` (SSR/Safari privado/quota) → no-op silencioso, a página NUNCA quebra; sem persistência apenas perde-se o draft/fila.
+- **Página executar** integra: autosave do state vivo; banner "Treino em andamento encontrado" (Continuar aplica reconcile + aviso `AlertBanner` se a ficha mudou / Descartar limpa); `handleSubmit` POST com `idempotencyKey` → sucesso limpa draft + tela "Sessão registrada"; offline/5xx → `enqueue` + draft limpo + tela "Sessão salva no aparelho / enviada ao reconectar"; permanente (400/403/404/422) mantém mensagem de erro existente (sem enfileirar falso-pendente).
+- **`components/aluno/ExecucaoPendenteBanner.tsx`** (montado no `(aluno)/layout.tsx`): usa `useExecucaoRetryQueue`; oculto quando fila vazia; mostra contagem (singular/plural) + botão "Tentar enviar agora" (dispara `drain`, rotula "Enviando…"/desabilita durante). `role="status"` (info não-bloqueante, contraste com o `role="alert"` do `AlunoInadimplenteBanner`).
+- **`lib/execucao/execData.ts`**: `initExecData` + tipo `SetState` extraídos da página p/ reuso pelo hook (módulo compartilhável).
 
 ### NFS-e (notas fiscais)
 Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/dadosFiscais.ts` (CPF/CNPJ por `tipoDocumento`, CEP, IBGE 7 dígitos, UF; máscara só na UI, payload envia dígitos crus). Enums NFS-e como string-literal no módulo (label/cor de status). Nav item "Notas fiscais" em treinador e admin (`ReceiptLongIcon`).
@@ -295,7 +306,7 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 | Project | Env | Pool | Setup | Include |
 |---------|-----|------|-------|---------|
 | `unit` | node | threads | `src/test/setup/unit.ts` | `src/lib/**/*.test.ts`, `src/lib/**/*.property.test.ts`, `src/hooks/**/*.test.ts`, `src/hooks/**/*.property.test.ts`, `src/middleware.test.ts`, `src/middleware.signature.test.ts` (exclui: hooks RTL/DOM e excel/downloadBlob/admin.msw/auth-context que rodam em `integration`) |
-| `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/components/**/__tests__/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/utils/downloadBlob.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts`, hooks RTL: `useInactivity`, `useConsent`, `usePaginatedList`, `useCRUDDialog` |
+| `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/components/**/__tests__/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/utils/downloadBlob.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts`, hooks RTL: `useInactivity`, `useConsent`, `usePaginatedList`, `useCRUDDialog`, `useCursorList`, `useExecucaoDraft`, `useExecucaoRetryQueue` |
 | `api` | node | threads | `src/test/setup/api.ts` | `src/app/api/**/*.test.ts` |
 
 **Coverage (v8)**: thresholds por glob (l/b/f por camada) — canônico em [specification-tests] §8 (enforced em `vitest run --coverage`).
