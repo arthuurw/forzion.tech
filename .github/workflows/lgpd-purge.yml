@@ -13,7 +13,10 @@ jobs:
   purgar:
     name: Purga LGPD (5 anos pós-cancelamento)
     runs-on: ubuntu-latest
-    environment: homolog
+    strategy:
+      matrix:
+        env: ${{ fromJSON(vars.CRON_ENVIRONMENTS || '["homolog"]') }}
+    environment: ${{ matrix.env }}
     steps:
       - name: Conecta no tailnet
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
@@ -26,10 +29,11 @@ jobs:
       - name: Listar elegíveis e anonimizar
         run: |
           set -euo pipefail
-          BASE="https://${{ secrets.HOMOLOG_HOST }}"
+          BASE="https://${{ vars.APP_HOST }}"
+          RESOLVE="--resolve ${{ vars.APP_HOST }}:443:${{ secrets.VM_TAILNET_IP }}"
           KEY="${{ secrets.INTERNAL_API_KEY }}"
 
-          ELEGIVEIS=$(curl -fsS \
+          ELEGIVEIS=$(curl -fsS $RESOLVE \
             -H "X-Internal-Key: ${KEY}" \
             "${BASE}/internal/lgpd/contas-elegiveis" \
             | python3 -c 'import sys,json; print("\n".join(json.load(sys.stdin)["contas"]))')
@@ -47,7 +51,7 @@ jobs:
             # rate-limit interno = 5 req/min → 1 DELETE a cada 15s. Sem sleep antes do 1º.
             if [ "${PRIMEIRA}" -eq 1 ]; then PRIMEIRA=0; else sleep 15; fi
             echo "Anonimizando conta ${ID}"
-            STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE \
+            STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE $RESOLVE \
               -H "X-Internal-Key: ${KEY}" \
               "${BASE}/internal/lgpd/contas/${ID}")
             if [ "${STATUS}" -ge 200 ] && [ "${STATUS}" -lt 300 ]; then
@@ -78,10 +82,11 @@ jobs:
               '',
               'Purga não concluída = contas elegíveis (5 anos pós-cancelamento) podem não ter sido anonimizadas.',
               '',
-              'Investigar:',
-              '1. Endpoints `/internal/lgpd/contas-elegiveis` e `/internal/lgpd/contas/{id}` responderam?',
-              '2. `INTERNAL_API_KEY` da VM bate com secret do environment?',
-              '3. Backend logs (`docker compose logs backend --tail 200`)',
+              'Investigar (ordem dos layers):',
+              '1. Tailnet: runner conectou? ACL `tag:ci -> VM:443` liberada?',
+              '2. `VM_TAILNET_IP` / `APP_HOST` (env) batem com a VM atual?',
+              '3. Endpoints `/internal/lgpd/contas-elegiveis` e `/internal/lgpd/contas/{id}` responderam (401=key, 5xx=backend)?',
+              '4. Backend logs (`docker compose logs backend --tail 200`)',
             ].join('\n');
             await github.rest.issues.create({
               owner: context.repo.owner,

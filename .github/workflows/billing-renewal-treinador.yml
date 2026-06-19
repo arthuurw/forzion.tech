@@ -13,7 +13,10 @@ jobs:
   renovar:
     name: Processar renovações mensais de treinadores
     runs-on: ubuntu-latest
-    environment: homolog
+    strategy:
+      matrix:
+        env: ${{ fromJSON(vars.CRON_ENVIRONMENTS || '["homolog"]') }}
+    environment: ${{ matrix.env }}
     steps:
       - name: Conecta no tailnet
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
@@ -26,9 +29,10 @@ jobs:
       - name: Processar renovações
         run: |
           curl -f -X POST \
+            --resolve "${{ vars.APP_HOST }}:443:${{ secrets.VM_TAILNET_IP }}" \
             -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
             -H "Content-Type: application/json" \
-            "https://${{ secrets.HOMOLOG_HOST }}/internal/processar-renovacoes-treinador"
+            "https://${{ vars.APP_HOST }}/internal/processar-renovacoes-treinador"
 
       - name: Notificar falha via issue
         if: failure()
@@ -45,10 +49,11 @@ jobs:
               '',
               'Sem renovação hoje = cobranças não geradas para assinaturas de treinadores com `DataProximaCobranca <= now`.',
               '',
-              'Investigar:',
-              '1. Endpoint `/internal/processar-renovacoes-treinador` respondeu?',
-              '2. `INTERNAL_API_KEY` da VM bate com secret do environment?',
-              '3. Backend logs (`docker compose logs backend --tail 200`)',
+              'Investigar (ordem dos layers):',
+              '1. Tailnet: runner conectou? ACL `tag:ci -> VM:443` liberada?',
+              '2. `VM_TAILNET_IP` / `APP_HOST` (env) batem com a VM atual?',
+              '3. Endpoint `/internal/processar-renovacoes-treinador` respondeu (401=key, 5xx=backend)?',
+              '4. Backend logs (`docker compose logs backend --tail 200`)',
             ].join('\n');
             await github.rest.issues.create({
               owner: context.repo.owner,

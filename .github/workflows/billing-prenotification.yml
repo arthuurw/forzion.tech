@@ -13,7 +13,10 @@ jobs:
   pre-aviso:
     name: Pré-aviso de renovação (3 dias antes)
     runs-on: ubuntu-latest
-    environment: homolog
+    strategy:
+      matrix:
+        env: ${{ fromJSON(vars.CRON_ENVIRONMENTS || '["homolog"]') }}
+    environment: ${{ matrix.env }}
     steps:
       - name: Conecta no tailnet
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
@@ -26,16 +29,18 @@ jobs:
       - name: Pré-aviso alunos
         run: |
           curl -f -X POST \
+            --resolve "${{ vars.APP_HOST }}:443:${{ secrets.VM_TAILNET_IP }}" \
             -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
             -H "Content-Type: application/json" \
-            "https://${{ secrets.HOMOLOG_HOST }}/internal/processar-pre-avisos"
+            "https://${{ vars.APP_HOST }}/internal/processar-pre-avisos"
 
       - name: Pré-aviso treinadores
         run: |
           curl -f -X POST \
+            --resolve "${{ vars.APP_HOST }}:443:${{ secrets.VM_TAILNET_IP }}" \
             -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
             -H "Content-Type: application/json" \
-            "https://${{ secrets.HOMOLOG_HOST }}/internal/processar-pre-avisos-treinador"
+            "https://${{ vars.APP_HOST }}/internal/processar-pre-avisos-treinador"
 
       - name: Notificar falha via issue
         if: failure()
@@ -52,10 +57,11 @@ jobs:
               '',
               'Sem pré-aviso hoje = assinantes cuja `DataProximaCobranca` cai em 3 dias não foram avisados (CDC art. 52).',
               '',
-              'Investigar:',
-              '1. Endpoints `/internal/processar-pre-avisos` e `/internal/processar-pre-avisos-treinador` responderam?',
-              '2. `INTERNAL_API_KEY` da VM bate com secret do environment?',
-              '3. Backend logs (`docker compose logs backend --tail 200`)',
+              'Investigar (ordem dos layers):',
+              '1. Tailnet: runner conectou? ACL `tag:ci -> VM:443` liberada?',
+              '2. `VM_TAILNET_IP` / `APP_HOST` (env) batem com a VM atual?',
+              '3. Endpoints `/internal/processar-pre-avisos[-treinador]` responderam (401=key, 5xx=backend)?',
+              '4. Backend logs (`docker compose logs backend --tail 200`)',
             ].join('\n');
             await github.rest.issues.create({
               owner: context.repo.owner,

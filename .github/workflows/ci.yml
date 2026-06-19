@@ -482,7 +482,7 @@ jobs:
     steps:
       # Borda Hostinger dropa o IP rotativo do runner na 22 pública (timeout). Runner
       # entra no tailnet (nó efêmero tag:ci) e fala com a VPS pelo IP privado 100.x.y.z
-      # — NAT traversal + DERP, zero porta inbound exposta. HOMOLOG_HOST = IP tailnet.
+      # — NAT traversal + DERP, zero porta inbound exposta. VM_TAILNET_IP = IP tailnet.
       - name: Conecta no tailnet
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
         with:
@@ -494,7 +494,7 @@ jobs:
       - name: Deploy na VM
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
-          host: ${{ secrets.HOMOLOG_HOST }}
+          host: ${{ secrets.VM_TAILNET_IP }}
           username: ubuntu
           key: ${{ secrets.HOMOLOG_SSH_KEY }}
           script: |
@@ -571,7 +571,7 @@ jobs:
   # (espera uma borda que segue dropando o runner) — foi a regressão recorrente.
   #
   # INVARIANTE (não regredir): TODO job que fala com o broker DEVE (1) entrar no
-  # tailnet e (2) mapear o host do broker -> IP privado da VM (HOMOLOG_HOST) antes
+  # tailnet e (2) mapear o host do broker -> IP privado da VM (VM_TAILNET_IP) antes
   # de qualquer acesso. Assim o tráfego vai runner->tailnet->nginx:443->broker, com
   # TLS/SNI intactos (cert valida pelo hostname). Nenhuma mudança de timing/deploy
   # reintroduz o erro porque a rota não depende da borda pública.
@@ -598,7 +598,7 @@ jobs:
       PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
       PACT_CONSUMER_VERSION: ${{ github.sha }}
       PACT_CONSUMER_BRANCH: ${{ github.ref_name }}
-      HOMOLOG_HOST: ${{ secrets.HOMOLOG_HOST }}
+      VM_TAILNET_IP: ${{ secrets.VM_TAILNET_IP }}
     defaults:
       run:
         working-directory: frontend
@@ -627,14 +627,14 @@ jobs:
           tags: tag:ci
           version: latest
 
-      # Resolve o host do broker p/ o IP privado da VM (HOMOLOG_HOST), no runner e
+      # Resolve o host do broker p/ o IP privado da VM (VM_TAILNET_IP), no runner e
       # nos containers pact-cli (--add-host abaixo). TLS/SNI seguem pelo hostname.
       - name: Resolve broker via tailnet
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           BROKER_HOST="$(printf '%s' "$PACT_BROKER_BASE_URL" | sed -E 's#^https?://##; s#/.*$##')"
           echo "BROKER_HOST=$BROKER_HOST" >> "$GITHUB_ENV"
-          echo "$HOMOLOG_HOST $BROKER_HOST" | sudo tee -a /etc/hosts
+          echo "$VM_TAILNET_IP $BROKER_HOST" | sudo tee -a /etc/hosts
 
       - name: Aguarda broker disponivel
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
@@ -652,7 +652,7 @@ jobs:
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           docker run --rm \
-            --add-host "${BROKER_HOST}:${HOMOLOG_HOST}" \
+            --add-host "${BROKER_HOST}:${VM_TAILNET_IP}" \
             -v "$PWD/pacts:/pacts" \
             -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
             pactfoundation/pact-cli@sha256:0ab9d13bb7e46da28c108df49f390bc173616906f41af79c4fa5a08d24277bdc \
@@ -668,7 +668,7 @@ jobs:
         continue-on-error: true
         run: |
           docker run --rm \
-            --add-host "${BROKER_HOST}:${HOMOLOG_HOST}" \
+            --add-host "${BROKER_HOST}:${VM_TAILNET_IP}" \
             -e PACT_BROKER_BASE_URL -e PACT_BROKER_USERNAME -e PACT_BROKER_PASSWORD \
             pactfoundation/pact-cli@sha256:0ab9d13bb7e46da28c108df49f390bc173616906f41af79c4fa5a08d24277bdc \
             broker can-i-deploy \
@@ -686,7 +686,7 @@ jobs:
       PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
       PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
       PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
-      HOMOLOG_HOST: ${{ secrets.HOMOLOG_HOST }}
+      VM_TAILNET_IP: ${{ secrets.VM_TAILNET_IP }}
     steps:
       - uses: actions/checkout@v6
 
@@ -708,7 +708,7 @@ jobs:
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
         run: |
           BROKER_HOST="$(printf '%s' "$PACT_BROKER_BASE_URL" | sed -E 's#^https?://##; s#/.*$##')"
-          echo "$HOMOLOG_HOST $BROKER_HOST" | sudo tee -a /etc/hosts
+          echo "$VM_TAILNET_IP $BROKER_HOST" | sudo tee -a /etc/hosts
 
       - name: Aguarda broker disponivel
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}

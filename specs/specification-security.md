@@ -75,7 +75,7 @@ Cross-ref [specification-infrastructure] (ENV/SECRETS, `.env` na VM). Por ambien
 |---|---|---|
 | Dev local | .NET User Secrets / env vars | `Auth:JwtSecret` (mín 32 bytes), `Mfa:EncryptionKey` (base64, 32 bytes — AES-256-GCM do segredo TOTP), `DataProtection:EncryptionKey` (base64, 32 bytes — AES-256-GCM do keyring DataProtection), `Internal:ApiKey`, Stripe/Resend/WhatsApp keys |
 | VM homolog | `/opt/forzion/.env` (root-only, fora do repo) injetado via `--env-file` no docker-compose | idem prod-like |
-| CI / GH Actions | GitHub Actions secrets (`secrets.HOMOLOG_HOST`, `HOMOLOG_SSH_KEY`, `SENTRY_AUTH_TOKEN`, etc.) + `vars.HOMOLOG_BASE_URL` | deploy/scan tokens |
+| CI / GH Actions | GitHub Actions secrets (`secrets.VM_TAILNET_IP`, `HOMOLOG_SSH_KEY`, `SENTRY_AUTH_TOKEN`, etc.) + `vars.APP_HOST` | deploy/scan tokens |
 
 - **`Auth:JwtSecret`**: validado no boot (≥32 bytes UTF-8), falha fechada se ausente (`AuthenticationExtensions.AddJwtAuthentication`). Next: `JWT_SECRET`+`API_BASE_URL` obrigatórios em produção (`next.config.ts`, guard lança no boot).
 - **`Mfa:EncryptionKey`**: chave AES-256-GCM do segredo TOTP em repouso (§2.1). base64 → exatamente 32 bytes, validada no boot (`AddMfaProtection`); ausente/inválida/tamanho errado ⇒ **falha fechada** (lança) em todo ambiente exceto `Test` (que não registra `AddMfaProtection`). Gerar via `openssl rand -base64 32`. Prod exige chave DISTINTA da homolog (reuso = mesmo keystream cross-ambiente).
