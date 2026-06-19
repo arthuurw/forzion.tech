@@ -13,4 +13,10 @@ public class PasswordResetTokenRepository(AppDbContext context) : IPasswordReset
         await context.PasswordResetTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task InvalidarPendentesPorContaAsync(Guid contaId, DateTime agora, CancellationToken cancellationToken = default) =>
+        await context.PasswordResetTokens
+            .Where(t => t.ContaId == contaId && t.UsedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsedAt, agora), cancellationToken)
+            .ConfigureAwait(false);
 }

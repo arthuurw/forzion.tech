@@ -127,6 +127,27 @@ public class EsqueceuSenhaHandlerTests
         _unitOfWork.Verify(u => u.CommitAsync(cts.Token), Times.Once);
     }
 
+    [Fact]
+    public async Task HandleAsync_ContaExistente_InvalidaPendentesAntesDeAdicionarNovoToken()
+    {
+        var conta = BuildConta();
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("user@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+
+        var ordem = new List<string>();
+        _tokenRepo.Setup(r => r.InvalidarPendentesPorContaAsync(conta.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("invalidar"))
+            .Returns(Task.CompletedTask);
+        _tokenRepo.Setup(r => r.AdicionarAsync(It.IsAny<PasswordResetToken>(), It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("adicionar"))
+            .Returns(Task.CompletedTask);
+
+        await _handler.HandleAsync(new EsqueceuSenhaCommand("user@example.com"));
+
+        ordem.Should().Equal("invalidar", "adicionar");
+        _tokenRepo.Verify(r => r.InvalidarPendentesPorContaAsync(conta.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private static string Hash(string raw) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 }

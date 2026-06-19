@@ -53,6 +53,7 @@ public class EsqueceuSenhaHandler(
             agora.AddHours(1),
             agora).Value;
 
+        await tokenRepository.InvalidarPendentesPorContaAsync(conta.Id, agora, cancellationToken).ConfigureAwait(false);
         await tokenRepository.AdicionarAsync(resetToken, cancellationToken).ConfigureAwait(false);
         emailCritico.Enfileirar(EmailCriticoTemplate.RedefinirSenha, conta.Email.Value, rawToken);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
