@@ -3,7 +3,6 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace forzion.tech.Tests.Infrastructure.Services;
 
@@ -28,49 +27,38 @@ public class DomainEventDispatcherTests
         }
     }
 
-    private sealed class HandlerQueCancela : IDomainEventHandler<EventoFake>
+    [Fact]
+    public async Task DispatchAsync_NaoRodaHandlerInline_SoAposDreno()
     {
-        private readonly CancellationTokenSource _cts;
-        public HandlerQueCancela(CancellationTokenSource cts) => _cts = cts;
+        var registrador = new HandlerQueRegistra();
+        var services = new ServiceCollection();
+        services.AddScoped<IDomainEventHandler<EventoFake>>(_ => registrador);
+        using var sp = services.BuildServiceProvider();
+        var dispatcher = new DispatcherComCapturaBackground(sp, new OutboxDurabilityRegistry());
 
-        public Task HandleAsync(EventoFake domainEvent, CancellationToken cancellationToken = default)
-        {
-            _cts.Cancel();
-            throw new OperationCanceledException(cancellationToken);
-        }
+        await dispatcher.DispatchAsync([new EventoFake(DateTime.UtcNow)]);
+
+        registrador.Executado.Should().BeFalse("best-effort sai do request-path; não roda inline");
+        dispatcher.Agendados.Should().Be(1);
+
+        await dispatcher.DrenarAsync();
+        registrador.Executado.Should().BeTrue("o handler roda no escopo de fundo após o dreno");
     }
 
-    // Registry vazio: EventoFake não é durável, então nenhum handler é pulado nem propaga.
-    private static DomainEventDispatcher CriarDispatcher(IServiceProvider sp) =>
-        new(sp, new OutboxDurabilityRegistry(), NullLogger<DomainEventDispatcher>.Instance);
-
     [Fact]
-    public async Task DispatchAsync_HandlerLanca_LogaESegueParaOProximo()
+    public async Task DispatchAsync_HandlerLanca_IsolaFalhaERodaOProximo()
     {
         var registrador = new HandlerQueRegistra();
         var services = new ServiceCollection();
         services.AddScoped<IDomainEventHandler<EventoFake>, HandlerQueLanca>();
         services.AddScoped<IDomainEventHandler<EventoFake>>(_ => registrador);
-        var sp = services.BuildServiceProvider();
+        using var sp = services.BuildServiceProvider();
+        var dispatcher = new DispatcherComCapturaBackground(sp, new OutboxDurabilityRegistry());
 
-        var act = async () =>
-            await CriarDispatcher(sp).DispatchAsync([new EventoFake(DateTime.UtcNow)]);
+        await dispatcher.DispatchAsync([new EventoFake(DateTime.UtcNow)]);
+        var dreno = async () => await dispatcher.DrenarAsync();
 
-        await act.Should().NotThrowAsync();
+        await dreno.Should().NotThrowAsync();
         registrador.Executado.Should().BeTrue("a falha do primeiro handler não pode impedir os demais");
-    }
-
-    [Fact]
-    public async Task DispatchAsync_TokenCancelado_PropagaOperationCanceledException()
-    {
-        using var cts = new CancellationTokenSource();
-        var services = new ServiceCollection();
-        services.AddScoped<IDomainEventHandler<EventoFake>>(_ => new HandlerQueCancela(cts));
-        var sp = services.BuildServiceProvider();
-
-        var act = async () =>
-            await CriarDispatcher(sp).DispatchAsync([new EventoFake(DateTime.UtcNow)], cts.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }

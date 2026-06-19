@@ -1,25 +1,38 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Events;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Services;
 
 public class DomainEventDispatcher(
     IServiceProvider serviceProvider,
+    IServiceScopeFactory scopeFactory,
     OutboxDurabilityRegistry outboxDurabilidade,
-    ILogger<DomainEventDispatcher> logger) : IDomainEventDispatcher
+    ILogger<DomainEventDispatcher> logger,
+    IHostApplicationLifetime? appLifetime = null) : IDomainEventDispatcher
 {
-    public async Task DispatchAsync(IReadOnlyList<IDomainEvent> events, CancellationToken cancellationToken = default)
+    public Task DispatchAsync(IReadOnlyList<IDomainEvent> events, CancellationToken cancellationToken = default)
     {
         foreach (var domainEvent in events)
+            AgendarBestEffort(domainEvent);
+
+        return Task.CompletedTask;
+    }
+
+    private void AgendarBestEffort(IDomainEvent domainEvent)
+    {
+        var eventType = domainEvent.GetType();
+        var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(eventType);
+
+        ExecutarEmBackground(async cancellationToken =>
         {
-            var eventType = domainEvent.GetType();
-            var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(eventType);
-            foreach (var handler in serviceProvider.GetServices(handlerType).OfType<IDomainEventHandlerBase>())
+            // Escopo novo: o da request já foi disposto quando este trabalho roda; resolver
+            // os handlers (e seu DbContext) do escopo da request daria ObjectDisposedException.
+            using var scope = scopeFactory.CreateScope();
+            foreach (var handler in scope.ServiceProvider.GetServices(handlerType).OfType<IDomainEventHandlerBase>())
             {
-                // Handler durável roda no worker do outbox (com retry); aqui só as notificações
-                // best-effort do mesmo evento. Sem o skip, a mutação rodaria 2× (in-memory + worker).
                 if (outboxDurabilidade.EhHandlerDuravel(eventType, handler.GetType()))
                     continue;
 
@@ -27,24 +40,26 @@ public class DomainEventDispatcher(
                 {
                     await handler.HandleAsync(domainEvent, cancellationToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
                 {
-                    throw;
+                    logger.LogDebug(ex, "Best-effort de {EventType} cancelado no shutdown.", eventType.Name);
                 }
                 catch (Exception ex)
                 {
-                    // Handler de evento é efeito colateral pós-commit (§1 specification-coding):
-                    // estado de negócio já persistiu. Falha aqui não pode propagar e derrubar
-                    // o CommitAsync da use case — loga e segue para o próximo handler.
                     logger.LogError(
                         ex,
                         "Falha ao processar domain event {EventType} no handler {HandlerType}.",
-                        domainEvent.GetType().Name,
+                        eventType.Name,
                         handler.GetType().Name);
                 }
             }
-        }
+        });
     }
+
+    // CT do app (não da request): o trabalho best-effort sobrevive ao fim da request e só é
+    // cancelado no shutdown. Seam protegido p/ o teste rodar o trabalho de forma determinística.
+    protected virtual void ExecutarEmBackground(Func<CancellationToken, Task> trabalho) =>
+        _ = Task.Run(() => trabalho(appLifetime?.ApplicationStopping ?? CancellationToken.None));
 
     public async Task DispatchDuravelAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
