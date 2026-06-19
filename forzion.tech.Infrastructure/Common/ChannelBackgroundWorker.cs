@@ -66,10 +66,17 @@ public abstract class ChannelBackgroundWorker<T> : IDisposable
 
     public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing)
+            return;
         _canal.Writer.TryComplete();
         if (!_cts.IsCancellationRequested)
             _cts.Cancel();
         _cts.Dispose();
-        GC.SuppressFinalize(this);
     }
 }
