@@ -22,6 +22,14 @@ sudo mkdir -p /opt/forzion/certbot/conf
 sudo mkdir -p /opt/forzion/certbot/www
 sudo chown -R "$USER:$USER" /opt/forzion
 
+# --- Limpeza automática do store Docker (timer systemd semanal) ---
+if [ -f /opt/forzion/app/scripts/systemd/forzion-docker-prune.timer ]; then
+  sudo cp /opt/forzion/app/scripts/systemd/forzion-docker-prune.service /etc/systemd/system/
+  sudo cp /opt/forzion/app/scripts/systemd/forzion-docker-prune.timer /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now forzion-docker-prune.timer
+fi
+
 # --- .env (preencher após execução) ---
 if [ ! -f /opt/forzion/.env ]; then
   cat > /opt/forzion/.env <<'EOF'

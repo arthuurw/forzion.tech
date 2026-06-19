@@ -14,6 +14,10 @@ frontend/.husky/* text eol=lf
 # Scripts shell: LF (CRLF quebra o shebang ao rodar via bash).
 *.sh text eol=lf
 
+# Units systemd: LF (CR em ExecStart quebra a execução no Linux).
+*.service text eol=lf
+*.timer text eol=lf
+
 # Spec OpenAPI versionado: LF para casar com a geração no CI Linux e evitar
 # falso-positivo de drift por diferença de EOL (ver .github/workflows/openapi-drift.yml).
 docs/api/*.json text eol=lf
