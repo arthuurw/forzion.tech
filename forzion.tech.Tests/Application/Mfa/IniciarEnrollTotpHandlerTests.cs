@@ -4,6 +4,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.Mfa;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Infrastructure.Services;
@@ -68,6 +69,15 @@ public class IniciarEnrollTotpHandlerTests
         _protector.Revelar(pendente.TotpSecretCifrado!).Should().Be(result.Value.SecretBase32);
         _contaMfaRepository.Verify(r => r.AdicionarAsync(It.IsAny<ContaMfa>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Iniciar_ContaAutenticadaNaoEncontrada_LancaEstadoInconsistente()
+    {
+        _contaRepository.Setup(r => r.ObterPorIdAsync(ContaId, It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+
+        var act = async () => await CriarHandler().HandleAsync();
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]

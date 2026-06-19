@@ -122,7 +122,7 @@ public class IniciarPagamentoPlanoHandlerTests
         var result = await _handler.HandleAsync(new IniciarPagamentoPlanoCommand(treinador.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("treinador_nao_aguardando_pagamento");
+        result.Error!.Code.Should().Be("treinador.nao_aguardando_pagamento");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -148,7 +148,7 @@ public class IniciarPagamentoPlanoHandlerTests
         var result = await _handler.HandleAsync(new IniciarPagamentoPlanoCommand(treinador.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("assinatura_treinador_invalida");
+        result.Error!.Code.Should().Be("assinatura_treinador.invalida");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -165,7 +165,7 @@ public class IniciarPagamentoPlanoHandlerTests
         var result = await _handler.HandleAsync(new IniciarPagamentoPlanoCommand(treinador.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("assinatura_treinador_invalida");
+        result.Error!.Code.Should().Be("assinatura_treinador.invalida");
     }
 
     [Fact]

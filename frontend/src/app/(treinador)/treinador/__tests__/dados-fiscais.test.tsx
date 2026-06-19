@@ -52,7 +52,7 @@ describe("DadosFiscaisTreinadorPage", () => {
     server.use(
       http.get("*/treinador/dados-fiscais", () => HttpResponse.json(DADOS)),
       http.put("*/treinador/dados-fiscais", () =>
-        HttpResponse.json({ detail: "Documento inválido." }, { status: 422 }),
+        HttpResponse.json({ detail: "Documento inválido." }, { status: 400 }),
       ),
     );
     await renderPage();

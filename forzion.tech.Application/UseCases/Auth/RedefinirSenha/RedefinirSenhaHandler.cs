@@ -66,7 +66,7 @@ public class RedefinirSenhaHandler(
             return Result.Failure(Error.Business("auth_reset.token_expirado", "Token expirado. Solicite um novo link de redefinição."));
 
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Conta não encontrada.");
+            ?? throw new EstadoInconsistenteException("Conta não encontrada.");
 
         var mfa = await contaMfaRepository.BuscarPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         if (mfa is { Habilitado: true })

@@ -34,6 +34,7 @@ public class GlobalExceptionHandlerSnapshots
         new EmailJaCadastradoException(),
         new AlunoJaVinculadoException(),
         new DomainException("Regra de dominio violada."),
+        new EstadoInconsistenteException("conta autenticada nao encontrada"),
         new InvalidOperationException("erro inesperado interno"),
     ];
 

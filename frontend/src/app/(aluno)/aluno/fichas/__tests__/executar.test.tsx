@@ -5,7 +5,7 @@
  * Endpoint:
  *   GET /aluno/fichas/:id  -> alunoApi.getFicha
  */
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
@@ -16,6 +16,33 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() })),
   useParams: vi.fn(() => ({ fichaId: "ficha-1" })),
 }));
+
+vi.mock("@/lib/auth/context", () => ({
+  useAuth: () => ({
+    user: { contaId: "c1", perfilId: "aluno-1", tipoConta: "Aluno", nome: "Aluno" },
+    isLoading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+  }),
+}));
+
+const DRAFT_KEY = "exec-draft:aluno-1:ficha-1";
+
+function seedDraft(execData: Record<string, { reps: string; carga: string }[]>, observacao = "nota restaurada") {
+  localStorage.setItem(
+    DRAFT_KEY,
+    JSON.stringify({
+      v: 1,
+      idempotencyKey: "11111111-1111-1111-1111-111111111111",
+      treinoExercicioIds: Object.keys(execData),
+      execData,
+      obsData: {},
+      observacao,
+      currentIndex: 0,
+      updatedAt: Date.now(),
+    }),
+  );
+}
 
 function makeSerie(overrides: Partial<SerieConfigResponse> = {}): SerieConfigResponse {
   return {
@@ -69,7 +96,11 @@ function respondFicha(ficha: TreinoAlunoDetalheResponse = makeFicha()) {
 import ExecutarFichaPage from "../[fichaId]/executar/page";
 
 describe("ExecutarFichaPage — hint de agregação por exercício", () => {
-  afterEach(() => vi.clearAllMocks());
+  beforeEach(() => localStorage.clear());
+  afterEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
 
   // Bug 4: a UI deve deixar claro que reps/carga são registrados como média
   // das séries, pois o payload da API armazena um único valor por exercício.
@@ -128,5 +159,88 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Confirmar registro/ }));
 
     expect(await screen.findByText(/não tem um vínculo ativo/i)).toBeInTheDocument();
+  });
+
+  it("registro inválido (400) exibe a mensagem do servidor, não o genérico", async () => {
+    respondFicha();
+    server.use(
+      http.post("*/aluno/execucoes", () =>
+        HttpResponse.json(
+          { detail: "A observação deve ter no máximo 500 caracteres." },
+          { status: 400 },
+        ),
+      ),
+    );
+    render(<ExecutarFichaPage />);
+
+    await screen.findByText("Supino");
+    fireEvent.click(screen.getByRole("button", { name: /Finalizar treino/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Confirmar registro/ }));
+
+    expect(
+      await screen.findByText("A observação deve ter no máximo 500 caracteres."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tente novamente/i)).not.toBeInTheDocument();
+  });
+
+  it("draft existente exibe banner de restauração e Continuar aplica o estado salvo (EXOFF-02)", async () => {
+    seedDraft({ "ex-1": [{ reps: "99", carga: "50" }] });
+    respondFicha();
+    render(<ExecutarFichaPage />);
+
+    await screen.findByText("Supino");
+    expect(await screen.findByText(/Treino em andamento encontrado/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByDisplayValue("99")).toBeInTheDocument();
+  });
+
+  it("Descartar remove o draft e fecha o banner (EXOFF-05)", async () => {
+    seedDraft({ "ex-1": [{ reps: "99", carga: "50" }] });
+    respondFicha();
+    render(<ExecutarFichaPage />);
+
+    await screen.findByText(/Treino em andamento encontrado/i);
+    fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText(/Treino em andamento encontrado/i)).not.toBeInTheDocument(),
+    );
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it("falha de rede ao finalizar enfileira e mostra 'salva no aparelho' (EXOFF-11/12)", async () => {
+    respondFicha();
+    server.use(http.post("*/aluno/execucoes", () => HttpResponse.error()));
+    render(<ExecutarFichaPage />);
+
+    await screen.findByText("Supino");
+    fireEvent.click(screen.getByRole("button", { name: /Finalizar treino/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Confirmar registro/ }));
+
+    expect(await screen.findByText(/salva no aparelho/i)).toBeInTheDocument();
+    const queue = JSON.parse(localStorage.getItem("exec-queue")!);
+    expect(queue).toHaveLength(1);
+    expect(queue[0].idempotencyKey).toBeTruthy();
+    expect(queue[0].treinoId).toBe("treino-1");
+  });
+
+  it("sucesso ao finalizar limpa o draft (EXOFF-05)", async () => {
+    respondFicha();
+    server.use(
+      http.post("*/aluno/execucoes", () =>
+        HttpResponse.json({ execucaoId: "e1", treinoId: "treino-1" }, { status: 201 }),
+      ),
+    );
+    render(<ExecutarFichaPage />);
+
+    await screen.findByText("Supino");
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: /Finalizar treino/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Confirmar registro/ }));
+
+    expect(await screen.findByText("Sessão registrada")).toBeInTheDocument();
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
   });
 });

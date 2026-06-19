@@ -17,7 +17,7 @@ public class ExecutarRelatorioSaudeHandler(
     public virtual async Task<Result<HealthSnapshotResponse>> HandleAsync(CancellationToken cancellationToken = default)
     {
         var config = await configRepository.ObterAsync(cancellationToken).ConfigureAwait(false)
-            ?? throw new DomainException("Configuração de relatório de saúde não encontrada.");
+            ?? throw new EstadoInconsistenteException("Configuração de relatório de saúde não encontrada.");
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var report = await collector.ColetarAsync(config, cancellationToken).ConfigureAwait(false);

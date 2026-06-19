@@ -7,6 +7,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.TrocarEmail;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -188,6 +189,17 @@ public class ConfirmarTrocaEmailHandlerTests
         result.IsFailure.Should().BeTrue();
         conta.Email.Value.Should().Be("atual@test.com");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ContaNaoEncontradaAposTokenValido_LancaEstadoInconsistente()
+    {
+        var token = BuildToken(contaId: ContaId);
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(ComputeHash(RawCodigo), It.IsAny<CancellationToken>())).ReturnsAsync(token);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(ContaId, It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+
+        var act = async () => await _handler.HandleAsync(BuildCommand());
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
     }
 
     [Fact]

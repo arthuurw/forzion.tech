@@ -436,6 +436,7 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IUserContext>(), TimeProvider.System,
+            Mock.Of<IDatabaseErrorInspector>(),
             Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

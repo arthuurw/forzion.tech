@@ -202,6 +202,52 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
+    [Fact]
+    public async Task Post_RegistrarExecucao_HeaderIdempotencyValido_PropagaKeyNormalizada()
+    {
+        RegistrarExecucaoCommand? capturado = null;
+        _factory.RegistrarExecucaoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<RegistrarExecucaoCommand, CancellationToken>((c, _) => capturado = c)
+            .ReturnsAsync(Result.Success(RespostaExecucao));
+
+        var key = Guid.NewGuid().ToString();
+        var client = CriarClienteAluno();
+        client.DefaultRequestHeaders.Add("Idempotency-Key", key);
+        var response = await client.PostAsJsonAsync("/aluno/execucoes",
+            new { TreinoId, DataExecucao = DateTime.UtcNow, Observacao = (string?)null, Exercicios = Array.Empty<object>() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        capturado!.IdempotencyKey.Should().Be(key);
+    }
+
+    [Fact]
+    public async Task Post_RegistrarExecucao_HeaderIdempotencyMalformado_Retorna400()
+    {
+        var client = CriarClienteAluno();
+        client.DefaultRequestHeaders.Add("Idempotency-Key", "nao-e-guid");
+        var response = await client.PostAsJsonAsync("/aluno/execucoes",
+            new { TreinoId, DataExecucao = DateTime.UtcNow, Observacao = (string?)null, Exercicios = Array.Empty<object>() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Post_RegistrarExecucao_SemHeaderIdempotency_KeyNula()
+    {
+        RegistrarExecucaoCommand? capturado = null;
+        _factory.RegistrarExecucaoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<RegistrarExecucaoCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<RegistrarExecucaoCommand, CancellationToken>((c, _) => capturado = c)
+            .ReturnsAsync(Result.Success(RespostaExecucao));
+
+        var response = await CriarClienteAluno().PostAsJsonAsync("/aluno/execucoes",
+            new { TreinoId, DataExecucao = DateTime.UtcNow, Observacao = (string?)null, Exercicios = Array.Empty<object>() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        capturado!.IdempotencyKey.Should().BeNull();
+    }
+
     // --- GET /aluno/progressao ---
 
     [Fact]
@@ -414,6 +460,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
             Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IUnitOfWork>(),
             Mock.Of<IUserContext>(), TimeProvider.System,
+            Mock.Of<IDatabaseErrorInspector>(),
             Mock.Of<ILogger<RegistrarExecucaoHandler>>());
 
         public Mock<ObterAssinaturaAlunoHandler> ObterAssinaturaAlunoHandlerMock { get; } = new(

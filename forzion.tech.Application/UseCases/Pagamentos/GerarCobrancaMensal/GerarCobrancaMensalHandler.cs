@@ -44,7 +44,7 @@ public class GerarCobrancaMensalHandler(
         // para descobrir um erro determinístico.
         var contaRecebimento = await contaRecebimentoRepository.ObterPorTreinadorIdAsync(assinatura.TreinadorId, cancellationToken).ConfigureAwait(false);
         if (contaRecebimento is null || !contaRecebimento.OnboardingCompleto || string.IsNullOrEmpty(contaRecebimento.StripeConnectAccountId))
-            return Result.Failure<PagamentoResponse>(Error.Business("treinador_sem_conta_stripe", "Treinador sem conta Stripe configurada."));
+            return Result.Failure<PagamentoResponse>(Error.Business("treinador.sem_conta_stripe", "Treinador sem conta Stripe configurada."));
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var accountId = contaRecebimento.StripeConnectAccountId;

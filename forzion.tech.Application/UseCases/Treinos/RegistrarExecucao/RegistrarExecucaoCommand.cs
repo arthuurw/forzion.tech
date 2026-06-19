@@ -12,4 +12,5 @@ public record RegistrarExecucaoCommand(
     Guid AlunoId,
     DateTime DataExecucao,
     string? Observacao,
-    IReadOnlyList<RegistrarExecucaoItemCommand> Exercicios);
+    IReadOnlyList<RegistrarExecucaoItemCommand> Exercicios,
+    string? IdempotencyKey = null);

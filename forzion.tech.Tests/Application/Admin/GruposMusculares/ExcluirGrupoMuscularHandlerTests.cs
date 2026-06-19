@@ -44,7 +44,8 @@ public class ExcluirGrupoMuscularHandlerTests
         var result = await _handler.HandleAsync(new ExcluirGrupoMuscularCommand(grupo.Id));
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("grupo_muscular_em_uso");
+        result.Error!.Code.Should().Be("grupo_muscular.em_uso");
+        result.Error.Type.Should().Be(ErrorType.Conflict);
         _repository.Verify(r => r.Excluir(It.IsAny<GrupoMuscular>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

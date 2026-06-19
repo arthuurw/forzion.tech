@@ -86,6 +86,19 @@ public class IniciarOnboardingTreinadorHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ContaDoTreinadorNaoEncontrada_LancaEstadoInconsistente()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ContaRecebimento?)null);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(treinador.ContaId, It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+
+        var act = async () => await _handler.HandleAsync(new IniciarOnboardingTreinadorCommand(treinador.Id, "https://ret", "https://cancel"));
+        await act.Should().ThrowAsync<EstadoInconsistenteException>();
+    }
+
+    [Fact]
     public async Task HandleAsync_CommandNulo_LancaArgumentNullException()
     {
         var act = async () => await _handler.HandleAsync(null!);

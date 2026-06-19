@@ -124,7 +124,7 @@ treino_exercicio_series — séries configuráveis. id(uuid,NN); treino_exercici
 
 treino_alunos — atribuição de ficha a aluno. id(uuid,NN); treino_id(uuid,NN); aluno_id(uuid,NN); status(text,NN,TreinoAlunoStatus); created_at(NN); updated_at(null). PK(id) FK(treino_id→treinos,RESTRICT) FK(aluno_id→alunos,RESTRICT) UQ(treino_id WHERE status='Ativo').
 
-execucoes_treino — sessão executada pelo aluno. id(uuid,NN); treino_id(uuid,NN); aluno_id(uuid,NN); data_execucao(tstz,NN); observacao(varchar,null); created_at(NN). PK(id) FK(treino_id→treinos,RESTRICT) FK(aluno_id→alunos,RESTRICT).
+execucoes_treino — sessão executada pelo aluno. id(uuid,NN); treino_id(uuid,NN); aluno_id(uuid,NN); data_execucao(tstz,NN); observacao(varchar,null); idempotency_key(varchar64,null,GUID normalizado do cliente p/ dedup de reenvio offline/double-tap); created_at(NN). PK(id) FK(treino_id→treinos,RESTRICT) FK(aluno_id→alunos,RESTRICT) UQ(aluno_id,idempotency_key WHERE idempotency_key IS NOT NULL, `ix_execucoes_treino_aluno_id_idempotency_key_unique`; permite múltiplos NULL — legado/registro sem key). Migration `20260618162830_AdicionarIdempotencyKeyExecucao`.
 
 execucoes_exercicio — detalhe por exercício da execução. id(uuid,NN); execucao_treino_id(uuid,NN); treino_exercicio_id(uuid,NN); series_executadas(int,NN); repeticoes_executadas(int,NN); carga_executada(numeric,null); observacao(varchar,null). PK(id) FK(execucao_treino_id→execucoes_treino,CASCADE) FK(treino_exercicio_id→treino_exercicios,RESTRICT).
 
