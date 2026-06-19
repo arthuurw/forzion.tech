@@ -37,8 +37,6 @@ jobs:
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-17 age
-          # wrapper /usr/bin/pg_dump resolve p/ o client 16 pré-instalado no runner
-          # (server 17.x → "version mismatch"); fixa no binário 17 exato do pgdg.
           echo "PGDUMP=/usr/lib/postgresql/17/bin/pg_dump" >> "$GITHUB_ENV"
           /usr/lib/postgresql/17/bin/pg_dump --version
           age --version
