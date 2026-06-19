@@ -125,7 +125,9 @@ export function addFailureListener(fn: FailureListener): () => void {
 }
 
 export function enqueue(item: Omit<RetryQueueItem, "enqueuedAt">): void {
-  setItems([...readRaw(), { ...item, enqueuedAt: Date.now() }]);
+  const next = [...readRaw(), { ...item, enqueuedAt: Date.now() }];
+  setItems(next);
+  scheduleBackoff(next);
 }
 
 export async function drain(): Promise<void> {

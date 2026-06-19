@@ -202,6 +202,20 @@ describe("useExecucaoRetryQueue", () => {
     vi.unstubAllGlobals();
   });
 
+  it("enqueue arma retry automático (backoff dispara drain sem ação do usuário)", async () => {
+    vi.useFakeTimers();
+    criarExecucao.mockResolvedValue({ data: {} } as never);
+    const { result } = renderHook(() => useExecucaoRetryQueue());
+    act(() => result.current.enqueue(item("k1", "t1")));
+    expect(criarExecucao).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(criarExecucao).toHaveBeenCalledWith(payload("t1"), { idempotencyKey: "k1" });
+    expect(result.current.pendingCount).toBe(0);
+    vi.useRealTimers();
+  });
+
   it("evento window 'online' dispara drain", async () => {
     criarExecucao.mockResolvedValue({ data: {} } as never);
     const { result } = renderHook(() => useExecucaoRetryQueue());
