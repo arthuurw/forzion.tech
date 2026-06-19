@@ -201,7 +201,7 @@ export default function ExerciciosTreinadorPage() {
         nome: editNome.trim() || undefined,
         grupoMuscularId: editGrupo || undefined,
         descricao: editDescricao.trim() || null,
-        comoExecutar: editComoExecutar.trim() || null,
+        comoExecutar: editComoExecutar.trim(),
         videoUrl: editVideoUrl.trim(),
       });
       setSuccess(`"${editNome}" atualizado.`);
