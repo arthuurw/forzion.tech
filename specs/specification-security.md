@@ -130,24 +130,36 @@ Todos os webhooks: `AllowAnonymous` + rate `webhook` (300/min IP) + body cap **6
 - **Sentry wiring incompleto** (CONCERNS Medium): `@sentry/nextjs` instalado, gate por consentimento de cookie ([specification-lgpd]); erros prod podem cair em buracos.
 - **Branch protection do repo**: push direto a `homolog`/`master` proibido por convenção (CONCERNS:37) mas enforcement de branch protection é responsabilidade de config do repo — REFERENCIAR [specification-infrastructure]; `--no-verify` NUNCA (hooks locais, não server-side).
 - **OSV report-only** (deps dev não gateadas); gate de vuln frontend é só `npm audit --omit=dev >= high`.
+- **Resíduo de enumeração: e-mail-não-verificado [ACEITO]** (F9, decisão D2). `LoginHandler` lança `EmailNaoVerificadoException` (403 distinto) APÓS o `Verify` de senha passar (`LoginHandler.cs` ordem: conta nula → dummy verify + `CredenciaisInvalidasException`; senha errada → `CredenciaisInvalidasException`; senha CERTA + e-mail não verificado → `EmailNaoVerificadoException`). O 403 distinto só é alcançável por quem JÁ tem a senha correta ⇒ NÃO vaza existência/estado de conta a atacante sem credencial (o timing oracle de existência foi fechado por F2 — §2). Resíduo aceito: um atacante que já possui a senha válida distingue conta verificada de não-verificada. **Rationale:** UX — usuário legítimo com e-mail pendente precisa da mensagem acionável "verifique seu e-mail" (reenviar verificação), não de um "credenciais inválidas" genérico que vira beco sem saída. Mover o check de `EmailVerificado` para ANTES do `Verify` reintroduziria timing oracle de existência (descartado no design). Trade-off (eixo segurança×usabilidade): o ganho de usabilidade supera um resíduo que exige a senha correta como pré-condição.
 
 ## 9. ROTAÇÃO DE SEGREDOS, CADÊNCIA DE DEPS & ENFORCEMENT DE AUTHZ
 Postura PROATIVA (complementa §2 AuthZ, §5 segredos, §6 scanning — que são reativos/estáticos). Várias entradas são [ALVO] (política a definir), marcadas.
 
 ### 9.1 Rotação de segredos
-- [ALVO] Política de rotação POR TIPO de segredo (não rotacionado = exposição acumulada se vazar): `Auth:JwtSecret`, `Internal:ApiKey`, Stripe keys, Resend/WhatsApp tokens. Definir cadência + procedimento por tipo. §5 cobre ARMAZENAMENTO; isto cobre CICLO DE VIDA.
+Política de rotação POR TIPO (não rotacionado = exposição acumulada se vazar). §5 cobre ARMAZENAMENTO; isto cobre CICLO DE VIDA. Cadência = rotação AGENDADA proativa; qualquer vazamento confirmado dispara o runbook abaixo (IMEDIATO, ignora cadência). Por ambiente (§10.2 — nunca reusar entre prd/hmg).
+
+| Segredo | Cadência agendada | Procedimento |
+|---|---|---|
+| `Auth:JwtSecret` | 90d | Trocar 1 valor; sessões absorvem via `/auth/refresh` (detalhe abaixo). Sem janela de manutenção. |
+| `Internal:ApiKey` | 90d | Coordenar com GH Actions de billing: key (env app) + secret (`vars`/`secrets`) no MESMO deploy, senão `/internal` 401 quebra renovações. |
+| Stripe (secret + webhook signing) | 180d ou on-suspect | Stripe roll com expiração graciosa (key velha+nova válidas na janela); trocar `Stripe:SecretKey` no app, depois revogar a velha. Webhook secret: re-criar endpoint signing secret + atualizar config antes de revogar. |
+| Resend / WhatsApp tokens | 180d ou on-suspect | Emitir token novo no provedor, trocar no env, revogar o velho após deploy verde. |
+| `Mfa:EncryptionKey`, `DeliveryLog:RecipientHashKey` | NÃO rotacionar casualmente | Chave de criptografia/hash de dados EM REPOUSO: trocar quebra decrypt do TOTP secret / desliga a correlação de hash de destinatário. Só sob vazamento confirmado, COM plano de re-encrypt/migração (re-enroll de MFA ou re-cifrar `mfa.secret_cifrado`). |
+| Cert A1 NFS-e | Na expiração do cert (efêmero, runtime Linux — [specification-fiscal]) | Substituir PFX + `CertificadoSenha`; senha nunca logada. |
 - **Rotação de `Auth:JwtSecret` sem invalidar sessões válidas**: HS256 simétrico (§2) ⇒ trocar a chave invalida TODOS os access JWT em voo. Com access curto (15min/10min — §2), a janela de dor é pequena: após a troca, cada cliente cai em 401 → `/auth/refresh` (cookie httpOnly, NÃO assinado com a chave) reemite um access com a chave nova. Ou seja, a renovação silenciosa absorve a rotação sem re-login manual — desde que o refresh (não-JWT) siga válido. Rotação graciosa (aceitar chave nova+velha) deixa de ser necessária para evitar logout em massa. DECIDIR e documentar mesmo assim antes de rotacionar.
 - `Internal:ApiKey`: rotação coordenada com os GH Actions de billing que a consomem (`vars`/`secrets`) — trocar key + secret no mesmo deploy, senão `/internal` 401 quebra renovações.
 - Vazamento confirmado (gitleaks/incidente) ⇒ rotação IMEDIATA, não agendada.
 
+**Runbook de vazamento** (segredo exposto em log/commit/incidente): 1. CONTER — rotacionar o segredo afetado JÁ (procedimento da tabela), sem esperar cadência. 2. REVOGAR o valor velho no provedor (Stripe/Resend/WhatsApp/Supabase) — rotacionar sem revogar deixa a cópia vazada viva. 3. DERRUBAR sessões se o segredo toca auth: `Auth:JwtSecret` rotacionado já invalida access em voo; suspeita de comprometimento de conta ⇒ `RevogarTodasPorConta` (§2). 4. PURGAR o segredo do histórico se vazou em git (rewrite + force-push coordenado; gitleaks no `gate` evita recorrência). 5. REGISTRAR escopo/janela de exposição e o que foi rotacionado. `service_role` Supabase (ignora RLS — §10.1) ou `Mfa:EncryptionKey` vazados = incidente de dados, não só de segredo: avaliar acesso indevido + obrigação LGPD ([specification-lgpd]).
+
 ### 9.2 Cadência de upgrade de dependências (proativo)
-- §6 pega vuln REATIVO (gitleaks/OSV/npm audit/NuGet `--vulnerable` no `gate`). Falta o PROATIVO: [ALVO] automação de PRs de upgrade regulares (Renovate/Dependabot) p/ não acumular débito até virar vuln gateada.
+- §6 pega vuln REATIVO (gitleaks/OSV/npm audit/NuGet `--vulnerable` no `gate`). O PROATIVO é o **Dependabot** (`.github/dependabot.yml`): ecossistemas `nuget` (raiz), `npm` (`/frontend`) e `github-actions`, schedule weekly, `open-pull-requests-limit` baixo, grouped minor/patch p/ reduzir ruído. Respeita pins de CI já fixados (CycloneDX, zap actions — §9.2 abaixo): bump consciente via review do PR, não auto-merge.
 - Upgrade MAJOR (.NET/Next/React/EF) = avaliação de breaking change + suíte completa ([specification-tests]) + atualizar specs de stack afetadas.
 - Pinagem: ferramentas de CI já pinadas (CycloneDX 6.2.0, zap actions) — manter pin + bump consciente.
 
 ### 9.3 Enforcement de AuthZ (testar a NEGAÇÃO, não só o caminho feliz)
 - §2 define policies (`SystemAdmin`/`Treinador`/`Aluno`) + ownership nos handlers/filters. Lacuna de enforcement: garantir TESTE NEGATIVO por papel.
-- [ALVO/disciplina] Matriz de teste papel × recurso × ação: papel errado → **403**; ownership cross-tenant (treinador acessando aluno de OUTRO treinador; aluno lendo ficha de outro) → **403/404**, não vazamento. O gate é o teste de autorização negativo, não a policy em si (policy sem teste negativo é invariante não-verificada).
+- Matriz de teste papel × recurso × ação (papel errado → **403**) implementada em `forzion.tech.Tests/Api/Endpoints/AutorizacaoNegativaMatrixTests.cs`: rotas só-Treinador / só-Aluno / só-Admin acessadas pelo papel errado → 403, e sem token → 401, via `WebApplicationFactory` + scheme de teste (a autorização curto-circuita antes do handler, então o teste falha se a policy for removida — não-tautológico). Ownership cross-tenant (treinador acessando aluno de OUTRO treinador; aluno lendo ficha de outro) → **403/404** fica nas suítes por-endpoint (ex.: `TreinoEndpointsTests`). O gate é o teste de autorização negativo, não a policy em si (policy sem teste negativo é invariante não-verificada).
 - Cross-ref defense-in-depth: validação de segurança/compliance no SERVIDOR mesmo com trava no frontend ([specification-coding §4]).
 
 ## 10. ISOLAMENTO MULTI-AMBIENTE (PRD + HMG) [ALVO]

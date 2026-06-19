@@ -57,7 +57,7 @@ Resend não tem sandbox → e-mail de não-prod é real. `EnvironmentEmailDecora
 - `ContaRegistradaEmailHandler` → `EmailVerificationSender.EnviarAsync` → e-mail com link.
 - Verificar: `POST /auth/verify-email {token}` → `VerificarEmailHandler` (Application): valida formato (64 chars), hash SHA-256, busca token, checa `verified_at` nulo + `expires_at` futuro, marca `Conta.MarcarEmailVerificado` (idempotente) + `token.MarcarComoVerificado`, commit.
 - Reenvio: `POST /auth/resend-verification {email}` → `ReenviarVerificacaoHandler` (Infrastructure): normaliza email, busca conta; SILENCIOSO (conta inexistente OU já verificada → no-op, não vaza); senão `EmailVerificationSender`. Endpoint sempre 200.
-- Login: `EmailNaoVerificadoException` → 403 `ProblemDetails.Extensions["code"]="EMAIL_NAO_VERIFICADO"`, checado APÓS validação de senha (não vaza existência/verificação).
+- Login: `EmailNaoVerificadoException` → 403 `ProblemDetails.Extensions["code"]="EMAIL_NAO_VERIFICADO"`, checado APÓS validação de senha ⇒ não vaza EXISTÊNCIA a quem não tem a senha. O 403 distinto revela o estado de verificação SÓ a quem já possui a senha correta: resíduo de enumeração ACEITO (F9/D2, rationale em [specification-security] §8).
 - Seed: admin recebe `MarcarEmailVerificado()` + `ClearDomainEvents()` (não gera token/e-mail).
 
 ### Reset de senha (Módulo B)
