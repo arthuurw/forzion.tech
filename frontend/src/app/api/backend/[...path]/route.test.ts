@@ -124,6 +124,44 @@ describe("Backend proxy /api/backend/[...path]", () => {
       expect(received.cookie).toBeNull();
       expect(received.xff).toBeNull();
     });
+
+    it("repassa X-Step-Up-Token ao backend quando presente", async () => {
+      setupCookies({});
+      let received: string | null = null;
+
+      server.use(
+        http.post("*/admin/x", ({ request }) => {
+          received = request.headers.get("x-step-up-token");
+          return HttpResponse.json({});
+        }),
+      );
+
+      const req = createMockRequest({
+        method: "POST",
+        headers: { "x-step-up-token": "stepup-jwt" },
+        body: { a: 1 },
+      });
+      await POST(req, makeCtx(["admin", "x"]));
+
+      expect(received).toBe("stepup-jwt");
+    });
+
+    it("sem X-Step-Up-Token → backend não recebe o header", async () => {
+      setupCookies({});
+      let received: string | null = "sentinel";
+
+      server.use(
+        http.post("*/admin/x", ({ request }) => {
+          received = request.headers.get("x-step-up-token");
+          return HttpResponse.json({});
+        }),
+      );
+
+      const req = createMockRequest({ method: "POST", body: { a: 1 } });
+      await POST(req, makeCtx(["admin", "x"]));
+
+      expect(received).toBeNull();
+    });
   });
 
   describe("Forwarding metodos HTTP", () => {

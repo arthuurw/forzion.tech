@@ -5,7 +5,7 @@ const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
 // Headers do cliente que são permitidos de serem repassados ao backend.
 // Nenhum outro header (Cookie, Authorization, X-Forwarded-For, etc.) é repassado.
-const ALLOWED_REQUEST_HEADERS = ["content-type", "accept"];
+const ALLOWED_REQUEST_HEADERS = ["content-type", "accept", "x-step-up-token"];
 
 async function proxy(request: NextRequest, path: string[]): Promise<NextResponse> {
   // A9 — Sanitização de path: rejeitar segmentos que permitiriam path traversal.
