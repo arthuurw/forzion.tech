@@ -179,6 +179,27 @@ describe("useExecucaoRetryQueue", () => {
     expect(criarExecucao).toHaveBeenCalledTimes(1);
   });
 
+  it("item enfileirado durante drain em andamento não é perdido", async () => {
+    let resolveK1: () => void = () => {};
+    criarExecucao.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveK1 = () => resolve({ data: {} } as never))),
+    );
+    const { result } = renderHook(() => useExecucaoRetryQueue());
+    act(() => result.current.enqueue(item("k1", "t1")));
+    let draining: Promise<void> = Promise.resolve();
+    act(() => {
+      draining = result.current.drain();
+    });
+    act(() => result.current.enqueue(item("k2", "t2")));
+    await act(async () => {
+      resolveK1();
+      await draining;
+    });
+    expect(criarExecucao).toHaveBeenCalledTimes(1);
+    expect(result.current.pendingCount).toBe(1);
+    expect(result.current.items[0].idempotencyKey).toBe("k2");
+  });
+
   it("fila com JSON corrompido → pendingCount 0 sem lançar", () => {
     localStorage.setItem("exec-queue", "{corrompido");
     __resetRetryQueueStore();

@@ -165,8 +165,11 @@ export async function drain(): Promise<void> {
         scheduleRetry = true;
       }
     }
-    setItems(remaining);
-    if (scheduleRetry) scheduleBackoff(remaining);
+    const processed = new Set(queue.map((i) => i.idempotencyKey));
+    const newcomers = readRaw().filter((i) => !processed.has(i.idempotencyKey));
+    const merged = [...remaining, ...newcomers];
+    setItems(merged);
+    if (scheduleRetry || newcomers.length > 0) scheduleBackoff(merged);
   } finally {
     draining = false;
     setDraining(false);
