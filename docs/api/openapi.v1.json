@@ -6930,23 +6930,13 @@
         "tags": [
           "Pagamentos"
         ],
-        "summary": "Retorna a assinatura de plano ativa do treinador",
+        "summary": "Retorna a assinatura de plano ativa do treinador, ou null se não houver",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": { }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
               }
             }
           }

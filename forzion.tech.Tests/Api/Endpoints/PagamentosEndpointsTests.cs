@@ -70,6 +70,16 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
     }
 
     [Fact]
+    public async Task Get_AssinaturaTreinador_SemAssinatura_Retorna200ComCorpoNulo()
+    {
+        var response = await ClienteTreinador().GetAsync("/treinador/plano/assinatura");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Trim().Should().Be("null");
+    }
+
+    [Fact]
     public async Task Get_Recebimentos_SemToken_Retorna401()
     {
         var response = await _factory.CreateClient()
