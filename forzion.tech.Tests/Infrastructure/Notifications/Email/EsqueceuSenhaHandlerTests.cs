@@ -19,6 +19,8 @@ public class EsqueceuSenhaHandlerTests
     private readonly Mock<IPasswordResetTokenRepository> _tokenRepo = new();
     private readonly Mock<IEmailCriticoDispatcher> _emailCritico = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDbContextTransactionProvider> _txProvider = new();
+    private readonly Mock<ITransaction> _transaction = new();
     private readonly Mock<IDatabaseErrorInspector> _dbErrorInspector = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly Mock<ILogger<EsqueceuSenhaHandler>> _logger = new();
@@ -26,9 +28,13 @@ public class EsqueceuSenhaHandlerTests
 
     public EsqueceuSenhaHandlerTests()
     {
+        _txProvider
+            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_transaction.Object);
+
         _handler = new EsqueceuSenhaHandler(
             _contaRepo.Object, _tokenRepo.Object, _emailCritico.Object,
-            _unitOfWork.Object, _dbErrorInspector.Object, _timeProvider, _logger.Object);
+            _unitOfWork.Object, _txProvider.Object, _dbErrorInspector.Object, _timeProvider, _logger.Object);
     }
 
     private static Conta BuildConta(string email = "user@example.com") =>
@@ -162,10 +168,30 @@ public class EsqueceuSenhaHandlerTests
         var act = async () => await _handler.HandleAsync(new EsqueceuSenhaCommand("user@example.com"));
 
         await act.Should().NotThrowAsync();
+        _transaction.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task HandleAsync_CommitErroNaoUnicidade_Propaga()
+    public async Task HandleAsync_Sucesso_ComitaInvalidacaoEInsercaoNaMesmaTransacao()
+    {
+        var conta = BuildConta();
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("user@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+
+        var ordem = new List<string>();
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("save")).Returns(Task.CompletedTask);
+        _transaction.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("tx")).Returns(Task.CompletedTask);
+
+        await _handler.HandleAsync(new EsqueceuSenhaCommand("user@example.com"));
+
+        _txProvider.Verify(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()), Times.Once);
+        ordem.Should().Equal("save", "tx");
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitErroNaoUnicidade_PropagaSemComitarTransacao()
     {
         var conta = BuildConta();
         _contaRepo.Setup(r => r.ObterPorEmailAsync("user@example.com", It.IsAny<CancellationToken>()))
@@ -177,6 +203,7 @@ public class EsqueceuSenhaHandlerTests
         var act = async () => await _handler.HandleAsync(new EsqueceuSenhaCommand("user@example.com"));
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+        _transaction.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static string Hash(string raw) =>

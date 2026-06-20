@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using forzion.tech.Application.Interfaces;
@@ -15,6 +16,7 @@ public class EsqueceuSenhaHandler(
     IPasswordResetTokenRepository tokenRepository,
     IEmailCriticoDispatcher emailCritico,
     IUnitOfWork unitOfWork,
+    IDbContextTransactionProvider transactionProvider,
     IDatabaseErrorInspector dbErrorInspector,
     TimeProvider timeProvider,
     ILogger<EsqueceuSenhaHandler> logger)
@@ -54,6 +56,10 @@ public class EsqueceuSenhaHandler(
             agora.AddHours(1),
             agora).Value;
 
+        await using var transacao = await transactionProvider
+            .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            .ConfigureAwait(false);
+
         await tokenRepository.InvalidarPendentesPorContaAsync(conta.Id, agora, cancellationToken).ConfigureAwait(false);
         await tokenRepository.AdicionarAsync(resetToken, cancellationToken).ConfigureAwait(false);
         emailCritico.Enfileirar(EmailCriticoTemplate.RedefinirSenha, conta.Email.Value, rawToken);
@@ -61,6 +67,7 @@ public class EsqueceuSenhaHandler(
         try
         {
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await transacao.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (dbErrorInspector.EhViolacaoDeUnicidade(ex))
         {

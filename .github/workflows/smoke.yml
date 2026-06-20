@@ -13,7 +13,7 @@ jobs:
   smoke:
     name: Smoke @smoke
     runs-on: ubuntu-latest
-    # Só roda se o deploy passou (ou disparo manual) E há URL homolog configurada.
+    environment: homolog
     if: >
       (github.event_name == 'workflow_dispatch' ||
        github.event.workflow_run.conclusion == 'success') &&
