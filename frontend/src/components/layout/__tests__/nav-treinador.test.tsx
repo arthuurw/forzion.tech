@@ -127,10 +127,10 @@ describe("AppLayout — toasts e sessão", () => {
 
   it("aviso de inatividade aparece e timeout faz logout", async () => {
     render(<AppLayout>conteudo</AppLayout>);
-    act(() => inactivity.onWarn(2));
-    expect(await screen.findByText(/sem atividade há 2 minutos/)).toBeInTheDocument();
+    act(() => inactivity.onWarn(5));
+    expect(await screen.findByText(/será encerrada em 5 minutos por inatividade/)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Close"));
-    await waitFor(() => expect(screen.queryByText(/sem atividade há 2 minutos/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/será encerrada em 5 minutos por inatividade/)).not.toBeInTheDocument());
     act(() => inactivity.onTimeout());
     expect(authState.logout).toHaveBeenCalledOnce();
   });

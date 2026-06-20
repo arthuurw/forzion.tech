@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useInactivity } from "@/hooks/useInactivity";
 
-const WARN_STEP = 5 * 60 * 1000;
-const TIMEOUT_MS = 20 * 60 * 1000;
+const TIMEOUT_MS = 30 * 60 * 1000;
+const WARN_LEAD_MS = 5 * 60 * 1000;
+const WARN_AT = TIMEOUT_MS - WARN_LEAD_MS; // 25 min
 const CHECK_MS = 20 * 1000;
 
 describe("useInactivity", () => {
@@ -16,7 +17,7 @@ describe("useInactivity", () => {
     vi.useRealTimers();
   });
 
-  it("disabled=false → callbacks nunca chamados", () => {
+  it("enabled=false → callbacks nunca chamados", () => {
     const onWarn = vi.fn();
     const onTimeout = vi.fn();
     renderHook(() => useInactivity({ onWarn, onTimeout, enabled: false }));
@@ -27,41 +28,40 @@ describe("useInactivity", () => {
     expect(onTimeout).not.toHaveBeenCalled();
   });
 
-  it("inatividade < 5min → sem warn", () => {
+  it("inatividade antes da janela de aviso → sem warn", () => {
     const onWarn = vi.fn();
     const onTimeout = vi.fn();
     renderHook(() => useInactivity({ onWarn, onTimeout, enabled: true }));
 
-    act(() => { vi.advanceTimersByTime(4 * 60 * 1000 + CHECK_MS); });
+    act(() => { vi.advanceTimersByTime(WARN_AT - 60 * 1000); });
 
     expect(onWarn).not.toHaveBeenCalled();
     expect(onTimeout).not.toHaveBeenCalled();
   });
 
-  it("inatividade >= 5min → onWarn(5) chamado", () => {
+  it("inatividade >= 25min → aviso único de 5 min restantes", () => {
     const onWarn = vi.fn();
     const onTimeout = vi.fn();
     renderHook(() => useInactivity({ onWarn, onTimeout, enabled: true }));
 
-    act(() => { vi.advanceTimersByTime(WARN_STEP + CHECK_MS); });
+    act(() => { vi.advanceTimersByTime(WARN_AT + CHECK_MS); });
 
     expect(onWarn).toHaveBeenCalledWith(5);
     expect(onTimeout).not.toHaveBeenCalled();
   });
 
-  it("inatividade >= 10min → onWarn(10) chamado (não repete o de 5min)", () => {
+  it("aviso não repete enquanto segue inativo", () => {
     const onWarn = vi.fn();
     const onTimeout = vi.fn();
     renderHook(() => useInactivity({ onWarn, onTimeout, enabled: true }));
 
-    act(() => { vi.advanceTimersByTime(2 * WARN_STEP + CHECK_MS); });
+    act(() => { vi.advanceTimersByTime(WARN_AT + CHECK_MS); });
+    act(() => { vi.advanceTimersByTime(2 * 60 * 1000); });
 
-    expect(onWarn).toHaveBeenCalledTimes(2);
-    expect(onWarn).toHaveBeenCalledWith(5);
-    expect(onWarn).toHaveBeenCalledWith(10);
+    expect(onWarn).toHaveBeenCalledTimes(1);
   });
 
-  it("inatividade >= 20min → onTimeout chamado", () => {
+  it("inatividade >= 30min → onTimeout chamado", () => {
     const onWarn = vi.fn();
     const onTimeout = vi.fn();
     renderHook(() => useInactivity({ onWarn, onTimeout, enabled: true }));
@@ -71,20 +71,17 @@ describe("useInactivity", () => {
     expect(onTimeout).toHaveBeenCalled();
   });
 
-  it("evento de atividade reseta timer e limpa warns", () => {
+  it("evento de atividade reseta timer e limpa o aviso", () => {
     const onWarn = vi.fn();
     const onTimeout = vi.fn();
     renderHook(() => useInactivity({ onWarn, onTimeout, enabled: true }));
 
-    // Avança 5min → warn esperado
-    act(() => { vi.advanceTimersByTime(WARN_STEP + CHECK_MS); });
+    act(() => { vi.advanceTimersByTime(WARN_AT + CHECK_MS); });
     expect(onWarn).toHaveBeenCalledWith(5);
 
-    // Simula atividade — dispara mousemove
     act(() => { window.dispatchEvent(new Event("mousemove")); });
 
-    // Avança mais 4min → sem novo warn (timer resetou)
-    act(() => { vi.advanceTimersByTime(4 * 60 * 1000 + CHECK_MS); });
+    act(() => { vi.advanceTimersByTime(WARN_AT - 60 * 1000); });
     expect(onWarn).toHaveBeenCalledTimes(1);
   });
 });

@@ -51,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const handleWarn = useCallback((minutes: number) => {
     setInactivityWarn(
-      `Você está sem atividade há ${minutes} minuto${minutes > 1 ? "s" : ""}. Após 20 minutos de inatividade, sua sessão será encerrada automaticamente.`
+      `Sua sessão será encerrada em ${minutes} minuto${minutes > 1 ? "s" : ""} por inatividade. Interaja com a página para continuar conectado.`
     );
   }, []);
 
