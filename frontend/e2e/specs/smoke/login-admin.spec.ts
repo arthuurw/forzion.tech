@@ -1,5 +1,6 @@
 import { test, expect } from "../../fixtures/test-base";
 import { LoginPage } from "../../pages/LoginPage";
+import { dismissConsent } from "../../utils/consent";
 
 /**
  * Smoke 2/5 — admin login via UI redireciona pra /admin.
@@ -19,6 +20,7 @@ test.describe("smoke @smoke", () => {
     const login = new LoginPage(page);
     await login.goto();
     await expect(login.heading).toBeVisible();
+    await dismissConsent(page);
 
     await login.submit(email!, password!);
 
