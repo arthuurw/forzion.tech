@@ -24,8 +24,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
-USER appuser
+USER $APP_UID
 
 COPY --from=build /app/publish .
 
