@@ -75,11 +75,8 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: npx commitlint --from "origin/$BASE_REF" --to HEAD --verbose
 
-  # ─── TESTES BACKEND — unit (rápido, sem Docker, todo PR) ─────────────────────
-  # F2: roda só os testes sem dependência de Docker (--filter Category!=Integration).
-  # Os gates aqui (Domain/Application branch 75 + line/method 85; Api line 85 +
-  # method 70) são 100% sustentados por testes unit — medido localmente, não caem
-  # ao excluir os de integração. Os 5 RepositoryTests (Testcontainers) ficam fora.
+  # Gates Domain/Application/Api são sustentados só por testes unit; os de
+  # integração (Testcontainers) ficam fora deste job (--filter Category!=Integration).
   test-backend-unit:
     name: Backend — testes unit
     needs: [changes]
@@ -103,12 +100,8 @@ jobs:
       - name: Format — verifica estilo (.editorconfig)
         run: dotnet format forzion.tech.slnx --verify-no-changes --no-restore
 
-      # ─── Cobertura consolidada: roda os testes UMA vez e avalia TODOS os
-      # thresholds de um único relatório (ReportGenerator JsonSummary) via
-      # scripts/check-coverage.sh. Antes, cada gate re-rodava `dotnet test` (6x).
-      # Gates PRESERVADOS: Domain branch75/line85/method85; Application idem;
-      # Api line85/method70 (exclui Migrations/Program). Baseline medido (unit-only):
-      # Domain l95.0/b93.5/m94.1 · Application l94.8/b84.4/m97.1 · Api l87.9/m79.0.
+      # Exclui a classe gerada pelo source-gen do OpenAPI nativo (não-testável),
+      # além de Migrations/Program.
       - name: Test + cobertura (1x)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
@@ -117,7 +110,7 @@ jobs:
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=./coverage/
-          "/p:Exclude=[*]*.Migrations.*%2c[*]Program%2c[forzion.tech.Tests]*"
+          "/p:Exclude=[*]*.Migrations.*%2c[*]Program%2c[forzion.tech.Tests]*%2c[*]Microsoft.AspNetCore.OpenApi.Generated*"
 
       - name: ReportGenerator (JsonSummary)
         run: |
@@ -132,13 +125,9 @@ jobs:
           "forzion.tech.Application:branch=75,line=85,method=85"
           "forzion.tech.Api:line=85,method=70"
 
-  # ─── TESTES BACKEND — integração (Docker / Testcontainers) ───────────────────
-  # F2: roda a suíte COMPLETA (sem filtro). Os RepositoryTests sobem um Postgres
-  # via Testcontainers — ubuntu-latest já traz Docker, sem precisar de `services:`.
-  # A suíte inteira roda aqui porque os gates global (50 branch) e Infra (35 branch)
-  # só fecham com a cobertura da UNIÃO unit + integração; medir só Category=Integration
-  # derrubaria ambos. O gate Infra 35 também guarda contra os testes de integração
-  # pararem de rodar em silêncio (cairia abaixo de 35 e falharia — sinal desejado).
+  # Roda a suíte COMPLETA: os gates global (branch50) e Infra (branch35) só fecham
+  # com a cobertura da UNIÃO unit+integração. Infra35 também falha se a integração
+  # parar de rodar em silêncio.
   test-backend-integration:
     name: Backend — testes integração
     needs: [changes]
@@ -158,11 +147,6 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      # ─── Cobertura consolidada: roda a suíte COMPLETA UMA vez; gates avaliados
-      # de um único relatório (ReportGenerator JsonSummary) via check-coverage.sh.
-      # Antes rodava `dotnet test` 2x (global + Infra). Gates PRESERVADOS:
-      # global branch50; Infrastructure branch35 (exclui Migrations). O gate Infra
-      # também guarda contra os testes de integração pararem de rodar em silêncio.
       - name: Test + cobertura (1x, suíte completa)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release
@@ -170,7 +154,7 @@ jobs:
           /p:CollectCoverage=true
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=./coverage/
-          "/p:Exclude=[forzion.tech.Tests]*%2C[*]*.Migrations.*%2C[*]Program"
+          "/p:Exclude=[forzion.tech.Tests]*%2C[*]*.Migrations.*%2C[*]Program%2C[*]Microsoft.AspNetCore.OpenApi.Generated*"
 
       - name: ReportGenerator (JsonSummary)
         run: |
