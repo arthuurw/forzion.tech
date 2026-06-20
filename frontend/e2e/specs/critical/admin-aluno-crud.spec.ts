@@ -1,6 +1,6 @@
 import { test, expect, useAuthRole } from "../../fixtures/test-base";
 import { AdminAlunosPage } from "../../pages/admin/AdminAlunosPage";
-import { seedAluno, cleanupAlunoByEmail, makeTestEmail } from "../../utils/seed";
+import { seedAluno, cleanupContaByEmail, makeTestEmail } from "../../utils/seed";
 
 /**
  * Critical 2/8 — admin lista, filtra e gerencia alunos.
@@ -32,7 +32,7 @@ test.describe("admin aluno CRUD", () => {
   });
 
   test.afterEach(async ({ request }) => {
-    if (seededEmail) await cleanupAlunoByEmail(request, seededEmail).catch(() => undefined);
+    if (seededEmail) await cleanupContaByEmail(request, seededEmail);
     seededEmail = null;
   });
 

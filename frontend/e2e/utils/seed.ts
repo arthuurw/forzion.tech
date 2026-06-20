@@ -1,18 +1,4 @@
 import type { APIRequestContext } from "@playwright/test";
-import { authStatePath } from "../fixtures/auth";
-import fs from "node:fs";
-
-/**
- * Helpers de seed/cleanup de dados de teste via backend real.
- *
- * Fase 10a: seed via `/api/auth/register/aluno` (endpoint publico, mesmo do
- * cadastro UI) e cleanup via DELETE admin. Requer storage state admin.
- *
- * Limitacoes:
- * - Endpoints publicos exigem treinadorId + pacoteId validos (caller fornece)
- * - Cleanup precisa do alunoId retornado pelo cadastro (backend retorna?)
- * - Tests devem usar `cleanupAluno(...)` em afterEach ou afterAll
- */
 
 export interface SeedAlunoInput {
   treinadorId: string;
@@ -32,13 +18,6 @@ export interface SeededAluno {
   email: string;
 }
 
-/**
- * Cria um aluno via endpoint publico de registro. Retorna { email } sempre;
- * alunoId opcional (depende da resposta do backend).
- *
- * Para cleanup determanistico, prefira que o teste guarde o email e use
- * cleanupAlunoByEmail() via admin.
- */
 export async function seedAluno(
   request: APIRequestContext,
   input: SeedAlunoInput,
@@ -73,48 +52,32 @@ export async function seedAluno(
   return { alunoId: data.alunoId, email: input.email };
 }
 
-/**
- * Procura aluno por email via admin listAlunos e retorna alunoId, ou null.
- * Usa storage state admin pre-existente.
- */
-export async function findAlunoByEmail(
+export async function findTestContaIdByEmail(
   request: APIRequestContext,
   email: string,
 ): Promise<string | null> {
-  const adminState = authStatePath("admin");
-  if (!fs.existsSync(adminState)) {
-    throw new Error("findAlunoByEmail requer admin storage state");
+  const response = await request.get("/api/backend/admin/test-data/contas");
+  if (!response.ok()) {
+    throw new Error(`findTestContaIdByEmail falhou: GET ${response.status()}`);
   }
-  // Lista alunos com nome=email (backend filtra por nome; usar email parcial pode nao bater)
-  // Estrategia: paginar curto e procurar pelo email exato.
-  const response = await request.get(`/api/backend/admin/alunos?pagina=1&tamanhoPagina=50`);
-  if (!response.ok()) return null;
-  const data = (await response.json()) as { items: Array<{ alunoId: string; email: string | null }> };
-  const match = data.items.find((a) => a.email === email);
-  return match?.alunoId ?? null;
+  const contas = (await response.json()) as Array<{ contaId: string; email: string }>;
+  return contas.find((c) => c.email === email)?.contaId ?? null;
 }
 
-/**
- * Remove aluno por id via admin DELETE. No-op se id nao existir mais.
- */
-export async function cleanupAluno(
-  request: APIRequestContext,
-  alunoId: string,
-): Promise<void> {
-  await request.delete(`/api/backend/admin/alunos/${alunoId}`).catch(() => undefined);
-}
-
-export async function cleanupAlunoByEmail(
+export async function cleanupContaByEmail(
   request: APIRequestContext,
   email: string,
 ): Promise<void> {
-  const id = await findAlunoByEmail(request, email).catch(() => null);
-  if (id) await cleanupAluno(request, id);
+  const contaId = await findTestContaIdByEmail(request, email);
+  if (!contaId) {
+    throw new Error(`cleanupContaByEmail: conta de teste ${email} nao encontrada`);
+  }
+  const response = await request.delete(`/api/backend/admin/test-data/contas/${contaId}`);
+  if (!response.ok()) {
+    throw new Error(`cleanupContaByEmail: DELETE ${response.status()} para ${email}`);
+  }
 }
 
-/**
- * Email determanistico para tests — sufixo timestamp evita colisao entre runs.
- */
 export function makeTestEmail(prefix: string): string {
   return `${prefix}+${Date.now()}@e2e.test`;
 }

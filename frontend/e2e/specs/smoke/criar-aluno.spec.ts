@@ -1,5 +1,5 @@
 import { test, expect, useAuthRole } from "../../fixtures/test-base";
-import { seedAluno, cleanupAlunoByEmail, makeTestEmail } from "../../utils/seed";
+import { seedAluno, cleanupContaByEmail, makeTestEmail } from "../../utils/seed";
 
 /**
  * Smoke 4/5 — cria aluno via API e cleanup como admin.
@@ -39,7 +39,6 @@ test.describe("smoke @smoke", () => {
 
     expect(created.email).toBe(email);
 
-    // Cleanup — best effort, nao falha o teste se cleanup nao for possivel
-    await cleanupAlunoByEmail(request, email).catch(() => undefined);
+    await cleanupContaByEmail(request, email);
   });
 });
