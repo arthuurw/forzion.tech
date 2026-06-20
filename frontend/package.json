@@ -87,7 +87,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
     "@commitlint/cli": "^20.5.3",
-    "@commitlint/config-conventional": "^20.5.3",
+    "@commitlint/config-conventional": "^21.0.2",
     "@cyclonedx/cyclonedx-npm": "^4.2.1",
     "@eslint/eslintrc": "^3.3.5",
     "@faker-js/faker": "^9.9.0",
