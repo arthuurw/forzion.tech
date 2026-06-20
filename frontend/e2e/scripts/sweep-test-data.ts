@@ -32,7 +32,9 @@ async function main(): Promise<void> {
       process.env.E2E_ALUNO_EMAIL,
       process.env.E2E_TREINADOR_EMAIL,
       process.env.E2E_RESET_EMAIL ?? "user-reset@e2e.test",
-    ].filter((email): email is string => !!email),
+    ]
+      .filter((email): email is string => !!email)
+      .map((email) => email.toLowerCase()),
   );
 
   const ctx = await request.newContext({ baseURL });
@@ -45,7 +47,7 @@ async function main(): Promise<void> {
     }
 
     const contas = (await listResponse.json()) as TestConta[];
-    const alvos = contas.filter((conta) => !whitelist.has(conta.email));
+    const alvos = contas.filter((conta) => !whitelist.has(conta.email.toLowerCase()));
     console.log(`test-data: ${contas.length} conta(s), ${alvos.length} fora da whitelist`);
 
     const falhas: string[] = [];

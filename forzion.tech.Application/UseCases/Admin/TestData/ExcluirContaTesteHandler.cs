@@ -43,6 +43,11 @@ public class ExcluirContaTesteHandler(
                 "testdata.conta_nao_e_teste",
                 "Conta não é de teste; hard-delete recusado."));
 
+        if (conta.TipoConta == TipoConta.Treinador)
+            return Result.Failure(Error.Validation(
+                "testdata.tipo_nao_suportado",
+                "Hard-delete de teste cobre apenas conta de aluno; treinador exige offboarding completo."));
+
         await using var tx = await transactionProvider
             .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken).ConfigureAwait(false);
 

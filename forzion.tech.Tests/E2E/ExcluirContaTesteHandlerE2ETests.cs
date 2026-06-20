@@ -100,4 +100,56 @@ public class ExcluirContaTesteHandlerE2ETests(RealPipelineFixture fixture)
         result.Error!.Type.Should().Be(ErrorType.NotFound);
         result.Error!.Code.Should().Be("conta.nao_encontrada");
     }
+
+    [Fact]
+    public async Task Listar_IncluiSomenteContasComDominioDeTeste()
+    {
+        var agora = DateTime.UtcNow;
+        var emailTeste = $"lst{Guid.NewGuid():N}@e2e.test";
+        var emailReal = $"lst{Guid.NewGuid():N}@gmail.com";
+        using (var seedScope = fixture.Services.CreateScope())
+        {
+            var db = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Contas.Add(Conta.Criar(Email.Criar(emailTeste).Value, "$2a$12$x", TipoConta.Aluno, agora).Value);
+            db.Contas.Add(Conta.Criar(Email.Criar(emailReal).Value, "$2a$12$x", TipoConta.Aluno, agora).Value);
+            await db.SaveChangesAsync();
+        }
+
+        using var scope = fixture.Services.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ListarContasTesteHandler>();
+        var contas = await handler.HandleAsync();
+
+        var emails = contas.Select(c => c.Email).ToList();
+        emails.Should().Contain(emailTeste);
+        emails.Should().NotContain(emailReal);
+    }
+
+    [Fact]
+    public async Task ContaTreinadorTeste_RecusaSemEstourarFkDoTreinador()
+    {
+        var agora = DateTime.UtcNow;
+        Guid treinadorContaId;
+        using (var seedScope = fixture.Services.CreateScope())
+        {
+            var db = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var conta = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@e2e.test").Value, "$2a$12$x", TipoConta.Treinador, agora).Value;
+            var treinador = Treinador.Criar(conta.Id, "Treinador Teste", agora).Value;
+            treinadorContaId = conta.Id;
+            db.Contas.Add(conta);
+            db.Treinadores.Add(treinador);
+            await db.SaveChangesAsync();
+        }
+
+        using var scope = fixture.Services.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ExcluirContaTesteHandler>();
+        var result = await handler.HandleAsync(new ExcluirContaTesteCommand(treinadorContaId));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Type.Should().Be(ErrorType.Validation);
+        result.Error!.Code.Should().Be("testdata.tipo_nao_suportado");
+
+        using var verifyScope = fixture.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await verifyDb.Contas.AsNoTracking().AnyAsync(c => c.Id == treinadorContaId)).Should().BeTrue();
+    }
 }

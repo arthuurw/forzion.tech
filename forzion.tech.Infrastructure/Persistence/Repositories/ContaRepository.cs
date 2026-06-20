@@ -69,15 +69,12 @@ public class ContaRepository(AppDbContext context) : IContaRepository
 
     public async Task<IReadOnlyList<ContaTesteResumo>> ListarTesteAsync(string dominio, CancellationToken cancellationToken = default)
     {
-        var contas = await _context.Contas.AsNoTracking()
+        return await _context.Contas.AsNoTracking()
+            .Where(c => EF.Functions.ILike(c.Email.Value, "%" + dominio))
             .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new ContaTesteResumo(c.Id, c.Email.Value, c.CreatedAt))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-
-        return contas
-            .Where(c => c.Email.Value.EndsWith(dominio, StringComparison.OrdinalIgnoreCase))
-            .Select(c => new ContaTesteResumo(c.Id, c.Email.Value, c.CreatedAt))
-            .ToList();
     }
 
     public async Task ExcluirAsync(Conta conta, CancellationToken cancellationToken = default) =>
