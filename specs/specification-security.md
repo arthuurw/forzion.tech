@@ -87,13 +87,15 @@ Cross-ref [specification-infrastructure] (ENV/SECRETS, `.env` na VM). Por ambien
 
 ## 6. SAST / DAST / SUPPLY-CHAIN
 ### SAST — Semgrep (`.github/workflows/semgrep.yml`)
-`semgrep scan --config p/default --error --metrics=off`. **BLOQUEANTE** (`--error` falha o job em finding). Triggers: PR→`homolog` + `workflow_dispatch` (sem schedule — removido; não dispara fora da branch default). Escopo via `.semgrepignore` (nginx/infra/fixtures fora). Substitui CodeQL (que exigia GHAS em repo privado).
+`semgrep scan --config p/default --error --metrics=off`. **BLOQUEANTE** (`--error` falha o job em finding). Triggers: PR→`homolog` + `workflow_dispatch` (sem schedule — removido; não dispara fora da branch default). Escopo via `.semgrepignore` (nginx/infra/fixtures fora). Substitui CodeQL (que exigia GHAS em repo privado). Suppressão inline `nosemgrep` (rule `detected-bcrypt-hash`) na const `DummyHash` de `LoginHandler` — hash bcrypt fixo INTENCIONAL (Verify em tempo constante quando a conta não existe, anti-enumeração por timing), não é segredo.
 
 ### DAST — OWASP ZAP (duas camadas: baseline efêmero bloqueante + full autenticado agendado)
 **(1) Baseline efêmero — BLOQUEANTE no PR (`ci.yml` job `zap-baseline`, em `needs` do `gate`)**
 - Sobe SÓ a imagem `frontend` standalone (sem backend/DB) e roda `zap-baseline.py` (passivo) contra `http://localhost:3001`. Passivo inspeciona headers/cookies/CSP da resposta — não precisa de backend vivo.
 - Os security headers vêm do `next.config` (`headers()` em `/(.*)`): X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, **HSTS** e CSP. Remover um num PR gera alerta novo ⇒ **reprova o gate**.
-- **FPs conhecidos** em `.zap/baseline.conf` (IGNORE): **10020** (X-Frame-Options — já DENY) e **10055** (CSP unsafe-inline — exigido por Next hydration + Emotion). Sem `-I`: qualquer alerta novo fora desses reprova.
+- `next.config` seta `poweredByHeader: false` — sem `X-Powered-By` (mata ZAP 10037, disclosure de framework).
+- **FPs/posture aceitos** em `.zap/baseline.conf` (IGNORE; rationale por linha no arquivo): **10020** (X-Frame-Options já DENY), **10055** (CSP unsafe-inline — Next hydration + Emotion), **10024**+**10031** (URL `?confirmPassword/email` é fabricada pelo ZAP em form POST — cadastro não lê query, sem reflexão; FP), **10049** (Non-Storable — no-store desejável em página autenticada), **10109** (Modern Web App — detecção de SPA), **10111** (Auth Request Identified — informativo). Sem `-I`: qualquer alerta novo fora desses reprova.
+- **90004 (COEP missing) — IGNORE deliberado, NÃO fix**: habilitar `Cross-Origin-Embedder-Policy` (require-corp OU credentialless) quebra os iframes do **Stripe PaymentElement** — Stripe.js não emite `CORP: cross-origin` (bug aberto stripe-js#634) e `credentialless` NÃO relaxa iframe cross-origin (só subresource no-cors). O app não usa `crossOriginIsolated` (sem SharedArrayBuffer) ⇒ COEP traz custo (pagamento + vídeo YouTube quebram) e zero benefício. Revisitar quando Stripe shipar CORP.
 - Cobertura: headers de APP (next.config). Headers de **borda** (nginx, ex. HSTS no edge) NÃO entram aqui (não há nginx no stack efêmero) — ficam pro full autenticado contra homolog.
 - PR-only, path-filter `frontend`/`ci`.
 
