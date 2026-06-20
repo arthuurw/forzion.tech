@@ -94,6 +94,11 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
     public async Task AdicionarAsync(VinculoTreinadorAluno vinculo, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno.AddAsync(vinculo, cancellationToken).ConfigureAwait(false);
 
+    public async Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .Where(v => v.AlunoId == alunoId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
     // Sem AsNoTracking: handler de anonimização (ANON-01) precisa chamar Inativar nas entidades retornadas.
     public async Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosEPendentesPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno

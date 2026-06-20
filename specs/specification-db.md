@@ -34,7 +34,7 @@ Projeto Supabase único: `forzion` (ref `fdpdbtiuuitndbeujcbj`, região sa-east-
 ## CONVENÇÕES
 - PK: `id` uuid gerado na app (Guid.NewGuid), não pelo banco. Exceção: `tokens_revogados` PK=`jti`.
 - Timestamps: `created_at`(NN), `updated_at`(null) tstz. Datas de negócio: prefixo `data_*`.
-- Email: VO normalizado lowercase.
+- Email: VO normalizado lowercase. Coluna value-converted (`HasConversion`) → EF NÃO traduz string-fn/LIKE/ILike sobre `c.Email.Value` (estoura `could not be translated` em runtime); filtro por sufixo/padrão de e-mail roda em memória (ex.: `ListarTesteAsync` materializa + `EndsWith`).
 - Money: numeric.
 - FK default ON DELETE RESTRICT. CASCADE só em filhos de composição (ver por tabela).
 - Tokens (password_reset/email_verification/refresh): armazenam SHA-256 hex(64) do token; cru só no e-mail (reset/verify) ou no cookie httpOnly (refresh); `conta_id` SEM FK física (só índice). EXCEÇÃO: `refresh_tokens.familia_id` TEM FK física com ON DELETE CASCADE (GC/purga da família apaga os tokens no nível do banco).

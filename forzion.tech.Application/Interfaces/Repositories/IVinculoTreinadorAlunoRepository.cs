@@ -21,6 +21,7 @@ public interface IVinculoTreinadorAlunoRepository
     Task<VinculoTreinadorAluno?> ObterPendentePorParAsync(Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<VinculoTreinadorAluno?> ObterPendentePorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(VinculoTreinadorAluno vinculo, CancellationToken cancellationToken = default);
+    Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default);
 
     /// <summary>Vínculos Ativo + AguardandoAprovacao do aluno, rastreados para anonimização (ANON-01).</summary>
     Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosEPendentesPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);

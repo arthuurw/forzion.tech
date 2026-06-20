@@ -60,6 +60,17 @@ jobs:
             npm run e2e:smoke
           fi
 
+      - name: Sweep test data (homolog)
+        if: always()
+        env:
+          E2E_BASE_URL: ${{ vars.HOMOLOG_BASE_URL }}
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_ALUNO_EMAIL: ${{ secrets.E2E_ALUNO_EMAIL }}
+          E2E_TREINADOR_EMAIL: ${{ secrets.E2E_TREINADOR_EMAIL }}
+          E2E_RESET_EMAIL: ${{ secrets.E2E_RESET_EMAIL }}
+        run: npm run e2e:sweep
+
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v7

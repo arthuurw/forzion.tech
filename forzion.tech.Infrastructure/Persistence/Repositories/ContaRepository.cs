@@ -66,4 +66,22 @@ public class ContaRepository(AppDbContext context) : IContaRepository
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public async Task<IReadOnlyList<ContaTesteResumo>> ListarTesteAsync(string dominio, CancellationToken cancellationToken = default)
+    {
+        var contas = await _context.Contas.AsNoTracking()
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return contas
+            .Where(c => c.Email.Value.EndsWith(dominio, StringComparison.OrdinalIgnoreCase))
+            .Select(c => new ContaTesteResumo(c.Id, c.Email.Value, c.CreatedAt))
+            .ToList();
+    }
+
+    public async Task ExcluirAsync(Conta conta, CancellationToken cancellationToken = default) =>
+        await _context.Contas
+            .Where(c => c.Id == conta.Id)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 }

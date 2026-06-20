@@ -10,15 +10,15 @@
 #   - GenerateOpenApi=true         -> liga OpenApiGenerateDocuments (desligado por padrão
 #     para não rodar GetDocument em todo build).
 #
-# Uso: bash scripts/gen-swagger.sh [arquivo-de-saida]
-# Default: docs/api/swagger.v1.json
+# Uso: bash scripts/gen-openapi.sh [arquivo-de-saida]
+# Default: docs/api/openapi.v1.json
 #
 # O job `openapi-drift` do CI roda este script e falha se o resultado divergir do
 # arquivo versionado (drift não coordenado). Regenere conscientemente ao mudar a API.
 
 set -euo pipefail
 
-OUTPUT="${1:-docs/api/swagger.v1.json}"
+OUTPUT="${1:-docs/api/openapi.v1.json}"
 PROJECT="forzion.tech.Api/forzion.tech.Api.csproj"
 GEN_DIR="artifacts/openapi"
 GEN_FILE="$GEN_DIR/forzion.tech.Api.json"

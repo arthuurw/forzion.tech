@@ -60,7 +60,7 @@ forzion.tech/
 ├── forzion.tech.PactVerification/ # Pact provider verification (contrato consumer↔provider)
 ├── frontend/                  # Next.js 16 — ver frontend/README.md
 ├── nginx/                     # nginx.conf + nginx-init.conf (HTTPS + proxy)
-├── scripts/                   # setup-vm.sh, init-ssl.sh, gen-swagger.sh
+├── scripts/                   # setup-vm.sh, init-ssl.sh, gen-openapi.sh
 ├── docker-compose.yml         # Stack local (Postgres local + backend + frontend)
 ├── docker-compose.homolog.yml # Stack de homologação (build-on-VM; deploy ativo)
 ├── docker-compose.server.yml  # Stack por imagem de registry (preparada, não-ativa)
@@ -71,10 +71,10 @@ forzion.tech/
 │   │                          # infrastructure, git, lgpd, tests, stripe, security,
 │   │                          # observability, seo, local-ci-repro
 └── docs/                      # Documentação (gitignored, exceto docs/api/)
-    └── api/swagger.v1.json    # Contrato OpenAPI versionado (baseline do gate openapi-drift)
+    └── api/openapi.v1.json    # Contrato OpenAPI versionado (baseline do gate openapi-drift)
 ```
 
-> `docs/` (planos, notas de design gerados por agente) é ignorado pelo git via `.gitignore`, **exceto** `docs/api/` — o `swagger.v1.json` ali é o baseline do check de drift de contrato no CI.
+> `docs/` (planos, notas de design gerados por agente) é ignorado pelo git via `.gitignore`, **exceto** `docs/api/` — o `openapi.v1.json` ali é o baseline do check de drift de contrato no CI.
 
 ---
 
@@ -92,7 +92,7 @@ docker compose up --build
 
 # Backend:  http://localhost:8080
 # Frontend: http://localhost:3001
-# Swagger:  http://localhost:8080/swagger
+# Scalar:   http://localhost:8080/scalar
 ```
 
 ### Opção B — Manual
@@ -136,7 +136,7 @@ npm run dev   # http://localhost:3000
 | Auth | JWT HMAC-SHA256 + BCrypt (sem Supabase Auth) |
 | Validação | FluentValidation |
 | Testes | xUnit + Moq + FluentAssertions + WebApplicationFactory |
-| Documentação | Swagger/OpenAPI (`/swagger`) — non-production |
+| Documentação | OpenAPI nativo + UI Scalar (`/scalar`) — Development |
 
 ### Comandos
 
@@ -186,7 +186,7 @@ dotnet ef migrations script --idempotent \
 
 ```
 forzion.tech.Api/
-├── Configuration/        # JWT, CORS, Swagger, Rate Limiting
+├── Configuration/        # JWT, CORS, OpenAPI/Scalar, Rate Limiting
 ├── Context/              # HttpUserContext — extrai claims do JWT
 ├── Endpoints/            # Minimal API por grupo de recurso
 │   ├── Admin/            # /admin — SystemAdmin
@@ -856,10 +856,10 @@ dotnet user-secrets set "Stripe:UrlBase"              "https://localhost:3000" -
 
 User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 
-| Ambiente | Schema | Swagger | Seeder | Modo |
+| Ambiente | Schema | Scalar (UI) | Seeder | Modo |
 |----------|--------|---------|--------|------|
 | `Development` | `homolog` | ✅ | ✅ | `dotnet run` |
-| `Homolog` | `homolog` | ✅ | ✅ | `ASPNETCORE_ENVIRONMENT=Homolog dotnet run` |
+| `Homolog` | `homolog` | ❌ | ✅ | `ASPNETCORE_ENVIRONMENT=Homolog dotnet run` |
 | `Production` | `public` | ❌ | ❌ | Container Docker |
 | `Test` | mock / em memória | ❌ | ❌ | `dotnet test` |
 
@@ -969,7 +969,7 @@ E2E/                     → pipeline real: WebApplicationFactory + Postgres rea
 
 **Split unit vs integração**: testes que precisam de Docker (Testcontainers) são marcados `[Trait("Category","Integration")]`. O CI roda dois jobs: `test-backend-unit` (`--filter "Category!=Integration"`, sem Docker, rápido) e `test-backend-integration` (suíte completa com Docker). Gates de cobertura: Domain/Application branch 75 + line/method 85 e Api line 85/method 70 no job unit; global 50 + Infra 35 no job de integração.
 
-**Outras fases do harness em CI**: mutation testing (Stryker), endurecimento de cobertura (line/method + ReportGenerator), drift de contrato OpenAPI (`docs/api/swagger.v1.json`), supply-chain NuGet (vuln + SBOM + Renovate), pre-commit backend, Pact provider verification.
+**Outras fases do harness em CI**: mutation testing (Stryker), endurecimento de cobertura (line/method + ReportGenerator), drift de contrato OpenAPI (`docs/api/openapi.v1.json`), supply-chain NuGet (vuln + SBOM + Renovate), pre-commit backend, Pact provider verification.
 
 Comandos úteis:
 
@@ -1021,7 +1021,7 @@ cp .env.example .env
 docker compose up --build
 
 # Backend:  http://localhost:8080  |  Frontend: http://localhost:3001
-# Swagger:  http://localhost:8080/swagger  (modo Development)
+# Scalar:   http://localhost:8080/scalar  (modo Development)
 ```
 
 ### Produção — VPS Hostinger + Supabase
