@@ -92,7 +92,7 @@ docker compose up --build
 
 # Backend:  http://localhost:8080
 # Frontend: http://localhost:3001
-# Swagger:  http://localhost:8080/swagger
+# Scalar:   http://localhost:8080/scalar
 ```
 
 ### Opção B — Manual
@@ -136,7 +136,7 @@ npm run dev   # http://localhost:3000
 | Auth | JWT HMAC-SHA256 + BCrypt (sem Supabase Auth) |
 | Validação | FluentValidation |
 | Testes | xUnit + Moq + FluentAssertions + WebApplicationFactory |
-| Documentação | Swagger/OpenAPI (`/swagger`) — non-production |
+| Documentação | OpenAPI nativo + UI Scalar (`/scalar`) — Development |
 
 ### Comandos
 
@@ -186,7 +186,7 @@ dotnet ef migrations script --idempotent \
 
 ```
 forzion.tech.Api/
-├── Configuration/        # JWT, CORS, Swagger, Rate Limiting
+├── Configuration/        # JWT, CORS, OpenAPI/Scalar, Rate Limiting
 ├── Context/              # HttpUserContext — extrai claims do JWT
 ├── Endpoints/            # Minimal API por grupo de recurso
 │   ├── Admin/            # /admin — SystemAdmin
@@ -856,10 +856,10 @@ dotnet user-secrets set "Stripe:UrlBase"              "https://localhost:3000" -
 
 User Secrets ID: `049d65fb-2c12-483c-b56e-cb753632d11f`
 
-| Ambiente | Schema | Swagger | Seeder | Modo |
+| Ambiente | Schema | Scalar (UI) | Seeder | Modo |
 |----------|--------|---------|--------|------|
 | `Development` | `homolog` | ✅ | ✅ | `dotnet run` |
-| `Homolog` | `homolog` | ✅ | ✅ | `ASPNETCORE_ENVIRONMENT=Homolog dotnet run` |
+| `Homolog` | `homolog` | ❌ | ✅ | `ASPNETCORE_ENVIRONMENT=Homolog dotnet run` |
 | `Production` | `public` | ❌ | ❌ | Container Docker |
 | `Test` | mock / em memória | ❌ | ❌ | `dotnet test` |
 
@@ -1021,7 +1021,7 @@ cp .env.example .env
 docker compose up --build
 
 # Backend:  http://localhost:8080  |  Frontend: http://localhost:3001
-# Swagger:  http://localhost:8080/swagger  (modo Development)
+# Scalar:   http://localhost:8080/scalar  (modo Development)
 ```
 
 ### Produção — VPS Hostinger + Supabase
