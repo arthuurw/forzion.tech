@@ -175,10 +175,10 @@ describe("PlanoTreinadorPage", () => {
     });
   });
 
-  it("exibe erro ao falhar carregamento", async () => {
+  it("exibe erro quando a listagem de planos falha", async () => {
     server.use(
-      http.get("*/treinador/plano/assinatura", () => HttpResponse.error()),
-      http.get("*/auth/planos", () => HttpResponse.json([])),
+      http.get("*/treinador/plano/assinatura", () => HttpResponse.json(ASSINATURA_ATIVA)),
+      http.get("*/auth/planos", () => HttpResponse.error()),
     );
     const { default: Page } = await import("../treinador/plano/page");
     render(<Page />);
@@ -186,5 +186,33 @@ describe("PlanoTreinadorPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/Erro ao carregar/i)).toBeInTheDocument();
     });
+  });
+
+  it("sem assinatura (null) ainda lista planos sem erro", async () => {
+    server.use(
+      http.get("*/treinador/plano/assinatura", () => HttpResponse.json(null)),
+      http.get("*/auth/planos", () => HttpResponse.json([PLANO_BASIC, PLANO_PRO])),
+    );
+    const { default: Page } = await import("../treinador/plano/page");
+    render(<Page />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Basic")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Erro ao carregar/i)).not.toBeInTheDocument();
+  });
+
+  it("falha só na assinatura degrada para a lista de planos sem erro", async () => {
+    server.use(
+      http.get("*/treinador/plano/assinatura", () => HttpResponse.error()),
+      http.get("*/auth/planos", () => HttpResponse.json([PLANO_BASIC, PLANO_PRO])),
+    );
+    const { default: Page } = await import("../treinador/plano/page");
+    render(<Page />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Basic")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Erro ao carregar/i)).not.toBeInTheDocument();
   });
 });
