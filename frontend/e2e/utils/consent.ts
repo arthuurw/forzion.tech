@@ -1,9 +1,16 @@
-import type { Page } from "@playwright/test";
+import type { BrowserContext } from "@playwright/test";
 
-export async function dismissConsent(page: Page): Promise<void> {
-  const banner = page.getByRole("dialog", { name: /cookie|consentimento|lgpd/i });
-  await banner.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
-  if (!(await banner.isVisible().catch(() => false))) return;
-  await page.getByRole("button", { name: /só essenciais/i }).click();
-  await banner.waitFor({ state: "hidden", timeout: 3_000 }).catch(() => undefined);
+const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+
+export async function seedConsent(
+  context: BrowserContext,
+  analytics = false,
+): Promise<void> {
+  await context.addCookies([
+    {
+      name: "consent",
+      value: encodeURIComponent(JSON.stringify({ v: 1, analytics })),
+      url: BASE_URL,
+    },
+  ]);
 }
