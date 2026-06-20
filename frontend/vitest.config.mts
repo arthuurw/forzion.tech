@@ -5,7 +5,7 @@ import { resolve } from "path";
 
 /**
  * Vitest configurado em 3 projects:
- * - "unit"       — env node, codigo puro (lib, hooks, middleware)
+ * - "unit"       — env node, codigo puro (lib, hooks, proxy)
  * - "integration"— env jsdom, componentes/paginas React, com jest-dom + polyfills
  * - "api"        — env node, Next.js Route Handlers (src/app/api/**)
  *
@@ -97,8 +97,8 @@ export default defineConfig({
             "src/lib/**/*.property.test.ts",
             "src/hooks/**/*.test.ts",
             "src/hooks/**/*.property.test.ts",
-            "src/middleware.test.ts",
-            "src/middleware.signature.test.ts",
+            "src/proxy.test.ts",
+            "src/proxy.signature.test.ts",
           ],
           exclude: [
             // Testes em src/lib/** que dependem de DOM rodam no project integration

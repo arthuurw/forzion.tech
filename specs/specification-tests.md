@@ -27,7 +27,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 8. **Determinismo** — tempo via `TimeProvider` (testes injetam `FakeTimeProvider`); sem rede/relógio real; seeds fixas em property tests (`seedrandom`/`fast-check`). Flaky = bug, não tolerado.
 
 ## 2. STACK & ISOLAMENTO (detectado)
-- **Backend** (.NET 8): xUnit. Projeto único `forzion.tech.Tests` multi-categoria + `forzion.tech.PactVerification` (provider Pact). Cobertura: Coverlet (msbuild). Mutation: Stryker.NET. Isolamento de integração: **Testcontainers (PostgreSQL)** — exige Docker.
+- **Backend** (.NET 10): xUnit. Projeto único `forzion.tech.Tests` multi-categoria + `forzion.tech.PactVerification` (provider Pact). Cobertura: Coverlet (msbuild). Mutation: Stryker.NET. Isolamento de integração: **Testcontainers (PostgreSQL)** — exige Docker.
 - **Frontend** (Next 16/React 19): **Vitest 4** em 3 projects + **Playwright** (E2E) + **Storybook** (+ test-runner/a11y) + **Pact** (consumer, `vitest.pact.config.mts`) + **MSW** (mock de rede) + **fast-check** (property) + **axe** (a11y).
 
 ## 3. TIPOS DE TESTE (detectado)
@@ -36,7 +36,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - **Integração/E2E** (Docker): `[Trait("Category","Integration")]` — `E2E/RealPipelineFixture` (WebApplicationFactory + Postgres efêmero + migrate+seed, handlers/infra REAIS, `FakeStripeService`), `Infrastructure/InfrastructureTestFixture` (repos contra PG real), `[Collection(E2ECollection)]`/`[Collection(InfrastructureTestCollection)]`.
 - **Property** (cobertura de invariantes), **arch** (regras de camada), **snapshot**, **mutation** (Stryker).
 ### Frontend
-- **vitest projects** (`vitest.config.mts`): `unit` (node — `src/lib/**`, `src/hooks/**`, `src/middleware`), `integration` (jsdom — `src/components/**`, `src/app/**/__tests__`, libs que tocam DOM, MSW), `api` (node — `src/app/api/**` route handlers).
+- **vitest projects** (`vitest.config.mts`): `unit` (node — `src/lib/**`, `src/hooks/**`, `src/proxy`), `integration` (jsdom — `src/components/**`, `src/app/**/__tests__`, libs que tocam DOM, MSW), `api` (node — `src/app/api/**` route handlers).
 - **property** (`*.property.test.ts`, fast-check — excluídos da cobertura), **contract** (Pact consumer, `npm run test:contract`), **E2E Playwright** (`e2e/specs/`: smoke/critical/security/lgpd/multi-tab/network/a11y/visual; 5 projects browser+mobile; `auth.setup` gera storage-state por papel; snapshots por-OS `*-{platform}.png`), **storybook** (+ a11y addon).
 
 ## 4. CONTAGEM / RASTREIO (baseline 2026-06-06; unit reconferido 2026-06-12)

@@ -1,6 +1,6 @@
 # specification-backend — backend (forzion.tech)
 
-DOC PARA AGENTES. Fonte de verdade da arquitetura do backend (.NET 8, Clean Architecture + DDD). Camadas Application/Api/Infrastructure. Formato denso. Cross-ref: [specification-model] (domínio: entidades/eventos/invariantes), [specification-db] (EF/persistência), [specification-stripe] (pagamento), [specification-email] (notificações), [specification-infrastructure] (deploy/nginx/CI), [specification-security] (postura consolidada: auth/headers/rate-limit/webhook signing), [specification-observability] (logging/health/relatório de saúde).
+DOC PARA AGENTES. Fonte de verdade da arquitetura do backend (.NET 10, Clean Architecture + DDD). Camadas Application/Api/Infrastructure. Formato denso. Cross-ref: [specification-model] (domínio: entidades/eventos/invariantes), [specification-db] (EF/persistência), [specification-stripe] (pagamento), [specification-email] (notificações), [specification-infrastructure] (deploy/nginx/CI), [specification-security] (postura consolidada: auth/headers/rate-limit/webhook signing), [specification-observability] (logging/health/relatório de saúde).
 
 ## MANUTENÇÃO DESTE ARQUIVO
 - Manter atualizado NA MESMA TAREFA de mudança em: camadas, padrão Result, UnitOfWork/dispatch de eventos, validação, DI, middleware, filtros, convenções de endpoint, repositórios, auth, rate limiting.
@@ -106,7 +106,7 @@ Efeitos que NÃO podem se perder (mutação de negócio crítica, chamada a API 
 
 ### Bootstrap
 `Program.cs`: `AddApiServices(config, env).AddApplicationHandlers()`; em Development/Homolog roda `db.Database.MigrateAsync()` + `DataSeeder.SeedAsync()`; `UseApiConfiguration()` + `MapApiEndpoints()`. User Secrets `forzion-prod` carregados em Homolog/Development.
-- `UseApiConfiguration` (ordem): Swagger(dev) → ExceptionHandler → ForwardedHeaders(Homolog/Prod: `X-Forwarded-For`+`X-Forwarded-Proto`, `ForwardLimit=1`, redes limpas — CC2: sem isso rate-limit colapsa por IP do nginx) → HttpsRedirection(prod) → headers de segurança (X-Content-Type-Options nosniff, X-Frame-Options DENY, Referrer-Policy no-referrer, Permissions-Policy, HSTS em prod) → CORS `AllowFrontend` → X-Request-Id correlation middleware (ecoa header de entrada se charset seguro `[A-Za-z0-9\-_.]` ≤128 bytes, senão usa `TraceIdentifier`; HDR-01) → **Authentication → Authorization → RateLimiter** (auth ANTES do rate limiter para particionar por `sub`) → `/health` + `/health/ready`.
+- `UseApiConfiguration` (ordem): OpenAPI+Scalar(dev: `MapOpenApi`+`MapScalarApiReference`) → ExceptionHandler → ForwardedHeaders(Homolog/Prod: `X-Forwarded-For`+`X-Forwarded-Proto`, `ForwardLimit=1`, redes limpas — CC2: sem isso rate-limit colapsa por IP do nginx) → HttpsRedirection(prod) → headers de segurança (X-Content-Type-Options nosniff, X-Frame-Options DENY, Referrer-Policy no-referrer, Permissions-Policy, HSTS em prod) → CORS `AllowFrontend` → X-Request-Id correlation middleware (ecoa header de entrada se charset seguro `[A-Za-z0-9\-_.]` ≤128 bytes, senão usa `TraceIdentifier`; HDR-01) → **Authentication → Authorization → RateLimiter** (auth ANTES do rate limiter para particionar por `sub`) → `/health` + `/health/ready`.
 
 ### Endpoints (Minimal APIs, `Api/Endpoints/`)
 Registro via extensões `MapXxxEndpoints` agregadas em `RouteBuilderExtensions.MapApiEndpoints`: Auth, Admin, HealthReport, Treinador, AlunoArea, Aluno, Conta, Mfa (`/conta/mfa`), MfaLogin (`/auth/mfa`), StepUp (`/auth/step-up`), Exercicio, Treino, Pagamentos, Webhook, Suporte, Internal. Padrão:
@@ -172,7 +172,7 @@ Todos anônimos + rate `internal`. Autenticação por header `X-Internal-Key` co
 - (Todos pulados em ambiente `Test`.)
 
 ### DI wiring (resumo)
-- `Api/Extensions/DependencyInjectionExtensions`: `AddApiServices` (exception handler, ProblemDetails, rate limiter, Swagger, JWT, CORS, HealthChecks, JSON enum-as-string, `IUserContext`, `RequireAssinaturaAtivaFilter`, `RequireAssinaturaTreinadorAtivaFilter`, e — fora de Test — `AddInfrastructure` + hosted services + `ErrorLogDbSinkProvider`). `AddApplicationHandlers` (validators auto-scan, `ILimiteTreinadorService`, `CriarPagamentoComIntentService`, `AppSettings`, e os handlers — registro manual/scoped descrito em §2).
+- `Api/Extensions/DependencyInjectionExtensions`: `AddApiServices` (exception handler, ProblemDetails, rate limiter, OpenAPI (`AddOpenApiDocumentation` + `BearerSecuritySchemeTransformer`), JWT, CORS, HealthChecks, JSON enum-as-string, `IUserContext`, `RequireAssinaturaAtivaFilter`, `RequireAssinaturaTreinadorAtivaFilter`, e — fora de Test — `AddInfrastructure` + hosted services + `ErrorLogDbSinkProvider`). `AddApplicationHandlers` (validators auto-scan, `ILimiteTreinadorService`, `CriarPagamentoComIntentService`, `AppSettings`, e os handlers — registro manual/scoped descrito em §2).
 - CORS `AllowFrontend`: origens de `Cors:AllowedOrigins` (`;`-separado), filtra inválidas/curingas; métodos GET/POST/PUT/DELETE/PATCH/OPTIONS; `AllowCredentials`.
 
 ## 5. INFRASTRUCTURE LAYER

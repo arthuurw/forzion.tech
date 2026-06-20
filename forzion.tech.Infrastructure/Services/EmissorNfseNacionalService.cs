@@ -43,7 +43,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService, IDisposable
     }
 
     protected virtual X509Certificate2 CarregarCertificadoAssinatura() =>
-        new(_settings.CertificadoPath, _settings.CertificadoSenha, X509KeyStorageFlags.EphemeralKeySet);
+        X509CertificateLoader.LoadPkcs12FromFile(_settings.CertificadoPath, _settings.CertificadoSenha, X509KeyStorageFlags.EphemeralKeySet);
 
     public void Dispose()
     {

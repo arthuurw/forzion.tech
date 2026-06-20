@@ -114,7 +114,7 @@ const indexable = process.env.NEXT_PUBLIC_INDEXABLE === "true";
 - `(public)` index/noindex por rota: ver tabela §2.2 (cadastro/login = index; forgot/reset/verify/resend = noindex).
 - `(admin)`/`(treinador)`/`(aluno)`/`/perfil` = `noindex, nofollow` via `export const metadata = { robots:{ index:false, follow:false } }` no layout do grupo (server) + disallow robots.txt.
 
-NOTA defesa-em-profundidade: áreas autenticadas já protegidas por middleware (redirect `/login` sem token — [specification-frontend] §middleware); robots/noindex é camada adicional contra vazamento de URLs em SERP.
+NOTA defesa-em-profundidade: áreas autenticadas já protegidas pelo proxy (redirect `/login` sem token — [specification-frontend] §PROXY); robots/noindex é camada adicional contra vazamento de URLs em SERP.
 
 ### 4.3 `sitemap.ts` — `[ATUAL]` (T5)
 `src/app/sitemap.ts` lista SÓ rotas públicas indexáveis:
