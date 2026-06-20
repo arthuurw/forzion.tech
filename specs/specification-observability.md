@@ -122,7 +122,7 @@ Pipeline distinto do `/health`: coleta profunda (DB connect real, KPIs, entregab
 - Gate LGPD: replay/RUM no browser exige consentimento analytics. Ver [specification-lgpd].
 
 ### CSP (Sentry)
-- CSP completo + 3 camadas de headers: CANÔNICO em [specification-security] §3 (`next.config.ts buildCsp`, inclui `font-src 'self'`). Diretivas Sentry-relevantes: `connect-src 'self' https://api.stripe.com https://*.sentry.io` (ingest erros/replay/tracing; no-op sem DSN) + `worker-src 'self' blob:` (worker do Session Replay). `CSP_REPORT_ONLY=true` em homolog → header report-only adicional.
+- CSP completo + 3 camadas de headers: CANÔNICO em [specification-security] §3 (`next.config.ts buildCsp`, inclui `font-src 'self'`). Diretivas Sentry-relevantes: `connect-src 'self' https://api.stripe.com https://*.sentry.io` (ingest erros/replay/tracing; no-op sem DSN) + `worker-src 'self' blob:` (worker do Session Replay). CSP só enforcing (sem cópia Report-Only — ver [specification-security] §3).
 
 ## 5. PERFORMANCE BUDGETS (Lighthouse CI)
 ### Budgets (`frontend/lighthouserc.json`)

@@ -23,7 +23,7 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 - `JWT_SECRET` obrigatório em `NODE_ENV=production` (throw em build se ausente).
 
 ## SEGURANÇA — HEADERS HTTP
-Headers de segurança + CSP aplicados na camada Next via `next.config.ts` (`headers()`/`buildCsp`, `source: "/(.*)"`). **Tabela completa de headers, string CSP e as 3 camadas (app/Next/edge): canônico em [specification-security] §3** — não reproduzido aqui. Específico do frontend: a CSP vive SÓ na camada Next (só o front serve HTML ao browser); `'unsafe-inline'` em script-src é exigido pela hidratação Next sem nonce, `'unsafe-eval'` só em dev (MUI/HMR), `blob:` em worker-src p/ Sentry Replay; `CSP_REPORT_ONLY=true` (homolog) adiciona header Report-Only.
+Headers de segurança + CSP aplicados na camada Next via `next.config.ts` (`headers()`/`buildCsp`, `source: "/(.*)"`). **Tabela completa de headers, string CSP e as 3 camadas (app/Next/edge): canônico em [specification-security] §3** — não reproduzido aqui. Específico do frontend: a CSP vive SÓ na camada Next (só o front serve HTML ao browser); `'unsafe-inline'` em script-src é exigido pela hidratação Next sem nonce, `'unsafe-eval'` só em dev (MUI/HMR), `blob:` em worker-src p/ Sentry Replay. CSP entregue só enforcing (sem Report-Only — ver [specification-security] §3).
 
 ## TYPESCRIPT
 - `tsconfig.json`: `target=ES2017`, `module=esnext`, `moduleResolution=bundler`, `strict=true`, `isolatedModules=true`, `jsx=react-jsx`. Path alias `@/*` → `./src/*`.
@@ -363,7 +363,6 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 | `SENTRY_AUTH_TOKEN` | build | Upload de source maps (optional; build funciona sem) |
 | `SENTRY_ORG` | build | Org do Sentry |
 | `SENTRY_PROJECT` | build | Projeto do Sentry |
-| `CSP_REPORT_ONLY` | runtime | Se `true`, adiciona CSP-Report-Only (homolog) |
 
 ## OBSERVABILIDADE
 - **Sentry**: erros + replay (RUM). DSN configurado no container (no-op sem DSN). Source maps com `SENTRY_AUTH_TOKEN`.
