@@ -8,7 +8,7 @@ import {
   NETWORK_PRESETS,
   type NetworkConditions,
 } from "./network";
-import { authStatePath, hasAuthState, type AuthRole } from "./auth";
+import { authStatePath, type AuthRole } from "./auth";
 
 /**
  * Test base custom — fixtures compartilhadas pelos specs.
@@ -81,22 +81,7 @@ export const test = base.extend<{
 
 export { expect };
 
-/**
- * Helper pra opt-in numa role autenticada em um spec inteiro:
- *
- *   useAuthRole(test, "admin");
- *
- * Equivalente direto a `test.use({ storageState: authStatePath(role) })`.
- * Fase 10a: estrategia fail loud — se o storage state nao existir, Playwright
- * erra ao tentar carregar contexto. Mensagem clara via guard explicito.
- */
 export function useAuthRole(t: typeof test, role: AuthRole): void {
-  if (!hasAuthState(role)) {
-    throw new Error(
-      `Storage state ausente pra role ${role}. Configure E2E_${role.toUpperCase()}_EMAIL ` +
-        `e E2E_${role.toUpperCase()}_PASSWORD e rode "npx playwright test --project=setup".`,
-    );
-  }
   t.use({ storageState: authStatePath(role) });
 }
 

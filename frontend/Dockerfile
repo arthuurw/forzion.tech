@@ -10,8 +10,6 @@ RUN npm ci
 COPY . .
 ARG API_BASE_URL=http://backend:8080
 ENV API_BASE_URL=$API_BASE_URL
-ARG CSP_REPORT_ONLY=false
-ENV CSP_REPORT_ONLY=$CSP_REPORT_ONLY
 # Guard de produção no next.config exige JWT_SECRET; placeholder só satisfaz o build
 # (este stage é descartado — runtime recebe o valor real via env do container).
 # Literal abaixo DEVE ser igual a JWT_SECRET_BUILD_PLACEHOLDER em

@@ -44,8 +44,6 @@ const securityHeaders = [
   { key: "Permissions-Policy",           value: "camera=(), microphone=(), geolocation=()" },
   { key: "Strict-Transport-Security",    value: "max-age=31536000; includeSubDomains" },
   { key: "Content-Security-Policy",      value: buildCsp() },
-  // CSP_REPORT_ONLY=true em homolog: captura violações sem bloquear, útil para detectar regressões de CSP antes de prod
-  ...(process.env.CSP_REPORT_ONLY === "true" ? [{ key: "Content-Security-Policy-Report-Only", value: buildCsp() }] : []),
 ];
 
 const nextConfig: NextConfig = {

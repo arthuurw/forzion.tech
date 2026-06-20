@@ -59,6 +59,8 @@ export async function seedAluno(
       limitacoesFisicas: null,
       doencas: null,
       observacoesAdicionais: null,
+      consentimentoDadosSaude: true,
+      consentimentoDadosSaudeEm: new Date().toISOString(),
     },
   });
 
