@@ -27,7 +27,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 8. **Determinismo** — tempo via `TimeProvider` (testes injetam `FakeTimeProvider`); sem rede/relógio real; seeds fixas em property tests (`seedrandom`/`fast-check`). Flaky = bug, não tolerado.
 
 ## 2. STACK & ISOLAMENTO (detectado)
-- **Backend** (.NET 8): xUnit. Projeto único `forzion.tech.Tests` multi-categoria + `forzion.tech.PactVerification` (provider Pact). Cobertura: Coverlet (msbuild). Mutation: Stryker.NET. Isolamento de integração: **Testcontainers (PostgreSQL)** — exige Docker.
+- **Backend** (.NET 10): xUnit. Projeto único `forzion.tech.Tests` multi-categoria + `forzion.tech.PactVerification` (provider Pact). Cobertura: Coverlet (msbuild). Mutation: Stryker.NET. Isolamento de integração: **Testcontainers (PostgreSQL)** — exige Docker.
 - **Frontend** (Next 16/React 19): **Vitest 4** em 3 projects + **Playwright** (E2E) + **Storybook** (+ test-runner/a11y) + **Pact** (consumer, `vitest.pact.config.mts`) + **MSW** (mock de rede) + **fast-check** (property) + **axe** (a11y).
 
 ## 3. TIPOS DE TESTE (detectado)

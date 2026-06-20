@@ -3,14 +3,14 @@
 Guia macro para agentes. Formato agent-oriented (denso, sem prosa decorativa). Para o contexto MACRO do projeto, carregar APENAS este arquivo.
 
 ## FRESCOR
-Validado: 2026-06-14. STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`.
+Validado: 2026-06-20 (migração .NET 8→10). STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`, `global.json`.
 
 ## PROJETO
 forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadastro/aprovação de treinadores, vínculo de alunos, fichas de treino (exercícios + séries), registro de execuções, assinaturas e pagamentos recorrentes.
 
 ## STACK
-- Backend: .NET 8 / ASP.NET Core Minimal APIs. Clean Architecture + DDD.
-- Persistência: EF Core 8 + PostgreSQL 17 (Supabase). Migrations schema-agnostic (schema via search_path).
+- Backend: .NET 10 / ASP.NET Core Minimal APIs. Clean Architecture + DDD. SDK pinado em `global.json` (floor 10.0.100, rollForward latestFeature). Doc de API: OpenAPI nativo (`Microsoft.AspNetCore.OpenApi`) + UI Scalar (Dev-only); SEM Swashbuckle.
+- Persistência: EF Core 10 + PostgreSQL 17 (Supabase). Migrations schema-agnostic (schema via search_path).
 - Frontend: Next.js 16 (App Router) + React 19 + MUI + Zod + react-hook-form. Em `frontend/`.
 - Auth: JWT + BCrypt. Pagamentos: Stripe (Connect + PaymentIntents/Pix). E-mail: Resend (+ webhook Svix). WhatsApp: Meta Cloud API. Integrações têm impl `Null*` quando não configuradas.
 - Testes: backend xUnit + Testcontainers (E2E/Infra exigem Docker); frontend vitest.
@@ -84,7 +84,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 - `specification-frontend-ui.md` — a11y WCAG AA com divergência documentada (F18).
 - `specification-seo.md` — ASPIRACIONAL (não implementado).
 - `specification-dr.md` — boa parte ALVO/aspiracional, não o estado real.
-- `specification-local-ci-repro.md` — reproduzir gates do CI local + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet8, postgres fsync, .slnx, E2E email-block).
+- `specification-local-ci-repro.md` — reproduzir gates do CI local + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet10, postgres fsync, .slnx, E2E email-block).
 - `specification-workflow.md` — fluxo de entrega: pipeline de cards (GitHub Projects v2, `.specs` local = fonte de verdade, board = espelho mantido pelo agente via `gh`), Fluxo A (card novo forward) + Fluxo B (backfill histórico→Done consultável por data). Board MONTADO (Project nº1, 37 issues backfill #94-#130; IDs de campo pinados em `§9`); card = issue real com conteúdo completo embutido (durabilidade: `.specs` é gitignored). Manutenção forward via Fluxo A. PENDENTE: automação Action PR-event→Status; tornar `to-issues.sh` idempotente.
 - `specification-fiscal.md` — canônica de NFS-e (emissão SEFIN Nacional, comissão mensal, cancelamento, reconciliação, dados fiscais owned). Sandbox-first (`Nfse:Habilitado=false` em dev/hmg; emissão é IRREVERSÍVEL). GOTCHA: mTLS A1 efêmero só funciona em runtime Linux → dev local NÃO emite (Windows schannel recusa). `CertificadoSenha` nunca logada. Envelope JSON do transporte ASSUMIDO (validar em Produção Restrita). Cross-refs: db (tabelas), security (cert/mTLS), lgpd (guarda fiscal), observability (Erro/CancelamentoExpirado), stripe (eventos estorno/disputa do treinador).
 - Sem caveat especial (rotear por TRIGGER): `model`, `backend`, `db`, `email`, `whatsapp`, `frontend`, `git`, `lgpd`, `tests`, `stripe`, `security`, `observability`.
