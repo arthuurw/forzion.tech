@@ -8,6 +8,7 @@ namespace forzion.tech.Infrastructure.Migrations
     public partial class AdicionarUniqueParcialResetTokenPendente : Migration
     {
         /// <inheritdoc />
+        // lint-migrations:allow — dedup de pendentes precede o CreateIndex UNIQUE.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
