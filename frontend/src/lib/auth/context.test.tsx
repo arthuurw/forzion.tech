@@ -106,7 +106,7 @@ describe("login()", () => {
 });
 
 describe("logout()", () => {
-  it("POST /api/auth/logout → user null → push /login", async () => {
+  it("POST /api/auth/logout → navegação dura para /", async () => {
     let logoutCalled = false;
     server.use(
       http.get("*/api/auth/me", () => HttpResponse.json(SESSION_USER)),
@@ -115,6 +115,13 @@ describe("logout()", () => {
         return HttpResponse.json({ ok: true });
       }),
     );
+
+    const realLocation = window.location;
+    const assignMock = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { href: realLocation.href, origin: realLocation.origin, assign: assignMock },
+    });
 
     render(
       <AuthProvider>
@@ -128,12 +135,13 @@ describe("logout()", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "logout" }));
 
-    await waitFor(() =>
-      expect(screen.getByTestId("user")).toHaveTextContent("null"),
-    );
+    await waitFor(() => expect(logoutCalled).toBe(true));
+    await waitFor(() => expect(assignMock).toHaveBeenCalledWith("/"));
 
-    expect(logoutCalled).toBe(true);
-    expect(mockPush).toHaveBeenCalledWith("/login");
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: realLocation,
+    });
   });
 });
 

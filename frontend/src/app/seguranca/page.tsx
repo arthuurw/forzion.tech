@@ -136,10 +136,10 @@ export default function SegurancaPage() {
               </Typography>
               <Divider />
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                <Button variant="outlined" onClick={() => setStepUpAction("regenerar")}>
+                <Button variant="contained" onClick={() => setStepUpAction("regenerar")}>
                   Regenerar códigos de recuperação
                 </Button>
-                <Button variant="outlined" color="error" onClick={() => setStepUpAction("desabilitar")}>
+                <Button variant="contained" color="error" onClick={() => setStepUpAction("desabilitar")}>
                   Desativar 2FA
                 </Button>
               </Stack>

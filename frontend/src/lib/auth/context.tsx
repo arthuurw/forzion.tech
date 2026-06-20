@@ -8,7 +8,6 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
 import type { LoginResponse, SessionUser, TipoConta } from "@/types";
 
 interface AuthContextValue {
@@ -23,7 +22,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -49,9 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    setUser(null);
-    router.push("/login");
-  }, [router]);
+    window.location.assign("/");
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout }}>

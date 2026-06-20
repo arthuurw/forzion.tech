@@ -3,7 +3,6 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import { Box, Typography, Card, CardContent, Chip, Button, IconButton, Tooltip } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -60,10 +59,7 @@ export default function NotasFiscaisTreinadorPage() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, mb: 3 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <ReceiptLongIcon sx={{ color: "text.secondary" }} />
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Notas fiscais</Typography>
-        </Box>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>Notas fiscais</Typography>
         <Button
           component={Link}
           href="/treinador/dados-fiscais"

@@ -362,7 +362,7 @@ export default function PerfilPage() {
           <Stack spacing={1.5}>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
               <Button
-                variant="outlined"
+                variant="contained"
                 size="small"
                 disabled={!!exportingData}
                 onClick={() => handleExportarDados("xlsx")}
@@ -371,7 +371,7 @@ export default function PerfilPage() {
                 {exportingData === "xlsx" ? "Exportando..." : "Baixar meus dados (Excel)"}
               </Button>
               <Button
-                variant="text"
+                variant="contained"
                 size="small"
                 disabled={!!exportingData}
                 onClick={() => handleExportarDados("json")}
@@ -381,7 +381,7 @@ export default function PerfilPage() {
               </Button>
             </Stack>
             <Button
-              variant="outlined"
+              variant="contained"
               size="small"
               onClick={() => setConsentBannerOpen(true)}
               sx={{ alignSelf: "flex-start" }}
@@ -390,7 +390,7 @@ export default function PerfilPage() {
             </Button>
             <Divider />
             <Button
-              variant="outlined"
+              variant="contained"
               color="error"
               size="small"
               onClick={() => { setDeleteSenha(""); setDeleteAccountDialog(true); }}
