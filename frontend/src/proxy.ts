@@ -24,7 +24,7 @@ async function verifyTipoConta(token: string): Promise<TipoConta | null> {
   }
 }
 
-export default async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("token")?.value;
   const sessionGuard = request.cookies.get("session_guard")?.value;

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignJWT } from "jose";
 import { NextResponse, type NextRequest } from "next/server";
-import middleware from "@/middleware";
+import { proxy as middleware } from "@/proxy";
 
 // E2 (specs/tasks/E-testes.md): assinatura JWT verificada com `jose` REAL
 // (sem vi.mock("jose")). Prova que o middleware rejeita token assinado com
