@@ -42,8 +42,8 @@ jobs:
         run: npm run e2e:install
 
       - name: Smoke
-        run: ${{ inputs.only_setup && 'npx playwright test --project=setup' || 'npm run e2e:smoke' }}
         env:
+          SMOKE_ONLY_SETUP: ${{ inputs.only_setup }}
           E2E_BASE_URL: ${{ vars.HOMOLOG_BASE_URL }}
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
@@ -53,6 +53,12 @@ jobs:
           E2E_TREINADOR_PASSWORD: ${{ secrets.E2E_TREINADOR_PASSWORD }}
           E2E_TREINADOR_ID: ${{ vars.E2E_TREINADOR_ID }}
           E2E_PACOTE_ID: ${{ vars.E2E_PACOTE_ID }}
+        run: |
+          if [ "$SMOKE_ONLY_SETUP" = "true" ]; then
+            npx playwright test --project=setup
+          else
+            npm run e2e:smoke
+          fi
 
       - name: Upload report
         if: always()
