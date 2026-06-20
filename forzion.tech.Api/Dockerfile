@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Directory.Build.props centraliza TargetFramework/Nullable/LangVersion (harness F0).
@@ -19,7 +19,7 @@ COPY forzion.tech.Api/         forzion.tech.Api/
 RUN dotnet publish forzion.tech.Api/forzion.tech.Api.csproj \
     -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
