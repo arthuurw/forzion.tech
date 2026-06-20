@@ -13,6 +13,7 @@ using forzion.tech.Api.Endpoints.Treinador;
 using forzion.tech.Api.Endpoints.Suporte;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -42,8 +43,6 @@ public static class RouteBuilderExtensions
 
     public static IApplicationBuilder UseApiConfiguration(this WebApplication app)
     {
-        // CORS startup check: emit a LogWarning when no valid origins are configured
-        // in non-Test environments so the deny-all state is visible in logs.
         if (!app.Environment.IsEnvironment("Test"))
         {
             var raw = app.Configuration["Cors:AllowedOrigins"]?.Split(';') ?? Array.Empty<string>();
@@ -68,12 +67,6 @@ public static class RouteBuilderExtensions
         app.UseExceptionHandler();
         app.UseStatusCodePages();
 
-        // Atrás do nginx (Homolog/Production): reescreve RemoteIpAddress/scheme a partir
-        // do X-Forwarded-*. Precisa rodar ANTES de HttpsRedirection/Auth/RateLimiter. Sem isso
-        // o RemoteIpAddress seria o IP do container nginx → rate-limit colapsa todos os
-        // clientes num bucket (CC2). O backend só é alcançável via nginx (rede docker isolada,
-        // sem porta publicada), então o único hop é confiável: limpamos as listas default
-        // (que só confiam em loopback) p/ aceitar o cabeçalho do proxy. ForwardLimit=1 = 1 hop.
         if (app.Environment.IsProduction() || app.Environment.IsEnvironment("Homolog"))
         {
             var forwarded = new ForwardedHeadersOptions
@@ -102,9 +95,6 @@ public static class RouteBuilderExtensions
 
         app.UseCors("AllowFrontend");
 
-        // OBS-01: correlation id por request. Usa o header X-Request-Id de entrada quando
-        // presente, senão o TraceIdentifier do ASP.NET. Rastreia do frontend/Sentry até o
-        // backend sem round-trip adicional. BeginScope injeta o id nos logs do request.
         app.Use(async (ctx, next) =>
         {
             var requestId = RequestIdSeguro(ctx.Request.Headers["X-Request-Id"].FirstOrDefault())
@@ -124,9 +114,6 @@ public static class RouteBuilderExtensions
             }
         });
 
-        // Ordem: Authentication antes do RateLimiter para que policies particionadas
-        // por sub claim consigam identificar o usuário; sem isso a chave caía sempre
-        // no fallback de IP, inutilizando a partição por usuário.
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseRateLimiter();
@@ -138,28 +125,27 @@ public static class RouteBuilderExtensions
 
     private static IEndpointRouteBuilder MapHealthCheck(this IEndpointRouteBuilder endpoints)
     {
-        // LIVENESS: nenhum check (Predicate => false) — 200 enquanto o processo estiver
-        // vivo. Mantido assim porque docker-compose/frontend dependem deste contrato.
         endpoints.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false })
             .AllowAnonymous()
             .RequireRateLimiting("read");
 
-        // READINESS: executa os checks taggeados "ready" — db (DbContextCheck), stripe e resend.
-        // Só DB Unhealthy => 503 (corta tráfego). Stripe/Resend retornam Degraded, que o ASP.NET
-        // mapeia p/ 200 por padrão: dependência externa instável não tira o pod de rotação; o
-        // corpo do relatório expõe o estado de cada check.
-        endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") })
+        endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            Predicate = r => r.Tags.Contains("ready"),
+            ResponseWriter = EscreverStatusAgregado,
+        })
             .AllowAnonymous()
             .RequireRateLimiting("read");
 
         return endpoints;
     }
 
-    // HDR-01: o X-Request-Id de entrada é controlado pelo cliente e é ecoado na resposta +
-    // gravado no escopo de log. Kestrel já barra CR/LF (sem response-splitting), mas não limita
-    // tamanho nem charset: valor arbitrário forja linhas em sinks textuais de log e reflete lixo
-    // no header. Só aceita id curto do charset seguro de correlation (UUID/Sentry cabem); senão
-    // descarta e o chamador cai no TraceIdentifier gerado pelo servidor.
+    private static Task EscreverStatusAgregado(HttpContext context, HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+        return context.Response.WriteAsync($"{{\"status\":\"{report.Status}\"}}");
+    }
+
     private static string? RequestIdSeguro(string? entrada)
     {
         if (string.IsNullOrEmpty(entrada) || entrada.Length > 128)

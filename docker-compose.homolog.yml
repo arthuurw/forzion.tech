@@ -28,6 +28,8 @@ services:
       App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-https://homologacao.forzion.tech}
       Internal__ApiKey: ${INTERNAL_API_KEY:-}
       DeliveryLog__RecipientHashKey: ${DELIVERY_LOG_HASH_KEY:-}
+      Seed__ZapTestEmail: ${SEED_ZAP_TEST_EMAIL:-zap-test@forzion.tech}
+      Seed__ZapTestPassword: ${SEED_ZAP_TEST_PASSWORD:-}
       # WhatsApp via Meta Cloud API (opcional — PhoneNumberId+AccessToken vazios → NullWhatsAppNotifier)
       WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}
@@ -121,6 +123,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
+      - /var/log/forzion-nginx:/var/log/nginx
     restart: unless-stopped
     logging: *default-logging
     depends_on:

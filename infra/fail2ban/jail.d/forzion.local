@@ -1,0 +1,11 @@
+[forzion-nginx-auth]
+enabled  = true
+filter   = forzion-nginx-auth
+logpath  = /var/log/forzion-nginx/access.log
+port     = http,https
+backend  = auto
+# Limiar conservador: NAT corporativo compartilha 1 IP entre vários usuários
+# legítimos — alto + ban curto evita banir gente real num pico de login.
+maxretry = 12
+findtime = 10m
+bantime  = 1h

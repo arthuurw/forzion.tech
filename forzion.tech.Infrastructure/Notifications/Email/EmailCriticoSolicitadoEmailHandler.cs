@@ -4,6 +4,7 @@ using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,6 +14,7 @@ public sealed class EmailCriticoSolicitadoEmailHandler(
     IEmailService emailService,
     IDataProtectionProvider dataProtectionProvider,
     IOptions<AppSettings> appSettings,
+    IHostEnvironment environment,
     ILogger<EmailCriticoSolicitadoEmailHandler> logger) : IDomainEventHandler<EmailCriticoSolicitadoEvent>
 {
     public async Task HandleAsync(EmailCriticoSolicitadoEvent domainEvent, CancellationToken cancellationToken = default)
@@ -26,7 +28,8 @@ public sealed class EmailCriticoSolicitadoEmailHandler(
 
         if (!emailService.Habilitado)
         {
-            if (domainEvent.Template is EmailCriticoTemplate.CodigoMfa or EmailCriticoTemplate.TrocaEmail)
+            if (environment.IsDevelopment()
+                && domainEvent.Template is EmailCriticoTemplate.CodigoMfa or EmailCriticoTemplate.TrocaEmail)
                 logger.LogInformation(
                     "E-mail desabilitado; segredo {Template} para {Destino} = {Segredo}",
                     domainEvent.Template, dados.Destino, dados.Segredo);

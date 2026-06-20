@@ -83,6 +83,7 @@ public class AuthEmailDetachedEndpointsTests : IClassFixture<AuthEmailDetachedEn
                 Mock.Of<IPasswordResetTokenRepository>(),
                 Mock.Of<IEmailCriticoDispatcher>(),
                 Mock.Of<IUnitOfWork>(),
+                Mock.Of<IDatabaseErrorInspector>(),
                 TimeProvider.System,
                 Mock.Of<ILogger<EsqueceuSenhaHandler>>());
 

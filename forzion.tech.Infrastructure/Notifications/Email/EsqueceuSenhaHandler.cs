@@ -15,6 +15,7 @@ public class EsqueceuSenhaHandler(
     IPasswordResetTokenRepository tokenRepository,
     IEmailCriticoDispatcher emailCritico,
     IUnitOfWork unitOfWork,
+    IDatabaseErrorInspector dbErrorInspector,
     TimeProvider timeProvider,
     ILogger<EsqueceuSenhaHandler> logger)
 {
@@ -53,9 +54,18 @@ public class EsqueceuSenhaHandler(
             agora.AddHours(1),
             agora).Value;
 
+        await tokenRepository.InvalidarPendentesPorContaAsync(conta.Id, agora, cancellationToken).ConfigureAwait(false);
         await tokenRepository.AdicionarAsync(resetToken, cancellationToken).ConfigureAwait(false);
         emailCritico.Enfileirar(EmailCriticoTemplate.RedefinirSenha, conta.Email.Value, rawToken);
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (dbErrorInspector.EhViolacaoDeUnicidade(ex))
+        {
+            logger.LogDebug(ex, "EsqueceuSenha: token pendente concorrente para {ContaId}.", conta.Id);
+        }
     }
 
     private static string GenerateRawToken()

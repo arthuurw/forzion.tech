@@ -30,6 +30,16 @@ if [ -f /opt/forzion/app/scripts/systemd/forzion-docker-prune.timer ]; then
   sudo systemctl enable --now forzion-docker-prune.timer
 fi
 
+# --- fail2ban (brute-force no edge: bane IP após N falhas de auth/rate-limit) ---
+sudo apt-get install -y -qq fail2ban
+sudo mkdir -p /var/log/forzion-nginx
+if [ -f /opt/forzion/app/infra/fail2ban/filter.d/forzion-nginx-auth.conf ]; then
+  sudo cp /opt/forzion/app/infra/fail2ban/filter.d/forzion-nginx-auth.conf /etc/fail2ban/filter.d/
+  sudo cp /opt/forzion/app/infra/fail2ban/jail.d/forzion.local /etc/fail2ban/jail.d/
+  sudo systemctl enable --now fail2ban
+  sudo systemctl restart fail2ban
+fi
+
 # --- .env (preencher após execução) ---
 if [ ! -f /opt/forzion/.env ]; then
   cat > /opt/forzion/.env <<'EOF'
@@ -47,6 +57,7 @@ CORS_ORIGINS=https://homologacao.forzion.tech
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_URL_BASE=https://homologacao.forzion.tech
+SEED_ZAP_TEST_PASSWORD=
 EOF
   echo ""
   echo "⚠️  Edite /opt/forzion/.env com os valores reais antes de continuar."

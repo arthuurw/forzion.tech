@@ -1,6 +1,7 @@
-# OWASP ZAP Automation Framework — DAST contra preview deploy.
-# Roda via GH Action (Fase 17): `docker run -v $PWD:/zap/wrk owasp/zap2docker-stable zap.sh -cmd -autorun /zap/wrk/zap.yaml`
-# https://www.zaproxy.org/docs/automate/automation-framework/
+# OWASP ZAP Automation Framework — DAST autenticado contra homolog.
+# Run: docker run -v $PWD:/zap/wrk zaproxy/zap-stable zap.sh -cmd -autorun /zap/wrk/zap.yaml
+# ${ZAP_AUTH_USER}/${ZAP_AUTH_PASSWORD} vêm do ambiente (secrets) — credencial nunca no
+# repo. Conta DEDICADA de teste: o active scan injeta payload nos parâmetros.
 
 env:
   contexts:
@@ -14,9 +15,44 @@ env:
         - .*\.jpg$
         - .*\.svg$
         - .*\.woff2?$
-        - .*/api/auth$       # rate limit + auth real — nao bombardear
+        - https://homologacao.forzion.tech/api/auth$
+        # Rotas que mutam/encerram estado — fora do active scan (não corromper conta de
+        # teste nem disparar e-mail/cobrança/exclusão).
+        - https://homologacao.forzion.tech/api/auth/logout
+        - https://homologacao.forzion.tech/api/auth/reset-password
+        - https://homologacao.forzion.tech/api/auth/forgot-password
+        - https://homologacao.forzion.tech/api/auth/verify-email
+        - https://homologacao.forzion.tech/api/auth/resend-verification
+        - https://homologacao.forzion.tech/api/auth/register/.*
+        - https://homologacao.forzion.tech/api/auth/mfa/.*
+        - https://homologacao.forzion.tech/api/backend/.*/exclusao.*
+        - https://homologacao.forzion.tech/api/backend/.*lgpd.*
+        - https://homologacao.forzion.tech/api/backend/.*pagamento.*
+        - https://homologacao.forzion.tech/api/backend/.*checkout.*
+        - https://homologacao.forzion.tech/api/backend/.*stripe.*
       authentication:
-        method: manual
+        method: json
+        parameters:
+          loginRequestUrl: https://homologacao.forzion.tech/api/auth
+          loginRequestBody: '{"email":"{%username%}","senha":"{%password%}"}'
+        verification:
+          # /api/auth/me responde 200 SEMPRE (corpo `null` quando deslogado) — verificar
+          # pelo corpo, não pelo status.
+          method: poll
+          loggedInRegex: '"contaId"'
+          loggedOutRegex: '^null$'
+          pollFrequency: 60
+          pollUnits: requests
+          pollUrl: https://homologacao.forzion.tech/api/auth/me
+          pollPostData: ""
+      sessionManagement:
+        method: cookie
+        parameters: {}
+      users:
+        - name: zap-test
+          credentials:
+            username: ${ZAP_AUTH_USER}
+            password: ${ZAP_AUTH_PASSWORD}
   parameters:
     failOnError: true
     failOnWarning: false
@@ -31,12 +67,21 @@ jobs:
   - type: spider
     parameters:
       context: forzion-homolog
+      user: zap-test
       maxDuration: 5
       maxDepth: 5
 
   - type: passiveScan-wait
     parameters:
       maxDuration: 10
+
+  - type: activeScan
+    parameters:
+      context: forzion-homolog
+      user: zap-test
+      maxScanDurationInMins: 30
+      delayInMs: 100
+      handleAntiCSRFTokens: true
 
   - type: report
     parameters:
@@ -54,7 +99,7 @@ jobs:
       - ruleId: 10020
         newRisk: false-positive
         context: forzion-homolog
-        # CSP unsafe-inline necessario (Next hydration + Emotion)
+      # CSP unsafe-inline necessario (Next hydration + Emotion)
       - ruleId: 10055
         newRisk: false-positive
         context: forzion-homolog

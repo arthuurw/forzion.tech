@@ -80,6 +80,18 @@ public class LoginHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_EmailNaoEncontrado_ExecutaVerifyDummyParaFecharTimingOracle()
+    {
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Conta?)null);
+
+        var act = async () => await _handler.HandleAsync(new LoginCommand("x@test.com", "Senha123"));
+        await act.Should().ThrowAsync<CredenciaisInvalidasException>();
+
+        _passwordHasher.Verify(p => p.Verify("Senha123", It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
     public async Task HandleAsync_SenhaErrada_LancaCredenciaisInvalidasException()
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
