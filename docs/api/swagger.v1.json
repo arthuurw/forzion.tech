@@ -2896,6 +2896,83 @@
         ]
       }
     },
+    "/admin/test-data/contas": {
+      "get": {
+        "tags": [
+          "Admin · Test Data"
+        ],
+        "summary": "Lista contas de teste (@e2e.test). Rota ausente em Production.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContaTesteResumo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/admin/test-data/contas/{id}": {
+      "delete": {
+        "tags": [
+          "Admin · Test Data"
+        ],
+        "summary": "Hard-delete de uma conta de teste (@e2e.test). Rota ausente em Production.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/admin/health-report/config": {
       "get": {
         "tags": [
@@ -7806,6 +7883,27 @@
           }
         }
       },
+      "ContaTesteResumo": {
+        "required": [
+          "contaId",
+          "email",
+          "criadaEm"
+        ],
+        "type": "object",
+        "properties": {
+          "contaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "criadaEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "CriarExercicioGlobalRequest": {
         "required": [
           "nome",
@@ -11184,6 +11282,9 @@
     },
     {
       "name": "Admin"
+    },
+    {
+      "name": "Admin · Test Data"
     },
     {
       "name": "Treinador"

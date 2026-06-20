@@ -67,6 +67,11 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
     public async Task AdicionarAsync(Aluno aluno, CancellationToken cancellationToken = default) =>
         await _context.Alunos.AddAsync(aluno, cancellationToken).ConfigureAwait(false);
 
+    public async Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
+        await _context.Alunos
+            .Where(a => a.ContaId == contaId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
     public async Task<int> ContarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
         await _context.VinculosTreinadorAluno
             .CountAsync(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo, cancellationToken)

@@ -12,4 +12,8 @@ public interface IContaRepository
     Task AdicionarAsync(Conta conta, CancellationToken cancellationToken = default);
     Task<int> ContarCriadasDesdeAsync(DateTime desde, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Guid>> ListarElegivelPurgaLgpdAsync(DateTime threshold, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ContaTesteResumo>> ListarTesteAsync(string dominio, CancellationToken cancellationToken = default);
+    Task ExcluirAsync(Conta conta, CancellationToken cancellationToken = default);
 }
+
+public record ContaTesteResumo(Guid ContaId, string Email, DateTime CriadaEm);

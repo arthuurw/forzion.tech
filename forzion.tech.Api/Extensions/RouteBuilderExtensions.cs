@@ -13,7 +13,9 @@ using forzion.tech.Api.Endpoints.Treinador;
 using forzion.tech.Api.Endpoints.Suporte;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 
 namespace forzion.tech.Api.Extensions;
 
@@ -25,6 +27,11 @@ public static class RouteBuilderExtensions
         endpoints.MapMfaLoginEndpoints();
         endpoints.MapStepUpEndpoints();
         endpoints.MapAdminEndpoints();
+
+        var environment = endpoints.ServiceProvider.GetRequiredService<IHostEnvironment>();
+        if (!environment.IsProduction())
+            endpoints.MapTestDataEndpoints();
+
         endpoints.MapHealthReportEndpoints();
         endpoints.MapTreinadorEndpoints();
         endpoints.MapAlunoAreaEndpoints();
