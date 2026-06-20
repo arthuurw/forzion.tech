@@ -140,6 +140,7 @@ public class DataSeeder(
         await SeedExerciciosGlobaisAsync(cancellationToken).ConfigureAwait(false);
         await SeedPlanosPlataformaAsync(cancellationToken).ConfigureAwait(false);
         await SeedAdminAsync(cancellationToken).ConfigureAwait(false);
+        await SeedZapTestUserAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task SeedPlanosPlataformaAsync(CancellationToken cancellationToken)
@@ -237,5 +238,45 @@ public class DataSeeder(
         await context.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("SuperAdmin criado com sucesso.");
+    }
+
+    private async Task SeedZapTestUserAsync(CancellationToken cancellationToken)
+    {
+        var senha = configuration["Seed:ZapTestPassword"];
+        if (string.IsNullOrWhiteSpace(senha))
+            return;
+
+        var email = Email.Criar(configuration["Seed:ZapTestEmail"] ?? "zap-test@forzion.tech").Value;
+
+        var jaExiste = await context.Contas
+            .AnyAsync(c => c.Email == email, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (jaExiste)
+            return;
+
+        var aprovadoPorId = await context.SystemUsers
+            .Where(u => u.Role == SystemRole.SuperAdmin)
+            .Select(u => u.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (aprovadoPorId == Guid.Empty)
+            throw new InvalidOperationException("SeedZapTestUser exige SuperAdmin previamente semeado.");
+
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var conta = Conta.Criar(email, passwordHasher.Hash(senha), TipoConta.Treinador, agora).Value;
+        conta.MarcarEmailVerificado(agora);
+        conta.ClearDomainEvents();
+
+        var treinador = Treinador.Criar(conta.Id, "ZAP DAST Test", agora).Value;
+        treinador.Aprovar(aprovadoPorId, agora);
+        treinador.ClearDomainEvents();
+
+        context.Contas.Add(conta);
+        context.Treinadores.Add(treinador);
+        await context.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Conta de teste ZAP (DAST) criada: {Email}", email.Value);
     }
 }
