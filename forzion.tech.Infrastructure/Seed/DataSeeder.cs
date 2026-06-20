@@ -5,6 +5,7 @@ using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using GrupoMuscularEnum = forzion.tech.Domain.Enums.TipoGrupoMuscular;
 using TierPlanoEnum = forzion.tech.Domain.Enums.TierPlano;
@@ -15,6 +16,7 @@ public class DataSeeder(
     AppDbContext context,
     IPasswordHasher passwordHasher,
     IConfiguration configuration,
+    IHostEnvironment environment,
     TimeProvider timeProvider,
     ILogger<DataSeeder> logger)
 {
@@ -242,6 +244,9 @@ public class DataSeeder(
 
     private async Task SeedZapTestUserAsync(CancellationToken cancellationToken)
     {
+        if (environment.IsProduction())
+            return;
+
         var senha = configuration["Seed:ZapTestPassword"];
         if (string.IsNullOrWhiteSpace(senha))
             return;

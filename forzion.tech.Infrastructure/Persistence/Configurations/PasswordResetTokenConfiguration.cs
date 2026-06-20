@@ -17,7 +17,10 @@ public class PasswordResetTokenConfiguration : IEntityTypeConfiguration<Password
         builder.Property(t => t.UsedAt).HasColumnName("used_at");
         builder.Property(t => t.CreatedAt).HasColumnName("created_at");
 
-        builder.HasIndex(t => t.ContaId).HasDatabaseName("ix_password_reset_tokens_conta_id");
+        builder.HasIndex(t => t.ContaId)
+            .IsUnique()
+            .HasFilter("used_at IS NULL")
+            .HasDatabaseName("ux_password_reset_tokens_conta_id_pendente");
         builder.HasIndex(t => t.TokenHash).IsUnique().HasDatabaseName("ix_password_reset_tokens_token_hash");
     }
 }

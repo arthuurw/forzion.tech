@@ -19,6 +19,7 @@ public class EsqueceuSenhaHandlerTests
     private readonly Mock<IPasswordResetTokenRepository> _tokenRepo = new();
     private readonly Mock<IEmailCriticoDispatcher> _emailCritico = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDatabaseErrorInspector> _dbErrorInspector = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly Mock<ILogger<EsqueceuSenhaHandler>> _logger = new();
     private readonly EsqueceuSenhaHandler _handler;
@@ -27,7 +28,7 @@ public class EsqueceuSenhaHandlerTests
     {
         _handler = new EsqueceuSenhaHandler(
             _contaRepo.Object, _tokenRepo.Object, _emailCritico.Object,
-            _unitOfWork.Object, _timeProvider, _logger.Object);
+            _unitOfWork.Object, _dbErrorInspector.Object, _timeProvider, _logger.Object);
     }
 
     private static Conta BuildConta(string email = "user@example.com") =>
@@ -146,6 +147,36 @@ public class EsqueceuSenhaHandlerTests
 
         ordem.Should().Equal("invalidar", "adicionar");
         _tokenRepo.Verify(r => r.InvalidarPendentesPorContaAsync(conta.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitViolaUnicoParcial_NaoLancaTrataComoIdempotente()
+    {
+        var conta = BuildConta();
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("user@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        var dbEx = new InvalidOperationException("unique");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(dbEx);
+        _dbErrorInspector.Setup(i => i.EhViolacaoDeUnicidade(dbEx)).Returns(true);
+
+        var act = async () => await _handler.HandleAsync(new EsqueceuSenhaCommand("user@example.com"));
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitErroNaoUnicidade_Propaga()
+    {
+        var conta = BuildConta();
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("user@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        var dbEx = new InvalidOperationException("falha de conexão");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(dbEx);
+        _dbErrorInspector.Setup(i => i.EhViolacaoDeUnicidade(dbEx)).Returns(false);
+
+        var act = async () => await _handler.HandleAsync(new EsqueceuSenhaCommand("user@example.com"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     private static string Hash(string raw) =>

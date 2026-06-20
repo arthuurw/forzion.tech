@@ -15,6 +15,7 @@ env:
         - .*\.jpg$
         - .*\.svg$
         - .*\.woff2?$
+        - https://homologacao.forzion.tech/api/auth$
         # Rotas que mutam/encerram estado — fora do active scan (não corromper conta de
         # teste nem disparar e-mail/cobrança/exclusão).
         - https://homologacao.forzion.tech/api/auth/logout

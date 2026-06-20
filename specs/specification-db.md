@@ -67,7 +67,7 @@ system_users — perfil admin plataforma. id(uuid,NN); conta_id(uuid,NN); nome(v
 
 tokens_revogados — blacklist JWT (logout). jti(uuid,NN); expira_em(tstz,NN). PK(jti). Limpeza por hosted service.
 
-password_reset_tokens — reset de senha. id(uuid,NN); conta_id(uuid,NN,sem FK); token_hash(varchar64,NN); expires_at(tstz,NN,+1h); used_at(tstz,null); created_at(NN). PK(id) UQ(token_hash) idx(conta_id).
+password_reset_tokens — reset de senha. id(uuid,NN); conta_id(uuid,NN,sem FK); token_hash(varchar64,NN); expires_at(tstz,NN,+1h); used_at(tstz,null); created_at(NN). PK(id) UQ(token_hash) UQ-parcial(conta_id) WHERE used_at IS NULL (`ux_password_reset_tokens_conta_id_pendente` — ≤1 pendente por conta; serializa 2 forgot-password concorrentes → 23505 tratado como idempotente; ver concurrency).
 
 refresh_token_families — agregado de sessão (rotação de refresh). id(uuid,NN); conta_id(uuid,NN,sem FK); criada_em(tstz,NN); absoluto_expira_em(tstz,NN,teto absoluto server-side); revogada_em(tstz,null); motivo_revogacao(varchar32,null,MotivoRevogacaoFamilia); rotulo(varchar256,null,device/user-agent). PK(id) idx(conta_id), idx(revogada_em). GC `LimparExpiradasAsync` (revogada/pós-absoluto); purga LGPD `ExcluirPorContaIdAsync`.
 
