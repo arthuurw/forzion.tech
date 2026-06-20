@@ -443,13 +443,55 @@ jobs:
           BASE_REF: origin/${{ github.base_ref }}
         run: bash scripts/lint-migrations.sh
 
+  # ─── ZAP BASELINE EFÊMERO (DAST passivo bloqueante — PR gate) ────────────────
+  # Frontend-only: o baseline é passivo (headers/CSP da resposta), não precisa de
+  # backend/DB. Detalhe/cobertura em specs/specification-security.md §6.
+  zap-baseline:
+    name: ZAP baseline (efêmero — PR gate)
+    needs: [changes]
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build imagem frontend
+        run: docker build -t forzion-frontend-zap ./frontend
+
+      - name: Sobe frontend efêmero
+        run: |
+          docker run -d --name fe -p 3001:3000 \
+            -e JWT_SECRET=ci-zap-dummy-jwt-secret-0000000000000000 \
+            -e API_BASE_URL=http://127.0.0.1:9 \
+            forzion-frontend-zap
+          up=0
+          for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://localhost:3001; then up=1; break; fi
+            sleep 5
+          done
+          if [ "$up" != 1 ]; then echo "::error::Frontend efêmero não respondeu."; docker logs fe || true; exit 1; fi
+
+      - name: ZAP baseline (reprova em alerta novo)
+        run: |
+          docker run --rm --network host \
+            -v "$PWD/.zap:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://localhost:3001 -c baseline.conf
+
+      - name: Logs do frontend (se falhou)
+        if: failure()
+        run: docker logs fe || true
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f fe || true
+
   # ─── GATE (required check) ─────────────────────────────────────────────────────
   # `if: always()` para rodar mesmo com jobs PULADOS pelo path-filter ou por
   # evento (testes pesados sao PR-only). Um job pulado (result 'skipped') NÃO
   # reprova; só 'failure'/'cancelled' reprovam o gate.
   gate:
     name: Gate
-    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend, sanity-backend, lint-migrations]
+    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend, sanity-backend, lint-migrations, zap-baseline]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:

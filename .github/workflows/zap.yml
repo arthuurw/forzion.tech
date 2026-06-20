@@ -1,11 +1,8 @@
-name: ZAP DAST (baseline + active rules — F22)
+name: ZAP DAST (baseline passivo + full autenticado)
 
-# Varredura DAST contra a URL homolog. Manual (precisa de stack viva). Inclui:
-#   - baseline passivo (headers/cookies/CSP)
-#   - full scan com active rules: SQLi, XSS, path traversal, command injection
-# F22 (Fase 5): expandido de baseline-only pra Automation Framework via
-# action-full-scan. Active scan e LENTO (~30 min); rodar so manual ou sob
-# schedule esparso.
+# baseline: action-baseline, passivo, anônimo, rápido.
+# full: Automation Framework (zap.yaml) autenticado — spider+active scan pós-login.
+#   active scan é LENTO (~30 min) e injeta payload: rodar só manual ou schedule esparso.
 on:
   workflow_dispatch:
     inputs:
@@ -14,7 +11,7 @@ on:
         required: false
         default: ""
       mode:
-        description: "Modo: baseline (rapido, passivo) ou full (active rules)"
+        description: "Modo: baseline (rapido, passivo) ou full (autenticado, active)"
         required: false
         default: "baseline"
         type: choice
@@ -22,8 +19,6 @@ on:
           - baseline
           - full
   schedule:
-    # Sexta 02:00 UTC — antes do fim de semana; janela longa pra full scan
-    # eventualmente trocar pra full sem impactar weekday dev.
     - cron: "0 2 * * 5"
 
 permissions:
@@ -59,13 +54,27 @@ jobs:
           cmd_options: "-a"
           allow_issue_writing: false
 
-      # F22 — full scan com active rules. SQLi/XSS/path-traversal/CMDi.
-      # action-full-scan usa ZAP -A modo ativo + ataques estilo OWASP top 10.
-      # Pode demorar ~30 min — rodar so quando necessario.
-      - name: ZAP Full Scan (active rules)
+      - name: ZAP Full Scan (autenticado, Automation Framework)
         if: ${{ github.event.inputs.mode == 'full' }}
-        uses: zaproxy/action-full-scan@v0.10.0
+        env:
+          ZAP_AUTH_USER: ${{ secrets.ZAP_AUTH_USER }}
+          ZAP_AUTH_PASSWORD: ${{ secrets.ZAP_AUTH_PASSWORD }}
+        run: |
+          if [ -z "$ZAP_AUTH_USER" ] || [ -z "$ZAP_AUTH_PASSWORD" ]; then
+            echo "::error::Modo full exige secrets ZAP_AUTH_USER e ZAP_AUTH_PASSWORD (conta dedicada de teste)."
+            exit 1
+          fi
+          mkdir -p zap-report
+          docker run --rm \
+            -v "$PWD:/zap/wrk:rw" \
+            -e ZAP_AUTH_USER -e ZAP_AUTH_PASSWORD \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -cmd -autorun /zap/wrk/zap.yaml
+
+      - name: Upload relatório ZAP
+        if: ${{ always() && github.event.inputs.mode == 'full' }}
+        uses: actions/upload-artifact@v7
         with:
-          target: ${{ steps.t.outputs.target }}
-          cmd_options: "-a"
-          allow_issue_writing: false
+          name: zap-report
+          path: zap-report/
+          if-no-files-found: warn
