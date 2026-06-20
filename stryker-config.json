@@ -23,6 +23,6 @@
       "json"
     ],
     "report-file-name": "mutation-report",
-    "target-framework": "net8.0"
+    "target-framework": "net10.0"
   }
 }
