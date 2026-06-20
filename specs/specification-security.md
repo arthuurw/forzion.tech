@@ -16,7 +16,7 @@ Trust boundaries: `internet → nginx (edge, TLS terminate) → {frontend:3000 |
 | Endpoints internos | `/internal/*` — billing (renovações aluno/treinador, reconciliar) + LGPD-purge (`lgpd/contas-elegiveis`, `lgpd/contas/{id}`) + pré-avisos (aluno/treinador); inventário completo em [specification-backend] §endpoints internos | header `X-Internal-Key` constant-time (§5) | server-to-server via SSH+`docker exec` na VM (GH Actions); borda fechada `/internal/` 404 (F3, §8) |
 | Health | `/health` (liveness) + `/health/ready` | anônimo + rate `read` | contrato em [specification-observability] §2 |
 
-Swagger NÃO é exposto publicamente: backend só serve Swagger em Development (não roteado pelo nginx em homolog/prod).
+Doc de API NÃO é exposta publicamente: backend só serve OpenAPI (`/openapi`) + UI Scalar em Development (não roteado pelo nginx em homolog/prod).
 
 ## 2. AUTHN / AUTHZ
 Mecânica completa em [specification-backend] §4 (auth/authorization, rate-limiting, internal). Resumo de postura:

@@ -63,7 +63,7 @@ public static class RouteBuilderExtensions
             }
         }
 
-        app.UseSwaggerInDevelopment();
+        app.UseOpenApiInDevelopment();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
 
@@ -74,7 +74,7 @@ public static class RouteBuilderExtensions
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
                 ForwardLimit = 1,
             };
-            forwarded.KnownNetworks.Clear();
+            forwarded.KnownIPNetworks.Clear();
             forwarded.KnownProxies.Clear();
             app.UseForwardedHeaders(forwarded);
         }

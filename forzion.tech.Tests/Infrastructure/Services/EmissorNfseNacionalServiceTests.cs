@@ -305,7 +305,7 @@ public class EmissorNfseNacionalServiceTests
         using var rsa = RSA.Create(2048);
         var pedido = new CertificateRequest("CN=forzion-nfse-teste", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         using var efemero = pedido.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-        return new X509Certificate2(efemero.Export(X509ContentType.Pfx), (string?)null, X509KeyStorageFlags.Exportable);
+        return X509CertificateLoader.LoadPkcs12(efemero.Export(X509ContentType.Pfx), (string?)null, X509KeyStorageFlags.Exportable);
     }
 
     private sealed class ServicoTestavel(

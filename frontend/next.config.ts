@@ -73,6 +73,6 @@ export default withSentryConfig(withBundleAnalyzer(nextConfig), {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  disableLogger: true,
+  webpack: { treeshake: { removeDebugLogging: true } },
   sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
 });

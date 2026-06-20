@@ -9,7 +9,7 @@ Atualizar quando: mudar matriz de versões CI (node/dotnet), surgir novo gate/wo
 | Tool | CI (ubuntu) | Local típico (Windows) | Impacto |
 |---|---|---|---|
 | Node | **22** | 20 (default) | coverage v8 conta diferente → thresholds frontend divergem. Use `fnm install 22 && fnm use 22` (PowerShell: `fnm env \| iex; fnm use 22`). |
-| .NET SDK | **8.0.x** | 10.x (default) | SDK 10 lê `.slnx`; **SDK 8 NÃO** (`dotnet build` sem arg → MSB1003). `dotnet test/build <projeto>` direto contorna. Coverage line/branch idêntico entre SDK 8/10 (NÃO é fonte de divergência de cobertura). |
+| .NET SDK | **10.0.x** (pin `global.json` floor 10.0.100, rollForward latestFeature) | 10.x | CI e local alinhados em SDK 10 (TFM `net10.0`). `.slnx` exige SDK ≥9 (SDK 8 dava MSB1003 — histórico, não mais relevante). |
 | OS | Linux | Windows + Docker Desktop | CRLF, MSYS path-mangling, fsync de volume glacial. |
 
 ## 1. REPRODUÇÃO POR GATE (comando local · rodável? · caveat)
@@ -39,7 +39,7 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 - **MSYS path-mangling (git-bash)**: `docker run -v "$PWD:/repo" … /repo` vira `C:/Program Files/Git/repo` dentro do container ("no such file"). Prefixar `MSYS_NO_PATHCONV=1`.
 - **`/p:` no git-bash**: `dotnet test /p:X=Y` → MSBuild vê `p:X` como 2º projeto (MSB1008). Usar `-p:X=Y`.
 - **coverlet `--no-build` repetido**: rodar várias sessões coverlet seguidas no Windows → merge/lock dos assemblies instrumentados → números poluídos / rc=1 espúrio. Rodar UMA vez (tabela por módulo) ou processos separados.
-- **`.slnx` × SDK 8**: SDK 8 não resolve o formato `.slnx`; `dotnet build` sem arg falha (MSB1003). Targetar o projeto (`dotnet test forzion.tech.Tests`) ou usar SDK ≥9.
+- **`.slnx` × SDK** (histórico — projeto pin SDK 10 via `global.json`): SDK 8 não resolvia `.slnx` (`dotnet build` sem arg → MSB1003). Resolvido pela migração net10; só relevante se alguém forçar um SDK <9.
 - **Postgres fsync no Docker Desktop/Windows**: volume lento → crash-recovery (`syncing data directory`) leva 90–150s; healthcheck (start_period 20s) marca `unhealthy` e backend (depends_on) não sobe. Remediação: aguardar `pg_isready` aceitar (~150s) e então `docker compose up -d` p/ subir backend/frontend. NÃO dar `down` com postgres mid-shutdown (piora a recovery).
 - **Porta 3000 ocupada**: no **Next 16** `next dev` NÃO migra de porta sozinho — falha `EADDRINUSE` e morre (exit 1). Subir explícito em outra porta: `npm run dev -- -p 3001`. Confirmar a porta real e setar `E2E_BASE_URL`/`API_BASE_URL` de acordo — senão Playwright escaneia o app errado (falso "pass"). (Versões antigas do Next migravam automaticamente; não mais.)
 - **local-run sem Docker (Development + develop)**: receita + gotchas (launch-profile força Homolog, `frontend/.env.local`, portas) em [specification-infrastructure] §LOCAL-RUN.

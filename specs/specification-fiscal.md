@@ -120,7 +120,7 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 
 ## SEGURANÇA (resumo — canônico em [specification-security])
 - Cert A1 (.pfx) = cert cliente mTLS via `HttpClientHandler.ClientCertificates` (`X509KeyStorageFlags.EphemeralKeySet`, sem persistir chave). Mesmo A1 assina o XML e faz o TLS.
-- GOTCHA: efêmero p/ cert cliente só funciona em runtime **Linux** (OpenSSL); no **Windows** o schannel recusa no handshake → dev local sobe com `Habilitado=false` (deploy é Debian `aspnet:8.0`).
+- GOTCHA: efêmero p/ cert cliente só funciona em runtime **Linux** (OpenSSL); no **Windows** o schannel recusa no handshake → dev local sobe com `Habilitado=false` (deploy é Linux `aspnet:10.0` = Ubuntu 24.04).
 - `CertificadoSenha` NUNCA logada. Endpoints internos protegidos por X-Internal-Key (FixedTimeEquals) + rate-limit.
 
 ## OBSERVABILIDADE (resumo — canônico em [specification-observability])

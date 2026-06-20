@@ -206,7 +206,7 @@ public static class DependencyInjectionExtensions
             });
         }
 
-        services.AddSwagger();
+        services.AddOpenApiDocumentation();
         services.AddJwtAuthentication(configuration, environment);
         services.AddCorsPolicies(configuration);
         // Liveness é o endpoint sem checks (Predicate => false) mapeado em RouteBuilder.
