@@ -1,11 +1,9 @@
-// Baixa o spec OpenAPI de uma instancia LOCAL do backend (Swagger so e servido
-// em Development; nao e mais exposto em homolog/producao). Suba a API local
-// (ASPNETCORE_ENVIRONMENT=Development) antes de rodar.
-// Override via env: BACKEND_OPENAPI_URL=https://outra/swagger.json npm run openapi:fetch
+// Documento OpenAPI nativo so e servido em Development. Suba a API local com
+// ASPNETCORE_ENVIRONMENT=Development antes de rodar.
 
 import { writeFile } from "node:fs/promises";
 
-const DEFAULT_URL = "http://localhost:5230/swagger/v1/swagger.json";
+const DEFAULT_URL = "http://localhost:5230/openapi/v1.json";
 const url = process.env.BACKEND_OPENAPI_URL ?? DEFAULT_URL;
 
 console.log(`Baixando OpenAPI spec: ${url}`);

@@ -4,6 +4,1476 @@
  */
 
 export interface paths {
+    "/internal/processar-renovacoes-treinador": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Processa renovações mensais de planos de treinadores (requer X-Internal-Key) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/processar-renovacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Processa renovações mensais de assinaturas (requer X-Internal-Key) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/reconciliar-pagamentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconcilia eventos Stripe da janela especificada (default últimos 7d) — requer X-Internal-Key */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": null | components["schemas"]["ReconciliarPagamentosStripeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReconciliarPagamentosStripeResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/lgpd/contas-elegiveis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista contas elegíveis para purga LGPD (5 anos pós-cancelamento) — requer X-Internal-Key */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/lgpd/contas/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Anonimiza conta elegível à purga LGPD (job mensal) — requer X-Internal-Key */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/processar-pre-avisos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispara pré-aviso de renovação 3 dias antes para assinaturas de alunos — requer X-Internal-Key */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/processar-pre-avisos-treinador": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispara pré-aviso de renovação 3 dias antes para planos de treinadores — requer X-Internal-Key */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/gerar-nfse-comissao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gera NFS-e mensal de comissão marketplace (mês anterior por padrão) — requer X-Internal-Key */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": null | components["schemas"]["GerarNfseComissaoRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/reconciliar-nfse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconcilia NFS-e não-terminais consultando o gov (status divergente) — requer X-Internal-Key */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReconciliarNfseResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/stripe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recebe eventos do Stripe via webhook */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recebe eventos de entrega de e-mail via Resend/Svix webhook */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handshake de verificação do webhook WhatsApp (Meta) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": string;
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Recebe eventos de entrega de WhatsApp via Meta Cloud API webhook */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["Login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotaciona o refresh token e reemite o access token (renovação silenciosa) */
+        post: operations["RefreshSessao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/register/treinador": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cadastra um novo treinador (aguarda aprovação) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RegistrarTreinadorRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TreinadorResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/register/aluno": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cadastra um novo aluno e cria vínculo pendente com o treinador */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RegistrarAlunoRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlunoResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/treinador/{treinadorId}/pagamento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inicia o pagamento do plano da plataforma durante o cadastro do treinador */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    treinadorId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["IniciarPagamentoPlanoRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IniciarPagamentoPlanoResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Envia e-mail de redefinição de senha (sempre retorna 200) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ForgotPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redefine a senha usando token enviado por e-mail */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verifica o e-mail usando token enviado por e-mail */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyEmailRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reenvia o e-mail de verificação (sempre retorna 200) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ResendVerificationRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/planos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista todos os planos de treinador disponíveis */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PlanoPlataformaResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/treinadores/{id}/pacotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista pacotes de um treinador específico (para escolha do aluno no cadastro) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PacoteResponse"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/treinadores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista treinadores ativos para o fluxo público de cadastro */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TreinadorResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa/verificar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Conclui o login verificando o segundo fator (TOTP, código de recuperação ou e-mail) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CompletarLoginMfaRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CompletarLoginMfaResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa/email/enviar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Envia o código de login por e-mail para a conta com login pendente */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/step-up/iniciar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inicia o step-up: usa TOTP se habilitado, senão envia código por e-mail */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IniciarStepUpResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/step-up/verificar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verifica o fator (TOTP ou código de e-mail) e emite um token de step-up curto */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerificarStepUpRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VerificarStepUpResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stats/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna distribuição de treinadores por plano/tier e alunos por finalidade (G-FE-3) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DashboardStatsResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/treinadores": {
         parameters: {
             query?: never;
@@ -109,7 +1579,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -144,9 +1614,9 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody: {
+            requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["AprovarTreinadorRequest"];
+                    "application/json": null | components["schemas"]["AprovarTreinadorRequest"];
                 };
             };
             responses: {
@@ -159,6 +1629,15 @@ export interface paths {
                         "application/json": components["schemas"]["TreinadorResponse"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -168,7 +1647,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -204,9 +1683,9 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody: {
+            requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ReprovarTreinadorRequest"];
+                    "application/json": null | components["schemas"]["ReprovarTreinadorRequest"];
                 };
             };
             responses: {
@@ -217,6 +1696,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -226,7 +1714,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -262,9 +1750,9 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody: {
+            requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["InativarTreinadorRequest"];
+                    "application/json": null | components["schemas"]["InativarTreinadorRequest"];
                 };
             };
             responses: {
@@ -275,6 +1763,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -284,7 +1781,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -608,6 +2105,15 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
             };
         };
         options?: never;
@@ -757,7 +2263,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -1298,412 +2804,19 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/aluno/assinatura": {
+    "/admin/contas/{id}/lgpd/exportar": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Retorna a assinatura ativa do aluno autenticado */
+        /** Exporta dados pessoais de qualquer conta (portabilidade LGPD - admin) */
         get: {
             parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AssinaturaAlunoResponse"];
-                    };
+                query?: {
+                    formato?: string;
                 };
-                /** @description No Content */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/aluno/vinculo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Retorna o vínculo ativo e pendente do aluno autenticado */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ObterVinculoAlunoResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/aluno/troca-treinador": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Solicita troca de treinador criando vínculo pendente com o novo treinador */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["SolicitarTrocaTreinadorRequest"];
-                };
-            };
-            responses: {
-                /** @description Created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["VinculoResponse"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Unprocessable Content */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/aluno/fichas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista fichas de treino ativas do aluno */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ListarFichasAlunoResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/aluno/fichas/{treinoAlunoId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Obtém o detalhe de uma ficha vinculada ao aluno autenticado */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    treinoAlunoId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["FichaAlunoDetalheResponse"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/aluno/execucoes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista execuções de treino do aluno com paginação */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ListarExecucoesAlunoResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Registra a execução de um treino pelo aluno */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RegistrarExecucaoAlunoRequest"];
-                };
-            };
-            responses: {
-                /** @description Created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RegistrarExecucaoResponse"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/aluno/progressao": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Retorna a progressão de carga por exercício do aluno autenticado no período */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProgressaoAlunoResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/alunos": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista alunos com paginação */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ListarAlunosResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/alunos/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Retorna os dados de um aluno */
-        get: {
-            parameters: {
-                query?: never;
                 header?: never;
                 path: {
                     id: string;
@@ -1717,37 +2830,10 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": components["schemas"]["AlunoResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
                     content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
                 };
                 /** @description Not Found */
                 404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Internal Server Error */
-                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1762,699 +2848,27 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Atualiza os dados de um aluno */
-        patch: {
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/contas/{id}/lgpd": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Anonimiza permanentemente uma conta (LGPD - admin). Sem confirmação de senha. */
+        delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
                     id: string;
                 };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AtualizarAlunoRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AlunoResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Unprocessable Content */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/alunos/{alunoId}/treinos": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista treinos de um aluno com paginação */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    alunoId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ListarTreinosResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/alunos/{id}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Altera o status de um aluno (somente Admin) */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AlterarStatusAlunoRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AlunoResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["Login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/register/treinador": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cadastra um novo treinador (aguarda aprovação) */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RegistrarTreinadorRequest"];
-                };
-            };
-            responses: {
-                /** @description Created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TreinadorResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Conflict */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Too Many Requests */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/register/aluno": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cadastra um novo aluno e cria vínculo pendente com o treinador */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RegistrarAlunoRequest"];
-                };
-            };
-            responses: {
-                /** @description Created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AlunoResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Conflict */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Too Many Requests */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/planos": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista todos os planos de treinador disponíveis */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PlanoPlataformaResponse"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/treinadores/{id}/pacotes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista pacotes de um treinador específico (para escolha do aluno no cadastro) */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PacoteResponse"][];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/treinadores": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista treinadores ativos para o fluxo público de cadastro */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TreinadorResponse"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/conta/perfil": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Retorna o perfil do usuário autenticado */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PerfilResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unprocessable Content */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Atualiza o nome do usuário autenticado */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AtualizarPerfilRequest"];
-                };
-            };
-            responses: {
-                /** @description No Content */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unprocessable Content */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/conta/senha": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Altera a senha do usuário autenticado */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AlterarSenhaRequest"];
-                };
-            };
-            responses: {
-                /** @description No Content */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unprocessable Content */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/conta/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Revoga o token atual e faz logout */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
                 cookie?: never;
             };
             requestBody?: never;
@@ -2466,15 +2880,8 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal Server Error */
-                500: {
+                /** @description Not Found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2482,99 +2889,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/exercicios": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista exercícios do treinador com paginação */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ListarExerciciosResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Cadastra um novo exercício */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CriarExercicioRequest"];
-                };
-            };
-            responses: {
-                /** @description Created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ExercicioResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ValidationProblemDetails"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -2583,34 +2898,22 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
             };
         };
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/internal/processar-renovacoes": {
+    "/admin/notas-fiscais": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Processa renovações mensais de assinaturas (requer X-Internal-Key) */
-        post: {
+        /** Lista notas fiscais do sistema com filtros (status, treinador) e paginação keyset */
+        get: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -2625,62 +2928,46 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": unknown;
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ListarNotasFiscaisAdminResponse"];
                     };
                 };
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/aluno/pagamentos/{pagamentoId}": {
+    "/admin/notas-fiscais/{id}/reprocessar": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Obtém status e QR code de um pagamento */
-        get: {
+        get?: never;
+        put?: never;
+        /** Reenfileira a emissão de uma nota fiscal em erro */
+        post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    pagamentoId: string;
+                    id: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
-                200: {
+                /** @description No Content */
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": components["schemas"]["PagamentoResponse"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
+                    content?: never;
                 };
                 /** @description Not Found */
                 404: {
@@ -2691,31 +2978,36 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
             };
         };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/aluno/pagamentos/assinatura/{assinaturaId}": {
+    "/admin/health-report/config": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lista histórico de pagamentos de uma assinatura */
+        /** Obtém a configuração do relatório de saúde */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    assinaturaId: string;
-                };
+                path?: never;
                 cookie?: never;
             };
             requestBody?: never;
@@ -2726,16 +3018,83 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PagamentoResponse"][];
+                        "application/json": components["schemas"]["HealthReportConfigResponse"];
                     };
                 };
-                /** @description Forbidden */
-                403: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Cria ou atualiza a configuração do relatório de saúde */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AtualizarHealthReportConfigRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HealthReportConfigResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/health-report/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista os snapshots de saúde mais recentes */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HealthSnapshotResponse"][];
                     };
                 };
             };
@@ -2748,7 +3107,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/treinador/pagamentos/cobrar/{assinaturaId}": {
+    "/admin/health-report/run": {
         parameters: {
             query?: never;
             header?: never;
@@ -2757,16 +3116,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Gera cobrança mensal para uma assinatura (metodo: Pix ou Cartao) */
+        /** Executa o relatório de saúde imediatamente */
         post: {
             parameters: {
-                query: {
-                    metodo: components["schemas"]["MetodoPagamento"];
-                };
+                query?: never;
                 header?: never;
-                path: {
-                    assinaturaId: string;
-                };
+                path?: never;
                 cookie?: never;
             };
             requestBody?: never;
@@ -2777,19 +3132,10 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PagamentoResponse"];
+                        "application/json": components["schemas"]["HealthSnapshotResponse"];
                     };
                 };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -2838,6 +3184,24 @@ export interface paths {
                         "application/json": unknown;
                     };
                 };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -2847,7 +3211,70 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/plano/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Treinador autenticado cancela o próprio plano (CDC art. 49) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -2888,6 +3315,100 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["OnboardingStatusResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/modo-pagamento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Altera o modo de pagamento do aluno (Plataforma ↔ Externo) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AlterarModoPagamentoRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlterarModoPagamentoResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/modo-pagamento/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prévia do impacto da troca de modo de pagamento (read-only) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PreviewModoPagamentoResponse"];
                     };
                 };
             };
@@ -2952,7 +3473,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -3061,7 +3582,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -3383,7 +3904,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -3606,7 +4127,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -3782,7 +4303,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -3840,6 +4361,1860 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/treinador/dados-fiscais": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lê os dados fiscais do treinador autenticado */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DadosFiscaisResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /** Salva os dados fiscais do treinador (tomador) usados na emissão das NFS-e */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DadosFiscaisRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DadosFiscaisResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/notas-fiscais": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista as notas fiscais do treinador autenticado (keyset) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListarNotasFiscaisResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/notas-fiscais/{id}/danfse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna a referência (URL) da DANFSe de uma nota fiscal do treinador */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/assinatura": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna a assinatura ativa do aluno autenticado */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssinaturaAlunoResponse"];
+                    };
+                };
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/assinatura/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aluno autenticado cancela a própria assinatura ativa */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/vinculo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna o vínculo ativo e pendente do aluno autenticado */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ObterVinculoAlunoResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/troca-treinador": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Solicita troca de treinador criando vínculo pendente com o novo treinador */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SolicitarTrocaTreinadorRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VinculoResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/fichas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista fichas de treino ativas do aluno */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListarFichasAlunoResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/fichas/{treinoAlunoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtém o detalhe de uma ficha vinculada ao aluno autenticado */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    treinoAlunoId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FichaAlunoDetalheResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/execucoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista execuções de treino do aluno com paginação */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListarExecucoesAlunoResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Registra a execução de um treino pelo aluno */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RegistrarExecucaoAlunoRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RegistrarExecucaoResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/progressao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna a progressão de carga por exercício do aluno autenticado no período */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProgressaoAlunoResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alunos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista alunos com paginação */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListarAlunosResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alunos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna os dados de um aluno */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlunoResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Atualiza os dados de um aluno */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AtualizarAlunoRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlunoResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/alunos/{alunoId}/treinos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista treinos de um aluno com paginação */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    alunoId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListarTreinosResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alunos/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Altera o status de um aluno (somente Admin) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AlterarStatusAlunoRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlunoResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/conta/perfil": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna o perfil do usuário autenticado */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PerfilResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Atualiza o nome do usuário autenticado */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AtualizarPerfilRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/conta/senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Altera a senha do usuário autenticado */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AlterarSenhaRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/email/trocar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inicia a troca de e-mail enviando um código ao novo endereço */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TrocarEmailRequest"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/email/confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma a troca de e-mail com o código recebido no novo endereço */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmarEmailRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoga o token atual e faz logout */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/lgpd/exportar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exporta os dados pessoais do titular autenticado (portabilidade LGPD) */
+        get: {
+            parameters: {
+                query?: {
+                    formato?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/lgpd": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Anonimiza permanentemente a conta do titular (exclusão LGPD). Requer confirmação de senha. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AnonimizarContaSelfRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/mfa/totp/iniciar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inicia a configuração do TOTP e retorna o segredo e o URI otpauth */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IniciarEnrollTotpResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/mfa/totp/confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma o TOTP com um código válido, habilita o MFA e retorna os códigos de recuperação */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmarMfaTotpRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConfirmarEnrollTotpResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/mfa/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna o status do MFA, os códigos de recuperação restantes e os dispositivos confiáveis */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaStatusResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/mfa/desabilitar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Desabilita o MFA, limpa o segredo, os códigos de recuperação e os dispositivos confiáveis */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conta/mfa/recovery/regenerar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenera os códigos de recuperação e invalida o lote anterior */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RegenerarRecoveryCodesResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/suporte/mensagens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Envia uma mensagem ao suporte (identidade do remetente vem do token, não do payload) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EnviarMensagemSuporteRequest"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exercicios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista exercícios do treinador com paginação */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListarExerciciosResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Cadastra um novo exercício */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CriarExercicioRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExercicioResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/treinos": {
@@ -3908,7 +6283,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4035,7 +6410,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4098,7 +6473,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4206,7 +6581,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4273,7 +6648,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4358,7 +6733,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4408,7 +6783,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4497,7 +6872,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4573,7 +6948,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/treinos/{id}/execucoes": {
+    "/aluno/pagamentos/{pagamentoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtém status e QR code de um pagamento */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    pagamentoId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PagamentoResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/pagamentos/assinatura/{assinaturaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista histórico de pagamentos de uma assinatura */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    assinaturaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PagamentoResponse"][];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/pagamentos/cobrar/{assinaturaId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4582,63 +7060,54 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Registra a execução de um treino */
+        /** Gera cobrança mensal para uma assinatura (metodo: Pix ou Cartao) */
         post: {
             parameters: {
-                query?: never;
+                query: {
+                    metodo: components["schemas"]["MetodoPagamento"];
+                };
                 header?: never;
                 path: {
-                    id: string;
+                    assinaturaId: string;
                 };
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RegistrarExecucaoRequest"];
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description Created */
-                201: {
+                /** @description OK */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["RegistrarExecucaoResponse"];
+                        "application/json": components["schemas"]["PagamentoResponse"];
                     };
                 };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Not Found */
-                404: {
+                /** @description Bad Request */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description Unprocessable Content */
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
                 422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Internal Server Error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProblemDetails"];
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -4649,17 +7118,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/webhooks/stripe": {
+    "/treinador/pagamentos/recebimentos": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Lista recebimentos do treinador (paginação keyset por cursor) */
+        get: {
+            parameters: {
+                query: {
+                    cursor?: string;
+                    tamanho: number | string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListarRecebimentosTreinadorResultado"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         put?: never;
-        /** Recebe eventos do Stripe via webhook */
-        post: {
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/plano/assinatura": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna a assinatura de plano ativa do treinador */
+        get: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -4673,10 +7188,184 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/plano/pagamento/{pagamentoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna status de pagamento de plano do treinador */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    pagamentoId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/plano/trocar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Troca o plano do treinador (upgrade/downgrade/regularização) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TrocarPlanoRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TrocarPlanoTreinadorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/plano/cobrar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gera cobrança de renovação do plano do treinador (metodo: Pix ou Cartao) */
+        post: {
+            parameters: {
+                query: {
+                    metodo: components["schemas"]["MetodoPagamento"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IniciarPagamentoPlanoResponse"];
+                    };
                 };
                 /** @description Bad Request */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4698,723 +7387,1039 @@ export interface components {
     schemas: {
         AdicionarExercicioRequest: {
             /** Format: uuid */
-            exercicioId?: string;
-            series?: components["schemas"]["SerieConfigRequest"][] | null;
+            exercicioId: string;
+            series: components["schemas"]["SerieConfigRequest"][];
+        };
+        AlterarModoPagamentoRequest: {
+            modo: components["schemas"]["ModoPagamentoAluno"];
+        };
+        AlterarModoPagamentoResponse: {
+            modo: components["schemas"]["ModoPagamentoAluno"];
+            /** Format: date-time */
+            alteradoEm: string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            assinaturasCriadas: number | string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            vinculosIgnorados: number | string;
         };
         AlterarSenhaRequest: {
-            senhaAtual?: string | null;
-            novaSenha?: string | null;
+            senhaAtual: string;
+            novaSenha: string;
         };
         AlterarStatusAlunoRequest: {
-            status?: components["schemas"]["AlunoStatus"];
+            status: components["schemas"]["AlunoStatus"];
+        };
+        AlunoFinalidadeItem: {
+            finalidade: string;
+            /** Format: int32 */
+            total: number | string;
         };
         AlunoResponse: {
             /** Format: uuid */
-            alunoId?: string;
-            nome?: string | null;
-            email?: string | null;
-            telefone?: string | null;
-            status?: components["schemas"]["AlunoStatus"];
+            alunoId: string;
+            nome: string;
+            email: null | string;
+            telefone: null | string;
+            status: components["schemas"]["AlunoStatus"];
             /** Format: uuid */
-            contaId?: string;
+            contaId: string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            updatedAt?: string | null;
+            updatedAt: null | string;
             /** Format: int32 */
-            diasDisponiveis?: number | null;
-            tempoDisponivelMinutos?: components["schemas"]["TempoDisponivel"];
-            finalidade?: components["schemas"]["FinalidadeTreino"];
-            focoTreino?: string | null;
-            nivelCondicionamento?: components["schemas"]["NivelCondicionamento"];
-            limitacoesFisicas?: string | null;
-            doencas?: string | null;
-            observacoesAdicionais?: string | null;
+            diasDisponiveis?: null | number | string;
+            tempoDisponivelMinutos?: null | components["schemas"]["TempoDisponivel"];
+            finalidade?: null | components["schemas"]["FinalidadeTreino"];
+            focoTreino?: null | string;
+            nivelCondicionamento?: null | components["schemas"]["NivelCondicionamento"];
+            limitacoesFisicas?: null | string;
+            doencas?: null | string;
+            observacoesAdicionais?: null | string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        AlunoStatus: 0 | 1 | 2;
+        /** @enum {unknown} */
+        AlunoStatus: "AguardandoAprovacao" | "Ativo" | "Inativo";
+        AnonimizarContaSelfRequest: {
+            senha: string;
+        };
         AprovarTreinadorRequest: {
-            observacao?: string | null;
+            observacao?: null | string;
         };
         AprovarVinculoRequest: {
             /** Format: uuid */
-            pacoteId?: string;
-            trarFichas?: boolean;
+            pacoteId: string;
+            /** @default false */
+            trarFichas: boolean;
         };
         AssinaturaAlunoResponse: {
             /** Format: uuid */
-            assinaturaAlunoId?: string;
+            assinaturaAlunoId: string;
             /** Format: uuid */
-            vinculoId?: string;
+            vinculoId: string;
             /** Format: uuid */
-            pacoteId?: string;
+            pacoteId: string;
             /** Format: uuid */
-            treinadorId?: string;
+            treinadorId: string;
             /** Format: uuid */
-            alunoId?: string;
+            alunoId: string;
             /** Format: double */
-            valor?: number;
-            status?: components["schemas"]["AssinaturaAlunoStatus"];
+            valor: number | string;
+            status: components["schemas"]["AssinaturaAlunoStatus"];
             /** Format: date-time */
-            dataInicio?: string;
+            dataInicio: string;
             /** Format: date-time */
-            dataProximaCobranca?: string;
+            dataProximaCobranca: string;
             /** Format: date-time */
-            dataCancelamento?: string | null;
+            dataCancelamento: null | string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        AssinaturaAlunoStatus: 0 | 1 | 2 | 3;
+        /** @enum {unknown} */
+        AssinaturaAlunoStatus: "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
         AtribuirPlanoRequest: {
             /** Format: uuid */
-            planoId?: string;
+            planoId: string;
         };
         AtualizarAlunoRequest: {
-            nome?: string | null;
-            email?: string | null;
-            telefone?: string | null;
+            nome: null | string;
+            email: null | string;
+            telefone: null | string;
         };
         AtualizarExercicioGlobalRequest: {
-            nome?: string | null;
-            grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
-            descricao?: string | null;
-            comoExecutar?: string | null;
-            videoUrl?: string | null;
+            nome: null | string;
+            /** Format: uuid */
+            grupoMuscularId: null | string;
+            descricao: null | string;
+            comoExecutar?: null | string;
+            videoUrl?: null | string;
         };
         AtualizarExercicioTreinadorRequest: {
-            nome?: string | null;
-            grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
-            descricao?: string | null;
-            comoExecutar?: string | null;
-            videoUrl?: string | null;
+            nome: null | string;
+            /** Format: uuid */
+            grupoMuscularId: null | string;
+            descricao: null | string;
+            comoExecutar?: null | string;
+            videoUrl?: null | string;
         };
         AtualizarGrupoMuscularRequest: {
-            nome?: string | null;
+            nome: string;
+        };
+        AtualizarHealthReportConfigRequest: {
+            ativo: boolean;
+            /** Format: time */
+            horaEnvioUtc: string;
+            destinatarios: null | string[];
+            incluirLiveness: boolean;
+            incluirKpis: boolean;
+            incluirEntregabilidade: boolean;
+            incluirErros: boolean;
         };
         AtualizarObservacaoExercicioRequest: {
-            observacao?: string | null;
+            observacao: null | string;
         };
         AtualizarPacoteRequest: {
-            nome?: string | null;
+            nome: null | string;
             /** Format: double */
-            preco?: number | null;
-            descricao?: string | null;
+            preco: null | number | string;
+            descricao: null | string;
         };
         AtualizarPerfilRequest: {
-            nome?: string | null;
+            nome: string;
         };
         AtualizarPlanoPlataformaRequest: {
-            nome?: string | null;
-            tier?: components["schemas"]["TierPlano"];
+            nome: null | string;
+            tier: null | components["schemas"]["TierPlano"];
             /** Format: int32 */
-            maxAlunos?: number | null;
+            maxAlunos: null | number | string;
             /** Format: double */
-            preco?: number | null;
-            descricao?: string | null;
+            preco: null | number | string;
+            descricao?: null | string;
         };
         AtualizarTreinoRequest: {
-            nome?: string | null;
-            objetivo?: components["schemas"]["ObjetivoTreino"];
-            dificuldade?: components["schemas"]["DificuldadeTreino"];
+            nome: null | string;
+            objetivo: null | components["schemas"]["ObjetivoTreino"];
+            dificuldade?: null | components["schemas"]["DificuldadeTreino"];
             /** Format: date */
-            dataInicio?: string | null;
+            dataInicio?: null | string;
             /** Format: date */
-            dataFim?: string | null;
-            limparDataInicio?: boolean;
-            limparDataFim?: boolean;
+            dataFim?: null | string;
+            /** @default false */
+            limparDataInicio: boolean;
+            /** @default false */
+            limparDataFim: boolean;
+        };
+        CompletarLoginMfaRequest: {
+            codigo: string;
+            fator: components["schemas"]["MfaFator"];
+            /** @default false */
+            lembrarDispositivo: boolean;
+        };
+        CompletarLoginMfaResult: {
+            login: components["schemas"]["LoginResponse"];
+            trustedDeviceToken: null | string;
+        };
+        ConfirmarEmailRequest: {
+            codigo: string;
+        };
+        ConfirmarEnrollTotpResult: {
+            recoveryCodes: string[];
+        };
+        ConfirmarMfaTotpRequest: {
+            codigo: string;
         };
         CriarExercicioGlobalRequest: {
-            nome?: string | null;
-            grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
-            descricao?: string | null;
-            comoExecutar?: string | null;
-            videoUrl?: string | null;
+            nome: string;
+            /** Format: uuid */
+            grupoMuscularId: string;
+            descricao: null | string;
+            comoExecutar?: null | string;
+            videoUrl?: null | string;
         };
         CriarExercicioRequest: {
-            nome?: string | null;
-            grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
-            descricao?: string | null;
-            comoExecutar?: string | null;
-            videoUrl?: string | null;
+            nome: string;
+            /** Format: uuid */
+            grupoMuscularId: string;
+            descricao: null | string;
+            comoExecutar?: null | string;
+            videoUrl?: null | string;
         };
         CriarExercicioTreinadorRequest: {
-            nome?: string | null;
-            grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
-            descricao?: string | null;
-            comoExecutar?: string | null;
-            videoUrl?: string | null;
+            nome: string;
+            /** Format: uuid */
+            grupoMuscularId: string;
+            descricao?: null | string;
+            comoExecutar?: null | string;
+            videoUrl?: null | string;
         };
         CriarGrupoMuscularRequest: {
-            nome?: string | null;
+            nome: string;
         };
         CriarPacoteRequest: {
-            nome?: string | null;
+            nome: string;
             /** Format: double */
-            preco?: number;
-            descricao?: string | null;
+            preco: number | string;
+            descricao?: null | string;
         };
         CriarPlanoPlataformaRequest: {
-            nome?: string | null;
-            tier?: components["schemas"]["TierPlano"];
+            nome: string;
+            tier: components["schemas"]["TierPlano"];
             /** Format: int32 */
-            maxAlunos?: number;
+            maxAlunos: number | string;
             /** Format: double */
-            preco?: number;
-            descricao?: string | null;
+            preco: number | string;
+            descricao?: null | string;
         };
         CriarTreinoRequest: {
             /** Format: uuid */
-            alunoId?: string | null;
-            nome?: string | null;
-            objetivo?: components["schemas"]["ObjetivoTreino"];
+            alunoId: null | string;
+            nome: string;
+            objetivo: components["schemas"]["ObjetivoTreino"];
             dificuldade?: components["schemas"]["DificuldadeTreino"];
             /** Format: date */
-            dataInicio?: string | null;
+            dataInicio?: null | string;
             /** Format: date */
-            dataFim?: string | null;
+            dataFim?: null | string;
+        };
+        DadosFiscaisRequest: {
+            tipoDocumento: components["schemas"]["TipoDocumentoFiscal"];
+            documento: string;
+            razaoSocial: string;
+            logradouro: string;
+            numero: string;
+            bairro: string;
+            codigoMunicipioIbge: string;
+            uf: string;
+            cep: string;
+            complemento?: null | string;
+            inscricaoMunicipal?: null | string;
+        };
+        DadosFiscaisResponse: {
+            tipoDocumento: components["schemas"]["TipoDocumentoFiscal"];
+            documento: string;
+            razaoSocial: string;
+            inscricaoMunicipal: null | string;
+            endereco: components["schemas"]["EnderecoFiscalResponse"];
+        };
+        DashboardStatsResponse: {
+            planoDistribuicao: components["schemas"]["PlanoDistribuicaoItem"][];
+            alunoFinalidade: components["schemas"]["AlunoFinalidadeItem"][];
         };
         DesvincularAlunoRequest: {
-            observacao?: string | null;
+            observacao?: null | string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        DificuldadeTreino: 0 | 1 | 2;
+        /** @enum {unknown} */
+        DificuldadeTreino: "Iniciante" | "Intermediario" | "Avancado";
         EditarExercicioTreinoRequest: {
-            series?: components["schemas"]["SerieConfigRequest"][] | null;
+            series: components["schemas"]["SerieConfigRequest"][];
+        };
+        EnderecoFiscalResponse: {
+            logradouro: string;
+            numero: string;
+            complemento: null | string;
+            bairro: string;
+            codigoMunicipioIbge: string;
+            uf: string;
+            cep: string;
+        };
+        EnviarMensagemSuporteRequest: {
+            categoria: string;
+            assunto: string;
+            descricao: string;
         };
         ExecucaoAlunoResponse: {
             /** Format: uuid */
-            execucaoId?: string;
+            execucaoId: string;
             /** Format: uuid */
-            treinoId?: string;
+            treinoId: string;
             /** Format: uuid */
-            alunoId?: string;
+            alunoId: string;
             /** Format: date-time */
-            dataExecucao?: string;
-            observacao?: string | null;
+            dataExecucao: string;
+            observacao: null | string;
             /** Format: date-time */
-            createdAt?: string;
-            nomeTreino?: string | null;
+            createdAt: string;
+            nomeTreino: string;
             /** Format: int32 */
-            totalExercicios?: number;
+            totalExercicios: number | string;
             /** Format: int32 */
-            totalSeries?: number;
+            totalSeries: number | string;
         };
         ExercicioProgressao: {
-            nomeExercicio?: string | null;
-            grupoMuscular?: string | null;
-            historico?: components["schemas"]["PontoProgressao"][] | null;
+            nomeExercicio: string;
+            grupoMuscular: string;
+            historico: components["schemas"]["PontoProgressao"][];
         };
         ExercicioResponse: {
             /** Format: uuid */
-            exercicioId?: string;
-            nome?: string | null;
-            grupoMuscular?: components["schemas"]["TipoGrupoMuscular"];
-            descricao?: string | null;
-            comoExecutar?: string | null;
-            videoId?: string | null;
+            exercicioId: string;
+            nome: string;
             /** Format: uuid */
-            treinadorId?: string | null;
-            isGlobal?: boolean;
+            grupoMuscularId: string;
+            grupoMuscular: string;
+            descricao: null | string;
+            comoExecutar: null | string;
+            videoId: null | string;
+            /** Format: uuid */
+            treinadorId: null | string;
+            isGlobal: boolean;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            updatedAt?: string | null;
+            updatedAt: null | string;
         };
         FichaAlunoDetalheResponse: {
             /** Format: uuid */
-            treinoAlunoId?: string;
+            treinoAlunoId: string;
             /** Format: uuid */
-            treinoId?: string;
-            nomeTreino?: string | null;
-            objetivo?: components["schemas"]["ObjetivoTreino"];
-            status?: string | null;
-            exercicios?: components["schemas"]["TreinoExercicioResponse"][] | null;
+            treinoId: string;
+            nomeTreino: string;
+            objetivo: components["schemas"]["ObjetivoTreino"];
+            status: string;
+            exercicios: components["schemas"]["TreinoExercicioResponse"][];
         };
         FichaAlunoResponse: {
             /** Format: uuid */
-            treinoAlunoId?: string;
+            treinoAlunoId: string;
             /** Format: uuid */
-            treinoId?: string;
-            nomeTreino?: string | null;
-            objetivo?: components["schemas"]["ObjetivoTreino"];
-            status?: components["schemas"]["TreinoAlunoStatus"];
-            exercicios?: components["schemas"]["TreinoExercicioResponse"][] | null;
+            treinoId: string;
+            nomeTreino: string;
+            objetivo: components["schemas"]["ObjetivoTreino"];
+            status: components["schemas"]["TreinoAlunoStatus"];
+            exercicios: components["schemas"]["TreinoExercicioResponse"][];
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        FinalidadeTreino: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+        /** @enum {unknown} */
+        FinalidadeTreino: "Hipertrofia" | "Emagrecimento" | "CondicionamentoFisico" | "Saude" | "PerformanceEsportiva" | "Reabilitacao" | "Outro" | null;
+        ForgotPasswordRequest: {
+            email: string;
+        };
+        GerarNfseComissaoRequest: {
+            /** Format: int32 */
+            ano: null | number | string;
+            /** Format: int32 */
+            mes: null | number | string;
+        };
         GrupoMuscularResponse: {
             /** Format: uuid */
-            id?: string;
-            nome?: string | null;
+            id: string;
+            nome: string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            updatedAt?: string | null;
+            updatedAt: null | string;
+        };
+        HealthReportConfigResponse: {
+            /** Format: uuid */
+            id: string;
+            ativo: boolean;
+            /** Format: time */
+            horaEnvioUtc: string;
+            destinatarios: string[];
+            incluirLiveness: boolean;
+            incluirKpis: boolean;
+            incluirEntregabilidade: boolean;
+            incluirErros: boolean;
+            /** Format: date-time */
+            ultimoEnvioEm: null | string;
+        };
+        HealthSnapshotResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            capturadoEm: string;
+            ambiente: string;
+            statusGeral: components["schemas"]["StatusSaude"];
+            payloadJson: string;
         };
         InativarTreinadorRequest: {
-            observacao?: string | null;
+            observacao?: null | string;
+        };
+        IniciarEnrollTotpResult: {
+            secretBase32: string;
+            otpauthUri: string;
         };
         IniciarOnboardingRequest: {
-            urlRetorno?: string | null;
-            urlCancelamento?: string | null;
+            urlRetorno: string;
+            urlCancelamento: string;
+        };
+        IniciarPagamentoPlanoRequest: {
+            metodo: components["schemas"]["MetodoPagamento"];
+        };
+        IniciarPagamentoPlanoResponse: {
+            /** Format: uuid */
+            pagamentoId: string;
+            /** Format: double */
+            valor: number | string;
+            status: components["schemas"]["PagamentoStatus"];
+            metodoPagamento: components["schemas"]["MetodoPagamento"];
+            stripePaymentIntentId: null | string;
+            pixQrCode: null | string;
+            pixQrCodeUrl: null | string;
+            /** Format: date-time */
+            pixExpiracao: null | string;
+            clientSecret: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @default false */
+            assinaturaEncerrada: boolean;
+        };
+        IniciarStepUpResult: {
+            fator: components["schemas"]["MfaFator"];
         };
         ListarAlunosResponse: {
-            items?: components["schemas"]["AlunoResponse"][] | null;
+            items: components["schemas"]["AlunoResponse"][];
             /** Format: int32 */
-            total?: number;
+            total: number | string;
             /** Format: int32 */
-            pagina?: number;
+            pagina: number | string;
             /** Format: int32 */
-            tamanhoPagina?: number;
+            tamanhoPagina: number | string;
         };
         ListarExecucoesAlunoResponse: {
-            items?: components["schemas"]["ExecucaoAlunoResponse"][] | null;
+            items: components["schemas"]["ExecucaoAlunoResponse"][];
             /** Format: int32 */
-            total?: number;
+            total: number | string;
             /** Format: int32 */
-            pagina?: number;
+            pagina: number | string;
             /** Format: int32 */
-            tamanhoPagina?: number;
+            tamanhoPagina: number | string;
         };
         ListarExerciciosResponse: {
-            items?: components["schemas"]["ExercicioResponse"][] | null;
+            items: components["schemas"]["ExercicioResponse"][];
             /** Format: int32 */
-            total?: number;
+            total: number | string;
             /** Format: int32 */
-            pagina?: number;
+            pagina: number | string;
             /** Format: int32 */
-            tamanhoPagina?: number;
+            tamanhoPagina: number | string;
         };
         ListarFichasAlunoResponse: {
-            items?: components["schemas"]["FichaAlunoResponse"][] | null;
+            items: components["schemas"]["FichaAlunoResponse"][];
             /** Format: int32 */
-            total?: number;
+            total: number | string;
             /** Format: int32 */
-            pagina?: number;
+            pagina: number | string;
             /** Format: int32 */
-            tamanhoPagina?: number;
+            tamanhoPagina: number | string;
+        };
+        ListarNotasFiscaisAdminResponse: {
+            itens: components["schemas"]["NotaFiscalAdminResponse"][];
+            /** Format: uuid */
+            proximoCursor: null | string;
+        };
+        ListarNotasFiscaisResponse: {
+            itens: components["schemas"]["NotaFiscalResumoResponse"][];
+            /** Format: uuid */
+            proximoCursor: null | string;
+        };
+        ListarRecebimentosTreinadorResultado: {
+            itens: components["schemas"]["RecebimentoTreinadorResponse"][];
+            proximoCursor: null | string;
+            /** Format: double */
+            taxaPlataformaPercent: number | string;
         };
         ListarTreinadoresResponse: {
-            items?: components["schemas"]["TreinadorResponse"][] | null;
+            items: components["schemas"]["TreinadorResponse"][];
             /** Format: int32 */
-            total?: number;
+            total: number | string;
             /** Format: int32 */
-            pagina?: number;
+            pagina: number | string;
             /** Format: int32 */
-            tamanhoPagina?: number;
+            tamanhoPagina: number | string;
         };
         ListarTreinosResponse: {
-            items?: components["schemas"]["TreinoResponse"][] | null;
+            items: components["schemas"]["TreinoResponse"][];
             /** Format: int32 */
-            total?: number;
+            total: number | string;
             /** Format: int32 */
-            pagina?: number;
+            pagina: number | string;
             /** Format: int32 */
-            tamanhoPagina?: number;
+            tamanhoPagina: number | string;
         };
         ListarVinculosResponse: {
-            items?: components["schemas"]["VinculoDetalheResponse"][] | null;
+            items: components["schemas"]["VinculoDetalheResponse"][];
             /** Format: int32 */
-            total?: number;
+            total: number | string;
             /** Format: int32 */
-            pagina?: number;
+            pagina: number | string;
             /** Format: int32 */
-            tamanhoPagina?: number;
+            tamanhoPagina: number | string;
         };
         LoginRequest: {
-            email?: string | null;
-            senha?: string | null;
+            email: string;
+            senha: string;
         };
         LoginResponse: {
-            token?: string | null;
-            tipoConta?: components["schemas"]["TipoConta"];
+            token: string;
+            refreshToken: string;
+            tipoConta: components["schemas"]["TipoConta"];
             /** Format: uuid */
-            contaId?: string;
+            contaId: string;
             /** Format: uuid */
-            perfilId?: string;
+            perfilId: string;
+            nome: string;
+            /** @default false */
+            mfaRequerido: boolean;
+            mfaPendingToken?: null | string;
+            /** Format: date-time */
+            mfaPendingExpiraEm?: null | string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        MetodoPagamento: 0 | 1;
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        NivelCondicionamento: 0 | 1 | 2 | 3;
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        ObjetivoTreino: 0 | 1 | 2 | 3 | 4;
+        /** @enum {unknown} */
+        MetodoPagamento: "Pix" | "Cartao";
+        MfaDispositivoConfiavel: {
+            /** Format: uuid */
+            id: string;
+            rotulo: null | string;
+            /** Format: date-time */
+            criadoEm: string;
+            /** Format: date-time */
+            ultimoUsoEm: null | string;
+            /** Format: date-time */
+            expiraEm: string;
+        };
+        /** @enum {unknown} */
+        MfaFator: "Totp" | "Email" | "RecoveryCode";
+        MfaStatusResult: {
+            habilitado: boolean;
+            /** Format: int32 */
+            recoveryCodesRestantes: number | string;
+            dispositivos: components["schemas"]["MfaDispositivoConfiavel"][];
+        };
+        /** @enum {unknown} */
+        ModoPagamentoAluno: "Plataforma" | "Externo";
+        /** @enum {unknown} */
+        NivelCondicionamento: "Sedentario" | "Iniciante" | "Intermediario" | "Avancado" | null;
+        NotaFiscalAdminResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            treinadorId: string;
+            tipo: components["schemas"]["TipoNotaFiscal"];
+            status: components["schemas"]["NotaFiscalStatus"];
+            /** Format: double */
+            valor: number | string;
+            /** Format: date */
+            competenciaInicio: null | string;
+            /** Format: date */
+            competenciaFim: null | string;
+            numeroNfse: null | string;
+            chaveAcesso: null | string;
+            /** Format: date-time */
+            dataEmissao: null | string;
+            codigoErro: null | string;
+            motivoErro: null | string;
+            /** Format: date-time */
+            criadoEm: string;
+        };
+        NotaFiscalResumoResponse: {
+            /** Format: uuid */
+            id: string;
+            tipo: components["schemas"]["TipoNotaFiscal"];
+            status: components["schemas"]["NotaFiscalStatus"];
+            /** Format: double */
+            valor: number | string;
+            /** Format: date */
+            competenciaInicio: null | string;
+            /** Format: date */
+            competenciaFim: null | string;
+            numeroNfse: null | string;
+            /** Format: date-time */
+            dataEmissao: null | string;
+            temDanfse: boolean;
+            /** Format: date-time */
+            criadoEm: string;
+        };
+        /** @enum {unknown} */
+        NotaFiscalStatus: "Pendente" | "Emitida" | "Erro" | "BloqueadaDadosFiscais" | "CancelamentoSolicitado" | "Cancelada" | "CancelamentoExpirado";
+        /** @enum {unknown} */
+        ObjetivoTreino: "Hipertrofia" | "Forca" | "Resistencia" | "Emagrecimento" | "Reabilitacao";
         ObterVinculoAlunoResponse: {
-            vinculoAtivo?: components["schemas"]["VinculoAlunoItemResponse"];
-            vinculoPendente?: components["schemas"]["VinculoAlunoItemResponse"];
+            vinculoAtivo: null | components["schemas"]["VinculoAlunoItemResponse"];
+            vinculoPendente: null | components["schemas"]["VinculoAlunoItemResponse"];
         };
         OnboardingStatusResponse: {
-            onboardingCompleto?: boolean;
-            contaConfigurada?: boolean;
+            onboardingCompleto: boolean;
+            contaConfigurada: boolean;
+            modoPagamentoAluno: components["schemas"]["ModoPagamentoAluno"];
+            /** Format: date-time */
+            modoPagamentoPodeAlterarEm: null | string;
         };
         PacoteResponse: {
             /** Format: uuid */
-            pacoteId?: string;
+            pacoteId: string;
             /** Format: uuid */
-            treinadorId?: string;
-            nome?: string | null;
-            descricao?: string | null;
+            treinadorId: string;
+            nome: string;
+            descricao: null | string;
             /** Format: double */
-            preco?: number;
-            isAtivo?: boolean;
+            preco: number | string;
+            isAtivo: boolean;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            updatedAt?: string | null;
+            updatedAt: null | string;
         };
         PagamentoResponse: {
             /** Format: uuid */
-            pagamentoId?: string;
+            pagamentoId: string;
             /** Format: uuid */
-            assinaturaAlunoId?: string;
+            assinaturaAlunoId: string;
             /** Format: double */
-            valor?: number;
-            status?: components["schemas"]["PagamentoStatus"];
-            metodoPagamento?: components["schemas"]["MetodoPagamento"];
-            pixQrCode?: string | null;
-            pixQrCodeUrl?: string | null;
+            valor: number | string;
+            status: components["schemas"]["PagamentoStatus"];
+            metodoPagamento: components["schemas"]["MetodoPagamento"];
+            pixQrCode: null | string;
+            pixQrCodeUrl: null | string;
             /** Format: date-time */
-            pixExpiracao?: string | null;
-            clientSecret?: string | null;
+            pixExpiracao: null | string;
+            clientSecret: null | string;
             /** Format: date-time */
-            dataPagamento?: string | null;
+            dataPagamento: null | string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        PagamentoStatus: 0 | 1 | 2 | 3;
+        /** @enum {unknown} */
+        PagamentoStatus: "Pendente" | "Pago" | "Expirado" | "Falhou" | "Estornado" | "EmDisputa";
         PerfilResponse: {
-            nome?: string | null;
-            email?: string | null;
-            tipoConta?: string | null;
+            nome: string;
+            email: string;
+            tipoConta: string;
+        };
+        PlanoDistribuicaoItem: {
+            tier: string;
+            /** Format: int32 */
+            total: number | string;
         };
         PlanoPlataformaResponse: {
             /** Format: uuid */
-            planoId?: string;
-            nome?: string | null;
-            tier?: components["schemas"]["TierPlano"];
+            planoId: string;
+            nome: string;
+            tier: components["schemas"]["TierPlano"];
             /** Format: int32 */
-            maxAlunos?: number;
+            maxAlunos: number | string;
             /** Format: double */
-            preco?: number;
-            isAtivo?: boolean;
+            preco: number | string;
+            isAtivo: boolean;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            updatedAt?: string | null;
-            descricao?: string | null;
+            updatedAt: null | string;
+            descricao?: null | string;
         };
         PontoProgressao: {
             /** Format: date-time */
-            data?: string;
+            data: string;
             /** Format: double */
-            cargaMaxima?: number | null;
+            cargaMaxima: null | number | string;
             /** Format: int32 */
-            seriesExecutadas?: number;
+            seriesExecutadas: number | string;
             /** Format: int32 */
-            repeticoesExecutadas?: number;
+            repeticoesExecutadas: number | string;
+        };
+        PreviewModoPagamentoResponse: {
+            /** Format: int32 */
+            assinaturasAtivasAlunos: number | string;
+            /** Format: int32 */
+            vinculosCobravelSemAssinatura: number | string;
         };
         ProblemDetails: {
-            type?: string | null;
-            title?: string | null;
+            type?: null | string;
+            title?: null | string;
             /** Format: int32 */
-            status?: number | null;
-            detail?: string | null;
-            instance?: string | null;
-        } & {
-            [key: string]: unknown;
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
         };
         ProgressaoAlunoResponse: {
-            exercicios?: components["schemas"]["ExercicioProgressao"][] | null;
+            exercicios: components["schemas"]["ExercicioProgressao"][];
         };
         ReativarVinculoRequest: {
             /** Format: uuid */
-            pacoteId?: string;
+            pacoteId: string;
+        };
+        RecebimentoTreinadorResponse: {
+            /** Format: uuid */
+            pagamentoId: string;
+            /** Format: double */
+            bruto: number | string;
+            /** Format: double */
+            taxaPercent: null | number | string;
+            /** Format: double */
+            liquidoEstimado: null | number | string;
+            status: string;
+            nomeAluno: string;
+            metodo: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            dataPagamento: null | string;
+        };
+        ReconciliarNfseResponse: {
+            /** Format: int32 */
+            consultadas: number | string;
+            /** Format: int32 */
+            atualizadas: number | string;
+            /** Format: int32 */
+            semAlteracao: number | string;
+            /** Format: int32 */
+            erros: number | string;
+        };
+        ReconciliarPagamentosStripeRequest: {
+            /** Format: date-time */
+            desdeUtc: null | string;
+        };
+        ReconciliarPagamentosStripeResponse: {
+            /** Format: int32 */
+            totalEventos: number | string;
+            /** Format: int32 */
+            replayed: number | string;
+            /** Format: int32 */
+            jaConsistentes: number | string;
+            /** Format: int32 */
+            erros: number | string;
+            /** Format: date-time */
+            desdeUtc: string;
+        };
+        RegenerarRecoveryCodesResult: {
+            recoveryCodes: string[];
         };
         RegistrarAlunoRequest: {
-            email?: string | null;
-            senha?: string | null;
-            nome?: string | null;
+            email: string;
+            senha: string;
+            nome: string;
             /** Format: uuid */
-            treinadorId?: string;
+            treinadorId: string;
             /** Format: uuid */
-            pacoteId?: string;
-            telefone?: string | null;
+            pacoteId: string;
+            telefone?: null | string;
+            /** Format: int32 */
+            diasDisponiveis?: null | number | string;
+            /** Format: int32 */
+            tempoDisponivelMinutos?: null | number | string;
+            finalidade?: null | components["schemas"]["FinalidadeTreino"];
+            focoTreino?: null | string;
+            nivelCondicionamento?: null | components["schemas"]["NivelCondicionamento"];
+            limitacoesFisicas?: null | string;
+            doencas?: null | string;
+            observacoesAdicionais?: null | string;
+            /** @default false */
+            consentimentoDadosSaude: boolean;
+            /** Format: date-time */
+            consentimentoDadosSaudeEm?: null | string;
         };
         RegistrarExecucaoAlunoItemRequest: {
             /** Format: uuid */
-            treinoExercicioId?: string;
+            treinoExercicioId: string;
             /** Format: int32 */
-            seriesExecutadas?: number;
+            seriesExecutadas: number | string;
             /** Format: int32 */
-            repeticoesExecutadas?: number;
+            repeticoesExecutadas: number | string;
             /** Format: double */
-            cargaExecutada?: number | null;
-            observacao?: string | null;
+            cargaExecutada: null | number | string;
+            observacao: null | string;
         };
         RegistrarExecucaoAlunoRequest: {
             /** Format: uuid */
-            treinoId?: string;
+            treinoId: string;
             /** Format: date-time */
-            dataExecucao?: string;
-            observacao?: string | null;
-            exercicios?: components["schemas"]["RegistrarExecucaoAlunoItemRequest"][] | null;
-        };
-        RegistrarExecucaoItemRequest: {
-            /** Format: uuid */
-            treinoExercicioId?: string;
-            /** Format: int32 */
-            seriesExecutadas?: number;
-            /** Format: int32 */
-            repeticoesExecutadas?: number;
-            /** Format: double */
-            cargaExecutada?: number | null;
-            observacao?: string | null;
-        };
-        RegistrarExecucaoRequest: {
-            /** Format: uuid */
-            alunoId?: string;
-            /** Format: date-time */
-            dataExecucao?: string;
-            observacao?: string | null;
-            exercicios?: components["schemas"]["RegistrarExecucaoItemRequest"][] | null;
+            dataExecucao: string;
+            observacao: null | string;
+            exercicios: components["schemas"]["RegistrarExecucaoAlunoItemRequest"][];
         };
         RegistrarExecucaoResponse: {
             /** Format: uuid */
-            execucaoId?: string;
+            execucaoId: string;
             /** Format: uuid */
-            treinoId?: string;
+            treinoId: string;
             /** Format: uuid */
-            alunoId?: string;
+            alunoId: string;
             /** Format: date-time */
-            dataExecucao?: string;
-            observacao?: string | null;
+            dataExecucao: string;
+            observacao: null | string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
         RegistrarTreinadorRequest: {
-            email?: string | null;
-            senha?: string | null;
-            nome?: string | null;
-            telefone?: string | null;
+            email: string;
+            senha: string;
+            nome: string;
+            /** Format: uuid */
+            planoPlataformaId: string;
+            modoPagamentoAluno: components["schemas"]["ModoPagamentoAluno"];
+            telefone?: null | string;
+        };
+        RenovarSessaoResponse: {
+            token: string;
+            refreshToken: string;
+            tipoConta: components["schemas"]["TipoConta"];
+            /** Format: uuid */
+            contaId: string;
+            /** Format: uuid */
+            perfilId: string;
+            nome: string;
         };
         ReprovarTreinadorRequest: {
-            observacao?: string | null;
+            observacao?: null | string;
+        };
+        ResendVerificationRequest: {
+            email: string;
+        };
+        ResetPasswordRequest: {
+            token: string;
+            novaSenha: string;
+            codigoTotp?: null | string;
         };
         SerieConfigRequest: {
             /** Format: int32 */
-            quantidade?: number;
+            quantidade: number | string;
             /** Format: int32 */
-            repeticoesMin?: number;
+            repeticoesMin: number | string;
             /** Format: int32 */
-            repeticoesMax?: number | null;
-            descricao?: string | null;
+            repeticoesMax: null | number | string;
+            descricao: null | string;
             /** Format: double */
-            carga?: number | null;
+            carga: null | number | string;
             /** Format: int32 */
-            descanso?: number | null;
+            descanso: null | number | string;
         };
         SerieConfigResponse: {
             /** Format: uuid */
-            serieConfigId?: string;
+            serieConfigId: string;
             /** Format: int32 */
-            quantidade?: number;
+            quantidade: number | string;
             /** Format: int32 */
-            repeticoesMin?: number;
+            repeticoesMin: number | string;
             /** Format: int32 */
-            repeticoesMax?: number | null;
-            descricao?: string | null;
+            repeticoesMax: null | number | string;
+            descricao: null | string;
             /** Format: double */
-            carga?: number | null;
+            carga: null | number | string;
             /** Format: int32 */
-            descanso?: number | null;
+            descanso: null | number | string;
             /** Format: int32 */
-            ordem?: number;
+            ordem: number | string;
         };
         SolicitarTrocaTreinadorRequest: {
             /** Format: uuid */
-            novoTreinadorId?: string;
+            novoTreinadorId: string;
             /** Format: uuid */
-            pacoteId?: string;
+            pacoteId: string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        TempoDisponivel: 30 | 45 | 60 | 90 | 120;
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        TierPlano: 0 | 1 | 2 | 3 | 4;
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        TipoConta: 0 | 1 | 2;
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        TipoGrupoMuscular: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+        /** @enum {unknown} */
+        StatusSaude: "Ok" | "Degradado" | "Falha";
+        /** @enum {unknown} */
+        TempoDisponivel: "TrintaMinutos" | "QuarentaCincoMinutos" | "UmaHora" | "UmaHoraETrinta" | "DuasHoras" | null;
+        /** @enum {unknown} */
+        TierPlano: "Free" | "Basic" | "Pro" | "ProPlus" | "Elite";
+        /** @enum {unknown} */
+        TipoConta: "SystemAdmin" | "Treinador" | "Aluno";
+        /** @enum {unknown} */
+        TipoDocumentoFiscal: "Cpf" | "Cnpj";
+        /** @enum {unknown} */
+        TipoNotaFiscal: "AssinaturaSaaS" | "ComissaoMarketplace";
+        /** @enum {unknown} */
+        TipoTrocaPlano: "Upgrade" | "Downgrade" | "InadimplenteRegularizacao" | "UpgradeImediato";
         TreinadorResponse: {
             /** Format: uuid */
-            treinadorId?: string;
+            treinadorId: string;
             /** Format: uuid */
-            contaId?: string;
-            nome?: string | null;
-            status?: components["schemas"]["TreinadorStatus"];
+            contaId: string;
+            nome: string;
+            status: components["schemas"]["TreinadorStatus"];
             /** Format: uuid */
-            planoPlataformaId?: string | null;
+            planoPlataformaId: null | string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        TreinadorStatus: 0 | 1 | 2;
+        /** @enum {unknown} */
+        TreinadorStatus: "AguardandoAprovacao" | "Ativo" | "Inativo" | "AguardandoPagamento";
         TreinoAlunoResponse: {
             /** Format: uuid */
-            treinoAlunoId?: string;
+            treinoAlunoId: string;
             /** Format: uuid */
-            treinoId?: string;
-            nomeTreino?: string | null;
-            status?: string | null;
+            treinoId: string;
+            nomeTreino: string;
+            status: string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        TreinoAlunoStatus: 0 | 1;
+        /** @enum {unknown} */
+        TreinoAlunoStatus: "Ativo" | "Inativo";
         TreinoAlunoVinculado: {
             /** Format: uuid */
-            treinoAlunoId?: string;
+            treinoAlunoId: string;
             /** Format: uuid */
-            alunoId?: string;
-            nomeAluno?: string | null;
-            status?: components["schemas"]["TreinoAlunoStatus"];
+            alunoId: string;
+            nomeAluno: string;
+            status: components["schemas"]["TreinoAlunoStatus"];
         };
         TreinoExercicioResponse: {
             /** Format: uuid */
-            treinoExercicioId?: string;
+            treinoExercicioId: string;
             /** Format: uuid */
-            exercicioId?: string;
-            nomeExercicio?: string | null;
-            series?: components["schemas"]["SerieConfigResponse"][] | null;
+            exercicioId: string;
+            nomeExercicio: string;
+            series: components["schemas"]["SerieConfigResponse"][];
             /** Format: int32 */
-            ordem?: number;
-            observacao?: string | null;
-            comoExecutar?: string | null;
-            videoId?: string | null;
+            ordem: number | string;
+            observacao?: null | string;
+            comoExecutar?: null | string;
+            videoId?: null | string;
         };
         TreinoResponse: {
             /** Format: uuid */
-            treinoId?: string;
-            nome?: string | null;
-            objetivo?: components["schemas"]["ObjetivoTreino"];
-            dificuldade?: components["schemas"]["DificuldadeTreino"];
+            treinoId: string;
+            nome: string;
+            objetivo: components["schemas"]["ObjetivoTreino"];
+            dificuldade: components["schemas"]["DificuldadeTreino"];
             /** Format: date */
-            dataInicio?: string | null;
+            dataInicio: null | string;
             /** Format: date */
-            dataFim?: string | null;
+            dataFim: null | string;
             /** Format: uuid */
-            treinadorId?: string;
-            exercicios?: components["schemas"]["TreinoExercicioResponse"][] | null;
+            treinadorId: string;
+            exercicios: components["schemas"]["TreinoExercicioResponse"][];
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            updatedAt?: string | null;
-            nomeAluno?: string | null;
+            updatedAt: null | string;
+            nomeAluno?: null | string;
+        };
+        TrocarEmailRequest: {
+            novoEmail: string;
+        };
+        TrocarPlanoRequest: {
+            /** Format: uuid */
+            planoPlataformaId: string;
+            metodo?: components["schemas"]["MetodoPagamento"];
+        };
+        TrocarPlanoTreinadorResponse: {
+            tipo: components["schemas"]["TipoTrocaPlano"];
+            /** Format: uuid */
+            pagamentoId: null | string;
+            /** Format: double */
+            valorPagamento: null | number | string;
+            metodoPagamento: null | components["schemas"]["MetodoPagamento"];
+            pixQrCode: null | string;
+            pixQrCodeUrl: null | string;
+            /** Format: date-time */
+            pixExpiracao: null | string;
+            clientSecret: null | string;
+            /** Format: date-time */
+            dataEfetivacao: null | string;
         };
         ValidationProblemDetails: {
-            type?: string | null;
-            title?: string | null;
+            type?: null | string;
+            title?: null | string;
             /** Format: int32 */
-            status?: number | null;
-            detail?: string | null;
-            instance?: string | null;
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
             errors?: {
                 [key: string]: string[];
-            } | null;
-        } & {
-            [key: string]: unknown;
+            };
+        };
+        VerificarStepUpRequest: {
+            codigo: string;
+        };
+        VerificarStepUpResult: {
+            token: string;
+            /** Format: date-time */
+            expiraEm: string;
+        };
+        VerifyEmailRequest: {
+            token: string;
         };
         VincularFichaRequest: {
             /** Format: uuid */
-            alunoId?: string;
+            alunoId: string;
         };
         VinculoAlunoItemResponse: {
             /** Format: uuid */
-            vinculoId?: string;
+            vinculoId: string;
             /** Format: uuid */
-            treinadorId?: string;
-            nomeTreinador?: string | null;
-            status?: components["schemas"]["VinculoStatus"];
+            treinadorId: string;
+            nomeTreinador: string;
+            status: components["schemas"]["VinculoStatus"];
             /** Format: date-time */
-            dataInicio?: string | null;
+            dataInicio: null | string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
         VinculoDetalheResponse: {
             /** Format: uuid */
-            vinculoId?: string;
+            vinculoId: string;
             /** Format: uuid */
-            treinadorId?: string;
+            treinadorId: string;
             /** Format: uuid */
-            alunoId?: string;
+            alunoId: string;
             /** Format: uuid */
-            pacoteId?: string | null;
-            status?: components["schemas"]["VinculoStatus"];
-            nomeAluno?: string | null;
-            emailAluno?: string | null;
+            pacoteId: null | string;
+            status: components["schemas"]["VinculoStatus"];
+            nomeAluno: string;
+            emailAluno: null | string;
             /** Format: date-time */
-            createdAt?: string;
-            temVinculoAtivoPrevio?: boolean;
+            createdAt: string;
+            temVinculoAtivoPrevio: boolean;
         };
         VinculoResponse: {
             /** Format: uuid */
-            vinculoId?: string;
+            vinculoId: string;
             /** Format: uuid */
-            treinadorId?: string;
+            treinadorId: string;
             /** Format: uuid */
-            alunoId?: string;
+            alunoId: string;
             /** Format: uuid */
-            pacoteId?: string | null;
-            status?: components["schemas"]["VinculoStatus"];
+            pacoteId: null | string;
+            status: components["schemas"]["VinculoStatus"];
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
-        /**
-         * Format: int32
-         * @enum {integer}
-         */
-        VinculoStatus: 0 | 1 | 2;
+        /** @enum {unknown} */
+        VinculoStatus: "AguardandoAprovacao" | "Ativo" | "Inativo";
     };
     responses: never;
     parameters: never;
@@ -5453,6 +8458,53 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RefreshSessao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenovarSessaoResponse"];
                 };
             };
             /** @description Unauthorized */
