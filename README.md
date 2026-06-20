@@ -60,7 +60,7 @@ forzion.tech/
 ├── forzion.tech.PactVerification/ # Pact provider verification (contrato consumer↔provider)
 ├── frontend/                  # Next.js 16 — ver frontend/README.md
 ├── nginx/                     # nginx.conf + nginx-init.conf (HTTPS + proxy)
-├── scripts/                   # setup-vm.sh, init-ssl.sh, gen-swagger.sh
+├── scripts/                   # setup-vm.sh, init-ssl.sh, gen-openapi.sh
 ├── docker-compose.yml         # Stack local (Postgres local + backend + frontend)
 ├── docker-compose.homolog.yml # Stack de homologação (build-on-VM; deploy ativo)
 ├── docker-compose.server.yml  # Stack por imagem de registry (preparada, não-ativa)
@@ -71,10 +71,10 @@ forzion.tech/
 │   │                          # infrastructure, git, lgpd, tests, stripe, security,
 │   │                          # observability, seo, local-ci-repro
 └── docs/                      # Documentação (gitignored, exceto docs/api/)
-    └── api/swagger.v1.json    # Contrato OpenAPI versionado (baseline do gate openapi-drift)
+    └── api/openapi.v1.json    # Contrato OpenAPI versionado (baseline do gate openapi-drift)
 ```
 
-> `docs/` (planos, notas de design gerados por agente) é ignorado pelo git via `.gitignore`, **exceto** `docs/api/` — o `swagger.v1.json` ali é o baseline do check de drift de contrato no CI.
+> `docs/` (planos, notas de design gerados por agente) é ignorado pelo git via `.gitignore`, **exceto** `docs/api/` — o `openapi.v1.json` ali é o baseline do check de drift de contrato no CI.
 
 ---
 
@@ -969,7 +969,7 @@ E2E/                     → pipeline real: WebApplicationFactory + Postgres rea
 
 **Split unit vs integração**: testes que precisam de Docker (Testcontainers) são marcados `[Trait("Category","Integration")]`. O CI roda dois jobs: `test-backend-unit` (`--filter "Category!=Integration"`, sem Docker, rápido) e `test-backend-integration` (suíte completa com Docker). Gates de cobertura: Domain/Application branch 75 + line/method 85 e Api line 85/method 70 no job unit; global 50 + Infra 35 no job de integração.
 
-**Outras fases do harness em CI**: mutation testing (Stryker), endurecimento de cobertura (line/method + ReportGenerator), drift de contrato OpenAPI (`docs/api/swagger.v1.json`), supply-chain NuGet (vuln + SBOM + Renovate), pre-commit backend, Pact provider verification.
+**Outras fases do harness em CI**: mutation testing (Stryker), endurecimento de cobertura (line/method + ReportGenerator), drift de contrato OpenAPI (`docs/api/openapi.v1.json`), supply-chain NuGet (vuln + SBOM + Renovate), pre-commit backend, Pact provider verification.
 
 Comandos úteis:
 

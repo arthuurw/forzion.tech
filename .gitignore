@@ -69,7 +69,7 @@ nunit-*.xml
 /.vs
 
 # Artefatos de agente/IA e docs gerados — não versionar.
-# docs/api/ é exceção: swagger.v1.json é baseline do gate OpenAPI drift (CI).
+# docs/api/ é exceção: openapi.v1.json é baseline do gate OpenAPI drift (CI).
 /.claude/
 /.specs/
 /docs/*

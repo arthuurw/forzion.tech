@@ -1,11 +1,11 @@
 name: OpenAPI drift (backend)
 
-# Detecta drift do contrato OpenAPI: regenera o swagger v1 a partir da app
-# compilada (offline, sem subir Kestrel/DB — ver scripts/gen-swagger.sh) e
-# compara com o arquivo versionado em docs/api/swagger.v1.json.
+# Detecta drift do contrato OpenAPI: regenera o spec v1 a partir da app
+# compilada (offline, sem subir Kestrel/DB — ver scripts/gen-openapi.sh) e
+# compara com o arquivo versionado em docs/api/openapi.v1.json.
 #
 # Drift é o sinal desejado: ao mudar a API, regenere conscientemente com
-# `bash scripts/gen-swagger.sh` e commite. Espelha o `openapi:check` do frontend.
+# `bash scripts/gen-openapi.sh` e commite. Espelha o `openapi:check` do frontend.
 # So em pull_request -> homolog: o drift e sinal de revisao pre-merge. NAO em
 # push (merge ~= head do PR, repo solo) nem na branch `backend` (trigger morto)
 # — re-rodar so queimaria minutos e nao gateia o deploy do ci.yml.
@@ -38,15 +38,15 @@ jobs:
       - name: Build (Release)
         run: dotnet build --no-restore -c Release
 
-      - name: Regenera swagger v1
-        run: bash scripts/gen-swagger.sh docs/api/swagger.v1.json
+      - name: Regenera spec v1
+        run: bash scripts/gen-openapi.sh docs/api/openapi.v1.json
 
       # Falha se o spec regenerado divergir do versionado (drift não coordenado).
       - name: Verifica drift do contrato
         run: |
-          if ! git diff --exit-code --stat -- docs/api/swagger.v1.json; then
-            echo "::error::Drift no contrato OpenAPI. Rode 'bash scripts/gen-swagger.sh' e commite docs/api/swagger.v1.json."
-            git diff -- docs/api/swagger.v1.json | head -200
+          if ! git diff --exit-code --stat -- docs/api/openapi.v1.json; then
+            echo "::error::Drift no contrato OpenAPI. Rode 'bash scripts/gen-openapi.sh' e commite docs/api/openapi.v1.json."
+            git diff -- docs/api/openapi.v1.json | head -200
             exit 1
           fi
           echo "Contrato OpenAPI sincronizado."
@@ -55,6 +55,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: openapi-swagger-v1
-          path: docs/api/swagger.v1.json
+          name: openapi-v1
+          path: docs/api/openapi.v1.json
           if-no-files-found: warn
