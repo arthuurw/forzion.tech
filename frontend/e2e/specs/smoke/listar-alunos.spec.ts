@@ -14,9 +14,6 @@ test.describe("smoke @smoke", () => {
     await expect(alunos.heading).toBeVisible();
     await expect(alunos.nomeFilter).toBeVisible();
 
-    // Espera a lista assentar: linha OU empty state. Sem o .or() o teste
-    // amostraria rows.count() durante o spinner de loading (0) e cairia no
-    // ramo errado quando há alunos que ainda estavam carregando.
     await expect(alunos.rows.first().or(alunos.emptyState)).toBeVisible();
   });
 });

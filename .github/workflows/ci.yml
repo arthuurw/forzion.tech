@@ -100,8 +100,6 @@ jobs:
       - name: Format — verifica estilo (.editorconfig)
         run: dotnet format forzion.tech.slnx --verify-no-changes --no-restore
 
-      # Exclui a classe gerada pelo source-gen do OpenAPI nativo (não-testável),
-      # além de Migrations/Program.
       - name: Test + cobertura (1x)
         run: >
           dotnet test forzion.tech.Tests --no-build -c Release

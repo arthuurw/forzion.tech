@@ -81,9 +81,6 @@ export const test = base.extend<{
 
 export { expect };
 
-// storageState resolvido lazy pelo Playwright em runtime — o arquivo é gerado
-// pelo project "setup" (dependency), que roda depois da coleta dos specs. Checar
-// existência aqui (tempo de coleta) abortava o run inteiro num checkout limpo.
 export function useAuthRole(t: typeof test, role: AuthRole): void {
   t.use({ storageState: authStatePath(role) });
 }
