@@ -33,6 +33,7 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 | hygiene | `npm run deadcode` (madge, bloqueante) ; `npm run knip` (report-only) | ✅ | — |
 | contract (Pact consumer) | `npm run test:contract` | ✅ | gera contratos local; publicar no broker precisa secrets. |
 | **E2E Playwright (a11y/color-contrast hard-gate)** | ver §4 | ⚠️ parcial | precisa app no ar + browsers + creds. Público+admin OK local; aluno/treinador bloqueados (§4). |
+| sweep test-data (step do `smoke.yml`, NÃO-gate) | `E2E_BASE_URL=… E2E_ADMIN_EMAIL=… E2E_ADMIN_PASSWORD=… npm run e2e:sweep` | ✅ | non-gate. Precisa base com endpoint test-data (non-prod, [specification-security] §2.2) + creds admin. Fail-loud (exit 1) em env ausente OU DELETE !ok. Whitelist: `E2E_{ALUNO,TREINADOR,RESET}_EMAIL` (opcionais). NÃO apontar p/ base de produção (rota ausente lá → 404). |
 
 ## 2. GOTCHAS DE AMBIENTE (Windows/Docker/git-bash)
 - **CRLF / SonarAnalyzer warnings**: ver [specification-git] §EDGE CASES e §PRE-COMMIT HOOK — documentação completa está lá (ENDOFLINE, S3267, sequência fix).
