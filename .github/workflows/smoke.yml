@@ -8,6 +8,11 @@ on:
     types: [completed]
     branches: [homolog]
   workflow_dispatch:
+    inputs:
+      only_setup:
+        description: "Roda só o project setup (valida login + geração de storage state)"
+        type: boolean
+        default: false
 
 jobs:
   smoke:
@@ -37,7 +42,7 @@ jobs:
         run: npm run e2e:install
 
       - name: Smoke
-        run: npm run e2e:smoke
+        run: ${{ inputs.only_setup && 'npx playwright test --project=setup' || 'npm run e2e:smoke' }}
         env:
           E2E_BASE_URL: ${{ vars.HOMOLOG_BASE_URL }}
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
