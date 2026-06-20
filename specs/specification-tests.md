@@ -36,7 +36,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - **Integração/E2E** (Docker): `[Trait("Category","Integration")]` — `E2E/RealPipelineFixture` (WebApplicationFactory + Postgres efêmero + migrate+seed, handlers/infra REAIS, `FakeStripeService`), `Infrastructure/InfrastructureTestFixture` (repos contra PG real), `[Collection(E2ECollection)]`/`[Collection(InfrastructureTestCollection)]`.
 - **Property** (cobertura de invariantes), **arch** (regras de camada), **snapshot**, **mutation** (Stryker).
 ### Frontend
-- **vitest projects** (`vitest.config.mts`): `unit` (node — `src/lib/**`, `src/hooks/**`, `src/middleware`), `integration` (jsdom — `src/components/**`, `src/app/**/__tests__`, libs que tocam DOM, MSW), `api` (node — `src/app/api/**` route handlers).
+- **vitest projects** (`vitest.config.mts`): `unit` (node — `src/lib/**`, `src/hooks/**`, `src/proxy`), `integration` (jsdom — `src/components/**`, `src/app/**/__tests__`, libs que tocam DOM, MSW), `api` (node — `src/app/api/**` route handlers).
 - **property** (`*.property.test.ts`, fast-check — excluídos da cobertura), **contract** (Pact consumer, `npm run test:contract`), **E2E Playwright** (`e2e/specs/`: smoke/critical/security/lgpd/multi-tab/network/a11y/visual; 5 projects browser+mobile; `auth.setup` gera storage-state por papel; snapshots por-OS `*-{platform}.png`), **storybook** (+ a11y addon).
 
 ## 4. CONTAGEM / RASTREIO (baseline 2026-06-06; unit reconferido 2026-06-12)

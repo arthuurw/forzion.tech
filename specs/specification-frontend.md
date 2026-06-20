@@ -64,7 +64,7 @@ src/
     theme/             — ThemeRegistry.tsx, index.ts (MUI theme)
     utils/             — formatting.ts, excel.ts
     validations/       — common.ts (schemas Zod)
-  middleware.ts        — RBAC redirect (Next.js middleware)
+  proxy.ts             — RBAC redirect (Next.js proxy; ex-middleware, runtime nodejs)
   styles/globals.css
   test/                — infraestrutura de testes (MSW, factories, setup, pact)
   types/index.ts       — tipos de domínio compartilhados
@@ -95,7 +95,8 @@ html[lang=pt-BR]
 | `(aluno)` | `/aluno/*` | AppLayout | Aluno |
 | raiz | `/`, `/perfil` | root layout | livre/all |
 
-## MIDDLEWARE (`src/middleware.ts`)
+## PROXY (`src/proxy.ts`)
+Convenção `middleware.ts` foi deprecada no Next 16 → arquivo é `proxy.ts`, export nomeado `proxy`; runtime é `nodejs` (proxy NÃO suporta edge). Guard usa `jose`/`NextResponse` (agnóstico de runtime); `config.matcher` inalterado.
 Executa em todas as rotas exceto `_next/static`, `_next/image`, `favicon.ico`, `api/`. Verifica `token` + `session_guard` via `jwtVerify` (assinatura+`exp` autoritativos). Lê também `refresh` (httpOnly) e o hint `tipo_conta` (NÃO-httpOnly, R-FE — só roteamento; backend autoritativo via jti/policies). `tipoConta` efetivo = verificado ?? hint (quando há refresh).
 
 Lógica de redirect:
@@ -310,7 +311,7 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 
 | Project | Env | Pool | Setup | Include |
 |---------|-----|------|-------|---------|
-| `unit` | node | threads | `src/test/setup/unit.ts` | `src/lib/**/*.test.ts`, `src/lib/**/*.property.test.ts`, `src/hooks/**/*.test.ts`, `src/hooks/**/*.property.test.ts`, `src/middleware.test.ts`, `src/middleware.signature.test.ts` (exclui: hooks RTL/DOM e excel/downloadBlob/admin.msw/auth-context que rodam em `integration`) |
+| `unit` | node | threads | `src/test/setup/unit.ts` | `src/lib/**/*.test.ts`, `src/lib/**/*.property.test.ts`, `src/hooks/**/*.test.ts`, `src/hooks/**/*.property.test.ts`, `src/proxy.test.ts`, `src/proxy.signature.test.ts` (exclui: hooks RTL/DOM e excel/downloadBlob/admin.msw/auth-context que rodam em `integration`) |
 | `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/components/**/__tests__/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/utils/downloadBlob.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts`, hooks RTL: `useInactivity`, `useConsent`, `usePaginatedList`, `useCRUDDialog`, `useCursorList`, `useExecucaoDraft`, `useExecucaoRetryQueue` |
 | `api` | node | threads | `src/test/setup/api.ts` | `src/app/api/**/*.test.ts` |
 
@@ -379,8 +380,8 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 - npm override `"@pact-foundation/pact": { "https-proxy-agent": "^7.0.6" }`: pact v16 bundla `https-proxy-agent@9` (ESM puro); override força CJS-compatível. NÃO remover ao atualizar pact.
 - jsdom mantido em `^26` (não `^27`): jsdom 27 tem dep `@csstools/css-calc` ESM-only que quebra vitest pool `forks` (Node 20 sem `--experimental-require-module`).
 - `SBOM` usa `--ignore-npm-errors` para tolerar `typescript@6 invalid` (peer dep madge) e pacotes `@emnapi/*`/`@napi-rs/*` extraneous (deps opcionais NAPI-RS do pact v16).
-- AppLayout-logout-antes-de-redirect (evita loop com middleware): ver §APPLAYOUT.
-- Middleware NÃO interceta `/api/*`; auth das API routes é dos próprios Route Handlers: ver §MIDDLEWARE.
+- AppLayout-logout-antes-de-redirect (evita loop com o proxy): ver §APPLAYOUT.
+- Proxy NÃO interceta `/api/*`; auth das API routes é dos próprios Route Handlers: ver §PROXY.
 - `API_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL` (server vs client, proxy `/api/backend` em prod): ver §ENV + §API PROXY.
 - Rate limit é em memória por processo; em deploy multi-instância (horizontal) não é compartilhado — aceitável para homolog/prod single-instance.
 - **Asset `/public` trocado in-place serve versão velha (CANÔNICO)**: sobrescrever um arquivo em `public/` mantendo o MESMO path → URL idêntica não invalida por conteúdo. Stale em 3 camadas: cache do browser, otimizador `next/image` (`/_next/image`, in-memory no dev + `.next/cache/images`), e em prod/homolog o `Cache-Control` longo+`immutable` do nginx/CDN (assets `/public` via `src` string NÃO são content-hashed pelo Next — só imports estáticos são). Reload ou trocar o arquivo NÃO basta; no dev exige `rm -rf .next && restart`. Fix durável quando precisar de asset binário: versionar o NOME (`x-v2.webp`) ao mudar conteúdo. **A landing evita o problema de raiz**: a seção "Como funciona" (`_landing/HowItWorks.tsx`) usa mockups SVG inline (`_landing/StepMockup.tsx`, `variant: ficha|alunos|historico`), não screenshot real — vetorial, sempre nítido/cheio, sem asset em `/public` nem cache stale.
