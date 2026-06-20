@@ -26,6 +26,8 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 - Server `pact.homologacao.forzion.tech:443` → `pact-broker:9292` (usa cert do domínio principal até `certbot --expand`).
 - **X-Robots-Tag (homolog)**: server block `homologacao.forzion.tech:443` injeta `add_header X-Robots-Tag "noindex, nofollow" always;` — homolog é host público; evita indexação por buscadores. NÃO replicar no server de produção (forzion.tech, futuro). Defesa em profundidade com `robots.ts` env-gated no frontend. Ver [specification-security] §3 / [specification-seo] §4.1.
 
+- **access_log em arquivo + fail2ban (edge brute-force)**: nginx loga acesso em `/var/log/nginx/access.log` (combined), exposto no host via bind-mount `/var/log/forzion-nginx:/var/log/nginx` (`docker-compose.homolog.yml`) — stdout do container (json-file) NÃO serve pro fail2ban tailar. `scripts/setup-vm.sh` instala fail2ban e copia `infra/fail2ban/{filter.d/forzion-nginx-auth.conf,jail.d/forzion.local}`. Jail `forzion-nginx-auth`: 401/429 em `/api/auth*` + 429 em `/api/backend/*` → ban iptables. Limiar conservador (maxretry 12 / findtime 10m / bantime 1h) por NAT corporativo. Mecânica/rationale em [specification-security] §4. **Ban não testado em runtime — validar na VM (`fail2ban-client status forzion-nginx-auth`).**
+
 ## SSL (Let's Encrypt / certbot)
 - Bootstrap UMA VEZ: `scripts/init-ssl.sh <dominio> <email>` — sobe `nginx-init.conf` (HTTP-only p/ desafio ACME) → `certbot certonly --webroot` → `sed DOMAIN_PLACEHOLDER` no `nginx.conf` → `up -d` stack.
 - Renovação: container `certbot` em loop (`certbot renew` a cada 12h). Volumes: `certbot/conf` (certs), `certbot/www` (webroot ACME).

@@ -66,7 +66,8 @@ Duas camadas (frontend pré-auth + backend autoritativo).
 - **Frontend** (`frontend/src/lib/rateLimit.ts`) — guarda só o proxy `/api/auth/*`. `Map` in-memory per-process, **10 req / 60s**, bounded em `MAX_ENTRIES=10_000` com eviction (`pruneExpired`). `getClientIp`: `X-Real-IP` (nginx injeta) → primeiro hop de `X-Forwarded-For`; NUNCA último hop (spoofable). LIMITAÇÃO documentada: single-instance — com N réplicas o cap efetivo vira `10×N`; sem store compartilhada (Redis). Backend é a defesa autoritativa.
 - **Reuse de refresh ⇒ sinal de alerta**: `/auth/refresh` reapresentado com um refresh já usado (token roubado/replay) ⇒ `RevogarFamilia(ReuseDetectado)` + `LogWarning` (`RefreshTokenService`). É o ÚNICO sinal de alerta de credencial ativo hoje — fecha parcialmente o gap abaixo p/ o vetor de refresh roubado (falha do refresh é sempre 401 genérico p/ não vazar a causa — §2).
 - **MFA / step-up** — verificação do 2º fator (`/auth/mfa/*`, `/auth/step-up/*`) usa `.RequireRateLimiting("mfa")` = **5/min por CONTA** (sub-keyed, `KeyFromIpOrSub`): o token pendente/step-up já carrega `sub`, então o cap é por-conta e **imune a rotação de IP** (fecha brute-force do TOTP de 6 dígitos — IP-only deixava o atacante girar IP por bucket novo). `/conta/mfa/*` segue `"auth"` (10/min IP — inclui `status` GET de polling; enroll-confirm é da própria conta, disable/regenerar já têm step-up). **Lockout** por defesa em profundidade no domínio: e-mail OTP com cap de **5 tentativas** (`MfaChallenge.MaximoTentativas`, `Bloqueado`), recovery code **single-use** (`usado_em`), TOTP anti-replay (`ultimo_time_step`). Desafios/dispositivos expirados são purgados de hora em hora (`LimparTokensRevogadosService`, GC — `ExecuteDelete`).
-- **GAP**: brute-force **monitoring/alerting ausente** (.specs/codebase/CONCERNS.md High). Rate-limit bloqueia (429) mas não há detecção/alerta de tentativas repetidas de login; `/internal/*` exposto público sem WAF amplifica (§8).
+- **Sinal estruturado de rejeição** (`OnRejected` do RateLimiter, políticas `auth`/`mfa`): `LogWarning` estruturado com IP/política/rota em 429 — SEM PII (sem e-mail/senha). Consumível por alerta (Sentry/sink). Base para detecção de brute-force no app.
+- **fail2ban no edge** (`infra/fail2ban/`, instalado por `setup-vm.sh`): jail `forzion-nginx-auth` casa 401/429 em `/api/auth*` e 429 em `/api/backend/*` no `access_log` do nginx (formato combined; nginx é a borda ⇒ IP real) e bane via iptables. Limiar **conservador** (maxretry 12 / findtime 10m / bantime 1h) por causa de NAT corporativo (1 IP, vários usuários legítimos). nginx loga em ARQUIVO (`access_log /var/log/nginx/access.log`, bind-mount `/var/log/forzion-nginx`) — stdout do container não serve pro fail2ban tailar. **Ban não testado em runtime** (validar na VM).
 
 ## 5. GESTÃO DE SEGREDOS
 Cross-ref [specification-infrastructure] (ENV/SECRETS, `.env` na VM). Por ambiente:
@@ -88,15 +89,20 @@ Cross-ref [specification-infrastructure] (ENV/SECRETS, `.env` na VM). Por ambien
 ### SAST — Semgrep (`.github/workflows/semgrep.yml`)
 `semgrep scan --config p/default --error --metrics=off`. **BLOQUEANTE** (`--error` falha o job em finding). Triggers: PR→`homolog` + `workflow_dispatch` (sem schedule — removido; não dispara fora da branch default). Escopo via `.semgrepignore` (nginx/infra/fixtures fora). Substitui CodeQL (que exigia GHAS em repo privado).
 
-### DAST — OWASP ZAP (`zap.yaml` + `.github/workflows/zap.yml`) — MAIOR GAP
-Automation Framework (`zap.yaml`):
-- **Contexto** `forzion-homolog` → `https://homologacao.forzion.tech/`; includePaths `https://homologacao.forzion.tech/.*`.
-- **excludePaths**: imagens/fonts (`.png/.jpg/.svg/.woff2?`) e **`.*/api/auth$`** (não bombardear rate-limit + auth real).
-- **authentication: method `manual`** — ZAP NÃO autentica: cobre só superfície anônima.
-- **6 jobs**: `passiveScan-config` (maxAlertsPerRule 10, scanOnlyInScope), `spider` (maxDuration 5, maxDepth 5), `passiveScan-wait` (maxDuration 10), `report` (traditional-html, risks high/medium/low), `alertFilter`. `failOnError: true` / `failOnWarning: false`.
-- **false-positives** (`alertFilter`): rule **10020** (X-Frame-Options — já DENY via Next) e **10055** (CSP unsafe-inline — exigido por Next hydration + Emotion) marcados `false-positive`.
-- Workflow (`zap.yml`): `workflow_dispatch` (input `mode`: baseline|full) + schedule **sexta 02:00 UTC** (`0 2 * * 5`). baseline = passivo rápido (`action-baseline@v0.14.0`); full = active rules SQLi/XSS/path-traversal/CMDi (`action-full-scan@v0.10.0`, ~30 min). Target via input ou `vars.HOMOLOG_BASE_URL`.
-- ⚠️ **`allow_issue_writing: false`** (ambos os modos) ⇒ **REPORT-ONLY, NÃO BLOQUEIA** o merge/deploy nem abre issues. ZAP é manual/agendado, fora do gate de CI (§8).
+### DAST — OWASP ZAP (duas camadas: baseline efêmero bloqueante + full autenticado agendado)
+**(1) Baseline efêmero — BLOQUEANTE no PR (`ci.yml` job `zap-baseline`, em `needs` do `gate`)**
+- Sobe SÓ a imagem `frontend` standalone (sem backend/DB) e roda `zap-baseline.py` (passivo) contra `http://localhost:3001`. Passivo inspeciona headers/cookies/CSP da resposta — não precisa de backend vivo.
+- Os security headers vêm do `next.config` (`headers()` em `/(.*)`): X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, **HSTS** e CSP. Remover um num PR gera alerta novo ⇒ **reprova o gate**.
+- **FPs conhecidos** em `.zap/baseline.conf` (IGNORE): **10020** (X-Frame-Options — já DENY) e **10055** (CSP unsafe-inline — exigido por Next hydration + Emotion). Sem `-I`: qualquer alerta novo fora desses reprova.
+- Cobertura: headers de APP (next.config). Headers de **borda** (nginx, ex. HSTS no edge) NÃO entram aqui (não há nginx no stack efêmero) — ficam pro full autenticado contra homolog.
+- PR-only, path-filter `frontend`/`ci`.
+
+**(2) Full autenticado — agendado/manual (`zap.yaml` AF + `.github/workflows/zap.yml`)**
+- **Contexto** `forzion-homolog` → `https://homologacao.forzion.tech/`.
+- **authentication: method `json`** — login `POST /api/auth` `{email,senha}`; verificação `poll` em `/api/auth/me` (responde 200 SEMPRE, corpo `null` deslogado → regex `"contaId"` vs `^null$`); `sessionManagement: cookie` (httpOnly transparente no plano HTTP). Credenciais via env `${ZAP_AUTH_USER}`/`${ZAP_AUTH_PASSWORD}` (secrets) — **conta DEDICADA de teste**, nunca real.
+- **excludePaths**: imagens/fonts + rotas que **mutam/encerram estado** (logout, reset/forgot/verify/resend, register/*, mfa/*, exclusao/lgpd/pagamento/checkout/stripe no `/api/backend`) — active scan injeta payload; não corromper conta nem disparar e-mail/cobrança.
+- **jobs**: `passiveScan-config`, `spider` (user zap-test), `passiveScan-wait`, **`activeScan`** (user zap-test, maxScanDurationInMins 30, delayInMs 100, handleAntiCSRFTokens) — SQLi/XSS/path-traversal/CMDi pós-login, `report`, `alertFilter` (10020/10055 FP).
+- Workflow `zap.yml`: `mode=baseline` (passivo anônimo, `action-baseline@v0.14.0`) ou `mode=full` (roda o AF plan `zap.yaml` via `docker run ghcr.io/zaproxy/zaproxy:stable zap.sh -autorun`, exige secrets de auth). Schedule **sexta 02:00 UTC**. Relatório como artifact.
 
 ### Dependency / secret scanning (`.github/workflows/ci.yml`)
 | Ferramenta | Job | Bloqueante? | Notas |
@@ -109,7 +115,7 @@ Automation Framework (`zap.yaml`):
 | NuGet `--vulnerable` | `security-backend` | SIM | gate manual: grep do header (cmd sai 0); direto + transitivo |
 | SBOM CycloneDX (.NET) | `security-backend` | artifact | tool pinada 6.2.0 |
 
-`security` + `security-backend` são `needs` do job `gate` (required check) ⇒ todos os gates bloqueantes acima travam o PR. ZAP NÃO está em `gate`.
+`security` + `security-backend` + `zap-baseline` são `needs` do job `gate` (required check) ⇒ travam o PR. O ZAP **baseline** está no `gate`; o ZAP **full autenticado** é agendado/manual (fora do gate, pelo custo ~30 min).
 
 ## 7. WEBHOOK SIGNING
 Todos os webhooks: `AllowAnonymous` + rate `webhook` (300/min IP) + body cap **64 KB** (`LimitedStream` em `WebhookEndpoints.cs` — DoS guard, `InvalidDataException`→400). Roteados direto ao backend pelo nginx (`/webhooks/`) p/ preservar headers crus.
@@ -123,9 +129,8 @@ Todos os webhooks: `AllowAnonymous` + rate `webhook` (300/min IP) + body cap **6
 | WhatsApp GET handshake | `hub.verify_token` (query) | constant-time vs `WhatsApp:WebhookVerifyToken` | — |
 
 ## 8. GAPS CONHECIDOS / NÃO-ENFORÇADO
-- **ZAP report-only**: `allow_issue_writing:false`, fora do `gate` → não bloqueia merge/deploy. Findings DAST exigem triagem manual. MAIOR gap de enforcement.
-- **DAST não testa endpoints autenticados**: `zap.yaml` auth `manual` + exclude `/api/auth` ⇒ toda a superfície pós-login fica fora da varredura ativa.
-- **Brute-force monitoring ausente** (CONCERNS High): rate-limit bloqueia mas sem alerta/detecção; sem fail2ban/WAF no edge.
+- **ZAP full autenticado é agendado/manual** (não no `gate`, pelo custo ~30 min): findings do active scan exigem triagem manual. O baseline passivo JÁ bloqueia o PR (§6). Resíduo: regressão pós-login só pega no schedule semanal, não no PR.
+- **fail2ban: ban não testado em runtime** (entrega = config versionada + setup-vm). Validar ban→unban na VM antes de confiar (§4).
 - **`/internal/*` público sem WAF/firewall** (CONCERNS High): exposto via HTTPS com X-Internal-Key. Constant-time OK, mas sem camada extra; brute-force da key não monitorado.
 - **Sentry wiring incompleto** (CONCERNS Medium): `@sentry/nextjs` instalado, gate por consentimento de cookie ([specification-lgpd]); erros prod podem cair em buracos.
 - **Branch protection do repo**: push direto a `homolog`/`master` proibido por convenção (CONCERNS:37) mas enforcement de branch protection é responsabilidade de config do repo — REFERENCIAR [specification-infrastructure]; `--no-verify` NUNCA (hooks locais, não server-side).
