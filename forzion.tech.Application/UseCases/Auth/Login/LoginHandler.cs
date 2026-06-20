@@ -23,6 +23,7 @@ public class LoginHandler(
 {
     private static readonly TimeSpan ValidadePendente = TimeSpan.FromMinutes(5);
 
+    // nosemgrep: generic.secrets.security.detected-bcrypt-hash.detected-bcrypt-hash -- dummy fixo p/ Verify em tempo constante quando a conta nao existe (anti-enumeracao por timing), nao e segredo
     private const string DummyHash = "$2b$12$dS9gNbdvAsTsWl5Yvp3y9OBLp.XVv2HakNs0S32YhNpTf7KOI46y6";
 
     public virtual Task<LoginResponse> HandleAsync(
