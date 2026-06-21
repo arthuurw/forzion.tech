@@ -44,7 +44,7 @@ jobs:
             set -eu
             cd /opt/forzion/app
             EF=/opt/forzion/.env
-            DC="docker compose -f docker-compose.homolog.yml --env-file $EF"
+            DC="docker compose -f ${{ vars.COMPOSE_FILE || 'docker-compose.homolog.yml' }} --env-file $EF"
             KEY="$(grep -E '^INTERNAL_API_KEY=' "$EF" | head -1 | cut -d= -f2-)"
             if [ -n "${DESDE_UTC:-}" ]; then BODY="{\"desdeUtc\":\"$DESDE_UTC\"}"; else BODY="{}"; fi
             $DC exec -T backend curl -fsS -X POST \
