@@ -202,7 +202,7 @@ describe("PlanoTreinadorPage", () => {
     expect(screen.queryByText(/Erro ao carregar/i)).not.toBeInTheDocument();
   });
 
-  it("falha só na assinatura degrada para a lista de planos sem erro", async () => {
+  it("falha só na assinatura exibe erro e ainda lista planos (degradação parcial)", async () => {
     server.use(
       http.get("*/treinador/plano/assinatura", () => HttpResponse.error()),
       http.get("*/auth/planos", () => HttpResponse.json([PLANO_BASIC, PLANO_PRO])),
@@ -211,8 +211,8 @@ describe("PlanoTreinadorPage", () => {
     render(<Page />);
 
     await waitFor(() => {
-      expect(screen.getByText("Basic")).toBeInTheDocument();
+      expect(screen.getByText(/Erro ao carregar/i)).toBeInTheDocument();
     });
-    expect(screen.queryByText(/Erro ao carregar/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Basic")).toBeInTheDocument();
   });
 });

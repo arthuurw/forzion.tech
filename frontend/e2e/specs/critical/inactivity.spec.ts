@@ -20,7 +20,6 @@ test.describe("inactivity timeout", () => {
     await page.goto("/admin");
     await page.waitForLoadState("domcontentloaded");
 
-    // Avanca Date.now em +25min e dispara interval manual.
     await page.evaluate(() => {
       const originalNow = Date.now.bind(Date);
       const start = originalNow();

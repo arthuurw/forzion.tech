@@ -4,7 +4,7 @@ import { useInactivity } from "@/hooks/useInactivity";
 
 const TIMEOUT_MS = 30 * 60 * 1000;
 const WARN_LEAD_MS = 5 * 60 * 1000;
-const WARN_AT = TIMEOUT_MS - WARN_LEAD_MS; // 25 min
+const WARN_AT = TIMEOUT_MS - WARN_LEAD_MS;
 const CHECK_MS = 20 * 1000;
 
 describe("useInactivity", () => {

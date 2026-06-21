@@ -22,19 +22,21 @@ async function login(ctx: APIRequestContext, email: string, senha: string): Prom
 }
 
 async function main(): Promise<void> {
+  const runStart = new Date();
+
   const baseURL = requireEnv("E2E_BASE_URL");
   const adminEmail = requireEnv("E2E_ADMIN_EMAIL");
   const adminPassword = requireEnv("E2E_ADMIN_PASSWORD");
+  const alunoEmail = requireEnv("E2E_ALUNO_EMAIL");
+  const treinadorEmail = requireEnv("E2E_TREINADOR_EMAIL");
 
   const whitelist = new Set(
     [
       adminEmail,
-      process.env.E2E_ALUNO_EMAIL,
-      process.env.E2E_TREINADOR_EMAIL,
+      alunoEmail,
+      treinadorEmail,
       process.env.E2E_RESET_EMAIL ?? "user-reset@e2e.test",
-    ]
-      .filter((email): email is string => !!email)
-      .map((email) => email.toLowerCase()),
+    ].map((email) => email.toLowerCase()),
   );
 
   const ctx = await request.newContext({ baseURL });
@@ -47,7 +49,11 @@ async function main(): Promise<void> {
     }
 
     const contas = (await listResponse.json()) as TestConta[];
-    const alvos = contas.filter((conta) => !whitelist.has(conta.email.toLowerCase()));
+    const alvos = contas.filter((conta) => {
+      if (whitelist.has(conta.email.toLowerCase())) return false;
+      if (conta.criadaEm !== undefined && new Date(conta.criadaEm) >= runStart) return false;
+      return true;
+    });
     console.log(`test-data: ${contas.length} conta(s), ${alvos.length} fora da whitelist`);
 
     const falhas: string[] = [];

@@ -64,6 +64,8 @@ export default function PlanoTreinadorPage() {
     ]);
     if (aRes.status === "fulfilled") {
       setAssinatura(aRes.value.data);
+    } else {
+      setErro("Erro ao carregar informações do plano.");
     }
     if (pRes.status === "fulfilled") {
       setPlanos(pRes.value.data.filter((p) => p.tier !== "Elite" && p.isAtivo));
