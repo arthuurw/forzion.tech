@@ -14,4 +14,5 @@ public interface IAssinaturaAlunoRepository
     Task<IReadOnlyList<AssinaturaAluno>> ListarNaoCanceladasPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task AdicionarAsync(AssinaturaAluno assinatura, CancellationToken cancellationToken = default);
     Task<int> ContarPorStatusAsync(AssinaturaAlunoStatus status, CancellationToken cancellationToken = default);
+    Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default);
 }

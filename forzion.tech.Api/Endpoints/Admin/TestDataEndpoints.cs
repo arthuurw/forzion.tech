@@ -2,6 +2,7 @@ using forzion.tech.Api.Extensions;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.TestData;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 
 namespace forzion.tech.Api.Endpoints.Admin;
 
@@ -15,8 +16,10 @@ public static class TestDataEndpoints
 
         group.MapGet("/contas", async (
             [FromServices] ListarContasTesteHandler handler,
+            [FromServices] IHostEnvironment environment,
             CancellationToken cancellationToken) =>
         {
+            if (environment.IsProduction()) return Results.NotFound();
             var contas = await handler.HandleAsync(cancellationToken);
             return Results.Ok(contas);
         })
@@ -26,8 +29,10 @@ public static class TestDataEndpoints
         group.MapDelete("/contas/{id:guid}", async (
             Guid id,
             [FromServices] ExcluirContaTesteHandler handler,
+            [FromServices] IHostEnvironment environment,
             CancellationToken cancellationToken) =>
         {
+            if (environment.IsProduction()) return Results.NotFound();
             var result = await handler.HandleAsync(new ExcluirContaTesteCommand(id), cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();

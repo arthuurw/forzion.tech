@@ -68,4 +68,9 @@ public class AssinaturaAlunoRepository(AppDbContext context) : IAssinaturaAlunoR
         await context.AssinaturaAlunos
             .CountAsync(a => a.Status == status, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await context.AssinaturaAlunos
+            .Where(a => a.AlunoId == alunoId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 }

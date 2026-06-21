@@ -162,4 +162,9 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
 
         return raw.Select(x => new TreinoAlunoVinculado(x.Id, x.AlunoId, x.Nome, x.Status)).ToList();
     }
+
+    public async Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await _context.TreinoAlunos
+            .Where(ta => ta.AlunoId == alunoId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 }
