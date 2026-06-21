@@ -61,14 +61,15 @@ describe("useInactivity", () => {
     expect(onWarn).toHaveBeenCalledTimes(1);
   });
 
-  it("inatividade >= 30min → onTimeout chamado", () => {
+  it("inatividade >= 30min → onTimeout dispara exatamente uma vez mesmo seguindo inativo", () => {
     const onWarn = vi.fn();
     const onTimeout = vi.fn();
     renderHook(() => useInactivity({ onWarn, onTimeout, enabled: true }));
 
     act(() => { vi.advanceTimersByTime(TIMEOUT_MS + CHECK_MS); });
+    act(() => { vi.advanceTimersByTime(10 * CHECK_MS); });
 
-    expect(onTimeout).toHaveBeenCalled();
+    expect(onTimeout).toHaveBeenCalledTimes(1);
   });
 
   it("evento de atividade reseta timer e limpa o aviso", () => {

@@ -125,7 +125,7 @@ export default function DashboardTreinadorPage() {
 
   useEffect(() => {
     pagamentoApi.obterAssinaturaTreinador()
-      .then((res) => setPlanoInadimplente(res.data.status === "Inadimplente"))
+      .then((res) => setPlanoInadimplente(res.data?.status === "Inadimplente"))
       .catch(() => setPlanoInadimplente(false));
   }, []);
 
