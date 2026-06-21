@@ -104,3 +104,6 @@ migration_public_schema.sql
 
 # Snapshots do Verify (Fase 6): .received e gerado a cada run; so o .verified e versionado.
 *.received.*
+
+# Dumps de crash do MSYS/Git-Bash no Windows (gerados por tooling, nao versionar).
+*.stackdump

@@ -35,6 +35,7 @@ public class RequerStepUpFilterTests
         revogados.Setup(r => r.EstaRevogadoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(revogado);
 
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddSingleton(userContext.Object);
         services.AddSingleton(jwt.Object);
         services.AddSingleton(revogados.Object);

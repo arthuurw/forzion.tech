@@ -23,4 +23,5 @@ public interface ITreinoAlunoRepository
     Task AdicionarAsync(TreinoAluno treinoAluno, CancellationToken cancellationToken = default);
     Task RemoverPorTreinoIdAsync(Guid treinoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TreinoAlunoVinculado>> ListarAtivosPorTreinoIdAsync(Guid treinoId, CancellationToken cancellationToken = default);
+    Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default);
 }

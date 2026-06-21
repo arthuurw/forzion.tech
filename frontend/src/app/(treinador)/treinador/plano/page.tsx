@@ -58,18 +58,21 @@ export default function PlanoTreinadorPage() {
 
   const carregar = useCallback(async () => {
     setErro("");
-    try {
-      const [aRes, pRes] = await Promise.all([
-        pagamentoApi.obterAssinaturaTreinador(),
-        pagamentoApi.listarPlanosPlataforma(),
-      ]);
-      setAssinatura(aRes.data);
-      setPlanos(pRes.data.filter((p) => p.tier !== "Elite" && p.isAtivo));
-    } catch {
+    const [aRes, pRes] = await Promise.allSettled([
+      pagamentoApi.obterAssinaturaTreinador(),
+      pagamentoApi.listarPlanosPlataforma(),
+    ]);
+    if (aRes.status === "fulfilled") {
+      setAssinatura(aRes.value.data);
+    } else {
       setErro("Erro ao carregar informações do plano.");
-    } finally {
-      setLoading(false);
     }
+    if (pRes.status === "fulfilled") {
+      setPlanos(pRes.value.data.filter((p) => p.tier !== "Elite" && p.isAtivo));
+    } else {
+      setErro("Erro ao carregar informações do plano.");
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {

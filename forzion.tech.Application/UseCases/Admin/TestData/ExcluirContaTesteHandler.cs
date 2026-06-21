@@ -12,6 +12,10 @@ public class ExcluirContaTesteHandler(
     IContaRepository contaRepository,
     IAlunoRepository alunoRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
+    IAssinaturaAlunoRepository assinaturaAlunoRepository,
+    IExecucaoTreinoRepository execucaoTreinoRepository,
+    ITreinoAlunoRepository treinoAlunoRepository,
+    IAssinanteRepository assinanteRepository,
     ILogAprovacaoRepository logAprovacaoRepository,
     IMensagemSuporteRepository mensagemSuporteRepository,
     IRefreshTokenFamilyRepository refreshTokenFamilyRepository,
@@ -19,6 +23,10 @@ public class ExcluirContaTesteHandler(
     IMfaRecoveryCodeRepository mfaRecoveryCodeRepository,
     IMfaChallengeRepository mfaChallengeRepository,
     ITrustedDeviceRepository trustedDeviceRepository,
+    IPasswordResetTokenRepository passwordResetTokenRepository,
+    IEmailVerificationTokenRepository emailVerificationTokenRepository,
+    ITrocaEmailTokenRepository trocaEmailTokenRepository,
+    IUnitOfWork unitOfWork,
     IDbContextTransactionProvider transactionProvider)
 {
     public virtual Task<Result> HandleAsync(
@@ -57,6 +65,9 @@ public class ExcluirContaTesteHandler(
         await mfaRecoveryCodeRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await passwordResetTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await emailVerificationTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await trocaEmailTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
         if (conta.TipoConta == TipoConta.Aluno)
         {
@@ -64,6 +75,10 @@ public class ExcluirContaTesteHandler(
                 .ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
             if (aluno is not null)
             {
+                await execucaoTreinoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                await assinaturaAlunoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                await treinoAlunoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                await assinanteRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
                 await vinculoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
                 await alunoRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
             }
@@ -72,6 +87,7 @@ public class ExcluirContaTesteHandler(
         await logAprovacaoRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         await contaRepository.ExcluirAsync(conta, cancellationToken).ConfigureAwait(false);
 
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success();

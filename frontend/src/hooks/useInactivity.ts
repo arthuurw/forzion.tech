@@ -1,23 +1,25 @@
 "use client";
 import { useEffect, useRef, useCallback } from "react";
 
-const TIMEOUT_MS  = 20 * 60 * 1000; // 20 min → logout
-const WARN_STEP   =  5 * 60 * 1000; // avisar a cada 5 min de inatividade
-const CHECK_MS    = 20 * 1000;       // checar a cada 20 segundos
+const TIMEOUT_MS   = 30 * 60 * 1000;
+const WARN_LEAD_MS =  5 * 60 * 1000;
+const CHECK_MS     = 20 * 1000;
 
 interface Options {
-  onWarn: (minutesInactive: number) => void;
+  onWarn: (minutesRemaining: number) => void;
   onTimeout: () => void;
   enabled: boolean;
 }
 
 export function useInactivity({ onWarn, onTimeout, enabled }: Options) {
   const lastActivity = useRef(Date.now());
-  const warnedSteps  = useRef(new Set<number>());
+  const warned = useRef(false);
+  const firedTimeout = useRef(false);
 
   const resetActivity = useCallback(() => {
     lastActivity.current = Date.now();
-    warnedSteps.current.clear();
+    warned.current = false;
+    firedTimeout.current = false;
   }, []);
 
   useEffect(() => {
@@ -30,15 +32,17 @@ export function useInactivity({ onWarn, onTimeout, enabled }: Options) {
       const elapsed = Date.now() - lastActivity.current;
 
       if (elapsed >= TIMEOUT_MS) {
-        onTimeout();
+        if (!firedTimeout.current) {
+          firedTimeout.current = true;
+          clearInterval(interval);
+          onTimeout();
+        }
         return;
       }
 
-      // Quantos múltiplos de 5 min já passaram (mínimo 1 para começar a avisar)
-      const step = Math.floor(elapsed / WARN_STEP);
-      if (step >= 1 && !warnedSteps.current.has(step)) {
-        warnedSteps.current.add(step);
-        onWarn(step * 5);
+      if (elapsed >= TIMEOUT_MS - WARN_LEAD_MS && !warned.current) {
+        warned.current = true;
+        onWarn(Math.ceil((TIMEOUT_MS - elapsed) / 60000));
       }
     }, CHECK_MS);
 

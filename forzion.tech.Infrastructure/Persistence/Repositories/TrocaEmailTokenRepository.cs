@@ -13,4 +13,10 @@ public class TrocaEmailTokenRepository(AppDbContext context) : ITrocaEmailTokenR
         await context.TrocaEmailTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
+        await context.TrocaEmailTokens
+            .Where(t => t.ContaId == contaId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
 }

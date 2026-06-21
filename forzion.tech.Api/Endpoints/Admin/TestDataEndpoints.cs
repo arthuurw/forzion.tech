@@ -2,6 +2,7 @@ using forzion.tech.Api.Extensions;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.TestData;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 
 namespace forzion.tech.Api.Endpoints.Admin;
 
@@ -11,7 +12,12 @@ public static class TestDataEndpoints
     {
         var group = endpoints.MapGroup("/admin/test-data").WithTags("Admin · Test Data")
             .RequireAuthorization("SystemAdmin")
-            .RequireRateLimiting("write");
+            .RequireRateLimiting("write")
+            .AddEndpointFilter(async (context, next) =>
+            {
+                var env = context.HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+                return env.IsProduction() ? Results.NotFound() : await next(context);
+            });
 
         group.MapGet("/contas", async (
             [FromServices] ListarContasTesteHandler handler,

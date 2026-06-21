@@ -24,9 +24,12 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-USER $APP_UID
+RUN groupadd --system --gid 64198 appgroup \
+ && useradd --system --uid 64198 --gid appgroup appuser
 
 COPY --from=build /app/publish .
+
+USER appuser
 
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080

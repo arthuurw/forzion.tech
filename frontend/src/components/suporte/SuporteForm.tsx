@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Box, Typography, Card, CardContent, TextField, Button, CircularProgress } from "@mui/material";
-import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FormTextField from "@/components/forms/FormTextField";
@@ -71,7 +70,7 @@ export default function SuporteForm() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Recebemos sua mensagem e responderemos no e-mail do seu cadastro em breve.
             </Typography>
-            <Button variant="outlined" onClick={() => { methods.reset(); setSent(false); }}>
+            <Button variant="contained" onClick={() => { methods.reset(); setSent(false); }}>
               Enviar outra mensagem
             </Button>
           </CardContent>
@@ -83,10 +82,7 @@ export default function SuporteForm() {
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 580 } }}>
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <SupportAgentIcon sx={{ color: "text.secondary" }} />
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Falar com o suporte</Typography>
-        </Box>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>Falar com o suporte</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Tem uma dúvida ou sugestão? Envie sua mensagem e responderemos por e-mail.
         </Typography>

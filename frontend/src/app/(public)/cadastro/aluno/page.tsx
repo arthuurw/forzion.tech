@@ -258,9 +258,14 @@ export default function CadastroAlunoPage() {
           {loadingList ? (
             <LoadingSpinner />
           ) : pacotes.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Este treinador não possui planos de atendimento disponíveis no momento.
-            </Typography>
+            <Stack spacing={2} sx={{ alignItems: "flex-start" }}>
+              <Typography variant="body2" color="text.secondary">
+                Este treinador não possui planos de atendimento disponíveis no momento.
+              </Typography>
+              <Button component={Link} href="/" variant="contained">
+                Voltar à página inicial
+              </Button>
+            </Stack>
           ) : (
             <Stack spacing={1.5}>
               {pacotes.map((pacote) => (

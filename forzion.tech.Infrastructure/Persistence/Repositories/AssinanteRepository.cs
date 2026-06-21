@@ -24,4 +24,9 @@ public class AssinanteRepository(AppDbContext context) : IAssinanteRepository
                       .SetProperty(a => a.Email, (string?)null),
                 cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await _context.Assinantes
+            .Where(a => a.AlunoId == alunoId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 }

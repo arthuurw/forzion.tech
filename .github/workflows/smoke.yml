@@ -41,6 +41,18 @@ jobs:
       - name: Install Playwright browsers
         run: npm run e2e:install
 
+      - name: Wait for homolog readiness
+        env:
+          BASE_URL: ${{ vars.HOMOLOG_BASE_URL }}
+        run: |
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -m 10 "$BASE_URL/api/backend/health/ready" || echo 000)
+            if [ "$code" = "200" ]; then echo "ready após ${i} tentativa(s)"; exit 0; fi
+            echo "tentativa $i: $code — aguardando readiness..."
+            sleep 5
+          done
+          echo "API homolog não ficou ready em ~120s"; exit 1
+
       - name: Smoke
         env:
           SMOKE_ONLY_SETUP: ${{ inputs.only_setup }}

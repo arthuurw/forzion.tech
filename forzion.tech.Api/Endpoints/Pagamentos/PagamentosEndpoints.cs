@@ -113,7 +113,7 @@ public static class PagamentosEndpoints
         {
             var assinatura = await assinaturaTreinadorRepository
                 .ObterAtualPorTreinadorAsync(userContext.PerfilId, cancellationToken).ConfigureAwait(false);
-            if (assinatura is null) return Results.NotFound();
+            if (assinatura is null) return Results.Content("null", "application/json");
             return Results.Ok(new
             {
                 assinaturaId = assinatura.Id,
@@ -124,9 +124,8 @@ public static class PagamentosEndpoints
                 planoPlataformaIdAgendado = assinatura.PlanoPlataformaIdAgendado
             });
         })
-        .WithSummary("Retorna a assinatura de plano ativa do treinador")
-        .Produces<object>()
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .WithSummary("Retorna a assinatura de plano ativa do treinador, ou null se não houver")
+        .Produces<object>();
 
         treinadorPlanoGroup.MapGet("/pagamento/{pagamentoId:guid}", async (
             Guid pagamentoId,
