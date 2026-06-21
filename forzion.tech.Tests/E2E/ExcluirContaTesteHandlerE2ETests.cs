@@ -44,6 +44,10 @@ public class ExcluirContaTesteHandlerE2ETests(RealPipelineFixture fixture)
             var trusted = TrustedDevice.Criar(alunoConta.Id, "tokenhash", agora.AddDays(30), agora).Value;
             var challenge = MfaChallenge.Criar(alunoConta.Id, "codehash", MfaProposito.LoginFallback, agora.AddMinutes(5), agora).Value;
 
+            var passwordResetToken = PasswordResetToken.Criar(alunoConta.Id, "resethash", agora.AddHours(1), agora).Value;
+            var emailVerificationToken = EmailVerificationToken.Criar(alunoConta.Id, "verifyhash", agora.AddHours(1), agora).Value;
+            var trocaEmailToken = TrocaEmailToken.Criar(alunoConta.Id, $"novo{Guid.NewGuid():N}@e2e.test", "trocahash", agora.AddHours(1), agora).Value;
+
             db.Contas.AddRange(treinadorConta, alunoConta);
             db.Treinadores.Add(treinador);
             db.Alunos.Add(aluno);
@@ -59,6 +63,9 @@ public class ExcluirContaTesteHandlerE2ETests(RealPipelineFixture fixture)
             db.MfaRecoveryCodes.Add(recovery);
             db.TrustedDevices.Add(trusted);
             db.MfaChallenges.Add(challenge);
+            db.PasswordResetTokens.Add(passwordResetToken);
+            db.EmailVerificationTokens.Add(emailVerificationToken);
+            db.TrocaEmailTokens.Add(trocaEmailToken);
             await db.SaveChangesAsync();
 
             alunoContaId = alunoConta.Id;
@@ -87,6 +94,9 @@ public class ExcluirContaTesteHandlerE2ETests(RealPipelineFixture fixture)
         (await verifyDb.MfaRecoveryCodes.AsNoTracking().AnyAsync(m => m.ContaId == alunoContaId)).Should().BeFalse();
         (await verifyDb.TrustedDevices.AsNoTracking().AnyAsync(m => m.ContaId == alunoContaId)).Should().BeFalse();
         (await verifyDb.MfaChallenges.AsNoTracking().AnyAsync(m => m.ContaId == alunoContaId)).Should().BeFalse();
+        (await verifyDb.PasswordResetTokens.AsNoTracking().AnyAsync(t => t.ContaId == alunoContaId)).Should().BeFalse();
+        (await verifyDb.EmailVerificationTokens.AsNoTracking().AnyAsync(t => t.ContaId == alunoContaId)).Should().BeFalse();
+        (await verifyDb.TrocaEmailTokens.AsNoTracking().AnyAsync(t => t.ContaId == alunoContaId)).Should().BeFalse();
         (await verifyDb.Contas.AsNoTracking().AnyAsync(c => c.Id == treinadorContaId)).Should().BeTrue();
     }
 

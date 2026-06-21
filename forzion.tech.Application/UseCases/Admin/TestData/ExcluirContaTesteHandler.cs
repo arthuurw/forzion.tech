@@ -23,6 +23,9 @@ public class ExcluirContaTesteHandler(
     IMfaRecoveryCodeRepository mfaRecoveryCodeRepository,
     IMfaChallengeRepository mfaChallengeRepository,
     ITrustedDeviceRepository trustedDeviceRepository,
+    IPasswordResetTokenRepository passwordResetTokenRepository,
+    IEmailVerificationTokenRepository emailVerificationTokenRepository,
+    ITrocaEmailTokenRepository trocaEmailTokenRepository,
     IUnitOfWork unitOfWork,
     IDbContextTransactionProvider transactionProvider)
 {
@@ -62,6 +65,9 @@ public class ExcluirContaTesteHandler(
         await mfaRecoveryCodeRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await passwordResetTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await emailVerificationTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+        await trocaEmailTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
         if (conta.TipoConta == TipoConta.Aluno)
         {

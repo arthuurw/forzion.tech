@@ -13,4 +13,10 @@ public class EmailVerificationTokenRepository(AppDbContext context) : IEmailVeri
         await context.EmailVerificationTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
+        await context.EmailVerificationTokens
+            .Where(t => t.ContaId == contaId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
 }

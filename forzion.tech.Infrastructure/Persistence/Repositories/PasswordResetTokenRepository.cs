@@ -19,4 +19,10 @@ public class PasswordResetTokenRepository(AppDbContext context) : IPasswordReset
             .Where(t => t.ContaId == contaId && t.UsedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsedAt, agora), cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
+        await context.PasswordResetTokens
+            .Where(t => t.ContaId == contaId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
 }

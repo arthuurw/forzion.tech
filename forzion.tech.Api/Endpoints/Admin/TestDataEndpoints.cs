@@ -12,14 +12,17 @@ public static class TestDataEndpoints
     {
         var group = endpoints.MapGroup("/admin/test-data").WithTags("Admin · Test Data")
             .RequireAuthorization("SystemAdmin")
-            .RequireRateLimiting("write");
+            .RequireRateLimiting("write")
+            .AddEndpointFilter(async (context, next) =>
+            {
+                var env = context.HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+                return env.IsProduction() ? Results.NotFound() : await next(context);
+            });
 
         group.MapGet("/contas", async (
             [FromServices] ListarContasTesteHandler handler,
-            [FromServices] IHostEnvironment environment,
             CancellationToken cancellationToken) =>
         {
-            if (environment.IsProduction()) return Results.NotFound();
             var contas = await handler.HandleAsync(cancellationToken);
             return Results.Ok(contas);
         })
@@ -29,10 +32,8 @@ public static class TestDataEndpoints
         group.MapDelete("/contas/{id:guid}", async (
             Guid id,
             [FromServices] ExcluirContaTesteHandler handler,
-            [FromServices] IHostEnvironment environment,
             CancellationToken cancellationToken) =>
         {
-            if (environment.IsProduction()) return Results.NotFound();
             var result = await handler.HandleAsync(new ExcluirContaTesteCommand(id), cancellationToken);
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
