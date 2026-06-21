@@ -69,8 +69,12 @@ public class ContaRepository(AppDbContext context) : IContaRepository
 
     public async Task<IReadOnlyList<ContaTesteResumo>> ListarTesteAsync(string dominio, CancellationToken cancellationToken = default)
     {
+        // Email é value-converted (HasConversion e => e.Value): EndsWith não traduz através do
+        // conversor, então o filtro de sufixo fica client-side. A projeção evita hidratar PasswordHash
+        // e colunas MFA — corta IO e mantém segredos fora da memória.
         var contas = await _context.Contas.AsNoTracking()
             .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new { c.Id, c.Email, c.CreatedAt })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

@@ -126,4 +126,9 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
                 s => s.SetProperty(e => e.Observacao, (string?)null),
                 cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default) =>
+        await _context.ExecucoesTreino
+            .Where(e => e.AlunoId == alunoId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 }

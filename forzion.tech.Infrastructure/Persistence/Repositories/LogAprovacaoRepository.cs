@@ -11,6 +11,6 @@ public class LogAprovacaoRepository(AppDbContext context) : ILogAprovacaoReposit
 
     public async Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
         await context.LogsAprovacao
-            .Where(l => l.EntidadeId == contaId || l.RealizadoPorId == contaId)
+            .Where(l => l.EntidadeId == contaId)
             .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 }

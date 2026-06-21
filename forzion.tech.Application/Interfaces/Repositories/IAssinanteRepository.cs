@@ -12,4 +12,5 @@ public interface IAssinanteRepository
     /// (LGPD anonymization). No-op if record does not exist.
     /// </summary>
     Task AnonimizarPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default);
+    Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default);
 }

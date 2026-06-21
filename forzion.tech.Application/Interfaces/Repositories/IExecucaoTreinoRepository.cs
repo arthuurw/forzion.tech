@@ -44,4 +44,5 @@ public interface IExecucaoTreinoRepository
 
     /// <summary>LGPD ANON-02: zera Observacao de todas as execuções do aluno em um único UPDATE (sem hidratar entidades).</summary>
     Task AnonimizarObservacoesPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default);
+    Task ExcluirPorAlunoIdAsync(Guid alunoId, CancellationToken cancellationToken = default);
 }
