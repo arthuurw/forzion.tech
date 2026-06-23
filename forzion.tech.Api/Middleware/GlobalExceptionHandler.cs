@@ -125,6 +125,11 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
 
             DomainException ex => (StatusCodes.Status422UnprocessableEntity, ProblemDetailsTitulos.PtBr[StatusCodes.Status422UnprocessableEntity], ex.Message),
 
+            BadHttpRequestException ex => (
+                ex.StatusCode,
+                ProblemDetailsTitulos.PtBr.GetValueOrDefault(ex.StatusCode, ProblemDetailsTitulos.PtBr[StatusCodes.Status400BadRequest]),
+                "A requisição não pôde ser interpretada. Verifique os parâmetros e o corpo enviados."),
+
             EstadoInconsistenteException => (StatusCodes.Status500InternalServerError, ProblemDetailsTitulos.PtBr[StatusCodes.Status500InternalServerError], "Ocorreu um erro inesperado. Tente novamente mais tarde."),
 
             _ => (StatusCodes.Status500InternalServerError, ProblemDetailsTitulos.PtBr[StatusCodes.Status500InternalServerError], "Ocorreu um erro inesperado. Tente novamente mais tarde.")

@@ -8,4 +8,6 @@ public interface IDatabaseErrorInspector
     bool EhViolacaoDeUnicidade(Exception exception);
 
     bool EhConflitoDeSerializacao(Exception exception);
+
+    bool EhConflitoDeConcorrenciaOtimista(Exception exception);
 }

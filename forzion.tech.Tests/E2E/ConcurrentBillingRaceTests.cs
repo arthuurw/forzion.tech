@@ -7,6 +7,7 @@ using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
+using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -116,6 +117,61 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
             .Where(p => p.AssinaturaTreinadorId == assinaturaId && p.Status == PagamentoStatus.Pendente)
             .CountAsync();
         pendentes.Should().Be(1, "exatamente 1 pagamento pendente por assinatura de treinador");
+    }
+
+    [Fact]
+    public async Task ProcessarWebhookPago_DuasEntregasParalelas_AplicaEfeitoUnicoSem500()
+    {
+        var (assinaturaId, treinadorId) = await CriarAssinaturaProntaAsync();
+
+        string paymentIntentId;
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var cobranca = scope.ServiceProvider.GetRequiredService<GerarCobrancaMensalHandler>();
+            var gerar = await cobranca.HandleAsync(new GerarCobrancaMensalCommand(assinaturaId, treinadorId, MetodoPagamento.Pix));
+            gerar.IsSuccess.Should().BeTrue();
+
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var pendente = await db.Pagamentos.FirstAsync(p => p.AssinaturaAlunoId == assinaturaId && p.Status == PagamentoStatus.Pendente);
+            paymentIntentId = pendente.StripePaymentIntentId!;
+        }
+
+        var payload = "{\"type\":\"payment_intent.succeeded\",\"data\":{\"object\":{\"id\":\"" + paymentIntentId + "\"}}}";
+        var evento = StripeWebhookParser.Parse(payload);
+
+        using var startBarrier = new Barrier(participantCount: 2);
+
+        Task<(ProcessarEventoResultado? Resultado, Exception? Excecao)> Run() => Task.Run(async () =>
+        {
+            startBarrier.SignalAndWait();
+            using var scope = fixture.Services.CreateScope();
+            var handler = scope.ServiceProvider.GetRequiredService<ProcessarWebhookStripeHandler>();
+            try
+            {
+                var r = await handler.ProcessarEventoAsync(evento);
+                return ((ProcessarEventoResultado?)r, (Exception?)null);
+            }
+            catch (Exception ex)
+            {
+                return ((ProcessarEventoResultado?)null, (Exception?)ex);
+            }
+        });
+
+        var resultados = await Task.WhenAll(Run(), Run());
+
+        resultados.Where(r => r.Excecao is not null).Should().BeEmpty(
+            "nenhuma entrega concorrente deve estourar 500: {0}",
+            string.Join(" || ", resultados.Where(r => r.Excecao is not null).Select(r => r.Excecao!.GetType().Name + ": " + r.Excecao!.Message)));
+
+        resultados.Count(r => r.Resultado == ProcessarEventoResultado.Aplicado).Should().Be(1,
+            "exatamente uma entrega aplica o efeito");
+        resultados.Count(r => r.Resultado == ProcessarEventoResultado.JaConsistente).Should().Be(1,
+            "a entrega perdedora (xmin ou guard de status) é idempotente");
+
+        using var queryScope = fixture.Services.CreateScope();
+        var dbFinal = queryScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var pago = await dbFinal.Pagamentos.FirstAsync(p => p.AssinaturaAlunoId == assinaturaId && p.StripePaymentIntentId == paymentIntentId);
+        pago.Status.Should().Be(PagamentoStatus.Pago, "efeito único: pagamento termina Pago");
     }
 
     private async Task<Guid> CriarAssinaturaTreinadorAtivaAsync()

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using forzion.tech.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using forzion.tech.Infrastructure.Persistence;
 namespace forzion.tech.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622001351_InativarPlanoEliteEAtualizarDescricoesPlanos")]
+    partial class InativarPlanoEliteEAtualizarDescricoesPlanos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1354,12 +1357,6 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("valor");
 
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.HasKey("Id")
                         .HasName("pk_pagamentos");
 
@@ -1455,12 +1452,6 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.Property<decimal>("Valor")
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("valor");
-
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_pagamentos_treinador");

@@ -206,6 +206,31 @@ public class GlobalExceptionHandlerTests
         context.Response.StatusCode.Should().Be(400);
     }
 
+    [Fact]
+    public async Task TryHandleAsync_BadHttpRequestException_Retorna400()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new BadHttpRequestException("Required parameter \"int tamanho\" was not provided from query string."), default);
+        context.Response.StatusCode.Should().Be(400);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_BadHttpRequestException_PreservaStatusCodeCustomizado()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new BadHttpRequestException("media", StatusCodes.Status415UnsupportedMediaType), default);
+        context.Response.StatusCode.Should().Be(415);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_BadHttpRequestException_DetailNaoExpoeNomeDoParametro()
+    {
+        var context = CriarHttpContext();
+        await _handler.TryHandleAsync(context, new BadHttpRequestException("Required parameter \"int tamanho\" was not provided from query string."), default);
+        var body = await LerCorpo(context);
+        body.GetProperty("detail").GetString().Should().NotContain("tamanho");
+    }
+
     // --- Response body ---
 
     [Fact]

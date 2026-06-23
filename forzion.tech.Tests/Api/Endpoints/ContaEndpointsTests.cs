@@ -243,7 +243,8 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
             Mock.Of<ITokenRevogadoRepository>(),
             Mock.Of<IRefreshTokenService>(),
             Mock.Of<IUserContext>(),
-            Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IDatabaseErrorInspector>(), TimeProvider.System,
             Mock.Of<ILogger<LogoutHandler>>());
 
         public Mock<ExportarDadosPessoaisHandler> ExportarHandlerMock { get; } = new(

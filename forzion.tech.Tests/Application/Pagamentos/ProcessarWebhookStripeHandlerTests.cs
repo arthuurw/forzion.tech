@@ -6,7 +6,9 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using forzion.tech.Domain.ValueObjects;
+using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Tests.Builders;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -39,7 +41,8 @@ public class ProcessarWebhookStripeHandlerTests
             _pagamentoRepo.Object, _assinaturaRepo.Object, _contaRecebimentoRepo.Object,
             _pagamentoTreinadorRepo.Object, _assinaturaTreinadorRepo.Object, _treinadorRepo.Object,
             _alunoRepo.Object, _contaRepo.Object,
-            _stripeService.Object, _unitOfWork.Object, _enfileirador.Object, _timeProvider, _logger.Object);
+            _stripeService.Object, _unitOfWork.Object, _enfileirador.Object,
+            new NpgsqlDatabaseErrorInspector(), _timeProvider, _logger.Object);
 
         // Verificação devolve o JSON do evento verificado; o fake ecoa o payload recebido,
         // espelhando o contrato (handler parseia o retorno, não o body raw).
@@ -143,6 +146,27 @@ public class ProcessarWebhookStripeHandlerTests
         assinatura.Status.Should().Be(AssinaturaAlunoStatus.Ativa);
         assinatura.DataProximaCobranca.Should().Be(agoraPago.AddMonths(1));
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_ConflitoXmin_TrataIdempotenteSem500()
+    {
+        var assinaturaId = Guid.NewGuid();
+        var pagamento = Pagamento.Criar(assinaturaId, 150m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_race", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_race", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinatura);
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DbUpdateConcurrencyException("xmin divergente"));
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_race"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue("conflito de xmin é a entrega concorrente perdedora — idempotente, sem 500");
     }
 
     [Fact]

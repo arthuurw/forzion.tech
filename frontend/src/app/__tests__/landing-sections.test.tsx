@@ -39,32 +39,25 @@ describe("LandingPage — seções montadas", () => {
   }, 20000);
 });
 
-describe("LandingPage — tier copy R7", () => {
-  it("Free: copy correta", async () => {
-    await renderLanding([buildPlano({ tier: "Free", nome: "Free", preco: 0 })]);
-    expect(screen.getByText("Ideal para começar e testar sem compromisso")).toBeInTheDocument();
+describe("LandingPage — descrição do plano (fonte: seed)", () => {
+  it("renderiza a descrição completa vinda do plano", async () => {
+    await renderLanding([
+      buildPlano({ tier: "Pro", nome: "Pro", preco: 100, descricao: "Tudo do Basic + notificações por e-mail." }),
+    ]);
+    expect(screen.getByText("Tudo do Basic + notificações por e-mail.")).toBeInTheDocument();
   }, 20000);
 
-  it("Basic: copy correta", async () => {
-    await renderLanding([buildPlano({ tier: "Basic", nome: "Basic", preco: 50 })]);
-    expect(screen.getByText("R$2 por aluno/mês na lotação")).toBeInTheDocument();
+  it("plano inativo exibe selo 'Em breve' e mantém a descrição", async () => {
+    await renderLanding([
+      buildPlano({ tier: "Elite", nome: "Elite", preco: 500, isAtivo: false, descricao: "O plano mais completo: tudo do Pro Plus somado a IA." }),
+    ]);
+    expect(screen.getByText("Em breve")).toBeInTheDocument();
+    expect(screen.getByText("O plano mais completo: tudo do Pro Plus somado a IA.")).toBeInTheDocument();
   }, 20000);
 
-  it("Pro: copy correta", async () => {
-    await renderLanding([buildPlano({ tier: "Pro", nome: "Pro", preco: 100 })]);
-    expect(screen.getByText("Notificações por e-mail mantêm seus alunos engajados entre sessões")).toBeInTheDocument();
-  }, 20000);
-
-  it("ProPlus: copy correta", async () => {
-    await renderLanding([buildPlano({ tier: "ProPlus", nome: "Pro Plus", preco: 200 })]);
-    expect(screen.getByText("WhatsApp integrado — seus alunos recebem tudo onde já estão")).toBeInTheDocument();
-  }, 20000);
-
-  it("Elite: sem copy de valor", async () => {
-    await renderLanding([buildPlano({ tier: "Elite", nome: "Elite", preco: 500 })]);
-    expect(screen.queryByText("Ideal para começar e testar sem compromisso")).not.toBeInTheDocument();
-    expect(screen.queryByText("R$2 por aluno/mês na lotação")).not.toBeInTheDocument();
-    expect(screen.queryByText(/WhatsApp integrado/)).not.toBeInTheDocument();
+  it("plano ativo não exibe 'Em breve'", async () => {
+    await renderLanding([buildPlano({ tier: "Pro", nome: "Pro", preco: 100, isAtivo: true })]);
+    expect(screen.queryByText("Em breve")).not.toBeInTheDocument();
   }, 20000);
 });
 

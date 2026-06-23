@@ -202,7 +202,7 @@ interceptor resposta:
 - Desktop (≥md): `Drawer` permanente, colapsável (232px ↔ 68px ícones).
 - Mobile (<md): `Drawer` temporário + `BottomNavigation` fixo (inferior, com `safe-area-inset-bottom`).
 - `NavConfig` por `TipoConta`: items de navegação derivados do role. `NavItem.drawerOnly?: boolean` marca itens secundários que aparecem só no `Drawer`, nunca na `BottomNavigation` mobile. Treinador: 8 itens no drawer (Alunos, Fichas, Exercícios, Pacotes, Notas fiscais, Recebimentos[drawerOnly], Plano[drawerOnly], Suporte); bottom-nav filtra `drawerOnly` → 6.
-- **Inatividade**: `useInactivity` — warn aos N minutos, logout automático aos 20 min.
+- **Inatividade**: `useInactivity` — warn aos 25 min (5 min antes), logout automático aos 30 min.
 
 ## SEGURANÇA / MFA (`src/app/seguranca/`)
 Página autenticada de segurança da conta (link no `AppHeader`/nav). Cliente em `lib/api/mfa.ts` (via `apiClient` → `/conta/mfa/*`). Tipos em `types/index.ts` (`MfaStatus`, `CompletarMfaResponse`, `LoginResponse.mfaRequerido/mfaPendingToken`, etc.).

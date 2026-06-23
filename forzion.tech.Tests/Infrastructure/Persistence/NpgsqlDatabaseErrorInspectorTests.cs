@@ -65,4 +65,22 @@ public class NpgsqlDatabaseErrorInspectorTests
     [Fact]
     public void EhConflitoDeSerializacao_ExcecaoGenerica_False() =>
         _inspector.EhConflitoDeSerializacao(new InvalidOperationException("sem causa pg")).Should().BeFalse();
+
+    [Fact]
+    public void EhConflitoDeConcorrenciaOtimista_DbUpdateConcurrencyExceptionCru_True() =>
+        _inspector.EhConflitoDeConcorrenciaOtimista(new DbUpdateConcurrencyException("xmin")).Should().BeTrue();
+
+    [Fact]
+    public void EhConflitoDeConcorrenciaOtimista_Reembrulhado_True() =>
+        _inspector.EhConflitoDeConcorrenciaOtimista(
+            new InvalidOperationException("transient failure",
+                new DbUpdateConcurrencyException("xmin"))).Should().BeTrue();
+
+    [Fact]
+    public void EhConflitoDeConcorrenciaOtimista_SerializationFailure_False() =>
+        _inspector.EhConflitoDeConcorrenciaOtimista(Pg(PostgresErrorCodes.SerializationFailure)).Should().BeFalse();
+
+    [Fact]
+    public void EhConflitoDeConcorrenciaOtimista_ExcecaoGenerica_False() =>
+        _inspector.EhConflitoDeConcorrenciaOtimista(new InvalidOperationException("sem causa")).Should().BeFalse();
 }

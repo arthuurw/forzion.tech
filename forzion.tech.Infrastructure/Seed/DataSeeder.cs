@@ -127,13 +127,13 @@ public class DataSeeder(
         (GrupoMuscularEnum.FullBody, "Deadlift Romeno com Remada", "Stiff seguido de remada curvada em único movimento contínuo."),
     ];
 
-    private static readonly (TierPlanoEnum Tier, string Nome, int MaxAlunos, decimal Preco, string? Descricao)[] PlanosPadrao =
+    private static readonly (TierPlanoEnum Tier, string Nome, int MaxAlunos, decimal Preco, bool Ativo, string? Descricao)[] PlanosPadrao =
     [
-        (TierPlanoEnum.Free,    "Free",     10,  0m,    null),
-        (TierPlanoEnum.Basic,   "Basic",    25,  50m,   "Acesso somente à plataforma"),
-        (TierPlanoEnum.Pro,     "Pro",      50,  100m,  "Basic + e-mail"),
-        (TierPlanoEnum.ProPlus, "Pro Plus", 100, 200m,  "Pro + WhatsApp"),
-        (TierPlanoEnum.Elite,   "Elite",    300, 500m,  "Pro Plus + IA"),
+        (TierPlanoEnum.Free,    "Free",     10,  0m,   true,  "Ideal para começar e testar sem compromisso. Acesso à plataforma para até 10 alunos."),
+        (TierPlanoEnum.Basic,   "Basic",    25,  50m,  true,  "Acesso completo à plataforma de treinos. R$2 por aluno/mês na lotação."),
+        (TierPlanoEnum.Pro,     "Pro",      50,  100m, true,  "Tudo do Basic + notificações por e-mail que mantêm seus alunos engajados entre as sessões."),
+        (TierPlanoEnum.ProPlus, "Pro Plus", 100, 200m, true,  "Tudo do Pro + WhatsApp integrado: seus alunos recebem tudo onde já estão."),
+        (TierPlanoEnum.Elite,   "Elite",    300, 500m, false, "O plano mais completo: tudo do Pro Plus somado a IA para personalizar e otimizar cada treino."),
     ];
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -155,7 +155,13 @@ public class DataSeeder(
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var novos = PlanosPadrao
             .Where(p => !existentes.Contains(p.Tier))
-            .Select(p => PlanoPlataforma.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, agora, p.Descricao).Value)
+            .Select(p =>
+            {
+                var plano = PlanoPlataforma.Criar(p.Nome, p.Tier, p.MaxAlunos, p.Preco, agora, p.Descricao).Value;
+                if (!p.Ativo)
+                    plano.Inativar(agora);
+                return plano;
+            })
             .ToList();
 
         if (novos.Count == 0)

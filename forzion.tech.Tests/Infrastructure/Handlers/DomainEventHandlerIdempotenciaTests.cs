@@ -94,6 +94,39 @@ public class DomainEventHandlerIdempotenciaTests
         unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // ----- AlunoRegistradoSincronizarAssinanteHandler -----
+
+    [Fact]
+    public async Task AlunoRegistrado_SegundaExecucao_NaoCriaSegundoAssinante()
+    {
+        var assinanteRepo = new Mock<IAssinanteRepository>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var handler = new AlunoRegistradoSincronizarAssinanteHandler(
+            assinanteRepo.Object, unitOfWork.Object,
+            Mock.Of<ILogger<AlunoRegistradoSincronizarAssinanteHandler>>());
+
+        var agora = DateTime.UtcNow;
+        var alunoId = Guid.NewGuid();
+        var evento = new AlunoRegistradoEvent(alunoId, Guid.NewGuid(), "Aluno", "a@b.com", agora);
+
+        var criados = new List<Assinante>();
+        assinanteRepo.Setup(r => r.AdicionarAsync(It.IsAny<Assinante>(), It.IsAny<CancellationToken>()))
+            .Callback<Assinante, CancellationToken>((a, _) => criados.Add(a))
+            .Returns(Task.CompletedTask);
+
+        assinanteRepo.Setup(r => r.ObterPorAlunoIdAsync(alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Assinante?)null);
+        await handler.HandleAsync(evento);
+        criados.Should().HaveCount(1, "primeiro dispatch cria o assinante");
+
+        assinanteRepo.Setup(r => r.ObterPorAlunoIdAsync(alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(criados[0]);
+        await handler.HandleAsync(evento);
+
+        criados.Should().HaveCount(1, "re-dispatch é no-op idempotente");
+        unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // ----- VinculoAprovadoCriarAssinaturaAlunoHandler -----
 
     [Fact]

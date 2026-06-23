@@ -28,6 +28,17 @@ public sealed class NpgsqlDatabaseErrorInspector : IDatabaseErrorInspector
         return false;
     }
 
+    public bool EhConflitoDeConcorrenciaOtimista(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        for (Exception? atual = exception; atual is not null; atual = atual.InnerException)
+            if (atual is DbUpdateConcurrencyException)
+                return true;
+
+        return false;
+    }
+
     private static PostgresException? EncontrarPostgres(Exception exception)
     {
         for (Exception? atual = exception; atual is not null; atual = atual.InnerException)

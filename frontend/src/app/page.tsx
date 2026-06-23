@@ -27,14 +27,6 @@ const organizationJsonLd = {
   description: "Plataforma de gestão de treinos para personal trainers",
 };
 
-// Factual copy keyed by tier — no ROI projection (session price is trainer-defined, not stored)
-const TIER_COPY: Record<string, string> = {
-  Free: "Ideal para começar e testar sem compromisso",
-  Basic: "R$2 por aluno/mês na lotação",
-  Pro: "Notificações por e-mail mantêm seus alunos engajados entre sessões",
-  ProPlus: "WhatsApp integrado — seus alunos recebem tudo onde já estão",
-};
-
 async function getPlanos(): Promise<PlanoPlataformaResponse[]> {
   try {
     const base = process.env.API_BASE_URL ?? "https://localhost:7220";
@@ -199,8 +191,7 @@ export default async function LandingPage() {
               </Typography>
               <Grid container spacing={3} sx={{ justifyContent: "center" }}>
                 {planos.map((plano, i) => {
-                  const isElite = plano.tier === "Elite";
-                  const tierCopy = TIER_COPY[plano.tier];
+                  const isInativo = plano.isAtivo === false;
                   const card = (
                     <Card
                       sx={{
@@ -211,7 +202,7 @@ export default async function LandingPage() {
                         borderColor: i === 1 ? "primary.main" : "rgba(255,255,255,0.1)",
                         boxShadow: i === 1 ? "0 8px 32px rgba(245,196,0,0.25)" : "none",
                         transform: i === 1 ? "scale(1.04)" : "none",
-                        ...(isElite
+                        ...(isInativo
                           ? { opacity: 0.6, pointerEvents: "none", cursor: "default" }
                           : {
                               cursor: "pointer",
@@ -229,7 +220,7 @@ export default async function LandingPage() {
                           <Typography variant="h6" sx={{ fontWeight: 700, color: i === 1 ? "secondary.main" : "white" }}>
                             {plano.nome}
                           </Typography>
-                          {isElite && (
+                          {isInativo && (
                             <Chip label="Em breve" color="warning" size="small" />
                           )}
                         </Box>
@@ -241,20 +232,6 @@ export default async function LandingPage() {
                             ? <>{formatarBRL(plano.preco)}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
                             : "Gratuito"}
                         </Typography>
-                        {tierCopy && (
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              display: "block",
-                              mt: 1.5,
-                              fontStyle: "italic",
-                              color: i === 1 ? "rgba(26,26,26,0.6)" : "rgba(255,255,255,0.55)",
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            {tierCopy}
-                          </Typography>
-                        )}
                         {plano.descricao && (
                           <Box sx={{ mt: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75 }}>
                             <CheckIcon sx={{ fontSize: 15, color: i === 1 ? "secondary.main" : "primary.main", flexShrink: 0 }} />
@@ -268,7 +245,7 @@ export default async function LandingPage() {
                   );
                   return (
                     <Grid key={plano.planoId} size={{ xs: 12, sm: 6, md: 4 }}>
-                      {isElite ? card : (
+                      {isInativo ? card : (
                         <Link href="/cadastro/treinador" style={{ textDecoration: "none" }}>
                           {card}
                         </Link>
@@ -279,7 +256,7 @@ export default async function LandingPage() {
               </Grid>
               {/* Single CDC notice outside cards — was repeated per paid card (R8).
                   Guard restores the original preco > 0 scope that was lost when deduplicating from per-card to single notice. */}
-              {planos.some(p => p.tier !== "Elite" && p.preco > 0) && (
+              {planos.some(p => p.isAtivo !== false && p.preco > 0) && (
                 <Typography
                   variant="caption"
                   sx={{
