@@ -67,10 +67,8 @@ public sealed class CancelarNfseEfeitoHandler(
 
         var transicao = nota.MarcarCancelada(agora);
         if (transicao.IsFailure)
-        {
-            logger.LogWarning("Transição de cancelamento inválida da NotaFiscal {NotaFiscalId}: {Erro}.", nota.Id, transicao.Error!.Message);
-            return;
-        }
+            throw new InvalidOperationException(
+                $"Transição de cancelamento inválida da NotaFiscal {nota.Id} (status {nota.Status}) após resposta do gov: {transicao.Error!.Message}");
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
     }

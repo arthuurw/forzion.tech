@@ -95,6 +95,20 @@ public class EmitirNfseEfeitoHandlerTests
     }
 
     [Fact]
+    public async Task SucessoSemChaveAcesso_TransicaoInvalida_LancaENaoCommita()
+    {
+        var (nota, _) = CriarCenario(comDadosFiscais: true);
+        _emissor.Setup(e => e.EmitirAsync(It.IsAny<DpsInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NfseResultado(true, null, "10", Agora, "danfse-ref", null, null));
+
+        var act = () => _handler.ExecutarAsync(Payload(nota.Id));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        nota.Status.Should().Be(NotaFiscalStatus.Pendente);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task NotaJaEmitida_Ignora()
     {
         var (nota, _) = CriarCenario(comDadosFiscais: true);

@@ -20,10 +20,27 @@ public class ProcessarWebhookStripeHandler(
     IStripeService stripeService,
     IUnitOfWork unitOfWork,
     IOutboxEnfileirador enfileirador,
+    IDatabaseErrorInspector databaseErrorInspector,
     TimeProvider timeProvider,
     ILogger<ProcessarWebhookStripeHandler> logger)
 {
     private const string TipoPlanoTreinador = "plano_treinador";
+
+    private async Task<bool> CommitarTransicaoPagamentoAsync(string? paymentIntentId, CancellationToken ct)
+    {
+        try
+        {
+            await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex) when (databaseErrorInspector.EhConflitoDeConcorrenciaOtimista(ex))
+        {
+            logger.LogDebug(ex,
+                "Transição concorrente do PaymentIntent {PaymentIntentId} perdeu a corrida de xmin; entrega anterior já aplicou o efeito. Idempotente.",
+                paymentIntentId);
+            return false;
+        }
+    }
 
     public virtual async Task<Result> HandleAsync(
         ProcessarWebhookStripeCommand command,
@@ -179,7 +196,8 @@ public class ProcessarWebhookStripeHandler(
             }
         }
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
         logger.LogInformation("Pagamento {PagamentoId} marcado como pago.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
     }
@@ -218,7 +236,8 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
         logger.LogWarning("Pix capturado para assinatura cancelada {AssinaturaId} — reembolsado automático (reverse transfer).", assinatura.Id);
         return ProcessarEventoResultado.Aplicado;
     }
@@ -251,7 +270,8 @@ public class ProcessarWebhookStripeHandler(
             ?? await assinaturaRepository.ObterPorIdAsync(pagamento.AssinaturaAlunoId, ct).ConfigureAwait(false);
         assinatura?.RegistrarPagamentoFalho(agoraFalhou);
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
 
         logger.LogInformation("Pagamento {PagamentoId} marcado como falhou.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
@@ -282,7 +302,8 @@ public class ProcessarWebhookStripeHandler(
                 paymentIntentId, marcarExpiradoResult.Error!.Message);
             return ProcessarEventoResultado.JaConsistente;
         }
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
         logger.LogInformation("Pagamento {PagamentoId} marcado como expirado.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
     }
@@ -338,7 +359,8 @@ public class ProcessarWebhookStripeHandler(
                 paymentIntentId, marcarEstornadoResult.Error!.Message);
             return ProcessarEventoResultado.JaConsistente;
         }
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
 
         logger.LogInformation(
             "Pagamento {PagamentoId} marcado como estornado (amountRefundedCents={AmountCents}).",
@@ -372,7 +394,8 @@ public class ProcessarWebhookStripeHandler(
         var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
         assinatura?.MarcarInadimplentePorDisputa(agora);
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(pagamento.StripePaymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como estornado.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
     }
@@ -433,7 +456,8 @@ public class ProcessarWebhookStripeHandler(
             enfileirador.Enfileirar("fx:evidencia_disputa", payload, $"fx:evidencia_disputa:aluno:{pagamento.Id}");
         }
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
 
         logger.LogInformation(
             "Pagamento {PagamentoId} marcado em disputa (motivo={Motivo}).",
@@ -494,7 +518,8 @@ public class ProcessarWebhookStripeHandler(
             enfileirador.Enfileirar("fx:evidencia_disputa", payload, $"fx:evidencia_disputa:treinador:{pagamento.Id}");
         }
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(pagamento.StripePaymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
 
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado em disputa.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
@@ -560,7 +585,8 @@ public class ProcessarWebhookStripeHandler(
         if (pagamento.Finalidade == FinalidadePagamentoTreinador.Cadastro)
             await FinalizarCadastroAsync(pagamento, agora, ct).ConfigureAwait(false);
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como pago.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
     }
@@ -620,7 +646,8 @@ public class ProcessarWebhookStripeHandler(
         var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
         assinatura?.RegistrarPagamentoFalho(agora);
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como falhou.", pagamento.Id);
         return ProcessarEventoResultado.Aplicado;
     }
@@ -634,7 +661,8 @@ public class ProcessarWebhookStripeHandler(
         if (transicao(pagamento).IsFailure)
             return ProcessarEventoResultado.JaConsistente;
 
-        await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
+        if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
+            return ProcessarEventoResultado.JaConsistente;
         return ProcessarEventoResultado.Aplicado;
     }
 }

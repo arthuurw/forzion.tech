@@ -3,8 +3,11 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.Logout;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Npgsql;
 using DomainTokenRevogado = forzion.tech.Domain.Entities.TokenRevogado;
 
 namespace forzion.tech.Tests.Application.ContaTestes;
@@ -21,8 +24,10 @@ public class LogoutHandlerTests
     public LogoutHandlerTests()
     {
         _userContext.Setup(u => u.FamiliaId).Returns(Guid.Empty);
-        _handler = new LogoutHandler(_tokenRepo.Object, _refresh.Object, _userContext.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
+        _handler = new LogoutHandler(_tokenRepo.Object, _refresh.Object, _userContext.Object, _unitOfWork.Object, new NpgsqlDatabaseErrorInspector(), TimeProvider.System, _logger.Object);
     }
+
+    private static PostgresException Unique() => new("dup", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation);
 
     [Fact]
     public async Task HandleAsync_TokenValido_RevogaECommita()
@@ -78,12 +83,28 @@ public class LogoutHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_TokenDuplicado_TrataIdempotenteERetornaSuccess()
+    public async Task HandleAsync_Unicidade23505Cru_TrataIdempotenteERetornaSuccess()
     {
         _userContext.Setup(u => u.Jti).Returns(Guid.NewGuid());
         _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddHours(1));
 
-        var dbEx = new InvalidOperationException("falha", new Exception("duplicate key value violates unique constraint"));
+        _tokenRepo.Setup(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()))
+                  .ThrowsAsync(Unique());
+
+        var result = await _handler.HandleAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Unicidade23505Reembrulhado_TrataIdempotenteERetornaSuccess()
+    {
+        _userContext.Setup(u => u.Jti).Returns(Guid.NewGuid());
+        _userContext.Setup(u => u.TokenExpiraEm).Returns(DateTime.UtcNow.AddHours(1));
+
+        var dbEx = new InvalidOperationException("transient failure",
+            new DbUpdateException("save falhou", Unique()));
         _tokenRepo.Setup(r => r.AdicionarAsync(It.IsAny<DomainTokenRevogado>(), It.IsAny<CancellationToken>()))
                   .ThrowsAsync(dbEx);
 

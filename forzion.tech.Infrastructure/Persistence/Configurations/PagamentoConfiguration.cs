@@ -13,6 +13,11 @@ public class PagamentoConfiguration : IEntityTypeConfiguration<Pagamento>
             t.HasCheckConstraint("ck_pagamentos_valor_nao_negativo", "\"valor\" >= 0"));
         builder.HasKey(p => p.Id);
 
+        builder.Property<uint>("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         builder.Property(p => p.AssinaturaAlunoId).IsRequired();
         builder.HasOne<AssinaturaAluno>()
             .WithMany()

@@ -12,6 +12,7 @@ public class LogoutHandler(
     IRefreshTokenService refreshTokenService,
     IUserContext userContext,
     IUnitOfWork unitOfWork,
+    IDatabaseErrorInspector databaseErrorInspector,
     TimeProvider timeProvider,
     ILogger<LogoutHandler> logger)
 {
@@ -47,11 +48,8 @@ public class LogoutHandler(
 
             logger.LogInformation("Token revogado no logout. Jti={Jti}", jti);
         }
-        catch (Exception ex) when (
-            ex.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true ||
-            ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
+        catch (Exception ex) when (databaseErrorInspector.EhViolacaoDeUnicidade(ex))
         {
-            // Token já revogado por logout simultâneo — idempotente
             logger.LogDebug(ex, "Token Jti={Jti} já estava revogado (logout simultâneo).", jti);
         }
 
