@@ -5,36 +5,34 @@ import { renderLanding, setupLandingTest } from "@/test/helpers/landing";
 
 setupLandingTest();
 
-describe("LandingPage — plano Elite", () => {
+describe("LandingPage — plano inativo", () => {
   // First render pays the cold module-import cost (page.tsx + its deps) which can
   // exceed the 5s default under parallel load — give this one an explicit timeout.
-  it("exibe badge 'Em breve' para plano com tier Elite", async () => {
-    const elite = buildPlano({ tier: "Elite", nome: "Elite" });
-    await renderLanding([elite]);
+  it("exibe badge 'Em breve' para plano inativo", async () => {
+    const inativo = buildPlano({ tier: "Elite", nome: "Elite", isAtivo: false });
+    await renderLanding([inativo]);
     expect(screen.getByText("Em breve")).toBeInTheDocument();
   }, 20000);
 
-  it("plano Elite NÃO está envolto em link para /cadastro/treinador", async () => {
-    const elite = buildPlano({ tier: "Elite", nome: "Elite" });
-    await renderLanding([elite]);
+  it("plano inativo NÃO está envolto em link para /cadastro/treinador", async () => {
+    const inativo = buildPlano({ tier: "Elite", nome: "Elite", isAtivo: false });
+    await renderLanding([inativo]);
 
-    // No <a> with href /cadastro/treinador should wrap the Elite "Em breve" chip.
-    const eliteBadge = screen.getByText("Em breve");
-    let node: HTMLElement | null = eliteBadge;
+    const badge = screen.getByText("Em breve");
+    let node: HTMLElement | null = badge;
     while (node && node !== document.body) {
       if (node.tagName === "A" && (node as HTMLAnchorElement).href?.includes("/cadastro/treinador")) {
-        throw new Error("Elite card is wrapped in a /cadastro/treinador link");
+        throw new Error("Inactive card is wrapped in a /cadastro/treinador link");
       }
       // eslint-disable-next-line testing-library/no-node-access
       node = node.parentElement;
     }
-    expect(eliteBadge).toBeInTheDocument();
+    expect(badge).toBeInTheDocument();
   });
 
-  it("plano não-Elite continua com link para /cadastro/treinador", async () => {
-    const pro = buildPlano({ tier: "Pro", nome: "Pro" });
+  it("plano ativo continua com link para /cadastro/treinador", async () => {
+    const pro = buildPlano({ tier: "Pro", nome: "Pro", isAtivo: true });
     await renderLanding([pro]);
-    // Plan card name should be inside a link to /cadastro/treinador
     const proText = screen.getByText("Pro");
     let found = false;
     let node: HTMLElement | null = proText;
@@ -49,8 +47,8 @@ describe("LandingPage — plano Elite", () => {
     expect(found).toBe(true);
   });
 
-  it("plano Elite não exibe badge 'Em breve' quando tier não é Elite", async () => {
-    const basic = buildPlano({ tier: "Basic", nome: "Basic" });
+  it("plano ativo não exibe badge 'Em breve'", async () => {
+    const basic = buildPlano({ tier: "Basic", nome: "Basic", isAtivo: true });
     await renderLanding([basic]);
     expect(screen.queryByText("Em breve")).not.toBeInTheDocument();
   });
