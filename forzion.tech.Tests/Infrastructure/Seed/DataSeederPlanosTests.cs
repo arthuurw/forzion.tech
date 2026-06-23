@@ -19,9 +19,9 @@ public class DataSeederPlanosTests(InfrastructureTestFixture fixture)
     [Fact]
     public async Task SeedAsync_PlanoElite_CriadoInativo()
     {
-        await SeedAsync();
+        var connectionString = await SeedAsync();
 
-        await using var ctx = fixture.CreateContext();
+        await using var ctx = fixture.CreateContext(connectionString);
         var elite = await ctx.PlanosPlataforma.SingleAsync(p => p.Tier == TierPlano.Elite);
         elite.IsAtivo.Should().BeFalse();
     }
@@ -29,9 +29,9 @@ public class DataSeederPlanosTests(InfrastructureTestFixture fixture)
     [Fact]
     public async Task SeedAsync_PlanosNaoElite_PermanecemAtivos()
     {
-        await SeedAsync();
+        var connectionString = await SeedAsync();
 
-        await using var ctx = fixture.CreateContext();
+        await using var ctx = fixture.CreateContext(connectionString);
         var demais = await ctx.PlanosPlataforma.Where(p => p.Tier != TierPlano.Elite).ToListAsync();
         demais.Should().NotBeEmpty();
         demais.Should().OnlyContain(p => p.IsAtivo);
@@ -40,14 +40,14 @@ public class DataSeederPlanosTests(InfrastructureTestFixture fixture)
     [Fact]
     public async Task SeedAsync_TodosPlanos_TemDescricaoPreenchida()
     {
-        await SeedAsync();
+        var connectionString = await SeedAsync();
 
-        await using var ctx = fixture.CreateContext();
+        await using var ctx = fixture.CreateContext(connectionString);
         var todos = await ctx.PlanosPlataforma.ToListAsync();
         todos.Should().OnlyContain(p => !string.IsNullOrWhiteSpace(p.Descricao));
     }
 
-    private async Task SeedAsync()
+    private async Task<string> SeedAsync()
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -60,10 +60,12 @@ public class DataSeederPlanosTests(InfrastructureTestFixture fixture)
         var env = Mock.Of<IHostEnvironment>(e => e.EnvironmentName == "Homolog");
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 6, 19, 12, 0, 0, TimeSpan.Zero));
 
-        await using var ctx = fixture.CreateContext();
+        var connectionString = await fixture.CriarBancoIsoladoAsync();
+        await using var ctx = fixture.CreateContext(connectionString);
         var seeder = new DataSeeder(
             ctx, new BcryptPasswordHasher(), config, env, time, NullLogger<DataSeeder>.Instance);
 
         await seeder.SeedAsync();
+        return connectionString;
     }
 }
