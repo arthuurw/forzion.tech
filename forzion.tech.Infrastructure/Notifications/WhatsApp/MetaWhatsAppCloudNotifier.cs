@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Infrastructure.Common;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
@@ -82,19 +83,13 @@ public class MetaWhatsAppCloudNotifier(
 
             if (!response.IsSuccessStatusCode)
             {
-                var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                logger.LogWarning("WhatsApp Cloud API returned {Status}: {Body}", response.StatusCode, body);
+                var corpo = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                logger.LogWarning("WhatsApp Cloud API returned {Status}: {Erro}", response.StatusCode, MascaraPii.Scrub(corpo));
             }
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "Failed to send WhatsApp message to {Phone}.", MascararTelefone(phone));
+            logger.LogError(ex, "Failed to send WhatsApp message to {Phone}.", MascaraPii.Telefone(phone));
         }
-    }
-
-    private static string MascararTelefone(string phone)
-    {
-        if (string.IsNullOrWhiteSpace(phone)) return "(vazio)";
-        return phone.Length <= 4 ? "***" : $"***{phone[^4..]}";
     }
 }

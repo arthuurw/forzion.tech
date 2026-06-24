@@ -9,18 +9,12 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Auth;
 
-/// <summary>
-/// Cobre o segundo passo do fluxo de password reset. Pontos críticos:
-///   - Token raw nunca tocado pelo BD: handler aplica SHA-256 antes do lookup.
-///   - Token inexistente / inválido / expirado / já-usado → DomainException.
-///   - Replay (mesmo token raw em duas chamadas) → 2ª falha estritamente.
-///   - Sucesso atualiza Conta.PasswordHash e marca o token como usado no mesmo commit.
-/// </summary>
 public class RedefinirSenhaHandlerTests
 {
     private readonly Mock<IPasswordResetTokenRepository> _tokenRepo = new();
@@ -32,11 +26,12 @@ public class RedefinirSenhaHandlerTests
     private readonly Mock<ITotpService> _totp = new();
     private readonly Mock<IMfaSecretProtector> _protector = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
+    private readonly Mock<ILogger<RedefinirSenhaHandler>> _logger = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly RedefinirSenhaCommandValidator _validator = new();
     private readonly RedefinirSenhaHandler _handler;
 
-    // Raw token plausível: 64 chars hex (mesmo formato que EsqueceuSenhaHandler gera).
     private const string RawToken = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2";
 
     public RedefinirSenhaHandlerTests()
@@ -45,7 +40,7 @@ public class RedefinirSenhaHandlerTests
         _handler = new RedefinirSenhaHandler(
             _tokenRepo.Object, _contaRepo.Object, _mfaRepo.Object, _trustedDevice.Object,
             _hasher.Object, _refresh.Object, _totp.Object, _protector.Object,
-            _unitOfWork.Object, _timeProvider, _validator);
+            _logRepo.Object, _unitOfWork.Object, _timeProvider, _validator, _logger.Object);
     }
 
     private ContaMfa MfaHabilitado(Guid contaId)
@@ -227,7 +222,6 @@ public class RedefinirSenhaHandlerTests
     [Fact]
     public async Task HandleAsync_Replay_MesmoTokenDuasVezes_SegundaFalha()
     {
-        // Cenário crítico de segurança: atacante intercepta o link e tenta usar duas vezes.
         var conta = BuildConta();
         var token = BuildToken(contaId: conta.Id);
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
@@ -235,11 +229,9 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        // 1ª chamada: sucesso
         var primeira = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
         primeira.IsSuccess.Should().BeTrue();
 
-        // 2ª chamada: token.UsedAt agora é não-nulo → falha
         var segunda = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "OutraSenha1"));
 
         segunda.IsFailure.Should().BeTrue();
@@ -284,5 +276,21 @@ public class RedefinirSenhaHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TokenValido_RegistraLogSenhaRedefinida()
+    {
+        var conta = BuildConta();
+        var token = BuildToken(contaId: conta.Id);
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(token);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+
+        result.IsSuccess.Should().BeTrue();
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.SenhaRedefinida), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

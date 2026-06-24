@@ -3,6 +3,8 @@ import testingLibrary from "eslint-plugin-testing-library";
 import jestDom from "eslint-plugin-jest-dom";
 import security from "eslint-plugin-security";
 import playwright from "eslint-plugin-playwright";
+import reactHooks from "eslint-plugin-react-hooks";
+import importPlugin from "eslint-plugin-import";
 
 const config = [
   ...next,
@@ -49,6 +51,7 @@ const config = [
   },
 
   {
+    plugins: { "react-hooks": reactHooks, import: importPlugin },
     rules: {
       "react-hooks/purity": "off",
       "react-hooks/set-state-in-effect": "off",
@@ -70,7 +73,7 @@ const config = [
   // porque o callback `use(fixture)` do Playwright bate falso positivo.
   {
     files: ["e2e/**/*.ts", "playwright.config.ts"],
-    plugins: { playwright },
+    plugins: { playwright, "react-hooks": reactHooks },
     rules: {
       ...playwright.configs["flat/recommended"].rules,
       "security/detect-non-literal-fs-filename": "off",

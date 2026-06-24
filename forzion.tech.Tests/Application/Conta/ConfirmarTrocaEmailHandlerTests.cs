@@ -9,6 +9,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -22,6 +23,8 @@ public class ConfirmarTrocaEmailHandlerTests
     private readonly Mock<ITrustedDeviceRepository> _trustedDevice = new();
     private readonly Mock<ITokenRevogadoRepository> _tokenRevogado = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
+    private readonly Mock<ILogger<ConfirmarTrocaEmailHandler>> _logger = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 6, 17, 12, 0, 0, TimeSpan.Zero));
     private readonly ConfirmarTrocaEmailHandler _handler;
 
@@ -36,9 +39,11 @@ public class ConfirmarTrocaEmailHandlerTests
             _refresh.Object,
             _trustedDevice.Object,
             _tokenRevogado.Object,
+            _logRepo.Object,
             _unitOfWork.Object,
             _timeProvider,
-            new ConfirmarTrocaEmailCommandValidator());
+            new ConfirmarTrocaEmailCommandValidator(),
+            _logger.Object);
     }
 
     private static string ComputeHash(string raw)
@@ -214,5 +219,20 @@ public class ConfirmarTrocaEmailHandlerTests
     {
         var act = async () => await _handler.HandleAsync(new ConfirmarTrocaEmailCommand(ContaId, Guid.Empty, DateTime.UtcNow, ""));
         await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_CodigoValido_RegistraLogEmailAlterado()
+    {
+        var conta = BuildConta();
+        var token = BuildToken(contaId: conta.Id, novoEmail: "novo@test.com");
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(ComputeHash(RawCodigo), It.IsAny<CancellationToken>())).ReturnsAsync(token);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("novo@test.com", It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
+
+        var result = await _handler.HandleAsync(new ConfirmarTrocaEmailCommand(conta.Id, Guid.Empty, _timeProvider.GetUtcNow().UtcDateTime.AddHours(1), RawCodigo));
+
+        result.IsSuccess.Should().BeTrue();
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.EmailAlterado), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

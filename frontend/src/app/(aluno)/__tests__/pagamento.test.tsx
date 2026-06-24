@@ -403,7 +403,8 @@ describe("PagamentosAlunoPage", () => {
 
   function setListaPagamentos(items: PagamentoResponse[]) {
     server.use(
-      http.get("*/aluno/pagamentos/assinatura/:id", () => HttpResponse.json(items)),
+      http.get("*/aluno/pagamentos/assinatura/:id", () =>
+        HttpResponse.json({ items, total: items.length, pagina: 1, tamanhoPagina: 20 })),
     );
   }
 

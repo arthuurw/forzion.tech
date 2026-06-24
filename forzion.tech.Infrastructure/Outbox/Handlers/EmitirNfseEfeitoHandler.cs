@@ -95,6 +95,7 @@ public sealed class EmitirNfseEfeitoHandler(
                 resultado.CodigoErro ?? "DESCONHECIDO",
                 resultado.MotivoErro ?? "Rejeição sem motivo informado pelo provedor.",
                 agora);
+            logger.LogWarning("NFS-e rejeitada — nota {NotaFiscalId}, treinador {TreinadorId}, código {Codigo}, motivo {Motivo}.", nota.Id, nota.TreinadorId, resultado.CodigoErro, resultado.MotivoErro);
         }
 
         if (transicao.IsFailure)

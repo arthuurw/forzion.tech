@@ -321,7 +321,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
     {
         _factory.ListarPagamentosHandlerMock
             .Setup(h => h.HandleAsync(It.IsAny<ListarPagamentosAssinaturaAlunoQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<PagamentoResponse> { RespostaPagamento });
+            .ReturnsAsync(new ListarPagamentosAssinaturaAlunoResponse(new List<PagamentoResponse> { RespostaPagamento }, 1, 1, 20));
 
         var response = await CriarClienteAluno().GetAsync($"/aluno/pagamentos/assinatura/{AssinaturaAlunoId}");
 

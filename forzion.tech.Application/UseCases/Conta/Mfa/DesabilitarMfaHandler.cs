@@ -1,8 +1,10 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Conta.Mfa;
 
@@ -13,7 +15,9 @@ public class DesabilitarMfaHandler(
     ITrustedDeviceRepository trustedDeviceRepository,
     ITokenRevogadoRepository tokenRevogadoRepository,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogAprovacaoRepository logRepository,
+    ILogger<DesabilitarMfaHandler> logger)
 {
     public virtual async Task<Result> HandleAsync(CancellationToken cancellationToken = default)
     {
@@ -36,7 +40,12 @@ public class DesabilitarMfaHandler(
             await tokenRevogadoRepository.AdicionarAsync(tokenResult.Value, cancellationToken).ConfigureAwait(false);
         }
 
+        var logResult = await logRepository.RegistrarAsync(TipoAcaoAprovacao.MfaDesabilitado, userContext.ContaId, userContext.ContaId, "Conta", agora, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("MFA desabilitado — conta {ContaId}.", userContext.ContaId);
         return Result.Success();
     }
 }

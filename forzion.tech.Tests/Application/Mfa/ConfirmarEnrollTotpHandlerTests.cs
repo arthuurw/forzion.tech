@@ -3,8 +3,10 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.Mfa;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Infrastructure.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 using OtpNet;
@@ -20,6 +22,7 @@ public class ConfirmarEnrollTotpHandlerTests
     private readonly Mock<IContaMfaRepository> _contaMfaRepository = new();
     private readonly Mock<IMfaRecoveryCodeRepository> _recoveryRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly OtpNetTotpService _totp = new();
     private readonly MfaSecretProtector _protector = new(new byte[32]);
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(Agora));
@@ -30,7 +33,8 @@ public class ConfirmarEnrollTotpHandlerTests
 
     private ConfirmarEnrollTotpHandler CriarHandler() => new(
         _userContext.Object, _contaMfaRepository.Object, _recoveryRepository.Object,
-        _totp, _protector, _unitOfWork.Object, _time, _validator);
+        _totp, _protector, _unitOfWork.Object, _time, _validator,
+        _logRepo.Object, Mock.Of<ILogger<ConfirmarEnrollTotpHandler>>());
 
     private (ContaMfa Mfa, string Secret) PendenteComSecret()
     {
@@ -58,6 +62,7 @@ public class ConfirmarEnrollTotpHandlerTests
         mfa.Habilitado.Should().BeTrue();
         salvos.Should().NotBeNull();
         salvos!.Should().HaveCount(10);
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.MfaHabilitado), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

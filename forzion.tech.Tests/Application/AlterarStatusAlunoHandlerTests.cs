@@ -17,12 +17,15 @@ public class AlterarStatusAlunoHandlerTests
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<AlterarStatusAlunoHandler>> _logger = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly AlterarStatusAlunoHandler _handler;
 
     public AlterarStatusAlunoHandlerTests()
     {
+        _userContext.Setup(u => u.PerfilId).Returns(Guid.NewGuid());
         _handler = new AlterarStatusAlunoHandler(
-            _alunoRepo.Object, _userContext.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object);
+            _alunoRepo.Object, _userContext.Object, _unitOfWork.Object, TimeProvider.System, _logger.Object,
+            _logRepo.Object);
     }
 
     [Fact]
@@ -38,6 +41,7 @@ public class AlterarStatusAlunoHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(AlunoStatus.Inativo);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.AlteracaoStatusAluno), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

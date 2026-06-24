@@ -217,7 +217,8 @@ public static class DependencyInjectionExtensions
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready" })
             .AddCheck<forzion.tech.Infrastructure.Health.StripeHealthCheck>("stripe", tags: new[] { "ready" })
-            .AddCheck<forzion.tech.Infrastructure.Health.ResendHealthCheck>("resend", tags: new[] { "ready" });
+            .AddCheck<forzion.tech.Infrastructure.Health.ResendHealthCheck>("resend", tags: new[] { "ready" })
+            .AddCheck<forzion.tech.Infrastructure.Health.WhatsAppHealthCheck>("whatsapp", tags: new[] { "ready" });
 
         services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));

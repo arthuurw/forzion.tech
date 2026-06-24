@@ -67,7 +67,7 @@ export default function HowItWorks() {
                 <Typography
                   variant="overline"
                   sx={{
-                    color: "primary.main",
+                    color: "brand.label",
                     fontWeight: 800,
                     fontSize: "1.1rem",
                     letterSpacing: "0.05em",

@@ -6,6 +6,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Auth.StepUp;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 using DomainEmail = forzion.tech.Domain.ValueObjects.Email;
@@ -25,6 +26,7 @@ public class VerificarStepUpHandlerTests
     private readonly Mock<IJwtService> _jwt = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(Agora));
+    private readonly Mock<ILogger<VerificarStepUpHandler>> _logger = new();
     private readonly VerificarStepUpHandler _handler;
     private readonly Conta _conta;
 
@@ -39,7 +41,7 @@ public class VerificarStepUpHandlerTests
         _handler = new VerificarStepUpHandler(
             _userContext.Object, _contaRepo.Object, _mfaRepo.Object, _challengeRepo.Object,
             _totp.Object, _protector.Object, _jwt.Object, _unitOfWork.Object, _time,
-            new VerificarStepUpCommandValidator());
+            new VerificarStepUpCommandValidator(), _logger.Object);
     }
 
     private static string Hash(string codigo) =>
@@ -81,6 +83,9 @@ public class VerificarStepUpHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("mfa.codigo_invalido");
         _jwt.Verify(j => j.GerarTokenEscopo(It.IsAny<Conta>(), It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
+        _logger.Verify(l => l.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("step-up")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     [Fact]

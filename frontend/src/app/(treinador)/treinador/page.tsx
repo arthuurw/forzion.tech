@@ -18,6 +18,7 @@ import { treinadorApi } from "@/lib/api/treinador";
 import { extractApiError } from "@/lib/api/extractApiError";
 import type { VinculoDetalheResponse, PacoteResponse, TreinoResponse } from "@/types";
 import { OBJETIVO_LABEL, ALUNO_STATUS_COLORS } from "@/lib/constants/labels";
+import ChartFigure from "@/components/charts/ChartFigure";
 
 interface StatItem {
   name: string;
@@ -256,25 +257,30 @@ export default function DashboardTreinadorPage() {
           >
             ALUNOS POR STATUS
           </Typography>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={alunoStats}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={85}
-                dataKey="value"
-                paddingAngle={3}
-              >
-                {alunoStats.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v, n) => [v, n]} />
-              <Legend iconType="circle" iconSize={10} />
-            </PieChart>
-          </ResponsiveContainer>
+          <ChartFigure
+            label="Alunos por status"
+            summary={alunoStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
+          >
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={alunoStats}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  dataKey="value"
+                  paddingAngle={3}
+                >
+                  {alunoStats.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v, n) => [v, n]} />
+                <Legend iconType="circle" iconSize={10} />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartFigure>
         </Paper>
 
         <Paper sx={{ p: 3, borderRadius: 2 }}>
@@ -292,14 +298,19 @@ export default function DashboardTreinadorPage() {
               </Typography>
             </Box>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={objetivoData} layout="vertical" margin={{ left: 8, right: 16 }}>
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="total" name="Fichas" fill={theme.palette.primary.main} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartFigure
+              label="Fichas por objetivo"
+              summary={objetivoData.map((d) => `${d.name}: ${d.total}`).join(", ")}
+            >
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={objetivoData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar dataKey="total" name="Fichas" fill={theme.palette.primary.main} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartFigure>
           )}
         </Paper>
       </Box>
@@ -314,6 +325,10 @@ export default function DashboardTreinadorPage() {
           >
             RECEITA POR PACOTE
           </Typography>
+          <ChartFigure
+            label="Receita por pacote"
+            summary={receitaPorPacote.map((d) => `${d.name}: ${d.receita.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`).join(", ")}
+          >
           <ResponsiveContainer width="100%" height={Math.max(120, receitaPorPacote.length * 52)}>
             <BarChart data={receitaPorPacote} layout="vertical" margin={{ left: 8, right: 24 }}>
               <XAxis
@@ -331,6 +346,7 @@ export default function DashboardTreinadorPage() {
               <Bar dataKey="receita" name="receita" fill={theme.palette.success.main} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </ChartFigure>
         </Paper>
       )}
 

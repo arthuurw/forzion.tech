@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.HealthReport;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Infrastructure.Common;
 using forzion.tech.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -79,7 +81,7 @@ public class HealthReportCollector(
                     Tipo = e.Tipo,
                     Tentativas = e.Tentativas,
                     CriadoEm = e.CriadoEm,
-                    UltimoErro = e.UltimoErro
+                    UltimoErro = Scrub(e.UltimoErro)
                 })
                 .ToList()
         };
@@ -100,7 +102,7 @@ public class HealthReportCollector(
                     OcorridoEm = e.OcorridoEm,
                     Nivel = e.Nivel,
                     Origem = e.Origem,
-                    Mensagem = e.Mensagem
+                    Mensagem = Scrub(e.Mensagem)
                 })
                 .ToList()
         };
@@ -200,4 +202,7 @@ public class HealthReportCollector(
         var idx = info.IndexOf('+');
         return idx >= 0 && idx < info.Length - 1 ? info[(idx + 1)..] : null;
     }
+
+    [return: NotNullIfNotNull(nameof(text))]
+    private static string? Scrub(string? text) => MascaraPii.Scrub(text);
 }

@@ -4,10 +4,12 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Validation;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 
@@ -34,9 +36,11 @@ public class RedefinirSenhaHandler(
     IRefreshTokenService refreshTokenService,
     ITotpService totpService,
     IMfaSecretProtector secretProtector,
+    ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
-    IValidator<RedefinirSenhaCommand> validator)
+    IValidator<RedefinirSenhaCommand> validator,
+    ILogger<RedefinirSenhaHandler> logger)
 {
     public virtual Task<Result> HandleAsync(
         RedefinirSenhaCommand command,
@@ -90,7 +94,13 @@ public class RedefinirSenhaHandler(
         await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
         await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
+        var logResult = await logRepository.RegistrarAsync(TipoAcaoAprovacao.SenhaRedefinida, conta.Id, conta.Id, "Conta", agora, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Senha redefinida — conta {ContaId}.", conta.Id);
 
         return Result.Success();
     }

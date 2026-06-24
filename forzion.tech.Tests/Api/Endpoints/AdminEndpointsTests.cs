@@ -1401,7 +1401,10 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
         public Mock<ExcluirPlanoPlataformaHandler> ExcluirPlanoHandlerMock { get; } = new(
             Mock.Of<IPlanoPlataformaRepository>(),
-            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<ILogger<ExcluirPlanoPlataformaHandler>>(),
+            Mock.Of<IUserContext>());
 
         public Mock<AtualizarGrupoMuscularHandler> AtualizarGrupoHandlerMock { get; } = new(
             Mock.Of<IGrupoMuscularRepository>(),
@@ -1411,7 +1414,11 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         public Mock<ExcluirGrupoMuscularHandler> ExcluirGrupoHandlerMock { get; } = new(
             Mock.Of<IGrupoMuscularRepository>(),
             Mock.Of<IExercicioRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<ILogger<ExcluirGrupoMuscularHandler>>(),
+            TimeProvider.System,
+            Mock.Of<IUserContext>());
 
         public Mock<ListarExerciciosHandler> ListarExerciciosHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
@@ -1432,7 +1439,11 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
         public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<ILogger<ExcluirExercicioHandler>>(),
+            TimeProvider.System,
+            Mock.Of<IUserContext>());
 
         public Mock<ExportarDadosPessoaisHandler> ExportarHandlerMock { get; } = new(
             Mock.Of<IContaRepository>(),
@@ -1458,7 +1469,10 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<INotaFiscalRepository>(),
             Mock.Of<IOutboxEnfileirador>(),
             Mock.Of<IUnitOfWork>(),
-            Mock.Of<ILogger<ReprocessarNotaFiscalHandler>>());
+            Mock.Of<ILogger<ReprocessarNotaFiscalHandler>>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<IUserContext>(),
+            TimeProvider.System);
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

@@ -48,7 +48,7 @@ export default function AssinaturaAlunoPage() {
       setAssinatura(assRes.data);
 
       const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
-      setPagamentoPendente(pgRes.data.find(p => p.status === "Pendente") ?? null);
+      setPagamentoPendente(pgRes.data.items.find(p => p.status === "Pendente") ?? null);
     } catch (err) {
       setError(extractApiError(err, "Erro ao carregar assinatura."));
     } finally {
@@ -85,11 +85,11 @@ export default function AssinaturaAlunoPage() {
     }
   };
 
-  if (loading) return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ p: { xs: 2, md: 4 } }}><CircularProgress /></Box>;
 
   if (!assinatura) {
     return (
-      <Box sx={{ p: 4 }}>
+      <Box sx={{ p: { xs: 2, md: 4 } }}>
         <Alert severity="info">Você não possui assinatura ativa no momento.</Alert>
       </Box>
     );

@@ -115,6 +115,21 @@ public class SolicitarTrocaEmailHandlerTests
         await act.Should().ThrowAsync<ValidationException>();
     }
 
+    [Fact]
+    public async Task HandleAsync_NovoEmailEmUso_LogNaoContemEmailCru()
+    {
+        var contaAtual = BuildConta("atual@test.com");
+        var outraConta = BuildConta("novo@test.com");
+        _contaRepo.Setup(r => r.ObterPorIdAsync(ContaId, It.IsAny<CancellationToken>())).ReturnsAsync(contaAtual);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("novo@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(outraConta);
+
+        await _handler.HandleAsync(new SolicitarTrocaEmailCommand(ContaId, "novo@test.com"));
+
+        _logger.Verify(l => l.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("novo@test.com")),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
+    }
+
     private static string Hash(string raw) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 }

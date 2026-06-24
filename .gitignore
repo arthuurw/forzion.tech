@@ -107,3 +107,11 @@ migration_public_schema.sql
 
 # Dumps de crash do MSYS/Git-Bash no Windows (gerados por tooling, nao versionar).
 *.stackdump
+
+# Scaffolding e2e local (não versionar): override de compose, creds/IDs de teste,
+# config Playwright e scripts de provisionamento/seed local.
+docker-compose.override.yml
+scratchpad-e2e.env
+frontend/playwright.local.config.ts
+frontend/e2e/scripts/provision-local.mjs
+frontend/e2e/scripts/seed-consent.mjs

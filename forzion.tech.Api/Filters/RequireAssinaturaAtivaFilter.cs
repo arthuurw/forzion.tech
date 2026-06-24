@@ -25,13 +25,9 @@ public sealed class RequireAssinaturaAtivaFilter : RequireAssinaturaAtivaFilterB
             return false;
 
         var assinaturaRepository = services.GetRequiredService<IAssinaturaAlunoRepository>();
-        var assinaturas = await assinaturaRepository
-            .ListarPorAlunoAsync(aluno.Id, ct)
+        var assinaturaAtual = await assinaturaRepository
+            .ObterAtualPorAlunoAsync(aluno.Id, ct)
             .ConfigureAwait(false);
-
-        var assinaturaAtual = assinaturas
-            .Where(a => a.Status != AssinaturaAlunoStatus.Cancelada)
-            .MaxBy(a => a.DataInicio);
 
         return assinaturaAtual?.Status == AssinaturaAlunoStatus.Inadimplente;
     }

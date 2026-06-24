@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import type {
   AssinaturaAlunoResponse,
   AssinaturaTreinadorResponse,
+  ListarPagamentosAssinaturaAlunoResponse,
   ListarRecebimentosTreinadorResultado,
   MetodoPagamento,
   OnboardingStatusResponse,
@@ -36,8 +37,10 @@ export const pagamentoApi = {
   obterPagamento(pagamentoId: string) {
     return apiClient.get<PagamentoResponse>(`/aluno/pagamentos/${pagamentoId}`);
   },
-  listarPagamentosAssinatura(assinaturaId: string) {
-    return apiClient.get<PagamentoResponse[]>(`/aluno/pagamentos/assinatura/${assinaturaId}`);
+  listarPagamentosAssinatura(assinaturaId: string, pagina = 1, tamanhoPagina = 20) {
+    return apiClient.get<ListarPagamentosAssinaturaAlunoResponse>(`/aluno/pagamentos/assinatura/${assinaturaId}`, {
+      params: { pagina, tamanhoPagina },
+    });
   },
   obterMinhaAssinatura() {
     return apiClient.get<AssinaturaAlunoResponse>("/aluno/assinatura");

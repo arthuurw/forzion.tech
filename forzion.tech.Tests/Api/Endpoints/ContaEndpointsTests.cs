@@ -236,8 +236,10 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
             Mock.Of<IRefreshTokenService>(),
             Mock.Of<ITrustedDeviceRepository>(),
             Mock.Of<ITokenRevogadoRepository>(),
+            Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
-            Mock.Of<IValidator<AlterarSenhaCommand>>());
+            Mock.Of<IValidator<AlterarSenhaCommand>>(),
+            Mock.Of<ILogger<AlterarSenhaHandler>>());
 
         public Mock<LogoutHandler> LogoutHandlerMock { get; } = new(
             Mock.Of<ITokenRevogadoRepository>(),
@@ -279,9 +281,11 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
             Mock.Of<IRefreshTokenService>(),
             Mock.Of<ITrustedDeviceRepository>(),
             Mock.Of<ITokenRevogadoRepository>(),
+            Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(),
             TimeProvider.System,
-            Mock.Of<IValidator<ConfirmarTrocaEmailCommand>>());
+            Mock.Of<IValidator<ConfirmarTrocaEmailCommand>>(),
+            Mock.Of<ILogger<ConfirmarTrocaEmailHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

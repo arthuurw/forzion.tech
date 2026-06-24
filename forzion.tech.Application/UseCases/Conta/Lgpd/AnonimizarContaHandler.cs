@@ -176,16 +176,15 @@ public class AnonimizarContaHandler(
         await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
-        var logResult = LogAprovacao.Registrar(
+        var logResult = await logAprovacaoRepository.RegistrarAsync(
             TipoAcaoAprovacao.AnonimizacaoConta,
             realizadoPorId: command.RealizadoPorId,
             entidadeId: command.ContaId,
             entidadeTipo: "Conta",
-            agora);
+            agora,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure(logResult.Error!);
-        await logAprovacaoRepository
-            .AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         // JWT-01: enfileira a revogação do jti na MESMA transação — token revogado
         // atomicamente com a anonimização, sem janela pós-commit em que ele siga válido.

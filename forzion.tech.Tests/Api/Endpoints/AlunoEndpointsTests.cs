@@ -271,7 +271,8 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IUserContext>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
-            Mock.Of<ILogger<AlterarStatusAlunoHandler>>());
+            Mock.Of<ILogger<AlterarStatusAlunoHandler>>(),
+            Mock.Of<ILogAprovacaoRepository>());
 
         public Mock<ListarTreinosHandler> ListarTreinosHandlerMock { get; } = new(
             Mock.Of<ITreinoRepository>(),

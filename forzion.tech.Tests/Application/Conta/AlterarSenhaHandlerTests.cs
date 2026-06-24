@@ -7,6 +7,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Moq;
 using DomainConta = forzion.tech.Domain.Entities.Conta;
 
@@ -22,6 +23,8 @@ public class AlterarSenhaHandlerTests
     private readonly Mock<ITokenRevogadoRepository> _tokenRevogado = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IValidator<AlterarSenhaCommand>> _validator = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
+    private readonly Mock<ILogger<AlterarSenhaHandler>> _logger = new();
     private readonly AlterarSenhaHandler _handler;
 
     public AlterarSenhaHandlerTests()
@@ -36,9 +39,11 @@ public class AlterarSenhaHandlerTests
             _refresh.Object,
             _trustedDevice.Object,
             _tokenRevogado.Object,
+            _logRepo.Object,
             _unitOfWork.Object,
             TimeProvider.System,
-            _validator.Object);
+            _validator.Object,
+            _logger.Object);
     }
 
     private static DomainConta CriarConta() =>
@@ -59,7 +64,6 @@ public class AlterarSenhaHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
-        // NR-6: troca de senha revoga todas as sessões da conta.
         _refresh.Verify(s => s.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -114,7 +118,6 @@ public class AlterarSenhaHandlerTests
         var result = await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
 
         result.IsSuccess.Should().BeTrue();
-        // security §2: o access curto corrente é blacklistado p/ não sobreviver à troca de senha.
         _tokenRevogado.Verify(r => r.AdicionarAsync(It.Is<TokenRevogado>(t => t.Jti == jti), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -188,5 +191,22 @@ public class AlterarSenhaHandlerTests
     {
         var result = _realValidator.Validate(new AlterarSenhaCommand("SenhaAtual1", "NovaSenha@9"));
         result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_SenhaCorreta_RegistraLogSenhaAlterada()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta();
+
+        _userContext.Setup(u => u.ContaId).Returns(contaId);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(h => h.Verify("senha123", conta.PasswordHash)).Returns(true);
+        _passwordHasher.Setup(h => h.Hash("nova-senha")).Returns("novo-hash");
+
+        var result = await _handler.HandleAsync(new AlterarSenhaCommand("senha123", "nova-senha"));
+
+        result.IsSuccess.Should().BeTrue();
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.SenhaAlterada), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

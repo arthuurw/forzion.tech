@@ -3,6 +3,8 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.Mfa;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -20,6 +22,7 @@ public class DesabilitarMfaHandlerTests
     private readonly Mock<ITrustedDeviceRepository> _trustedRepo = new();
     private readonly Mock<ITokenRevogadoRepository> _tokenRevogadoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly DesabilitarMfaHandler _handler;
 
     public DesabilitarMfaHandlerTests()
@@ -29,7 +32,8 @@ public class DesabilitarMfaHandlerTests
         _userContext.SetupGet(u => u.TokenExpiraEm).Returns(Agora.AddHours(1));
         _handler = new DesabilitarMfaHandler(
             _userContext.Object, _mfaRepo.Object, _recoveryRepo.Object, _trustedRepo.Object,
-            _tokenRevogadoRepo.Object, _unitOfWork.Object, new FakeTimeProvider(new DateTimeOffset(Agora)));
+            _tokenRevogadoRepo.Object, _unitOfWork.Object, new FakeTimeProvider(new DateTimeOffset(Agora)),
+            _logRepo.Object, Mock.Of<ILogger<DesabilitarMfaHandler>>());
     }
 
     private static ContaMfa MfaHabilitado()
@@ -53,6 +57,7 @@ public class DesabilitarMfaHandlerTests
         _recoveryRepo.Verify(r => r.RemoverPorContaIdAsync(ContaId, It.IsAny<CancellationToken>()), Times.Once);
         _trustedRepo.Verify(r => r.RemoverPorContaIdAsync(ContaId, It.IsAny<CancellationToken>()), Times.Once);
         _tokenRevogadoRepo.Verify(r => r.AdicionarAsync(It.Is<TokenRevogado>(t => t.Jti == Jti), It.IsAny<CancellationToken>()), Times.Once);
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.MfaDesabilitado), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

@@ -6750,7 +6750,7 @@
         "tags": [
           "Pagamentos"
         ],
-        "summary": "Lista histórico de pagamentos de uma assinatura",
+        "summary": "Lista histórico de pagamentos de uma assinatura (paginado)",
         "parameters": [
           {
             "name": "assinaturaId",
@@ -6768,10 +6768,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PagamentoResponse"
-                  }
+                  "$ref": "#/components/schemas/ListarPagamentosAssinaturaAlunoResponse"
                 }
               }
             }
@@ -9037,6 +9034,47 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "ListarPagamentosAssinaturaAlunoResponse": {
+        "required": [
+          "items",
+          "total",
+          "pagina",
+          "tamanhoPagina"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PagamentoResponse"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pagina": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tamanhoPagina": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

@@ -44,6 +44,36 @@ public class ResendEmailServiceTests
         return existe;
     }
 
+    private ResendEmailService BuildComErro(HttpStatusCode status, string responseBody)
+    {
+        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(status) { Content = new StringContent(responseBody) });
+
+        var httpClient = new HttpClient(handler.Object);
+        return new ResendEmailService(httpClient, "re_test_key", "https://api.resend.com/emails", new EmailSettings(), _logger.Object);
+    }
+
+    [Fact]
+    public async Task EnviarAsync_ErroHttp_LogNaoContemEmailCruDoDestinatario()
+    {
+        var service = BuildComErro(HttpStatusCode.UnprocessableEntity, "{\"name\":\"missing_required_field\",\"message\":\"email is required\"}");
+
+        await service.EnviarAsync("usuario@forzion.tech", "Assunto", "<p>corpo</p>");
+
+        _logger.Invocations
+            .Where(i => i.Method.Name == nameof(ILogger.Log))
+            .Should().ContainSingle()
+            .Which.Arguments[2]!.ToString()
+            .Should().NotContain("usuario@forzion.tech")
+            .And.Contain("422");
+    }
+
     [Fact]
     public async Task EnviarAsync_UsaRemetenteDeEmailSettings()
     {

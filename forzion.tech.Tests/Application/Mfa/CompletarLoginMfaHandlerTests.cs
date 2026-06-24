@@ -8,6 +8,7 @@ using forzion.tech.Application.UseCases.Auth.Mfa;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -32,6 +33,7 @@ public class CompletarLoginMfaHandlerTests
     private readonly Mock<IJwtService> _jwt = new();
     private readonly Mock<IRefreshTokenService> _refresh = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogger<CompletarLoginMfaHandler>> _logger = new();
     private readonly CompletarLoginMfaCommandValidator _validator = new();
     private readonly CompletarLoginMfaHandler _handler;
     private readonly Conta _conta;
@@ -52,7 +54,8 @@ public class CompletarLoginMfaHandlerTests
         _handler = new CompletarLoginMfaHandler(
             _userContext.Object, _contaRepo.Object, _mfaRepo.Object, _recoveryRepo.Object, _challengeRepo.Object,
             _trustedRepo.Object, _tokenRevogadoRepo.Object, _perfilResolver.Object, _totp.Object, _protector.Object,
-            _jwt.Object, _refresh.Object, _unitOfWork.Object, new FakeTimeProvider(new DateTimeOffset(Agora)), _validator);
+            _jwt.Object, _refresh.Object, _unitOfWork.Object, new FakeTimeProvider(new DateTimeOffset(Agora)), _validator,
+            _logger.Object);
     }
 
     private ContaMfa MfaHabilitado()
@@ -84,7 +87,7 @@ public class CompletarLoginMfaHandlerTests
     }
 
     [Fact]
-    public async Task Verificar_TotpInvalido_FalhaCommitaSemToken()
+    public async Task Verificar_TotpInvalido_FalhaCommitaSemTokenELogaWarning()
     {
         var mfa = MfaHabilitado();
         _mfaRepo.Setup(r => r.BuscarPorContaIdAsync(_conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(mfa);
@@ -96,6 +99,9 @@ public class CompletarLoginMfaHandlerTests
         result.Error!.Code.Should().Be("mfa.codigo_invalido");
         _jwt.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _logger.Verify(l => l.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("MFA")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     [Fact]

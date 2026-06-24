@@ -108,6 +108,29 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
         captured!.AssinaturaAlunoStripe.Should().Be("t=1,v1=deadbeef");
     }
 
+    [Fact]
+    public async Task Post_WebhookStripe_Invalido_EmiteLogWarning()
+    {
+        var erro = Error.Business("webhook_stripe.assinatura_invalida", "AssinaturaAluno Stripe inválida.");
+        _factory.ProcessarWebhookHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookStripeCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(erro));
+
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/webhooks/stripe") { Content = content };
+
+        await _factory.CreateClient().SendAsync(request);
+
+        _factory.StripeEndpointLoggerMock.Verify(
+            l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Stripe")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
     // --- POST /webhooks/resend / /webhooks/whatsapp ---
 
     [Fact]
@@ -189,6 +212,8 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     {
         public const string VerifyToken = "meta-verify-token-test";
 
+        public Mock<ILogger<ProcessarWebhookStripeHandler>> StripeEndpointLoggerMock { get; } = new();
+
         public Mock<ProcessarWebhookStripeHandler> ProcessarWebhookHandlerMock { get; } = new(
             Mock.Of<IPagamentoRepository>(),
             Mock.Of<IAssinaturaAlunoRepository>(),
@@ -228,6 +253,8 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             {
                 services.RemoveAll<ProcessarWebhookStripeHandler>();
                 services.AddScoped(_ => ProcessarWebhookHandlerMock.Object);
+                services.RemoveAll<ILogger<ProcessarWebhookStripeHandler>>();
+                services.AddSingleton(_ => StripeEndpointLoggerMock.Object);
                 services.RemoveAll<ProcessarWebhookResendHandler>();
                 services.AddScoped(_ => ProcessarWebhookResendHandlerMock.Object);
                 services.RemoveAll<ProcessarWebhookWhatsAppHandler>();

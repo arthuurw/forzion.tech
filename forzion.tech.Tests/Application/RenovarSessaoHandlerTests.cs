@@ -19,6 +19,7 @@ public class RenovarSessaoHandlerTests
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<ISystemUserRepository> _systemUserRepo = new();
     private readonly Mock<IUnitOfWork> _uow = new();
+    private readonly Mock<ILogger<RenovarSessaoHandler>> _logger = new();
     private readonly RenovarSessaoHandler _handler;
 
     public RenovarSessaoHandlerTests()
@@ -27,7 +28,7 @@ public class RenovarSessaoHandlerTests
             _refresh.Object, _jwt.Object, _alunoRepo.Object, _treinadorRepo.Object,
             _systemUserRepo.Object, _uow.Object,
             new FakeTimeProvider(new DateTimeOffset(new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc))),
-            new Mock<ILogger<RenovarSessaoHandler>>().Object);
+            _logger.Object);
     }
 
     private static Conta NovaConta(TipoConta tipo) =>
@@ -53,7 +54,7 @@ public class RenovarSessaoHandlerTests
     }
 
     [Fact]
-    public async Task Renovar_ReuseDetectado_FalhaECommitaRevogacao()
+    public async Task Renovar_ReuseDetectado_FalhaECommitaRevogacaoELogaWarning()
     {
         _refresh.Setup(s => s.RotacionarAsync("raw", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RotacaoResultado.Reuse(Guid.NewGuid()));
@@ -61,13 +62,15 @@ public class RenovarSessaoHandlerTests
         var result = await _handler.HandleAsync(new RenovarSessaoCommand("raw"));
 
         result.IsFailure.Should().BeTrue();
-        // A revogação de família feita pelo serviço precisa ser persistida.
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         _jwt.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        _logger.Verify(l => l.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("família") || v.ToString()!.Contains("reuso") || v.ToString()!.Contains("Reuso")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     [Fact]
-    public async Task Renovar_Invalido_FalhaSemCommit()
+    public async Task Renovar_Invalido_FalhaSemCommitELogaWarning()
     {
         _refresh.Setup(s => s.RotacionarAsync("raw", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RotacaoResultado.Invalido());
@@ -76,6 +79,9 @@ public class RenovarSessaoHandlerTests
 
         result.IsFailure.Should().BeTrue();
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _logger.Verify(l => l.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("inválido") || v.ToString()!.Contains("negada")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     [Fact]

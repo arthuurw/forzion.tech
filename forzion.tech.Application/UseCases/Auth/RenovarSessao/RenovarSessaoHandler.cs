@@ -37,11 +37,13 @@ public class RenovarSessaoHandler(
         switch (rotacao.Resultado)
         {
             case ResultadoRotacao.Invalido:
+                logger.LogWarning("Renovação de sessão negada — refresh token inválido.");
                 return Result.Failure<RenovarSessaoResponse>(RefreshErrors.SessaoInvalida);
 
             case ResultadoRotacao.ReuseDetectado:
                 // A família foi revogada in-memory pelo serviço; persistir a revogação.
                 await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+                logger.LogWarning("Reuso de refresh token detectado na renovação — família {FamiliaId} revogada.", rotacao.FamiliaId);
                 return Result.Failure<RenovarSessaoResponse>(RefreshErrors.SessaoInvalida);
 
             case ResultadoRotacao.Sucesso:

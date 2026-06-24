@@ -105,17 +105,17 @@ public class RegistrarAlunoHandler(
                 ? $"v1; cliente reportou: {reportado.ToUniversalTime():o}"
                 : "v1";
 
-            var consentLog = LogAprovacao.Registrar(
+            var consentLog = await logAprovacaoRepository.RegistrarAsync(
                 TipoAcaoAprovacao.ConsentimentoAnamnese,
                 realizadoPorId: conta.Id,
                 entidadeId: conta.Id,
                 entidadeTipo: "Conta",
                 agora,
-                observacao);
+                observacao,
+                cancellationToken).ConfigureAwait(false);
             if (consentLog.IsFailure)
                 return Result.Failure<AlunoResponse>(consentLog.Error!);
 
-            await logAprovacaoRepository.AdicionarAsync(consentLog.Value, cancellationToken).ConfigureAwait(false);
         }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

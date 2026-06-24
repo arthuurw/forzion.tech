@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Settings;
+using forzion.tech.Infrastructure.Common;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Services;
@@ -19,15 +20,6 @@ public sealed class ResendEmailService(HttpClient http, string apiKey, string ap
         var nome = string.IsNullOrWhiteSpace(settings.FromName) ? "forzion.tech" : settings.FromName;
         var endereco = string.IsNullOrWhiteSpace(settings.FromAddress) ? "noreply@forzion.tech" : settings.FromAddress;
         return $"{nome} <{endereco}>";
-    }
-
-    // Mantém o domínio visível (diagnóstico de entrega) e oculta o identificador (PII/LGPD).
-    private static string MascararEmail(string email)
-    {
-        if (string.IsNullOrWhiteSpace(email)) return "(vazio)";
-        var arroba = email.IndexOf('@');
-        if (arroba <= 0) return "***";
-        return $"{email[0]}***@{email[(arroba + 1)..]}";
     }
 
     public async Task EnviarAsync(string para, string assunto, string htmlBody, CancellationToken cancellationToken = default, string? replyTo = null)
@@ -54,13 +46,13 @@ public sealed class ResendEmailService(HttpClient http, string apiKey, string ap
 
             if (!response.IsSuccessStatusCode)
             {
-                var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                logger.LogError("Resend retornou {Status}: {Body}", (int)response.StatusCode, body);
+                var corpo = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                logger.LogError("Resend retornou {Status} ao enviar para {Destinatario}: {Erro}", (int)response.StatusCode, MascaraPii.Email(para), MascaraPii.Scrub(corpo));
             }
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "Falha ao enviar e-mail para {Para} — assunto: {Assunto}", MascararEmail(para), assunto);
+            logger.LogError(ex, "Falha ao enviar e-mail para {Para} — assunto: {Assunto}", MascaraPii.Email(para), assunto);
         }
     }
 }

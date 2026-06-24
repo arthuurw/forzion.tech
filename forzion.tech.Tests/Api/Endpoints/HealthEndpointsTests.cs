@@ -62,6 +62,6 @@ public class HealthEndpointsTests(HealthEndpointsTests.HealthWebFactory factory)
         var body = await response.Content.ReadAsStringAsync();
 
         body.Should().Contain("status");
-        body.Should().NotContainAny("db", "stripe", "resend");
+        body.Should().NotContainAny("db", "stripe", "resend", "whatsapp");
     }
 }

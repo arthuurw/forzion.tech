@@ -77,6 +77,13 @@ public class LoginHandlerTests
 
         var act = async () => await _handler.HandleAsync(new LoginCommand("x@test.com", "Senha123"));
         await act.Should().ThrowAsync<CredenciaisInvalidasException>();
+
+        _logger.Verify(l => l.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Login falhou") || v.ToString()!.Contains("senha inválida") || v.ToString()!.Contains("conta não encontrada")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.AtLeastOnce);
+        _logger.Verify(l => l.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("x@test.com")),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
     }
 
     [Fact]
@@ -101,6 +108,13 @@ public class LoginHandlerTests
 
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senhaerrada"));
         await act.Should().ThrowAsync<CredenciaisInvalidasException>();
+
+        _logger.Verify(l => l.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Login falhou") || v.ToString()!.Contains("senha inválida") || v.ToString()!.Contains("conta não encontrada")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.AtLeastOnce);
+        _logger.Verify(l => l.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("trainer@test.com")),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
     }
 
     [Fact]
@@ -232,6 +246,9 @@ public class LoginHandlerTests
         var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
 
         await act.Should().ThrowAsync<EmailNaoVerificadoException>();
+        _logger.Verify(l => l.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("e-mail não verificado")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     [Fact]

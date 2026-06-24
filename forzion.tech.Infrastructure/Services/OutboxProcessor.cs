@@ -1,3 +1,4 @@
+using System.Globalization;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Infrastructure.Outbox;
@@ -26,6 +27,10 @@ public sealed class OutboxProcessor(
     {
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        var idleMs = (int)_options.TimeoutTransacaoIdle.TotalMilliseconds;
+        var sqlIdleTimeout = "SET LOCAL idle_in_transaction_session_timeout = " + idleMs.ToString(CultureInfo.InvariantCulture);
+        await context.Database.ExecuteSqlRawAsync(sqlIdleTimeout, cancellationToken).ConfigureAwait(false);
 
         var itens = await repository.ObterProcessaveisAsync(_options.LotePorCiclo, agora, cancellationToken).ConfigureAwait(false);
         if (itens.Count == 0)
@@ -71,6 +76,15 @@ public sealed class OutboxProcessor(
     private void RegistrarFalha(OutboxEfeito item, Exception ex)
     {
         var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        if (OutboxErroClassifier.EhPermanente(ex))
+        {
+            item.MarcarFalhouDefinitivo(ex.Message, agora);
+            logger.LogCritical(ex,
+                "Efeito outbox {Id} ({Tipo}) falhou com erro permanente; marcado Falhou sem retry.",
+                item.Id, item.Tipo);
+            return;
+        }
 
         // item.Tentativas ainda é o valor ANTES desta tentativa; +1 = total após registrá-la.
         if (item.Tentativas + 1 >= _options.MaxTentativas)

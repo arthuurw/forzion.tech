@@ -8,4 +8,5 @@ public sealed class OutboxOptions
     public TimeSpan IntervaloPolling { get; set; } = TimeSpan.FromSeconds(10);
     public TimeSpan RetencaoConcluidos { get; set; } = TimeSpan.FromDays(7);
     public TimeSpan IntervaloLimpeza { get; set; } = TimeSpan.FromHours(1);
+    public TimeSpan TimeoutTransacaoIdle { get; set; } = TimeSpan.FromSeconds(60);
 }

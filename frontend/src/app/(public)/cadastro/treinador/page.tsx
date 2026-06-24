@@ -156,7 +156,7 @@ export default function CadastroTreinadorPage() {
         ) : (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <Button variant="contained" fullWidth disabled={loading} onClick={() => iniciarPagamento("Pix")}>
-              {loading ? <CircularProgress size={18} /> : "Pagar com Pix"}
+              {loading ? <CircularProgress size={18} aria-label="Processando" /> : "Pagar com Pix"}
             </Button>
             <Button variant="outlined" fullWidth disabled={loading} onClick={() => iniciarPagamento("Cartao")}>
               Pagar com cartão
@@ -191,7 +191,7 @@ export default function CadastroTreinadorPage() {
               <FormControl error={!!fieldState.error} required>
                 <FormLabel>Plano da plataforma</FormLabel>
                 {planos === null ? (
-                  <CircularProgress size={22} sx={{ mt: 1 }} />
+                  <CircularProgress size={22} sx={{ mt: 1 }} aria-label="Carregando planos" />
                 ) : (
                   <RadioGroup {...field}>
                     {planos.map((p) => (

@@ -13,6 +13,7 @@ import type { ExercicioProgressao } from "@/types";
 
 import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
 import { formatarData, periodoParaDatas } from "@/lib/utils/formatting";
+import ChartFigure from "@/components/charts/ChartFigure";
 
 // recharts props (stroke/fill/contentStyle) take string literals, not MUI sx — so these
 // theme-adjacent hex values live as a local constant instead of theme tokens.
@@ -138,6 +139,10 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
                   Volume por grupamento (kg)
                 </Typography>
+                <ChartFigure
+                  label="Volume por grupamento muscular"
+                  summary={volumePorGrupo.map((d) => `${d.grupo}: ${d.volume} kg`).join(", ")}
+                >
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart
                     data={volumePorGrupo}
@@ -164,6 +169,7 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                     <Bar dataKey="volume" fill={brand} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+                </ChartFigure>
               </CardContent>
             </Card>
           )}
@@ -192,6 +198,10 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                           <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, lineHeight: 1.3 }}>
                             {ex.nomeExercicio}
                           </Typography>
+                          <ChartFigure
+                            label={`Progressão de carga — ${ex.nomeExercicio}`}
+                            summary={chartData.map((d) => `${d.data}: ${d.carga ?? "—"} kg`).join(", ")}
+                          >
                           <ResponsiveContainer width="100%" height={150}>
                             <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
@@ -219,6 +229,7 @@ export default function ProgressaoAluno({ alunoId }: Props) {
                               />
                             </LineChart>
                           </ResponsiveContainer>
+                          </ChartFigure>
                           {ultima && (
                             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
                               Último: {ultima.cargaMaxima != null

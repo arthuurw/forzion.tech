@@ -48,14 +48,16 @@ public static class PagamentosEndpoints
             Guid assinaturaId,
             [FromServices] ListarPagamentosAssinaturaAlunoHandler handler,
             [FromServices] IUserContext userContext,
+            HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
+            var paginacao = httpContext.ObterPaginacaoDoQuery();
             var result = await handler.HandleAsync(
-                new ListarPagamentosAssinaturaAlunoQuery(assinaturaId, userContext.PerfilId), cancellationToken).ConfigureAwait(false);
+                new ListarPagamentosAssinaturaAlunoQuery(assinaturaId, userContext.PerfilId, paginacao.Pagina, paginacao.TamanhoPagina), cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         })
-        .WithSummary("Lista histórico de pagamentos de uma assinatura")
-        .Produces<IReadOnlyList<PagamentoResponse>>()
+        .WithSummary("Lista histórico de pagamentos de uma assinatura (paginado)")
+        .Produces<ListarPagamentosAssinaturaAlunoResponse>()
         .ProducesProblem(StatusCodes.Status403Forbidden);
 
         var treinadorGroup = endpoints.MapGroup("/treinador/pagamentos")

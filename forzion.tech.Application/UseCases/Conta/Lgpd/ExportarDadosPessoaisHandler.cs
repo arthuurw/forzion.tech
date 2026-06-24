@@ -257,17 +257,16 @@ public class ExportarDadosPessoaisHandler(
         }
 
         // Audit is mandatory — a validation failure means the export must not be returned.
-        var logResult = LogAprovacao.Registrar(
+        var logResult = await logAprovacaoRepository.RegistrarAsync(
             TipoAcaoAprovacao.ExportacaoDados,
             realizadoPorId: command.RealizadoPorId,
             entidadeId: command.ContaId,
             entidadeTipo: "Conta",
-            agora);
+            agora,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure<DadosPessoaisExport>(logResult.Error!);
 
-        await logAprovacaoRepository
-            .AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         var export = new DadosPessoaisExport(

@@ -1039,7 +1039,10 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<ExcluirPacoteHandler> ExcluirPacoteHandlerMock { get; } = new(
             Mock.Of<IPacoteRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<ILogger<ExcluirPacoteHandler>>(),
+            TimeProvider.System);
 
         public Mock<IniciarOnboardingTreinadorHandler> IniciarOnboardingHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
@@ -1063,7 +1066,8 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IDbContextTransactionProvider>(),
             Mock.Of<IValidator<AlterarModoPagamentoTreinadorCommand>>(),
             TimeProvider.System,
-            Mock.Of<ILogger<AlterarModoPagamentoTreinadorHandler>>());
+            Mock.Of<ILogger<AlterarModoPagamentoTreinadorHandler>>(),
+            Mock.Of<ILogAprovacaoRepository>());
 
         public Mock<ObterPreviewModoPagamentoTreinadorHandler> ObterPreviewModoPagamentoHandlerMock { get; } = new(
             Mock.Of<IAssinaturaAlunoRepository>(),
@@ -1152,11 +1156,18 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<ExcluirExercicioHandler> ExcluirExercicioHandlerMock { get; } = new(
             Mock.Of<IExercicioRepository>(),
-            Mock.Of<IUnitOfWork>());
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<ILogger<ExcluirExercicioHandler>>(),
+            TimeProvider.System,
+            Mock.Of<IUserContext>());
 
         public Mock<DefinirDadosFiscaisTreinadorHandler> DefinirDadosFiscaisHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
-            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<ILogger<DefinirDadosFiscaisTreinadorHandler>>(),
+            Mock.Of<IUserContext>());
 
         public Mock<ObterDadosFiscaisTreinadorHandler> ObterDadosFiscaisHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>());

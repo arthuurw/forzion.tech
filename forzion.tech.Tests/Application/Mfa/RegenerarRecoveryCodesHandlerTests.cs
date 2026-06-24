@@ -3,6 +3,8 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Conta.Mfa;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -17,6 +19,7 @@ public class RegenerarRecoveryCodesHandlerTests
     private readonly Mock<IContaMfaRepository> _mfaRepo = new();
     private readonly Mock<IMfaRecoveryCodeRepository> _recoveryRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly RegenerarRecoveryCodesHandler _handler;
 
     public RegenerarRecoveryCodesHandlerTests()
@@ -24,7 +27,8 @@ public class RegenerarRecoveryCodesHandlerTests
         _userContext.SetupGet(u => u.ContaId).Returns(ContaId);
         _handler = new RegenerarRecoveryCodesHandler(
             _userContext.Object, _mfaRepo.Object, _recoveryRepo.Object, _unitOfWork.Object,
-            new FakeTimeProvider(new DateTimeOffset(Agora)));
+            new FakeTimeProvider(new DateTimeOffset(Agora)),
+            _logRepo.Object, Mock.Of<ILogger<RegenerarRecoveryCodesHandler>>());
     }
 
     private static ContaMfa MfaHabilitado()
@@ -50,6 +54,7 @@ public class RegenerarRecoveryCodesHandlerTests
         result.Value.RecoveryCodes.Should().OnlyContain(c => c.Length == 16);
         adicionados.Should().HaveCount(10);
         _recoveryRepo.Verify(r => r.RemoverPorContaIdAsync(ContaId, It.IsAny<CancellationToken>()), Times.Once);
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.RecoveryCodesRegenerados), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

@@ -3,10 +3,12 @@ using System.Text;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Conta.TrocarEmail;
 
@@ -27,9 +29,11 @@ public class ConfirmarTrocaEmailHandler(
     IRefreshTokenService refreshTokenService,
     ITrustedDeviceRepository trustedDeviceRepository,
     ITokenRevogadoRepository tokenRevogadoRepository,
+    ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
-    IValidator<ConfirmarTrocaEmailCommand> validator)
+    IValidator<ConfirmarTrocaEmailCommand> validator,
+    ILogger<ConfirmarTrocaEmailHandler> logger)
 {
     public virtual Task<Result> HandleAsync(
         ConfirmarTrocaEmailCommand command,
@@ -95,7 +99,13 @@ public class ConfirmarTrocaEmailHandler(
             await tokenRevogadoRepository.AdicionarAsync(tokenRevogadoResult.Value, cancellationToken).ConfigureAwait(false);
         }
 
+        var logResult = await logRepository.RegistrarAsync(TipoAcaoAprovacao.EmailAlterado, command.ContaId, command.ContaId, "Conta", agora, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Email alterado — conta {ContaId}.", command.ContaId);
 
         return Result.Success();
     }

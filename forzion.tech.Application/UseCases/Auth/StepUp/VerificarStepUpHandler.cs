@@ -8,6 +8,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Auth.StepUp;
 
@@ -33,7 +34,8 @@ public class VerificarStepUpHandler(
     IJwtService jwtService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
-    IValidator<VerificarStepUpCommand> validator)
+    IValidator<VerificarStepUpCommand> validator,
+    ILogger<VerificarStepUpHandler> logger)
 {
     private static readonly TimeSpan ValidadeStepUp = TimeSpan.FromMinutes(5);
 
@@ -64,7 +66,10 @@ public class VerificarStepUpHandler(
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         if (verificacao.IsFailure)
+        {
+            logger.LogWarning("Verificação step-up falhou — conta {ContaId}.", conta.Id);
             return Result.Failure<VerificarStepUpResult>(verificacao.Error!);
+        }
 
         var token = jwtService.GerarTokenEscopo(conta, MfaScopes.StepUp, ValidadeStepUp);
         return Result.Success(new VerificarStepUpResult(token.Token, token.ExpiraEm));

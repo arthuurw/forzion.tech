@@ -48,14 +48,21 @@ public class LoginHandler(
         if (conta is null)
         {
             passwordHasher.Verify(command.Senha, DummyHash);
+            logger.LogWarning("Login falhou — conta não encontrada.");
             throw new CredenciaisInvalidasException();
         }
 
         if (!passwordHasher.Verify(command.Senha, conta.PasswordHash))
+        {
+            logger.LogWarning("Login falhou — senha inválida para conta {ContaId}.", conta.Id);
             throw new CredenciaisInvalidasException();
+        }
 
         if (!conta.EmailVerificado)
+        {
+            logger.LogWarning("Login bloqueado — e-mail não verificado para conta {ContaId}.", conta.Id);
             throw new EmailNaoVerificadoException();
+        }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var (perfilId, nome) = await perfilResolver.ResolverAsync(conta, cancellationToken).ConfigureAwait(false);

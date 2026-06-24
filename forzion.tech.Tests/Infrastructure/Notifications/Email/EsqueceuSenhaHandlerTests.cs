@@ -206,6 +206,19 @@ public class EsqueceuSenhaHandlerTests
         _transaction.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task HandleAsync_ContaInexistente_LogNaoContemEmailCru()
+    {
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Conta?)null);
+
+        await _handler.HandleAsync(new EsqueceuSenhaCommand("ghost@example.com"));
+
+        _logger.Verify(l => l.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("ghost@example.com")),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
+    }
+
     private static string Hash(string raw) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 }

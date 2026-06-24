@@ -93,6 +93,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService, IDisposable
 
         if (resposta.StatusCode == HttpStatusCode.NotFound)
         {
+            _logger.LogWarning("Consulta NFS-e: nota não encontrada no provedor (DPS {NumeroDps}).", chaveAcesso);
             return new NfseStatus(NfseSituacao.NaoEncontrada, null, null, null, null, null);
         }
 
@@ -110,6 +111,7 @@ public class EmissorNfseNacionalService : IEmissorNfseService, IDisposable
         }
 
         var (codigo, motivo) = LerErro(corpo, resposta.StatusCode);
+        _logger.LogWarning("Consulta NFS-e rejeitada pelo provedor (DPS {NumeroDps}): {Codigo} - {Motivo}.", chaveAcesso, codigo, motivo);
         return new NfseStatus(NfseSituacao.Rejeitada, null, null, null, codigo, motivo);
     }
 
@@ -303,7 +305,8 @@ public class EmissorNfseNacionalService : IEmissorNfseService, IDisposable
     private void Assinar(XmlDocument doc, string idInfDps)
     {
         var certificado = _certificado.Value;
-        var signedXml = new SignedXml(doc) { SigningKey = certificado.GetRSAPrivateKey() };
+        using var rsa = certificado.GetRSAPrivateKey();
+        var signedXml = new SignedXml(doc) { SigningKey = rsa };
 
         var referencia = new Reference("#" + idInfDps);
         referencia.AddTransform(new XmlDsigEnvelopedSignatureTransform());

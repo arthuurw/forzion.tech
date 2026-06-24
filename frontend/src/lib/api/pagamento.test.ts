@@ -40,9 +40,11 @@ describe("pagamentoApi", () => {
     expect(mock.get).toHaveBeenCalledWith("/aluno/pagamentos/pg1");
   });
 
-  it("listarPagamentosAssinatura GET", () => {
+  it("listarPagamentosAssinatura GET com paginação default", () => {
     pagamentoApi.listarPagamentosAssinatura("as1");
-    expect(mock.get).toHaveBeenCalledWith("/aluno/pagamentos/assinatura/as1");
+    expect(mock.get).toHaveBeenCalledWith("/aluno/pagamentos/assinatura/as1", {
+      params: { pagina: 1, tamanhoPagina: 20 },
+    });
   });
 
   it("obterMinhaAssinatura GET", () => {

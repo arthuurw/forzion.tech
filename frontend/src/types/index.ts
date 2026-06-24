@@ -304,6 +304,13 @@ export interface PagamentoResponse {
   createdAt: string;
 }
 
+export interface ListarPagamentosAssinaturaAlunoResponse {
+  items: PagamentoResponse[];
+  total: number;
+  pagina: number;
+  tamanhoPagina: number;
+}
+
 export interface OnboardingStatusResponse {
   onboardingCompleto: boolean;
   contaConfigurada: boolean;

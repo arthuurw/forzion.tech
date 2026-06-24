@@ -212,4 +212,42 @@ public class HealthReportCollectorTests
         report.Liveness.StripeConfigurado.Should().BeFalse();
         report.Liveness.WhatsAppConfigurado.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task ColetarAsync_OutboxUltimoErroComPii_ScrubaEmailENumero()
+    {
+        await using var ctx = _fixture.CreateContext();
+        var outboxItem = OutboxEfeito.Criar("fx:teste", "{}", $"k:{Guid.NewGuid():N}", Agora).Value;
+        outboxItem.MarcarProcessando();
+        outboxItem.RegistrarFalha("falha ao enviar para joao@example.com fone 11987654321", Agora.AddMinutes(5));
+        _outbox.Setup(r => r.ContarPorStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<OutboxStatus, int> { [OutboxStatus.Falhou] = 1 });
+        _outbox.Setup(r => r.ListarPorStatusAsync(OutboxStatus.Falhou, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { outboxItem });
+
+        var report = await Criar(ctx, Config()).ColetarAsync(Toggles());
+
+        var amostra = report.Outbox!.FalhasAmostras.Single();
+        amostra.UltimoErro.Should().Contain("[email]").And.Contain("[num]");
+        amostra.UltimoErro.Should().NotContain("joao@example.com").And.NotContain("11987654321");
+    }
+
+    [Fact]
+    public async Task ColetarAsync_ErroMensagemComPii_ScrubaEmailENumero()
+    {
+        await using var ctx = _fixture.CreateContext();
+        _errorLog.Setup(r => r.ContarDesdeAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _errorLog.Setup(r => r.ListarDesdeAsync(It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                ErrorLogEntry.Criar(Agora.AddHours(-1), "Error", "Worker",
+                    "erro no CPF 12345678901 do usuario maria@empresa.com.br", Agora).Value
+            });
+
+        var report = await Criar(ctx, Config()).ColetarAsync(Toggles());
+
+        var amostra = report.Erros!.Amostras.Single();
+        amostra.Mensagem.Should().Contain("[email]").And.Contain("[num]");
+        amostra.Mensagem.Should().NotContain("maria@empresa.com.br").And.NotContain("12345678901");
+    }
 }
