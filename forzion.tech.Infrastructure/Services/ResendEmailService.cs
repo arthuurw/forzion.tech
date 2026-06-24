@@ -46,7 +46,8 @@ public sealed class ResendEmailService(HttpClient http, string apiKey, string ap
 
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogError("Resend retornou {Status} ao enviar para {Destinatario}.", (int)response.StatusCode, MascaraPii.Email(para));
+                var corpo = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                logger.LogError("Resend retornou {Status} ao enviar para {Destinatario}: {Erro}", (int)response.StatusCode, MascaraPii.Email(para), MascaraPii.Scrub(corpo));
             }
         }
         catch (HttpRequestException ex)

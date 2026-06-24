@@ -1,6 +1,8 @@
+using System.Text.RegularExpressions;
+
 namespace forzion.tech.Infrastructure.Common;
 
-public static class MascaraPii
+public static partial class MascaraPii
 {
     public static string Email(string email)
     {
@@ -15,4 +17,18 @@ public static class MascaraPii
         if (string.IsNullOrWhiteSpace(phone)) return "(vazio)";
         return phone.Length <= 4 ? "***" : $"***{phone[^4..]}";
     }
+
+    public static string? Scrub(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+        text = EmailRegex().Replace(text, "[email]");
+        text = DigitRunRegex().Replace(text, "[num]");
+        return text;
+    }
+
+    [GeneratedRegex(@"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")]
+    private static partial Regex EmailRegex();
+
+    [GeneratedRegex(@"\d{7,}")]
+    private static partial Regex DigitRunRegex();
 }

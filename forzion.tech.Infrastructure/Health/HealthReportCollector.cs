@@ -1,18 +1,18 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.HealthReport;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Infrastructure.Common;
 using forzion.tech.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace forzion.tech.Infrastructure.Health;
 
-public partial class HealthReportCollector(
+public class HealthReportCollector(
     AppDbContext context,
     IEmailService emailService,
     IConfiguration configuration,
@@ -204,19 +204,5 @@ public partial class HealthReportCollector(
     }
 
     [return: NotNullIfNotNull(nameof(text))]
-    private static string? Scrub(string? text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return text;
-
-        text = EmailRegex().Replace(text, "[email]");
-        text = DigitRunRegex().Replace(text, "[num]");
-        return text;
-    }
-
-    [GeneratedRegex(@"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")]
-    private static partial Regex EmailRegex();
-
-    [GeneratedRegex(@"\d{7,}")]
-    private static partial Regex DigitRunRegex();
+    private static string? Scrub(string? text) => MascaraPii.Scrub(text);
 }

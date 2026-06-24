@@ -83,7 +83,8 @@ public class MetaWhatsAppCloudNotifier(
 
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogWarning("WhatsApp Cloud API returned {Status}.", response.StatusCode);
+                var corpo = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                logger.LogWarning("WhatsApp Cloud API returned {Status}: {Erro}", response.StatusCode, MascaraPii.Scrub(corpo));
             }
         }
         catch (HttpRequestException ex)

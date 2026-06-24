@@ -46,4 +46,26 @@ public class MascaraPiiTests
     {
         MascaraPii.Telefone("123").Should().Be("***");
     }
+
+    [Fact]
+    public void Scrub_TextoComEmailETelefone_RedigeAmbos()
+    {
+        MascaraPii.Scrub("erro para arthur@dominio.com tel 5511998887766")
+            .Should().Be("erro para [email] tel [num]");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Scrub_TextoVazioOuNulo_RetornaInalterado(string? texto)
+    {
+        MascaraPii.Scrub(texto).Should().Be(texto);
+    }
+
+    [Fact]
+    public void Scrub_TextoSemPii_RetornaInalterado()
+    {
+        MascaraPii.Scrub("status 422 invalid request").Should().Be("status 422 invalid request");
+    }
 }
