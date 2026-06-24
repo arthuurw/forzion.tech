@@ -303,7 +303,8 @@ public class EmissorNfseNacionalService : IEmissorNfseService, IDisposable
     private void Assinar(XmlDocument doc, string idInfDps)
     {
         var certificado = _certificado.Value;
-        var signedXml = new SignedXml(doc) { SigningKey = certificado.GetRSAPrivateKey() };
+        using var rsa = certificado.GetRSAPrivateKey();
+        var signedXml = new SignedXml(doc) { SigningKey = rsa };
 
         var referencia = new Reference("#" + idInfDps);
         referencia.AddTransform(new XmlDsigEnvelopedSignatureTransform());

@@ -36,10 +36,8 @@ public class RequireAssinaturaAtivaFilterTests
         if (aluno is not null)
         {
             assinaturaRepository
-                .Setup(r => r.ListarPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(assinatura is not null
-                    ? (IReadOnlyList<AssinaturaAluno>)[assinatura]
-                    : []);
+                .Setup(r => r.ObterAtualPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(assinatura);
         }
 
         var services = new ServiceCollection();

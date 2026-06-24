@@ -44,7 +44,8 @@ function makeAssinatura(overrides: Partial<AssinaturaAlunoResponse> = {}): Assin
 function respondAssinatura(assinatura: AssinaturaAlunoResponse) {
   server.use(
     http.get("*/aluno/assinatura", () => HttpResponse.json(assinatura)),
-    http.get("*/aluno/pagamentos/assinatura/:id", () => HttpResponse.json([])),
+    http.get("*/aluno/pagamentos/assinatura/:id", () =>
+      HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 20 })),
   );
 }
 
@@ -126,7 +127,8 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
     let assinaturaAtual = makeAssinatura({ status: "Ativa" });
     server.use(
       http.get("*/aluno/assinatura", () => HttpResponse.json(assinaturaAtual)),
-      http.get("*/aluno/pagamentos/assinatura/:id", () => HttpResponse.json([])),
+      http.get("*/aluno/pagamentos/assinatura/:id", () =>
+      HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 20 })),
       http.post("*/aluno/assinatura/cancelar", () => {
         postCalls++;
         assinaturaAtual = { ...assinaturaAtual, status: "Cancelada", dataCancelamento: "2026-05-29T00:00:00Z" };
@@ -201,7 +203,8 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
   it("API retornar erro com detail → exibe o detail do backend e mantém botão", async () => {
     server.use(
       http.get("*/aluno/assinatura", () => HttpResponse.json(makeAssinatura({ status: "Ativa" }))),
-      http.get("*/aluno/pagamentos/assinatura/:id", () => HttpResponse.json([])),
+      http.get("*/aluno/pagamentos/assinatura/:id", () =>
+      HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 20 })),
       http.post("*/aluno/assinatura/cancelar", () =>
         HttpResponse.json({ detail: "Assinatura já cancelada." }, { status: 409 }),
       ),
@@ -220,7 +223,8 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
   it("API retornar erro sem mensagem → exibe fallback genérico", async () => {
     server.use(
       http.get("*/aluno/assinatura", () => HttpResponse.json(makeAssinatura({ status: "Ativa" }))),
-      http.get("*/aluno/pagamentos/assinatura/:id", () => HttpResponse.json([])),
+      http.get("*/aluno/pagamentos/assinatura/:id", () =>
+      HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 20 })),
       http.post("*/aluno/assinatura/cancelar", () => new HttpResponse(null, { status: 500 })),
     );
 

@@ -19,7 +19,7 @@ public class ListarPagamentosAssinaturaAlunoHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_DonoDaAssinaturaAluno_RetornaLista()
+    public async Task HandleAsync_DonoDaAssinaturaAluno_RetornaPaginado()
     {
         var alunoId = Guid.NewGuid();
         var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 100m, DateTime.UtcNow).Value;
@@ -29,12 +29,29 @@ public class ListarPagamentosAssinaturaAlunoHandlerTests
             Pagamento.Criar(assinatura.Id, 200m, DateTime.UtcNow).Value,
         };
         _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
-        _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(pagamentos);
+        _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoPaginadoAsync(assinatura.Id, 1, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Pagamento>)pagamentos, 5));
 
-        var result = await _handler.HandleAsync(new ListarPagamentosAssinaturaAlunoQuery(assinatura.Id, alunoId));
+        var result = await _handler.HandleAsync(new ListarPagamentosAssinaturaAlunoQuery(assinatura.Id, alunoId, 1, 20));
 
-        result.Should().HaveCount(2);
+        result.Items.Should().HaveCount(2);
+        result.Total.Should().Be(5);
+        result.Pagina.Should().Be(1);
+        result.TamanhoPagina.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PropagaPaginaETamanhoParaRepositorio()
+    {
+        var alunoId = Guid.NewGuid();
+        var assinatura = AssinaturaAluno.Criar(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), alunoId, 100m, DateTime.UtcNow).Value;
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ListarPorAssinaturaAlunoPaginadoAsync(assinatura.Id, 3, 50, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<Pagamento>)[], 0));
+
+        await _handler.HandleAsync(new ListarPagamentosAssinaturaAlunoQuery(assinatura.Id, alunoId, 3, 50));
+
+        _pagamentoRepo.Verify(r => r.ListarPorAssinaturaAlunoPaginadoAsync(assinatura.Id, 3, 50, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

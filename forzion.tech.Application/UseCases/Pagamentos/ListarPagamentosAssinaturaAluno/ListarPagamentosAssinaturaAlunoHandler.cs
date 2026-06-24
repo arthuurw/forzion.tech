@@ -7,7 +7,7 @@ public class ListarPagamentosAssinaturaAlunoHandler(
     IPagamentoRepository pagamentoRepository,
     IAssinaturaAlunoRepository assinaturaRepository)
 {
-    public virtual async Task<IReadOnlyList<PagamentoResponse>> HandleAsync(
+    public virtual async Task<ListarPagamentosAssinaturaAlunoResponse> HandleAsync(
         ListarPagamentosAssinaturaAlunoQuery query,
         CancellationToken cancellationToken = default)
     {
@@ -17,8 +17,14 @@ public class ListarPagamentosAssinaturaAlunoHandler(
         if (assinatura is null || assinatura.AlunoId != query.AlunoId)
             throw new AcessoNegadoException();
 
-        var pagamentos = await pagamentoRepository.ListarPorAssinaturaAlunoAsync(query.AssinaturaAlunoId, cancellationToken).ConfigureAwait(false);
+        var (pagamentos, total) = await pagamentoRepository
+            .ListarPorAssinaturaAlunoPaginadoAsync(query.AssinaturaAlunoId, query.Pagina, query.TamanhoPagina, cancellationToken)
+            .ConfigureAwait(false);
 
-        return pagamentos.Select(PagamentoResponseExtensions.ToResponseAluno).ToList();
+        return new ListarPagamentosAssinaturaAlunoResponse(
+            pagamentos.Select(PagamentoResponseExtensions.ToResponseAluno).ToList(),
+            total,
+            query.Pagina,
+            query.TamanhoPagina);
     }
 }

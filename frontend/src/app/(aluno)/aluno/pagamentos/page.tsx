@@ -106,7 +106,7 @@ export default function PagamentosAlunoPage() {
         return;
       }
       const pgRes = await pagamentoApi.listarPagamentosAssinatura(assRes.data.assinaturaAlunoId);
-      setPagamentos(pgRes.data);
+      setPagamentos(pgRes.data.items);
     } catch (err) {
       setError(extractApiError(err, "Erro ao carregar pagamentos."));
     } finally {

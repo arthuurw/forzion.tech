@@ -1,6 +1,5 @@
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.AssinaturaAlunos;
-using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.UseCases.AssinaturaAlunos.ObterAssinaturaAluno;
 
@@ -10,12 +9,7 @@ public class ObterAssinaturaAlunoHandler(IAssinaturaAlunoRepository assinaturaRe
         Guid alunoId,
         CancellationToken cancellationToken = default)
     {
-        var assinaturas = await assinaturaRepository.ListarPorAlunoAsync(alunoId, cancellationToken).ConfigureAwait(false);
-
-        var ativa = assinaturas
-            .Where(a => a.Status != AssinaturaAlunoStatus.Cancelada)
-            .OrderByDescending(a => a.CreatedAt)
-            .FirstOrDefault();
+        var ativa = await assinaturaRepository.ObterAtualPorAlunoAsync(alunoId, cancellationToken).ConfigureAwait(false);
 
         return ativa is null ? null : AssinaturaAlunoResponseExtensions.ToResponse(ativa);
     }
