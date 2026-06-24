@@ -15,7 +15,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import { TREINADOR_STATUS_COLORS, ALUNO_DASHBOARD_STATUS_COLORS } from "@/lib/constants/labels";
-import { srOnly } from "@/lib/utils/a11y";
+import ChartFigure from "@/components/charts/ChartFigure";
 import type {
   TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
 } from "@/types";
@@ -226,10 +226,10 @@ export default function DashboardAdminPage() {
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
                 STATUS DOS TREINADORES
               </Typography>
-              <figure aria-label="Distribuição de treinadores por status" style={{ margin: 0 }}>
-                <span style={srOnly}>
-                  {treinadorStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
-                </span>
+              <ChartFigure
+                label="Distribuição de treinadores por status"
+                summary={treinadorStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
+              >
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={treinadorStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
@@ -239,17 +239,17 @@ export default function DashboardAdminPage() {
                     <Legend iconType="circle" iconSize={10} />
                   </PieChart>
                 </ResponsiveContainer>
-              </figure>
+              </ChartFigure>
             </Paper>
 
             <Paper sx={{ p: 3, borderRadius: 2 }}>
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
                 TREINADORES POR PLANO
               </Typography>
-              <figure aria-label="Distribuição de treinadores por plano" style={{ margin: 0 }}>
-                <span style={srOnly}>
-                  {planoBarData.map((d) => `${d.name}: ${d.total}`).join(", ")}
-                </span>
+              <ChartFigure
+                label="Distribuição de treinadores por plano"
+                summary={planoBarData.map((d) => `${d.name}: ${d.total}`).join(", ")}
+              >
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={planoBarData} layout="vertical" margin={{ left: 8, right: 16 }}>
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
@@ -258,7 +258,7 @@ export default function DashboardAdminPage() {
                     <Bar dataKey="total" name="Treinadores" fill={theme.palette.primary.main} radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              </figure>
+              </ChartFigure>
             </Paper>
           </Box>
 
@@ -267,10 +267,10 @@ export default function DashboardAdminPage() {
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
                 STATUS DOS ALUNOS
               </Typography>
-              <figure aria-label="Distribuição de alunos por status" style={{ margin: 0 }}>
-                <span style={srOnly}>
-                  {alunoStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
-                </span>
+              <ChartFigure
+                label="Distribuição de alunos por status"
+                summary={alunoStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
+              >
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={alunoStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
@@ -280,7 +280,7 @@ export default function DashboardAdminPage() {
                     <Legend iconType="circle" iconSize={10} />
                   </PieChart>
                 </ResponsiveContainer>
-              </figure>
+              </ChartFigure>
             </Paper>
 
             <Paper sx={{ p: 3, borderRadius: 2 }}>
@@ -292,10 +292,10 @@ export default function DashboardAdminPage() {
                   <Typography variant="body2" color="text.secondary">Nenhum dado disponível.</Typography>
                 </Box>
               ) : (
-                <figure aria-label="Distribuição de alunos por finalidade" style={{ margin: 0 }}>
-                  <span style={srOnly}>
-                    {finalidadeData.map((d) => `${d.name}: ${d.total}`).join(", ")}
-                  </span>
+                <ChartFigure
+                  label="Distribuição de alunos por finalidade"
+                  summary={finalidadeData.map((d) => `${d.name}: ${d.total}`).join(", ")}
+                >
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={finalidadeData} layout="vertical" margin={{ left: 8, right: 16 }}>
                       <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
@@ -304,7 +304,7 @@ export default function DashboardAdminPage() {
                       <Bar dataKey="total" name="Alunos" fill={theme.palette.info.main} radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                </figure>
+                </ChartFigure>
               )}
             </Paper>
           </Box>

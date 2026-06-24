@@ -18,7 +18,7 @@ import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 import { getWeekLabel } from "@/lib/utils/formatting";
 import { extractApiError } from "@/lib/api/extractApiError";
-import { srOnly } from "@/lib/utils/a11y";
+import ChartFigure from "@/components/charts/ChartFigure";
 
 export default function DashboardAlunoPage() {
   const theme = useTheme();
@@ -116,10 +116,10 @@ export default function DashboardAlunoPage() {
               </Typography>
             </Box>
           ) : (
-            <figure aria-label="Fichas por status" style={{ margin: 0 }}>
-              <span style={srOnly}>
-                {fichasStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
-              </span>
+            <ChartFigure
+              label="Fichas por status"
+              summary={fichasStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
+            >
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
@@ -139,7 +139,7 @@ export default function DashboardAlunoPage() {
                   <Legend iconType="circle" iconSize={10} />
                 </PieChart>
               </ResponsiveContainer>
-            </figure>
+            </ChartFigure>
           )}
         </Paper>
 
@@ -154,10 +154,10 @@ export default function DashboardAlunoPage() {
               </Typography>
             </Box>
           ) : (
-            <figure aria-label="Sessões por semana" style={{ margin: 0 }}>
-              <span style={srOnly}>
-                {sessoesData.map((d) => `${d.semana}: ${d.sessoes}`).join(", ")}
-              </span>
+            <ChartFigure
+              label="Sessões por semana"
+              summary={sessoesData.map((d) => `${d.semana}: ${d.sessoes}`).join(", ")}
+            >
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={sessoesData} margin={{ left: -16, right: 16 }}>
                   <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
@@ -166,7 +166,7 @@ export default function DashboardAlunoPage() {
                   <Bar dataKey="sessoes" name="Sessões" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            </figure>
+            </ChartFigure>
           )}
         </Paper>
       </Box>

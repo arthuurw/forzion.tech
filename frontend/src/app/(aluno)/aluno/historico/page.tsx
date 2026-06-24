@@ -20,7 +20,7 @@ import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { extractApiError } from "@/lib/api/extractApiError";
 import { formatarData, periodoParaDatas } from "@/lib/utils/formatting";
 import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
-import { srOnly } from "@/lib/utils/a11y";
+import ChartFigure from "@/components/charts/ChartFigure";
 
 type Periodo = "7d" | "30d" | "60d" | "90d";
 
@@ -133,10 +133,10 @@ export default function HistoricoAlunoPage() {
           {allLoading ? (
             <Skeleton variant="rectangular" height={160} sx={{ borderRadius: 1 }} />
           ) : (
-            <figure aria-label="Frequência semanal de sessões" style={{ margin: 0 }}>
-              <span style={srOnly}>
-                {weekData.map((d) => `${d.label}: ${d.sessoes}`).join(", ")}
-              </span>
+            <ChartFigure
+              label="Frequência semanal de sessões"
+              summary={weekData.map((d) => `${d.label}: ${d.sessoes}`).join(", ")}
+            >
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={weekData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
@@ -151,7 +151,7 @@ export default function HistoricoAlunoPage() {
                   <Bar dataKey="sessoes" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            </figure>
+            </ChartFigure>
           )}
         </CardContent>
       </Card>
@@ -212,10 +212,10 @@ export default function HistoricoAlunoPage() {
                           {ex.grupoMuscular}
                         </Typography>
                       )}
-                      <figure aria-label={`Progressão de carga — ${ex.nomeExercicio}`} style={{ margin: 0 }}>
-                      <span style={srOnly}>
-                        {chartData.map((d) => `${d.data}: ${d.carga} kg`).join(", ")}
-                      </span>
+                      <ChartFigure
+                        label={`Progressão de carga — ${ex.nomeExercicio}`}
+                        summary={chartData.map((d) => `${d.data}: ${d.carga} kg`).join(", ")}
+                      >
                       <ResponsiveContainer width="100%" height={140}>
                         <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
@@ -243,7 +243,7 @@ export default function HistoricoAlunoPage() {
                           />
                         </LineChart>
                       </ResponsiveContainer>
-                      </figure>
+                      </ChartFigure>
                       {ultima && (
                         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
                           Último: {ultima.cargaMaxima != null
