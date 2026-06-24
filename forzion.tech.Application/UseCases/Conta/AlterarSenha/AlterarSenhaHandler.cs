@@ -62,6 +62,7 @@ public class AlterarSenhaHandler(
 
         conta.InvalidarSessoesAnteriores(agoraOffset);
 
+        // Blacklist do jti corrente (NR-6): sem ele, o access roubado sobrevive à troca de senha por até 15min.
         await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
         await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
