@@ -21,6 +21,28 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+/* Skip-to-content link (WCAG 2.4.1). Off-screen until focused, then pinned top-left. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -64px;
+  z-index: 2000;
+  padding: 8px 16px;
+  background-color: #1a1a1a;
+  color: #f5c400;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 8px;
+  outline: 2px solid #f5c400;
+  outline-offset: 2px;
+}
+
 /* Honor prefers-reduced-motion at runtime (WCAG 2.3.3). MUI theme transitions
    (Button, ListItemButton, etc.) and any animations are neutralized. */
 @media (prefers-reduced-motion: reduce) {

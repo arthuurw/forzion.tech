@@ -187,8 +187,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <Box
         component="main"
+        id="main-content"
+        tabIndex={-1}
         sx={{
           flex: 1,
+          outline: "none",
           p: { xs: 2.5, md: 3.5 },
           pb: { xs: "calc(72px + env(safe-area-inset-bottom, 0px))", md: 3.5 },
           mt: { xs: "60px", sm: "64px" },

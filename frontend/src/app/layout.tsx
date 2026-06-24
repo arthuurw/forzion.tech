@@ -51,6 +51,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={inter.className} suppressHydrationWarning>
       <body>
+        <a href="#main-content" className="skip-link">
+          Pular para o conteúdo
+        </a>
         <WebVitals />
         <AppRouterCacheProvider>
           <ThemeRegistry>
