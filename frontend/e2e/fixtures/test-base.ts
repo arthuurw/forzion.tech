@@ -82,13 +82,15 @@ export const test = base.extend<{
 export { expect };
 
 export function useAuthRole(t: typeof test, role: AuthRole): void {
-  if (!hasAuthState(role)) {
-    throw new Error(
-      `Storage state ausente pra role ${role}. Configure E2E_${role.toUpperCase()}_EMAIL ` +
-      `e E2E_${role.toUpperCase()}_PASSWORD e rode "npx playwright test --project=setup".`,
-    );
-  }
   t.use({ storageState: authStatePath(role) });
+  t.beforeAll(() => {
+    if (!hasAuthState(role)) {
+      throw new Error(
+        `Storage state ausente pra role ${role}. Configure E2E_${role.toUpperCase()}_EMAIL ` +
+        `e E2E_${role.toUpperCase()}_PASSWORD e rode "npx playwright test --project=setup".`,
+      );
+    }
+  });
 }
 
 export type { AuthRole, Page };
