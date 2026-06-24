@@ -186,7 +186,7 @@ export default async function LandingPage() {
               <Typography variant="h4" sx={{ fontWeight: 700, textAlign: "center", mb: 1, color: "white" }}>
                 Planos para cada porte de operação
               </Typography>
-              <Typography variant="body1" sx={{ textAlign: "center", color: "rgba(255,255,255,0.5)", mb: 6 }}>
+              <Typography variant="body1" sx={{ textAlign: "center", color: "rgba(255,255,255,0.72)", mb: 6 }}>
                 Escale conforme sua carteira de alunos cresce
               </Typography>
               <Grid container spacing={3} sx={{ justifyContent: "center" }}>
@@ -203,7 +203,7 @@ export default async function LandingPage() {
                         boxShadow: i === 1 ? "0 8px 32px rgba(245,196,0,0.25)" : "none",
                         transform: i === 1 ? "scale(1.04)" : "none",
                         ...(isInativo
-                          ? { opacity: 0.6, pointerEvents: "none", cursor: "default" }
+                          ? { pointerEvents: "none", cursor: "default" }
                           : {
                               cursor: "pointer",
                               transition: "transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease",
@@ -221,21 +221,21 @@ export default async function LandingPage() {
                             {plano.nome}
                           </Typography>
                           {isInativo && (
-                            <Chip label="Em breve" color="warning" size="small" />
+                            <Chip label="Em breve" size="small" sx={{ bgcolor: "#5c3600", color: "#fff" }} />
                           )}
                         </Box>
-                        <Typography variant="body2" sx={{ color: i === 1 ? "rgba(26,26,26,0.65)" : "rgba(255,255,255,0.5)", mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: i === 1 ? "rgba(26,26,26,0.82)" : "rgba(255,255,255,0.78)", mb: 1 }}>
                           Até {plano.maxAlunos} alunos
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 800, color: i === 1 ? "secondary.main" : "primary.main", mt: 1.5 }}>
                           {plano.preco > 0
-                            ? <>{formatarBRL(plano.preco)}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.7 }}>/mês</Typography></>
+                            ? <>{formatarBRL(plano.preco)}<Typography component="span" variant="caption" sx={{ fontWeight: 400, ml: 0.5, opacity: 0.92 }}>/mês</Typography></>
                             : "Gratuito"}
                         </Typography>
                         {plano.descricao && (
                           <Box sx={{ mt: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75 }}>
                             <CheckIcon sx={{ fontSize: 15, color: i === 1 ? "secondary.main" : "primary.main", flexShrink: 0 }} />
-                            <Typography variant="caption" sx={{ color: i === 1 ? "rgba(26,26,26,0.75)" : "rgba(255,255,255,0.65)", lineHeight: 1.4 }}>
+                            <Typography variant="caption" sx={{ color: i === 1 ? "rgba(26,26,26,0.82)" : "rgba(255,255,255,0.78)", lineHeight: 1.4 }}>
                               {plano.descricao}
                             </Typography>
                           </Box>
@@ -263,7 +263,7 @@ export default async function LandingPage() {
                     display: "block",
                     textAlign: "center",
                     mt: 4,
-                    color: "rgba(255,255,255,0.35)",
+                    color: "rgba(255,255,255,0.62)",
                     lineHeight: 1.5,
                     maxWidth: 500,
                     mx: "auto",

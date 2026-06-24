@@ -45,7 +45,7 @@ function VerifyEmailInner() {
   if (status === "verifying") {
     return (
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, py: 2 }}>
-        <CircularProgress />
+        <CircularProgress aria-label="Verificando seu e-mail" />
         <Typography variant="body2" color="text.secondary">
           Verificando seu e-mail...
         </Typography>
@@ -100,7 +100,7 @@ export default function VerifyEmailPage() {
     <Suspense
       fallback={
         <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-          <CircularProgress />
+          <CircularProgress aria-label="Carregando" />
         </Box>
       }
     >
