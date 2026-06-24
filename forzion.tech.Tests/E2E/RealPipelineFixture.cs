@@ -36,7 +36,7 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
     public const string AdminPassword = "Admin@123456";
     public const string UrlBase = "https://app.forzion.test";
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine")
         .WithDatabase("forzion_e2e")
         .WithUsername("e2e")
         .WithPassword("e2e")

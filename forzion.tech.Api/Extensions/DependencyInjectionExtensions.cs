@@ -401,7 +401,7 @@ public static class DependencyInjectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddCorsPolicies(this IServiceCollection services, IConfiguration configuration)
+    private static void AddCorsPolicies(this IServiceCollection services, IConfiguration configuration)
     {
         var raw = configuration["Cors:AllowedOrigins"]?.Split(';') ?? Array.Empty<string>();
 
@@ -421,8 +421,6 @@ public static class DependencyInjectionExtensions
                     .WithHeaders("Content-Type", "Authorization", "Accept", "X-Requested-With", "X-Step-Up-Token")
                     .AllowCredentials());
         });
-
-        return services;
     }
 
     internal static void RegistrarRejeicaoAuth(HttpContext httpContext, ILogger logger)
