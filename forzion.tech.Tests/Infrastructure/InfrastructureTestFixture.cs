@@ -13,7 +13,7 @@ public class InfrastructureTestCollection : ICollectionFixture<InfrastructureTes
 
 public sealed class InfrastructureTestFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine")
         .WithDatabase("forzion_test")
         .WithUsername("test")
         .WithPassword("test")
