@@ -157,7 +157,7 @@ export default function PagamentosTreinadorPage() {
     }
   };
 
-  if (loading) return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ p: { xs: 2, md: 4 } }}><CircularProgress /></Box>;
 
   const externo = status?.modoPagamentoAluno === "Externo";
   const liberadoEm = status?.modoPagamentoPodeAlterarEm ? new Date(status.modoPagamentoPodeAlterarEm) : null;
