@@ -20,6 +20,7 @@ import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { extractApiError } from "@/lib/api/extractApiError";
 import { formatarData, periodoParaDatas } from "@/lib/utils/formatting";
 import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
+import { srOnly } from "@/lib/utils/a11y";
 
 type Periodo = "7d" | "30d" | "60d" | "90d";
 
@@ -132,20 +133,25 @@ export default function HistoricoAlunoPage() {
           {allLoading ? (
             <Skeleton variant="rectangular" height={160} sx={{ borderRadius: 1 }} />
           ) : (
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={weekData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke={theme.palette.text.disabled} />
-                <YAxis tick={{ fontSize: 11 }} stroke={theme.palette.text.disabled} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ background: theme.palette.secondary.main, border: `1px solid ${theme.palette.secondary.light}`, borderRadius: 4, fontSize: 11 }}
-                  labelStyle={{ color: theme.palette.text.disabled }}
-                  itemStyle={{ color: theme.palette.primary.main }}
-                  formatter={(v) => [v, "Sessões"]}
-                />
-                <Bar dataKey="sessoes" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <figure aria-label="Frequência semanal de sessões" style={{ margin: 0 }}>
+              <span style={srOnly}>
+                {weekData.map((d) => `${d.label}: ${d.sessoes}`).join(", ")}
+              </span>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={weekData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke={theme.palette.text.disabled} />
+                  <YAxis tick={{ fontSize: 11 }} stroke={theme.palette.text.disabled} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ background: theme.palette.secondary.main, border: `1px solid ${theme.palette.secondary.light}`, borderRadius: 4, fontSize: 11 }}
+                    labelStyle={{ color: theme.palette.text.disabled }}
+                    itemStyle={{ color: theme.palette.primary.main }}
+                    formatter={(v) => [v, "Sessões"]}
+                  />
+                  <Bar dataKey="sessoes" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </figure>
           )}
         </CardContent>
       </Card>
@@ -206,6 +212,10 @@ export default function HistoricoAlunoPage() {
                           {ex.grupoMuscular}
                         </Typography>
                       )}
+                      <figure aria-label={`Progressão de carga — ${ex.nomeExercicio}`} style={{ margin: 0 }}>
+                      <span style={srOnly}>
+                        {chartData.map((d) => `${d.data}: ${d.carga} kg`).join(", ")}
+                      </span>
                       <ResponsiveContainer width="100%" height={140}>
                         <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
@@ -233,6 +243,7 @@ export default function HistoricoAlunoPage() {
                           />
                         </LineChart>
                       </ResponsiveContainer>
+                      </figure>
                       {ultima && (
                         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
                           Último: {ultima.cargaMaxima != null

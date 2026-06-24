@@ -18,6 +18,7 @@ import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
 import { getWeekLabel } from "@/lib/utils/formatting";
 import { extractApiError } from "@/lib/api/extractApiError";
+import { srOnly } from "@/lib/utils/a11y";
 
 export default function DashboardAlunoPage() {
   const theme = useTheme();
@@ -115,25 +116,30 @@ export default function DashboardAlunoPage() {
               </Typography>
             </Box>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie
-                  data={fichasStats}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={85}
-                  dataKey="value"
-                  paddingAngle={3}
-                >
-                  {fichasStats.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v, n) => [v, n]} />
-                <Legend iconType="circle" iconSize={10} />
-              </PieChart>
-            </ResponsiveContainer>
+            <figure aria-label="Fichas por status" style={{ margin: 0 }}>
+              <span style={srOnly}>
+                {fichasStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
+              </span>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={fichasStats}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={85}
+                    dataKey="value"
+                    paddingAngle={3}
+                  >
+                    {fichasStats.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Legend iconType="circle" iconSize={10} />
+                </PieChart>
+              </ResponsiveContainer>
+            </figure>
           )}
         </Paper>
 
@@ -148,20 +154,25 @@ export default function DashboardAlunoPage() {
               </Typography>
             </Box>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={sessoesData} margin={{ left: -16, right: 16 }}>
-                <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => [v, "Sessões"]} />
-                <Bar dataKey="sessoes" name="Sessões" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <figure aria-label="Sessões por semana" style={{ margin: 0 }}>
+              <span style={srOnly}>
+                {sessoesData.map((d) => `${d.semana}: ${d.sessoes}`).join(", ")}
+              </span>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={sessoesData} margin={{ left: -16, right: 16 }}>
+                  <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => [v, "Sessões"]} />
+                  <Bar dataKey="sessoes" name="Sessões" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </figure>
           )}
         </Paper>
       </Box>
 
       {/* Fichas ativas */}
-      <Paper sx={{ p: 3, borderRadius: 2 }}>
+      <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
         <Typography
           variant="overline"
           color="text.disabled"

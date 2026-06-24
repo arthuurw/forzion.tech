@@ -26,6 +26,7 @@ import type {
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
 import { periodoParaDatas, formatarData, formatarTelefone } from "@/lib/utils/formatting";
+import { srOnly } from "@/lib/utils/a11y";
 
 type Periodo = "7d" | "30d" | "60d" | "90d";
 
@@ -366,6 +367,10 @@ export default function DetalheAlunoAdminPage() {
                             {ex.grupoMuscular}
                           </Typography>
                         )}
+                        <figure aria-label={`Progressão de carga — ${ex.nomeExercicio}`} style={{ margin: 0 }}>
+                        <span style={srOnly}>
+                          {chartData.map((d) => `${d.data}: ${d.carga ?? "—"} kg`).join(", ")}
+                        </span>
                         <ResponsiveContainer width="100%" height={140}>
                           <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
@@ -388,6 +393,7 @@ export default function DetalheAlunoAdminPage() {
                             />
                           </LineChart>
                         </ResponsiveContainer>
+                        </figure>
                         {ultima && (
                           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
                             Último: {ultima.cargaMaxima != null
