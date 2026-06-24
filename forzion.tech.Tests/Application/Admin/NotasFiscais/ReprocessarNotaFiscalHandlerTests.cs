@@ -6,6 +6,7 @@ using forzion.tech.Application.UseCases.Admin.NotasFiscais;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Admin.NotasFiscais;
@@ -17,12 +18,19 @@ public class ReprocessarNotaFiscalHandlerTests
     private readonly Mock<INotaFiscalRepository> _notaRepo = new();
     private readonly Mock<IOutboxEnfileirador> _enfileirador = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
+    private readonly Mock<IUserContext> _userContext = new();
+    private readonly FakeTimeProvider _time = new(new DateTimeOffset(Agora, TimeSpan.Zero));
     private readonly ReprocessarNotaFiscalHandler _handler;
 
-    public ReprocessarNotaFiscalHandlerTests() =>
+    public ReprocessarNotaFiscalHandlerTests()
+    {
+        _userContext.Setup(u => u.PerfilId).Returns(Guid.NewGuid());
         _handler = new ReprocessarNotaFiscalHandler(
             _notaRepo.Object, _enfileirador.Object, _unitOfWork.Object,
-            Mock.Of<ILogger<ReprocessarNotaFiscalHandler>>());
+            Mock.Of<ILogger<ReprocessarNotaFiscalHandler>>(),
+            _logRepo.Object, _userContext.Object, _time);
+    }
 
     private static NotaFiscal NotaEmErro()
     {
@@ -46,6 +54,7 @@ public class ReprocessarNotaFiscalHandlerTests
 
         chaves.Should().HaveCount(2);
         chaves.Should().AllBe($"fx:emitir_nfse:reprocessar:{nota.Id}");
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.ReprocessamentoNotaFiscal), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]

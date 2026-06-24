@@ -2,8 +2,10 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Conta.Mfa;
 
@@ -27,7 +29,9 @@ public class ConfirmarEnrollTotpHandler(
     IMfaSecretProtector secretProtector,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
-    IValidator<ConfirmarEnrollTotpCommand> validator)
+    IValidator<ConfirmarEnrollTotpCommand> validator,
+    ILogAprovacaoRepository logRepository,
+    ILogger<ConfirmarEnrollTotpHandler> logger)
 {
     public virtual Task<Result<ConfirmarEnrollTotpResult>> HandleAsync(
         ConfirmarEnrollTotpCommand command,
@@ -70,7 +74,14 @@ public class ConfirmarEnrollTotpHandler(
         }
 
         await recoveryCodeRepository.AdicionarRangeAsync(entidades, cancellationToken).ConfigureAwait(false);
+
+        var logResult = LogAprovacao.Registrar(TipoAcaoAprovacao.MfaHabilitado, userContext.ContaId, userContext.ContaId, "Conta", agora);
+        if (logResult.IsFailure)
+            return Result.Failure<ConfirmarEnrollTotpResult>(logResult.Error!);
+        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("MFA habilitado — conta {ContaId}.", userContext.ContaId);
 
         return Result.Success(new ConfirmarEnrollTotpResult(raws));
     }

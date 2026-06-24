@@ -73,4 +73,19 @@ public class ReenviarVerificacaoHandlerTests
 
         _contaRepo.Verify(r => r.ObterPorEmailAsync("user@example.com", It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task HandleAsync_ContaInexistente_LogNaoContemEmailCru()
+    {
+        var logger = new Mock<ILogger<ReenviarVerificacaoHandler>>();
+        var handler = new ReenviarVerificacaoHandler(_contaRepo.Object, _sender.Object, logger.Object);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Conta?)null);
+
+        await handler.HandleAsync(new ReenviarVerificacaoCommand("ausente@example.com"));
+
+        logger.Verify(l => l.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("ausente@example.com")),
+            It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
+    }
 }

@@ -1,13 +1,19 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
 
 public class ExcluirPlanoPlataformaHandler(
     IPlanoPlataformaRepository planoRepository,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogAprovacaoRepository logRepository,
+    ILogger<ExcluirPlanoPlataformaHandler> logger,
+    IUserContext userContext)
 {
     public virtual Task<Result> HandleAsync(
         ExcluirPlanoPlataformaCommand command,
@@ -25,9 +31,22 @@ public class ExcluirPlanoPlataformaHandler(
         if (plano is null)
             return Result.Failure(Error.NotFound("plano_nao_encontrado", "Plano não encontrado."));
 
-        plano.Inativar(timeProvider.GetUtcNow().UtcDateTime);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        plano.Inativar(agora);
+
+        var logResult = LogAprovacao.Registrar(
+            TipoAcaoAprovacao.InativacaoPlanoPlataforma,
+            userContext.PerfilId,
+            plano.Id,
+            nameof(PlanoPlataforma),
+            agora);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("PlanoPlataforma {PlanoId} inativado por {AtorId}.", plano.Id, userContext.PerfilId);
 
         return Result.Success();
     }

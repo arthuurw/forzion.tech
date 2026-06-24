@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Settings;
+using forzion.tech.Infrastructure.Common;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
@@ -46,7 +47,7 @@ public sealed class EnvironmentEmailDecorator(
             return para;
 
         logger.LogInformation(
-            "E-mail de teste redirecionado: destinatário original {Original} -> {Redirect}", para, alvos[0]);
+            "E-mail de teste redirecionado: destinatário original {Original} -> {Redirect}", MascaraPii.Email(para), alvos[0]);
         return alvos[0];
     }
 

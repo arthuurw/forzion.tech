@@ -25,6 +25,7 @@ public class EmitirNfseEfeitoHandlerTests
     private readonly Mock<IOutboxEnfileirador> _enfileirador = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeTimeProvider _time = new(Instante);
+    private readonly Mock<ILogger<EmitirNfseEfeitoHandler>> _logger = new();
     private readonly EmitirNfseEfeitoHandler _handler;
 
     public EmitirNfseEfeitoHandlerTests()
@@ -37,7 +38,7 @@ public class EmitirNfseEfeitoHandlerTests
             Options.Create(Settings()),
             _unitOfWork.Object,
             _time,
-            Mock.Of<ILogger<EmitirNfseEfeitoHandler>>());
+            _logger.Object);
     }
 
     [Fact]
@@ -78,6 +79,24 @@ public class EmitirNfseEfeitoHandlerTests
         nota.CodigoErro.Should().Be("E01");
         nota.MotivoErro.Should().Be("CNPJ inválido");
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Rejeicao_LogaWarningComNotaFiscalIdERejeitada()
+    {
+        var (nota, _) = CriarCenario(comDadosFiscais: true);
+        _emissor.Setup(e => e.EmitirAsync(It.IsAny<DpsInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NfseResultado(false, null, null, null, null, "E99", "CPF inválido"));
+
+        await _handler.ExecutarAsync(Payload(nota.Id));
+
+        nota.Status.Should().Be(NotaFiscalStatus.Erro);
+        _logger.Verify(l => l.Log(
+            LogLevel.Warning,
+            It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("rejeitada") && v.ToString()!.Contains(nota.Id.ToString())),
+            null,
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     [Fact]

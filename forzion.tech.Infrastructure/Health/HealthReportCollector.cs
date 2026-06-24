@@ -1,4 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Admin.HealthReport;
@@ -10,7 +12,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace forzion.tech.Infrastructure.Health;
 
-public class HealthReportCollector(
+public partial class HealthReportCollector(
     AppDbContext context,
     IEmailService emailService,
     IConfiguration configuration,
@@ -79,7 +81,7 @@ public class HealthReportCollector(
                     Tipo = e.Tipo,
                     Tentativas = e.Tentativas,
                     CriadoEm = e.CriadoEm,
-                    UltimoErro = e.UltimoErro
+                    UltimoErro = Scrub(e.UltimoErro)
                 })
                 .ToList()
         };
@@ -100,7 +102,7 @@ public class HealthReportCollector(
                     OcorridoEm = e.OcorridoEm,
                     Nivel = e.Nivel,
                     Origem = e.Origem,
-                    Mensagem = e.Mensagem
+                    Mensagem = Scrub(e.Mensagem)
                 })
                 .ToList()
         };
@@ -200,4 +202,21 @@ public class HealthReportCollector(
         var idx = info.IndexOf('+');
         return idx >= 0 && idx < info.Length - 1 ? info[(idx + 1)..] : null;
     }
+
+    [return: NotNullIfNotNull(nameof(text))]
+    private static string? Scrub(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        text = EmailRegex().Replace(text, "[email]");
+        text = DigitRunRegex().Replace(text, "[num]");
+        return text;
+    }
+
+    [GeneratedRegex(@"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")]
+    private static partial Regex EmailRegex();
+
+    [GeneratedRegex(@"\d{7,}")]
+    private static partial Regex DigitRunRegex();
 }

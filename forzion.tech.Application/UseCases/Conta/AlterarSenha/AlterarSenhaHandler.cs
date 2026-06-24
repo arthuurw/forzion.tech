@@ -6,6 +6,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Conta.AlterarSenha;
 
@@ -27,9 +28,11 @@ public class AlterarSenhaHandler(
     IRefreshTokenService refreshTokenService,
     ITrustedDeviceRepository trustedDeviceRepository,
     ITokenRevogadoRepository tokenRevogadoRepository,
+    ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
-    IValidator<AlterarSenhaCommand> validator)
+    IValidator<AlterarSenhaCommand> validator,
+    ILogger<AlterarSenhaHandler> logger)
 {
     public virtual Task<Result> HandleAsync(
         AlterarSenhaCommand command,
@@ -59,9 +62,6 @@ public class AlterarSenhaHandler(
 
         conta.InvalidarSessoesAnteriores(agoraOffset);
 
-        // Revogação conjunta (NR-6 / security §2): mata o refresh de todos os devices E faz
-        // blacklist do jti corrente — sem o blacklist, o access curto roubado sobreviveria à
-        // troca de senha por até 15min (janela que o blacklist fecha).
         await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
         await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
@@ -75,7 +75,14 @@ public class AlterarSenhaHandler(
             await tokenRevogadoRepository.AdicionarAsync(tokenResult.Value, cancellationToken).ConfigureAwait(false);
         }
 
+        var logResult = LogAprovacao.Registrar(TipoAcaoAprovacao.SenhaAlterada, userContext.ContaId, userContext.ContaId, "Conta", agora);
+        if (logResult.IsFailure)
+            return Result.Failure(logResult.Error!);
+        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Senha alterada — conta {ContaId}.", userContext.ContaId);
 
         return Result.Success();
     }

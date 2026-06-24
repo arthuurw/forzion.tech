@@ -3,7 +3,10 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Exercicios.ExcluirExercicio;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Exercicios;
@@ -12,11 +15,23 @@ public class ExcluirExercicioHandlerTests
 {
     private readonly Mock<IExercicioRepository> _exercicioRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
+    private readonly Mock<IUserContext> _userContext = new();
+    private readonly FakeTimeProvider _timeProvider = new();
     private readonly ExcluirExercicioHandler _handler;
+
+    private static readonly Guid AtorId = Guid.NewGuid();
 
     public ExcluirExercicioHandlerTests()
     {
-        _handler = new ExcluirExercicioHandler(_exercicioRepo.Object, _unitOfWork.Object);
+        _userContext.Setup(u => u.PerfilId).Returns(AtorId);
+        _handler = new ExcluirExercicioHandler(
+            _exercicioRepo.Object,
+            _unitOfWork.Object,
+            _logRepo.Object,
+            Mock.Of<ILogger<ExcluirExercicioHandler>>(),
+            _timeProvider,
+            _userContext.Object);
     }
 
     private static readonly Guid GrupoId = Guid.NewGuid();
@@ -39,6 +54,21 @@ public class ExcluirExercicioHandlerTests
 
         _exercicioRepo.Verify(r => r.RemoverAsync(exercicio, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorExcluiProprio_RegistraLogAuditoria()
+    {
+        var treinadorId = Guid.NewGuid();
+        var exercicio = CriarExercicioTreinador(treinadorId);
+        _exercicioRepo.Setup(r => r.ObterPorIdAsync(exercicio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(exercicio);
+        _exercicioRepo.Setup(r => r.EstaEmUsoAsync(exercicio.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        await _handler.HandleAsync(new ExcluirExercicioCommand(exercicio.Id, treinadorId));
+
+        _logRepo.Verify(r => r.AdicionarAsync(
+            It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.ExclusaoExercicio),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

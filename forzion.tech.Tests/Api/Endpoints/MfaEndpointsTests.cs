@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace forzion.tech.Tests.Api.Endpoints;
@@ -55,7 +56,9 @@ public class MfaEndpointsTests : IClassFixture<MfaEndpointsTests.MfaWebFactory>
                     Mock.Of<ITrustedDeviceRepository>(),
                     Mock.Of<ITokenRevogadoRepository>(),
                     Mock.Of<IUnitOfWork>(),
-                    TimeProvider.System));
+                    TimeProvider.System,
+                    Mock.Of<ILogAprovacaoRepository>(),
+                    Mock.Of<ILogger<DesabilitarMfaHandler>>()));
 
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, ContaEndpointsTests.ContaTestAuthHandler>("Test", _ => { });

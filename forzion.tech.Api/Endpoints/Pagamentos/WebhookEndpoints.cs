@@ -18,6 +18,7 @@ public static class WebhookEndpoints
         endpoints.MapPost("/webhooks/stripe", async (
             HttpContext httpContext,
             [Microsoft.AspNetCore.Mvc.FromServices] ProcessarWebhookStripeHandler handler,
+            [Microsoft.AspNetCore.Mvc.FromServices] ILogger<ProcessarWebhookStripeHandler> logger,
             CancellationToken cancellationToken) =>
         {
             // Limita tamanho do body para prevenir DoS
@@ -39,7 +40,9 @@ public static class WebhookEndpoints
             var result = await handler.HandleAsync(
                 new ProcessarWebhookStripeCommand(payload, assinatura), cancellationToken).ConfigureAwait(false);
 
-            return result.IsSuccess ? Results.Ok() : Results.Problem(detail: "Webhook inválido.", statusCode: 400);
+            if (result.IsSuccess) return Results.Ok();
+            logger.LogWarning("Webhook Stripe rejeitado: {Motivo}", result.Error?.Message);
+            return Results.Problem(detail: "Webhook inválido.", statusCode: 400);
         })
         .WithTags("Webhooks")
         .WithSummary("Recebe eventos do Stripe via webhook")

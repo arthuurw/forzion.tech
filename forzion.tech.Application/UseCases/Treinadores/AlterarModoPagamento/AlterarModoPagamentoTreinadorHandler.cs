@@ -3,6 +3,7 @@ using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
@@ -23,7 +24,8 @@ public class AlterarModoPagamentoTreinadorHandler(
     IDbContextTransactionProvider transactionProvider,
     IValidator<AlterarModoPagamentoTreinadorCommand> validator,
     TimeProvider timeProvider,
-    ILogger<AlterarModoPagamentoTreinadorHandler> logger)
+    ILogger<AlterarModoPagamentoTreinadorHandler> logger,
+    ILogAprovacaoRepository logRepository)
 {
     public virtual Task<Result<AlterarModoPagamentoResponse>> HandleAsync(
         AlterarModoPagamentoTreinadorCommand command,
@@ -74,6 +76,16 @@ public class AlterarModoPagamentoTreinadorHandler(
             else
                 (assinaturasCriadas, vinculosIgnorados) = await MigrarParaPlataformaAsync(command.TreinadorId, agora, cancellationToken).ConfigureAwait(false);
 
+            var logResult = LogAprovacao.Registrar(
+                TipoAcaoAprovacao.AlteracaoModoPagamentoTreinador,
+                command.TreinadorId,
+                command.TreinadorId,
+                nameof(Treinador),
+                agora);
+            if (logResult.IsFailure)
+                return Result.Failure<AlterarModoPagamentoResponse>(logResult.Error!);
+
+            await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }

@@ -1,8 +1,10 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Conta.Mfa;
 
@@ -13,7 +15,9 @@ public class RegenerarRecoveryCodesHandler(
     IContaMfaRepository contaMfaRepository,
     IMfaRecoveryCodeRepository recoveryCodeRepository,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogAprovacaoRepository logRepository,
+    ILogger<RegenerarRecoveryCodesHandler> logger)
 {
     public virtual async Task<Result<RegenerarRecoveryCodesResult>> HandleAsync(CancellationToken cancellationToken = default)
     {
@@ -34,7 +38,14 @@ public class RegenerarRecoveryCodesHandler(
         }
 
         await recoveryCodeRepository.AdicionarRangeAsync(entidades, cancellationToken).ConfigureAwait(false);
+
+        var logResult = LogAprovacao.Registrar(TipoAcaoAprovacao.RecoveryCodesRegenerados, userContext.ContaId, userContext.ContaId, "Conta", agora);
+        if (logResult.IsFailure)
+            return Result.Failure<RegenerarRecoveryCodesResult>(logResult.Error!);
+        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("Recovery codes regenerados — conta {ContaId}.", userContext.ContaId);
         return Result.Success(new RegenerarRecoveryCodesResult(raws));
     }
 }

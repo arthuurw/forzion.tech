@@ -126,7 +126,7 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 - `CertificadoSenha` NUNCA logada. Endpoints internos protegidos por X-Internal-Key (FixedTimeEquals) + rate-limit.
 
 ## OBSERVABILIDADE (resumo — canônico em [specification-observability])
-- `MarcarErro` → LogWarning (nota visível em Erro; pagamento intacto). `CancelamentoExpirado` → LogCritical (terminal não-cancelado, ajuste manual). Reconciliação loga `de→para` por nota + sumário. Workflows cron abrem Issue on failure.
+- `EmitirNfseEfeitoHandler.MarcarErro` (rejeição gov) → `LogWarning` correlacionado por `NotaFiscalId`/`TreinadorId`/`Codigo`/`Motivo` (nota visível em Erro, reprocessável; pagamento intacto). `CancelamentoExpirado` → `LogCritical` (terminal não-cancelado, ajuste manual). Reconciliação loga `de→para` por nota + sumário. Workflows cron abrem Issue on failure.
 
 ## LGPD (resumo — canônico em [specification-lgpd])
 - Dados fiscais de nota EMITIDA sobrevivem à anonimização (guarda fiscal ~5 anos): obrigação fiscal > apagamento. Exceção legítima documentada.

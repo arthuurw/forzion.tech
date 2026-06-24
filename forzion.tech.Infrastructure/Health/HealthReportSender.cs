@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Admin.HealthReport;
+using forzion.tech.Infrastructure.Common;
 using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +21,7 @@ public class HealthReportSender(IEmailService emailService, ILogger<HealthReport
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Falha ao enviar relatório de saúde para {Destinatario}.", destinatario);
+                logger.LogError(ex, "Falha ao enviar relatório de saúde para {Destinatario}.", MascaraPii.Email(destinatario));
             }
         }
     }

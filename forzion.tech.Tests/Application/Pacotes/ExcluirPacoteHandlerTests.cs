@@ -3,7 +3,10 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pacotes.ExcluirPacote;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Pacotes;
@@ -12,11 +15,18 @@ public class ExcluirPacoteHandlerTests
 {
     private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
+    private readonly FakeTimeProvider _timeProvider = new();
     private readonly ExcluirPacoteHandler _handler;
 
     public ExcluirPacoteHandlerTests()
     {
-        _handler = new ExcluirPacoteHandler(_pacoteRepo.Object, _unitOfWork.Object);
+        _handler = new ExcluirPacoteHandler(
+            _pacoteRepo.Object,
+            _unitOfWork.Object,
+            _logRepo.Object,
+            Mock.Of<ILogger<ExcluirPacoteHandler>>(),
+            _timeProvider);
     }
 
     private static Pacote CriarPacote(Guid treinadorId) =>
@@ -34,6 +44,21 @@ public class ExcluirPacoteHandlerTests
 
         _pacoteRepo.Verify(r => r.Remover(pacote), Times.Once);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PacoteExistente_RegistraLogAuditoria()
+    {
+        var treinadorId = Guid.NewGuid();
+        var pacote = CriarPacote(treinadorId);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+        _pacoteRepo.Setup(r => r.ExisteVinculoComPacoteAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        await _handler.HandleAsync(new ExcluirPacoteCommand(treinadorId, pacote.Id));
+
+        _logRepo.Verify(r => r.AdicionarAsync(
+            It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.ExclusaoPacote),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

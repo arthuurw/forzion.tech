@@ -25,6 +25,7 @@ public class AlterarModoPagamentoTreinadorHandlerTests
     private readonly Mock<IUnitOfWork> _uow = new();
     private readonly Mock<IDbContextTransactionProvider> _txProvider = new();
     private readonly Mock<ILogger<AlterarModoPagamentoTreinadorHandler>> _logger = new();
+    private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 6, 7, 12, 0, 0, TimeSpan.Zero));
 
     public AlterarModoPagamentoTreinadorHandlerTests()
@@ -46,7 +47,7 @@ public class AlterarModoPagamentoTreinadorHandlerTests
         new CriarAssinaturaAlunoService(_pacoteRepo.Object, _assinaturaRepo.Object, Mock.Of<ILogger<CriarAssinaturaAlunoService>>()),
         _stripe.Object, _uow.Object, _txProvider.Object,
         new AlterarModoPagamentoTreinadorCommandValidator(),
-        _time, _logger.Object);
+        _time, _logger.Object, _logRepo.Object);
 
     private void SetTreinador(Treinador treinador) =>
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -83,6 +84,7 @@ public class AlterarModoPagamentoTreinadorHandlerTests
         _stripe.Verify(s => s.CancelarPaymentIntentAsync("pi_123", It.IsAny<CancellationToken>()), Times.Once);
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         assinatura.DomainEvents.Should().BeEmpty();
+        _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.AlteracaoModoPagamentoTreinador), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

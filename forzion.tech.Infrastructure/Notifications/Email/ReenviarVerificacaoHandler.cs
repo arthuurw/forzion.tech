@@ -1,4 +1,5 @@
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Infrastructure.Common;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
@@ -31,7 +32,7 @@ public class ReenviarVerificacaoHandler(
         // Não revelar se o e-mail existe ou se já está verificado
         if (conta is null)
         {
-            logger.LogDebug("ReenviarVerificacaoHandler: conta não encontrada para {Email} — ignorado.", emailNormalizado);
+            logger.LogDebug("ReenviarVerificacaoHandler: conta não encontrada para {Email} — ignorado.", MascaraPii.Email(emailNormalizado));
             return;
         }
 

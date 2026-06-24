@@ -7,6 +7,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
+using forzion.tech.Infrastructure.Common;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
@@ -61,7 +62,7 @@ public class SolicitarTrocaEmailHandler(
         var contaExistente = await contaRepository.ObterPorEmailAsync(novoEmail.Value, cancellationToken).ConfigureAwait(false);
         if (contaExistente is not null)
         {
-            logger.LogDebug("SolicitarTrocaEmailHandler: e-mail {NovoEmail} já está em uso — resposta genérica.", novoEmail.Value);
+            logger.LogDebug("SolicitarTrocaEmailHandler: e-mail {NovoEmail} já está em uso — resposta genérica.", MascaraPii.Email(novoEmail.Value));
             return;
         }
 

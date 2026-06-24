@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Infrastructure.Common;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
@@ -35,7 +36,7 @@ public sealed class EnvironmentWhatsAppDecorator(
             return phone;
 
         logger.LogInformation(
-            "WhatsApp de teste redirecionado: destinatário original {Original} -> {Redirect}", phone, alvos[0]);
+            "WhatsApp de teste redirecionado: destinatário original {Original} -> {Redirect}", MascaraPii.Telefone(phone), alvos[0]);
         return alvos[0];
     }
 

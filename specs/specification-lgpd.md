@@ -88,6 +88,11 @@ Anamnese do aluno (finalidade, foco_treino, nivel_condicionamento, limitacoes_fi
 - **Registro**: dentro da transação de cadastro grava `LogAprovacao.Registrar(TipoAcaoAprovacao.ConsentimentoAnamnese, ator=conta, alvo=conta, "Conta", timestamp = ConsentimentoDadosSaudeEm do cliente ?? agora, observacao="v1")`. Sem dado sensível no cadastro → sem consentimento exigido e sem log.
 - Sem nova coluna/migration: reusa `logs_aprovacao` (enum text). Versão do termo no campo `observacao`.
 
+## MINIMIZAÇÃO DE PII EM LOGS
+Nenhum e-mail ou telefone cru em qualquer nível de log (`LogDebug`…`LogCritical`). Dois mecanismos complementares:
+- **Mascaramento em fonte** (`Infrastructure/Common/MascaraPii.cs`): todos os call-sites que logam contato do titular usam `MascaraPii.Email` / `MascaraPii.Telefone` antes de passar o valor ao `ILogger`.
+- **Chokepoint Scrub** (`HealthReportCollector.Scrub`): regex email→`[email]` + sequência ≥7 dígitos→`[num]` aplicado em `outbox_efeitos.UltimoErro` e `error_logs.Mensagem` antes de construir o relatório de saúde — defense-in-depth contra PII acidental em stack traces ou mensagens de integração.
+
 ## AUDITORIA
 `logs_aprovacao` com `TipoAcaoAprovacao.ExportacaoDados` / `AnonimizacaoConta` / `ConsentimentoAnamnese` (text enum; sem migration). Registra quem (`realizado_por`) / quando / alvo (`entidade_id` + tipo `Conta`). **Atribuição da exportação** (`ExportarDadosPessoaisCommand(ContaId, RealizadoPorId)`): self (`/conta/lgpd/exportar`) ⇒ `realizado_por = alvo = titular`; admin (`/admin/contas/{id}/lgpd/exportar`) ⇒ `realizado_por = ContaId do admin`, `alvo = titular` (exportação por admin fica atribuída a ele). Auditoria OBRIGATÓRIA/fail-closed: `LogAprovacao` é commitado ANTES de devolver o export; falha ao registrar ⇒ export NÃO retorna. `ConsentimentoAnamnese` = consentimento art. 11 no cadastro do aluno (observacao = versão do termo).
 

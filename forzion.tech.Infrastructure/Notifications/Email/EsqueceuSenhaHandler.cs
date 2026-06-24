@@ -5,6 +5,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Infrastructure.Common;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Infrastructure.Notifications.Email;
@@ -42,7 +43,7 @@ public class EsqueceuSenhaHandler(
         // Não revelar se o e-mail existe ou não
         if (conta is null)
         {
-            logger.LogDebug("EsqueceuSenhaHandler: conta não encontrada para {Email} — ignorado.", emailNormalizado);
+            logger.LogDebug("EsqueceuSenhaHandler: conta não encontrada para {Email} — ignorado.", MascaraPii.Email(emailNormalizado));
             return;
         }
 

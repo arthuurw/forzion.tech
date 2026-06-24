@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
@@ -13,7 +14,8 @@ public class AlterarStatusAlunoHandler(
     IUserContext userContext,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
-    ILogger<AlterarStatusAlunoHandler> logger)
+    ILogger<AlterarStatusAlunoHandler> logger,
+    ILogAprovacaoRepository logRepository)
 {
     public virtual Task<Result<AlunoResponse>> HandleAsync(
         AlterarStatusAlunoCommand command,
@@ -47,6 +49,16 @@ public class AlterarStatusAlunoHandler(
         if (statusResult.IsFailure)
             return Result.Failure<AlunoResponse>(statusResult.Error!);
 
+        var logResult = LogAprovacao.Registrar(
+            TipoAcaoAprovacao.AlteracaoStatusAluno,
+            userContext.PerfilId,
+            aluno.Id,
+            nameof(Aluno),
+            agora);
+        if (logResult.IsFailure)
+            return Result.Failure<AlunoResponse>(logResult.Error!);
+
+        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Status do aluno {AlunoId} alterado para {Status}.", aluno.Id, command.NovoStatus);

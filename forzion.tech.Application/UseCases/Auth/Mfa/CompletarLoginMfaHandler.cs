@@ -8,6 +8,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Auth.Mfa;
 
@@ -39,7 +40,8 @@ public class CompletarLoginMfaHandler(
     IRefreshTokenService refreshTokenService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
-    IValidator<CompletarLoginMfaCommand> validator)
+    IValidator<CompletarLoginMfaCommand> validator,
+    ILogger<CompletarLoginMfaHandler> logger)
 {
     private static readonly TimeSpan ValidadeDispositivo = TimeSpan.FromDays(30);
 
@@ -76,6 +78,7 @@ public class CompletarLoginMfaHandler(
 
         if (verificacao.IsFailure)
         {
+            logger.LogWarning("Verificação MFA falhou — conta {ContaId}, fator {Fator}.", conta.Id, command.Fator);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             return Result.Failure<CompletarLoginMfaResult>(verificacao.Error!);
         }

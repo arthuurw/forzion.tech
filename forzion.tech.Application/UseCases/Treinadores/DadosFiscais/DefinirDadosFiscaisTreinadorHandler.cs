@@ -1,16 +1,22 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using DadosFiscaisVo = forzion.tech.Domain.ValueObjects.DadosFiscais;
 
 namespace forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 
 public class DefinirDadosFiscaisTreinadorHandler(
     ITreinadorRepository treinadorRepository,
+    ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<DefinirDadosFiscaisTreinadorHandler> logger,
+    IUserContext userContext)
 {
     public virtual async Task<Result<DadosFiscaisResponse>> HandleAsync(
         DefinirDadosFiscaisTreinadorCommand command,
@@ -38,7 +44,19 @@ public class DefinirDadosFiscaisTreinadorHandler(
         if (definir.IsFailure)
             return Result.Failure<DadosFiscaisResponse>(definir.Error!);
 
+        var logResult = LogAprovacao.Registrar(
+            TipoAcaoAprovacao.DefinicaoDadosFiscaisTreinador,
+            userContext.PerfilId,
+            treinador.Id,
+            nameof(Treinador),
+            agora);
+        if (logResult.IsFailure)
+            return Result.Failure<DadosFiscaisResponse>(logResult.Error!);
+        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
+
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Dados fiscais definidos para treinador {TreinadorId} por {AtorId}.", treinador.Id, userContext.PerfilId);
 
         return Result.Success(MapResponse(dadosResult.Value));
     }
