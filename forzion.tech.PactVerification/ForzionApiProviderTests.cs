@@ -51,10 +51,10 @@ public class ForzionApiProviderTests : IClassFixture<ForzionApiProviderFactory>
         // TestServer in-memory, que nao existe nesta factory (so Kestrel real).
         _ = _factory.Services;
 
-        using var verifier = new PactVerifier(CriarConfigComLog());
+        using var verifier = new PactVerifier("forzion-api", CriarConfigComLog());
 
         verifier
-            .ServiceProvider("forzion-api", new Uri(_factory.ServerUri))
+            .WithHttpEndpoint(new Uri(_factory.ServerUri))
             .WithPactBrokerSource(new Uri(brokerUrl), options =>
             {
                 if (!string.IsNullOrEmpty(brokerUser))
@@ -91,10 +91,10 @@ public class ForzionApiProviderTests : IClassFixture<ForzionApiProviderFactory>
 
         _ = _factory.Services;
 
-        using var verifier = new PactVerifier(CriarConfigComLog());
+        using var verifier = new PactVerifier("forzion-api", CriarConfigComLog());
 
         verifier
-            .ServiceProvider("forzion-api", new Uri(_factory.ServerUri))
+            .WithHttpEndpoint(new Uri(_factory.ServerUri))
             .WithFileSource(new FileInfo(pactFile))
             .WithProviderStateUrl(new Uri(new Uri(_factory.ServerUri), "/_pact/provider-states"))
             .WithRequestTimeout(TimeSpan.FromSeconds(10))
