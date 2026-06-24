@@ -130,7 +130,7 @@ public static class RouteBuilderExtensions
         return app;
     }
 
-    private static IEndpointRouteBuilder MapHealthCheck(this IEndpointRouteBuilder endpoints)
+    private static void MapHealthCheck(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false })
             .AllowAnonymous()
@@ -143,8 +143,6 @@ public static class RouteBuilderExtensions
         })
             .AllowAnonymous()
             .RequireRateLimiting("read");
-
-        return endpoints;
     }
 
     private static Task EscreverStatusAgregado(HttpContext context, HealthReport report)
