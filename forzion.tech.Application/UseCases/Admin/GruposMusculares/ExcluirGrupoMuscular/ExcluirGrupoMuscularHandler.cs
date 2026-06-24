@@ -32,15 +32,15 @@ public class ExcluirGrupoMuscularHandler(
             return Result.Failure(Error.Conflict("grupo_muscular.em_uso", "Não é possível excluir um grupo muscular em uso por exercícios."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var logResult = LogAprovacao.Registrar(
+        var logResult = await logRepository.RegistrarAsync(
             TipoAcaoAprovacao.ExclusaoGrupoMuscular,
             userContext.PerfilId,
             grupo.Id,
             nameof(GrupoMuscular),
-            agora);
+            agora,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         repository.Excluir(grupo);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

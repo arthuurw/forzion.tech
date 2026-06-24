@@ -34,15 +34,15 @@ public class ExcluirPlanoPlataformaHandler(
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         plano.Inativar(agora);
 
-        var logResult = LogAprovacao.Registrar(
+        var logResult = await logRepository.RegistrarAsync(
             TipoAcaoAprovacao.InativacaoPlanoPlataforma,
             userContext.PerfilId,
             plano.Id,
             nameof(PlanoPlataforma),
-            agora);
+            agora,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

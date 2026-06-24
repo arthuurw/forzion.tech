@@ -75,10 +75,9 @@ public class ConfirmarEnrollTotpHandler(
 
         await recoveryCodeRepository.AdicionarRangeAsync(entidades, cancellationToken).ConfigureAwait(false);
 
-        var logResult = LogAprovacao.Registrar(TipoAcaoAprovacao.MfaHabilitado, userContext.ContaId, userContext.ContaId, "Conta", agora);
+        var logResult = await logRepository.RegistrarAsync(TipoAcaoAprovacao.MfaHabilitado, userContext.ContaId, userContext.ContaId, "Conta", agora, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure<ConfirmarEnrollTotpResult>(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         logger.LogInformation("MFA habilitado — conta {ContaId}.", userContext.ContaId);

@@ -38,15 +38,15 @@ public class ExcluirPacoteHandler(
             return Result.Failure(Error.Conflict("pacote.possui_alunos", "Não é possível excluir um pacote com alunos vinculados."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var logResult = LogAprovacao.Registrar(
+        var logResult = await logRepository.RegistrarAsync(
             TipoAcaoAprovacao.ExclusaoPacote,
             command.TreinadorId,
             command.PacoteId,
             nameof(Pacote),
-            agora);
+            agora,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         pacoteRepository.Remover(pacote);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

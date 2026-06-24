@@ -76,16 +76,16 @@ public class AlterarModoPagamentoTreinadorHandler(
             else
                 (assinaturasCriadas, vinculosIgnorados) = await MigrarParaPlataformaAsync(command.TreinadorId, agora, cancellationToken).ConfigureAwait(false);
 
-            var logResult = LogAprovacao.Registrar(
+            var logResult = await logRepository.RegistrarAsync(
                 TipoAcaoAprovacao.AlteracaoModoPagamentoTreinador,
                 command.TreinadorId,
                 command.TreinadorId,
                 nameof(Treinador),
-                agora);
+                agora,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
             if (logResult.IsFailure)
                 return Result.Failure<AlterarModoPagamentoResponse>(logResult.Error!);
 
-            await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }

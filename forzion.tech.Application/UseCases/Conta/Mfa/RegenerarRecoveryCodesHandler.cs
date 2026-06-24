@@ -39,10 +39,9 @@ public class RegenerarRecoveryCodesHandler(
 
         await recoveryCodeRepository.AdicionarRangeAsync(entidades, cancellationToken).ConfigureAwait(false);
 
-        var logResult = LogAprovacao.Registrar(TipoAcaoAprovacao.RecoveryCodesRegenerados, userContext.ContaId, userContext.ContaId, "Conta", agora);
+        var logResult = await logRepository.RegistrarAsync(TipoAcaoAprovacao.RecoveryCodesRegenerados, userContext.ContaId, userContext.ContaId, "Conta", agora, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure<RegenerarRecoveryCodesResult>(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         logger.LogInformation("Recovery codes regenerados — conta {ContaId}.", userContext.ContaId);

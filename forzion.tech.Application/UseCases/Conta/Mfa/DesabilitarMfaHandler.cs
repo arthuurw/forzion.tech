@@ -40,10 +40,9 @@ public class DesabilitarMfaHandler(
             await tokenRevogadoRepository.AdicionarAsync(tokenResult.Value, cancellationToken).ConfigureAwait(false);
         }
 
-        var logResult = LogAprovacao.Registrar(TipoAcaoAprovacao.MfaDesabilitado, userContext.ContaId, userContext.ContaId, "Conta", agora);
+        var logResult = await logRepository.RegistrarAsync(TipoAcaoAprovacao.MfaDesabilitado, userContext.ContaId, userContext.ContaId, "Conta", agora, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         logger.LogInformation("MFA desabilitado — conta {ContaId}.", userContext.ContaId);

@@ -44,15 +44,15 @@ public class DefinirDadosFiscaisTreinadorHandler(
         if (definir.IsFailure)
             return Result.Failure<DadosFiscaisResponse>(definir.Error!);
 
-        var logResult = LogAprovacao.Registrar(
+        var logResult = await logRepository.RegistrarAsync(
             TipoAcaoAprovacao.DefinicaoDadosFiscaisTreinador,
             userContext.PerfilId,
             treinador.Id,
             nameof(Treinador),
-            agora);
+            agora,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure<DadosFiscaisResponse>(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

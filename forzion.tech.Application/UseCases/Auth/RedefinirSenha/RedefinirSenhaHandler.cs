@@ -94,10 +94,9 @@ public class RedefinirSenhaHandler(
         await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
         await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
-        var logResult = LogAprovacao.Registrar(TipoAcaoAprovacao.SenhaRedefinida, conta.Id, conta.Id, "Conta", agora);
+        var logResult = await logRepository.RegistrarAsync(TipoAcaoAprovacao.SenhaRedefinida, conta.Id, conta.Id, "Conta", agora, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 

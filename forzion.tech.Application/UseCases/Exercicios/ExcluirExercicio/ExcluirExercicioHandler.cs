@@ -46,15 +46,15 @@ public class ExcluirExercicioHandler(
             return Result.Failure(Error.Conflict("exercicio.em_uso", "Este exercício está em uso em fichas de treino e não pode ser excluído."));
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        var logResult = LogAprovacao.Registrar(
+        var logResult = await logRepository.RegistrarAsync(
             TipoAcaoAprovacao.ExclusaoExercicio,
             userContext.PerfilId,
             exercicio.Id,
             nameof(Exercicio),
-            agora);
+            agora,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure(logResult.Error!);
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
 
         await exercicioRepository.RemoverAsync(exercicio, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

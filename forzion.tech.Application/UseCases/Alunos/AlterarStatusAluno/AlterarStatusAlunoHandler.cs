@@ -49,16 +49,16 @@ public class AlterarStatusAlunoHandler(
         if (statusResult.IsFailure)
             return Result.Failure<AlunoResponse>(statusResult.Error!);
 
-        var logResult = LogAprovacao.Registrar(
+        var logResult = await logRepository.RegistrarAsync(
             TipoAcaoAprovacao.AlteracaoStatusAluno,
             userContext.PerfilId,
             aluno.Id,
             nameof(Aluno),
-            agora);
+            agora,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure<AlunoResponse>(logResult.Error!);
 
-        await logRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Status do aluno {AlunoId} alterado para {Status}.", aluno.Id, command.NovoStatus);
