@@ -11,7 +11,7 @@ updates:
           - "minor"
           - "patch"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
 
   - package-ecosystem: "npm"
     directory: "/frontend"
@@ -24,7 +24,7 @@ updates:
           - "minor"
           - "patch"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -37,4 +37,4 @@ updates:
           - "minor"
           - "patch"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
