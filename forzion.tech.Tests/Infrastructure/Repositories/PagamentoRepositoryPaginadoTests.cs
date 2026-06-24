@@ -40,6 +40,7 @@ public class PagamentoRepositoryPaginadoTests(InfrastructureTestFixture fixture)
     private static async Task SeedPagamentoAsync(AppDbContext ctx, Guid assinaturaId, decimal valor, DateTime criadoEm)
     {
         var pagamento = Pagamento.Criar(assinaturaId, valor, criadoEm).Value;
+        pagamento.MarcarPago(criadoEm);
         await ctx.Pagamentos.AddAsync(pagamento);
         await ctx.SaveChangesAsync();
     }
