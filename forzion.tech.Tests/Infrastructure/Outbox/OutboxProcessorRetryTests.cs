@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Entities;
@@ -10,6 +11,7 @@ using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace forzion.tech.Tests.Infrastructure.Outbox;
 
@@ -45,6 +47,20 @@ public class OutboxProcessorRetryTests(InfrastructureTestFixture fixture)
             throw new InvalidOperationException("permanente");
     }
 
+    private sealed class FxErroPermanente : IOutboxEfeitoHandler
+    {
+        public string Tipo => "fx:teste";
+        public Task ExecutarAsync(string payload, CancellationToken cancellationToken = default) =>
+            throw new JsonException("payload corrompido");
+    }
+
+    private sealed class FxOcioso(TimeSpan espera) : IOutboxEfeitoHandler
+    {
+        public string Tipo => "fx:teste";
+        public Task ExecutarAsync(string payload, CancellationToken cancellationToken = default) =>
+            Task.Delay(espera, cancellationToken);
+    }
+
     // Simula shutdown: cancela o token durante o dispatch e lança OCE observando-o.
     private sealed class FxCancelaEThrowOce(CancellationTokenSource cts) : IOutboxEfeitoHandler
     {
@@ -56,15 +72,16 @@ public class OutboxProcessorRetryTests(InfrastructureTestFixture fixture)
         }
     }
 
-    private static OutboxProcessor CriarProcessor(AppDbContext ctx, IOutboxEfeitoHandler handler, int maxTentativas)
+    private static OutboxProcessor CriarProcessor(AppDbContext ctx, IOutboxEfeitoHandler handler, int maxTentativas, TimeSpan? backoffBase = null, TimeSpan? timeoutTransacaoIdle = null)
     {
         var dispatcher = new OutboxDispatcher(new NoOpDispatcher(), new OutboxDurabilityRegistry(), [handler]);
         // BackoffBase=Zero: proxima_tentativa = agora, então cada ciclo seguinte re-elege o item.
         var options = Options.Create(new OutboxOptions
         {
             MaxTentativas = maxTentativas,
-            BackoffBase = TimeSpan.Zero,
+            BackoffBase = backoffBase ?? TimeSpan.Zero,
             LotePorCiclo = 50,
+            TimeoutTransacaoIdle = timeoutTransacaoIdle ?? TimeSpan.FromSeconds(60),
         });
         return new OutboxProcessor(ctx, new OutboxRepository(ctx), dispatcher, TimeProvider.System, options, NullLogger<OutboxProcessor>.Instance);
     }
@@ -115,6 +132,55 @@ public class OutboxProcessorRetryTests(InfrastructureTestFixture fixture)
         efeito.Status.Should().Be(OutboxStatus.Falhou);
         efeito.Tentativas.Should().Be(3);
         efeito.UltimoErro.Should().Contain("permanente");
+    }
+
+    [Fact]
+    public async Task ProcessarLote_ErroPermanente_VaiParaFalhouNaPrimeiraTentativa()
+    {
+        var chave = await SemearEfeitoAsync();
+        await using var ctx = fixture.CreateContext();
+        var processor = CriarProcessor(ctx, new FxErroPermanente(), maxTentativas: 5);
+
+        await processor.ProcessarLoteAsync();
+
+        await using var verify = fixture.CreateContext();
+        var efeito = await verify.OutboxEfeitos.AsNoTracking().SingleAsync(o => o.ChaveIdempotencia == chave);
+        efeito.Status.Should().Be(OutboxStatus.Falhou);
+        efeito.Tentativas.Should().Be(1);
+        efeito.UltimoErro.Should().Contain("corrompido");
+    }
+
+    [Fact]
+    public async Task ProcessarLote_ErroTransiente_PermanecePendenteComProximaTentativaFutura()
+    {
+        var chave = await SemearEfeitoAsync();
+        var antes = DateTime.UtcNow;
+        await using var ctx = fixture.CreateContext();
+        var processor = CriarProcessor(ctx, new FxFalhaNVezes(falhas: 1), maxTentativas: 5, backoffBase: TimeSpan.FromMinutes(1));
+
+        await processor.ProcessarLoteAsync();
+
+        await using var verify = fixture.CreateContext();
+        var efeito = await verify.OutboxEfeitos.AsNoTracking().SingleAsync(o => o.ChaveIdempotencia == chave);
+        efeito.Status.Should().Be(OutboxStatus.Pendente);
+        efeito.Tentativas.Should().Be(1);
+        efeito.ProximaTentativa.Should().BeAfter(antes);
+    }
+
+    [Fact]
+    public async Task ProcessarLote_TransacaoOciosaAlemDoTimeout_LiberaLeaseSemConcluir()
+    {
+        var chave = await SemearEfeitoAsync();
+        await using var ctx = fixture.CreateContext();
+        var processor = CriarProcessor(ctx, new FxOcioso(TimeSpan.FromSeconds(2)), maxTentativas: 5, timeoutTransacaoIdle: TimeSpan.FromMilliseconds(200));
+
+        var act = async () => await processor.ProcessarLoteAsync();
+        await act.Should().ThrowAsync<NpgsqlException>();
+
+        await using var verify = fixture.CreateContext();
+        var efeito = await verify.OutboxEfeitos.AsNoTracking().SingleAsync(o => o.ChaveIdempotencia == chave);
+        efeito.Status.Should().Be(OutboxStatus.Pendente, "sessão reaped aborta a transação; o lease volta intacto");
+        efeito.Tentativas.Should().Be(0);
     }
 
     // OUT-02: cancelamento de shutdown re-lança (rollback do lease) em vez de queimar uma
