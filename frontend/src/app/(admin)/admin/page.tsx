@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Box, Typography, Paper, Stack, Divider, Button, Chip, Tabs, Tab,
-  Table, TableHead, TableRow, TableCell, TableBody,
 } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
 import CheckIcon from "@mui/icons-material/Check";
@@ -13,6 +12,7 @@ import {
 } from "recharts";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
+import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import { TREINADOR_STATUS_COLORS, ALUNO_DASHBOARD_STATUS_COLORS } from "@/lib/constants/labels";
 import { srOnly } from "@/lib/utils/a11y";
@@ -24,6 +24,13 @@ import { extractApiError } from "@/lib/api/extractApiError";
 interface StatItem { name: string; value: number; color: string }
 interface PlanoStat { planoId: string; name: string; total: number; preco: number; maxAlunos: number }
 interface DistItem { name: string; total: number }
+
+const PLANO_COLUMNS: Column[] = [
+  { label: "Nome" },
+  { label: "Preço/mês" },
+  { label: "Máx. Alunos" },
+  { label: "Treinadores" },
+];
 
 export default function DashboardAdminPage() {
   const theme = useTheme();
@@ -167,6 +174,10 @@ export default function DashboardAdminPage() {
   if (loading) return <LoadingSpinner />;
 
   const planoBarData = planoStats.map(({ name, total }) => ({ name, total }));
+  const planoRows = [
+    ...planoStats.filter((p) => p.planoId !== "__none"),
+    ...planoStats.filter((p) => p.planoId === "__none"),
+  ];
 
   return (
     <Box>
@@ -414,40 +425,25 @@ export default function DashboardAdminPage() {
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 2 }}>
                 PLANOS DE TREINADORES
               </Typography>
-              <Box sx={{ overflowX: "auto" }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Nome</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Preço/mês</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Máx. Alunos</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Treinadores</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {planoStats.filter((p) => p.planoId !== "__none").map((p) => (
-                    <TableRow key={p.planoId}>
-                      <TableCell>{p.name}</TableCell>
-                      <TableCell>{p.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
-                      <TableCell>{p.maxAlunos}</TableCell>
-                      <TableCell><Chip label={p.total} size="small" /></TableCell>
-                    </TableRow>
-                  ))}
-                  {planoStats.some((p) => p.planoId === "__none") && (
-                    <TableRow>
-                      <TableCell colSpan={3} sx={{ color: "text.secondary", fontStyle: "italic" }}>Sem plano atribuído</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={planoStats.find((p) => p.planoId === "__none")?.total ?? 0}
-                          size="small"
-                          color="warning"
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-              </Box>
+              <ResponsiveTable
+                columns={PLANO_COLUMNS}
+                rows={planoRows}
+                rowKey={(p) => p.planoId}
+                renderCell={(p, col) => {
+                  const semPlano = p.planoId === "__none";
+                  if (col === 0)
+                    return semPlano ? (
+                      <Box component="span" sx={{ color: "text.secondary", fontStyle: "italic" }}>
+                        Sem plano atribuído
+                      </Box>
+                    ) : (
+                      p.name
+                    );
+                  if (col === 1) return semPlano ? "—" : p.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                  if (col === 2) return semPlano ? "—" : p.maxAlunos;
+                  return <Chip label={p.total} size="small" color={semPlano ? "warning" : undefined} />;
+                }}
+              />
             </Paper>
 
             {/* Recent trainers */}
