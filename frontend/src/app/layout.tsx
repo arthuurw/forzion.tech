@@ -6,6 +6,7 @@ import { QueryProvider } from "@/lib/query/QueryProvider";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import ThemeRegistry from "@/lib/theme/ThemeRegistry";
 import { WebVitals } from "@/components/observability/WebVitals";
+import { ReplayManager } from "@/components/observability/ReplayManager";
 import ConsentProvider from "@/components/ui/ConsentProvider";
 import "@/styles/globals.css";
 
@@ -61,6 +62,7 @@ export default function RootLayout({
             <ErrorBoundary>
               <AuthProvider>
                 <ConsentProvider />
+                <ReplayManager />
                 <QueryProvider>{children}</QueryProvider>
               </AuthProvider>
             </ErrorBoundary>

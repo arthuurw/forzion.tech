@@ -72,6 +72,7 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
 - `ConsentBanner` (`Aceitar todos` / `Só essenciais` / `Preferências` com toggle analytics). Categorias: **essencial** (sempre; auth httpOnly), **analytics** (Sentry, opt-in default OFF).
 - Persistência: cookie `consent` versionado (`{v,analytics}`) + hook `useConsent`. Reabrir prefs em `/perfil`.
 - **Gate Sentry**: `instrumentation-client.ts` só inicializa `@sentry/nextjs` se `consent.analytics === true` (default OFF até aceite). `ConsentProvider` monta o banner globalmente (root layout).
+- **Session Replay — denylist de rota (minimização art. 6)**: além de exigir consentimento analytics, o `ReplayManager` (root layout) NUNCA grava replay nas rotas de `REPLAY_DENYLIST` (`/admin/saude`, `/cadastro/aluno` — `src/lib/observability/replayDenylist.ts`). `/admin/saude` é página operacional (e-mails de terceiros + infra, sem propósito de produto) → minimização art. 6. Defense-in-depth ALÉM do `maskAllText`/`blockAllMedia`: na rota sensível o replay não é nem gravado (sem error-replay nessas rotas é intencional). Ver [specification-observability] §4 e §CONSENTIMENTO DE SAÚDE.
 
 ## FRONTEND — ações
 - `/perfil` → seção "Privacidade (LGPD)": botões "Exportar Excel" e "Exportar JSON" (`baixarMeusDados(formato)`, default `xlsx`), "Excluir minha conta" (ConfirmDialog + senha → DELETE → logout/redirect), "Preferências de cookies". API em `lib/api/conta.ts` (`baixarMeusDados(formato='xlsx')`, `excluirConta(senha)`). Página de assinatura do aluno também expõe os dois botões de download.
@@ -87,6 +88,7 @@ Anamnese do aluno (finalidade, foco_treino, nivel_condicionamento, limitacoes_fi
 - **Backend (`RegistrarAlunoHandler`)**: quando o cadastro coleta qualquer dado de saúde (`command.ColetaDadosSaude`), o validator exige `ConsentimentoDadosSaude == true` (FluentValidation, erro `consentimento_saude_obrigatorio`). Defense-in-depth — não confia só no checkbox do frontend.
 - **Registro**: dentro da transação de cadastro grava `LogAprovacao.Registrar(TipoAcaoAprovacao.ConsentimentoAnamnese, ator=conta, alvo=conta, "Conta", timestamp = ConsentimentoDadosSaudeEm do cliente ?? agora, observacao="v1")`. Sem dado sensível no cadastro → sem consentimento exigido e sem log.
 - Sem nova coluna/migration: reusa `logs_aprovacao` (enum text). Versão do termo no campo `observacao`.
+- **Session Replay nunca grava em `/cadastro/aluno`** (denylist do `ReplayManager`): o formulário de anamnese coleta dado sensível de saúde (art. 11) → defense-in-depth ALÉM do `maskAllText` (que mascara texto mas não elimina o risco de captura). A rota está em `REPLAY_DENYLIST` — o replay não é adicionado/iniciado ali. Ver §CONSENTIMENTO (denylist) + [specification-observability] §4.
 
 ## MINIMIZAÇÃO DE PII EM LOGS
 Nenhum e-mail ou telefone cru em qualquer nível de log (`LogDebug`…`LogCritical`). Dois mecanismos complementares:
