@@ -51,15 +51,20 @@ public class ObterAlunoHandler(
 
         logger.LogInformation("Aluno {AlunoId} consultado.", aluno.Id);
 
+        Guid? pacoteId = null;
         string? pacoteNome = null;
         if (ativo?.PacoteId is Guid pacoteIdValue)
         {
             var pacote = await pacoteRepository
                 .ObterPorIdAsync(pacoteIdValue, cancellationToken)
                 .ConfigureAwait(false);
-            pacoteNome = pacote?.Nome;
+            if (pacote is not null)
+            {
+                pacoteId = pacoteIdValue;
+                pacoteNome = pacote.Nome;
+            }
         }
 
-        return CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno, ativo?.PacoteId, pacoteNome);
+        return CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno, pacoteId, pacoteNome);
     }
 }

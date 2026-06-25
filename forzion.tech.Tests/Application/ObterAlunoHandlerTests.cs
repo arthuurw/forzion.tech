@@ -172,6 +172,27 @@ public class ObterAlunoHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_TreinadorVinculoComPacoteInexistente_RetornaPacoteIdENomeNulos()
+    {
+        var treinadorId = Guid.NewGuid();
+        var pacoteId = Guid.NewGuid();
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, DateTime.UtcNow, pacoteId).Value;
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.IsTreinador).Returns(true);
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteId, It.IsAny<CancellationToken>())).ReturnsAsync((Pacote?)null);
+
+        var result = await _handler.HandleAsync(new ObterAlunoQuery(aluno.Id));
+
+        result.PacoteId.Should().BeNull();
+        result.PacoteNome.Should().BeNull();
+    }
+
+    [Fact]
     public async Task HandleAsync_Admin_RetornaPacoteNulo()
     {
         var aluno = Aluno.Criar(Guid.NewGuid(), "Bia", DateTime.UtcNow).Value;
