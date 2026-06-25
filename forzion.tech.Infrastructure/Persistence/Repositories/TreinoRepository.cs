@@ -9,6 +9,14 @@ public class TreinoRepository(AppDbContext context) : ITreinoRepository
 {
     private readonly AppDbContext _context = context;
 
+    public async Task<IReadOnlyList<ObjetivoContagem>> ContarPorObjetivoAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await _context.Treinos.AsNoTracking()
+            .Where(t => t.TreinadorId == treinadorId)
+            .GroupBy(t => t.Objetivo)
+            .Select(g => new ObjetivoContagem(g.Key, g.Count()))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<Treino?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.Treinos
             .Include(t => t.Exercicios).ThenInclude(te => te.Series)

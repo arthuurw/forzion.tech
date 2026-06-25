@@ -368,6 +368,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<IniciarOnboardingTreinadorHandler>();
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Treinadores.Dashboard.ObterTreinadorDashboardHandler>();
         services.AddScoped<AlterarModoPagamentoTreinadorHandler>();
         services.AddScoped<ObterPreviewModoPagamentoTreinadorHandler>();
         services.AddScoped<CriarAssinaturaAlunoHandler>();

@@ -5,6 +5,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
+using forzion.tech.Application.UseCases.Treinadores.Dashboard;
 using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
@@ -100,6 +101,17 @@ public static class TreinadorEndpoints
         .Produces<object>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet("/dashboard", async (
+            [FromServices] ObterTreinadorDashboardHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Painel agregado do treinador (counts, MRR, receita/pacote, fichas, pendentes, onboarding, plano)")
+        .Produces<TreinadorDashboardResponse>();
 
         group.MapGet("/onboarding/status", async (
             [FromServices] VerificarOnboardingTreinadorHandler handler,

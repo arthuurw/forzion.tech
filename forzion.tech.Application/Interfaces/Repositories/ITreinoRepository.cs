@@ -2,8 +2,11 @@ using forzion.tech.Domain.Entities;
 
 namespace forzion.tech.Application.Interfaces.Repositories;
 
+public record ObjetivoContagem(forzion.tech.Domain.Enums.ObjetivoTreino Objetivo, int Total);
+
 public interface ITreinoRepository
 {
+    Task<IReadOnlyList<ObjetivoContagem>> ContarPorObjetivoAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<Treino?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<(Treino Treino, string? NomeAluno)> Items, int Total)> ListarPorTreinadorAsync(
         Guid treinadorId, int pagina, int tamanhoPagina,

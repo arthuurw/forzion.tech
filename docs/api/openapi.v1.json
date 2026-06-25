@@ -3258,6 +3258,31 @@
         ]
       }
     },
+    "/treinador/dashboard": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Painel agregado do treinador (counts, MRR, receita/pacote, fichas, pendentes, onboarding, plano)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreinadorDashboardResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/treinador/onboarding/status": {
       "get": {
         "tags": [
@@ -7625,6 +7650,15 @@
           "Cancelada"
         ]
       },
+      "AssinaturaTreinadorStatus": {
+        "enum": [
+          "Pendente",
+          "Ativa",
+          "Inadimplente",
+          "Cancelada",
+          null
+        ]
+      },
       "AtribuirPlanoRequest": {
         "required": [
           "planoId"
@@ -9726,6 +9760,26 @@
           "CancelamentoExpirado"
         ]
       },
+      "ObjetivoItem": {
+        "required": [
+          "objetivo",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "objetivo": {
+            "$ref": "#/components/schemas/ObjetivoTreino"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "ObjetivoTreino": {
         "enum": [
           "Hipertrofia",
@@ -10223,6 +10277,40 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "ReceitaPorPacoteItem": {
+        "required": [
+          "pacoteId",
+          "nome",
+          "alunos",
+          "receita"
+        ],
+        "type": "object",
+        "properties": {
+          "pacoteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "alunos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "receita": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -10888,6 +10976,116 @@
           "InadimplenteRegularizacao",
           "UpgradeImediato"
         ]
+      },
+      "TreinadorDashboardCounts": {
+        "required": [
+          "ativos",
+          "aguardando",
+          "inativos"
+        ],
+        "type": "object",
+        "properties": {
+          "ativos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "aguardando": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "inativos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "TreinadorDashboardPlano": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AssinaturaTreinadorStatus"
+              }
+            ]
+          }
+        }
+      },
+      "TreinadorDashboardResponse": {
+        "required": [
+          "counts",
+          "mrr",
+          "receitaPorPacote",
+          "totalFichas",
+          "objetivos",
+          "pendentes",
+          "onboarding",
+          "plano"
+        ],
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/TreinadorDashboardCounts"
+          },
+          "mrr": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "receitaPorPacote": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceitaPorPacoteItem"
+            }
+          },
+          "totalFichas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "objetivos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObjetivoItem"
+            }
+          },
+          "pendentes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VinculoDetalheResponse"
+            }
+          },
+          "onboarding": {
+            "$ref": "#/components/schemas/OnboardingStatusResponse"
+          },
+          "plano": {
+            "$ref": "#/components/schemas/TreinadorDashboardPlano"
+          }
+        }
       },
       "TreinadorResponse": {
         "required": [
