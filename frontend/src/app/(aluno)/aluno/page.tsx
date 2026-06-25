@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
 import dynamic from "next/dynamic";
 import {
   Box, Typography, Paper, Stack, Divider, Button,
@@ -11,9 +12,8 @@ import Link from "next/link";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import SemVinculoAtivoBanner from "@/components/aluno/SemVinculoAtivoBanner";
-import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
+import { alunoApi } from "@/lib/api/aluno";
 import { OBJETIVO_LABEL } from "@/lib/constants/labels";
-import { getWeekLabel } from "@/lib/utils/formatting";
 import { extractApiError } from "@/lib/api/extractApiError";
 
 const AlunoDashboardCharts = dynamic(
@@ -23,68 +23,29 @@ const AlunoDashboardCharts = dynamic(
 
 export default function DashboardAlunoPage() {
   const theme = useTheme();
-  const [totalFichas, setTotalFichas] = useState(0);
-  const [totalExecucoes, setTotalExecucoes] = useState(0);
-  const [fichasStats, setFichasStats] = useState<{ name: string; value: number; color: string }[]>([]);
-  const [sessoesData, setSessoesData] = useState<{ semana: string; sessoes: number }[]>([]);
-  const [fichasAtivas, setFichasAtivas] = useState<TreinoAlunoDetalheResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [fichasRes, execucoesRes] = await Promise.all([
-          alunoApi.listFichas({ tamanhoPagina: 50 }),
-          alunoApi.listExecucoes({ tamanhoPagina: 100 }),
-        ]);
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: queryKeys.aluno.dashboard,
+    staleTime: 60 * 1000,
+    queryFn: () => alunoApi.getDashboard().then((r) => r.data),
+  });
 
-        const fichas = fichasRes.data.items;
-        const execucoes = execucoesRes.data.items;
+  if (isPending) return <LoadingSpinner />;
 
-        setTotalFichas(fichasRes.data.total);
-        setTotalExecucoes(execucoesRes.data.total);
+  const errorMsg = isError ? extractApiError(error, "Erro ao carregar dados.") : "";
 
-        const ativas = fichas.filter((f) => f.status === "Ativo");
-        setFichasStats([
-          { name: "Ativas", value: ativas.length, color: theme.palette.success.main },
-          { name: "Inativas", value: fichas.length - ativas.length, color: theme.palette.text.disabled },
-        ]);
-        setFichasAtivas(ativas.slice(0, 5));
-
-        const hoje = new Date();
-        const weekKeys: string[] = [];
-        for (let i = 7; i >= 0; i--) {
-          const d = new Date(hoje);
-          d.setDate(d.getDate() - i * 7);
-          const label = getWeekLabel(d.toISOString());
-          if (!weekKeys.includes(label)) weekKeys.push(label);
-        }
-        const counts: Record<string, number> = {};
-        for (const w of weekKeys) counts[w] = 0;
-        for (const ex of execucoes) {
-          const w = getWeekLabel(ex.dataExecucao);
-          if (w in counts) counts[w]++;
-        }
-        setSessoesData(weekKeys.map((w) => ({ semana: w, sessoes: counts[w] })));
-      } catch (err) {
-        setError(extractApiError(err, "Erro ao carregar dados."));
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [theme.palette.success.main, theme.palette.text.disabled]);
-
-  if (loading) return <LoadingSpinner />;
+  const totalFichas = data?.totalFichas ?? 0;
+  const totalExecucoes = data?.totalExecucoes ?? 0;
+  const fichasAtivas = data?.fichasAtivas ?? [];
+  const sessoesPorSemana = data?.sessoesPorSemana ?? [];
+  const vinculo = data?.vinculo ?? { ativo: true, pendente: false };
 
   return (
     <Box>
-      <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+      <AlertBanner open={!!errorMsg} message={errorMsg} onClose={() => {}} />
 
-      <SemVinculoAtivoBanner />
+      <SemVinculoAtivoBanner vinculo={vinculo} />
 
-      {/* Stat cards */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" }, gap: 2, mb: 4 }}>
         <Paper sx={{ p: { xs: 2, md: 3 }, borderLeft: `4px solid ${theme.palette.success.main}`, borderRadius: 2 }}>
           <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "success.main" }}>
@@ -104,13 +65,8 @@ export default function DashboardAlunoPage() {
         </Paper>
       </Box>
 
-      <AlunoDashboardCharts
-        totalFichas={totalFichas}
-        fichasStats={fichasStats}
-        sessoesData={sessoesData}
-      />
+      <AlunoDashboardCharts sessoesPorSemana={sessoesPorSemana} />
 
-      {/* Fichas ativas */}
       <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
         <Typography
           variant="overline"
@@ -144,7 +100,7 @@ export default function DashboardAlunoPage() {
                       {f.nomeTreino}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {OBJETIVO_LABEL[f.objetivo] ?? f.objetivo} · {f.exercicios.length} exercício{f.exercicios.length !== 1 ? "s" : ""}
+                      {OBJETIVO_LABEL[f.objetivo] ?? f.objetivo}
                     </Typography>
                   </Box>
                   <Stack

@@ -9,4 +9,7 @@ export const queryKeys = {
   treinador: {
     dashboard: ["treinador", "dashboard"] as const,
   },
+  aluno: {
+    dashboard: ["aluno", "dashboard"] as const,
+  },
 } as const;

@@ -486,3 +486,30 @@ export interface TreinadorDashboardResponse {
   onboarding: OnboardingStatusResponse;
   plano: TreinadorDashboardPlano;
 }
+
+export interface FichaAtivaResumo {
+  treinoAlunoId: string;
+  treinoId: string;
+  nomeTreino: string;
+  objetivo: ObjetivoTreino;
+  criadoEm: string;
+}
+
+export interface SessaoSemanaItem {
+  semanaInicio: string;
+  semanaFim: string;
+  total: number;
+}
+
+export interface VinculoResumo {
+  ativo: boolean;
+  pendente: boolean;
+}
+
+export interface AlunoDashboardResponse {
+  totalFichas: number;
+  fichasAtivas: FichaAtivaResumo[];
+  totalExecucoes: number;
+  sessoesPorSemana: SessaoSemanaItem[];
+  vinculo: VinculoResumo;
+}

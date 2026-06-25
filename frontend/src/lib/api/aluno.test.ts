@@ -75,4 +75,9 @@ describe("alunoApi", () => {
     alunoApi.solicitarTrocaTreinador("t2", "p1");
     expect(mock.post).toHaveBeenCalledWith("/aluno/troca-treinador", { novoTreinadorId: "t2", pacoteId: "p1" });
   });
+
+  it("getDashboard GET /aluno/dashboard", () => {
+    alunoApi.getDashboard();
+    expect(mock.get).toHaveBeenCalledWith("/aluno/dashboard");
+  });
 });
