@@ -1,14 +1,11 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Stack, IconButton, Chip,
   Tab, Tabs, ToggleButtonGroup, ToggleButton, Grid, Skeleton, Button,
 } from "@mui/material";
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip as ChartTooltip, ResponsiveContainer,
-} from "recharts";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import StatusChip from "@/components/ui/StatusChip";
 import AlertBanner from "@/components/ui/AlertBanner";
@@ -26,7 +23,11 @@ import type {
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
 import { periodoParaDatas, formatarData, formatarTelefone } from "@/lib/utils/formatting";
-import ChartFigure from "@/components/charts/ChartFigure";
+
+const ProgressaoCargaChart = dynamic(
+  () => import("./_charts/ProgressaoCargaChart"),
+  { ssr: false, loading: () => null },
+);
 
 type Periodo = "7d" | "30d" | "60d" | "90d";
 
@@ -367,33 +368,7 @@ export default function DetalheAlunoAdminPage() {
                             {ex.grupoMuscular}
                           </Typography>
                         )}
-                        <ChartFigure
-                          label={`Progressão de carga — ${ex.nomeExercicio}`}
-                          summary={chartData.map((d) => `${d.data}: ${d.carga ?? "—"} kg`).join(", ")}
-                        >
-                        <ResponsiveContainer width="100%" height={140}>
-                          <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                            <XAxis dataKey="data" tick={{ fontSize: 10 }} stroke="#999" />
-                            <YAxis tick={{ fontSize: 10 }} stroke="#999" />
-                            <ChartTooltip
-                              contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 4, fontSize: 11 }}
-                              labelStyle={{ color: "#888" }}
-                              itemStyle={{ color: "#F5C400" }}
-                              formatter={(value) => [`${value} kg`, "Carga"]}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="carga"
-                              stroke="#F5C400"
-                              strokeWidth={2}
-                              dot={{ r: 3, fill: "#F5C400" }}
-                              activeDot={{ r: 5 }}
-                              connectNulls
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                        </ChartFigure>
+                        <ProgressaoCargaChart nomeExercicio={ex.nomeExercicio} chartData={chartData} />
                         {ultima && (
                           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
                             Último: {ultima.cargaMaxima != null

@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+export const revalidate = 300;
+
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -30,7 +32,7 @@ const organizationJsonLd = {
 async function getPlanos(): Promise<PlanoPlataformaResponse[]> {
   try {
     const base = process.env.API_BASE_URL ?? "https://localhost:7220";
-    const res = await fetch(`${base}/auth/planos`, { cache: "no-store" });
+    const res = await fetch(`${base}/auth/planos`, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     return res.json();
   } catch (err) {

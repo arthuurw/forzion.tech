@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Stack, Button,
@@ -18,12 +19,16 @@ import type {
   AlunoResponse, TreinoAlunoResponse, TreinoResponse, PacoteResponse,
   FinalidadeTreino, NivelCondicionamento, TempoDisponivel,
 } from "@/types";
-import ProgressaoAluno from "@/components/treinador/ProgressaoAluno";
 import InfoLine from "@/components/ui/InfoLine";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
 import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
 import { formatarBRL, formatarTelefone } from "@/lib/utils/formatting";
 import { extractApiError } from "@/lib/api/extractApiError";
+
+const ProgressaoAluno = dynamic(
+  () => import("@/components/treinador/ProgressaoAluno"),
+  { ssr: false, loading: () => <LoadingSpinner /> },
+);
 
 const FICHAS_COLS: Column[] = [
   { label: "Ficha", mobileRole: "primary" },
