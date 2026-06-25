@@ -154,8 +154,8 @@ Pipeline distinto do `/health`: coleta profunda (DB connect real, KPIs, entregab
 | `sentry.edge.config.ts` | edge | importado quando `NEXT_RUNTIME==="edge"` |
 | `instrumentation.ts` | hook | `register()` carrega config por runtime; `onRequestError = captureRequestError` (erros SSR/RSC/route handlers) |
 
-- Comuns: `environment ← NEXT_PUBLIC_SENTRY_ENV ?? NODE_ENV`; `tracesSampleRate ← env ?? 0.1`; `sendDefaultPii: false` (LGPD: sem IP/cookies/headers).
-- **Session Replay** (só browser): `replayIntegration({ maskAllText: true, blockAllMedia: true })`; `replaysSessionSampleRate ← env ?? 0.1`; `replaysOnErrorSampleRate: 1.0` (100% em erro). Mask/block → não vaza dados de usuário (LGPD).
+- Comuns: `environment ← NEXT_PUBLIC_SENTRY_ENV ?? NODE_ENV`; `tracesSampleRate ← env ?? 0.05` (default safe-by-default — sem env var em prod NÃO cai em 10%; subir custa egress/CPU no VPS 2-vCPU); `sendDefaultPii: false` (LGPD: sem IP/cookies/headers). Vars de override documentadas em `.env.example`.
+- **Session Replay** (só browser): `replayIntegration({ maskAllText: true, blockAllMedia: true })`; `replaysSessionSampleRate ← env ?? 0.02` (default safe; replay grava DOM → o rate baixo limita egress + exposição de PII/dados de saúde, defesa-em-profundidade c/ mask/block + gate de consentimento); `replaysOnErrorSampleRate: 1.0` (100% em erro — alto valor, baixo volume). Mask/block → não vaza dados de usuário (LGPD). NOTA: `replayIntegration` ainda é import estático (worker ~62KB gz no bundle de toda página mesmo sem consentimento) — lazy-load do replay é hardening PENDENTE (Tier 4 passo 5).
 - Gate LGPD: replay/RUM no browser exige consentimento analytics. Ver [specification-lgpd].
 
 ### CSP (Sentry)
