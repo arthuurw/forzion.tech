@@ -76,6 +76,7 @@ public static class AlunoAreaEndpoints
             var result = await handler.HandleAsync(cancellationToken);
             return Results.Ok(result);
         })
+        .RequireRateLimiting("read")
         .WithSummary("Retorna o agregado do dashboard do aluno autenticado")
         .Produces<ObterAlunoDashboardResponse>();
 

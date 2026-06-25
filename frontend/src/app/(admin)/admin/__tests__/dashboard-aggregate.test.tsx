@@ -98,8 +98,6 @@ describe("DashboardAdminPage — agregado /admin/dashboard", () => {
   });
 
   it("renderiza recentTreinadores na ordem recebida do server sem re-sort client-side", async () => {
-    // Alpha (createdAt 2020) is older but server places it first.
-    // With createdAt-DESC re-sort still applied, Beta (2025) would appear first.
     const { default: Page } = await import("@/app/(admin)/admin/page");
     renderWithProviders(<Page />, { skipAuth: true });
 

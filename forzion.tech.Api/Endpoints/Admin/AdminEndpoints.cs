@@ -74,6 +74,7 @@ public static class AdminEndpoints
             var result = await handler.HandleAsync(cancellationToken);
             return Results.Ok(result);
         })
+        .RequireRateLimiting("read")
         .WithSummary("Agregado do dashboard admin (counts, totals, pendentes, recentes) num único round-trip")
         .Produces<AdminDashboardResponse>();
 

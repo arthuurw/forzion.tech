@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/keys";
 import dynamic from "next/dynamic";
@@ -24,15 +25,18 @@ const AlunoDashboardCharts = dynamic(
 export default function DashboardAlunoPage() {
   const theme = useTheme();
 
-  const { data, isPending, isError, error } = useQuery({
+  const [error, setError] = useState("");
+  const { data, isPending, isError, error: queryError } = useQuery({
     queryKey: queryKeys.aluno.dashboard,
     staleTime: 60 * 1000,
     queryFn: () => alunoApi.getDashboard().then((r) => r.data),
   });
 
-  if (isPending) return <LoadingSpinner />;
+  useEffect(() => {
+    if (isError) setError(extractApiError(queryError, "Erro ao carregar dados."));
+  }, [isError, queryError]);
 
-  const errorMsg = isError ? extractApiError(error, "Erro ao carregar dados.") : "";
+  if (isPending) return <LoadingSpinner />;
 
   const totalFichas = data?.totalFichas ?? 0;
   const totalExecucoes = data?.totalExecucoes ?? 0;
@@ -42,7 +46,7 @@ export default function DashboardAlunoPage() {
 
   return (
     <Box>
-      <AlertBanner open={!!errorMsg} message={errorMsg} onClose={() => {}} />
+      <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
       <SemVinculoAtivoBanner vinculo={vinculo} />
 
