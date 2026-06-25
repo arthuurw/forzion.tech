@@ -135,6 +135,10 @@ public static class InfrastructureExtensions
                 "Stripe:WebhookSecret não configurado. Use User Secrets ou variável de ambiente.")
             .Validate(s => s.TaxaPlataformaPercent > 0 && s.TaxaPlataformaPercent <= 100,
                 "Stripe:TaxaPlataformaPercent deve estar entre 0 e 100.")
+            .Validate(s => !(s.SecretKey.StartsWith("sk_live_", StringComparison.Ordinal) && s.ExpectLivemode != true),
+                "Stripe:SecretKey usa prefixo sk_live_ mas Stripe__ExpectLivemode não é true. Defina Stripe__ExpectLivemode=true em produção.")
+            .Validate(s => !(s.SecretKey.StartsWith("sk_test_", StringComparison.Ordinal) && s.ExpectLivemode == true),
+                "Stripe:SecretKey usa prefixo sk_test_ mas Stripe__ExpectLivemode é true. Não use chave test-mode em produção.")
             .ValidateOnStart();
         // SEC-03: se ExpectLivemode não foi configurado explicitamente, default por ambiente —
         // Production espera live; demais (incl. Homolog público em test-mode) não enforça.
