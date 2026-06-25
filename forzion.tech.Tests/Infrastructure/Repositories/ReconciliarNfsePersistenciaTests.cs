@@ -4,9 +4,11 @@ using forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
+using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -30,8 +32,17 @@ public class ReconciliarNfsePersistenciaTests(InfrastructureTestFixture fixture)
         return treinador.Id;
     }
 
+    private IServiceScopeFactory ScopeFactory()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped(_ => fixture.CreateContext());
+        services.AddScoped<INotaFiscalRepository>(sp => new NotaFiscalRepository(sp.GetRequiredService<AppDbContext>()));
+        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
+        return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+    }
+
     private ReconciliarNfseHandler Handler(AppDbContext ctx, IEmissorNfseService emissor) =>
-        new(new NotaFiscalRepository(ctx), emissor, ctx, new FakeTimeProvider(Instante),
+        new(new NotaFiscalRepository(ctx), emissor, ScopeFactory(), new FakeTimeProvider(Instante),
             Mock.Of<ILogger<ReconciliarNfseHandler>>());
 
     [Fact]

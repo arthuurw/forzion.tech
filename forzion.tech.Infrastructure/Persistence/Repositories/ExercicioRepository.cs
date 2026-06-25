@@ -50,6 +50,11 @@ public class ExercicioRepository(AppDbContext context) : IExercicioRepository
         return (items, total);
     }
 
+    public async Task<int> ContarGlobaisAsync(CancellationToken cancellationToken = default) =>
+        await _context.Exercicios
+            .CountAsync(e => e.TreinadorId == null, cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task AdicionarAsync(Exercicio exercicio, CancellationToken cancellationToken = default) =>
         await _context.Exercicios.AddAsync(exercicio, cancellationToken).ConfigureAwait(false);
 

@@ -24,7 +24,7 @@ public class ListarAlunosAdminHandler(IAlunoRepository alunoRepository)
             .ConfigureAwait(false);
 
         return new ListarAlunosResponse(
-            [.. items.Select(CadastrarAlunoHandler.ToResponse)],
+            [.. items.Select(a => CadastrarAlunoHandler.ToResponse(a))],
             total,
             query.Pagina,
             query.TamanhoPagina);

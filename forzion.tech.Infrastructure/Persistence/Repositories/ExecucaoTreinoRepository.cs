@@ -83,6 +83,21 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
             .CountAsync(e => e.AlunoId == alunoId, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<SessaoDiaCount>> ContarSessoesPorDiaAsync(
+        Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default)
+    {
+        // Npgsql exige Kind=Utc p/ comparar com timestamptz; `.Date` traduz p/ date_trunc('day', x, 'UTC').
+        de = DateTime.SpecifyKind(de, DateTimeKind.Utc);
+        ate = DateTime.SpecifyKind(ate, DateTimeKind.Utc);
+
+        return await _context.ExecucoesTreino
+            .Where(e => e.AlunoId == alunoId && e.DataExecucao >= de && e.DataExecucao < ate)
+            .GroupBy(e => e.DataExecucao.Date)
+            .Select(g => new SessaoDiaCount(g.Key, g.Count()))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyList<ProgressaoAggRow>> ProjetarProgressaoAsync(
         Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default)
     {

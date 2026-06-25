@@ -14,13 +14,15 @@ Aplicar via `scripts/setup-git.ps1` (Windows) ou `scripts/setup-git.sh` (POSIX).
 
 | config | valor | porquê |
 |---|---|---|
-| `init.defaultBranch` | `main` | alinha branch inicial de `git init` ao convencional |
+| `init.defaultBranch` | `main` | alinha branch inicial de `git init` ao convencional (CLIENTE; NÃO confundir com o repo) |
 | `push.autoSetupRemote` | `true` | 1º `git push` em branch nova cria upstream sem `-u` |
 | `push.default` | `current` | pusha SÓ branch atual (não todas as matching) |
 | `pull.rebase` | `true` | `git pull` rebase em vez de merge — história linear |
 | `rebase.autoStash` | `true` | rebase preserva working tree sujo (stash automático) |
 | `fetch.prune` | `true` | `git fetch` remove refs locais de branches deletadas no remoto |
 | `core.autocrlf` | `true` (Win) / `input` (POSIX) | alinha line endings com pre-commit `dotnet format` (ENDOFLINE check) |
+
+- **NÃO confundir `init.defaultBranch=main` (cliente) com o default branch do REPO**: o GitHub default branch deste repo é `homolog` (`origin/HEAD → homolog`), e é a base de PR. `init.defaultBranch=main` só nomeia a branch inicial de um `git init` novo (inócuo aqui) — NÃO é a base de PR nem espelha o remoto.
 
 Aliases opcionais (não setados por default):
 - `git config --global alias.cap '!f() { git commit -m "$1" && git push; }; f'` — `git cap "msg"` = commit + push.
@@ -74,7 +76,7 @@ docs(infra): add git workflow spec + setup script
 ```
 
 ## PRE-COMMIT HOOK
-- Vive em `frontend/.husky/pre-commit` (executável). `core.hooksPath` aponta pra `frontend/.husky/`.
+- Vive em `frontend/.husky/pre-commit` (executável). `core.hooksPath` aponta pra `frontend/.husky/_` (subdir `_` do husky v9).
 - Roda **por área staged** (não global): se só backend → roda gate backend; idem frontend.
 - **Gate de comentário (.cs)**: roda ANTES do gate backend, sempre que houver `.cs` staged (exclui EF-generated `*Designer.cs`/`*ModelSnapshot.cs`). Falha o commit se uma linha ADICIONADA contiver o subset objetivamente proibido da AGENTS.md regra 9: andaime/ref de task (`// T2B.3:`, `// TCR1:`, `// T7:` — regex `T[0-9][0-9A-Z.]*:` / `TCR[0-9]+:`) ou divisor decorativo UNICODE (`// ──`/`// ══`/`// ——`, ≥2 chars `[─━═—]` logo após `//`). NÃO bloqueia: divisor ASCII `// --- X ---` (idiom de teste), em-dash `—` no meio de frase, XML doc em interface. Paráfrase/comentário óbvio o gate NÃO pega (exige julgamento) — fica pra revisão.
 - **Backend gate**: `dotnet format --verify-no-changes` → `dotnet build -c Release` → **openapi drift** → `dotnet test --filter "Category!=Integration"`.
@@ -90,7 +92,7 @@ docs(infra): add git workflow spec + setup script
 ## PUSH / PR
 - Branch local mesmo nome do remoto (convenção). `git push` sem args = pusha branch atual pro mesmo nome em `origin`.
 - **PR é MANUAL — não abrir automaticamente** (decisão 2026-06-10, até segunda ordem; uso consciente de recursos de CI + o usuário decide o que vira PR): concluir em `commit + push` na branch; o usuário pede o PR quando quiser. Ver AGENTS.md `DEFINITION OF DONE` passo 8.
-- Quando solicitado: PR vai pra `homolog` (default) OU pra `master` quando a alteração foi feita direto em `homolog`.
+- Quando solicitado: PR vai pra `homolog` (default branch do repo, base de PR). NÃO existe `master`/produção viva hoje — promoção a prod é aspiracional.
 - `gh pr create --fill --base homolog` cria PR com title/body do commit topo.
 - Após merge no remoto, branch local pode ser deletada (`git branch -d`).
 - **CODE REVIEW pós-PR, ao CI ficar VERDE** (regra; AGENTS.md DoD item 9b): aberto o PR, MONITORAR os checks (`gh pr checks <N>`; background até run `completed`). Code review do diff (context7) roda SÓ quando o CI fica VERDE — não revisar código que ainda falha gate (desperdício; o gate pode mudar o diff). **CI VERMELHO ⇒ debugar a causa PRIMEIRO** (`superpowers:systematic-debugging`), corrigir, repush; revisão espera o verde. Pegar log de job que falhou: `gh run view --job <jobId> --log-failed` (exige a RUN inteira `completed` — jobs pending bloqueiam; aguardar). `/code-review` (local) eu rodo; `/code-review ultra` (cloud, billed) é disparado pelo usuário.

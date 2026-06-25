@@ -6,6 +6,8 @@ import type { HttpHandler } from "msw";
 const unauthorized = () => HttpResponse.json({ title: "Não autenticado", status: 401 }, { status: 401 });
 
 export const alunoHandlers: HttpHandler[] = [
+  http.get("*/aluno/dashboard", unauthorized),
+  http.get("*/aluno/vinculo", unauthorized),
   http.get("*/aluno/me", unauthorized),
   http.get("*/aluno/treinador", unauthorized),
   http.get("*/aluno/fichas", unauthorized),

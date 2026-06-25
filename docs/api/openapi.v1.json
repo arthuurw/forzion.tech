@@ -1348,6 +1348,31 @@
         ]
       }
     },
+    "/admin/dashboard": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Agregado do dashboard admin (counts, totals, pendentes, recentes) num único round-trip",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDashboardResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/admin/treinadores": {
       "get": {
         "tags": [
@@ -3233,6 +3258,31 @@
         ]
       }
     },
+    "/treinador/dashboard": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Painel agregado do treinador (counts, MRR, receita/pacote, fichas, pendentes, onboarding, plano)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreinadorDashboardResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/treinador/onboarding/status": {
       "get": {
         "tags": [
@@ -4518,6 +4568,31 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ObterVinculoAlunoResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/aluno/dashboard": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "summary": "Retorna o agregado do dashboard do aluno autenticado",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObterAlunoDashboardResponse"
                 }
               }
             }
@@ -7131,6 +7206,135 @@
           }
         }
       },
+      "AdminDashboardCounts": {
+        "required": [
+          "ativos",
+          "pendentes",
+          "inativos"
+        ],
+        "type": "object",
+        "properties": {
+          "ativos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pendentes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "inativos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "AdminDashboardResponse": {
+        "required": [
+          "treinadores",
+          "alunos",
+          "totals",
+          "planoDistribuicao",
+          "alunoFinalidade",
+          "treinadoresPendentes",
+          "alunosPendentes",
+          "recentTreinadores",
+          "planos"
+        ],
+        "type": "object",
+        "properties": {
+          "treinadores": {
+            "$ref": "#/components/schemas/AdminDashboardCounts"
+          },
+          "alunos": {
+            "$ref": "#/components/schemas/AdminDashboardCounts"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AdminDashboardTotals"
+          },
+          "planoDistribuicao": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanoDistribuicaoItem"
+            }
+          },
+          "alunoFinalidade": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlunoFinalidadeItem"
+            }
+          },
+          "treinadoresPendentes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreinadorResponse"
+            }
+          },
+          "alunosPendentes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlunoResponse"
+            }
+          },
+          "recentTreinadores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreinadorResponse"
+            }
+          },
+          "planos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanoPlataformaResponse"
+            }
+          }
+        }
+      },
+      "AdminDashboardTotals": {
+        "required": [
+          "planos",
+          "exerciciosGlobais",
+          "gruposMusculares"
+        ],
+        "type": "object",
+        "properties": {
+          "planos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exerciciosGlobais": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "gruposMusculares": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "AlterarModoPagamentoRequest": {
         "required": [
           "modo"
@@ -7334,6 +7538,19 @@
               "null",
               "string"
             ]
+          },
+          "pacoteId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "pacoteNome": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -7456,6 +7673,15 @@
           "Ativa",
           "Inadimplente",
           "Cancelada"
+        ]
+      },
+      "AssinaturaTreinadorStatus": {
+        "enum": [
+          "Pendente",
+          "Ativa",
+          "Inadimplente",
+          "Cancelada",
+          null
         ]
       },
       "AtribuirPlanoRequest": {
@@ -8532,6 +8758,36 @@
           }
         }
       },
+      "FichaAtivaResumo": {
+        "required": [
+          "treinoAlunoId",
+          "treinoId",
+          "nomeTreino",
+          "objetivo",
+          "criadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "treinoAlunoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "treinoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nomeTreino": {
+            "type": "string"
+          },
+          "objetivo": {
+            "$ref": "#/components/schemas/ObjetivoTreino"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "FinalidadeTreino": {
         "enum": [
           "Hipertrofia",
@@ -9559,6 +9815,26 @@
           "CancelamentoExpirado"
         ]
       },
+      "ObjetivoItem": {
+        "required": [
+          "objetivo",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "objetivo": {
+            "$ref": "#/components/schemas/ObjetivoTreino"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "ObjetivoTreino": {
         "enum": [
           "Hipertrofia",
@@ -9567,6 +9843,49 @@
           "Emagrecimento",
           "Reabilitacao"
         ]
+      },
+      "ObterAlunoDashboardResponse": {
+        "required": [
+          "totalFichas",
+          "fichasAtivas",
+          "totalExecucoes",
+          "sessoesPorSemana",
+          "vinculo"
+        ],
+        "type": "object",
+        "properties": {
+          "totalFichas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fichasAtivas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FichaAtivaResumo"
+            }
+          },
+          "totalExecucoes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sessoesPorSemana": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessaoSemanaItem"
+            }
+          },
+          "vinculo": {
+            "$ref": "#/components/schemas/VinculoResumo"
+          }
+        }
       },
       "ObterVinculoAlunoResponse": {
         "required": [
@@ -10056,6 +10375,40 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "ReceitaPorPacoteItem": {
+        "required": [
+          "pacoteId",
+          "nome",
+          "alunos",
+          "receita"
+        ],
+        "type": "object",
+        "properties": {
+          "pacoteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "alunos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "receita": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -10652,6 +11005,32 @@
           }
         }
       },
+      "SessaoSemanaItem": {
+        "required": [
+          "semanaInicio",
+          "semanaFim",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "semanaInicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "semanaFim": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "SolicitarTrocaTreinadorRequest": {
         "required": [
           "novoTreinadorId",
@@ -10721,6 +11100,116 @@
           "InadimplenteRegularizacao",
           "UpgradeImediato"
         ]
+      },
+      "TreinadorDashboardCounts": {
+        "required": [
+          "ativos",
+          "aguardando",
+          "inativos"
+        ],
+        "type": "object",
+        "properties": {
+          "ativos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "aguardando": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "inativos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "TreinadorDashboardPlano": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AssinaturaTreinadorStatus"
+              }
+            ]
+          }
+        }
+      },
+      "TreinadorDashboardResponse": {
+        "required": [
+          "counts",
+          "mrr",
+          "receitaPorPacote",
+          "totalFichas",
+          "objetivos",
+          "pendentes",
+          "onboarding",
+          "plano"
+        ],
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/TreinadorDashboardCounts"
+          },
+          "mrr": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "receitaPorPacote": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceitaPorPacoteItem"
+            }
+          },
+          "totalFichas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "objetivos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObjetivoItem"
+            }
+          },
+          "pendentes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VinculoDetalheResponse"
+            }
+          },
+          "onboarding": {
+            "$ref": "#/components/schemas/OnboardingStatusResponse"
+          },
+          "plano": {
+            "$ref": "#/components/schemas/TreinadorDashboardPlano"
+          }
+        }
       },
       "TreinadorResponse": {
         "required": [
@@ -11278,6 +11767,21 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "VinculoResumo": {
+        "required": [
+          "ativo",
+          "pendente"
+        ],
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "pendente": {
+            "type": "boolean"
           }
         }
       },

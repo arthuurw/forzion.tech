@@ -185,6 +185,18 @@ describe("PagamentoPix", () => {
     clearSpy.mockRestore();
   });
 
+  it("document.hidden=true → carregar pula fetch (obterPagamento não chamado no tick)", async () => {
+    Object.defineProperty(document, "hidden", { value: true, writable: true, configurable: true });
+    try {
+      const tracker = countPagamentoCalls();
+      render(<PagamentoPix pagamentoId="pay-1" />);
+      await new Promise((r) => setTimeout(r, 150));
+      expect(tracker.count).toBe(0);
+    } finally {
+      Object.defineProperty(document, "hidden", { value: false, writable: true, configurable: true });
+    }
+  });
+
   // Variante: unmount com fetch in-flight (resposta nunca chega). Cleanup
   // ainda deve rodar sem erro — `active = false` previne setState quando/se
   // a Promise eventualmente resolve.

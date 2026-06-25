@@ -19,8 +19,7 @@ public class ListarTreinadoresHandler(ITreinadorRepository treinadorRepository)
             .ListarAsync(status, pagina, tamanhoPagina, cancellationToken)
             .ConfigureAwait(false);
 
-        var response = items.Select(t => new TreinadorResponse(
-            t.Id, t.ContaId, t.Nome, t.Status, t.PlanoPlataformaId, t.CreatedAt)).ToList();
+        var response = items.Select(TreinadorResponse.De).ToList();
 
         return new ListarTreinadoresResponse(response, total, pagina, tamanhoPagina);
     }

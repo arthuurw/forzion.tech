@@ -57,7 +57,7 @@ export default function SaudeAdminPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await adminApi.getHealthReportConfig();
+      const [res] = await Promise.all([adminApi.getHealthReportConfig(), loadSnapshots()]);
       if (res.status !== 204 && res.data) {
         const c = res.data;
         setAtivo(c.ativo);
@@ -69,7 +69,6 @@ export default function SaudeAdminPage() {
         setIncluirErros(c.incluirErros);
         setUltimoEnvioEm(c.ultimoEnvioEm);
       }
-      await loadSnapshots();
     } catch (err) {
       setError(extractApiError(err, "Erro ao carregar a configuração do relatório de saúde."));
     } finally {

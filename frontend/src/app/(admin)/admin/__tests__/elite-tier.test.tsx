@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { renderWithProviders } from "@/test/render";
 import { buildPlano } from "@/test/factories/plano";
 import type { TreinadorResponse } from "@/types";
 
@@ -127,7 +128,7 @@ describe("TreinadoresAdminPage — Elite excluído do autocomplete de plano", ()
 
   it("dialog de atribuição de plano não exibe plano Elite como opção", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(screen.getByText("Treinador Teste")).toBeInTheDocument();

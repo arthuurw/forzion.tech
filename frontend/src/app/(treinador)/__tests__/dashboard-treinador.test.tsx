@@ -1,19 +1,10 @@
-/**
- * G-FE-2 — dashboard approval null pacoteId
- *
- * When handleAprovar is called with a vinculo that has pacoteId === null,
- * the page must redirect to /treinador/alunos instead of setting an error.
- */
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
-import type {
-  VinculoDetalheResponse,
-  PacoteResponse,
-  TreinoResponse,
-} from "@/types";
+import { renderWithProviders } from "@/test/render";
+import type { VinculoDetalheResponse, TreinadorDashboardResponse } from "@/types";
 
 const mockPush = vi.fn();
 
@@ -35,39 +26,7 @@ vi.mock("recharts", () => ({
   Legend: () => null,
 }));
 
-const PACOTE: PacoteResponse = {
-  pacoteId: "pac-1",
-  nome: "Plano Bronze",
-  descricao: null,
-  preco: 150,
-  treinadorId: "t-1",
-};
-
-const makeVinculos = (
-  pendentes: VinculoDetalheResponse[],
-) => ({
-  items: pendentes,
-  total: pendentes.length,
-  pagina: 1,
-  tamanhoPagina: 10,
-});
-
-const FICHA: TreinoResponse = {
-  treinoId: "fi-1",
-  nome: "Treino A",
-  objetivo: "Hipertrofia",
-  dificuldade: "Iniciante",
-  dataInicio: null,
-  dataFim: null,
-  treinadorId: "t-1",
-  exercicios: [],
-  createdAt: "2024-01-01T00:00:00Z",
-  updatedAt: null,
-};
-
-function buildVinculo(
-  overrides: Partial<VinculoDetalheResponse> = {},
-): VinculoDetalheResponse {
+function buildVinculo(overrides: Partial<VinculoDetalheResponse> = {}): VinculoDetalheResponse {
   return {
     vinculoId: "v-1",
     treinadorId: "t-1",
@@ -82,21 +41,18 @@ function buildVinculo(
   };
 }
 
-function setupDashboardHandlers(pendentes: VinculoDetalheResponse[]) {
-  server.use(
-    http.get("*/treinador/vinculos", ({ request }) => {
-      const url = new URL(request.url);
-      const status = url.searchParams.get("status");
-      if (status === "AguardandoAprovacao") return HttpResponse.json(makeVinculos(pendentes));
-      if (status === "Inativo") return HttpResponse.json(makeVinculos([]));
-      // Ativo
-      return HttpResponse.json(makeVinculos([]));
-    }),
-    http.get("*/treinador/pacotes", () => HttpResponse.json([PACOTE])),
-    http.get("*/treinador/treinos", () =>
-      HttpResponse.json({ items: [FICHA], total: 1, pagina: 1, tamanhoPagina: 100 }),
-    ),
-  );
+function buildDashboard(overrides: Partial<TreinadorDashboardResponse> = {}): TreinadorDashboardResponse {
+  return {
+    counts: { ativos: 5, aguardando: 2, inativos: 1 },
+    mrr: 750,
+    receitaPorPacote: [{ pacoteId: "pac-1", nome: "Plano Bronze", alunos: 5, receita: 750 }],
+    totalFichas: 10,
+    objetivos: [{ objetivo: "Hipertrofia", total: 7 }, { objetivo: "Emagrecimento", total: 3 }],
+    pendentes: [],
+    onboarding: { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
+    plano: { status: "Ativa" },
+    ...overrides,
+  };
 }
 
 describe("DashboardTreinadorPage — null pacoteId redirect (G-FE-2)", () => {
@@ -104,42 +60,38 @@ describe("DashboardTreinadorPage — null pacoteId redirect (G-FE-2)", () => {
     mockPush.mockClear();
   });
 
-  it("redirects to /treinador/alunos when Aprovar is clicked and pacoteId is null", async () => {
+  it("Aprovar button is disabled when pacoteId is null and no redirect fires on render", async () => {
     const vinculoSemPacote = buildVinculo({ pacoteId: null });
-    setupDashboardHandlers([vinculoSemPacote]);
+    server.use(
+      http.get("*/treinador/dashboard", () =>
+        HttpResponse.json(buildDashboard({ pendentes: [vinculoSemPacote] })),
+      ),
+    );
 
     const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     });
 
-    // The Aprovar button should be disabled when pacoteId is null (existing guard)
-    // but clicking via direct fireEvent to exercise handleAprovar path
     const buttons = screen.getAllByRole("button", { name: /aprovar/i });
     expect(buttons.length).toBeGreaterThan(0);
-
-    // Fire click on the button; it is disabled so we test the function directly
-    // by checking no error state is set and push is called.
-    // The button has `disabled={!!actionLoading || !v.pacoteId}` so it won't fire
-    // handleAprovar when disabled via a real click event.
-    // We confirm the button is disabled and the redirect logic is wired by:
-    // 1) verifying the Aprovar button is disabled (because pacoteId is null)
-    // 2) ensuring router.push was NOT called just by rendering
     expect(mockPush).not.toHaveBeenCalledWith("/treinador/alunos");
     expect(buttons[0]).toBeDisabled();
   });
 
-  it("does NOT redirect when Aprovar is clicked and pacoteId is set", async () => {
+  it("Aprovar button is enabled and no redirect fires when pacoteId is set", async () => {
     const vinculoComPacote = buildVinculo({ pacoteId: "pac-1" });
-    setupDashboardHandlers([vinculoComPacote]);
     server.use(
+      http.get("*/treinador/dashboard", () =>
+        HttpResponse.json(buildDashboard({ pendentes: [vinculoComPacote] })),
+      ),
       http.post("*/treinador/vinculos/:id/aprovar", () => HttpResponse.json({})),
     );
 
     const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
@@ -157,56 +109,49 @@ describe("DashboardTreinadorPage — null pacoteId redirect (G-FE-2)", () => {
   });
 });
 
-function onboardingHandler(modo: "Plataforma" | "Externo", onboardingCompleto: boolean) {
-  server.use(
-    http.get("*/treinador/onboarding/status", () =>
-      HttpResponse.json({ onboardingCompleto, contaConfigurada: onboardingCompleto, modoPagamentoAluno: modo }),
-    ),
-  );
-}
-
-function assinaturaHandler(status: "Ativa" | "Inadimplente") {
-  server.use(
-    http.get("*/treinador/plano/assinatura", () =>
-      HttpResponse.json({
-        assinaturaId: "ass-1", status, valor: 50, planoPlataformaId: "p-1",
-        dataProximaCobranca: new Date().toISOString(), planoPlataformaIdAgendado: null,
-      }),
-    ),
-  );
-}
-
-describe("DashboardTreinadorPage — T4.2 modo e regularização", () => {
+describe("DashboardTreinadorPage — banners onboarding e inadimplente", () => {
   it("modo Externo não exibe o banner de onboarding", async () => {
-    setupDashboardHandlers([]);
-    onboardingHandler("Externo", false);
-    assinaturaHandler("Ativa");
+    server.use(
+      http.get("*/treinador/dashboard", () =>
+        HttpResponse.json(buildDashboard({
+          onboarding: { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Externo", modoPagamentoPodeAlterarEm: null },
+          plano: { status: "Ativa" },
+        })),
+      ),
+    );
 
     const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
     expect(screen.queryByText("Configure seus recebimentos")).not.toBeInTheDocument();
   });
 
   it("modo Plataforma com onboarding pendente exibe o banner de onboarding", async () => {
-    setupDashboardHandlers([]);
-    onboardingHandler("Plataforma", false);
-    assinaturaHandler("Ativa");
+    server.use(
+      http.get("*/treinador/dashboard", () =>
+        HttpResponse.json(buildDashboard({
+          onboarding: { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
+          plano: { status: "Ativa" },
+        })),
+      ),
+    );
 
     const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     expect(await screen.findByText("Configure seus recebimentos")).toBeInTheDocument();
   });
 
   it("plano inadimplente exibe o banner de regularização", async () => {
-    setupDashboardHandlers([]);
-    onboardingHandler("Plataforma", true);
-    assinaturaHandler("Inadimplente");
+    server.use(
+      http.get("*/treinador/dashboard", () =>
+        HttpResponse.json(buildDashboard({ plano: { status: "Inadimplente" } })),
+      ),
+    );
 
     const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     expect(await screen.findByText("Assinatura da plataforma em atraso")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Regularizar pagamento/ })).toBeInTheDocument();
@@ -216,19 +161,7 @@ describe("DashboardTreinadorPage — T4.2 modo e regularização", () => {
 describe("DashboardTreinadorPage — load error shows backend detail (G-FE-1)", () => {
   it("shows backend detail message from ProblemDetails when load fails", async () => {
     server.use(
-      http.get("*/treinador/vinculos", () =>
-        HttpResponse.json(
-          { detail: "Treinador não encontrado.", title: "Not Found" },
-          { status: 404 },
-        ),
-      ),
-      http.get("*/treinador/pacotes", () =>
-        HttpResponse.json(
-          { detail: "Treinador não encontrado.", title: "Not Found" },
-          { status: 404 },
-        ),
-      ),
-      http.get("*/treinador/treinos", () =>
+      http.get("*/treinador/dashboard", () =>
         HttpResponse.json(
           { detail: "Treinador não encontrado.", title: "Not Found" },
           { status: 404 },
@@ -237,10 +170,91 @@ describe("DashboardTreinadorPage — load error shows backend detail (G-FE-1)", 
     );
 
     const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(screen.getByText("Treinador não encontrado.")).toBeInTheDocument();
     });
+  });
+});
+
+describe("DashboardTreinadorPage — agregado /treinador/dashboard (T5)", () => {
+  const dashboard: TreinadorDashboardResponse = {
+    counts: { ativos: 12, aguardando: 3, inativos: 2 },
+    mrr: 1800,
+    receitaPorPacote: [{ pacoteId: "pac-1", nome: "Plano Bronze", alunos: 12, receita: 1800 }],
+    totalFichas: 25,
+    objetivos: [
+      { objetivo: "Hipertrofia", total: 15 },
+      { objetivo: "Emagrecimento", total: 10 },
+    ],
+    pendentes: [],
+    onboarding: { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
+    plano: { status: "Inadimplente" },
+  };
+
+  beforeEach(() => {
+    server.use(
+      http.get("*/treinador/dashboard", () => HttpResponse.json(dashboard)),
+    );
+  });
+
+  it("renderiza counts, totalFichas, banners de onboarding e inadimplente do agregado", async () => {
+    const { default: Page } = await import("@/app/(treinador)/treinador/page");
+    renderWithProviders(<Page />, { skipAuth: true });
+
+    await waitFor(() => {
+      expect(screen.getByText("12")).toBeInTheDocument();
+    });
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("25")).toBeInTheDocument();
+    expect(screen.getByText("Assinatura da plataforma em atraso")).toBeInTheDocument();
+    expect(screen.getByText("Configure seus recebimentos")).toBeInTheDocument();
+  });
+
+  it("exibe MRR igual ao valor servidor sem re-somar lista paginada (R2b)", async () => {
+    const { default: Page } = await import("@/app/(treinador)/treinador/page");
+    renderWithProviders(<Page />, { skipAuth: true });
+
+    expect(await screen.findByText("12")).toBeInTheDocument();
+    expect(document.body).toHaveTextContent(/1[.,]800/);
+  });
+
+  it("faz apenas 1 GET /treinador/dashboard — os 7 endpoints antigos não são chamados", async () => {
+    let dashboardCalls = 0;
+    let oldEndpointCalls = 0;
+
+    server.use(
+      http.get("*/treinador/dashboard", () => {
+        dashboardCalls++;
+        return HttpResponse.json(dashboard);
+      }),
+      http.get("*/treinador/vinculos", () => {
+        oldEndpointCalls++;
+        return HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 1 });
+      }),
+      http.get("*/treinador/treinos", () => {
+        oldEndpointCalls++;
+        return HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 100 });
+      }),
+      http.get("*/treinador/pacotes", () => {
+        oldEndpointCalls++;
+        return HttpResponse.json([]);
+      }),
+      http.get("*/treinador/onboarding/status", () => {
+        oldEndpointCalls++;
+        return HttpResponse.json({ onboardingCompleto: true, contaConfigurada: true });
+      }),
+      http.get("*/treinador/plano/assinatura", () => {
+        oldEndpointCalls++;
+        return HttpResponse.json({ status: "Ativa" });
+      }),
+    );
+
+    const { default: Page } = await import("@/app/(treinador)/treinador/page");
+    renderWithProviders(<Page />, { skipAuth: true });
+
+    await waitFor(() => expect(dashboardCalls).toBe(1));
+    expect(oldEndpointCalls).toBe(0);
   });
 });

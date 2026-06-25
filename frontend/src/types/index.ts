@@ -92,6 +92,8 @@ export interface AlunoResponse {
   limitacoesFisicas: string | null;
   doencas: string | null;
   observacoesAdicionais: string | null;
+  pacoteId?: string | null;
+  pacoteNome?: string | null;
 }
 
 export interface TreinadorResponse {
@@ -426,4 +428,88 @@ export interface HealthSnapshotResponse {
   ambiente: string;
   statusGeral: StatusSaude;
   payloadJson: string;
+}
+
+export interface AdminDashboardCounts {
+  ativos: number;
+  pendentes: number;
+  inativos: number;
+}
+
+export interface AdminDashboardTotals {
+  planos: number;
+  exerciciosGlobais: number;
+  gruposMusculares: number;
+}
+
+export interface AdminDashboardResponse {
+  treinadores: AdminDashboardCounts;
+  alunos: AdminDashboardCounts;
+  totals: AdminDashboardTotals;
+  planoDistribuicao: { tier: string; total: number }[];
+  alunoFinalidade: { finalidade: string; total: number }[];
+  treinadoresPendentes: TreinadorResponse[];
+  alunosPendentes: AlunoResponse[];
+  recentTreinadores: TreinadorResponse[];
+  planos: PlanoPlataformaResponse[];
+}
+
+export interface TreinadorDashboardCounts {
+  ativos: number;
+  aguardando: number;
+  inativos: number;
+}
+
+export interface TreinadorDashboardPlano {
+  status: AssinaturaTreinadorStatus | null;
+}
+
+export interface ReceitaPorPacoteItem {
+  pacoteId: string;
+  nome: string;
+  alunos: number;
+  receita: number;
+}
+
+export interface ObjetivoItem {
+  objetivo: ObjetivoTreino;
+  total: number;
+}
+
+export interface TreinadorDashboardResponse {
+  counts: TreinadorDashboardCounts;
+  mrr: number;
+  receitaPorPacote: ReceitaPorPacoteItem[];
+  totalFichas: number;
+  objetivos: ObjetivoItem[];
+  pendentes: VinculoDetalheResponse[];
+  onboarding: OnboardingStatusResponse;
+  plano: TreinadorDashboardPlano;
+}
+
+export interface FichaAtivaResumo {
+  treinoAlunoId: string;
+  treinoId: string;
+  nomeTreino: string;
+  objetivo: ObjetivoTreino;
+  criadoEm: string;
+}
+
+export interface SessaoSemanaItem {
+  semanaInicio: string;
+  semanaFim: string;
+  total: number;
+}
+
+export interface VinculoResumo {
+  ativo: boolean;
+  pendente: boolean;
+}
+
+export interface AlunoDashboardResponse {
+  totalFichas: number;
+  fichasAtivas: FichaAtivaResumo[];
+  totalExecucoes: number;
+  sessoesPorSemana: SessaoSemanaItem[];
+  vinculo: VinculoResumo;
 }

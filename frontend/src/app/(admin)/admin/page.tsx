@@ -1,25 +1,26 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
+import dynamic from "next/dynamic";
 import {
   Box, Typography, Paper, Stack, Divider, Button, Chip, Tabs, Tab,
 } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
-  Tooltip, ResponsiveContainer, Legend,
-} from "recharts";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import { TREINADOR_STATUS_COLORS, ALUNO_DASHBOARD_STATUS_COLORS } from "@/lib/constants/labels";
-import ChartFigure from "@/components/charts/ChartFigure";
-import type {
-  TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
-} from "@/types";
+import type { PlanoPlataformaResponse } from "@/types";
 import { extractApiError } from "@/lib/api/extractApiError";
+
+const AdminDashboardCharts = dynamic(
+  () => import("./_charts/AdminDashboardCharts"),
+  { ssr: false, loading: () => <LoadingSpinner /> },
+);
 
 interface StatItem { name: string; value: number; color: string }
 interface PlanoStat { planoId: string; name: string; total: number; preco: number; maxAlunos: number }
@@ -34,100 +35,73 @@ const PLANO_COLUMNS: Column[] = [
 
 export default function DashboardAdminPage() {
   const theme = useTheme();
-  const [treinadorStats, setTreinadorStats] = useState<StatItem[]>([]);
-  const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
-  const [pendentes, setPendentes] = useState<TreinadorResponse[]>([]);
-  const [alunosPendentes, setAlunosPendentes] = useState<AlunoResponse[]>([]);
-  const [recentTreinadores, setRecentTreinadores] = useState<TreinadorResponse[]>([]);
-  const [planoStats, setPlanoStats] = useState<PlanoStat[]>([]);
-  const [finalidadeData, setFinalidadeData] = useState<DistItem[]>([]);
-  const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
-  const [totalExercicios, setTotalExercicios] = useState(0);
-  const [totalGrupos, setTotalGrupos] = useState(0);
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const [
-        ativoTRes, aguardandoTRes, inativoTRes,
-        ativoARes, aguardandoARes, inativoARes,
-        planosRes, exerciciosRes, gruposRes, statsRes,
-        recentTRes,
-      ] = await Promise.all([
-        adminApi.listTreinadores({ status: "Ativo", tamanhoPagina: 1 }),
-        adminApi.listTreinadores({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
-        adminApi.listTreinadores({ status: "Inativo", tamanhoPagina: 1 }),
-        adminApi.listAlunos({ status: "Ativo", tamanhoPagina: 1 }),
-        adminApi.listAlunos({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
-        adminApi.listAlunos({ status: "Inativo", tamanhoPagina: 1 }),
-        adminApi.listPlanos(),
-        adminApi.listExerciciosGlobais({ tamanhoPagina: 1 }),
-        adminApi.listGruposMusculares(),
-        adminApi.getDashboardStats(),
-        adminApi.listTreinadores({ tamanhoPagina: 5 }),
-      ]);
+  const { data, isPending, isError, error: queryError } = useQuery({
+    queryKey: queryKeys.admin.dashboard,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data: d } = await adminApi.getDashboard();
 
-      setTreinadorStats([
-        { name: "Ativos", value: ativoTRes.data.total, color: TREINADOR_STATUS_COLORS.Ativos },
-        { name: "Pendentes", value: aguardandoTRes.data.total, color: TREINADOR_STATUS_COLORS.Pendentes },
-        { name: "Inativos", value: inativoTRes.data.total, color: TREINADOR_STATUS_COLORS.Inativos },
-      ]);
+      const treinadorStats: StatItem[] = [
+        { name: "Ativos", value: d.treinadores.ativos, color: TREINADOR_STATUS_COLORS.Ativos },
+        { name: "Pendentes", value: d.treinadores.pendentes, color: TREINADOR_STATUS_COLORS.Pendentes },
+        { name: "Inativos", value: d.treinadores.inativos, color: TREINADOR_STATUS_COLORS.Inativos },
+      ];
 
-      setAlunoStats([
-        { name: "Ativos", value: ativoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Ativos },
-        { name: "Pendentes", value: aguardandoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Pendentes },
-        { name: "Inativos", value: inativoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Inativos },
-      ]);
+      const alunoStats: StatItem[] = [
+        { name: "Ativos", value: d.alunos.ativos, color: ALUNO_DASHBOARD_STATUS_COLORS.Ativos },
+        { name: "Pendentes", value: d.alunos.pendentes, color: ALUNO_DASHBOARD_STATUS_COLORS.Pendentes },
+        { name: "Inativos", value: d.alunos.inativos, color: ALUNO_DASHBOARD_STATUS_COLORS.Inativos },
+      ];
 
-      setPendentes(aguardandoTRes.data.items);
-      setAlunosPendentes(aguardandoARes.data.items);
-
-      const sorted = [...recentTRes.data.items].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setRecentTreinadores(sorted.slice(0, 5));
-
-      const planosData = planosRes.data as PlanoPlataformaResponse[];
-      setPlanos(planosData);
+      const planosData = d.planos as PlanoPlataformaResponse[];
       const planoMap = new Map(planosData.map((p) => [p.planoId, p]));
-      const planoBarStats: PlanoStat[] = statsRes.data.planoDistribuicao.map((d) => {
-        const plano = planoMap.get(d.tier);
+      const planoStats: PlanoStat[] = d.planoDistribuicao.map((item) => {
+        const plano = planoMap.get(item.tier);
         return {
-          planoId: d.tier,
-          name: plano ? plano.nome : d.tier,
-          total: d.total,
+          planoId: item.tier,
+          name: plano ? plano.nome : item.tier,
+          total: item.total,
           preco: plano?.preco ?? 0,
           maxAlunos: plano?.maxAlunos ?? 0,
         };
       }).sort((a, b) => b.total - a.total);
-      setPlanoStats(planoBarStats);
 
-      setFinalidadeData(
-        statsRes.data.alunoFinalidade
-          .slice()
-          .sort((a, b) => b.total - a.total)
-          .map((d) => ({ name: d.finalidade, total: d.total }))
-      );
+      const finalidadeData: DistItem[] = d.alunoFinalidade
+        .slice()
+        .sort((a, b) => b.total - a.total)
+        .map((item) => ({ name: item.finalidade, total: item.total }));
 
-      setTotalExercicios(exerciciosRes.data.total);
-      setTotalGrupos((gruposRes.data as GrupoMuscularResponse[]).length);
-    } catch (err) {
-      setError(extractApiError(err, "Erro ao carregar dados do painel."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return {
+        treinadorStats,
+        alunoStats,
+        pendentes: d.treinadoresPendentes,
+        alunosPendentes: d.alunosPendentes,
+        recentTreinadores: d.recentTreinadores,
+        planoStats,
+        finalidadeData,
+        planos: planosData,
+        totalExercicios: d.totals.exerciciosGlobais,
+        totalGrupos: d.totals.gruposMusculares,
+      };
+    },
+  });
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (isError) setError(extractApiError(queryError, "Erro ao carregar dados do painel."));
+  }, [isError, queryError]);
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dashboard });
 
   const handleAprovar = async (id: string) => {
     setActionLoading(`${id}_aprovar`);
     try {
       await adminApi.aprovarTreinador(id);
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao aprovar treinador."));
     } finally {
@@ -139,7 +113,7 @@ export default function DashboardAdminPage() {
     setActionLoading(`${id}_reprovar`);
     try {
       await adminApi.reprovarTreinador(id);
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao reprovar treinador."));
     } finally {
@@ -151,7 +125,7 @@ export default function DashboardAdminPage() {
     setActionLoading(`${id}_aprovar`);
     try {
       await adminApi.alterarStatusAluno(id, "Ativo");
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao aprovar aluno."));
     } finally {
@@ -163,7 +137,7 @@ export default function DashboardAdminPage() {
     setActionLoading(`${id}_inativar`);
     try {
       await adminApi.alterarStatusAluno(id, "Inativo");
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao inativar aluno."));
     } finally {
@@ -171,7 +145,13 @@ export default function DashboardAdminPage() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (isPending) return <LoadingSpinner />;
+
+  const {
+    treinadorStats = [], alunoStats = [], pendentes = [], alunosPendentes = [],
+    recentTreinadores = [], planoStats = [], finalidadeData = [], planos = [],
+    totalExercicios = 0, totalGrupos = 0,
+  } = data ?? {};
 
   const planoBarData = planoStats.map(({ name, total }) => ({ name, total }));
   const planoRows = [
@@ -220,95 +200,12 @@ export default function DashboardAdminPage() {
 
       {/* ── Tab 0: Visão Geral ── */}
       {tab === 0 && (
-        <Box>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2, mb: 3 }}>
-            <Paper sx={{ p: 3, borderRadius: 2 }}>
-              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
-                STATUS DOS TREINADORES
-              </Typography>
-              <ChartFigure
-                label="Distribuição de treinadores por status"
-                summary={treinadorStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
-              >
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={treinadorStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
-                      {treinadorStats.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v, n) => [v, n]} />
-                    <Legend iconType="circle" iconSize={10} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartFigure>
-            </Paper>
-
-            <Paper sx={{ p: 3, borderRadius: 2 }}>
-              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
-                TREINADORES POR PLANO
-              </Typography>
-              <ChartFigure
-                label="Distribuição de treinadores por plano"
-                summary={planoBarData.map((d) => `${d.name}: ${d.total}`).join(", ")}
-              >
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={planoBarData} layout="vertical" margin={{ left: 8, right: 16 }}>
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="total" name="Treinadores" fill={theme.palette.primary.main} radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartFigure>
-            </Paper>
-          </Box>
-
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2 }}>
-            <Paper sx={{ p: 3, borderRadius: 2 }}>
-              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
-                STATUS DOS ALUNOS
-              </Typography>
-              <ChartFigure
-                label="Distribuição de alunos por status"
-                summary={alunoStats.map((s) => `${s.name}: ${s.value}`).join(", ")}
-              >
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={alunoStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3}>
-                      {alunoStats.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v, n) => [v, n]} />
-                    <Legend iconType="circle" iconSize={10} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartFigure>
-            </Paper>
-
-            <Paper sx={{ p: 3, borderRadius: 2 }}>
-              <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
-                ALUNOS POR FINALIDADE
-              </Typography>
-              {finalidadeData.length === 0 ? (
-                <Box sx={{ display: "flex", alignItems: "center", height: 220 }}>
-                  <Typography variant="body2" color="text.secondary">Nenhum dado disponível.</Typography>
-                </Box>
-              ) : (
-                <ChartFigure
-                  label="Distribuição de alunos por finalidade"
-                  summary={finalidadeData.map((d) => `${d.name}: ${d.total}`).join(", ")}
-                >
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={finalidadeData} layout="vertical" margin={{ left: 8, right: 16 }}>
-                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12 }} />
-                      <Tooltip />
-                      <Bar dataKey="total" name="Alunos" fill={theme.palette.info.main} radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartFigure>
-              )}
-            </Paper>
-          </Box>
-        </Box>
+        <AdminDashboardCharts
+          treinadorStats={treinadorStats}
+          alunoStats={alunoStats}
+          planoBarData={planoBarData}
+          finalidadeData={finalidadeData}
+        />
       )}
 
       {/* ── Tab 1: Aprovações ── */}

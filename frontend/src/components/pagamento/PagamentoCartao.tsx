@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import {
   Box, Typography, Button, CircularProgress, Alert, Paper, Stack,
@@ -8,10 +7,8 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { pagamentoApi } from "@/lib/api/pagamento";
 import { mapStripeError } from "@/lib/pagamento/stripeErro";
+import { getStripe } from "@/lib/pagamento/stripeClient";
 import type { PagamentoResponse } from "@/types";
-
-const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 // ── Inner form (must be inside <Elements>) ────────────────────────────────────
 
@@ -129,7 +126,7 @@ export default function PagamentoCartao({ pagamentoId, onPago }: Props) {
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret: pagamento.clientSecret, locale: "pt-BR" }}>
+    <Elements stripe={getStripe()} options={{ clientSecret: pagamento.clientSecret, locale: "pt-BR" }}>
       <CartaoForm pagamento={pagamento} onPago={onPago} />
     </Elements>
   );

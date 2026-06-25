@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { renderWithProviders } from "@/test/render";
 import { useMediaQuery } from "@mui/material";
-import type { DashboardStatsResponse } from "@/lib/api/admin";
+import type { AdminDashboardResponse } from "@/types";
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
@@ -28,34 +29,32 @@ vi.mock("recharts", () => ({
   Legend: () => null,
 }));
 
-const emptyPaginated = { items: [], total: 0, pagina: 1, tamanhoPagina: 1 };
-
-const planos = [
-  { planoId: "plano-pro-id", nome: "Pro", tier: "Pro", preco: 99, maxAlunos: 50, descricao: null },
-];
-
-const dashboardStats: DashboardStatsResponse = {
+const adminDashboard: AdminDashboardResponse = {
+  treinadores: { ativos: 0, pendentes: 0, inativos: 0 },
+  alunos: { ativos: 0, pendentes: 0, inativos: 0 },
+  totals: { planos: 2, exerciciosGlobais: 0, gruposMusculares: 0 },
   planoDistribuicao: [
     { tier: "plano-pro-id", total: 7 },
     { tier: "__none", total: 3 },
   ],
   alunoFinalidade: [],
+  treinadoresPendentes: [],
+  alunosPendentes: [],
+  recentTreinadores: [],
+  planos: [
+    { planoId: "plano-pro-id", nome: "Pro", tier: "Pro", preco: 99, maxAlunos: 50, descricao: null },
+  ],
 };
 
 function setupHandlers() {
   server.use(
-    http.get("*/admin/treinadores", () => HttpResponse.json(emptyPaginated)),
-    http.get("*/admin/alunos", () => HttpResponse.json(emptyPaginated)),
-    http.get("*/admin/planos", () => HttpResponse.json(planos)),
-    http.get("*/admin/exercicios", () => HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 1 })),
-    http.get("*/admin/grupos-musculares", () => HttpResponse.json([])),
-    http.get("*/admin/stats/dashboard", () => HttpResponse.json(dashboardStats)),
+    http.get("*/admin/dashboard", () => HttpResponse.json(adminDashboard)),
   );
 }
 
 async function renderOnPlataformaTab() {
   const { default: Page } = await import("@/app/(admin)/admin/page");
-  render(<Page />);
+  renderWithProviders(<Page />, { skipAuth: true });
 
   const tab = await screen.findByRole("tab", { name: "Plataforma" });
   tab.click();

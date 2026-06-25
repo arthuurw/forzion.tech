@@ -2,13 +2,26 @@
 import { useEffect, useState } from "react";
 import { Alert } from "@mui/material";
 import { alunoApi } from "@/lib/api/aluno";
+import type { VinculoResumo } from "@/types";
 
 type Estado = "ativo" | "pendente" | "sem-vinculo";
 
-export default function SemVinculoAtivoBanner() {
-  const [estado, setEstado] = useState<Estado>("ativo");
+function estadoFromResumo(v: VinculoResumo): Estado {
+  if (v.ativo) return "ativo";
+  if (v.pendente) return "pendente";
+  return "sem-vinculo";
+}
+
+export default function SemVinculoAtivoBanner({ vinculo }: { vinculo?: VinculoResumo }) {
+  const [estado, setEstado] = useState<Estado>(() =>
+    vinculo ? estadoFromResumo(vinculo) : "ativo",
+  );
 
   useEffect(() => {
+    if (vinculo !== undefined) {
+      setEstado(estadoFromResumo(vinculo));
+      return;
+    }
     let active = true;
     alunoApi.getMeuVinculo()
       .then((res) => {
@@ -19,7 +32,7 @@ export default function SemVinculoAtivoBanner() {
       })
       .catch(() => { if (active) setEstado("ativo"); });
     return () => { active = false; };
-  }, []);
+  }, [vinculo]);
 
   if (estado === "ativo") return null;
 

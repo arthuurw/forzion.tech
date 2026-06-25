@@ -28,6 +28,28 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             .CountAsync(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyDictionary<VinculoStatus, int>> ContarPorStatusAsync(Guid treinadorId, CancellationToken cancellationToken = default)
+    {
+        var grupos = await context.VinculosTreinadorAluno
+            .Where(v => v.TreinadorId == treinadorId)
+            .GroupBy(v => v.Status)
+            .Select(g => new { Status = g.Key, Total = g.Count() })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return grupos.ToDictionary(g => g.Status, g => g.Total);
+    }
+
+    public async Task<IReadOnlyList<ReceitaPorPacote>> SomarReceitaPorPacoteAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await (
+            from v in context.VinculosTreinadorAluno
+            where v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo && v.PacoteId != null
+            join p in context.Pacotes on v.PacoteId equals p.Id
+            group p by new { p.Id, p.Nome } into g
+            select new ReceitaPorPacote(g.Key.Id, g.Key.Nome, g.Count(), g.Sum(x => x.Preco)))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<bool> TemVinculosAtivosAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno
             .AnyAsync(v => v.TreinadorId == treinadorId

@@ -41,7 +41,7 @@ public class CadastrarAlunoHandler(
         return Result.Success(ToResponse(aluno));
     }
 
-    internal static AlunoResponse ToResponse(Aluno aluno) => new(
+    internal static AlunoResponse ToResponse(Aluno aluno, Guid? pacoteId = null, string? pacoteNome = null) => new(
         aluno.Id,
         aluno.Nome,
         aluno.Email?.Value,
@@ -57,6 +57,8 @@ public class CadastrarAlunoHandler(
         aluno.NivelCondicionamento,
         aluno.LimitacoesFisicas,
         aluno.Doencas,
-        aluno.ObservacoesAdicionais
+        aluno.ObservacoesAdicionais,
+        pacoteId,
+        pacoteNome
     );
 }

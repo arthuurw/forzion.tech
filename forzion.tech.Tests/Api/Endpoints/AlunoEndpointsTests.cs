@@ -252,6 +252,7 @@ public class AlunoEndpointsTests : IClassFixture<AlunoEndpointsTests.AlunoWebFac
         public Mock<ObterAlunoHandler> ObterHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ObterAlunoHandler>>());
 

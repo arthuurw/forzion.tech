@@ -31,6 +31,7 @@ public class NotaFiscalRepository(AppDbContext context) : INotaFiscalRepository
 
     public async Task<IReadOnlyList<NotaFiscal>> ListarPorStatusAsync(NotaFiscalStatus status, Guid? aposId, int limite, CancellationToken cancellationToken = default) =>
         await context.NotasFiscais
+            .AsNoTracking()
             .Where(n => n.Status == status && (aposId == null || n.Id > aposId))
             .OrderBy(n => n.Id)
             .Take(limite)

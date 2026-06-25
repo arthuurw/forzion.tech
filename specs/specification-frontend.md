@@ -7,9 +7,11 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 - UI: MUI v9 (`@mui/material`) + Emotion. Locale `ptBR`. Tema em `src/lib/theme/index.ts`.
 - Forms: react-hook-form v7 + Zod v4 (`@hookform/resolvers`).
 - HTTP client: axios (instância `apiClient` em `src/lib/api/client.ts`).
+- Fetch-cache client: TanStack Query v5 (`@tanstack/react-query`) — camada de cache/dedup sobre o `apiClient`. Ver §DADOS-CLIENT.
 - JWT client-side: `jose` (verificação no Route Handler `/api/auth/me`).
 - Pagamentos: `@stripe/react-stripe-js` + `@stripe/stripe-js`.
 - Relatórios: `exceljs` (geração de planilhas cliente).
+- Gráficos: `recharts` (progressão/dashboards — ver `components/charts/`). QR Code: `qrcode.react` (QR TOTP em `seguranca/`).
 - Datas: `dayjs`.
 - Observabilidade: Sentry (`@sentry/nextjs`) via `withSentryConfig` em `next.config.ts`.
 
@@ -49,10 +51,13 @@ src/
     not-found.tsx
   components/
     aluno/             — SemVinculoAtivoBanner (aviso aluno sem vínculo ativo)
+    charts/            — ChartFigure (figure+aria-label wrapper de recharts)
     forms/             — FormTextField, FormSelect, PasswordField
     layout/            — AppLayout, AppHeader, PublicLayout, NavConfig
     observability/     — WebVitals
     pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
+    seguranca/         — StepUpDialog, StepUpProvider, RecoveryCodesPanel (MFA/step-up)
+    suporte/           — SuporteForm (form compartilhado aluno/treinador)
     treinador/         — componentes específicos do treinador
     ui/                — componentes compartilhados (ErrorBoundary, AlertBanner, LoadingSpinner, DataList, etc.)
   hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent, useCursorList, useExecucaoDraft, useExecucaoRetryQueue
@@ -60,7 +65,9 @@ src/
     api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
     auth/              — context.tsx, jwt.ts, helpers.ts, buildPlaceholder.ts
     constants/         — enrollmentOptions, labels
+    execucao/          — execData.ts, retryQueueStore.ts (draft/fila de execução offline)
     rateLimit.ts       — rate limiter em memória (login)
+    storage/           — safeStorage.ts (localStorage guard SSR/quota — EXOFF-06)
     theme/             — ThemeRegistry.tsx, index.ts (MUI theme)
     utils/             — formatting.ts, excel.ts
     validations/       — common.ts (schemas Zod)
@@ -75,13 +82,14 @@ src/
 ```
 html[lang=pt-BR]
   body
+    a[href=#main-content].skip-link  (1º focável do body — WCAG 2.4.1; ver [specification-frontend-ui])
     WebVitals
     AppRouterCacheProvider (MUI v16-appRouter)
       ThemeRegistry
         ErrorBoundary
           AuthProvider
             ConsentProvider
-            {children}
+            QueryProvider ({children})   (TanStack Query — ver §DADOS-CLIENT)
 ```
 - `metadata`: title="forzion.tech", description.
 - `viewport`: `width=device-width, initialScale=1, viewportFit=cover`.
@@ -106,44 +114,12 @@ Lógica de redirect:
 4. `tipoConta` acessando área de outro role → redirect para área correta (hint roteia attacker p/ a própria área; backend nega o resto).
 
 ## AUTH FLOW
-```
-Cliente → POST /api/auth (Next.js Route Handler)
-  → rate limit 10 req/60s por IP
-  → fetch API_BASE/auth/login
-  → resposta: { token, refreshToken, tipoConta, contaId, perfilId, nome }
-  → seta cookies (helper applySessionCookies): token httpOnly (maxAge=exp-now),
-    refresh httpOnly (maxAge=idle do papel: Admin 2h / demais 7d),
-    tipo_conta NÃO-httpOnly (hint de roteamento), session_guard httpOnly (flag)
-  → retorna { tipoConta, contaId, perfilId, nome } (token E refresh NÃO expostos ao JS)
-
-  MFA habilitado: backend responde { mfaRequerido, mfaPendingToken, mfaPendingExpiraEm }
-  → route seta cookie httpOnly `mfa_pending` (applyMfaPendingCookie); devolve só
-    { mfaRequerido:true, mfaPendingExpiraEm } — o token pending NUNCA vai ao JS.
-  → login envia cookie `trusted_device` ao backend (se presente) p/ pular o 2º fator.
-
-POST /api/auth/mfa/verificar (conclui o 2º fator)
-  → lê cookie httpOnly `mfa_pending` → Bearer → API_BASE/auth/mfa/verificar { codigo, fator, lembrarDispositivo }
-  → sucesso: applySessionCookies + clearMfaPendingCookie (+ applyTrustedDeviceCookie se lembrou) → SessionUser
-POST /api/auth/mfa/email/enviar → repassa `mfa_pending` → envia OTP por e-mail
-
-POST /api/auth/refresh (proxy de renovação silenciosa)
-  → repassa cookie httpOnly `refresh` → API_BASE/auth/refresh (rotação single-use + reuse detection)
-  → sucesso: reescreve token+refresh+tipo_conta rotacionados | 401: limpa cookies de sessão
-
-GET /api/auth/me → jwtVerify (jose). Access válido → SessionUser.
-  → access expirado/ausente MAS refresh presente: dispara o refresh server-side
-    (rotaciona + reescreve cookies) antes de devolver → sessão sobrevive a reload com access vencido.
-  → sem refresh / refresh morto → null (+ limpa cookies)
-
-client.ts (interceptor axios): 401 ⇒ tenta /api/auth/refresh UMA vez (flag `_retry` anti-loop;
-  promise compartilhada anti-tempestade de refresh concorrente) → refaz a request original;
-  refresh falho ⇒ window.location='/login'.
-
-POST /api/auth/logout
-  → chama API_BASE/conta/logout com Bearer (invalida JTI + revoga família do refresh no backend)
-  → delete cookies token + session_guard
-  → falha silenciosa (cookies deletados de qualquer forma)
-```
+Endpoints/contratos na §API ROUTES DE AUTH; aqui só os fatos não-óbvios de cookie/segurança que a tabela não carrega.
+- **Cookies de sessão** (helper `applySessionCookies` no login + refresh): `token` httpOnly (`maxAge=exp-now`), `refresh` httpOnly (`maxAge`=idle do papel: **Admin 2h / demais 7d**), `tipo_conta` NÃO-httpOnly (hint de roteamento), `session_guard` httpOnly (flag). Login devolve ao JS só `{ tipoConta, contaId, perfilId, nome }` — **token E refresh NUNCA expostos ao JS**.
+- **MFA**: 1º fator devolve só `{ mfaRequerido:true, mfaPendingExpiraEm }`; o `mfaPendingToken` vira cookie httpOnly `mfa_pending` (`applyMfaPendingCookie`) e NUNCA vai ao JS. `/mfa/verificar` lê esse cookie → Bearer; sucesso = `applySessionCookies` + `clearMfaPendingCookie` (+ `applyTrustedDeviceCookie` se lembrou). Login envia cookie `trusted_device` ao backend (se presente) p/ pular o 2º fator.
+- **Refresh**: rotação **single-use + reuse detection** no backend; 401 limpa cookies de sessão. `/me` com access vencido + refresh presente dispara o refresh server-side antes de devolver (sessão sobrevive a reload com access vencido).
+- **`client.ts`** (interceptor axios): 401 ⇒ tenta `/api/auth/refresh` UMA vez (flag `_retry` anti-loop; promise compartilhada anti-tempestade de refresh concorrente) → refaz a request; refresh falho ⇒ `window.location='/login'`. (Step-up/inadimplência na §API CLIENT.)
+- **Logout**: invalida JTI + revoga família do refresh no backend; deleta cookies de qualquer forma (falha silenciosa).
 
 **AuthProvider** (`src/lib/auth/context.tsx`): estado `user: SessionUser | null` + `isLoading`. Chama `/api/auth/me` no mount. Expõe `login(data)`, `logout()`, `homeRouteFor(tipoConta)`.
 
@@ -196,6 +172,21 @@ interceptor resposta:
 - `ASSINATURA_INADIMPLENTE_EVENT` + `ASSINATURA_INADIMPLENTE_MESSAGE` exportados do client.
 - Enforcement server-side: backend `RequireAssinaturaAtivaFilter` retorna 403 `ASSINATURA_INADIMPLENTE` em endpoints restritos (ex.: POST execuções). Cross-ref inadimplência: [specification-stripe].
 - Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`, `nfse.ts`.
+
+## DADOS-CLIENT (TanStack Query)
+Camada de fetch-cache sobre o `apiClient`. Motivação: cada página era `useState(loading/error/data)` + `load()` em `useEffect` → toda navegação re-batia o backend mesmo p/ dados read-mostly. Cache+dedup por `queryKey` corta isso (e a carga no PG — ver [specification-performance §7]).
+- **Fundação** (`src/lib/query/`): `QueryProvider.tsx` (`'use client'`) cria `QueryClient` via `useState(() => new QueryClient(...))` (1 instância estável por app). Defaults globais: `staleTime:0`, `gcTime:5min`, `retry:1`, **`refetchOnWindowFocus:false`** (CRÍTICO — default `true` re-dispara toda query ativa a cada foco de aba). Montado no `layout.tsx` dentro de `<AuthProvider>`, envolvendo `{children}`. SEM devtools (YAGNI).
+- `keys.ts`: keys tipadas — `queryKeys.catalog.gruposMusculares` `['catalog','grupos-musculares']`, `.catalog.planos` `['catalog','planos']`, `.admin.dashboard` `['admin','dashboard']`.
+- **Consumidores migrados (etapa 2)** — cada um troca `useState+useEffect+load()` por `useQuery` direto (key + fn do `*Api` existente como `queryFn`; SEM hook custom novo). Contrato de UI preservado: `isPending`→spinner, `error`→AlertBanner (mapeado p/ a mesma string de antes), `data`→render:
+  | Read | Páginas | staleTime/gcTime |
+  |---|---|---|
+  | `listGruposMusculares` | treinador/exercicios + admin/exercicios | 30min/30min |
+  | `listPlanos` | admin/treinadores (dropdown atribuir plano) | 30min/30min |
+  | burst dashboard (1 `useQuery` envolve o `Promise.all` inteiro) | admin/page | 60s / 5min default |
+- **Dashboard = wrap leve**: os 4 handlers de aprovação chamam `useQueryClient().invalidateQueries({queryKey: admin.dashboard})` em vez de `await load()` (sem converter p/ `useMutation` — churn alto p/ página de 1-2 admins).
+- **Trade-off de staleness (consciente)**: CRUD admin de grupos/planos muta via `load()` manual e NÃO invalida o cache de catálogo do treinador → janela ≤ `staleTime` (30min) num dropdown de filtro. Aceito: catálogo é admin-curado, muda ~semanalmente, é lista de filtro (não dado transacional); ganho DB supera. `gcTime>=staleTime` é obrigatório no catálogo (senão o cache é coletado ao sair da página e o ganho cross-navegação some).
+- FORA de escopo (etapa 2): CRUD admin grupos/planos (mantém `load()` manual), mutations idiomáticas, agregados Tier 2, SSR prefetch (app é CSR by design).
+- **Testes**: `renderWithProviders` (`src/test/render.tsx`) provê `QueryClientProvider` com `new QueryClient` fresh por render (`retry:false`, `gcTime:0` — sem cache vazando entre testes). Páginas que rendem via `render` cru e usam `useQuery` precisam migrar p/ `renderWithProviders`.
 
 ## APPLAYOUT (autenticado)
 - Verifica `!isLoading && !user` → chama `/api/auth/logout` (limpa cookies) → `router.replace("/login")`.
@@ -323,7 +314,7 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 
 **Storybook** (v10): `@storybook/nextjs`, `msw-storybook-addon`, `@storybook/addon-a11y`. Port 6006.
 
-**E2E** (Playwright v1.60): `e2e/`. Smoke, security, LGPD tests. Runs pós-deploy no CI (`smoke.yml`).
+**E2E** (Playwright `^1.61.1`): `e2e/`. Smoke, security, LGPD tests. Runs pós-deploy no CI (`smoke.yml`).
 
 **Property tests**: `@fast-check/vitest` + `fast-check`. Arquivos `*.property.test.ts`.
 

@@ -1,6 +1,7 @@
 using forzion.tech.Api.Extensions;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.UseCases.Alunos.Dashboard;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
@@ -67,6 +68,17 @@ public static class AlunoAreaEndpoints
         })
         .WithSummary("Retorna o vínculo ativo e pendente do aluno autenticado")
         .Produces<ObterVinculoAlunoResponse>();
+
+        group.MapGet("/dashboard", async (
+            [FromServices] ObterAlunoDashboardHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(cancellationToken);
+            return Results.Ok(result);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Retorna o agregado do dashboard do aluno autenticado")
+        .Produces<ObterAlunoDashboardResponse>();
 
         group.MapPost("/troca-treinador", async (
             [FromBody] SolicitarTrocaTreinadorRequest request,

@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -8,6 +9,7 @@ namespace forzion.tech.Application.UseCases.Alunos.ObterAluno;
 public class ObterAlunoHandler(
     IAlunoRepository alunoRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
+    IPacoteRepository pacoteRepository,
     IUserContext userContext,
     ILogger<ObterAlunoHandler> logger)
 {
@@ -28,11 +30,13 @@ public class ObterAlunoHandler(
             .ConfigureAwait(false)
             ?? throw new AlunoNaoEncontradoException();
 
+        VinculoTreinadorAluno? ativo = null;
+
         if (!userContext.IsSystemAdmin && userContext.PerfilId != aluno.Id)
         {
             if (userContext.IsTreinador)
             {
-                var ativo = await vinculoRepository
+                ativo = await vinculoRepository
                     .ObterAtivoAsync(userContext.PerfilId, aluno.Id, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -47,6 +51,20 @@ public class ObterAlunoHandler(
 
         logger.LogInformation("Aluno {AlunoId} consultado.", aluno.Id);
 
-        return CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno);
+        Guid? pacoteId = null;
+        string? pacoteNome = null;
+        if (ativo?.PacoteId is Guid pacoteIdValue)
+        {
+            var pacote = await pacoteRepository
+                .ObterPorIdAsync(pacoteIdValue, cancellationToken)
+                .ConfigureAwait(false);
+            if (pacote is not null)
+            {
+                pacoteId = pacoteIdValue;
+                pacoteNome = pacote.Nome;
+            }
+        }
+
+        return CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno, pacoteId, pacoteNome);
     }
 }

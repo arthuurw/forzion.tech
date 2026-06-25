@@ -7,6 +7,7 @@ public interface IGrupoMuscularRepository
     Task<GrupoMuscular?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<GrupoMuscular?> ObterPorNomeAsync(string nome, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GrupoMuscular>> ListarTodosAsync(CancellationToken cancellationToken = default);
+    Task<int> ContarAsync(CancellationToken cancellationToken = default);
     Task AdicionarAsync(GrupoMuscular grupoMuscular, CancellationToken cancellationToken = default);
     void Excluir(GrupoMuscular grupoMuscular);
 }

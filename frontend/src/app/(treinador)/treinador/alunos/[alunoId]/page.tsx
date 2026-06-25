@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Stack, Button,
@@ -15,15 +16,18 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { treinadorApi } from "@/lib/api/treinador";
 import type {
-  AlunoResponse, TreinoAlunoResponse, TreinoResponse, PacoteResponse,
+  AlunoResponse, TreinoAlunoResponse, TreinoResponse,
   FinalidadeTreino, NivelCondicionamento, TempoDisponivel,
 } from "@/types";
-import ProgressaoAluno from "@/components/treinador/ProgressaoAluno";
 import InfoLine from "@/components/ui/InfoLine";
 import { OBJETIVO_LABEL, FINALIDADE_LABEL, NIVEL_LABEL, TEMPO_LABEL } from "@/lib/constants/labels";
-import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
-import { formatarBRL, formatarTelefone } from "@/lib/utils/formatting";
+import { formatarTelefone } from "@/lib/utils/formatting";
 import { extractApiError } from "@/lib/api/extractApiError";
+
+const ProgressaoAluno = dynamic(
+  () => import("@/components/treinador/ProgressaoAluno"),
+  { ssr: false, loading: () => <LoadingSpinner /> },
+);
 
 const FICHAS_COLS: Column[] = [
   { label: "Ficha", mobileRole: "primary" },
@@ -35,7 +39,6 @@ export default function DetalheAlunoPage() {
   const router = useRouter();
   const [aluno, setAluno] = useState<AlunoResponse | null>(null);
   const [fichas, setFichas] = useState<TreinoAlunoResponse[]>([]);
-  const [pacote, setPacote] = useState<PacoteResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -48,19 +51,12 @@ export default function DetalheAlunoPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [alunoRes, fichasRes, vinculosRes, pacotesRes] = await Promise.all([
+      const [alunoRes, fichasRes] = await Promise.all([
         treinadorApi.getAluno(alunoId),
         treinadorApi.getFichasDoAluno(alunoId),
-        treinadorApi.listVinculos({ tamanhoPagina: MAX_PAGE_SIZE }),
-        treinadorApi.listPacotes(),
       ]);
       setAluno(alunoRes.data);
       setFichas(fichasRes.data);
-
-      const vinculo = vinculosRes.data.items.find((v) => v.alunoId === alunoId);
-      if (vinculo?.pacoteId) {
-        setPacote(pacotesRes.data.find((p) => p.pacoteId === vinculo.pacoteId) ?? null);
-      }
     } catch (err) {
       setError(extractApiError(err, "Erro ao carregar dados do aluno."));
     } finally {
@@ -130,7 +126,7 @@ export default function DetalheAlunoPage() {
                 {aluno.telefone && <InfoLine label="Celular" value={formatarTelefone(aluno.telefone)} />}
                 <InfoLine label="Cadastro" value={new Date(aluno.createdAt).toLocaleDateString("pt-BR")} />
                 {aluno.updatedAt && <InfoLine label="Atualizado" value={new Date(aluno.updatedAt).toLocaleDateString("pt-BR")} />}
-                {pacote && (
+                {aluno.pacoteNome && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
                     <Typography variant="body2" component="span"><strong>Pacote:</strong></Typography>
                     <Box
@@ -140,8 +136,7 @@ export default function DetalheAlunoPage() {
                       }}
                     >
                       <Typography variant="body2" component="span">
-                        <strong>{pacote.nome}</strong> - {formatarBRL(pacote.preco)}
-                        {pacote.descricao ? ` - ${pacote.descricao}` : ""}
+                        <strong>{aluno.pacoteNome}</strong>
                       </Typography>
                     </Box>
                   </Box>

@@ -36,6 +36,7 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
     };
 
     const carregar = async () => {
+      if (document.hidden) return;
       try {
         const res = await pagamentoApi.obterPagamento(pagamentoId);
         if (!active) return;

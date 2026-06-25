@@ -47,6 +47,14 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
         return (items, total);
     }
 
+    public async Task<IReadOnlyList<Treinador>> ListarRecentesAsync(int limite, CancellationToken cancellationToken = default) =>
+        await _context.Treinadores
+            .AsNoTracking()
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(limite)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task AdicionarAsync(Treinador treinador, CancellationToken cancellationToken = default) =>
         await _context.Treinadores.AddAsync(treinador, cancellationToken).ConfigureAwait(false);
 

@@ -292,6 +292,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<ListarAlunosAdminHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Admin.Stats.ObterDashboardStatsHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Admin.Dashboard.ObterAdminDashboardHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ExportarDadosPessoaisHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.AnonimizarContaHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Conta.Lgpd.ListarContasElegivelPurgaLgpdHandler>();
@@ -320,6 +321,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ReativarVinculoHandler>();
         services.AddScoped<SolicitarTrocaTreinadorHandler>();
         services.AddScoped<ObterVinculoAlunoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Alunos.Dashboard.ObterAlunoDashboardHandler>();
 
         services.AddScoped<ObterAlunoHandler>();
         services.AddScoped<ObterProgressaoAlunoHandler>();
@@ -367,6 +369,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<IniciarOnboardingTreinadorHandler>();
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Treinadores.Dashboard.ObterTreinadorDashboardHandler>();
         services.AddScoped<AlterarModoPagamentoTreinadorHandler>();
         services.AddScoped<ObterPreviewModoPagamentoTreinadorHandler>();
         services.AddScoped<CriarAssinaturaAlunoHandler>();

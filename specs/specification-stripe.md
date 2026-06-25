@@ -7,7 +7,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 - Mudança de tabela → atualizar [specification-db], não aqui.
 
 ## STACK & GATE
-- SDK: Stripe.net `51.1.0` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
+- SDK: Stripe.net `52.0.0` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
 - `IStripeService` (Application/Interfaces): 12 métodos:
   - `CriarContaConnectAsync(email, nome, ct)` → `accountId` (conta Express, `Country=BR`, capabilities `card_payments`+`transfers` — BR exige ambas; exige Connect habilitado na conta, ver §Connect Express por ambiente)
   - `GerarLinkOnboardingAsync(accountId, urlRetorno, urlCancelamento, ct)` → URL
@@ -16,7 +16,7 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
   - `CriarPixPlataformaPaymentIntentAsync(valor, idempotencyKey, ct)` → `PixPaymentResult` — **plano do treinador**: valor CHEIO p/ conta da plataforma (sem `accountId`/`TransferData`/`ApplicationFeeAmount`/`taxaPercent`). `idempotencyKey` explícita do caller.
   - `CriarCartaoPlataformaPaymentIntentAsync(valor, idempotencyKey, ct)` → `CartaoPaymentResult` — idem, cartão.
   - `ContaEstaAtivadaAsync(accountId, ct)` → `bool` (poll `account.ChargesEnabled`)
-  - `ValidarWebhookAsync(payload, assinaturaHeader)` → `bool` (`EventUtility.ConstructEvent` HMAC-SHA256)
+  - `ValidarWebhookAsync(payload, assinaturaHeader)` → `Task<string?>` (JSON do evento VERIFICADO; `null` = rejeitado). `EventUtility.ConstructEvent` HMAC-SHA256 **+ enforcement de `Livemode` (SEC-03, `StripeService.cs:311`)**: se `Stripe:ExpectLivemode` setado e `evento.Livemode` diverge → `null` (LogWarning). `ExpectLivemode` null = sem enforcement (não-prod). Retorna o JSON (não `Stripe.Event`) p/ não vazar Stripe.net na Application.
   - `ListarEventosDesdeAsync(desdeUtc, ct)` → `IReadOnlyList<StripeEventSummary>` (reconciliação — ver §RECONCILIAÇÃO)
   - `CriarReembolsoAsync(pagamentoId, paymentIntentId, reverterTransferencia, ct)` → reembolso total (CDC 7d — ver §CANCELAMENTO/REEMBOLSO). `pagamentoId` vira a idempotency-key do refund (`refund-{guid_n}`). `reverterTransferencia=true` ⇒ `RefundCreateOptions{ PaymentIntent, ReverseTransfer=true, RefundApplicationFee=true }` (charge destino do aluno); `false` ⇒ só `{ PaymentIntent }` (charge direto-plataforma do treinador). `Amount` não enviado = total.
   - `CancelarPaymentIntentAsync(paymentIntentId, ct)` → `CancelarPaymentIntentResultado` (`Cancelado`/`JaCancelado`/`JaCapturado`). Cancela PI não-capturado (ex.: Pix pendente ao treinador trocar p/ modo Externo). Faz GET do status antes de cancelar (evita falha em PI já terminal).
@@ -46,6 +46,7 @@ A idem-key do PaymentIntent é DETERMINÍSTICA e montada pelo CALLER, não deriv
 | `Stripe:SecretKey` | `StripeSettings` (DI bind + ValidateOnStart) | API secret | boot falha |
 | `Stripe:PublishableKey` | passada pro frontend via `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | client-side | frontend desliga `<Elements>` (stripePromise null) |
 | `Stripe:WebhookSecret` | `StripeService.ValidarWebhookAsync` | HMAC-SHA256 verify | boot falha |
+| `Stripe:ExpectLivemode` | `StripeService.ValidarWebhookAsync` (SEC-03) | bool? — exige `evento.Livemode` == valor; rejeita webhook divergente | `null` = sem enforcement (não-prod) |
 | `Stripe:TaxaPlataformaPercent` | `StripeSettings` + `PaymentSettings` (espelho App) | taxa plataforma (0,100] | default `5m`; ValidateOnStart falha se fora do range |
 | `Stripe:UrlBase` | frontend base usada em URLs de retorno onboarding | retorno Stripe → app | vazio → links quebram |
 | `Stripe:TimeoutSegundos` | `StripeClientFactory` (cliente global) | timeout HttpClient (PERF-04) | default `30` (SDK default 80s) |
@@ -246,13 +247,10 @@ Disparado por `billing-reconciliation.yml` (cron semanal seg 04h UTC + `workflow
 
 ## CHARGEBACKS / DISPUTAS
 - Disputa (chargeback) = aluno (ou plataforma) contesta cobrança junto ao banco do cartão. Stripe envia `charge.dispute.created` ao backend.
-- `StripeWebhookParser` extrai `data.object.payment_intent` (lookup) + `data.object.reason` (motivo). Handler `ProcessarWebhookStripeHandler.ProcessarDisputaCriadaAsync` — **roteamento duplo (T4)**:
-  1. Carrega `Pagamento` (aluno) por `PaymentIntentId`. Não encontrado → tenta `PagamentoTreinador`; encontrado → `ProcessarDisputaTreinadorAsync` (`PagamentoTreinador.MarcarEmDisputa` + `AssinaturaTreinador.MarcarInadimplentePorDisputa`; sem notificação e-mail). Nenhum dos dois → log warn + JaConsistente.
-  2. Idempotência: `Status == EmDisputa` (redelivery) → NÃO re-marca nem comita, e NÃO re-enfileira evidência (a linha outbox `fx:evidencia_disputa` da 1ª disputa já garante entrega+retry; chave única bloquearia) → `JaConsistente`. [Antes (CR#5) re-enviava direto; superseded pelo outbox.]
-  3. Guard: `Status != Pago` → log warn + no-op (disputa só faz sentido sobre cobrança capturada). NÃO lança DomainException (Stripe retentaria indefinidamente).
-  4. `Pagamento.MarcarEmDisputa(motivo)` — transição `Pago → EmDisputa`, preserva `DataPagamento` (auditoria), dispara `PagamentoEmDisputaEvent(PagamentoId, AssinaturaAlunoId, Valor, MotivoDisputa, OcorridoEm)`.
-  5. **Drástico**: carrega `AssinaturaAluno` e chama `MarcarInadimplentePorDisputa(agora)` — força `Ativa → Inadimplente`, equipara `TentativasFalhasConsecutivas` ao threshold como sinalização. NÃO chama `RegistrarPagamentoFalho` (incrementa contador gradual; disputa exige congelamento imediato).
-  6. Commit único. Cancelada/Inadimplente/Pendente → no-op idempotente.
+- `StripeWebhookParser` extrai `data.object.payment_intent` (lookup) + `data.object.reason` (motivo). Handler `ProcessarWebhookStripeHandler.ProcessarDisputaCriadaAsync` — fatos não-óbvios:
+  - **Roteamento duplo (T4)**: carrega `Pagamento` (aluno) por `PaymentIntentId`; não encontrado → tenta `PagamentoTreinador` → `ProcessarDisputaTreinadorAsync` (`MarcarEmDisputa` + `AssinaturaTreinador.MarcarInadimplentePorDisputa`, sem e-mail). Nenhum → log warn + `JaConsistente`.
+  - **Idempotência redelivery**: `Status == EmDisputa` → não re-marca **nem re-enfileira evidência** (a linha outbox `fx:evidencia_disputa` da 1ª já garante entrega+retry; chave única bloquearia). Guard `Status != Pago` → no-op (não lança — Stripe retentaria).
+  - **Drástico**: chama `AssinaturaAluno.MarcarInadimplentePorDisputa(agora)` (Ativa→Inadimplente, contador = threshold), **não** `RegistrarPagamentoFalho` (incremento gradual; disputa exige congelamento imediato). `MarcarEmDisputa(motivo)` dispara `PagamentoEmDisputaEvent`. Commit único; estados não-Pago → no-op idempotente.
 - Handlers de `PagamentoEmDisputaEvent`:
   - `PagamentoEmDisputaEmailTreinadorHandler` (Infrastructure/Notifications/Email) — resolve `Assinatura → Treinador → Conta.Email`, envia e-mail **URGENTE** via `EmailTemplates.PagamentoEmDisputa(nomeTreinador, nomeAluno, valor, motivo)`. CTA aponta para `https://dashboard.stripe.com/disputes` (evidência complementar — prints WhatsApp, fichas — só via Dashboard).
 - **Resposta automática a chargeback (R9) — VIA OUTBOX**: ao marcar a disputa, o handler deriva o payload (`DerivarPayloadEvidencia{Aluno,Treinador}Async`: resolve email + dataAtivacao — leituras movidas para ANTES do commit) e `enfileirador.Enfileirar("fx:evidencia_disputa", payload, "fx:evidencia_disputa:{aluno|treinador}:{pagamento.Id}")` ANTES do `CommitAsync` → linha outbox persiste atômica com a transição `EmDisputa`. O worker (`EvidenciaDisputaEfeitoHandler`) chama `IStripeService.EnviarEvidenciaDisputaAsync(disputeId, DisputaEvidencia, ct)` = `Dispute.Update(disputeId, { Evidence })` (**disputeId, não chargeId**; overwrite-idempotente) com **retry** — exceção propaga (não engole). Substitui o antigo envio pós-commit best-effort `EnviarEvidenciaDisputaAsync` em try/catch+LogCritical (CR#7) que perdia evidência se o Stripe falhasse. Evidências sem nova coluna (D9): `EmailCliente` (Conta.Email — aluno via `IAlunoRepository → ContaId → Conta`; treinador via `Treinador.ContaId → Conta`), `DataAtivacao` (`assinatura.DataInicio` → `ServiceDate`), `DataUltimoPagamento` (`pagamento.DataPagamento`); `DataUltimaAtividade` null (CR#9). Sem `disputeId` → não enfileira. Detalhe do mecanismo outbox: `specification-backend §3.1`.

@@ -34,7 +34,7 @@ DOC PARA AGENTES. Continuidade: backup, restore, rollback de deploy, runbook de 
   ```
 - [EXISTE] Variante validada (drill 2026-06-11): dump do HOST com `pg_dump 18` local (`C:\Program Files\PostgreSQL\18\bin`) contra o host direto (Windows resolve IPv6) → `pg_restore 18` no `postgres:17` em `localhost:55432`. Dispensa o pooler; client v18 ≥ server v17 (forward-compat) OK. GOTCHAS: identificador case-sensitive `"__EFMigrationsHistory"` só sobrevive via stdin (`$sql | docker exec -i … psql`), não por `-c` (PowerShell/docker comem as aspas → vira lowercase → "does not exist"); colunas EF = snake_case (`migration_id`).
 - [EXISTE — automação] `.github/workflows/db-backup.yml` (cron diário 06:00 UTC + `workflow_dispatch`): runner GitHub instala `postgresql-client-17`+`age`, roda `pg_dump -Fc` de `homolog`+`public` (`BACKUP_SCHEMAS="homolog public"`; prod e staging vivem na MESMA DB Supabase, só muda o schema → 1 dump cobre os 2, **DB-level/env-independente**: o backup não depende de qual branch/host está ativo) via Session pooler (secret `BACKUP_DATABASE_URL`, user `forzion_api.<ref>`:5432), CRIPTOGRAFA com `age` (chave pública `BACKUP_AGE_PUBLIC_KEY`; privada fica offline com o dono — sem ela o dump é inútil) e sobe p/ Cloudflare R2 (`R2_*`, S3-compat, egress grátis). Dump em claro NUNCA persiste (PII/LGPD): `rm` pós-cifra; guarda de tamanho <1KB aborta antes de subir lixo; falha → issue `ops`/`db-backup-failed`. **Off-site real** (domínio de falha ≠ Supabase, ≠ repo; repo é PÚBLICO → dump JAMAIS em git/artifact). Decisão: Free + cron sobre Pro (usuário, 2026-06-11). Dump de `public` exige `forzion_api` com SELECT no schema (GRANT ALL — [specification-db §ACESSOS]; garantido no deploy de prod, pode ser parcial enquanto public=sandbox). Pré-req operacional (usuário, 1×): criar bucket R2 + par de chaves `age` + setar os 6 secrets + lifecycle de retenção no bucket (ex. 30d). **GOTCHA cron/default-branch**: ver bullet seguinte + [specification-infrastructure §CI-CD].
-- [GOTCHA CRÍTICO — disparo] `schedule`/`workflow_dispatch` só disparam da branch DEFAULT. Todos os crons (`db-backup`, `billing-*`, `lgpd-purge`) vivem em `homolog` (não-default) → NÃO disparam hoje. Detalhe canônico + decisão de roteamento: [specification-infrastructure §CI-CD].
+- [EXISTE — disparo] Branch default = `homolog` (onde os crons vivem) → `db-backup` dispara AUTOMATICAMENTE, diário (06:00 UTC), env=homolog. `workflow_dispatch` também disponível p/ run manual. Detalhe canônico (branch default, env único, cutover de prod): [specification-infrastructure §CI-CD].
 - [EXISTE — restore do backup automático] Baixar+decifrar+restaurar: `aws s3 cp s3://<bucket>/<arq>.dump.age . --endpoint-url https://<acct>.r2.cloudflarestorage.com` → `age -d -i <chave-privada-age> <arq>.dump.age > restore.dump` → `pg_restore --no-owner --no-privileges -d <conn-alvo> restore.dump` (alvo = `postgres:17` descartável p/ teste, ou banco real em incidente). `-Fc` permite restore seletivo (`-t`/`-n`).
 - [EXISTE] Cadência: dump automático DIÁRIO (workflow acima, assim que os secrets forem setados); drill de restore manual (§RUNBOOK) p/ provar que o backup volta. Resultado de cada execução em §DRILL LOG.
 
@@ -79,53 +79,10 @@ Alvo SaaS financeiro: RTO<15min (processo)/<4h (VM); RPO<5min · ≥2 instância
 - [ALVO] Drill mensal automatizado: GitHub Actions `workflow_dispatch` + cron que restaura snapshot num projeto Supabase temporário e valida contagem de tabelas.
 
 ### §6.1 — Confirmação SKIP LOCKED (OutboxRepository)
-[EXISTE] `OutboxRepository.ObterProcessaveisAsync` em `forzion.tech.Infrastructure/Persistence/Repositories/OutboxRepository.cs` emite:
-```sql
-SELECT * FROM outbox_efeitos
-WHERE status = {status}
-  AND proxima_tentativa <= {agora}
-ORDER BY proxima_tentativa
-LIMIT {max}
-FOR UPDATE SKIP LOCKED
-```
-via `FromSqlInterpolated` (linha 18). Workers concorrentes (múltiplas VMs ou múltiplos hosted-services) pularão itens já travados por outra transação — sem efeito 2×. Pré-requisito já satisfeito para a Fase 3.
+[EXISTE] `OutboxRepository.ObterProcessaveisAsync` (`forzion.tech.Infrastructure/Persistence/Repositories/OutboxRepository.cs`, `FromSqlInterpolated` ~linha 18) emite o `SELECT ... FOR UPDATE SKIP LOCKED` sobre `outbox_efeitos`. Workers concorrentes (múltiplas VMs ou hosted-services) pulam itens já travados por outra transação — sem efeito 2×. Pré-requisito da Fase 3 já satisfeito.
 
-## 7. RUNBOOK DE FAILOVER MANUAL (ALVO — procedimento operador, ~10–15 min)
-
-Acionar quando: `/health` ou `/health/ready` falha persistentemente na VM primária, ou VM inacessível via SSH. Pré-requisito: acesso SSH à VM secundária (Fase 3) e acesso ao Supabase Dashboard.
-
-### Passo 1 — Confirmar falha (2 min)
-1. `curl -f https://homologacao.forzion.tech/health` — se timeout/5xx por >2min, prosseguir.
-2. SSH na VM primária: `docker compose -f docker-compose.homolog.yml ps` — verificar se containers caíram.
-3. Se VM inacessível (SSH timeout): pular para Passo 3.
-
-### Passo 2 — Tentar recuperação da VM primária (3 min)
-1. SSH root na VM primária: `cd /opt/forzion/app && docker compose -f docker-compose.homolog.yml up -d --remove-orphans`.
-2. Aguardar healthcheck (`docker compose ps` → `healthy`). Se OK, encerrar runbook — falha foi transiente.
-3. Se ainda falha: prosseguir para Passo 3.
-
-### Passo 3 — Failover para VM secundária (5 min) [ALVO — exige Fase 3]
-1. SSH root na VM secundária: confirmar que o deploy mais recente está aplicado (`git -C /opt/forzion/app log -1`).
-2. Se desatualizado: `cd /opt/forzion/app && git pull origin homolog && docker compose -f docker-compose.homolog.yml up -d --remove-orphans`.
-3. Verificar `/health/ready` na VM secundária (conexão Supabase OK — banco é compartilhado, sem failover de DB).
-4. DNS: no hPanel Hostinger, redirecionar `homologacao.forzion.tech` A-record para IP da VM secundária. TTL baixo (300s) → propagação ~5min.
-5. Confirmar: `curl -f https://homologacao.forzion.tech/health` a partir de dispositivo externo.
-
-### Passo 4 — Contenção de efeitos (paralelo ao Passo 3)
-- Se billing-renewal/reconciliation pode ter duplicado durante o janela de falha: acionar `billing-reconciliation.yml` manualmente (`gh workflow run billing-reconciliation.yml`) para reconciliar eventos Stripe após retomada.
-- Outbox: `ObterProcessaveisAsync` usa `FOR UPDATE SKIP LOCKED` — itens travados no momento da falha da VM primária serão liberados automaticamente quando a conexão cair (PG libera locks de sessão); a VM secundária os processará no próximo ciclo.
-
-### Passo 5 — Comunicar e documentar
-1. Registrar hora de detecção, hora de failover, causa provável, impacto estimado (RPO real da janela).
-2. Abrir issue no repositório com label `ops`/`incident`.
-3. Se RPO excedeu alvo (<5min Fase 2, <15min Fase 1): checar backup Supabase + decidir se restauração de dado é necessária (§1/§2).
-4. Alimentar [specification-coding] se for bug de classe nova (§5 desta spec — post-mortem).
-
-### Passo 6 — Retornar VM primária ao serviço
-1. Corrigir causa-raiz na VM primária.
-2. Re-sincronizar deploy: `git pull` + `up -d --force-recreate`.
-3. Re-apontar DNS de volta à VM primária (ou manter round-robin se ambas estiverem saudáveis).
-4. Confirmar outbox sem itens `Pendente` presos (query: `SELECT status, COUNT(*) FROM outbox_efeitos GROUP BY status`).
+## 7. RUNBOOK DE FAILOVER MANUAL [ALVO — exige Fase 3]
+Premature hoje (1 só VPS; não há 2ª VM p/ failover). Quando a Fase 3 (2ª VPS + LB/DNS) existir, escrever o procedimento operador concreto: CONFIRMAR falha (`/health`+`/health/ready` persistente / VM inacessível) → tentar RECUPERAR a primária (`up -d --remove-orphans`) → FAILOVER p/ a secundária (deploy aplicado + `/health/ready`) → re-apontar DNS (A-record TTL baixo) → CONTER efeitos (reconciliar billing duplicado; outbox `SKIP LOCKED` libera locks na queda) → RESTAURAR dado se RPO excedido (§1/§2) → comunicar/post-mortem (§5) → retornar a primária ao serviço.
 
 ## 8. ENFORCEMENT
 - Fraco/processo (não é gate de CI). Drill de restore = tarefa AGENDADA (não pipeline). Migration destrutiva = revisão obrigatória + checklist de backup verificado. Branch protection / push direto é [specification-security §8] + [specification-infrastructure].

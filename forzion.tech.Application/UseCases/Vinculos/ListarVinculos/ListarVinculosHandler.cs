@@ -12,7 +12,19 @@ public record VinculoDetalheResponse(
     string NomeAluno,
     string? EmailAluno,
     DateTime CreatedAt,
-    bool TemVinculoAtivoPrevio);
+    bool TemVinculoAtivoPrevio)
+{
+    public static VinculoDetalheResponse De(VinculoComDetalheAluno x) => new(
+        x.Vinculo.Id,
+        x.Vinculo.TreinadorId,
+        x.Vinculo.AlunoId,
+        x.Vinculo.PacoteId,
+        x.Vinculo.Status,
+        x.NomeAluno,
+        x.EmailAluno,
+        x.Vinculo.CreatedAt,
+        x.TemVinculoAtivoPrevio);
+}
 
 public record ListarVinculosResponse(
     IReadOnlyList<VinculoDetalheResponse> Items,
@@ -30,16 +42,7 @@ public class ListarVinculosHandler(IVinculoTreinadorAlunoRepository vinculoRepos
             .ListarComDetalhesAsync(treinadorId, status, pagina, tamanhoPagina, cancellationToken)
             .ConfigureAwait(false);
 
-        var response = items.Select(x => new VinculoDetalheResponse(
-            x.Vinculo.Id,
-            x.Vinculo.TreinadorId,
-            x.Vinculo.AlunoId,
-            x.Vinculo.PacoteId,
-            x.Vinculo.Status,
-            x.NomeAluno,
-            x.EmailAluno,
-            x.Vinculo.CreatedAt,
-            x.TemVinculoAtivoPrevio)).ToList();
+        var response = items.Select(VinculoDetalheResponse.De).ToList();
 
         return new ListarVinculosResponse(response, total, pagina, tamanhoPagina);
     }

@@ -20,6 +20,7 @@ import type {
   HealthReportConfigResponse,
   AtualizarHealthReportConfigRequest,
   HealthSnapshotResponse,
+  AdminDashboardResponse,
 } from "@/types";
 
 export interface ListarExerciciosGlobaisResponse {
@@ -188,6 +189,10 @@ export const adminApi = {
 
   runHealthReport() {
     return apiClient.post<HealthSnapshotResponse>("/admin/health-report/run");
+  },
+
+  getDashboard() {
+    return apiClient.get<AdminDashboardResponse>("/admin/dashboard");
   },
 
   getDashboardStats() {

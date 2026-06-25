@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box, Typography, Card, Chip, Stack, Button, MenuItem,
@@ -58,7 +58,10 @@ export default function DetalheFichaPage() {
   const [success, setSuccess] = useState("");
 
   const [addOpen, setAddOpen] = useState(false);
-  const [biblioteca, setBiblioteca] = useState<ExercicioResponse[]>([]);
+  const [exOptions, setExOptions] = useState<ExercicioResponse[]>([]);
+  const [exLoading, setExLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedExRef = useRef<ExercicioResponse | null>(null);
   const [selectedEx, setSelectedEx] = useState<ExercicioResponse | null>(null);
   const [seriesRows, setSeriesRows] = useState<SerieRow[]>([{ ...SERIE_VAZIA }]);
   const [loadingAdd, setLoadingAdd] = useState(false);
@@ -103,18 +106,37 @@ export default function DetalheFichaPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openAdd = async () => {
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
+  const openAdd = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setAddOpen(true);
     setSelectedEx(null);
+    selectedExRef.current = null;
     setSeriesRows([{ ...SERIE_VAZIA }]);
-    if (biblioteca.length === 0) {
+    setExOptions([]);
+  };
+
+  const handleExInputChange = (_: unknown, value: string, reason: string) => {
+    if (reason !== "input") return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setExLoading(true);
       try {
-        const res = await treinadorApi.listExercicios({ global: false, tamanhoPagina: MAX_PAGE_SIZE });
-        setBiblioteca(res.data.items);
-      } catch (err) {
-        setError(extractApiError(err, "Erro ao carregar biblioteca de exercícios."));
+        const res = await treinadorApi.listExercicios({ nome: value || undefined, global: false, pagina: 1, tamanhoPagina: 20 });
+        const items = res.data.items;
+        const cur = selectedExRef.current;
+        setExOptions(
+          cur && !items.some((it) => it.exercicioId === cur.exercicioId)
+            ? [cur, ...items]
+            : items,
+        );
+      } catch {
+        setExOptions([]);
+      } finally {
+        setExLoading(false);
       }
-    }
+    }, 300);
   };
 
   const updateSerieRow = (idx: number, field: keyof SerieRow, value: string) => {
@@ -426,10 +448,17 @@ export default function DetalheFichaPage() {
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <Autocomplete
-              options={biblioteca}
+              options={exOptions}
               getOptionLabel={(ex) => `${ex.nome}${ex.grupoMuscular ? ` — ${GRUPO_MUSCULAR_LABEL[ex.grupoMuscular] ?? ex.grupoMuscular}` : ""}`}
+              isOptionEqualToValue={(o, v) => o.exercicioId === v.exercicioId}
+              filterOptions={(x) => x}
               value={selectedEx}
-              onChange={(_, v) => setSelectedEx(v)}
+              onChange={(_, v) => {
+                setSelectedEx(v);
+                selectedExRef.current = v;
+              }}
+              onInputChange={handleExInputChange}
+              loading={exLoading}
               renderInput={(params) => <TextField {...params} label="Exercício" size="small" required />}
             />
 

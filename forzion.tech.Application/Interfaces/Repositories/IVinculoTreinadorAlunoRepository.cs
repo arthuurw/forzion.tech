@@ -9,6 +9,8 @@ public record VinculoComDetalheAluno(
     string? EmailAluno,
     bool TemVinculoAtivoPrevio);
 
+public record ReceitaPorPacote(Guid PacoteId, string Nome, int Alunos, decimal Receita);
+
 public interface IVinculoTreinadorAlunoRepository
 {
     Task<VinculoTreinadorAluno?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
@@ -17,6 +19,13 @@ public interface IVinculoTreinadorAlunoRepository
     Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<VinculoComDetalheAluno> Items, int Total)> ListarComDetalhesAsync(Guid treinadorId, VinculoStatus? status, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
     Task<int> ContarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<VinculoStatus, int>> ContarPorStatusAsync(Guid treinadorId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>SUM(pacote.preco) GROUP BY pacote</c> sobre o conjunto inteiro de vínculos ativos, sem
+    /// paginação nem clamp — a soma cobre o conjunto completo, não uma página.
+    /// </summary>
+    Task<IReadOnlyList<ReceitaPorPacote>> SomarReceitaPorPacoteAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<bool> TemVinculosAtivosAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<VinculoTreinadorAluno?> ObterPendentePorParAsync(Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<VinculoTreinadorAluno?> ObterPendentePorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
