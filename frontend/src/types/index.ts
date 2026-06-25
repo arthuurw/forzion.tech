@@ -92,6 +92,8 @@ export interface AlunoResponse {
   limitacoesFisicas: string | null;
   doencas: string | null;
   observacoesAdicionais: string | null;
+  pacoteId?: string | null;
+  pacoteNome?: string | null;
 }
 
 export interface TreinadorResponse {

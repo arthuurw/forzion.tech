@@ -7442,6 +7442,9 @@ export interface components {
             limitacoesFisicas?: null | string;
             doencas?: null | string;
             observacoesAdicionais?: null | string;
+            /** Format: uuid */
+            pacoteId?: null | string;
+            pacoteNome?: null | string;
         };
         /** @enum {unknown} */
         AlunoStatus: "AguardandoAprovacao" | "Ativo" | "Inativo";

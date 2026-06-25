@@ -49,7 +49,10 @@ export default function PlanoTreinadorPage() {
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoPlataformaResponse | null>(null);
   const [trocaResp, setTrocaResp] = useState<TrocarPlanoTreinadorResponse | null>(null);
   const [processando, setProcessando] = useState(false);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const delayRef = useRef(5_000);
+  const deadlineRef = useRef(0);
+  const mountedRef = useRef(true);
   const { logout } = useAuth();
   const [confirmarCancelar, setConfirmarCancelar] = useState(false);
   const [cancelando, setCancelando] = useState(false);
@@ -81,12 +84,18 @@ export default function PlanoTreinadorPage() {
 
   const pararPolling = useCallback(() => {
     if (pollingRef.current) {
-      clearInterval(pollingRef.current);
+      clearTimeout(pollingRef.current);
       pollingRef.current = null;
     }
   }, []);
 
-  useEffect(() => () => pararPolling(), [pararPolling]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      pararPolling();
+    };
+  }, [pararPolling]);
 
   const iniciarTroca = async (plano: PlanoPlataformaResponse) => {
     setPlanoSelecionado(plano);
@@ -120,18 +129,37 @@ export default function PlanoTreinadorPage() {
 
   const iniciarPolling = (pagamentoId: string) => {
     pararPolling();
-    pollingRef.current = setInterval(async () => {
+    delayRef.current = 5_000;
+    deadlineRef.current = Date.now() + 180_000;
+
+    const tick = async () => {
+      if (!mountedRef.current) return;
+      if (document.hidden) {
+        pollingRef.current = setTimeout(tick, delayRef.current);
+        return;
+      }
+      if (Date.now() >= deadlineRef.current) {
+        setErro("Verificação expirou. Recarregue a página.");
+        return;
+      }
       try {
         const res = await pagamentoApi.obterStatusPagamentoTreinador(pagamentoId);
+        if (!mountedRef.current) return;
         if (res.data.status === "Pago") {
           pararPolling();
           setEtapa("sucesso");
           await carregar();
+          return;
         }
       } catch {
         // continua polling
       }
-    }, 5000);
+      if (!mountedRef.current) return;
+      delayRef.current = Math.min(delayRef.current * 2, 30_000);
+      pollingRef.current = setTimeout(tick, delayRef.current);
+    };
+
+    pollingRef.current = setTimeout(tick, delayRef.current);
   };
 
   const fecharDialog = () => {
