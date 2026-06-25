@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { AuthProvider } from "@/lib/auth/context";
+import { QueryProvider } from "@/lib/query/QueryProvider";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import ThemeRegistry from "@/lib/theme/ThemeRegistry";
 import { WebVitals } from "@/components/observability/WebVitals";
@@ -60,7 +61,7 @@ export default function RootLayout({
             <ErrorBoundary>
               <AuthProvider>
                 <ConsentProvider />
-                {children}
+                <QueryProvider>{children}</QueryProvider>
               </AuthProvider>
             </ErrorBoundary>
           </ThemeRegistry>

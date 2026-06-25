@@ -7,6 +7,7 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 - UI: MUI v9 (`@mui/material`) + Emotion. Locale `ptBR`. Tema em `src/lib/theme/index.ts`.
 - Forms: react-hook-form v7 + Zod v4 (`@hookform/resolvers`).
 - HTTP client: axios (instância `apiClient` em `src/lib/api/client.ts`).
+- Fetch-cache client: TanStack Query v5 (`@tanstack/react-query`) — camada de cache/dedup sobre o `apiClient`. Ver §DADOS-CLIENT.
 - JWT client-side: `jose` (verificação no Route Handler `/api/auth/me`).
 - Pagamentos: `@stripe/react-stripe-js` + `@stripe/stripe-js`.
 - Relatórios: `exceljs` (geração de planilhas cliente).
@@ -88,7 +89,7 @@ html[lang=pt-BR]
         ErrorBoundary
           AuthProvider
             ConsentProvider
-            {children}
+            QueryProvider ({children})   (TanStack Query — ver §DADOS-CLIENT)
 ```
 - `metadata`: title="forzion.tech", description.
 - `viewport`: `width=device-width, initialScale=1, viewportFit=cover`.
@@ -171,6 +172,21 @@ interceptor resposta:
 - `ASSINATURA_INADIMPLENTE_EVENT` + `ASSINATURA_INADIMPLENTE_MESSAGE` exportados do client.
 - Enforcement server-side: backend `RequireAssinaturaAtivaFilter` retorna 403 `ASSINATURA_INADIMPLENTE` em endpoints restritos (ex.: POST execuções). Cross-ref inadimplência: [specification-stripe].
 - Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`, `nfse.ts`.
+
+## DADOS-CLIENT (TanStack Query)
+Camada de fetch-cache sobre o `apiClient`. Motivação: cada página era `useState(loading/error/data)` + `load()` em `useEffect` → toda navegação re-batia o backend mesmo p/ dados read-mostly. Cache+dedup por `queryKey` corta isso (e a carga no PG — ver [specification-performance §7]).
+- **Fundação** (`src/lib/query/`): `QueryProvider.tsx` (`'use client'`) cria `QueryClient` via `useState(() => new QueryClient(...))` (1 instância estável por app). Defaults globais: `staleTime:0`, `gcTime:5min`, `retry:1`, **`refetchOnWindowFocus:false`** (CRÍTICO — default `true` re-dispara toda query ativa a cada foco de aba). Montado no `layout.tsx` dentro de `<AuthProvider>`, envolvendo `{children}`. SEM devtools (YAGNI).
+- `keys.ts`: keys tipadas — `queryKeys.catalog.gruposMusculares` `['catalog','grupos-musculares']`, `.catalog.planos` `['catalog','planos']`, `.admin.dashboard` `['admin','dashboard']`.
+- **Consumidores migrados (etapa 2)** — cada um troca `useState+useEffect+load()` por `useQuery` direto (key + fn do `*Api` existente como `queryFn`; SEM hook custom novo). Contrato de UI preservado: `isPending`→spinner, `error`→AlertBanner (mapeado p/ a mesma string de antes), `data`→render:
+  | Read | Páginas | staleTime/gcTime |
+  |---|---|---|
+  | `listGruposMusculares` | treinador/exercicios + admin/exercicios | 30min/30min |
+  | `listPlanos` | admin/treinadores (dropdown atribuir plano) | 30min/30min |
+  | burst dashboard (1 `useQuery` envolve o `Promise.all` inteiro) | admin/page | 60s / 5min default |
+- **Dashboard = wrap leve**: os 4 handlers de aprovação chamam `useQueryClient().invalidateQueries({queryKey: admin.dashboard})` em vez de `await load()` (sem converter p/ `useMutation` — churn alto p/ página de 1-2 admins).
+- **Trade-off de staleness (consciente)**: CRUD admin de grupos/planos muta via `load()` manual e NÃO invalida o cache de catálogo do treinador → janela ≤ `staleTime` (30min) num dropdown de filtro. Aceito: catálogo é admin-curado, muda ~semanalmente, é lista de filtro (não dado transacional); ganho DB supera. `gcTime>=staleTime` é obrigatório no catálogo (senão o cache é coletado ao sair da página e o ganho cross-navegação some).
+- FORA de escopo (etapa 2): CRUD admin grupos/planos (mantém `load()` manual), mutations idiomáticas, agregados Tier 2, SSR prefetch (app é CSR by design).
+- **Testes**: `renderWithProviders` (`src/test/render.tsx`) provê `QueryClientProvider` com `new QueryClient` fresh por render (`retry:false`, `gcTime:0` — sem cache vazando entre testes). Páginas que rendem via `render` cru e usam `useQuery` precisam migrar p/ `renderWithProviders`.
 
 ## APPLAYOUT (autenticado)
 - Verifica `!isLoading && !user` → chama `/api/auth/logout` (limpa cookies) → `router.replace("/login")`.

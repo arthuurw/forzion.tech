@@ -1,6 +1,8 @@
 "use client";
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
 import {
   Box, Typography, Select, MenuItem, FormControl,
   InputLabel, IconButton, Tooltip, Dialog, DialogTitle,
@@ -149,9 +151,15 @@ export default function TreinadoresAdminPage() {
   const [loadingExcluir, setLoadingExcluir] = useState(false);
 
   const [planoDialog, setPlanoDialog] = useState<TreinadorResponse | null>(null);
-  const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
   const [selectedPlano, setSelectedPlano] = useState<PlanoPlataformaResponse | null>(null);
   const [loadingPlano, setLoadingPlano] = useState(false);
+
+  const { data: planos = [], isError: planosError } = useQuery({
+    queryKey: queryKeys.catalog.planos,
+    queryFn: () => adminApi.listPlanos().then((r) => r.data),
+    staleTime: 30 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 
   const fetcher = useCallback(
     (p: number, ps: number) =>
@@ -160,6 +168,10 @@ export default function TreinadoresAdminPage() {
   );
   const { items: treinadores, total, page, pageSize, loading, error, success, setPage, setPageSize, setError, setSuccess, reload } =
     usePaginatedList<TreinadorResponse>({ fetcher, errorMessage: "Erro ao carregar treinadores." });
+
+  useEffect(() => {
+    if (planosError) setError("Erro ao carregar planos.");
+  }, [planosError, setError]);
 
   const handleAprovar = async () => {
     if (!confirmAprovar) return;
@@ -224,17 +236,9 @@ export default function TreinadoresAdminPage() {
     }
   };
 
-  const openPlanoDialog = async (t: TreinadorResponse) => {
+  const openPlanoDialog = (t: TreinadorResponse) => {
     setPlanoDialog(t);
     setSelectedPlano(null);
-    if (planos.length === 0) {
-      try {
-        const res = await adminApi.listPlanos();
-        setPlanos(res.data);
-      } catch (err) {
-        setError(extractApiError(err, "Erro ao carregar planos."));
-      }
-    }
   };
 
   const handleAtribuirPlano = async () => {

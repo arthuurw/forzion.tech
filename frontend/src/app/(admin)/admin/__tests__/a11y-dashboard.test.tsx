@@ -6,9 +6,10 @@
  *     instead of bulk listTreinadores/listAlunos for chart data.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { renderWithProviders } from "@/test/render";
 import type { TreinadorResponse } from "@/types";
 import type { DashboardStatsResponse } from "@/lib/api/admin";
 
@@ -103,7 +104,7 @@ describe("DashboardAdminPage — G-FE-3 stats endpoint", () => {
 
   it("chama GET /admin/stats/dashboard exatamente uma vez", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(statsCallCount).toBe(1);
@@ -112,7 +113,7 @@ describe("DashboardAdminPage — G-FE-3 stats endpoint", () => {
 
   it("não faz chamadas bulk (tamanhoPagina > 20) para gerar distribuição dos gráficos", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(statsCallCount).toBe(1);
@@ -129,7 +130,7 @@ describe("DashboardAdminPage — a11y charts", () => {
 
   it("gráfico de status dos treinadores tem figure com aria-label acessível", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(
@@ -140,7 +141,7 @@ describe("DashboardAdminPage — a11y charts", () => {
 
   it("gráfico de treinadores por plano tem figure com aria-label acessível", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(
@@ -151,7 +152,7 @@ describe("DashboardAdminPage — a11y charts", () => {
 
   it("gráfico de status dos alunos tem figure com aria-label acessível", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(
@@ -162,7 +163,7 @@ describe("DashboardAdminPage — a11y charts", () => {
 
   it("gráfico de finalidade dos alunos tem figure com aria-label (quando há dados)", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(
@@ -226,7 +227,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     });
 
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     expect(screen.getByRole("button", { name: "Aprovar treinador" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reprovar treinador" })).toBeInTheDocument();
@@ -249,7 +250,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     });
 
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     expect(screen.getByRole("button", { name: "Inativar treinador" })).toBeInTheDocument();
   });
@@ -271,7 +272,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     });
 
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     expect(screen.getByRole("button", { name: "Excluir treinador permanentemente" })).toBeInTheDocument();
   });
@@ -293,7 +294,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     });
 
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     expect(screen.getByRole("button", { name: "Atribuir plano" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ver detalhe do treinador" })).toBeInTheDocument();

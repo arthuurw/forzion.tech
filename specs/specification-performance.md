@@ -43,5 +43,10 @@ DOC PARA AGENTES. Armadilhas de PERFORMANCE no backend .NET/EF Core/PG que revie
 ## 6. ENFORCEMENT (honesto — fraco hoje)
 - Sem gate hard atual. Sinais a propor (até existirem, vale só revisão + este checklist): contar SQL emitido em teste de integração (detecta N+1/regressão de query count), teste de contrato p/ paginação obrigatória, analyzer p/ `.Result`/`.Wait()`. Perf budget de backend (latência p95 por endpoint) é ALVO — hoje só frontend tem budget ([specification-observability]).
 
-## 7. REFERÊNCIAS
-[specification-db] (índices/schema/conexão), [specification-backend] (handlers/EF/DI), [specification-concurrency] (lock↔perf, outbox isola latência), [specification-observability] (medição/health/budget frontend), [specification-tests §6] (Testcontainers p/ medir query count).
+## 7. FETCH-CACHE CLIENT (corta carga no PG)
+- Frontend usa TanStack Query v5 como camada de fetch-cache (fundação em `frontend/src/lib/query/`; detalhe em [specification-frontend §DADOS-CLIENT]). RELEVÂNCIA backend/DB: reads read-mostly cacheados no cliente NÃO re-batem o backend a cada navegação → menos pressão no Postgres (Supabase Free: shared CPU / 500MB). `refetchOnWindowFocus:false` global é CRÍTICO aqui — default `true` re-dispararia toda query ativa a cada foco de aba, bombardeando o DB.
+- Migrados (etapa 2): catálogo `grupos-musculares` + `planos` (stale/gc 30min — admin-curado, muda ~semanalmente) e burst do dashboard admin (stale 60s). Trade-off de staleness aceito (catálogo é lista de filtro, não dado transacional); registrado em [specification-frontend].
+- NÃO é budget hard — disciplina. Ao migrar mais reads, `gcTime >= staleTime` (senão o cache é coletado ao sair da página e o ganho cross-navegação some).
+
+## 8. REFERÊNCIAS
+[specification-db] (índices/schema/conexão), [specification-backend] (handlers/EF/DI), [specification-concurrency] (lock↔perf, outbox isola latência), [specification-observability] (medição/health/budget frontend), [specification-frontend §DADOS-CLIENT] (TanStack Query), [specification-tests §6] (Testcontainers p/ medir query count).

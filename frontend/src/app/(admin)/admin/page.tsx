@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
 import dynamic from "next/dynamic";
 import {
   Box, Typography, Paper, Stack, Divider, Button, Chip, Tabs, Tab,
@@ -13,7 +15,7 @@ import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import { TREINADOR_STATUS_COLORS, ALUNO_DASHBOARD_STATUS_COLORS } from "@/lib/constants/labels";
 import type {
-  TreinadorResponse, PlanoPlataformaResponse, AlunoResponse, GrupoMuscularResponse,
+  PlanoPlataformaResponse, GrupoMuscularResponse,
 } from "@/types";
 import { extractApiError } from "@/lib/api/extractApiError";
 
@@ -35,23 +37,15 @@ const PLANO_COLUMNS: Column[] = [
 
 export default function DashboardAdminPage() {
   const theme = useTheme();
-  const [treinadorStats, setTreinadorStats] = useState<StatItem[]>([]);
-  const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
-  const [pendentes, setPendentes] = useState<TreinadorResponse[]>([]);
-  const [alunosPendentes, setAlunosPendentes] = useState<AlunoResponse[]>([]);
-  const [recentTreinadores, setRecentTreinadores] = useState<TreinadorResponse[]>([]);
-  const [planoStats, setPlanoStats] = useState<PlanoStat[]>([]);
-  const [finalidadeData, setFinalidadeData] = useState<DistItem[]>([]);
-  const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
-  const [totalExercicios, setTotalExercicios] = useState(0);
-  const [totalGrupos, setTotalGrupos] = useState(0);
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
+  const { data, isPending, isError, error: queryError } = useQuery({
+    queryKey: queryKeys.admin.dashboard,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
       const [
         ativoTRes, aguardandoTRes, inativoTRes,
         ativoARes, aguardandoARes, inativoARes,
@@ -71,30 +65,25 @@ export default function DashboardAdminPage() {
         adminApi.listTreinadores({ tamanhoPagina: 5 }),
       ]);
 
-      setTreinadorStats([
+      const treinadorStats: StatItem[] = [
         { name: "Ativos", value: ativoTRes.data.total, color: TREINADOR_STATUS_COLORS.Ativos },
         { name: "Pendentes", value: aguardandoTRes.data.total, color: TREINADOR_STATUS_COLORS.Pendentes },
         { name: "Inativos", value: inativoTRes.data.total, color: TREINADOR_STATUS_COLORS.Inativos },
-      ]);
+      ];
 
-      setAlunoStats([
+      const alunoStats: StatItem[] = [
         { name: "Ativos", value: ativoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Ativos },
         { name: "Pendentes", value: aguardandoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Pendentes },
         { name: "Inativos", value: inativoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Inativos },
-      ]);
+      ];
 
-      setPendentes(aguardandoTRes.data.items);
-      setAlunosPendentes(aguardandoARes.data.items);
-
-      const sorted = [...recentTRes.data.items].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setRecentTreinadores(sorted.slice(0, 5));
+      const recentTreinadores = [...recentTRes.data.items]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
 
       const planosData = planosRes.data as PlanoPlataformaResponse[];
-      setPlanos(planosData);
       const planoMap = new Map(planosData.map((p) => [p.planoId, p]));
-      const planoBarStats: PlanoStat[] = statsRes.data.planoDistribuicao.map((d) => {
+      const planoStats: PlanoStat[] = statsRes.data.planoDistribuicao.map((d) => {
         const plano = planoMap.get(d.tier);
         return {
           planoId: d.tier,
@@ -104,31 +93,38 @@ export default function DashboardAdminPage() {
           maxAlunos: plano?.maxAlunos ?? 0,
         };
       }).sort((a, b) => b.total - a.total);
-      setPlanoStats(planoBarStats);
 
-      setFinalidadeData(
-        statsRes.data.alunoFinalidade
-          .slice()
-          .sort((a, b) => b.total - a.total)
-          .map((d) => ({ name: d.finalidade, total: d.total }))
-      );
+      const finalidadeData: DistItem[] = statsRes.data.alunoFinalidade
+        .slice()
+        .sort((a, b) => b.total - a.total)
+        .map((d) => ({ name: d.finalidade, total: d.total }));
 
-      setTotalExercicios(exerciciosRes.data.total);
-      setTotalGrupos((gruposRes.data as GrupoMuscularResponse[]).length);
-    } catch (err) {
-      setError(extractApiError(err, "Erro ao carregar dados do painel."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return {
+        treinadorStats,
+        alunoStats,
+        pendentes: aguardandoTRes.data.items,
+        alunosPendentes: aguardandoARes.data.items,
+        recentTreinadores,
+        planoStats,
+        finalidadeData,
+        planos: planosData,
+        totalExercicios: exerciciosRes.data.total,
+        totalGrupos: (gruposRes.data as GrupoMuscularResponse[]).length,
+      };
+    },
+  });
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (isError) setError(extractApiError(queryError, "Erro ao carregar dados do painel."));
+  }, [isError, queryError]);
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dashboard });
 
   const handleAprovar = async (id: string) => {
     setActionLoading(`${id}_aprovar`);
     try {
       await adminApi.aprovarTreinador(id);
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao aprovar treinador."));
     } finally {
@@ -140,7 +136,7 @@ export default function DashboardAdminPage() {
     setActionLoading(`${id}_reprovar`);
     try {
       await adminApi.reprovarTreinador(id);
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao reprovar treinador."));
     } finally {
@@ -152,7 +148,7 @@ export default function DashboardAdminPage() {
     setActionLoading(`${id}_aprovar`);
     try {
       await adminApi.alterarStatusAluno(id, "Ativo");
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao aprovar aluno."));
     } finally {
@@ -164,7 +160,7 @@ export default function DashboardAdminPage() {
     setActionLoading(`${id}_inativar`);
     try {
       await adminApi.alterarStatusAluno(id, "Inativo");
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao inativar aluno."));
     } finally {
@@ -172,7 +168,13 @@ export default function DashboardAdminPage() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (isPending) return <LoadingSpinner />;
+
+  const {
+    treinadorStats = [], alunoStats = [], pendentes = [], alunosPendentes = [],
+    recentTreinadores = [], planoStats = [], finalidadeData = [], planos = [],
+    totalExercicios = 0, totalGrupos = 0,
+  } = data ?? {};
 
   const planoBarData = planoStats.map(({ name, total }) => ({ name, total }));
   const planoRows = [

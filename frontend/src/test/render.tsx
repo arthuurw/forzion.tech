@@ -17,6 +17,7 @@ import { ThemeProvider, CssBaseline } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import "dayjs/locale/pt-br";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import theme from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth/context";
 
@@ -32,6 +33,10 @@ interface AllProvidersProps extends ProvidersOptions {
 }
 
 function AllProviders({ children, skipAuth }: AllProvidersProps) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+
   let tree: ReactNode = children;
 
   if (!skipAuth) {
@@ -39,12 +44,14 @@ function AllProviders({ children, skipAuth }: AllProvidersProps) {
   }
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
-        {tree}
-      </LocalizationProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
+          {tree}
+        </LocalizationProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

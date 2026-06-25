@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
@@ -32,7 +32,7 @@ describe("ExerciciosAdminPage — grupos musculares indisponíveis", () => {
       http.get("*/admin/grupos-musculares", () => new HttpResponse(null, { status: 500 })),
     );
     const { default: Page } = await import("@/app/(admin)/admin/exercicios/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
     await vi.waitFor(() => {
       expect(setError).toHaveBeenCalledWith(
         "Não foi possível carregar os grupos musculares. O cadastro de exercícios fica indisponível.",

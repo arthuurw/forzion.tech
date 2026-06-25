@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
 import {
   Box, Typography, Tabs, Tab, Card, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   Stack, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip,
@@ -15,7 +17,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
 import { parseYouTubeId } from "@/lib/utils/youtube";
-import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
+import type { ExercicioResponse } from "@/types";
 import { GRUPO_MUSCULAR_LABEL } from "@/lib/constants/labels";
 import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
 import { extractApiError } from "@/lib/api/extractApiError";
@@ -70,7 +72,12 @@ export default function ExerciciosTreinadorPage() {
   const loadIdRef = useRef(0);
 
   const [exercicios, setExercicios] = useState<ExercicioResponse[]>([]);
-  const [grupos, setGrupos] = useState<GrupoMuscularResponse[]>([]);
+  const { data: grupos = [] } = useQuery({
+    queryKey: queryKeys.catalog.gruposMusculares,
+    queryFn: () => treinadorApi.listGruposMusculares().then((r) => r.data),
+    staleTime: 30 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -126,18 +133,11 @@ export default function ExerciciosTreinadorPage() {
     }
   }, [isGlobal, page, pageSize, filtroNome, filtroGrupo, ordenarPor]);
 
-  const loadGrupos = useCallback(async () => {
-    try {
-      const res = await treinadorApi.listGruposMusculares();
-      setGrupos(res.data);
-      if (res.data.length > 0) {
-        setGrupoMuscular(res.data[0].id);
-        setEditGrupo(res.data[0].id);
-      }
-    } catch {
-      // grupos musculares indisponíveis — formulário fica sem seleção de grupo
-    }
-  }, []);
+  useEffect(() => {
+    if (grupos.length === 0) return;
+    setGrupoMuscular((g) => g || grupos[0].id);
+    setEditGrupo((g) => g || grupos[0].id);
+  }, [grupos]);
 
   const loadMeusNomes = useCallback(async () => {
     try {
@@ -148,9 +148,8 @@ export default function ExerciciosTreinadorPage() {
 
   useEffect(() => {
     load();
-    loadGrupos();
     loadMeusNomes();
-  }, [load, loadGrupos, loadMeusNomes]);
+  }, [load, loadMeusNomes]);
 
   const handleTabChange = (_: unknown, v: number) => {
     setTab(v);

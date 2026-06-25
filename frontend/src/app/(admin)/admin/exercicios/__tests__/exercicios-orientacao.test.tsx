@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { renderWithProviders } from "@/test/render";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 
 vi.mock("next/navigation", () => ({
@@ -31,7 +32,7 @@ describe("ExerciciosAdminPage — orientação (como executar + vídeo)", () => 
 
   it("link inválido desabilita submit e mostra helper", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/exercicios/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await userEvent.click(screen.getByRole("button", { name: /Novo exercício/i }));
     const dialog = within(screen.getByRole("dialog"));
@@ -52,7 +53,7 @@ describe("ExerciciosAdminPage — orientação (como executar + vídeo)", () => 
     );
 
     const { default: Page } = await import("@/app/(admin)/admin/exercicios/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await userEvent.click(screen.getByRole("button", { name: /Novo exercício/i }));
     const dialog = within(screen.getByRole("dialog"));
@@ -87,7 +88,7 @@ describe("ExerciciosAdminPage — orientação (como executar + vídeo)", () => 
     );
 
     const { default: Page } = await import("@/app/(admin)/admin/exercicios/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await userEvent.click(screen.getByRole("button", { name: "Editar exercício" }));
     const dialog = within(screen.getByRole("dialog"));

@@ -143,6 +143,7 @@ export default defineConfig({
             "src/hooks/useExecucaoRetryQueue.test.ts",
             // Pilot MSW com apiClient real
             "src/lib/api/admin.msw.test.ts",
+            "src/lib/query/QueryProvider.test.tsx",
           ],
         },
       },

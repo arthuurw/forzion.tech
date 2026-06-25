@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
 import {
   Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   Stack, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tooltip,
@@ -13,7 +15,7 @@ import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import { parseYouTubeId } from "@/lib/utils/youtube";
-import type { ExercicioResponse, GrupoMuscularResponse } from "@/types";
+import type { ExercicioResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { useCRUDDialog } from "@/hooks/useCRUDDialog";
 import { extractApiError } from "@/lib/api/extractApiError";
@@ -27,7 +29,12 @@ const COLUMNS: Column[] = [
 ];
 
 export default function ExerciciosAdminPage() {
-  const [grupos, setGrupos] = useState<GrupoMuscularResponse[]>([]);
+  const { data: grupos = [], isError: gruposError } = useQuery({
+    queryKey: queryKeys.catalog.gruposMusculares,
+    queryFn: () => adminApi.listGruposMusculares().then((r) => r.data),
+    staleTime: 30 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 
   const [filtroNome, setFiltroNome] = useState("");
   const [filtroGrupo, setFiltroGrupo] = useState("");
@@ -65,21 +72,18 @@ export default function ExerciciosAdminPage() {
   const { items: exercicios, total, page, pageSize, loading, error, success, setPage, setPageSize, setError, setSuccess, reload } =
     usePaginatedList<ExercicioResponse>({ fetcher, errorMessage: "Erro ao carregar exercícios." });
 
-  const loadGrupos = useCallback(async () => {
-    try {
-      const res = await adminApi.listGruposMusculares();
-      setGrupos(res.data);
-      if (res.data.length > 0) {
-        setGrupoMuscular(res.data[0].id);
-        setEditGrupo(res.data[0].id);
-      }
-    } catch (err) {
-      // sem grupos o formulário fica sem seleção de grupo: avisa em vez de falhar mudo
-      setError(extractApiError(err, "Não foi possível carregar os grupos musculares. O cadastro de exercícios fica indisponível."));
-    }
-  }, [setError]);
+  useEffect(() => {
+    if (grupos.length === 0) return;
+    setGrupoMuscular((g) => g || grupos[0].id);
+    setEditGrupo((g) => g || grupos[0].id);
+  }, [grupos]);
 
-  useEffect(() => { loadGrupos(); }, [loadGrupos]);
+  useEffect(() => {
+    // sem grupos o formulário fica sem seleção de grupo: avisa em vez de falhar mudo
+    if (gruposError) {
+      setError("Não foi possível carregar os grupos musculares. O cadastro de exercícios fica indisponível.");
+    }
+  }, [gruposError, setError]);
 
   const resetForm = () => {
     setNome("");

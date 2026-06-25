@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { renderWithProviders } from "@/test/render";
 import { useMediaQuery } from "@mui/material";
 import type { DashboardStatsResponse } from "@/lib/api/admin";
 
@@ -55,7 +56,7 @@ function setupHandlers() {
 
 async function renderOnPlataformaTab() {
   const { default: Page } = await import("@/app/(admin)/admin/page");
-  render(<Page />);
+  renderWithProviders(<Page />, { skipAuth: true });
 
   const tab = await screen.findByRole("tab", { name: "Plataforma" });
   tab.click();
