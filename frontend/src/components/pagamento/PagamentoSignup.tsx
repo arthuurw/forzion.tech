@@ -1,15 +1,12 @@
 "use client";
 import { useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Box, Typography, Button, CircularProgress, Alert, Paper, Stack } from "@mui/material";
 import type { IniciarPagamentoPlanoResponse } from "@/types";
 import { formatarBRL } from "@/lib/utils/formatting";
 import { mapStripeError } from "@/lib/pagamento/stripeErro";
+import { getStripe } from "@/lib/pagamento/stripeClient";
 import CopiarPixButton from "@/components/pagamento/CopiarPixButton";
-
-const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 function PixView({ pagamento }: { pagamento: IniciarPagamentoPlanoResponse }) {
   const expiracao = pagamento.pixExpiracao ? new Date(pagamento.pixExpiracao) : null;
@@ -129,7 +126,7 @@ export default function PagamentoSignup({ pagamento, onPagoCartao }: Props) {
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret: pagamento.clientSecret, locale: "pt-BR" }}>
+    <Elements stripe={getStripe()} options={{ clientSecret: pagamento.clientSecret, locale: "pt-BR" }}>
       <CartaoForm valor={pagamento.valor} onPago={onPagoCartao} />
     </Elements>
   );
