@@ -22,9 +22,8 @@ public interface IVinculoTreinadorAlunoRepository
     Task<IReadOnlyDictionary<VinculoStatus, int>> ContarPorStatusAsync(Guid treinadorId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Receita recorrente agregada server-side: <c>SUM(pacote.preco) GROUP BY pacote</c> sobre o
-    /// conjunto inteiro de vínculos ativos (sem paginação/clamp — evita o truncamento silencioso da
-    /// soma client-side limitada a 100 vínculos).
+    /// <c>SUM(pacote.preco) GROUP BY pacote</c> sobre o conjunto inteiro de vínculos ativos, sem
+    /// paginação nem clamp — a soma cobre o conjunto completo, não uma página.
     /// </summary>
     Task<IReadOnlyList<ReceitaPorPacote>> SomarReceitaPorPacoteAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<bool> TemVinculosAtivosAsync(Guid treinadorId, CancellationToken cancellationToken = default);
