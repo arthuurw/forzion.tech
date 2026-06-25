@@ -103,10 +103,10 @@ NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/form
 ## LINGUAGEM NEUTRA DE GÊNERO (copy user-facing)
 Toda copy nova nasce neutra. Origem: feature `texto-unissex` (sweep 2026-06-16). Aplica a JSX/strings de UI (sem lib i18n — copy hardcoded inline), títulos/corpo de e-mail (`Notifications/Email/**`) e corpo de template WhatsApp (`.specs/features/texto-unissex/WHATSAPP-COPY.md`). Estilo = **híbrido neutro**: reescrever pra neutro onde for natural; `(a)`/`(as)` só último recurso, nunca empilhado.
 
-### Prioridade de técnica (ordem)
-1. **Frase nominal** — preferir substantivo/particípio que concorda com termo neutro/abstrato. `{nome} aprovado com sucesso` → `{nome}: cadastro aprovado`.
-2. **2ª pessoa / verbo** — falar com a pessoa, sem adjetivo concordado. `você entrou`, `confirmar exclusão`.
-3. **Reescrita** — trocar a construção. `Você está inativo … será desconectado` → `Você está sem atividade … sua sessão será encerrada`.
+### Prioridade de técnica (ordem; exemplos no Glossário)
+1. **Frase nominal** — substantivo/particípio que concorda com termo neutro/abstrato.
+2. **2ª pessoa / verbo** — falar com a pessoa, sem adjetivo concordado.
+3. **Reescrita** — trocar a construção.
 4. **`(a)` — ÚLTIMO recurso**, só quando 1-3 são inviáveis. Nunca `seu(sua) aluno(a)` (reescrever).
 
 ### Glossário (gendered → neutro)
@@ -148,7 +148,7 @@ Frontend: `grep -rniE "<regex>" frontend/src --include=*.tsx --include=*.ts | gr
 | Storybook | `@storybook/addon-a11y` | `.storybook/main.ts` (addon) + `preview.tsx` (`parameters.a11y.element:#storybook-root`, `manual:false`) | toda story |
 | Lighthouse | `categories:accessibility minScore 0.95` (error gate) | `frontend/lighthouserc.json` (público) + `frontend/lighthouserc.auth.cjs` (autenticado, `npm run lhci:auth`) | público: `/`, `/login`, `/cadastro/aluno`, `/cadastro/treinador`. Autenticado: 1 rota por role (aluno/treinador/admin) com sessão via cookies do storage-state (`e2e/.auth/<role>.json` + consent); a11y-only; sem storage-state FALHA explícita (REFERENCIAR [specification-observability]) |
 
-`pkg`: `@axe-core/playwright ^4.11.3`. `runAxe(page)` = tags AA (wcag2a/aa + wcag21a/aa) **INCLUINDO `color-contrast`** — sem `disableRules`. Único helper (não há mais `runAxeStrict`).
+`pkg`: `@axe-core/playwright ^4.12.1`. `runAxe(page)` = tags AA (wcag2a/aa + wcag21a/aa) **INCLUINDO `color-contrast`** — sem `disableRules`. Único helper (não há mais `runAxeStrict`).
 
 ### CONFORMANCE WCAG 2.1 AA — color-contrast (F18 RESOLVIDO)
 - **Conformance real**: WCAG 2.1 AA pleno, **incluindo 1.4.3 contraste**. `color-contrast` gateia no `runAxe` default (`e2e/utils/axe.ts`), aplicado por `e2e/specs/a11y/all-pages-axe.spec.ts` (`expect(violations).toEqual([])`) sobre rotas públicas + autenticadas.
@@ -174,16 +174,11 @@ Frontend: `grep -rniE "<regex>" frontend/src --include=*.tsx --include=*.ts | gr
 - **Alvo de verificação de toda tela/componente: 360px de largura** (DevTools responsive). Sem scroll horizontal, sem clip de controle, sem label truncada essencial.
 - **WCAG target-size**: conformance do projeto = **AA** ⇒ 2.5.8 (Minimum) = **24×24px**. 2.5.5 (44px) é AAA → NÃO é gate. ⇒ `IconButton`/`Button` `size="small"` (~30-40px) PASSAM AA. Só FALHA AA elemento clicável <24px sem exceção (inline/spacing/essential). Perseguir 44px onde a ergonomia exige (fluxo de academia: `executar`). NÃO baixar de 24px novo controle.
 
-### REGRAS p/ NÃO regredir mobile (checklist ao mexer em frontend — alvo 360px)
-1. **Tabela de dados** ⇒ usar `ResponsiveTable`/`DataList`, NUNCA `<Table>` MUI cru (cru não vira card <md → overflow/coluna espremida). Col de ação = `align:"right"` (vira slot `actions`).
-2. **Linha `flex`/`Stack direction="row"`** com ≥2 itens de largura intrínseca (botões rotulados, chips, caption+ações) ⇒ `flexWrap:"wrap"` + `gap`, OU `direction={{xs:"column",sm:"row"}}`. Bloco de texto ao lado de ação ⇒ `minWidth:0` no texto p/ permitir shrink. Header com back+título+ações: `flexWrap:"wrap"` + ações em `flexBasis:{xs:"100%"}` (linha própria full-width xs).
-3. **Texto sem espaço** (e-mail/token/URL) ⇒ `overflowWrap:"anywhere"` (raiz já no `InfoLine`; replicar em headers de conta/detalhe). `whiteSpace:"nowrap"` SEMPRE com `maxWidth:{xs:…}` + ellipsis.
-4. **Dialog com form denso** (>3 campos/linha, ex. série de treino) ⇒ `fullScreen={useMediaQuery(down("sm"))}`; campos numéricos em `direction={{xs:"column"}}`/grid 2-col. Baseline aceitável p/ dialog simples = `maxWidth="xs"+fullWidth+maxHeight:calc(100dvh-32px)`.
-5. **Slot de ações de card com >2 controles** (`ResponsiveTable` actions <md) ⇒ colapsar secundárias num **kebab `Menu`** (`MoreVertIcon`), `aria-label` por item; ver PADRÃO kebab abaixo. Ref: `(admin)/admin/treinadores/page.tsx` (`TreinadorAcoes`).
-6. **Controle clicável <24px** (progress dots, ícones soltos) ⇒ envolver em wrapper de hit-area ≥24px (alvo 40-44 no fluxo academia) com o visual pequeno dentro; `ButtonBase` + `aria-label`. Ref: `executar/page.tsx` dots (40px hit, 8px visual, `flexWrap` p/ crowding).
-7. **`Stepper alternativeLabel`** com rótulos longos em container estreito ⇒ <sm trocar por "Passo N de M" + rótulo do passo ativo. Ref: `cadastro/aluno/page.tsx`.
-8. **`recharts`** NÃO aceita `sx`/breakpoint MUI — responsividade via props string/number condicionadas a `useMediaQuery` (ex. `angle={-35} textAnchor="end" height` + `margin.bottom` em xs no `XAxis`). Ref: `ProgressaoAluno.tsx`.
-9. **Padding fixo `p:3/p:4`** em container de página ⇒ `p:{xs:2, md:3|4}` (não comer largura a 360px). **`Tabs` 5 abas** ⇒ `variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile`.
-10. **`Alert action={<Button>}`** com texto longo ⇒ em xs CTA abaixo do texto: `"& .MuiAlert-action": { ml:0, width:"100%" }`. **`DialogActions` ≥3 botões** ⇒ `flexDirection:{xs:"column"}` + `alignItems:"stretch"`.
+### DIRETRIZES p/ NÃO regredir mobile (ao mexer em frontend — alvo 360px)
+Princípios gerais (não prescrição exaustiva); decidir caso a caso visando 360px sem overflow/clip:
+- **Tabela de dados** ⇒ `ResponsiveTable`/`DataList`, NUNCA `<Table>` MUI cru (cru não vira card <md → overflow). Col de ação = `align:"right"` (vira slot `actions`).
+- **Conteúdo que não cabe na largura** (linha `flex`/`Stack row`, texto longo, dialog denso, stepper, tabs, padding fixo) ⇒ permitir quebra/empilhamento em xs: `flexWrap`/`direction` responsivo, `minWidth:0` p/ shrink de texto, `overflowWrap:"anywhere"` p/ e-mail/token/URL, `fullScreen`/`maxHeight:calc(100dvh-32px)` em dialog, padding `{xs,md}`, `Tabs scrollable`.
+- **Hit-area de controle pequeno** ⇒ todo clicável ≥24px (alvo 40-44 no fluxo academia): envolver dot/ícone solto em wrapper `ButtonBase`+`aria-label`. Slot de ações de card com >2 controles <md ⇒ colapsar secundárias num **kebab `Menu`** (ver PADRÃO abaixo). Ref dots: `executar/page.tsx`.
+- **`recharts`** NÃO aceita `sx`/breakpoint MUI — responsividade via props condicionadas a `useMediaQuery` (`angle`/`height`/`margin` no `XAxis`). Ref: `ProgressaoAluno.tsx`.
 - **PADRÃO kebab de ações em card** (nasceu R5): `<md` (`useMediaQuery(down("md"))`, mesmo corte do `ResponsiveTable`) renderiza `IconButton` `MoreVertIcon` (`aria-label` único por linha) → `Menu` com `MenuItem` (`ListItemIcon`+`ListItemText`); ≥md mantém os `IconButton` inline (preserva testes que clicam por `aria-label`). Cada item fecha o menu e dispara o handler.
 - **Teste de responsividade**: `sx` puro de layout NÃO é asserível em jsdom (sem layout real) → gate = verificação manual 360px. Onde há COMPORTAMENTO (card vs table, kebab presente, role/aria, navegação) ⇒ stub `window.matchMedia({matches:true})` p/ forçar mobile e asserir o comportamento (ex. `queryByRole("table")` ausente <md; itens do kebab presentes). NÃO escrever teste tautológico p/ `sx`.

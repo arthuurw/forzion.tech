@@ -10,6 +10,7 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 - JWT client-side: `jose` (verificação no Route Handler `/api/auth/me`).
 - Pagamentos: `@stripe/react-stripe-js` + `@stripe/stripe-js`.
 - Relatórios: `exceljs` (geração de planilhas cliente).
+- Gráficos: `recharts` (progressão/dashboards — ver `components/charts/`). QR Code: `qrcode.react` (QR TOTP em `seguranca/`).
 - Datas: `dayjs`.
 - Observabilidade: Sentry (`@sentry/nextjs`) via `withSentryConfig` em `next.config.ts`.
 
@@ -49,10 +50,13 @@ src/
     not-found.tsx
   components/
     aluno/             — SemVinculoAtivoBanner (aviso aluno sem vínculo ativo)
+    charts/            — ChartFigure (figure+aria-label wrapper de recharts)
     forms/             — FormTextField, FormSelect, PasswordField
     layout/            — AppLayout, AppHeader, PublicLayout, NavConfig
     observability/     — WebVitals
     pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
+    seguranca/         — StepUpDialog, StepUpProvider, RecoveryCodesPanel (MFA/step-up)
+    suporte/           — SuporteForm (form compartilhado aluno/treinador)
     treinador/         — componentes específicos do treinador
     ui/                — componentes compartilhados (ErrorBoundary, AlertBanner, LoadingSpinner, DataList, etc.)
   hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent, useCursorList, useExecucaoDraft, useExecucaoRetryQueue
@@ -60,7 +64,9 @@ src/
     api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
     auth/              — context.tsx, jwt.ts, helpers.ts, buildPlaceholder.ts
     constants/         — enrollmentOptions, labels
+    execucao/          — execData.ts, retryQueueStore.ts (draft/fila de execução offline)
     rateLimit.ts       — rate limiter em memória (login)
+    storage/           — safeStorage.ts (localStorage guard SSR/quota — EXOFF-06)
     theme/             — ThemeRegistry.tsx, index.ts (MUI theme)
     utils/             — formatting.ts, excel.ts
     validations/       — common.ts (schemas Zod)
@@ -75,6 +81,7 @@ src/
 ```
 html[lang=pt-BR]
   body
+    a[href=#main-content].skip-link  (1º focável do body — WCAG 2.4.1; ver [specification-frontend-ui])
     WebVitals
     AppRouterCacheProvider (MUI v16-appRouter)
       ThemeRegistry
@@ -106,44 +113,12 @@ Lógica de redirect:
 4. `tipoConta` acessando área de outro role → redirect para área correta (hint roteia attacker p/ a própria área; backend nega o resto).
 
 ## AUTH FLOW
-```
-Cliente → POST /api/auth (Next.js Route Handler)
-  → rate limit 10 req/60s por IP
-  → fetch API_BASE/auth/login
-  → resposta: { token, refreshToken, tipoConta, contaId, perfilId, nome }
-  → seta cookies (helper applySessionCookies): token httpOnly (maxAge=exp-now),
-    refresh httpOnly (maxAge=idle do papel: Admin 2h / demais 7d),
-    tipo_conta NÃO-httpOnly (hint de roteamento), session_guard httpOnly (flag)
-  → retorna { tipoConta, contaId, perfilId, nome } (token E refresh NÃO expostos ao JS)
-
-  MFA habilitado: backend responde { mfaRequerido, mfaPendingToken, mfaPendingExpiraEm }
-  → route seta cookie httpOnly `mfa_pending` (applyMfaPendingCookie); devolve só
-    { mfaRequerido:true, mfaPendingExpiraEm } — o token pending NUNCA vai ao JS.
-  → login envia cookie `trusted_device` ao backend (se presente) p/ pular o 2º fator.
-
-POST /api/auth/mfa/verificar (conclui o 2º fator)
-  → lê cookie httpOnly `mfa_pending` → Bearer → API_BASE/auth/mfa/verificar { codigo, fator, lembrarDispositivo }
-  → sucesso: applySessionCookies + clearMfaPendingCookie (+ applyTrustedDeviceCookie se lembrou) → SessionUser
-POST /api/auth/mfa/email/enviar → repassa `mfa_pending` → envia OTP por e-mail
-
-POST /api/auth/refresh (proxy de renovação silenciosa)
-  → repassa cookie httpOnly `refresh` → API_BASE/auth/refresh (rotação single-use + reuse detection)
-  → sucesso: reescreve token+refresh+tipo_conta rotacionados | 401: limpa cookies de sessão
-
-GET /api/auth/me → jwtVerify (jose). Access válido → SessionUser.
-  → access expirado/ausente MAS refresh presente: dispara o refresh server-side
-    (rotaciona + reescreve cookies) antes de devolver → sessão sobrevive a reload com access vencido.
-  → sem refresh / refresh morto → null (+ limpa cookies)
-
-client.ts (interceptor axios): 401 ⇒ tenta /api/auth/refresh UMA vez (flag `_retry` anti-loop;
-  promise compartilhada anti-tempestade de refresh concorrente) → refaz a request original;
-  refresh falho ⇒ window.location='/login'.
-
-POST /api/auth/logout
-  → chama API_BASE/conta/logout com Bearer (invalida JTI + revoga família do refresh no backend)
-  → delete cookies token + session_guard
-  → falha silenciosa (cookies deletados de qualquer forma)
-```
+Endpoints/contratos na §API ROUTES DE AUTH; aqui só os fatos não-óbvios de cookie/segurança que a tabela não carrega.
+- **Cookies de sessão** (helper `applySessionCookies` no login + refresh): `token` httpOnly (`maxAge=exp-now`), `refresh` httpOnly (`maxAge`=idle do papel: **Admin 2h / demais 7d**), `tipo_conta` NÃO-httpOnly (hint de roteamento), `session_guard` httpOnly (flag). Login devolve ao JS só `{ tipoConta, contaId, perfilId, nome }` — **token E refresh NUNCA expostos ao JS**.
+- **MFA**: 1º fator devolve só `{ mfaRequerido:true, mfaPendingExpiraEm }`; o `mfaPendingToken` vira cookie httpOnly `mfa_pending` (`applyMfaPendingCookie`) e NUNCA vai ao JS. `/mfa/verificar` lê esse cookie → Bearer; sucesso = `applySessionCookies` + `clearMfaPendingCookie` (+ `applyTrustedDeviceCookie` se lembrou). Login envia cookie `trusted_device` ao backend (se presente) p/ pular o 2º fator.
+- **Refresh**: rotação **single-use + reuse detection** no backend; 401 limpa cookies de sessão. `/me` com access vencido + refresh presente dispara o refresh server-side antes de devolver (sessão sobrevive a reload com access vencido).
+- **`client.ts`** (interceptor axios): 401 ⇒ tenta `/api/auth/refresh` UMA vez (flag `_retry` anti-loop; promise compartilhada anti-tempestade de refresh concorrente) → refaz a request; refresh falho ⇒ `window.location='/login'`. (Step-up/inadimplência na §API CLIENT.)
+- **Logout**: invalida JTI + revoga família do refresh no backend; deleta cookies de qualquer forma (falha silenciosa).
 
 **AuthProvider** (`src/lib/auth/context.tsx`): estado `user: SessionUser | null` + `isLoading`. Chama `/api/auth/me` no mount. Expõe `login(data)`, `logout()`, `homeRouteFor(tipoConta)`.
 
@@ -323,7 +298,7 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 
 **Storybook** (v10): `@storybook/nextjs`, `msw-storybook-addon`, `@storybook/addon-a11y`. Port 6006.
 
-**E2E** (Playwright v1.60): `e2e/`. Smoke, security, LGPD tests. Runs pós-deploy no CI (`smoke.yml`).
+**E2E** (Playwright `^1.61.1`): `e2e/`. Smoke, security, LGPD tests. Runs pós-deploy no CI (`smoke.yml`).
 
 **Property tests**: `@fast-check/vitest` + `fast-check`. Arquivos `*.property.test.ts`.
 

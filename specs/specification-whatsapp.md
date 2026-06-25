@@ -88,12 +88,13 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 
 ## CUSTO & MODELO META (per-message)
 - Desde 01/07/2025: por mensagem, cobra quando *template* é entregue. Categorias marketing / utility / authentication / service. Utility grátis na janela 24h; service grátis.
-- Notifier usa `type:template` → entrega **fora da janela** (corrigido vs `type:text` anterior). ⚠️ **DEPENDÊNCIA EXTERNA**: cada template (16 nomes abaixo) precisa ser **criado e aprovado no Meta Business Manager** (categoria utility/auth, idioma pt_BR, body com variáveis posicionais na ordem do catálogo). Sem aprovação, a Meta rejeita o envio. Ação manual de ops — não automatizável via código.
+- Notifier usa `type:template` → entrega **fora da janela** (corrigido vs `type:text` anterior). ⚠️ **DEPENDÊNCIA EXTERNA**: cada template (16 nomes abaixo) precisa ser **criado e aprovado no Meta Business Manager** (ação manual de ops, não automatizável via código). Regra de aprovação/re-submissão única em §TEMPLATES.
 - Os 16 templates (nomes + copy + ordem de vars) no §TEMPLATES — COPY pt_BR.
 - Brasil base (USD/msg, valores ilustrativos ~2026): marketing $0.0625 · auth $0.0315 · utility menor + volume. Confirmar rate card atual no WhatsApp Manager.
 
 ## TEMPLATES — COPY pt_BR P/ APROVAÇÃO META
-Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUTÁVEL — `SendTemplateAsync` envia N params posicionais; divergir qtd/ordem → Meta rejeita). Todos **categoria Utility**, idioma **Português (BR) / `pt_BR`**, sem header/botões. ⚠️ `Money()` devolve só o número (`149,90`, sem `R$`) → texto inclui `R$ ` antes da var. `metodo` já vem palavra (`cartão de crédito`/`Pix`). Copy é editável; qtd/ordem de vars NÃO. ⚠️ A copy vive SÓ no painel Meta + nesta tabela — `WhatsAppTemplates.cs` é factory de `(name, params[])`, NÃO contém texto. Editar a copy de um template (ex.: #7 `bem_vindo_aluno`, atualizada p/ avisar da pendência de aprovação) exige **re-submeter o template na Meta** (re-aprovação manual de ops; qtd/ordem de vars inalteradas).
+Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUTÁVEL — `SendTemplateAsync` envia N params posicionais; divergir qtd/ordem → Meta rejeita). Todos **categoria Utility**, idioma **Português (BR) / `pt_BR`**, sem header/botões. ⚠️ `Money()` devolve só o número (`149,90`, sem `R$`) → texto inclui `R$ ` antes da var. `metodo` já vem palavra (`cartão de crédito`/`Pix`). ⚠️ A copy vive SÓ no painel Meta + nesta tabela — `WhatsAppTemplates.cs` é factory de `(name, params[])`, NÃO contém texto.
+- **Regra de aprovação/re-submissão (CANÔNICA)**: cada template precisa ser criado e aprovado no Meta Business Manager (utility/auth, pt_BR, vars posicionais na ordem do catálogo) antes do primeiro envio — sem aprovação a Meta rejeita. Copy é editável; **qtd/ordem de vars NÃO**. Editar a copy de um template já aprovado (ex.: #7 `bem_vindo_aluno`) exige **re-submeter na Meta** (re-aprovação manual de ops; qtd/ordem de vars inalteradas). Gotchas Meta: template não pode ser só-variável nem var colada no início/fim sem texto (bodies abaixo ok); evitar vars fora de ordem sequencial no texto (template 15 reescrito p/ {{2}} antes de {{3}}).
 
 | # | template | vars (ordem) | body proposto | samples |
 |---|----------|--------------|---------------|---------|
@@ -113,8 +114,6 @@ Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUT
 | 14 | `aluno_cancelou_assinatura` | nomeTreinador, nomeAluno, valor | `Olá {{1}}, o aluno {{2}} cancelou a assinatura de R$ {{3}}.` | Carlos · João · 149,90 |
 | 15 | `pagamento_em_disputa` | nomeTreinador, nomeAluno, valor | `Olá {{1}}, o pagamento do aluno {{2}} no valor de R$ {{3}} entrou em disputa. Acompanhe o caso.` | Carlos · João · 149,90 |
 | 16 | `novo_aluno_pendente` | nomeTreinador, nomeAluno | `Olá {{1}}, o aluno {{2}} solicitou vínculo e está aguardando sua aprovação na forzion.tech.` | Carlos · João |
-
-- Gotchas Meta: template não pode ser só-variável nem var colada no início/fim sem texto (bodies acima ok). Evitar vars fora de ordem sequencial no texto (template 15 reescrito p/ {{2}} antes de {{3}}).
 
 ## SEGURANÇA
 - `AccessToken`/`PhoneNumberId`/`AppSecret`/`WebhookVerifyToken` backend-only (env/secret), nunca frontend.

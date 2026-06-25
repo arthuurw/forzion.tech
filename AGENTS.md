@@ -3,7 +3,7 @@
 Guia macro para agentes. Formato agent-oriented (denso, sem prosa decorativa). Para o contexto MACRO do projeto, carregar APENAS este arquivo.
 
 ## FRESCOR
-Validado: 2026-06-20 (migração .NET 8→10). STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`, `global.json`.
+Validado: 2026-06-24 (auditoria specs + frescor stack; .NET já em 10). STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`, `global.json`.
 
 ## PROJETO
 forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadastro/aprovação de treinadores, vínculo de alunos, fichas de treino (exercícios + séries), registro de execuções, assinaturas e pagamentos recorrentes.
@@ -25,18 +25,18 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - `frontend/` — Next.js.
 - `specs/` — docs de referência `specification-*` (versionados/commitados).
 
-## PIPELINE — ORDEM DE EXECUÇÃO (passo a passo: o quê → QUANDO)
-DoD adiante = CHECKLIST (o quê); ISTO = SEQUÊNCIA (quando). Escopo trivial pula 1-3. BUG em qualquer ponto ⇒ `superpowers:systematic-debugging` (causa, não sintoma).
-1. BRAINSTORM (`superpowers:brainstorming`) — ANTES de QUALQUER feature/mudança de comportamento; explora intenção+requisito+design. PRECEDE o Specify do `tlc-spec-driven` (não o substitui).
-2. SPEC-DRIVEN (`tlc-spec-driven`) — escopo NOVO: Specify→Design→Tasks→Execute; artefatos em `.specs/` (regra 4). Já quebrado antes ⇒ seguir `tasks.md` direto, SEM reinvocar a skill (regra 4 §PORÉM).
-3. DESIGN-REVIEW (`specs/specification-design-review.md`) — SÓ se toca auth/webhook/concorrência/PII/pagamento; ANTES de codar; saída no `design.md` da feature.
-4. CODA + TESTE JUNTOS (DoD#1) — co-carregar specs via TRIGGER abaixo (+coding +tests + áreas tocadas) ANTES de codar.
-5. GATES LOCAIS — `dotnet format` (DoD#7) → `dotnet build .slnx` + frontend build (DoD#2) → suíte verde (DoD#3).
-6. VERIFY (DoD#4, `superpowers:verification-before-completion`) — comportamento DE FATO, não só verde.
-7. SELF-REVIEW (DoD#5, `superpowers:requesting-code-review`) — diff vs `specification-coding`.
-8. COMMIT + PUSH na branch atual (DoD#8). PR NÃO automático — manual pelo usuário.
-9. BOARD: mover Status a cada fase concluída (DoD#10).
-— PR (quando o usuário pedir): pré-PR re-ler+atualizar specs tocadas → pós-PR CI verde → code-review com context7 (DoD#9).
+## PIPELINE — ORDEM DE EXECUÇÃO (SEQUÊNCIA: quando)
+ISTO = ordem (quando). O "o quê" de cada passo vive no DoD# referenciado — não re-narrar aqui. Escopo trivial pula 1-3. BUG em qualquer ponto ⇒ `superpowers:systematic-debugging` (causa, não sintoma).
+1. BRAINSTORM (`superpowers:brainstorming`) — ANTES de QUALQUER feature/mudança de comportamento; PRECEDE o Specify (não o substitui).
+2. SPEC-DRIVEN (`tlc-spec-driven`, regra 4) — escopo NOVO: Specify→Design→Tasks→Execute.
+3. DESIGN-REVIEW (`specs/specification-design-review.md`) — SÓ se toca auth/webhook/concorrência/PII/pagamento; ANTES de codar.
+4. CODA + TESTE JUNTOS → DoD#1.
+5. GATES LOCAIS → DoD#7 (format) → DoD#2 (build) → DoD#3 (suíte verde).
+6. VERIFY → DoD#4.
+7. SELF-REVIEW → DoD#5.
+8. COMMIT + PUSH na branch atual → DoD#8.
+9. BOARD → DoD#10.
+— PR (quando o usuário pedir) → DoD#9.
 
 ## TRIGGER — QUE SPEC CARREGAR (tarefa → co-carregar)
 Vai escrever CÓDIGO ⇒ SEMPRE +coding +tests (carregar ANTES de codar, não depois). Git ⇒ SEMPRE +git. Iniciou/concluiu FEATURE ou FASE ⇒ SEMPRE +workflow (sincronizar o card — DoD#10). Vai DESENHAR feature que toca auth/webhook/concorrência/PII/pagamento ⇒ ANTES de codar +design-review (checklist pre-flight). Nome curto na coluna "Carregar" = arquivo `specs/specification-<nome>.md`.
@@ -102,7 +102,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 5. Self-review do diff contra `specification-coding` (checklist de incidentes) ANTES de pedir review. [`superpowers:requesting-code-review`]
 6. Comentários: só o "porquê" não-óbvio (regra 9).
 7. Git: LER `specs/specification-git.md` ANTES de qualquer op git (CANÔNICO — §PRE-COMMIT HOOK + §EDGE CASES/CRLF). Conventional; `dotnet format forzion.tech.slnx` ANTES de `git add` em `.cs` novos.
-8. Commit + push para a BRANCH DE TRABALHO ATUAL apenas. NÃO abrir PR automaticamente — PR (→ `homolog`/`master`) é SEMPRE solicitado manualmente pelo usuário, até segunda ordem (uso consciente de recursos de CI + o usuário decide o que vira PR).
+8. Commit + push para a BRANCH DE TRABALHO ATUAL apenas. NÃO abrir PR automaticamente — PR (base = `homolog`, o default branch do repo) é SEMPRE solicitado manualmente pelo usuário, até segunda ordem (uso consciente de recursos de CI + o usuário decide o que vira PR). (NÃO existe `master`/produção viva hoje — promoção a prod é aspiracional.)
 9. PR (quando o usuário pedir o PR — DoD#8): (a) PRÉ-PR: RE-LER a `specification-*` de CADA área tocada e ATUALIZAR o arquivo na MESMA branch se o código divergiu (specs versionadas = estado REAL, não aspiracional); (b) PÓS-PR, AO CI FICAR VERDE: CODE REVIEW do diff alinhado ao plugin **context7** — toda afirmação que dependa de API de lib/framework (EF Core, Npgsql, Stripe.net, ASP.NET, Serilog, Next.js/React/MUI/Sentry, aws-cli/age/pg_dump) é VERIFICADA no context7 (`resolve-library-id`→`query-docs`) ANTES de confirmar/refutar achado — não alucinar API. Achado cross-file: ler o arquivo real (`coding §7`). O review TAMBÉM valida COMENTÁRIOS DESNECESSÁRIOS (regra 9 / `specification-coding` §8): paráfrase, óbvio, inline que repete o código — o subset que o hook de pre-commit NÃO pega (exige julgamento); flagar pra remoção. CI VERMELHO ⇒ `superpowers:systematic-debugging` da causa PRIMEIRO; NÃO revisar código que ainda falha gate. Fluxo operacional (monitorar checks, ordem): `specification-git` §PUSH/PR.
 10. Board (sincronizar o card — `specification-workflow` Fluxo A): a CADA fase concluída, mover o Status do card (Specifying→Designing→Ready for Dev→In Dev→Testing→Developed→In Review→Done); ao mergear, Status=Done + campo Concluído em. NÃO depende de o usuário pedir — é parte do "done". Pré-condição: a workflow-spec já está em contexto (TRIGGER acima dispara em início/fim de feature ou fase) → usar os IDs de campo + comandos `gh` de lá. Escopo Small (quick mode) sem card NÃO se aplica.
 BUG no caminho ⇒ `superpowers:systematic-debugging`: achar a causa, não remendar sintoma; teste vermelho FICA até o código corrigir.
