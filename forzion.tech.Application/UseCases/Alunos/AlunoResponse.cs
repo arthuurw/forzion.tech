@@ -18,5 +18,7 @@ public record AlunoResponse(
     NivelCondicionamento? NivelCondicionamento = null,
     string? LimitacoesFisicas = null,
     string? Doencas = null,
-    string? ObservacoesAdicionais = null
+    string? ObservacoesAdicionais = null,
+    Guid? PacoteId = null,
+    string? PacoteNome = null
 );

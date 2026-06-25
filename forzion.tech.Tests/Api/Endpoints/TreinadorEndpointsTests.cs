@@ -1122,6 +1122,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<ObterAlunoHandler> ObterAlunoHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IVinculoTreinadorAlunoRepository>(),
+            Mock.Of<IPacoteRepository>(),
             Mock.Of<IUserContext>(),
             Mock.Of<ILogger<ObterAlunoHandler>>());
 

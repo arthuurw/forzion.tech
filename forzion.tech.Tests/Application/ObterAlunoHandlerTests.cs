@@ -14,6 +14,7 @@ public class ObterAlunoHandlerTests
 {
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
+    private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IUserContext> _userContext = new();
     private readonly Mock<ILogger<ObterAlunoHandler>> _logger = new();
     private readonly ObterAlunoHandler _handler;
@@ -23,6 +24,7 @@ public class ObterAlunoHandlerTests
         _handler = new ObterAlunoHandler(
             _alunoRepo.Object,
             _vinculoRepo.Object,
+            _pacoteRepo.Object,
             _userContext.Object,
             _logger.Object);
     }
@@ -125,5 +127,78 @@ public class ObterAlunoHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorVinculoAtivoComPacote_RetornaPacoteIdENome()
+    {
+        var treinadorId = Guid.NewGuid();
+        var pacoteId = Guid.NewGuid();
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, DateTime.UtcNow, pacoteId).Value;
+        var pacote = Pacote.Criar(treinadorId, "Plano Premium", 199m, DateTime.UtcNow).Value;
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.IsTreinador).Returns(true);
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacoteId, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var result = await _handler.HandleAsync(new ObterAlunoQuery(aluno.Id));
+
+        result.PacoteId.Should().Be(pacoteId);
+        result.PacoteNome.Should().Be("Plano Premium");
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorVinculoAtivoSemPacote_PacoteNuloSemChamadaAoRepo()
+    {
+        var treinadorId = Guid.NewGuid();
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, aluno.Id, DateTime.UtcNow).Value;
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.IsTreinador).Returns(true);
+        _userContext.Setup(c => c.PerfilId).Returns(treinadorId);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+        _vinculoRepo.Setup(r => r.ObterAtivoAsync(treinadorId, aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(vinculo);
+
+        var result = await _handler.HandleAsync(new ObterAlunoQuery(aluno.Id));
+
+        result.PacoteId.Should().BeNull();
+        result.PacoteNome.Should().BeNull();
+        _pacoteRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Admin_RetornaPacoteNulo()
+    {
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Bia", DateTime.UtcNow).Value;
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(true);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+
+        var result = await _handler.HandleAsync(new ObterAlunoQuery(aluno.Id));
+
+        result.PacoteId.Should().BeNull();
+        result.PacoteNome.Should().BeNull();
+        _pacoteRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlunoAcessandoProprioPerfil_RetornaPacoteNulo()
+    {
+        var aluno = Aluno.Criar(Guid.NewGuid(), "Diego", DateTime.UtcNow).Value;
+
+        _userContext.Setup(c => c.IsSystemAdmin).Returns(false);
+        _userContext.Setup(c => c.PerfilId).Returns(aluno.Id);
+        _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
+
+        var result = await _handler.HandleAsync(new ObterAlunoQuery(aluno.Id));
+
+        result.PacoteId.Should().BeNull();
+        result.PacoteNome.Should().BeNull();
+        _pacoteRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

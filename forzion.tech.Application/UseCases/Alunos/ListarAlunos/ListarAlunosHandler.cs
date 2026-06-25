@@ -33,7 +33,7 @@ public class ListarAlunosHandler(
         logger.LogInformation("Listagem de alunos do treinador {TreinadorId}: {Total} registros.", query.TreinadorId, total);
 
         return new ListarAlunosResponse(
-            [.. items.Select(CadastrarAlunoHandler.ToResponse)],
+            [.. items.Select(a => CadastrarAlunoHandler.ToResponse(a))],
             total,
             query.Pagina,
             query.TamanhoPagina

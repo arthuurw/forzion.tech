@@ -7334,6 +7334,19 @@
               "null",
               "string"
             ]
+          },
+          "pacoteId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "pacoteNome": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
