@@ -10,6 +10,7 @@ public interface IExercicioRepository
     Task<(IReadOnlyList<Exercicio> Items, int Total)> ListarAsync(
         Guid? treinadorId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default,
         string? nome = null, Guid? grupoMuscularId = null, string ordenarPor = "nome");
+    Task<int> ContarGlobaisAsync(CancellationToken cancellationToken = default);
     Task AdicionarAsync(Exercicio exercicio, CancellationToken cancellationToken = default);
     Task RemoverAsync(Exercicio exercicio, CancellationToken cancellationToken = default);
     Task<bool> ExisteAsync(Guid id, Guid? treinadorId, CancellationToken cancellationToken = default);

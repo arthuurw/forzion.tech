@@ -1,6 +1,7 @@
 using forzion.tech.Api.Extensions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Admin.Alunos.ListarAlunosAdmin;
+using forzion.tech.Application.UseCases.Admin.Dashboard;
 using forzion.tech.Application.UseCases.Admin.Stats;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMuscular;
@@ -65,6 +66,16 @@ public static class AdminEndpoints
         })
         .WithSummary("Retorna distribuição de treinadores por plano/tier e alunos por finalidade (G-FE-3)")
         .Produces<DashboardStatsResponse>();
+
+        group.MapGet("/dashboard", async (
+            [FromServices] ObterAdminDashboardHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithSummary("Agregado do dashboard admin (counts, totals, pendentes, recentes) num único round-trip")
+        .Produces<AdminDashboardResponse>();
 
         group.MapGet("/treinadores", async (
             [FromServices] ListarTreinadoresHandler handler,

@@ -27,6 +27,11 @@ public class GrupoMuscularRepository(AppDbContext context) : IGrupoMuscularRepos
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<int> ContarAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Set<GrupoMuscular>().CountAsync(cancellationToken);
+    }
+
     public async Task AdicionarAsync(GrupoMuscular grupoMuscular, CancellationToken cancellationToken = default)
     {
         await _context.Set<GrupoMuscular>().AddAsync(grupoMuscular, cancellationToken);

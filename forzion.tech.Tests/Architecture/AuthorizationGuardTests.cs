@@ -65,6 +65,7 @@ public class AuthorizationGuardTests
         "ListarVinculosHandler",
         "LoginHandler",
         "ObterAssinaturaAlunoHandler",
+        "ObterAdminDashboardHandler",
         "ObterDashboardStatsHandler",
         "ObterHealthReportConfigHandler",
         "ObterPreviewModoPagamentoTreinadorHandler",

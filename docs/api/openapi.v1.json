@@ -1348,6 +1348,31 @@
         ]
       }
     },
+    "/admin/dashboard": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Agregado do dashboard admin (counts, totals, pendentes, recentes) num único round-trip",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDashboardResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/admin/treinadores": {
       "get": {
         "tags": [
@@ -7128,6 +7153,135 @@
             "items": {
               "$ref": "#/components/schemas/SerieConfigRequest"
             }
+          }
+        }
+      },
+      "AdminDashboardCounts": {
+        "required": [
+          "ativos",
+          "pendentes",
+          "inativos"
+        ],
+        "type": "object",
+        "properties": {
+          "ativos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pendentes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "inativos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "AdminDashboardResponse": {
+        "required": [
+          "treinadores",
+          "alunos",
+          "totals",
+          "planoDistribuicao",
+          "alunoFinalidade",
+          "treinadoresPendentes",
+          "alunosPendentes",
+          "recentTreinadores",
+          "planos"
+        ],
+        "type": "object",
+        "properties": {
+          "treinadores": {
+            "$ref": "#/components/schemas/AdminDashboardCounts"
+          },
+          "alunos": {
+            "$ref": "#/components/schemas/AdminDashboardCounts"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AdminDashboardTotals"
+          },
+          "planoDistribuicao": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanoDistribuicaoItem"
+            }
+          },
+          "alunoFinalidade": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlunoFinalidadeItem"
+            }
+          },
+          "treinadoresPendentes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreinadorResponse"
+            }
+          },
+          "alunosPendentes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlunoResponse"
+            }
+          },
+          "recentTreinadores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreinadorResponse"
+            }
+          },
+          "planos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanoPlataformaResponse"
+            }
+          }
+        }
+      },
+      "AdminDashboardTotals": {
+        "required": [
+          "planos",
+          "exerciciosGlobais",
+          "gruposMusculares"
+        ],
+        "type": "object",
+        "properties": {
+          "planos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exerciciosGlobais": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "gruposMusculares": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
