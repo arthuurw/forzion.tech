@@ -321,6 +321,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ReativarVinculoHandler>();
         services.AddScoped<SolicitarTrocaTreinadorHandler>();
         services.AddScoped<ObterVinculoAlunoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Alunos.Dashboard.ObterAlunoDashboardHandler>();
 
         services.AddScoped<ObterAlunoHandler>();
         services.AddScoped<ObterProgressaoAlunoHandler>();

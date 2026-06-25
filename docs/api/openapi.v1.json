@@ -4580,6 +4580,31 @@
         ]
       }
     },
+    "/aluno/dashboard": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "summary": "Retorna o agregado do dashboard do aluno autenticado",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObterAlunoDashboardResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/aluno/troca-treinador": {
       "post": {
         "tags": [
@@ -8733,6 +8758,36 @@
           }
         }
       },
+      "FichaAtivaResumo": {
+        "required": [
+          "treinoAlunoId",
+          "treinoId",
+          "nomeTreino",
+          "objetivo",
+          "criadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "treinoAlunoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "treinoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nomeTreino": {
+            "type": "string"
+          },
+          "objetivo": {
+            "$ref": "#/components/schemas/ObjetivoTreino"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "FinalidadeTreino": {
         "enum": [
           "Hipertrofia",
@@ -9788,6 +9843,49 @@
           "Emagrecimento",
           "Reabilitacao"
         ]
+      },
+      "ObterAlunoDashboardResponse": {
+        "required": [
+          "totalFichas",
+          "fichasAtivas",
+          "totalExecucoes",
+          "sessoesPorSemana",
+          "vinculo"
+        ],
+        "type": "object",
+        "properties": {
+          "totalFichas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fichasAtivas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FichaAtivaResumo"
+            }
+          },
+          "totalExecucoes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sessoesPorSemana": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessaoSemanaItem"
+            }
+          },
+          "vinculo": {
+            "$ref": "#/components/schemas/VinculoResumo"
+          }
+        }
       },
       "ObterVinculoAlunoResponse": {
         "required": [
@@ -10907,6 +11005,32 @@
           }
         }
       },
+      "SessaoSemanaItem": {
+        "required": [
+          "semanaInicio",
+          "semanaFim",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "semanaInicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "semanaFim": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "SolicitarTrocaTreinadorRequest": {
         "required": [
           "novoTreinadorId",
@@ -11643,6 +11767,21 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "VinculoResumo": {
+        "required": [
+          "ativo",
+          "pendente"
+        ],
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "boolean"
+          },
+          "pendente": {
+            "type": "boolean"
           }
         }
       },

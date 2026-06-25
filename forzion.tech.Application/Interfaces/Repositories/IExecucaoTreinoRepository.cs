@@ -25,6 +25,8 @@ public record ProgressaoAggRow(
     double MediaSeries,
     double MediaRepeticoes);
 
+public record SessaoDiaCount(DateTime Dia, int Total);
+
 public interface IExecucaoTreinoRepository
 {
     Task AdicionarAsync(ExecucaoTreino execucao, CancellationToken cancellationToken = default);
@@ -33,6 +35,12 @@ public interface IExecucaoTreinoRepository
     Task<IReadOnlyList<ExecucaoTreino>> ListarPorAlunoAsync(Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
     Task<int> ContarPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ExecucaoComNome>> ListarComNomePorAlunoAsync(Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the per-day session count in [de, ate), aggregated in SQL (GROUP BY day).
+    /// Bounded by the window; week bucketing is done in the application layer.
+    /// </summary>
+    Task<IReadOnlyList<SessaoDiaCount>> ContarSessoesPorDiaAsync(Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns per-(exercício, grupoMuscular, date) aggregated rows in the period,
