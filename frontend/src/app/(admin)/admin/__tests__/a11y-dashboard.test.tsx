@@ -1,17 +1,15 @@
 /**
- * A11y + G-FE-3 tests for admin dashboard:
+ * A11y + aggregate-endpoint tests for admin dashboard:
  *  1. Chart figures have aria-label (a11y — charts)
  *  2. IconButtons in treinadores page have aria-label (a11y — IconButtons)
- *  3. Admin dashboard consumes GET /admin/stats/dashboard endpoint (G-FE-3)
- *     instead of bulk listTreinadores/listAlunos for chart data.
+ *  3. Admin dashboard consumes GET /admin/dashboard (single aggregate) — no burst.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/render";
-import type { TreinadorResponse } from "@/types";
-import type { DashboardStatsResponse } from "@/lib/api/admin";
+import type { TreinadorResponse, AdminDashboardResponse } from "@/types";
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
@@ -35,7 +33,6 @@ vi.mock("@/hooks/usePaginatedList", () => ({
   })),
 }));
 
-// Recharts renders SVG which jsdom doesn't measure well; stub containers
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PieChart: ({ children }: { children: React.ReactNode }) => <svg role="img">{children}</svg>,
@@ -49,9 +46,10 @@ vi.mock("recharts", () => ({
   Legend: () => null,
 }));
 
-const emptyPaginated = { items: [], total: 0, pagina: 1, tamanhoPagina: 1 };
-
-const dashboardStats: DashboardStatsResponse = {
+const adminDashboard: AdminDashboardResponse = {
+  treinadores: { ativos: 5, pendentes: 2, inativos: 1 },
+  alunos: { ativos: 20, pendentes: 3, inativos: 2 },
+  totals: { planos: 2, exerciciosGlobais: 50, gruposMusculares: 6 },
   planoDistribuicao: [
     { tier: "plano-basic-id", total: 10 },
     { tier: "plano-pro-id", total: 5 },
@@ -60,66 +58,76 @@ const dashboardStats: DashboardStatsResponse = {
     { finalidade: "Emagrecimento", total: 20 },
     { finalidade: "Hipertrofia", total: 15 },
   ],
+  treinadoresPendentes: [],
+  alunosPendentes: [],
+  recentTreinadores: [],
+  planos: [],
 };
 
 function setupDefaultHandlers() {
   server.use(
-    http.get("*/admin/treinadores", () => HttpResponse.json(emptyPaginated)),
-    http.get("*/admin/alunos", () => HttpResponse.json(emptyPaginated)),
-    http.get("*/admin/planos", () => HttpResponse.json([])),
-    http.get("*/admin/exercicios", () => HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 1 })),
-    http.get("*/admin/grupos-musculares", () => HttpResponse.json([])),
-    http.get("*/admin/stats/dashboard", () => HttpResponse.json(dashboardStats)),
+    http.get("*/admin/dashboard", () => HttpResponse.json(adminDashboard)),
   );
 }
 
-describe("DashboardAdminPage — G-FE-3 stats endpoint", () => {
-  let statsCallCount = 0;
-  let bulkTreinadoresCallCount = 0;
+describe("DashboardAdminPage — single aggregate endpoint", () => {
+  let dashboardCallCount = 0;
+  let oldEndpointCallCount = 0;
 
   beforeEach(() => {
-    statsCallCount = 0;
-    bulkTreinadoresCallCount = 0;
+    dashboardCallCount = 0;
+    oldEndpointCallCount = 0;
 
     server.use(
-      http.get("*/admin/treinadores", ({ request }) => {
-        const url = new URL(request.url);
-        const tamanhoPagina = url.searchParams.get("tamanhoPagina");
-        // Count bulk (large page) fetches — these should NOT happen anymore for chart data
-        if (tamanhoPagina && parseInt(tamanhoPagina) > 20) {
-          bulkTreinadoresCallCount++;
-        }
-        return HttpResponse.json(emptyPaginated);
+      http.get("*/admin/dashboard", () => {
+        dashboardCallCount++;
+        return HttpResponse.json(adminDashboard);
       }),
-      http.get("*/admin/alunos", () => HttpResponse.json(emptyPaginated)),
-      http.get("*/admin/planos", () => HttpResponse.json([])),
-      http.get("*/admin/exercicios", () => HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 1 })),
-      http.get("*/admin/grupos-musculares", () => HttpResponse.json([])),
+      http.get("*/admin/treinadores", () => {
+        oldEndpointCallCount++;
+        return HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 1 });
+      }),
+      http.get("*/admin/alunos", () => {
+        oldEndpointCallCount++;
+        return HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 1 });
+      }),
+      http.get("*/admin/planos", () => {
+        oldEndpointCallCount++;
+        return HttpResponse.json([]);
+      }),
+      http.get("*/admin/exercicios", () => {
+        oldEndpointCallCount++;
+        return HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 1 });
+      }),
+      http.get("*/admin/grupos-musculares", () => {
+        oldEndpointCallCount++;
+        return HttpResponse.json([]);
+      }),
       http.get("*/admin/stats/dashboard", () => {
-        statsCallCount++;
-        return HttpResponse.json(dashboardStats);
+        oldEndpointCallCount++;
+        return HttpResponse.json({});
       }),
     );
   });
 
-  it("chama GET /admin/stats/dashboard exatamente uma vez", async () => {
+  it("chama GET /admin/dashboard exatamente uma vez", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
     renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
-      expect(statsCallCount).toBe(1);
+      expect(dashboardCallCount).toBe(1);
     });
   });
 
-  it("não faz chamadas bulk (tamanhoPagina > 20) para gerar distribuição dos gráficos", async () => {
+  it("não faz chamadas aos 11 endpoints antigos do burst", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/page");
     renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
-      expect(statsCallCount).toBe(1);
+      expect(dashboardCallCount).toBe(1);
     });
 
-    expect(bulkTreinadoresCallCount).toBe(0);
+    expect(oldEndpointCallCount).toBe(0);
   });
 });
 

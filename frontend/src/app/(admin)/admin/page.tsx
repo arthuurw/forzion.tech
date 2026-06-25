@@ -14,9 +14,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import { TREINADOR_STATUS_COLORS, ALUNO_DASHBOARD_STATUS_COLORS } from "@/lib/constants/labels";
-import type {
-  PlanoPlataformaResponse, GrupoMuscularResponse,
-} from "@/types";
+import type { PlanoPlataformaResponse } from "@/types";
 import { extractApiError } from "@/lib/api/extractApiError";
 
 const AdminDashboardCharts = dynamic(
@@ -46,70 +44,49 @@ export default function DashboardAdminPage() {
     queryKey: queryKeys.admin.dashboard,
     staleTime: 60 * 1000,
     queryFn: async () => {
-      const [
-        ativoTRes, aguardandoTRes, inativoTRes,
-        ativoARes, aguardandoARes, inativoARes,
-        planosRes, exerciciosRes, gruposRes, statsRes,
-        recentTRes,
-      ] = await Promise.all([
-        adminApi.listTreinadores({ status: "Ativo", tamanhoPagina: 1 }),
-        adminApi.listTreinadores({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
-        adminApi.listTreinadores({ status: "Inativo", tamanhoPagina: 1 }),
-        adminApi.listAlunos({ status: "Ativo", tamanhoPagina: 1 }),
-        adminApi.listAlunos({ status: "AguardandoAprovacao", tamanhoPagina: 20 }),
-        adminApi.listAlunos({ status: "Inativo", tamanhoPagina: 1 }),
-        adminApi.listPlanos(),
-        adminApi.listExerciciosGlobais({ tamanhoPagina: 1 }),
-        adminApi.listGruposMusculares(),
-        adminApi.getDashboardStats(),
-        adminApi.listTreinadores({ tamanhoPagina: 5 }),
-      ]);
+      const { data: d } = await adminApi.getDashboard();
 
       const treinadorStats: StatItem[] = [
-        { name: "Ativos", value: ativoTRes.data.total, color: TREINADOR_STATUS_COLORS.Ativos },
-        { name: "Pendentes", value: aguardandoTRes.data.total, color: TREINADOR_STATUS_COLORS.Pendentes },
-        { name: "Inativos", value: inativoTRes.data.total, color: TREINADOR_STATUS_COLORS.Inativos },
+        { name: "Ativos", value: d.treinadores.ativos, color: TREINADOR_STATUS_COLORS.Ativos },
+        { name: "Pendentes", value: d.treinadores.pendentes, color: TREINADOR_STATUS_COLORS.Pendentes },
+        { name: "Inativos", value: d.treinadores.inativos, color: TREINADOR_STATUS_COLORS.Inativos },
       ];
 
       const alunoStats: StatItem[] = [
-        { name: "Ativos", value: ativoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Ativos },
-        { name: "Pendentes", value: aguardandoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Pendentes },
-        { name: "Inativos", value: inativoARes.data.total, color: ALUNO_DASHBOARD_STATUS_COLORS.Inativos },
+        { name: "Ativos", value: d.alunos.ativos, color: ALUNO_DASHBOARD_STATUS_COLORS.Ativos },
+        { name: "Pendentes", value: d.alunos.pendentes, color: ALUNO_DASHBOARD_STATUS_COLORS.Pendentes },
+        { name: "Inativos", value: d.alunos.inativos, color: ALUNO_DASHBOARD_STATUS_COLORS.Inativos },
       ];
 
-      const recentTreinadores = [...recentTRes.data.items]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 5);
-
-      const planosData = planosRes.data as PlanoPlataformaResponse[];
+      const planosData = d.planos as PlanoPlataformaResponse[];
       const planoMap = new Map(planosData.map((p) => [p.planoId, p]));
-      const planoStats: PlanoStat[] = statsRes.data.planoDistribuicao.map((d) => {
-        const plano = planoMap.get(d.tier);
+      const planoStats: PlanoStat[] = d.planoDistribuicao.map((item) => {
+        const plano = planoMap.get(item.tier);
         return {
-          planoId: d.tier,
-          name: plano ? plano.nome : d.tier,
-          total: d.total,
+          planoId: item.tier,
+          name: plano ? plano.nome : item.tier,
+          total: item.total,
           preco: plano?.preco ?? 0,
           maxAlunos: plano?.maxAlunos ?? 0,
         };
       }).sort((a, b) => b.total - a.total);
 
-      const finalidadeData: DistItem[] = statsRes.data.alunoFinalidade
+      const finalidadeData: DistItem[] = d.alunoFinalidade
         .slice()
         .sort((a, b) => b.total - a.total)
-        .map((d) => ({ name: d.finalidade, total: d.total }));
+        .map((item) => ({ name: item.finalidade, total: item.total }));
 
       return {
         treinadorStats,
         alunoStats,
-        pendentes: aguardandoTRes.data.items,
-        alunosPendentes: aguardandoARes.data.items,
-        recentTreinadores,
+        pendentes: d.treinadoresPendentes,
+        alunosPendentes: d.alunosPendentes,
+        recentTreinadores: d.recentTreinadores,
         planoStats,
         finalidadeData,
         planos: planosData,
-        totalExercicios: exerciciosRes.data.total,
-        totalGrupos: (gruposRes.data as GrupoMuscularResponse[]).length,
+        totalExercicios: d.totals.exerciciosGlobais,
+        totalGrupos: d.totals.gruposMusculares,
       };
     },
   });

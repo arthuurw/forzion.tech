@@ -1474,6 +1474,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agregado do dashboard admin (counts, totals, pendentes, recentes) num único round-trip */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminDashboardResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/treinadores": {
         parameters: {
             query?: never;
@@ -2995,6 +3031,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/test-data/contas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista contas de teste (@e2e.test). Rota ausente em Production. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ContaTesteResumo"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/test-data/contas/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Hard-delete de uma conta de teste (@e2e.test). Rota ausente em Production. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/health-report/config": {
         parameters: {
             query?: never;
@@ -3285,6 +3411,42 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/treinador/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Painel agregado do treinador (counts, MRR, receita/pacote, fichas, pendentes, onboarding, plano) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TreinadorDashboardResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4652,6 +4814,42 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ObterVinculoAlunoResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna o agregado do dashboard do aluno autenticado */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ObterAlunoDashboardResponse"];
                     };
                 };
             };
@@ -7011,7 +7209,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lista histórico de pagamentos de uma assinatura */
+        /** Lista histórico de pagamentos de uma assinatura (paginado) */
         get: {
             parameters: {
                 query?: never;
@@ -7029,7 +7227,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PagamentoResponse"][];
+                        "application/json": components["schemas"]["ListarPagamentosAssinaturaAlunoResponse"];
                     };
                 };
                 /** @description Forbidden */
@@ -7173,7 +7371,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Retorna a assinatura de plano ativa do treinador */
+        /** Retorna a assinatura de plano ativa do treinador, ou null se não houver */
         get: {
             parameters: {
                 query?: never;
@@ -7190,15 +7388,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": unknown;
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -7390,6 +7579,33 @@ export interface components {
             exercicioId: string;
             series: components["schemas"]["SerieConfigRequest"][];
         };
+        AdminDashboardCounts: {
+            /** Format: int32 */
+            ativos: number | string;
+            /** Format: int32 */
+            pendentes: number | string;
+            /** Format: int32 */
+            inativos: number | string;
+        };
+        AdminDashboardResponse: {
+            treinadores: components["schemas"]["AdminDashboardCounts"];
+            alunos: components["schemas"]["AdminDashboardCounts"];
+            totals: components["schemas"]["AdminDashboardTotals"];
+            planoDistribuicao: components["schemas"]["PlanoDistribuicaoItem"][];
+            alunoFinalidade: components["schemas"]["AlunoFinalidadeItem"][];
+            treinadoresPendentes: components["schemas"]["TreinadorResponse"][];
+            alunosPendentes: components["schemas"]["AlunoResponse"][];
+            recentTreinadores: components["schemas"]["TreinadorResponse"][];
+            planos: components["schemas"]["PlanoPlataformaResponse"][];
+        };
+        AdminDashboardTotals: {
+            /** Format: int32 */
+            planos: number | string;
+            /** Format: int32 */
+            exerciciosGlobais: number | string;
+            /** Format: int32 */
+            gruposMusculares: number | string;
+        };
         AlterarModoPagamentoRequest: {
             modo: components["schemas"]["ModoPagamentoAluno"];
         };
@@ -7485,6 +7701,8 @@ export interface components {
         };
         /** @enum {unknown} */
         AssinaturaAlunoStatus: "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
+        /** @enum {unknown} */
+        AssinaturaTreinadorStatus: "Pendente" | "Ativa" | "Inadimplente" | "Cancelada" | null;
         AtribuirPlanoRequest: {
             /** Format: uuid */
             planoId: string;
@@ -7575,6 +7793,13 @@ export interface components {
         };
         ConfirmarMfaTotpRequest: {
             codigo: string;
+        };
+        ContaTesteResumo: {
+            /** Format: uuid */
+            contaId: string;
+            email: string;
+            /** Format: date-time */
+            criadaEm: string;
         };
         CriarExercicioGlobalRequest: {
             nome: string;
@@ -7736,6 +7961,16 @@ export interface components {
             status: components["schemas"]["TreinoAlunoStatus"];
             exercicios: components["schemas"]["TreinoExercicioResponse"][];
         };
+        FichaAtivaResumo: {
+            /** Format: uuid */
+            treinoAlunoId: string;
+            /** Format: uuid */
+            treinoId: string;
+            nomeTreino: string;
+            objetivo: components["schemas"]["ObjetivoTreino"];
+            /** Format: date-time */
+            criadoEm: string;
+        };
         /** @enum {unknown} */
         FinalidadeTreino: "Hipertrofia" | "Emagrecimento" | "CondicionamentoFisico" | "Saude" | "PerformanceEsportiva" | "Reabilitacao" | "Outro" | null;
         ForgotPasswordRequest: {
@@ -7860,6 +8095,15 @@ export interface components {
             /** Format: uuid */
             proximoCursor: null | string;
         };
+        ListarPagamentosAssinaturaAlunoResponse: {
+            items: components["schemas"]["PagamentoResponse"][];
+            /** Format: int32 */
+            total: number | string;
+            /** Format: int32 */
+            pagina: number | string;
+            /** Format: int32 */
+            tamanhoPagina: number | string;
+        };
         ListarRecebimentosTreinadorResultado: {
             itens: components["schemas"]["RecebimentoTreinadorResponse"][];
             proximoCursor: null | string;
@@ -7979,8 +8223,22 @@ export interface components {
         };
         /** @enum {unknown} */
         NotaFiscalStatus: "Pendente" | "Emitida" | "Erro" | "BloqueadaDadosFiscais" | "CancelamentoSolicitado" | "Cancelada" | "CancelamentoExpirado";
+        ObjetivoItem: {
+            objetivo: components["schemas"]["ObjetivoTreino"];
+            /** Format: int32 */
+            total: number | string;
+        };
         /** @enum {unknown} */
         ObjetivoTreino: "Hipertrofia" | "Forca" | "Resistencia" | "Emagrecimento" | "Reabilitacao";
+        ObterAlunoDashboardResponse: {
+            /** Format: int32 */
+            totalFichas: number | string;
+            fichasAtivas: components["schemas"]["FichaAtivaResumo"][];
+            /** Format: int32 */
+            totalExecucoes: number | string;
+            sessoesPorSemana: components["schemas"]["SessaoSemanaItem"][];
+            vinculo: components["schemas"]["VinculoResumo"];
+        };
         ObterVinculoAlunoResponse: {
             vinculoAtivo: null | components["schemas"]["VinculoAlunoItemResponse"];
             vinculoPendente: null | components["schemas"]["VinculoAlunoItemResponse"];
@@ -8101,6 +8359,15 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             dataPagamento: null | string;
+        };
+        ReceitaPorPacoteItem: {
+            /** Format: uuid */
+            pacoteId: string;
+            nome: string;
+            /** Format: int32 */
+            alunos: number | string;
+            /** Format: double */
+            receita: number | string;
         };
         ReconciliarNfseResponse: {
             /** Format: int32 */
@@ -8247,6 +8514,14 @@ export interface components {
             /** Format: int32 */
             ordem: number | string;
         };
+        SessaoSemanaItem: {
+            /** Format: date-time */
+            semanaInicio: string;
+            /** Format: date-time */
+            semanaFim: string;
+            /** Format: int32 */
+            total: number | string;
+        };
         SolicitarTrocaTreinadorRequest: {
             /** Format: uuid */
             novoTreinadorId: string;
@@ -8267,6 +8542,29 @@ export interface components {
         TipoNotaFiscal: "AssinaturaSaaS" | "ComissaoMarketplace";
         /** @enum {unknown} */
         TipoTrocaPlano: "Upgrade" | "Downgrade" | "InadimplenteRegularizacao" | "UpgradeImediato";
+        TreinadorDashboardCounts: {
+            /** Format: int32 */
+            ativos: number | string;
+            /** Format: int32 */
+            aguardando: number | string;
+            /** Format: int32 */
+            inativos: number | string;
+        };
+        TreinadorDashboardPlano: {
+            status: null | components["schemas"]["AssinaturaTreinadorStatus"];
+        };
+        TreinadorDashboardResponse: {
+            counts: components["schemas"]["TreinadorDashboardCounts"];
+            /** Format: double */
+            mrr: number | string;
+            receitaPorPacote: components["schemas"]["ReceitaPorPacoteItem"][];
+            /** Format: int32 */
+            totalFichas: number | string;
+            objetivos: components["schemas"]["ObjetivoItem"][];
+            pendentes: components["schemas"]["VinculoDetalheResponse"][];
+            onboarding: components["schemas"]["OnboardingStatusResponse"];
+            plano: components["schemas"]["TreinadorDashboardPlano"];
+        };
         TreinadorResponse: {
             /** Format: uuid */
             treinadorId: string;
@@ -8420,6 +8718,10 @@ export interface components {
             status: components["schemas"]["VinculoStatus"];
             /** Format: date-time */
             createdAt: string;
+        };
+        VinculoResumo: {
+            ativo: boolean;
+            pendente: boolean;
         };
         /** @enum {unknown} */
         VinculoStatus: "AguardandoAprovacao" | "Ativo" | "Inativo";

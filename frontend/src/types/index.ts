@@ -429,3 +429,27 @@ export interface HealthSnapshotResponse {
   statusGeral: StatusSaude;
   payloadJson: string;
 }
+
+export interface AdminDashboardCounts {
+  ativos: number;
+  pendentes: number;
+  inativos: number;
+}
+
+export interface AdminDashboardTotals {
+  planos: number;
+  exerciciosGlobais: number;
+  gruposMusculares: number;
+}
+
+export interface AdminDashboardResponse {
+  treinadores: AdminDashboardCounts;
+  alunos: AdminDashboardCounts;
+  totals: AdminDashboardTotals;
+  planoDistribuicao: { tier: string; total: number }[];
+  alunoFinalidade: { finalidade: string; total: number }[];
+  treinadoresPendentes: TreinadorResponse[];
+  alunosPendentes: AlunoResponse[];
+  recentTreinadores: TreinadorResponse[];
+  planos: PlanoPlataformaResponse[];
+}
