@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
@@ -10,7 +11,7 @@ namespace forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
 public class ReconciliarNfseHandler(
     INotaFiscalRepository notaFiscalRepository,
     IEmissorNfseService emissor,
-    IUnitOfWork unitOfWork,
+    IServiceScopeFactory scopeFactory,
     TimeProvider timeProvider,
     ILogger<ReconciliarNfseHandler> logger)
 {
@@ -51,8 +52,20 @@ public class ReconciliarNfseHandler(
                     try
                     {
                         var statusGov = await emissor.ConsultarAsync(nota.ChaveAcesso, cancellationToken).ConfigureAwait(false);
-                        var de = nota.Status;
-                        var transicao = AplicarSituacao(nota, statusGov, agora);
+
+                        using var scope = scopeFactory.CreateScope();
+                        var notaRepoScoped = scope.ServiceProvider.GetRequiredService<INotaFiscalRepository>();
+                        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+                        var notaAtual = await notaRepoScoped.ObterPorIdAsync(nota.Id, cancellationToken).ConfigureAwait(false);
+                        if (notaAtual is null)
+                        {
+                            semAlteracao++;
+                            continue;
+                        }
+
+                        var de = notaAtual.Status;
+                        var transicao = AplicarSituacao(notaAtual, statusGov, agora);
 
                         if (transicao is null)
                         {
@@ -63,14 +76,14 @@ public class ReconciliarNfseHandler(
                         {
                             semAlteracao++;
                             logger.LogWarning("Reconciliação NFS-e {NotaFiscalId}: transição ignorada ({Erro}).",
-                                nota.Id, transicao.Error!.Message);
+                                notaAtual.Id, transicao.Error!.Message);
                             continue;
                         }
 
                         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
                         atualizadas++;
                         logger.LogInformation("Reconciliação NFS-e {NotaFiscalId}: {De}→{Para} conforme gov.",
-                            nota.Id, de, nota.Status);
+                            notaAtual.Id, de, notaAtual.Status);
                     }
                     catch (OperationCanceledException)
                     {

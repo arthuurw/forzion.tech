@@ -43,12 +43,12 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             Mock.Of<IMfaChallengeRepository>(), Mock.Of<ITrustedDeviceRepository>());
 
         public Mock<GerarNfseComissaoMensalHandler> GerarNfseComissaoMock { get; } = new(
-            Mock.Of<IPagamentoRepository>(), Mock.Of<INotaFiscalRepository>(), Mock.Of<IOutboxEnfileirador>(),
-            Mock.Of<IUnitOfWork>(), Mock.Of<IDatabaseErrorInspector>(), Options.Create(new PaymentSettings()), TimeProvider.System,
+            Mock.Of<IPagamentoRepository>(), Mock.Of<INotaFiscalRepository>(), Mock.Of<IServiceScopeFactory>(),
+            Options.Create(new PaymentSettings()), TimeProvider.System,
             Mock.Of<ILogger<GerarNfseComissaoMensalHandler>>());
 
         public Mock<ReconciliarNfseHandler> ReconciliarNfseMock { get; } = new(
-            Mock.Of<INotaFiscalRepository>(), Mock.Of<IEmissorNfseService>(), Mock.Of<IUnitOfWork>(),
+            Mock.Of<INotaFiscalRepository>(), Mock.Of<IEmissorNfseService>(), Mock.Of<IServiceScopeFactory>(),
             TimeProvider.System, Mock.Of<ILogger<ReconciliarNfseHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

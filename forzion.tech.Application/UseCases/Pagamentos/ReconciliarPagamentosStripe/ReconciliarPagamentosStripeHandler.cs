@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStripe;
@@ -20,7 +21,7 @@ namespace forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStri
 /// </summary>
 public class ReconciliarPagamentosStripeHandler(
     IStripeService stripeService,
-    ProcessarWebhookStripeHandler webhookHandler,
+    IServiceScopeFactory scopeFactory,
     TimeProvider timeProvider,
     ILogger<ReconciliarPagamentosStripeHandler> logger)
 {
@@ -49,6 +50,8 @@ public class ReconciliarPagamentosStripeHandler(
             try
             {
                 var parsed = StripeWebhookParser.Parse(evt.PayloadRaw);
+                using var scope = scopeFactory.CreateScope();
+                var webhookHandler = scope.ServiceProvider.GetRequiredService<ProcessarWebhookStripeHandler>();
                 var resultado = await webhookHandler.ProcessarEventoAsync(parsed, cancellationToken).ConfigureAwait(false);
 
                 if (resultado == ProcessarEventoResultado.Aplicado)

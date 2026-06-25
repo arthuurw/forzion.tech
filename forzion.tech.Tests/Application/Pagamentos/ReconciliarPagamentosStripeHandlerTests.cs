@@ -5,6 +5,7 @@ using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
 using forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStripe;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -37,8 +38,13 @@ public class ReconciliarPagamentosStripeHandlerTests
             _stripeService.Object, _unitOfWork.Object, Mock.Of<IOutboxEnfileirador>(),
             Mock.Of<IDatabaseErrorInspector>(), _time, _webhookLogger.Object);
 
+        var scopeFactory = new ServiceCollection()
+            .AddSingleton(_webhookHandler)
+            .BuildServiceProvider()
+            .GetRequiredService<IServiceScopeFactory>();
+
         _handler = new ReconciliarPagamentosStripeHandler(
-            _stripeService.Object, _webhookHandler, _time, _reconciliarLogger.Object);
+            _stripeService.Object, scopeFactory, _time, _reconciliarLogger.Object);
     }
 
     private static StripeEventSummary PaymentIntentEvento(string type, string paymentIntentId, DateTime created, string? accountId = null)

@@ -4,6 +4,7 @@ using forzion.tech.Application.Outbox;
 using forzion.tech.Application.Settings;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Shared;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -12,9 +13,7 @@ namespace forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
 public class GerarNfseComissaoMensalHandler(
     IPagamentoRepository pagamentoRepository,
     INotaFiscalRepository notaFiscalRepository,
-    IOutboxEnfileirador enfileirador,
-    IUnitOfWork unitOfWork,
-    IDatabaseErrorInspector databaseErrorInspector,
+    IServiceScopeFactory scopeFactory,
     IOptions<PaymentSettings> paymentSettings,
     TimeProvider timeProvider,
     ILogger<GerarNfseComissaoMensalHandler> logger)
@@ -70,7 +69,13 @@ public class GerarNfseComissaoMensalHandler(
                 }
 
                 var nota = criar.Value;
-                await notaFiscalRepository.AdicionarAsync(nota, cancellationToken).ConfigureAwait(false);
+                using var scope = scopeFactory.CreateScope();
+                var notaRepoScoped = scope.ServiceProvider.GetRequiredService<INotaFiscalRepository>();
+                var enfileirador = scope.ServiceProvider.GetRequiredService<IOutboxEnfileirador>();
+                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                var databaseErrorInspector = scope.ServiceProvider.GetRequiredService<IDatabaseErrorInspector>();
+
+                await notaRepoScoped.AdicionarAsync(nota, cancellationToken).ConfigureAwait(false);
                 enfileirador.Enfileirar("fx:emitir_nfse", new EmitirNfsePayload(nota.Id),
                     $"fx:emitir_nfse:comissao:{item.TreinadorId}:{command.CompetenciaInicio:yyyyMM}");
                 try

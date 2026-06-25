@@ -6,6 +6,7 @@ using forzion.tech.Application.Settings;
 using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -30,12 +31,18 @@ public class GerarNfseComissaoMensalHandlerTests
 
     public GerarNfseComissaoMensalHandlerTests()
     {
+        var scopeFactory = new ServiceCollection()
+            .AddSingleton(_notaRepo.Object)
+            .AddSingleton(_enfileirador.Object)
+            .AddSingleton(_unitOfWork.Object)
+            .AddSingleton(_dbErrorInspector.Object)
+            .BuildServiceProvider()
+            .GetRequiredService<IServiceScopeFactory>();
+
         _handler = new GerarNfseComissaoMensalHandler(
             _pagamentoRepo.Object,
             _notaRepo.Object,
-            _enfileirador.Object,
-            _unitOfWork.Object,
-            _dbErrorInspector.Object,
+            scopeFactory,
             Options.Create(new PaymentSettings { TaxaPlataformaPercent = 10m }),
             _time,
             Mock.Of<ILogger<GerarNfseComissaoMensalHandler>>());
