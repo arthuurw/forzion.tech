@@ -51,16 +51,7 @@ public class ObterTreinadorDashboardHandler(
             .ListarComDetalhesAsync(treinadorId, VinculoStatus.AguardandoAprovacao, 1, PendentesCap, cancellationToken)
             .ConfigureAwait(false);
 
-        var pendentes = pendentesItems.Select(x => new VinculoDetalheResponse(
-            x.Vinculo.Id,
-            x.Vinculo.TreinadorId,
-            x.Vinculo.AlunoId,
-            x.Vinculo.PacoteId,
-            x.Vinculo.Status,
-            x.NomeAluno,
-            x.EmailAluno,
-            x.Vinculo.CreatedAt,
-            x.TemVinculoAtivoPrevio)).ToList();
+        var pendentes = pendentesItems.Select(VinculoDetalheResponse.De).ToList();
 
         var onboardingResult = await onboardingHandler
             .HandleAsync(new VerificarOnboardingTreinadorQuery(treinadorId), cancellationToken).ConfigureAwait(false);

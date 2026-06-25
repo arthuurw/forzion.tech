@@ -1,3 +1,4 @@
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.UseCases.Treinadores;
@@ -8,4 +9,8 @@ public record TreinadorResponse(
     string Nome,
     TreinadorStatus Status,
     Guid? PlanoPlataformaId,
-    DateTime CreatedAt);
+    DateTime CreatedAt)
+{
+    public static TreinadorResponse De(Treinador t) =>
+        new(t.Id, t.ContaId, t.Nome, t.Status, t.PlanoPlataformaId, t.CreatedAt);
+}

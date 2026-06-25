@@ -2,7 +2,6 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.CadastrarAluno;
 using forzion.tech.Application.UseCases.Planos;
 using forzion.tech.Application.UseCases.Treinadores;
-using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.UseCases.Admin.Dashboard;
@@ -57,12 +56,9 @@ public class ObterAdminDashboardHandler(
             new AdminDashboardTotals(planos.Count, exerciciosGlobais, gruposMusculares),
             planoDistribuicao,
             alunoFinalidade,
-            [.. treinadoresPendentesItems.Select(ToResponse)],
+            [.. treinadoresPendentesItems.Select(TreinadorResponse.De)],
             [.. alunosPendentesItems.Select(a => CadastrarAlunoHandler.ToResponse(a))],
-            [.. recentes.Select(ToResponse)],
+            [.. recentes.Select(TreinadorResponse.De)],
             [.. planos.Select(PlanoPlataformaResponseExtensions.ToResponse)]);
     }
-
-    private static TreinadorResponse ToResponse(Treinador t) =>
-        new(t.Id, t.ContaId, t.Nome, t.Status, t.PlanoPlataformaId, t.CreatedAt);
 }
