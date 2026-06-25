@@ -14,6 +14,7 @@ import type {
   ObjetivoTreino,
   DificuldadeTreino,
   ProgressaoAlunoResponse,
+  TreinadorDashboardResponse,
 } from "@/types";
 
 export interface CriarFichaData {
@@ -137,6 +138,10 @@ export const treinadorApi = {
 
   reativarAluno(alunoId: string, pacoteId: string) {
     return apiClient.post<VinculoDetalheResponse>(`/treinador/alunos/${alunoId}/reativar`, { pacoteId });
+  },
+
+  getDashboard() {
+    return apiClient.get<TreinadorDashboardResponse>("/treinador/dashboard");
   },
 
   listPacotes() {

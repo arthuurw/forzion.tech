@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
 import dynamic from "next/dynamic";
 import {
   Box, Typography, Paper, Stack, Divider, Button,
@@ -8,12 +10,11 @@ import { useTheme, alpha } from "@mui/material/styles";
 import CheckIcon from "@mui/icons-material/Check";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import { useRouter } from "next/navigation";
-import { pagamentoApi } from "@/lib/api/pagamento";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { treinadorApi } from "@/lib/api/treinador";
 import { extractApiError } from "@/lib/api/extractApiError";
-import type { VinculoDetalheResponse, PacoteResponse, TreinoResponse } from "@/types";
+import type { VinculoDetalheResponse } from "@/types";
 import { OBJETIVO_LABEL, ALUNO_STATUS_COLORS } from "@/lib/constants/labels";
 
 const TreinadorDashboardCharts = dynamic(
@@ -41,106 +42,63 @@ interface ReceitaPacoteItem {
 export default function DashboardTreinadorPage() {
   const theme = useTheme();
   const router = useRouter();
-  const [alunoStats, setAlunoStats] = useState<StatItem[]>([]);
-  const [objetivoData, setObjetivoData] = useState<ObjetivoItem[]>([]);
-  const [pendentes, setPendentes] = useState<VinculoDetalheResponse[]>([]);
-  const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
-  const [totalFichas, setTotalFichas] = useState(0);
-  const [mrr, setMrr] = useState(0);
-  const [receitaPorPacote, setReceitaPorPacote] = useState<ReceitaPacoteItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [onboardingPendente, setOnboardingPendente] = useState(false);
-  const [modoExterno, setModoExterno] = useState(false);
-  const [planoInadimplente, setPlanoInadimplente] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const [ativoRes, aguardandoRes, inativoRes, fichasRes, pacotesRes] = await Promise.all([
-        treinadorApi.listVinculos({ status: "Ativo", tamanhoPagina: 100 }),
-        treinadorApi.listVinculos({ status: "AguardandoAprovacao", tamanhoPagina: 10 }),
-        treinadorApi.listVinculos({ status: "Inativo", tamanhoPagina: 1 }),
-        treinadorApi.listFichas({ tamanhoPagina: 100 }),
-        treinadorApi.listPacotes(),
-      ]);
+  const { data, isPending, isError, error: queryError } = useQuery({
+    queryKey: queryKeys.treinador.dashboard,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data: d } = await treinadorApi.getDashboard();
 
-      const pacotesList = pacotesRes.data as PacoteResponse[];
-      setPacotes(pacotesList);
+      const alunoStats: StatItem[] = [
+        { name: "Ativos", value: d.counts.ativos, color: ALUNO_STATUS_COLORS.Ativos },
+        { name: "Aguardando", value: d.counts.aguardando, color: ALUNO_STATUS_COLORS.Aguardando },
+        { name: "Inativos", value: d.counts.inativos, color: ALUNO_STATUS_COLORS.Inativos },
+      ];
 
-      setAlunoStats([
-        { name: "Ativos", value: ativoRes.data.total, color: ALUNO_STATUS_COLORS.Ativos },
-        { name: "Aguardando", value: aguardandoRes.data.total, color: ALUNO_STATUS_COLORS.Aguardando },
-        { name: "Inativos", value: inativoRes.data.total, color: ALUNO_STATUS_COLORS.Inativos },
-      ]);
+      const receitaPorPacote: ReceitaPacoteItem[] = d.receitaPorPacote.map((p) => ({
+        name: p.nome,
+        receita: p.receita,
+        alunos: p.alunos,
+      }));
 
-      setPendentes(aguardandoRes.data.items);
-      setTotalFichas(fichasRes.data.total);
+      const objetivoData: ObjetivoItem[] = d.objetivos
+        .slice()
+        .sort((a, b) => b.total - a.total)
+        .map((o) => ({ name: OBJETIVO_LABEL[o.objetivo] ?? o.objetivo, total: o.total }));
 
-      // Compute MRR from active vinculos × pacote price
-      const precoMap = new Map(pacotesList.map((p) => [p.pacoteId, p]));
-      let totalMrr = 0;
-      const receitaMap: Record<string, ReceitaPacoteItem> = {};
-      for (const v of ativoRes.data.items as VinculoDetalheResponse[]) {
-        if (!v.pacoteId) continue;
-        const pacote = precoMap.get(v.pacoteId);
-        if (!pacote) continue;
-        totalMrr += pacote.preco;
-        if (!receitaMap[v.pacoteId]) {
-          receitaMap[v.pacoteId] = { name: pacote.nome, alunos: 0, receita: 0 };
-        }
-        receitaMap[v.pacoteId].alunos += 1;
-        receitaMap[v.pacoteId].receita += pacote.preco;
-      }
-      setMrr(totalMrr);
-      setReceitaPorPacote(
-        Object.values(receitaMap).sort((a, b) => b.receita - a.receita)
-      );
-
-      const contagem: Record<string, number> = {};
-      for (const f of fichasRes.data.items as TreinoResponse[]) {
-        const label = OBJETIVO_LABEL[f.objetivo] ?? f.objetivo;
-        contagem[label] = (contagem[label] ?? 0) + 1;
-      }
-      setObjetivoData(
-        Object.entries(contagem)
-          .sort((a, b) => b[1] - a[1])
-          .map(([name, total]) => ({ name, total }))
-      );
-    } catch (err) {
-      setError(extractApiError(err, "Erro ao carregar dados do painel."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+      return {
+        alunoStats,
+        objetivoData,
+        pendentes: d.pendentes,
+        totalFichas: d.totalFichas,
+        mrr: d.mrr,
+        receitaPorPacote,
+        onboardingPendente: !d.onboarding.onboardingCompleto,
+        modoExterno: d.onboarding.modoPagamentoAluno === "Externo",
+        planoInadimplente: d.plano.status === "Inadimplente",
+        pacoteNomes: new Map(d.receitaPorPacote.map((p) => [p.pacoteId, p.nome])),
+      };
+    },
+  });
 
   useEffect(() => {
-    pagamentoApi.verificarOnboarding()
-      .then((res) => {
-        setModoExterno(res.data.modoPagamentoAluno === "Externo");
-        setOnboardingPendente(!res.data.onboardingCompleto);
-      })
-      .catch(() => setOnboardingPendente(false));
-  }, []);
+    if (isError) setError(extractApiError(queryError, "Erro ao carregar dados do painel."));
+  }, [isError, queryError]);
 
-  useEffect(() => {
-    pagamentoApi.obterAssinaturaTreinador()
-      .then((res) => setPlanoInadimplente(res.data?.status === "Inadimplente"))
-      .catch(() => setPlanoInadimplente(false));
-  }, []);
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.treinador.dashboard });
 
   const handleAprovar = async (vinculo: VinculoDetalheResponse) => {
     if (!vinculo.pacoteId) {
-      // Redirect to /treinador/alunos where the trainer can pick a package.
       router.push("/treinador/alunos");
       return;
     }
     setActionLoading(`${vinculo.vinculoId}_aprovar`);
     try {
       await treinadorApi.aprovarVinculo(vinculo.vinculoId, vinculo.pacoteId);
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao aprovar vínculo."));
     } finally {
@@ -152,7 +110,7 @@ export default function DashboardTreinadorPage() {
     setActionLoading(`${vinculoId}_desvincular`);
     try {
       await treinadorApi.desvincularAluno(vinculoId);
-      await load();
+      await refresh();
     } catch (err) {
       setError(extractApiError(err, "Erro ao desvincular aluno."));
     } finally {
@@ -160,13 +118,13 @@ export default function DashboardTreinadorPage() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (isPending) return <LoadingSpinner />;
 
   return (
     <Box>
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
-      {planoInadimplente && (
+      {data?.planoInadimplente && (
         <Paper
           sx={{
             p: 2.5,
@@ -189,7 +147,7 @@ export default function DashboardTreinadorPage() {
         </Paper>
       )}
 
-      {onboardingPendente && !modoExterno && (
+      {data?.onboardingPendente && !data?.modoExterno && (
         <Paper
           sx={{
             p: 2.5,
@@ -212,9 +170,8 @@ export default function DashboardTreinadorPage() {
         </Paper>
       )}
 
-      {/* Stat cards */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" }, gap: 2, mb: 4 }}>
-        {alunoStats.map((s) => (
+        {(data?.alunoStats ?? []).map((s) => (
           <Paper
             key={s.name}
             sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}
@@ -232,7 +189,7 @@ export default function DashboardTreinadorPage() {
         ))}
         <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.info.main}`, borderRadius: 2 }}>
           <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "info.main" }}>
-            {totalFichas}
+            {data?.totalFichas ?? 0}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
             Fichas
@@ -240,7 +197,7 @@ export default function DashboardTreinadorPage() {
         </Paper>
         <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.success.main}`, borderRadius: 2 }}>
           <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.2, color: "success.main" }}>
-            {mrr.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            {(data?.mrr ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
             Receita Est./mês
@@ -249,12 +206,11 @@ export default function DashboardTreinadorPage() {
       </Box>
 
       <TreinadorDashboardCharts
-        alunoStats={alunoStats}
-        objetivoData={objetivoData}
-        receitaPorPacote={receitaPorPacote}
+        alunoStats={data?.alunoStats ?? []}
+        objetivoData={data?.objetivoData ?? []}
+        receitaPorPacote={data?.receitaPorPacote ?? []}
       />
 
-      {/* Pending vinculos */}
       <Paper sx={{ p: 3, borderRadius: 2 }}>
         <Typography
           variant="overline"
@@ -264,13 +220,13 @@ export default function DashboardTreinadorPage() {
           VÍNCULOS AGUARDANDO APROVAÇÃO
         </Typography>
 
-        {pendentes.length === 0 ? (
+        {(data?.pendentes ?? []).length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
             Nenhum vínculo pendente.
           </Typography>
         ) : (
           <Stack divider={<Divider />}>
-            {pendentes.map((v) => (
+            {(data?.pendentes ?? []).map((v) => (
               <Box
                 key={v.vinculoId}
                 sx={{
@@ -291,9 +247,9 @@ export default function DashboardTreinadorPage() {
                   </Typography>
                 </Box>
                 <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1 }}>
-                  {v.pacoteId && pacotes.length > 0 && (
+                  {v.pacoteId && data?.pacoteNomes?.has(v.pacoteId) && (
                     <Typography variant="caption" color="text.secondary">
-                      Pacote: <strong>{pacotes.find((p) => p.pacoteId === v.pacoteId)?.nome ?? "—"}</strong>
+                      Pacote: <strong>{data.pacoteNomes.get(v.pacoteId)}</strong>
                     </Typography>
                   )}
                   <Button

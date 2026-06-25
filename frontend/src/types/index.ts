@@ -453,3 +453,36 @@ export interface AdminDashboardResponse {
   recentTreinadores: TreinadorResponse[];
   planos: PlanoPlataformaResponse[];
 }
+
+export interface TreinadorDashboardCounts {
+  ativos: number;
+  aguardando: number;
+  inativos: number;
+}
+
+export interface TreinadorDashboardPlano {
+  status: AssinaturaTreinadorStatus | null;
+}
+
+export interface ReceitaPorPacoteItem {
+  pacoteId: string;
+  nome: string;
+  alunos: number;
+  receita: number;
+}
+
+export interface ObjetivoItem {
+  objetivo: ObjetivoTreino;
+  total: number;
+}
+
+export interface TreinadorDashboardResponse {
+  counts: TreinadorDashboardCounts;
+  mrr: number;
+  receitaPorPacote: ReceitaPorPacoteItem[];
+  totalFichas: number;
+  objetivos: ObjetivoItem[];
+  pendentes: VinculoDetalheResponse[];
+  onboarding: OnboardingStatusResponse;
+  plano: TreinadorDashboardPlano;
+}

@@ -6,4 +6,7 @@ export const queryKeys = {
   admin: {
     dashboard: ["admin", "dashboard"] as const,
   },
+  treinador: {
+    dashboard: ["treinador", "dashboard"] as const,
+  },
 } as const;
