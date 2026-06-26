@@ -249,7 +249,7 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         resultado[1].Id.Should().Be(a1.Id);
     }
 
-    // --- AlunoEstaInadimplentePorContaIdAsync (FR-2) ---
+    // --- AlunoEstaInadimplentePorContaIdAsync ---
 
     private static async Task<Guid> ContaIdDoAlunoAsync(AppDbContext ctx, Guid alunoId) =>
         (await ctx.Alunos.FindAsync(alunoId))!.ContaId;

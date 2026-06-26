@@ -142,7 +142,7 @@ public class TreinoAlunoRepositoryTests(InfrastructureTestFixture fixture)
         persisted!.Status.Should().Be(TreinoAlunoStatus.Inativo);
     }
 
-    // --- ListarFichasResumoPorAlunoAsync (FR-3) ---
+    // --- ListarFichasResumoPorAlunoAsync ---
 
     private static async Task<TreinoAluno> SeedTreinoAlunoEmAsync(
         AppDbContext ctx, Guid treinoId, Guid alunoId, DateTime criadoEm, TreinoAlunoStatus status = TreinoAlunoStatus.Ativo)

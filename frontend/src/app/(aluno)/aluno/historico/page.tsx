@@ -100,12 +100,10 @@ export default function HistoricoAlunoPage() {
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!dashError} message={dashError} onClose={() => setDashError("")} />
 
-      {/* Summary chips */}
       <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: "wrap", rowGap: 1 }}>
         <Chip label={`${total} sessão${total !== 1 ? "ões" : ""} no total`} variant="outlined" />
       </Stack>
 
-      {/* Frequency bar chart */}
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>Frequência semanal</Typography>
@@ -117,7 +115,6 @@ export default function HistoricoAlunoPage() {
         </CardContent>
       </Card>
 
-      {/* Progression per exercise */}
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>Progressão por exercício</Typography>
@@ -190,7 +187,6 @@ export default function HistoricoAlunoPage() {
         )}
       </Box>
 
-      {/* Recent sessions table */}
       <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Sessões recentes</Typography>
       <DataList
         loading={loading}

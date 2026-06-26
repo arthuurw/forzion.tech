@@ -126,7 +126,7 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         resultado.Should().BeNull();
     }
 
-    // --- ObterResumoVinculoPorAlunoAsync (FR-3) ---
+    // --- ObterResumoVinculoPorAlunoAsync ---
 
     [Fact]
     public async Task ObterResumoVinculoPorAlunoAsync_AtivoEPendente_AmbasFlagsTrue()
