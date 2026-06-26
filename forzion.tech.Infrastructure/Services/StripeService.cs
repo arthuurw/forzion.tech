@@ -82,6 +82,7 @@ public class StripeService(
         string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(valor);
         var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(valor, taxaPlataformaPercent);
 
         var service = new PaymentIntentService();
@@ -123,6 +124,7 @@ public class StripeService(
         string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(valor);
         var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(valor, taxaPlataformaPercent);
 
         var service = new PaymentIntentService();
@@ -150,6 +152,7 @@ public class StripeService(
         string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(valor);
         var (valorCentavos, _) = MoneyCentavos.ValorETaxaCentavos(valor, 0m);
 
         var service = new PaymentIntentService();
@@ -188,6 +191,7 @@ public class StripeService(
         string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(valor);
         var (valorCentavos, _) = MoneyCentavos.ValorETaxaCentavos(valor, 0m);
 
         var service = new PaymentIntentService();
