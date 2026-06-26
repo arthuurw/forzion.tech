@@ -18,6 +18,14 @@ public class ContaRecebimentoRepository(AppDbContext context) : IContaRecebiment
             .FirstOrDefaultAsync(c => c.StripeConnectAccountId == stripeAccountId, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<ContaRecebimento>> ListarConfiguradasPendentesOnboardingAsync(int max, CancellationToken cancellationToken = default) =>
+        await _context.ContasRecebimento
+            .Where(c => c.StripeConnectAccountId != null && !c.OnboardingCompleto)
+            .OrderBy(c => c.CreatedAt)
+            .Take(max)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task AdicionarAsync(ContaRecebimento conta, CancellationToken cancellationToken = default) =>
         await _context.ContasRecebimento.AddAsync(conta, cancellationToken).ConfigureAwait(false);
 }

@@ -10497,7 +10497,8 @@
           "jaConsistentes",
           "erros",
           "desdeUtc",
-          "truncado"
+          "truncado",
+          "onboardingConfirmados"
         ],
         "type": "object",
         "properties": {
@@ -10539,6 +10540,14 @@
           },
           "truncado": {
             "type": "boolean"
+          },
+          "onboardingConfirmados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

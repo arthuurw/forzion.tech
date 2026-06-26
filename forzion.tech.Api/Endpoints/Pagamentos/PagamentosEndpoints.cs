@@ -316,8 +316,7 @@ public static class PagamentosEndpoints
 
             if (result.IsFailure) return result.ToProblemResult();
 
-            // Truncado = cap de batch atingido, há backlog restante: status não-2xx p/ o cron
-            // (curl -fsS) falhar → if:failure() abre issue → próximo run continua do cursor.
+            // 503 p/ o curl -fsS do cron falhar (if:failure() abre issue) quando há backlog restante.
             if (result.Value.Truncado)
                 return Results.Json(result.Value, statusCode: StatusCodes.Status503ServiceUnavailable);
 

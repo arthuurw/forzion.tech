@@ -33,6 +33,11 @@ public class ReconciliarPagamentosStripeHandler(
     private static readonly TimeSpan JanelaMaxInicial = TimeSpan.FromDays(7);
     private const int LotePersistenciaCursor = 100;
 
+    // account.updated de conta conectada NÃO volta no Events.List da plataforma (vem por Connect
+    // webhook) — por isso a confirmação de onboarding é por poll Account.GetAsync, não por evento.
+    // Cap: 1 GET Stripe por conta pendente, limita rate-limit.
+    private const int MaxContasOnboardingPorRun = 200;
+
     public virtual async Task<Result<ReconciliarPagamentosStripeResponse>> HandleAsync(
         ReconciliarPagamentosStripeCommand command,
         CancellationToken cancellationToken = default)
@@ -112,9 +117,11 @@ public class ReconciliarPagamentosStripeHandler(
         if (lote.Eventos.Count > 0)
             await PersistirCursorAsync(lote.Eventos[^1].Created).ConfigureAwait(false);
 
+        var onboardingConfirmados = await ReconciliarOnboardingConnectAsync(cancellationToken).ConfigureAwait(false);
+
         logger.LogInformation(
-            "Reconciliação concluída: total={Total} replayed={Replayed} jaConsistentes={JaConsistentes} erros={Erros} truncado={Truncado}.",
-            lote.Eventos.Count, replayed, jaConsistentes, erros, lote.Truncado);
+            "Reconciliação concluída: total={Total} replayed={Replayed} jaConsistentes={JaConsistentes} erros={Erros} truncado={Truncado} onboardingConfirmados={Onboarding}.",
+            lote.Eventos.Count, replayed, jaConsistentes, erros, lote.Truncado, onboardingConfirmados);
 
         return Result.Success(new ReconciliarPagamentosStripeResponse(
             TotalEventos: lote.Eventos.Count,
@@ -122,6 +129,54 @@ public class ReconciliarPagamentosStripeHandler(
             JaConsistentes: jaConsistentes,
             Erros: erros,
             DesdeUtc: desde,
-            Truncado: lote.Truncado));
+            Truncado: lote.Truncado,
+            OnboardingConfirmados: onboardingConfirmados));
+    }
+
+    private async Task<int> ReconciliarOnboardingConnectAsync(CancellationToken cancellationToken)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var contaRepo = scope.ServiceProvider.GetRequiredService<IContaRecebimentoRepository>();
+        var pendentes = await contaRepo
+            .ListarConfiguradasPendentesOnboardingAsync(MaxContasOnboardingPorRun, cancellationToken)
+            .ConfigureAwait(false);
+
+        var confirmados = 0;
+
+        foreach (var conta in pendentes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var ativada = await stripeService
+                    .ContaEstaAtivadaAsync(conta.StripeConnectAccountId!, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!ativada) continue;
+
+                var evento = new StripeWebhookEvento("account.updated", null, conta.StripeConnectAccountId, ChargesEnabled: true);
+                using var evtScope = scopeFactory.CreateScope();
+                var webhookHandler = evtScope.ServiceProvider.GetRequiredService<ProcessarWebhookStripeHandler>();
+                var resultado = await webhookHandler.ProcessarEventoAsync(evento, cancellationToken).ConfigureAwait(false);
+
+                if (resultado == ProcessarEventoResultado.Aplicado)
+                {
+                    confirmados++;
+                    logger.LogInformation("Onboarding Connect confirmado via reconciliação para treinador {TreinadorId}.", conta.TreinadorId);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+#pragma warning disable CA1031 // falha de uma conta isolada não aborta o restante da varredura
+            catch (Exception ex)
+#pragma warning restore CA1031
+            {
+                logger.LogError(ex, "Falha ao reconciliar onboarding da conta Connect {AccountId}.", conta.StripeConnectAccountId);
+            }
+        }
+
+        return confirmados;
     }
 }

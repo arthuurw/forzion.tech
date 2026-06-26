@@ -14,7 +14,5 @@ public class StripeSettings
 
     public int TimeoutSegundos { get; set; } = 30;
     public int MaxNetworkRetries { get; set; } = 2;
-
-    // Teto de eventos por run da reconciliação (memória bounded); atingiu ⇒ trunca + sinaliza backlog.
     public int MaxEventosReconciliacaoPorRun { get; set; } = 1000;
 }

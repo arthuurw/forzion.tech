@@ -44,8 +44,12 @@ public class ReconciliarPagamentosStripeHandlerTests
             .AddSingleton(_webhookHandler)
             .AddSingleton(_cursorRepo.Object)
             .AddSingleton(_cursorUow.Object)
+            .AddSingleton(_contaRecebimentoRepo.Object)
             .BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();
+
+        _contaRecebimentoRepo.Setup(r => r.ListarConfiguradasPendentesOnboardingAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<ContaRecebimento>());
 
         _handler = new ReconciliarPagamentosStripeHandler(
             _stripeService.Object, scopeFactory, _time, _reconciliarLogger.Object);
@@ -363,6 +367,44 @@ public class ReconciliarPagamentosStripeHandlerTests
 
         result.Value.Truncado.Should().BeTrue();
         salvo!.UltimoEventoReconciliadoUtc.Should().BeCloseTo(ultimoProcessado, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task HandleAsync_ContaPendenteAtivadaNaStripe_ConfirmaOnboarding()
+    {
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var conta = ContaRecebimento.Criar(Guid.NewGuid(), agora).Value;
+        conta.ConfigurarStripeConnect("acct_pend", agora);
+        SetupEventos();
+        _contaRecebimentoRepo.Setup(r => r.ListarConfiguradasPendentesOnboardingAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { conta });
+        _contaRecebimentoRepo.Setup(r => r.ObterPorStripeAccountIdAsync("acct_pend", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+        _stripeService.Setup(s => s.ContaEstaAtivadaAsync("acct_pend", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        result.Value.OnboardingConfirmados.Should().Be(1);
+        conta.OnboardingCompleto.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ContaPendenteAindaInativaNaStripe_NaoConfirma()
+    {
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var conta = ContaRecebimento.Criar(Guid.NewGuid(), agora).Value;
+        conta.ConfigurarStripeConnect("acct_inativa", agora);
+        SetupEventos();
+        _contaRecebimentoRepo.Setup(r => r.ListarConfiguradasPendentesOnboardingAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { conta });
+        _stripeService.Setup(s => s.ContaEstaAtivadaAsync("acct_inativa", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        result.Value.OnboardingConfirmados.Should().Be(0);
+        conta.OnboardingCompleto.Should().BeFalse();
     }
 
     [Fact]
