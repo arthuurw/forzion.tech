@@ -42,6 +42,13 @@ jobs:
               -H "X-Internal-Key: $KEY" -H "Content-Type: application/json" \
               http://localhost:8080/internal/gerar-nfse-comissao
 
+      - name: Healthchecks ping (success)
+        if: success()
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/gerar-nfse-comissao" || true
+      - name: Healthchecks ping (failure)
+        if: failure()
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/gerar-nfse-comissao/fail" || true
+
       - name: Notificar falha via issue
         if: failure()
         uses: actions/github-script@v7
