@@ -11,7 +11,8 @@ public class DomainEventDispatcher(
     IServiceScopeFactory scopeFactory,
     OutboxDurabilityRegistry outboxDurabilidade,
     ILogger<DomainEventDispatcher> logger,
-    IHostApplicationLifetime? appLifetime = null) : IDomainEventDispatcher
+    IHostApplicationLifetime? appLifetime = null,
+    BestEffortConcurrencyGate? bestEffortGate = null) : IDomainEventDispatcher
 {
     public Task DispatchAsync(IReadOnlyList<IDomainEvent> events, CancellationToken cancellationToken = default)
     {
@@ -28,36 +29,51 @@ public class DomainEventDispatcher(
 
         ExecutarEmBackground(async cancellationToken =>
         {
-            // Escopo novo: o da request já foi disposto quando este trabalho roda; resolver
-            // os handlers (e seu DbContext) do escopo da request daria ObjectDisposedException.
-            using var scope = scopeFactory.CreateScope();
-            foreach (var handler in scope.ServiceProvider.GetServices(handlerType).OfType<IDomainEventHandlerBase>())
+            var gateAdquirido = false;
+            try
             {
-                if (outboxDurabilidade.EhHandlerDuravel(eventType, handler.GetType()))
-                    continue;
+                if (bestEffortGate is not null)
+                {
+                    await bestEffortGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    gateAdquirido = true;
+                }
 
-                try
+                using var scope = scopeFactory.CreateScope();
+                foreach (var handler in scope.ServiceProvider.GetServices(handlerType).OfType<IDomainEventHandlerBase>())
                 {
-                    await handler.HandleAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+                    if (outboxDurabilidade.EhHandlerDuravel(eventType, handler.GetType()))
+                        continue;
+
+                    try
+                    {
+                        await handler.HandleAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+                    {
+                        logger.LogDebug(ex, "Best-effort de {EventType} cancelado no shutdown.", eventType.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(
+                            ex,
+                            "Falha ao processar domain event {EventType} no handler {HandlerType}.",
+                            eventType.Name,
+                            handler.GetType().Name);
+                    }
                 }
-                catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
-                {
-                    logger.LogDebug(ex, "Best-effort de {EventType} cancelado no shutdown.", eventType.Name);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(
-                        ex,
-                        "Falha ao processar domain event {EventType} no handler {HandlerType}.",
-                        eventType.Name,
-                        handler.GetType().Name);
-                }
+            }
+            catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+            {
+                logger.LogDebug(ex, "Best-effort de {EventType} cancelado aguardando capacidade no shutdown.", eventType.Name);
+            }
+            finally
+            {
+                if (gateAdquirido)
+                    bestEffortGate!.Release();
             }
         });
     }
 
-    // CT do app (não da request): o trabalho best-effort sobrevive ao fim da request e só é
-    // cancelado no shutdown. Seam protegido p/ o teste rodar o trabalho de forma determinística.
     protected virtual void ExecutarEmBackground(Func<CancellationToken, Task> trabalho) =>
         _ = Task.Run(() => trabalho(appLifetime?.ApplicationStopping ?? CancellationToken.None));
 
@@ -73,8 +89,6 @@ public class DomainEventDispatcher(
         if (handlers.Count == 0)
             throw new InvalidOperationException($"Nenhum handler durável registrado para {eventType.Name}.");
 
-        // PROPAGA exceção (sem try/catch): o worker traduz em retry/falha. Múltiplos handlers
-        // duráveis do mesmo evento rodam na mesma transação do worker (atomicidade do efeito).
         foreach (var handler in handlers)
             await handler.HandleAsync(domainEvent, cancellationToken).ConfigureAwait(false);
     }

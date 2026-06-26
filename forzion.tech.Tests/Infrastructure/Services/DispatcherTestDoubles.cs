@@ -31,13 +31,15 @@ internal sealed class DispatcherBestEffortSincrono(
 // DrenarAsync, tornando determinística a asserção "DispatchAsync não roda o handler inline".
 internal sealed class DispatcherComCapturaBackground(
     IServiceProvider serviceProvider,
-    OutboxDurabilityRegistry registry)
+    OutboxDurabilityRegistry registry,
+    BestEffortConcurrencyGate? gate = null)
     : DomainEventDispatcher(
         serviceProvider,
         serviceProvider.GetRequiredService<IServiceScopeFactory>(),
         registry,
         NullLogger<DomainEventDispatcher>.Instance,
-        new FakeHostApplicationLifetime())
+        new FakeHostApplicationLifetime(),
+        gate)
 {
     private readonly List<Func<CancellationToken, Task>> _agendados = [];
 

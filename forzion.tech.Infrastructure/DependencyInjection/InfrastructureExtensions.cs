@@ -48,6 +48,8 @@ public static class InfrastructureExtensions
         // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.
         services.AddSingleton(TimeProvider.System);
 
+        services.AddSingleton(_ => new BestEffortConcurrencyGate(
+            configuration.GetValue<int?>("DomainEvents:MaxConcorrenciaBestEffort") ?? 8));
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
         // Registry de durabilidade (singleton): declara os pares evento×handler que rodam no
