@@ -10486,7 +10486,8 @@
           "replayed",
           "jaConsistentes",
           "erros",
-          "desdeUtc"
+          "desdeUtc",
+          "truncado"
         ],
         "type": "object",
         "properties": {
@@ -10525,6 +10526,9 @@
           "desdeUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "truncado": {
+            "type": "boolean"
           }
         }
       },

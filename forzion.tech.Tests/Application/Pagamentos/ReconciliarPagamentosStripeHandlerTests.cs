@@ -20,6 +20,8 @@ public class ReconciliarPagamentosStripeHandlerTests
     private readonly Mock<IContaRecebimentoRepository> _contaRecebimentoRepo = new();
     private readonly Mock<IPagamentoTreinadorRepository> _pagamentoTreinadorRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IReconciliacaoStripeEstadoRepository> _cursorRepo = new();
+    private readonly Mock<IUnitOfWork> _cursorUow = new();
     private readonly Mock<ILogger<ProcessarWebhookStripeHandler>> _webhookLogger = new();
     private readonly Mock<ILogger<ReconciliarPagamentosStripeHandler>> _reconciliarLogger = new();
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero));
@@ -40,6 +42,8 @@ public class ReconciliarPagamentosStripeHandlerTests
 
         var scopeFactory = new ServiceCollection()
             .AddSingleton(_webhookHandler)
+            .AddSingleton(_cursorRepo.Object)
+            .AddSingleton(_cursorUow.Object)
             .BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();
 
@@ -55,11 +59,13 @@ public class ReconciliarPagamentosStripeHandlerTests
         return new StripeEventSummary("evt_" + paymentIntentId, type, payload, created);
     }
 
-    private void SetupEventos(params StripeEventSummary[] eventos)
+    private void SetupEventos(params StripeEventSummary[] eventos) => SetupLote(false, eventos);
+
+    private void SetupLote(bool truncado, params StripeEventSummary[] eventos)
     {
         _stripeService
             .Setup(s => s.ListarEventosDesdeAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(eventos);
+            .ReturnsAsync(new StripeEventListResult(eventos, truncado));
     }
 
     [Fact]
@@ -260,6 +266,103 @@ public class ReconciliarPagamentosStripeHandlerTests
         result.Value.Replayed.Should().Be(1);
         result.Value.JaConsistentes.Should().Be(2);
         result.Value.Erros.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ComCursorDentroDaJanela_UsaCursorComoDesde()
+    {
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var cursor = agora.AddDays(-2);
+        _cursorRepo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ReconciliacaoStripeEstado.Criar(cursor, agora));
+        SetupEventos();
+
+        var result = await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        result.Value.DesdeUtc.Should().BeCloseTo(cursor, TimeSpan.FromSeconds(1));
+        _stripeService.Verify(s => s.ListarEventosDesdeAsync(
+            It.Is<DateTime>(d => Math.Abs((d - cursor).TotalSeconds) < 1),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_CursorAnteriorAJanelaMax_CapeiaEmSeteDias()
+    {
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var cursorAntigo = agora.AddDays(-30);
+        var janelaMax = agora.AddDays(-7);
+        _cursorRepo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ReconciliacaoStripeEstado.Criar(cursorAntigo, agora));
+        SetupEventos();
+
+        var result = await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        result.Value.DesdeUtc.Should().BeCloseTo(janelaMax, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task HandleAsync_DesdeUtcExplicito_IgnoraCursor()
+    {
+        var agora = _time.GetUtcNow().UtcDateTime;
+        var desde = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc);
+        _cursorRepo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ReconciliacaoStripeEstado.Criar(agora.AddDays(-1), agora));
+        SetupEventos();
+
+        await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand(desde));
+
+        _stripeService.Verify(s => s.ListarEventosDesdeAsync(desde, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AposProcessar_PersisteCursorComUltimoCreated()
+    {
+        ReconciliacaoStripeEstado? salvo = null;
+        _cursorRepo.Setup(r => r.SalvarAsync(It.IsAny<ReconciliacaoStripeEstado>(), It.IsAny<CancellationToken>()))
+            .Callback<ReconciliacaoStripeEstado, CancellationToken>((e, _) => salvo = e)
+            .Returns(Task.CompletedTask);
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+        var ultimoCreated = _time.GetUtcNow().UtcDateTime;
+        SetupEventos(
+            PaymentIntentEvento("payment_intent.succeeded", "pi_1", ultimoCreated.AddMinutes(-10)),
+            PaymentIntentEvento("payment_intent.succeeded", "pi_2", ultimoCreated));
+
+        await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        salvo.Should().NotBeNull();
+        salvo!.UltimoEventoReconciliadoUtc.Should().BeCloseTo(ultimoCreated, TimeSpan.FromSeconds(1));
+        _cursorUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ListaVazia_NaoPersisteCursor()
+    {
+        SetupEventos();
+
+        await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        _cursorRepo.Verify(r => r.SalvarAsync(It.IsAny<ReconciliacaoStripeEstado>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cursorUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_LoteTruncado_PropagaFlagETruncadoAvancaCursorAteUltimoProcessado()
+    {
+        ReconciliacaoStripeEstado? salvo = null;
+        _cursorRepo.Setup(r => r.SalvarAsync(It.IsAny<ReconciliacaoStripeEstado>(), It.IsAny<CancellationToken>()))
+            .Callback<ReconciliacaoStripeEstado, CancellationToken>((e, _) => salvo = e)
+            .Returns(Task.CompletedTask);
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+        var ultimoProcessado = _time.GetUtcNow().UtcDateTime;
+        SetupLote(true, PaymentIntentEvento("payment_intent.succeeded", "pi_trunc", ultimoProcessado));
+
+        var result = await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        result.Value.Truncado.Should().BeTrue();
+        salvo!.UltimoEventoReconciliadoUtc.Should().BeCloseTo(ultimoProcessado, TimeSpan.FromSeconds(1));
     }
 
     [Fact]

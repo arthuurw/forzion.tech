@@ -329,11 +329,6 @@ public class StripeService(
         }
     }
 
-    // Teto duro: 1000 eventos por execução. Janela default = 7d, com volume normal de webhooks
-    // pagáveis por treinador isso é folgado; passa de 1000 e algo está muito errado (ou janela
-    // foi pedida grande demais) — preferimos truncar e logar a perder controle.
-    private const int MaxEventosPorExecucao = 1000;
-
     private static readonly string[] TiposReconciliaveis =
     [
         "payment_intent.succeeded",
@@ -344,14 +339,14 @@ public class StripeService(
         "charge.dispute.created",
     ];
 
-    public async Task<IReadOnlyList<StripeEventSummary>> ListarEventosDesdeAsync(
+    public async Task<StripeEventListResult> ListarEventosDesdeAsync(
         DateTime desdeUtc,
         CancellationToken cancellationToken = default)
     {
+        var maxPorRun = _settings.MaxEventosReconciliacaoPorRun;
         var service = new EventService();
         var options = new EventListOptions
         {
-            // Created.GreaterThanOrEqual aceita DateTime UTC; Stripe.net converte pra unix internally.
             Created = new DateRangeOptions
             {
                 GreaterThanOrEqual = DateTime.SpecifyKind(desdeUtc, DateTimeKind.Utc),
@@ -361,9 +356,8 @@ public class StripeService(
         };
 
         var coletados = new List<StripeEventSummary>();
+        var truncado = false;
 
-        // ListAutoPagingAsync resolve cursor pagination transparentemente.
-        // Stripe.net default page size = 100; cap externo em MaxEventosPorExecucao.
         await foreach (var evt in service.ListAutoPagingAsync(options, RequestOptions, cancellationToken).ConfigureAwait(false))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -374,22 +368,23 @@ public class StripeService(
                 PayloadRaw: evt.ToJson(),
                 Created: DateTime.SpecifyKind(evt.Created, DateTimeKind.Utc)));
 
-            if (coletados.Count >= MaxEventosPorExecucao)
+            if (coletados.Count >= maxPorRun)
             {
+                truncado = true;
                 logger.LogWarning(
                     "Reconciliação Stripe atingiu teto de {Max} eventos (desde {Desde:o}). Truncando varredura.",
-                    MaxEventosPorExecucao, desdeUtc);
+                    maxPorRun, desdeUtc);
                 break;
             }
         }
 
-        // Stripe retorna em ordem DESC; reordena ASC para replays seguirem cronologia natural.
+        // Stripe retorna DESC; reordena ASC para o cursor avançar em cronologia natural.
         coletados.Sort((a, b) => a.Created.CompareTo(b.Created));
 
         logger.LogInformation(
-            "Stripe Events.List retornou {Count} eventos relevantes desde {Desde:o}.",
-            coletados.Count, desdeUtc);
+            "Stripe Events.List retornou {Count} eventos relevantes desde {Desde:o} (truncado={Truncado}).",
+            coletados.Count, desdeUtc, truncado);
 
-        return coletados;
+        return new StripeEventListResult(coletados, truncado);
     }
 }

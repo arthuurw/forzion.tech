@@ -62,6 +62,6 @@ public sealed class FakeStripeService : IStripeService
     public Task EnviarEvidenciaDisputaAsync(string disputeId, DisputaEvidencia evidencias, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
-    public Task<IReadOnlyList<StripeEventSummary>> ListarEventosDesdeAsync(DateTime desdeUtc, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<StripeEventSummary>>(Array.Empty<StripeEventSummary>());
+    public Task<StripeEventListResult> ListarEventosDesdeAsync(DateTime desdeUtc, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new StripeEventListResult(Array.Empty<StripeEventSummary>(), false));
 }
