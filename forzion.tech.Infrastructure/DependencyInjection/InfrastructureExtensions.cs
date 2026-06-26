@@ -208,6 +208,12 @@ public static class InfrastructureExtensions
         });
         services.AddSingleton<IRecipientHasher, RecipientHasher>();
 
+        services.AddOptions<InternalSettings>()
+            .BindConfiguration("Internal")
+            .Validate(s => !isProduction || !string.IsNullOrWhiteSpace(s.ApiKey),
+                "Internal:ApiKey não configurado. O endpoint interno de cron ficaria sem proteção em produção.")
+            .ValidateOnStart();
+
         // PaymentSettings — expõe taxa de plataforma para a camada Application
         services.AddOptions<PaymentSettings>()
             .Configure<IOptions<StripeSettings>>((payment, stripe) =>

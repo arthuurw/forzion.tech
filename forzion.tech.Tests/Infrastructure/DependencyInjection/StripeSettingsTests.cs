@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace forzion.tech.Tests.Infrastructure.DependencyInjection;
 
+[Collection(EnvironmentSensitiveCollection.Name)]
 public class StripeSettingsTests
 {
     private static readonly Dictionary<string, string?> ConfigBase = new()
