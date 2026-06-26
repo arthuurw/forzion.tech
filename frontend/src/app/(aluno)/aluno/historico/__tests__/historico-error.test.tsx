@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
@@ -22,20 +23,27 @@ vi.mock("@/hooks/usePaginatedList", () => ({
   })),
 }));
 
+const dashboardOk = {
+  totalFichas: 0,
+  fichasAtivas: [],
+  totalExecucoes: 0,
+  sessoesPorSemana: [],
+  vinculo: { ativo: true, pendente: false },
+};
+
 describe("HistoricoAlunoPage — erro nos indicadores", () => {
   beforeEach(() => {
     server.use(
-      http.get("*/aluno/vinculo", () => HttpResponse.json({ vinculoAtivo: { vinculoId: "v" }, vinculoPendente: null })),
       http.get("*/aluno/progressao", () => HttpResponse.json({ exercicios: [] })),
     );
   });
 
-  it("listExecucoes (indicadores) falha → exibe AlertBanner", async () => {
+  it("agregado /aluno/dashboard falha → exibe AlertBanner", async () => {
     server.use(
-      http.get("*/aluno/execucoes", () => new HttpResponse(null, { status: 500 })),
+      http.get("*/aluno/dashboard", () => new HttpResponse(null, { status: 500 })),
     );
     const { default: Page } = await import("@/app/(aluno)/aluno/historico/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
     expect(
       await screen.findByText("Não foi possível carregar os indicadores do histórico."),
     ).toBeInTheDocument();
@@ -43,11 +51,11 @@ describe("HistoricoAlunoPage — erro nos indicadores", () => {
 
   it("getMinhaProgressao falha → exibe erro na seção de progressão (não gráfico vazio)", async () => {
     server.use(
-      http.get("*/aluno/execucoes", () => HttpResponse.json({ items: [], total: 0, pagina: 1, tamanhoPagina: 20 })),
+      http.get("*/aluno/dashboard", () => HttpResponse.json(dashboardOk)),
       http.get("*/aluno/progressao", () => new HttpResponse(null, { status: 500 })),
     );
     const { default: Page } = await import("@/app/(aluno)/aluno/historico/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
     expect(
       await screen.findByText("Não foi possível carregar a progressão."),
     ).toBeInTheDocument();

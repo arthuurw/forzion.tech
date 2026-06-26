@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import {
   Box, Typography, Card, CardContent, Stack, Chip, Grid, Skeleton,
@@ -15,8 +16,8 @@ import { alunoApi } from "@/lib/api/aluno";
 import type { ExecucaoTreinoResponse, ExercicioProgressao } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
 import { extractApiError } from "@/lib/api/extractApiError";
-import { formatarData, periodoParaDatas } from "@/lib/utils/formatting";
-import { MAX_PAGE_SIZE } from "@/lib/constants/pagination";
+import { formatarData, getWeekLabel, periodoParaDatas } from "@/lib/utils/formatting";
+import { queryKeys } from "@/lib/query/keys";
 
 const FrequenciaChart = dynamic(
   () => import("./_charts/HistoricoCharts").then((m) => m.FrequenciaChart),
@@ -43,33 +44,20 @@ const TABLE_COLUMNS: Column[] = [
   { label: "Observação" },
 ];
 
-function sessoesPorSemana(execucoes: ExecucaoTreinoResponse[]) {
-  const result: { label: string; sessoes: number }[] = [];
-  const hoje = new Date();
-  for (let i = 7; i >= 0; i--) {
-    const fim = new Date(hoje);
-    fim.setDate(hoje.getDate() - i * 7);
-    fim.setHours(23, 59, 59, 999);
-    const ini = new Date(fim);
-    ini.setDate(fim.getDate() - 6);
-    ini.setHours(0, 0, 0, 0);
-    const count = execucoes.filter((ex) => {
-      const d = new Date(ex.dataExecucao);
-      return d >= ini && d <= fim;
-    }).length;
-    const label = ini.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-    result.push({ label, sessoes: count });
-  }
-  return result;
-}
-
 export default function HistoricoAlunoPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [allExecucoes, setAllExecucoes] = useState<ExecucaoTreinoResponse[]>([]);
-  const [allLoading, setAllLoading] = useState(true);
 
-  const [allError, setAllError] = useState("");
+  const [dashError, setDashError] = useState("");
+  const { data: dashboard, isPending: dashLoading, isError: dashIsError, error: dashQueryError } = useQuery({
+    queryKey: queryKeys.aluno.dashboard,
+    staleTime: 60 * 1000,
+    queryFn: () => alunoApi.getDashboard().then((r) => r.data),
+  });
+
+  useEffect(() => {
+    if (dashIsError) setDashError(extractApiError(dashQueryError, "Não foi possível carregar os indicadores do histórico."));
+  }, [dashIsError, dashQueryError]);
 
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [exercicios, setExercicios] = useState<ExercicioProgressao[]>([]);
@@ -86,15 +74,6 @@ export default function HistoricoAlunoPage() {
 
   useEffect(() => {
     let active = true;
-    alunoApi.listExecucoes({ pagina: 1, tamanhoPagina: MAX_PAGE_SIZE })
-      .then((r) => { if (active) { setAllExecucoes(r.data.items); setAllError(""); } })
-      .catch((err) => { if (active) { setAllExecucoes([]); setAllError(extractApiError(err, "Não foi possível carregar os indicadores do histórico.")); } })
-      .finally(() => { if (active) setAllLoading(false); });
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
     setProgLoading(true);
     const { de, ate } = periodoParaDatas(periodo);
     alunoApi.getMinhaProgressao(de, ate)
@@ -104,38 +83,33 @@ export default function HistoricoAlunoPage() {
     return () => { active = false; };
   }, [periodo, progReload]);
 
-  const hoje = new Date();
-  const sessoesEsseMes = allExecucoes.filter((ex) => {
-    const d = new Date(ex.dataExecucao);
-    return d.getMonth() === hoje.getMonth() && d.getFullYear() === hoje.getFullYear();
-  }).length;
-  const ultimaSessao = allExecucoes.length > 0
-    ? new Date(allExecucoes[0].dataExecucao).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
-    : null;
-
-  const weekData = useMemo(() => sessoesPorSemana(allExecucoes), [allExecucoes]);
+  const weekData = useMemo(
+    () => (dashboard?.sessoesPorSemana ?? []).map((s) => ({
+      label: getWeekLabel(s.semanaInicio),
+      sessoes: Number(s.total),
+    })),
+    [dashboard],
+  );
 
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>Histórico de Sessões</Typography>
 
-      <SemVinculoAtivoBanner />
+      <SemVinculoAtivoBanner vinculo={dashboard?.vinculo ?? { ativo: true, pendente: false }} />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
-      <AlertBanner open={!!allError} message={allError} onClose={() => setAllError("")} />
+      <AlertBanner open={!!dashError} message={dashError} onClose={() => setDashError("")} />
 
       {/* Summary chips */}
       <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: "wrap", rowGap: 1 }}>
         <Chip label={`${total} sessão${total !== 1 ? "ões" : ""} no total`} variant="outlined" />
-        <Chip label={`${sessoesEsseMes} este mês`} variant="outlined" />
-        {ultimaSessao && <Chip label={`Última: ${ultimaSessao}`} variant="outlined" />}
       </Stack>
 
       {/* Frequency bar chart */}
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>Frequência semanal</Typography>
-          {allLoading ? (
+          {dashLoading ? (
             <Skeleton variant="rectangular" height={160} sx={{ borderRadius: 1 }} />
           ) : (
             <FrequenciaChart weekData={weekData} />
