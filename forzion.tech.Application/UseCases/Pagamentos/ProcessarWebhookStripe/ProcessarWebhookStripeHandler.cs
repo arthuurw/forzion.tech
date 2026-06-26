@@ -321,7 +321,7 @@ public class ProcessarWebhookStripeHandler(
         {
             var pagamentoTreinador = await pagamentoTreinadorRepository.ObterPorStripePaymentIntentIdAsync(paymentIntentId, ct).ConfigureAwait(false);
             if (pagamentoTreinador is not null)
-                return await ProcessarEstornoTreinadorAsync(pagamentoTreinador, ct).ConfigureAwait(false);
+                return await ProcessarEstornoTreinadorAsync(pagamentoTreinador, amountRefundedCents, ct).ConfigureAwait(false);
 
             logger.LogWarning("charge.refunded para PaymentIntent {PaymentIntentId} não encontrado.", paymentIntentId);
             return ProcessarEventoResultado.JaConsistente;
@@ -371,7 +371,7 @@ public class ProcessarWebhookStripeHandler(
         return ProcessarEventoResultado.Aplicado;
     }
 
-    private async Task<ProcessarEventoResultado> ProcessarEstornoTreinadorAsync(PagamentoTreinador pagamento, CancellationToken ct)
+    private async Task<ProcessarEventoResultado> ProcessarEstornoTreinadorAsync(PagamentoTreinador pagamento, long? amountRefundedCents, CancellationToken ct)
     {
         if (pagamento.Status == PagamentoStatus.Estornado)
         {
@@ -383,6 +383,19 @@ public class ProcessarWebhookStripeHandler(
         {
             logger.LogWarning("charge.refunded para PagamentoTreinador {PaymentIntentId} em status inesperado {Status}. Ignorado.",
                 pagamento.StripePaymentIntentId, pagamento.Status);
+            return ProcessarEventoResultado.JaConsistente;
+        }
+
+        if (!amountRefundedCents.HasValue)
+            throw new InvalidOperationException($"charge.refunded para PagamentoTreinador {pagamento.StripePaymentIntentId} sem amount_refunded. Retry necessário.");
+
+        var valorPagamentoCents = (long)Math.Round(pagamento.Valor * 100m, MidpointRounding.AwayFromZero);
+        if (amountRefundedCents.Value < valorPagamentoCents)
+        {
+            logger.LogInformation(
+                "charge.refunded parcial para PagamentoTreinador {PaymentIntentId}: " +
+                "refunded={RefundedCents} < total={TotalCents}. Status mantido como Pago.",
+                pagamento.StripePaymentIntentId, amountRefundedCents.Value, valorPagamentoCents);
             return ProcessarEventoResultado.JaConsistente;
         }
 
