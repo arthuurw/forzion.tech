@@ -39,6 +39,7 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await query
             .OrderBy(t => t.Nome)
+            .ThenBy(t => t.Id)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
             .ToListAsync(cancellationToken)

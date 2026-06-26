@@ -26,7 +26,8 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
             .AsNoTracking()
             .Where(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo)
             .Join(_context.Alunos, v => v.AlunoId, a => a.Id, (_, a) => a)
-            .OrderBy(a => a.Nome);
+            .OrderBy(a => a.Nome)
+            .ThenBy(a => a.Id);
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await query
@@ -52,7 +53,7 @@ public class AlunoRepository(AppDbContext context) : IAlunoRepository
         if (status.HasValue)
             query = query.Where(a => a.Status == status.Value);
 
-        query = query.OrderBy(a => a.Nome);
+        query = query.OrderBy(a => a.Nome).ThenBy(a => a.Id);
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await query

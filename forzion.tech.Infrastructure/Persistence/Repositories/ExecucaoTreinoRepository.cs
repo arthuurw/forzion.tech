@@ -30,6 +30,7 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
             .AsNoTracking()
             .Where(e => e.AlunoId == alunoId)
             .OrderByDescending(e => e.DataExecucao)
+            .ThenByDescending(e => e.Id)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
             .ToListAsync(cancellationToken)
@@ -42,7 +43,7 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
             from e in _context.ExecucoesTreino
             join t in _context.Treinos on e.TreinoId equals t.Id
             where e.AlunoId == alunoId
-            orderby e.DataExecucao descending
+            orderby e.DataExecucao descending, e.Id descending
             select new { e, NomeTreino = t.Nome }
         )
         .Skip((pagina - 1) * tamanhoPagina)

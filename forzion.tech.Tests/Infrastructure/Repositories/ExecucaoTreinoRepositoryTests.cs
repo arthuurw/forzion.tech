@@ -221,6 +221,33 @@ public class ExecucaoTreinoRepositoryTests(InfrastructureTestFixture fixture)
         result[0].CargaMaxima.Should().Be(100m); // Only alunoAlvo's data
     }
 
+    [Fact]
+    public async Task ListarComNomePorAlunoAsync_DataExecucaoColidente_PaginaSemPularNemDuplicar()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (alunoId, treinoId, _, _, _) = await SeedProgressaoGraphAsync(ctx, "Tie");
+        var agora = DateTime.UtcNow;
+        var mesmaData = new DateTime(2025, 5, 10, 8, 0, 0, DateTimeKind.Utc);
+
+        var execucoes = Enumerable.Range(0, 5)
+            .Select(_ => ExecucaoTreino.Criar(treinoId, alunoId, mesmaData, agora).Value)
+            .ToList();
+        await ctx.ExecucoesTreino.AddRangeAsync(execucoes);
+        await ctx.SaveChangesAsync();
+
+        var repo = Repo(ctx);
+        var pagina1 = await repo.ListarComNomePorAlunoAsync(alunoId, 1, 2);
+        var pagina2 = await repo.ListarComNomePorAlunoAsync(alunoId, 2, 2);
+        var pagina3 = await repo.ListarComNomePorAlunoAsync(alunoId, 3, 2);
+
+        var idsPaginados = pagina1.Concat(pagina2).Concat(pagina3)
+            .Select(e => e.ExecucaoId).ToList();
+
+        idsPaginados.Should().HaveCount(5);
+        idsPaginados.Should().OnlyHaveUniqueItems();
+        idsPaginados.Should().BeEquivalentTo(execucoes.Select(e => e.Id));
+    }
+
     // ── ANON-02: AnonimizarObservacoesPorAlunoIdAsync ──────────────────────
 
     [Fact]

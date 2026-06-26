@@ -89,6 +89,7 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
         var raw = await baseQuery
             .AsNoTracking()
             .OrderByDescending(x => x.v.CreatedAt)
+            .ThenByDescending(x => x.v.Id)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
             .ToListAsync(cancellationToken)
