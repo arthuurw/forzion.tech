@@ -48,7 +48,7 @@ jobs:
 
       - name: ZAP Baseline Scan (passivo)
         if: ${{ github.event.inputs.mode != 'full' }}
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ steps.t.outputs.target }}
           cmd_options: "-a"
