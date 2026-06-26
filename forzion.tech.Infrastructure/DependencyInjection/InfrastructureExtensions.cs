@@ -68,8 +68,14 @@ public static class InfrastructureExtensions
         services.AddScoped<AppDbContext>(sp =>
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable(
-                    "__EFMigrationsHistory", MigrationHistorySchemaResolver.Resolve(connectionString)))
+                .UseNpgsql(connectionString, o =>
+                {
+                    o.MigrationsHistoryTable(
+                        "__EFMigrationsHistory", MigrationHistorySchemaResolver.Resolve(connectionString));
+                    o.CommandTimeout(15);
+                    o.ExecutionStrategy(deps => new AppRetryingExecutionStrategy(
+                        deps, maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5)));
+                })
                 .UseSnakeCaseNamingConvention()
                 .Options;
 

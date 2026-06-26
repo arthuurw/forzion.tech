@@ -9,6 +9,7 @@ using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
+using forzion.tech.Tests.TestSupport;
 using DomainEmail = forzion.tech.Domain.ValueObjects.Email;
 
 namespace forzion.tech.Tests.Infrastructure.Notifications.Email;
@@ -28,9 +29,7 @@ public class EsqueceuSenhaHandlerTests
 
     public EsqueceuSenhaHandlerTests()
     {
-        _txProvider
-            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_transaction.Object);
+        _txProvider.SetupExecuteInTransaction<bool>(_transaction.Object);
 
         _handler = new EsqueceuSenhaHandler(
             _contaRepo.Object, _tokenRepo.Object, _emailCritico.Object,
@@ -186,7 +185,10 @@ public class EsqueceuSenhaHandlerTests
 
         await _handler.HandleAsync(new EsqueceuSenhaCommand("user@example.com"));
 
-        _txProvider.Verify(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()), Times.Once);
+        _txProvider.Verify(p => p.ExecuteInTransactionAsync(
+            It.IsAny<System.Data.IsolationLevel>(),
+            It.IsAny<Func<ITransaction, CancellationToken, Task<bool>>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
         ordem.Should().Equal("save", "tx");
     }
 

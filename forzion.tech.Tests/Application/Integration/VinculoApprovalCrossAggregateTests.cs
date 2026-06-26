@@ -16,15 +16,18 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Infrastructure.Handlers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using forzion.tech.Tests.Builders;
+using forzion.tech.Tests.TestSupport;
 
 namespace forzion.tech.Tests.Application.Integration;
 
@@ -56,9 +59,7 @@ public class VinculoApprovalCrossAggregateTests
         var mockTx = new Mock<ITransaction>();
         mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
-        _transactionProvider
-            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(mockTx.Object);
+        _transactionProvider.SetupExecuteInTransaction<Result<VinculoResponse>>(mockTx.Object);
 
         _assinaturaRepo
             .Setup(r => r.AdicionarAsync(It.IsAny<AssinaturaAluno>(), It.IsAny<CancellationToken>()))

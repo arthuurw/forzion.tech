@@ -64,14 +64,14 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
             .CountAsync(t => t.Status == status, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task ExcluirComDependenciasAsync(Treinador treinador, Guid adminId, CancellationToken cancellationToken = default)
+    public Task ExcluirComDependenciasAsync(Treinador treinador, Guid adminId, CancellationToken cancellationToken = default)
     {
-        // All ExecuteDeleteAsync calls share one explicit transaction, so the entire
-        // cascade is atomic: if any step fails the transaction is rolled back and no
-        // partial deletes are persisted.
-        // The LogAprovacao (ExclusaoTreinador) is also written within this transaction
-        // to guarantee the audit trail is either fully committed or fully rolled back
-        // together with the cascade delete.
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(() => ExcluirComDependenciasCoreAsync(treinador, adminId, cancellationToken));
+    }
+
+    private async Task ExcluirComDependenciasCoreAsync(Treinador treinador, Guid adminId, CancellationToken cancellationToken)
+    {
         await using var tx = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         try

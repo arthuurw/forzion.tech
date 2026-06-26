@@ -4,6 +4,8 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -16,16 +18,9 @@ public class CriarPagamentoComIntentServiceTests
     private readonly Mock<IDatabaseErrorInspector> _errorInspector = new();
     private readonly CriarPagamentoComIntentService _service;
 
-    private sealed class NoopTransaction : ITransaction
-    {
-        public Task CommitAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-    }
-
     public CriarPagamentoComIntentServiceTests()
     {
-        _transactionProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NoopTransaction());
+        _transactionProvider.SetupExecuteInTransaction<Result<PagamentoTreinador>>();
 
         _service = new CriarPagamentoComIntentService(
             _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
@@ -159,12 +154,7 @@ public class CriarPagamentoComIntentServiceTests
             .ReturnsAsync((PagamentoTreinador?)null);
 
         var ordem = new List<string>();
-        _transactionProvider.Setup(t => t.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .Returns(() =>
-            {
-                ordem.Add("tx");
-                return Task.FromResult<ITransaction>(new NoopTransaction());
-            });
+        _transactionProvider.SetupExecuteInTransaction<Result<PagamentoTreinador>>(onBegin: () => ordem.Add("tx"));
 
         var p = BuildParams(assinatura, pagamentoRepo: pagamentoRepo, onCriarIntent: () => ordem.Add("intent"));
 
@@ -214,8 +204,10 @@ public class CriarPagamentoComIntentServiceTests
         var p = BuildParams(assinatura, pagamentoRepo: pagamentoRepo);
         await _service.ExecutarAsync(p);
 
-        _transactionProvider.Verify(t => t.BeginTransactionAsync(
-            System.Data.IsolationLevel.Serializable, It.IsAny<CancellationToken>()), Times.Once,
+        _transactionProvider.Verify(t => t.ExecuteInTransactionAsync(
+            System.Data.IsolationLevel.Serializable,
+            It.IsAny<Func<ITransaction, CancellationToken, Task<Result<PagamentoTreinador>>>>(),
+            It.IsAny<CancellationToken>()), Times.Once,
             "G-PAY-1 exige transação Serializable para proteger contra concorrência");
     }
 }
