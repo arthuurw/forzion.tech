@@ -19,7 +19,7 @@ public static class StripeWebhookParser
         var root = JsonNode.Parse(payload)
             ?? throw new InvalidOperationException("Payload do webhook inválido.");
 
-        var type = root["type"]?.GetValue<string>() ?? string.Empty;
+        var type = TryGetStringValue(root["type"]) ?? string.Empty;
         var data = root["data"]?["object"];
 
         // charge.refunded: data.object é Charge — `payment_intent` aponta pro PI subjacente.
@@ -37,7 +37,7 @@ public static class StripeWebhookParser
         var accountId = TryGetStringValue(root["account"]);
 
         var chargesEnabled = type == "account.updated" &&
-            (data?["charges_enabled"]?.GetValue<bool>() ?? false);
+            (TryGetBoolValue(data?["charges_enabled"]) ?? false);
 
         // G-PAY-5: distingue refund total vs parcial — só refund total muda status.
         var amountRefundedCents = type == "charge.refunded"
@@ -75,6 +75,13 @@ public static class StripeWebhookParser
     {
         if (node is JsonValue jsonValue && jsonValue.TryGetValue<long>(out var l))
             return l;
+        return null;
+    }
+
+    private static bool? TryGetBoolValue(JsonNode? node)
+    {
+        if (node is JsonValue jsonValue && jsonValue.TryGetValue<bool>(out var b))
+            return b;
         return null;
     }
 }

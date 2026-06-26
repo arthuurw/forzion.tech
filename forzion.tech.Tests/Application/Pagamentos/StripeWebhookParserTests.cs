@@ -386,4 +386,73 @@ public class StripeWebhookParserTests
         result.PaymentIntentId.Should().Be("pi_disputed123");
         result.MotivoDisputa.Should().Be("subscription_canceled");
     }
+
+    [Fact]
+    public void Parse_TypeComoNumero_NaoLanca()
+    {
+        var act = () => StripeWebhookParser.Parse("""{"type":123}""");
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Parse_TypeComoNumero_RetornaTipoVazio()
+    {
+        var result = StripeWebhookParser.Parse("""{"type":123}""");
+        result.Type.Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public void Parse_TypeComoObjeto_NaoLanca()
+    {
+        var act = () => StripeWebhookParser.Parse("""{"type":{"nested":"value"}}""");
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Parse_TypeComoObjeto_RetornaTipoVazio()
+    {
+        var result = StripeWebhookParser.Parse("""{"type":{"nested":"value"}}""");
+        result.Type.Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public void Parse_AccountUpdated_ChargesEnabledComoString_NaoLanca()
+    {
+        var act = () => StripeWebhookParser.Parse(
+            """{"type":"account.updated","data":{"object":{"charges_enabled":"true"}}}""");
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Parse_AccountUpdated_ChargesEnabledComoString_RetornaFalse()
+    {
+        var result = StripeWebhookParser.Parse(
+            """{"type":"account.updated","data":{"object":{"charges_enabled":"true"}}}""");
+        result.ChargesEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Parse_AccountUpdated_ChargesEnabledComoNumero_NaoLanca()
+    {
+        var act = () => StripeWebhookParser.Parse(
+            """{"type":"account.updated","data":{"object":{"charges_enabled":1}}}""");
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Parse_AccountUpdated_ChargesEnabledComoNumero_RetornaFalse()
+    {
+        var result = StripeWebhookParser.Parse(
+            """{"type":"account.updated","data":{"object":{"charges_enabled":1}}}""");
+        result.ChargesEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Parse_HappyPath_AccountUpdated_ChargesEnabledBool_RetornaTrue()
+    {
+        var result = StripeWebhookParser.Parse(
+            """{"type":"account.updated","account":"acct_ok","data":{"object":{"charges_enabled":true}}}""");
+        result.ChargesEnabled.Should().BeTrue();
+        result.AccountId.Should().Be("acct_ok");
+    }
 }
