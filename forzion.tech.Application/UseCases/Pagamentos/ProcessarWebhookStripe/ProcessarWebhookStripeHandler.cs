@@ -341,6 +341,9 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
+        if (!amountRefundedCents.HasValue)
+            throw new InvalidOperationException($"charge.refunded para PaymentIntent {paymentIntentId} sem amount_refunded. Retry necessário.");
+
         // só transiciona para Estornado em refund total — parcial deixa em Pago.
         var valorPagamentoCents = (long)Math.Round(pagamento.Valor * 100m, MidpointRounding.AwayFromZero);
         if (amountRefundedCents.HasValue && amountRefundedCents.Value < valorPagamentoCents)
@@ -435,6 +438,9 @@ public class ProcessarWebhookStripeHandler(
             return ProcessarEventoResultado.JaConsistente;
         }
 
+        if (string.IsNullOrEmpty(disputeId))
+            throw new InvalidOperationException($"charge.dispute.created para PaymentIntent {paymentIntentId} sem dispute id. Retry necessário.");
+
         var agoraDisputa = timeProvider.GetUtcNow().UtcDateTime;
         var marcarDisputaResult = pagamento.MarcarEmDisputa(motivoDisputa ?? "unknown", agoraDisputa);
         if (marcarDisputaResult.IsFailure)
@@ -500,6 +506,9 @@ public class ProcessarWebhookStripeHandler(
                 pagamento.StripePaymentIntentId, pagamento.Status);
             return ProcessarEventoResultado.JaConsistente;
         }
+
+        if (string.IsNullOrEmpty(disputeId))
+            throw new InvalidOperationException($"charge.dispute.created para PagamentoTreinador {pagamento.StripePaymentIntentId} sem dispute id. Retry necessário.");
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var result = pagamento.MarcarEmDisputa(agora);
