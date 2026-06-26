@@ -33,9 +33,10 @@ public interface IStripeService
     /// Lista eventos Stripe criados a partir de <paramref name="desdeUtc"/>, filtrando
     /// pelos tipos relevantes para reconciliação de pagamentos e onboarding Connect.
     /// Resultado ordenado por <see cref="StripeEventSummary.Created"/> ASC (mais antigo primeiro)
-    /// e capado para um teto interno de segurança (evita varreduras patológicas).
+    /// e capado por um teto de batch (memória bounded); <see cref="StripeEventListResult.Truncado"/>
+    /// sinaliza que o cap foi atingido e há backlog restante para o próximo run.
     /// </summary>
-    Task<IReadOnlyList<StripeEventSummary>> ListarEventosDesdeAsync(DateTime desdeUtc, CancellationToken cancellationToken = default);
+    Task<StripeEventListResult> ListarEventosDesdeAsync(DateTime desdeUtc, CancellationToken cancellationToken = default);
 }
 
 public enum CancelarPaymentIntentResultado
@@ -77,3 +78,12 @@ public sealed record StripeEventSummary(
     string Type,
     string PayloadRaw,
     DateTime Created);
+
+/// <summary>
+/// Lote de eventos retornado por <c>Events.List</c>. <c>Truncado=true</c> quando a varredura
+/// parou no teto de batch antes de drenar a janela — o reconciliador avança o cursor só até o
+/// último evento processado e sinaliza para o cron re-disparar a partir do cursor.
+/// </summary>
+public sealed record StripeEventListResult(
+    IReadOnlyList<StripeEventSummary> Eventos,
+    bool Truncado);

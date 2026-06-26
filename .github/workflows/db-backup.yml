@@ -95,6 +95,13 @@ jobs:
             --only-show-errors
           echo "backup enviado: s3://${R2_BUCKET}/${FILE}.age (${SIZE} bytes em claro)"
 
+      - name: Healthchecks ping (success)
+        if: success()
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/db-backup" || true
+      - name: Healthchecks ping (failure)
+        if: failure()
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/db-backup/fail" || true
+
       - name: Notificar falha via issue
         if: failure()
         uses: actions/github-script@v9

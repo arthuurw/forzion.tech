@@ -315,6 +315,11 @@ public static class PagamentosEndpoints
             var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
 
             if (result.IsFailure) return result.ToProblemResult();
+
+            // 503 p/ o curl -fsS do cron falhar (if:failure() abre issue) quando há backlog restante.
+            if (result.Value.Truncado)
+                return Results.Json(result.Value, statusCode: StatusCodes.Status503ServiceUnavailable);
+
             return Results.Ok(result.Value);
         })
         .WithTags("Internal")
@@ -322,6 +327,7 @@ public static class PagamentosEndpoints
         .AllowAnonymous()
         .RequireRateLimiting("internal")
         .Produces<ReconciliarPagamentosStripeResponse>()
+        .Produces<ReconciliarPagamentosStripeResponse>(StatusCodes.Status503ServiceUnavailable)
         .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         return endpoints;

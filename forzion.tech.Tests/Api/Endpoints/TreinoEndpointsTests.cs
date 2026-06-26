@@ -472,7 +472,12 @@ public class TreinoEndpointsTests : IClassFixture<TreinoEndpointsTests.TreinoWeb
                 services.RemoveAll<IUserContext>();
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.PerfilId).Returns(TreinadorId);
+                userContextMock.Setup(u => u.TipoConta).Returns(TipoConta.Treinador);
                 services.AddScoped(_ => userContextMock.Object);
+
+                services.RemoveAll<IAssinaturaTreinadorRepository>();
+                var assinaturaTreinadorRepoMock = new Mock<IAssinaturaTreinadorRepository>();
+                services.AddScoped(_ => assinaturaTreinadorRepoMock.Object);
 
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });

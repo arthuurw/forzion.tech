@@ -104,6 +104,16 @@
               }
             }
           },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliarPagamentosStripeResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -3547,6 +3557,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VinculoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -10476,7 +10496,9 @@
           "replayed",
           "jaConsistentes",
           "erros",
-          "desdeUtc"
+          "desdeUtc",
+          "truncado",
+          "onboardingConfirmados"
         ],
         "type": "object",
         "properties": {
@@ -10515,6 +10537,17 @@
           "desdeUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "truncado": {
+            "type": "boolean"
+          },
+          "onboardingConfirmados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

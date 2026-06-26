@@ -14,4 +14,5 @@ public class StripeSettings
 
     public int TimeoutSegundos { get; set; } = 30;
     public int MaxNetworkRetries { get; set; } = 2;
+    public int MaxEventosReconciliacaoPorRun { get; set; } = 1000;
 }

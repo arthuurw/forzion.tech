@@ -52,6 +52,13 @@ jobs:
               -d "$BODY" \
               http://localhost:8080/internal/reconciliar-pagamentos
 
+      - name: Healthchecks ping (success)
+        if: success()
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/billing-reconciliation" || true
+      - name: Healthchecks ping (failure)
+        if: failure()
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/billing-reconciliation/fail" || true
+
       - name: Notificar falha via issue
         if: failure()
         uses: actions/github-script@v9
@@ -67,10 +74,12 @@ jobs:
               '',
               'Sem reconciliação = webhooks Stripe perdidos podem ficar não detectados (Pagamento.Status diverge do estado real).',
               '',
+              '**HTTP 503 = batch truncado** (backlog > teto por run): o cursor avançou só até o último evento processado, nenhum evento foi perdido. O próximo run agendado continua de onde parou. Para drenar agora, re-disparar manualmente via `workflow_dispatch` (deixar `desde_utc` vazio = retoma do cursor; ou informar `desde_utc` ISO-8601 p/ backfill de janela específica).',
+              '',
               'Investigar (ordem dos layers):',
               '1. Tailnet: runner conectou? ACL `tag:ci -> VM:22` (SSH) liberada?',
               '2. SSH: `VM_TAILNET_IP` bate com a VM? `HOMOLOG_SSH_KEY` válida?',
-              '3. `docker compose exec backend` rodou? `/internal/reconciliar-pagamentos` respondeu (401=key, 5xx=backend)?',
+              '3. `docker compose exec backend` rodou? `/internal/reconciliar-pagamentos` respondeu (401=key, 503=batch truncado, 5xx=backend)?',
               '4. Stripe API rate limit estourou (`stripe_request_quota_exceeded`)?',
               '5. Backend logs (`docker compose logs backend --tail 200`)',
             ].join('\n');

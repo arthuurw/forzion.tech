@@ -657,7 +657,7 @@ public class ProcessarWebhookStripeHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ChargeRefunded_AmountRefundedAusente_MarcaEstornado()
+    public async Task ProcessarChargeReembolsadoAsync_AmountRefundedNulo_Lanca()
     {
         const string payloadSemAmount =
             "{\"type\":\"charge.refunded\",\"data\":{\"object\":{\"id\":\"ch_x\",\"payment_intent\":\"pi_no_amount\"}}}";
@@ -670,11 +670,11 @@ public class ProcessarWebhookStripeHandlerTests
         _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_no_amount", It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagamento);
 
-        var result = await _handler.HandleAsync(new ProcessarWebhookStripeCommand(payloadSemAmount, ValidSig));
+        var act = async () => await _handler.HandleAsync(new ProcessarWebhookStripeCommand(payloadSemAmount, ValidSig));
 
-        result.IsSuccess.Should().BeTrue();
-        pagamento.Status.Should().Be(PagamentoStatus.Estornado, "sem amount_refunded tratamos como total");
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static string ChargeDisputeCreatedPayload(string paymentIntentId, string motivo = "fraudulent") =>
@@ -1255,6 +1255,9 @@ public class ProcessarWebhookStripeHandlerTests
         _assinaturaRepo.Verify(r => r.ObterPorIdAsync(assinaturaId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    private static string ChargeDisputeSemIdPayload(string paymentIntentId) =>
+        "{\"type\":\"charge.dispute.created\",\"data\":{\"object\":{\"payment_intent\":\"" + paymentIntentId + "\",\"reason\":\"fraudulent\",\"amount\":14990}}}";
+
     private static string ChargeRefundedTreinadorPayload(string paymentIntentId, long amountCents = 5000) =>
         "{\"type\":\"charge.refunded\",\"data\":{\"object\":{\"id\":\"ch_t\",\"payment_intent\":\"" + paymentIntentId + "\",\"amount_refunded\":" + amountCents + ",\"refunded\":true}}}";
 
@@ -1305,6 +1308,82 @@ public class ProcessarWebhookStripeHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessarEstornoTreinadorAsync_AmountRefundedNulo_Lanca()
+    {
+        const string payloadSemAmount =
+            "{\"type\":\"charge.refunded\",\"data\":{\"object\":{\"id\":\"ch_t\",\"payment_intent\":\"pi_t_no_amount\",\"refunded\":true}}}";
+
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_t_no_amount", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        pagamento.MarcarPago(DateTime.UtcNow);
+        pagamento.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t_no_amount", It.IsAny<CancellationToken>())).ReturnsAsync((Pagamento?)null);
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_t_no_amount", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+
+        var act = async () => await _handler.HandleAsync(new ProcessarWebhookStripeCommand(payloadSemAmount, ValidSig));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        _assinaturaTreinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessarEstornoTreinadorAsync_RefundParcial_MantemPagoNaoMarcaInadimplente()
+    {
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        assinatura.ClearDomainEvents();
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_t_partial_refund", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        pagamento.MarcarPago(DateTime.UtcNow);
+        pagamento.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t_partial_refund", It.IsAny<CancellationToken>())).ReturnsAsync((Pagamento?)null);
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_t_partial_refund", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeRefundedTreinadorPayload("pi_t_partial_refund", 1000), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago, "refund parcial não deve alterar status do PagamentoTreinador");
+        assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa, "assinatura não deve ser marcada inadimplente por refund parcial");
+        _assinaturaTreinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessarEstornoTreinadorAsync_RefundTotal_MarcaEstornadoEInadimplenteEComita()
+    {
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        assinatura.ClearDomainEvents();
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_t_full_refund", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        pagamento.MarcarPago(DateTime.UtcNow);
+        pagamento.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t_full_refund", It.IsAny<CancellationToken>())).ReturnsAsync((Pagamento?)null);
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_t_full_refund", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeRefundedTreinadorPayload("pi_t_full_refund", 5000), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Estornado);
+        assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Inadimplente);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -1462,6 +1541,64 @@ public class ProcessarWebhookStripeHandlerTests
             new ProcessarWebhookStripeCommand(PaymentIntentPayload("payment_intent.succeeded", "pi_x"), ValidSig));
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessarDisputaCriadaAsync_DisputeIdVazio_PIMatchaPagamento_Lanca()
+    {
+        var pagamento = Pagamento.Criar(Guid.NewGuid(), 149.90m, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_dis_noid", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+        pagamento.MarcarPago(TestData.Agora);
+        pagamento.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_dis_noid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+
+        var act = async () => await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeSemIdPayload("pi_dis_noid"), ValidSig));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessarDisputaTreinadorAsync_DisputeIdVazio_PIMatchaPagamentoTreinador_Lanca()
+    {
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, Guid.NewGuid(), 50m, DateTime.UtcNow).Value;
+        assinatura.Ativar(DateTime.UtcNow);
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_t_dis_noid", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+        pagamento.MarcarPago(DateTime.UtcNow);
+        pagamento.ClearDomainEvents();
+
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_t_dis_noid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_t_dis_noid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagamento);
+
+        var act = async () => await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeSemIdPayload("pi_t_dis_noid"), ValidSig));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessarDisputaCriadaAsync_DisputeIdVazio_PIMatchaNada_NaoLanca()
+    {
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync("pi_ghost_noid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_ghost_noid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PagamentoTreinador?)null);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(ChargeDisputeSemIdPayload("pi_ghost_noid"), ValidSig));
+
+        result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

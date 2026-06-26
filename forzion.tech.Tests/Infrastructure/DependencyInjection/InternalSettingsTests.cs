@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace forzion.tech.Tests.Infrastructure.DependencyInjection;
 
 [Collection(EnvironmentSensitiveCollection.Name)]
-public class DeliveryLogSettingsTests
+public class InternalSettingsTests
 {
     private static ServiceProvider BuildProvider(string? environment, Dictionary<string, string?>? config = null)
     {
@@ -36,7 +36,7 @@ public class DeliveryLogSettingsTests
     {
         using var sp = BuildProvider("Production");
 
-        var act = () => _ = sp.GetRequiredService<IOptions<DeliveryLogSettings>>().Value;
+        var act = () => _ = sp.GetRequiredService<IOptions<InternalSettings>>().Value;
 
         act.Should().Throw<OptionsValidationException>();
     }
@@ -45,18 +45,18 @@ public class DeliveryLogSettingsTests
     public void Production_ComChave_Sobe()
     {
         using var sp = BuildProvider("Production",
-            new Dictionary<string, string?> { ["DeliveryLog:RecipientHashKey"] = "prod-key" });
+            new Dictionary<string, string?> { ["Internal:ApiKey"] = "prod-internal-key" });
 
-        sp.GetRequiredService<IOptions<DeliveryLogSettings>>().Value
-            .RecipientHashKey.Should().Be("prod-key");
+        sp.GetRequiredService<IOptions<InternalSettings>>().Value
+            .ApiKey.Should().Be("prod-internal-key");
     }
 
     [Fact]
-    public void NaoProducao_SemChave_UsaDefaultDev()
+    public void NaoProducao_SemChave_Sobe()
     {
         using var sp = BuildProvider("Development");
 
-        sp.GetRequiredService<IOptions<DeliveryLogSettings>>().Value
-            .RecipientHashKey.Should().Be(DeliveryLogSettings.DevDefaultKey);
+        sp.GetRequiredService<IOptions<InternalSettings>>().Value
+            .ApiKey.Should().BeEmpty();
     }
 }
