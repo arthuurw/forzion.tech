@@ -44,6 +44,7 @@ public static class TreinoEndpoints
             return Results.Created($"/treinos/{result.Value.TreinoId}", result.Value);
         })
         .RequireAuthorization()
+        .AddEndpointFilter<RequireAssinaturaTreinadorAtivaFilter>()
         .WithSummary("Cria um novo treino para um aluno")
         .Produces<TreinoResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -134,6 +135,7 @@ public static class TreinoEndpoints
             return Results.NoContent();
         })
         .RequireAuthorization()
+        .AddEndpointFilter<RequireAssinaturaTreinadorAtivaFilter>()
         .WithSummary("Vincula uma ficha de treino a um aluno")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -239,6 +241,7 @@ public static class TreinoEndpoints
             return Results.Created($"/treinos/{result.Value.TreinoId}", result.Value);
         })
         .RequireAuthorization()
+        .AddEndpointFilter<RequireAssinaturaTreinadorAtivaFilter>()
         .WithSummary("Duplica um treino (gera uma cópia)")
         .Produces<TreinoResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status401Unauthorized)

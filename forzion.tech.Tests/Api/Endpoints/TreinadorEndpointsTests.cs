@@ -52,6 +52,7 @@ using forzion.tech.Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -188,6 +189,73 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             new { PacoteId = Guid.NewGuid(), TrarFichas = false });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Post_AprovarVinculo_TreinadorInadimplente_Retorna403()
+    {
+        _factory.AprovarVinculoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AprovarVinculoCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(RespostaVinculo));
+
+        var inadimplente = CriarAssinaturaTreinador(AssinaturaTreinadorStatus.Inadimplente);
+        var factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                var repo = new Mock<IAssinaturaTreinadorRepository>();
+                repo.Setup(r => r.ObterAtualPorTreinadorAsync(TreinadorId, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(inadimplente);
+                services.RemoveAll<IAssinaturaTreinadorRepository>();
+                services.AddScoped(_ => repo.Object);
+            }));
+
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "treinador");
+
+        var response = await client.PostAsJsonAsync(
+            $"/treinador/vinculos/{VinculoId}/aprovar",
+            new { PacoteId = PacoteId, TrarFichas = false });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Post_AprovarVinculo_TreinadorAtivo_Retorna200()
+    {
+        _factory.AprovarVinculoHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AprovarVinculoCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(RespostaVinculo));
+
+        var ativa = CriarAssinaturaTreinador(AssinaturaTreinadorStatus.Ativa);
+        var factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                var repo = new Mock<IAssinaturaTreinadorRepository>();
+                repo.Setup(r => r.ObterAtualPorTreinadorAsync(TreinadorId, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(ativa);
+                services.RemoveAll<IAssinaturaTreinadorRepository>();
+                services.AddScoped(_ => repo.Object);
+            }));
+
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "treinador");
+
+        var response = await client.PostAsJsonAsync(
+            $"/treinador/vinculos/{VinculoId}/aprovar",
+            new { PacoteId = PacoteId, TrarFichas = false });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    private static forzion.tech.Domain.Entities.AssinaturaTreinador CriarAssinaturaTreinador(AssinaturaTreinadorStatus status)
+    {
+        var agora = DateTime.UtcNow;
+        var a = forzion.tech.Domain.Entities.AssinaturaTreinador.Criar(TreinadorId, Guid.NewGuid(), 100m, agora).Value;
+        if (status is AssinaturaTreinadorStatus.Ativa or AssinaturaTreinadorStatus.Inadimplente)
+            a.Ativar(agora);
+        if (status == AssinaturaTreinadorStatus.Inadimplente)
+            a.MarcarInadimplente(agora);
+        return a;
     }
 
     // --- POST /treinador/vinculos/{id}/desvincular ---
@@ -982,6 +1050,8 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
     public class TreinadorWebFactory : WebApplicationFactory<Program>
     {
+        public Mock<IAssinaturaTreinadorRepository> AssinaturaTreinadorRepositoryMock { get; } = new();
+
         public Mock<ListarAlunosHandler> ListarAlunosHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
             Mock.Of<IUserContext>(),
@@ -1221,6 +1291,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<IUserContext>();
                 services.RemoveAll<IJwtService>();
                 services.RemoveAll<ITokenRevogadoRepository>();
+                services.RemoveAll<IAssinaturaTreinadorRepository>();
 
                 services.AddScoped(_ => ListarAlunosHandlerMock.Object);
                 services.AddScoped(_ => AprovarVinculoHandlerMock.Object);
@@ -1258,6 +1329,8 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 userContextMock.Setup(u => u.PerfilId).Returns(TreinadorId);
                 userContextMock.Setup(u => u.TipoConta).Returns(TipoConta.Treinador);
                 services.AddScoped(_ => userContextMock.Object);
+
+                services.AddScoped(_ => AssinaturaTreinadorRepositoryMock.Object);
 
                 var jwtMock = new Mock<IJwtService>();
                 jwtMock.Setup(j => j.ValidarTokenEscopo("step-up-ok", MfaScopes.StepUp))

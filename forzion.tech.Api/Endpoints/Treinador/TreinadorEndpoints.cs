@@ -170,6 +170,7 @@ public static class TreinadorEndpoints
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
         })
+        .AddEndpointFilter<RequireAssinaturaTreinadorAtivaFilter>()
         .WithSummary("Aprova o vínculo de um aluno ao treinador")
         .Produces<VinculoResponse>()
         .ProducesProblem(StatusCodes.Status403Forbidden)
@@ -206,8 +207,10 @@ public static class TreinadorEndpoints
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
         })
+        .AddEndpointFilter<RequireAssinaturaTreinadorAtivaFilter>()
         .WithSummary("Reativa um aluno inativo criando um novo vínculo aprovado")
         .Produces<VinculoResponse>()
+        .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
@@ -344,6 +347,7 @@ public static class TreinadorEndpoints
             if (result.IsFailure) return result.ToProblemResult();
             return Results.NoContent();
         })
+        .AddEndpointFilter<RequireAssinaturaTreinadorAtivaFilter>()
         .WithSummary("Vincula uma ficha de treino a um aluno")
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status403Forbidden)
