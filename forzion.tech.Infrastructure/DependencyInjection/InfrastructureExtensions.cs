@@ -119,6 +119,7 @@ public static class InfrastructureExtensions
         services.AddScoped<INotaFiscalRepository, NotaFiscalRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
         services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
+        services.AddScoped<IReconciliacaoStripeEstadoRepository, ReconciliacaoStripeEstadoRepository>();
         services.AddScoped<IHealthReportConfigRepository, HealthReportConfigRepository>();
         services.AddScoped<IHealthSnapshotRepository, HealthSnapshotRepository>();
         services.AddScoped<IErrorLogRepository, ErrorLogRepository>();

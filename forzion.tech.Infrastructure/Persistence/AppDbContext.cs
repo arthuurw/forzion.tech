@@ -57,6 +57,7 @@ public class AppDbContext(
     public DbSet<MfaChallenge> MfaChallenges => Set<MfaChallenge>();
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
     public DbSet<TrocaEmailToken> TrocaEmailTokens => Set<TrocaEmailToken>();
+    public DbSet<ReconciliacaoStripeEstado> ReconciliacoesStripeEstado => Set<ReconciliacaoStripeEstado>();
 
     private EfCoreTransactionAdapter? _transacaoAtiva;
     private List<IDomainEvent>? _eventosBestEffortPosCommit;
