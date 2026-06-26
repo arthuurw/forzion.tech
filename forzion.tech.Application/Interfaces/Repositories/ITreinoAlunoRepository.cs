@@ -1,3 +1,4 @@
+using forzion.tech.Application.UseCases.Alunos.Dashboard;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 
@@ -17,6 +18,7 @@ public interface ITreinoAlunoRepository
     Task<IReadOnlyList<TreinoAlunoComNome>> ListarAtivosComNomePorParAsync(Guid treinadorId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TreinoAlunoComNome>> ListarAtivosComNomePorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<TreinoAlunoDetalhe> Items, int Total)> ListarDetalhesPorAlunoAsync(Guid alunoId, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FichaAtivaResumo>> ListarFichasResumoPorAlunoAsync(Guid alunoId, int take, CancellationToken cancellationToken = default);
     Task<TreinoAlunoComNome?> ObterComNomeAsync(Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<TreinoAlunoDetalhe?> ObterDetalheAsync(Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default);
     Task<TreinoAlunoDetalhe?> ObterDetalheAdminAsync(Guid treinoAlunoId, CancellationToken cancellationToken = default);

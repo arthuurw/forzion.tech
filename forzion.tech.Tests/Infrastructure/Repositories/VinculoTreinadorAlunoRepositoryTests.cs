@@ -126,6 +126,67 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         resultado.Should().BeNull();
     }
 
+    // --- ObterResumoVinculoPorAlunoAsync (FR-3) ---
+
+    [Fact]
+    public async Task ObterResumoVinculoPorAlunoAsync_AtivoEPendente_AmbasFlagsTrue()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinador1, aluno) = await SeedParAsync(ctx);
+        var treinador2 = await SeedTreinadorAsync(ctx);
+
+        var ativo = await AtivoAsync(ctx, treinador1, aluno);
+        var pendente = Pendente(treinador2, aluno);
+        await ctx.VinculosTreinadorAluno.AddRangeAsync(ativo, pendente);
+        await ctx.SaveChangesAsync();
+
+        var (temAtivo, temPendente) = await Repo(ctx).ObterResumoVinculoPorAlunoAsync(aluno.Id);
+
+        temAtivo.Should().BeTrue();
+        temPendente.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ObterResumoVinculoPorAlunoAsync_SoPendente_AtivoFalsePendenteTrue()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinador, aluno) = await SeedParAsync(ctx);
+
+        await ctx.VinculosTreinadorAluno.AddAsync(Pendente(treinador, aluno));
+        await ctx.SaveChangesAsync();
+
+        var (temAtivo, temPendente) = await Repo(ctx).ObterResumoVinculoPorAlunoAsync(aluno.Id);
+
+        temAtivo.Should().BeFalse();
+        temPendente.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ObterResumoVinculoPorAlunoAsync_SoInativo_AmbasFlagsFalse()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinador, aluno) = await SeedParAsync(ctx);
+
+        await ctx.VinculosTreinadorAluno.AddAsync(await InativoAsync(ctx, treinador, aluno));
+        await ctx.SaveChangesAsync();
+
+        var (temAtivo, temPendente) = await Repo(ctx).ObterResumoVinculoPorAlunoAsync(aluno.Id);
+
+        temAtivo.Should().BeFalse();
+        temPendente.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ObterResumoVinculoPorAlunoAsync_SemVinculo_AmbasFlagsFalse()
+    {
+        await using var ctx = fixture.CreateContext();
+
+        var (temAtivo, temPendente) = await Repo(ctx).ObterResumoVinculoPorAlunoAsync(Guid.NewGuid());
+
+        temAtivo.Should().BeFalse();
+        temPendente.Should().BeFalse();
+    }
+
     // --- ContarAtivosPorTreinadorAsync ---
 
     [Fact]

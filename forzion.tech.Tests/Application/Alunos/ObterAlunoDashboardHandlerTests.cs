@@ -2,7 +2,6 @@ using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos.Dashboard;
-using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -30,29 +29,25 @@ public class ObterAlunoDashboardHandlerTests
             _userContext.Object, _timeProvider);
     }
 
-    private static TreinoAlunoDetalhe CriarFicha()
-    {
-        var treino = Treino.Criar("Treino A", ObjetivoTreino.Hipertrofia, Guid.NewGuid(), DateTime.UtcNow).Value;
-        var treinoAluno = TreinoAluno.Criar(treino.Id, Guid.NewGuid(), DateTime.UtcNow).Value;
-        return new TreinoAlunoDetalhe(treinoAluno, treino);
-    }
+    private static FichaAtivaResumo CriarFicha() =>
+        new(Guid.NewGuid(), Guid.NewGuid(), "Treino A", ObjetivoTreino.Hipertrofia, DateTime.UtcNow);
 
     [Fact]
     public async Task HandleAsync_TopCincoFichasComTotalExecucoesEContagens()
     {
         var fichas = Enumerable.Range(0, 5).Select(_ => CriarFicha()).ToList();
         _treinoAlunoRepo
-            .Setup(r => r.ListarDetalhesPorAlunoAsync(_alunoId, 1, 5, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((fichas, 12));
+            .Setup(r => r.ListarFichasResumoPorAlunoAsync(_alunoId, 5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fichas);
+        _treinoAlunoRepo
+            .Setup(r => r.ContarAtivosPorAlunoAsync(_alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(12);
         _execucaoRepo
             .Setup(r => r.ContarPorAlunoAsync(_alunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(42);
         _vinculoRepo
-            .Setup(r => r.ObterAtivoPorAlunoAsync(_alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(VinculoTreinadorAluno.Criar(Guid.NewGuid(), _alunoId, DateTime.UtcNow).Value);
-        _vinculoRepo
-            .Setup(r => r.ObterPendentePorAlunoAsync(_alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((VinculoTreinadorAluno?)null);
+            .Setup(r => r.ObterResumoVinculoPorAlunoAsync(_alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, false));
 
         var result = await _handler.HandleAsync();
 
@@ -64,15 +59,15 @@ public class ObterAlunoDashboardHandlerTests
         result.Vinculo.Ativo.Should().BeTrue();
         result.Vinculo.Pendente.Should().BeFalse();
 
-        _treinoAlunoRepo.Verify(r => r.ListarDetalhesPorAlunoAsync(_alunoId, 1, 5, It.IsAny<CancellationToken>()), Times.Once);
+        _treinoAlunoRepo.Verify(r => r.ListarFichasResumoPorAlunoAsync(_alunoId, 5, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task HandleAsync_HistogramaBucketizaSessaoNoIntervaloDeOitoSemanas()
     {
         _treinoAlunoRepo
-            .Setup(r => r.ListarDetalhesPorAlunoAsync(_alunoId, 1, 5, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<TreinoAlunoDetalhe>(), 0));
+            .Setup(r => r.ListarFichasResumoPorAlunoAsync(_alunoId, 5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FichaAtivaResumo>());
         _execucaoRepo
             .Setup(r => r.ContarSessoesPorDiaAsync(_alunoId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SessaoDiaCount> { new(new DateTime(2026, 6, 25), 4) });
@@ -88,14 +83,11 @@ public class ObterAlunoDashboardHandlerTests
     public async Task HandleAsync_VinculoPendenteSemAtivo_RetornaFlagsCorretas()
     {
         _treinoAlunoRepo
-            .Setup(r => r.ListarDetalhesPorAlunoAsync(_alunoId, 1, 5, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<TreinoAlunoDetalhe>(), 0));
+            .Setup(r => r.ListarFichasResumoPorAlunoAsync(_alunoId, 5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FichaAtivaResumo>());
         _vinculoRepo
-            .Setup(r => r.ObterAtivoPorAlunoAsync(_alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((VinculoTreinadorAluno?)null);
-        _vinculoRepo
-            .Setup(r => r.ObterPendentePorAlunoAsync(_alunoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(VinculoTreinadorAluno.Criar(Guid.NewGuid(), _alunoId, DateTime.UtcNow).Value);
+            .Setup(r => r.ObterResumoVinculoPorAlunoAsync(_alunoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((false, true));
 
         var result = await _handler.HandleAsync();
 

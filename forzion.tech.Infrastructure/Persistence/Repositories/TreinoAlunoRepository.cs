@@ -1,4 +1,5 @@
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Alunos.Dashboard;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -103,6 +104,18 @@ public class TreinoAlunoRepository(AppDbContext context) : ITreinoAlunoRepositor
 
         return (items, total);
     }
+
+    public async Task<IReadOnlyList<FichaAtivaResumo>> ListarFichasResumoPorAlunoAsync(
+        Guid alunoId, int take, CancellationToken cancellationToken = default) =>
+        await (
+            from ta in _context.TreinoAlunos
+            where ta.AlunoId == alunoId && ta.Status == TreinoAlunoStatus.Ativo
+            join t in _context.Treinos on ta.TreinoId equals t.Id
+            orderby ta.CreatedAt descending, ta.Id
+            select new FichaAtivaResumo(ta.Id, t.Id, t.Nome, t.Objetivo, ta.CreatedAt))
+            .Take(take)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 
     public async Task<TreinoAlunoDetalhe?> ObterDetalheAsync(
         Guid treinoAlunoId, Guid alunoId, CancellationToken cancellationToken = default)

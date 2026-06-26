@@ -141,4 +141,71 @@ public class TreinoAlunoRepositoryTests(InfrastructureTestFixture fixture)
         var persisted = await ctx.TreinoAlunos.FindAsync(result[0].Id);
         persisted!.Status.Should().Be(TreinoAlunoStatus.Inativo);
     }
+
+    // --- ListarFichasResumoPorAlunoAsync (FR-3) ---
+
+    private static async Task<TreinoAluno> SeedTreinoAlunoEmAsync(
+        AppDbContext ctx, Guid treinoId, Guid alunoId, DateTime criadoEm, TreinoAlunoStatus status = TreinoAlunoStatus.Ativo)
+    {
+        var ta = TreinoAluno.Criar(treinoId, alunoId, criadoEm).Value;
+        if (status == TreinoAlunoStatus.Inativo)
+            ta.AlterarStatus(TreinoAlunoStatus.Inativo, criadoEm);
+        await ctx.TreinoAlunos.AddAsync(ta);
+        await ctx.SaveChangesAsync();
+        return ta;
+    }
+
+    [Fact]
+    public async Task ListarFichasResumoPorAlunoAsync_ProjetaCamposRespeitaTakeEOrdenaDesc()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+        var alunoId = await SeedAlunoAsync(ctx);
+        var baseTime = DateTime.UtcNow.AddDays(-10);
+
+        var criadas = new List<(Guid taId, Guid treinoId, string nome, DateTime criadoEm)>();
+        for (var i = 0; i < 6; i++)
+        {
+            var treino = await SeedTreinoAsync(ctx, treinadorId);
+            var criadoEm = baseTime.AddMinutes(i);
+            var ta = await SeedTreinoAlunoEmAsync(ctx, treino.Id, alunoId, criadoEm);
+            criadas.Add((ta.Id, treino.Id, treino.Nome, criadoEm));
+        }
+        var treinoInativo = await SeedTreinoAsync(ctx, treinadorId);
+        await SeedTreinoAlunoEmAsync(ctx, treinoInativo.Id, alunoId, baseTime.AddMinutes(100), TreinoAlunoStatus.Inativo);
+
+        var result = await Repo(ctx).ListarFichasResumoPorAlunoAsync(alunoId, 5);
+
+        result.Should().HaveCount(5);
+        var esperadoDesc = criadas.OrderByDescending(c => c.criadoEm).Take(5).Select(c => c.taId).ToList();
+        result.Select(f => f.TreinoAlunoId).Should().Equal(esperadoDesc);
+
+        var primeiro = criadas.Single(c => c.taId == result[0].TreinoAlunoId);
+        result[0].TreinoId.Should().Be(primeiro.treinoId);
+        result[0].NomeTreino.Should().Be(primeiro.nome);
+        result[0].Objetivo.Should().Be(ObjetivoTreino.Hipertrofia);
+    }
+
+    [Fact]
+    public async Task ListarFichasResumoPorAlunoAsync_IgnoraInativosEOutrosAlunos()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+        var alunoId = await SeedAlunoAsync(ctx);
+        var outroAlunoId = await SeedAlunoAsync(ctx);
+
+        var treinoAtivo = await SeedTreinoAsync(ctx, treinadorId);
+        var taAtivo = await SeedTreinoAlunoAsync(ctx, treinoAtivo.Id, alunoId, TreinoAlunoStatus.Ativo);
+
+        var treinoInativo = await SeedTreinoAsync(ctx, treinadorId);
+        await SeedTreinoAlunoAsync(ctx, treinoInativo.Id, alunoId, TreinoAlunoStatus.Inativo);
+
+        var treinoOutro = await SeedTreinoAsync(ctx, treinadorId);
+        await SeedTreinoAlunoAsync(ctx, treinoOutro.Id, outroAlunoId, TreinoAlunoStatus.Ativo);
+
+        var result = await Repo(ctx).ListarFichasResumoPorAlunoAsync(alunoId, 5);
+
+        result.Should().ContainSingle();
+        result[0].TreinoAlunoId.Should().Be(taAtivo.Id);
+    }
 }

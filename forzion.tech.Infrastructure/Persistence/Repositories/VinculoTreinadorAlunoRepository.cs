@@ -23,6 +23,20 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             .FirstOrDefaultAsync(v => v.AlunoId == alunoId && v.Status == VinculoStatus.Ativo, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<(bool Ativo, bool Pendente)> ObterResumoVinculoPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default)
+    {
+        var statuses = await context.VinculosTreinadorAluno
+            .AsNoTracking()
+            .Where(v => v.AlunoId == alunoId &&
+                        (v.Status == VinculoStatus.Ativo || v.Status == VinculoStatus.AguardandoAprovacao))
+            .GroupBy(v => v.Status)
+            .Select(g => g.Key)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return (statuses.Contains(VinculoStatus.Ativo), statuses.Contains(VinculoStatus.AguardandoAprovacao));
+    }
+
     public async Task<int> ContarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
         await context.VinculosTreinadorAluno
             .CountAsync(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo, cancellationToken)
