@@ -22,7 +22,13 @@ public class RefreshTokenRepository(AppDbContext context) : IRefreshTokenReposit
                 .SetProperty(t => t.SubstituidoPorId, sucessorId), cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<bool> RotacionarAtomicoAsync(Guid tokenId, DateTime usadoEm, RefreshToken sucessor, CancellationToken cancellationToken = default)
+    public Task<bool> RotacionarAtomicoAsync(Guid tokenId, DateTime usadoEm, RefreshToken sucessor, CancellationToken cancellationToken = default)
+    {
+        var strategy = context.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(() => RotacionarAtomicoCoreAsync(tokenId, usadoEm, sucessor, cancellationToken));
+    }
+
+    private async Task<bool> RotacionarAtomicoCoreAsync(Guid tokenId, DateTime usadoEm, RefreshToken sucessor, CancellationToken cancellationToken)
     {
         await using var tx = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 

@@ -58,22 +58,19 @@ public sealed class CriarPagamentoComIntentService(
         }
     }
 
-    private async Task<Result<TPagamento>> ExecutarTransacaoAsync<TPagamento>(
+    private Task<Result<TPagamento>> ExecutarTransacaoAsync<TPagamento>(
         CriarPagamentoComIntentParams<TPagamento> p,
         CancellationToken ct)
-        where TPagamento : class
-    {
-        TPagamento pagamento;
-
-        await using (var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false))
+        where TPagamento : class =>
+        transactionProvider.ExecuteInTransactionAsync(IsolationLevel.Serializable, async (tx, innerCt) =>
         {
-            var pendente = await p.ObterPendente(ct).ConfigureAwait(false);
+            var pendente = await p.ObterPendente(innerCt).ConfigureAwait(false);
             if (pendente is not null)
             {
                 var reutilizavel = p.VerificarIdempotencia(pendente);
                 if (reutilizavel is not null)
                 {
-                    await tx.CommitAsync(ct).ConfigureAwait(false);
+                    await tx.CommitAsync(innerCt).ConfigureAwait(false);
                     return Result.Success(reutilizavel);
                 }
 
@@ -88,19 +85,17 @@ public sealed class CriarPagamentoComIntentService(
             var criarResult = p.CriarPagamento();
             if (criarResult.IsFailure)
                 return Result.Failure<TPagamento>(criarResult.Error!);
-            pagamento = criarResult.Value;
+            var pagamento = criarResult.Value;
 
             var intentResult = p.AplicarIntent(pagamento);
             if (intentResult.IsFailure)
                 return Result.Failure<TPagamento>(intentResult.Error!);
 
-            await p.AdicionarAsync(pagamento, ct).ConfigureAwait(false);
-            await unitOfWork.CommitAsync(ct).ConfigureAwait(false);
-            await tx.CommitAsync(ct).ConfigureAwait(false);
-        }
-
-        return Result.Success(pagamento);
-    }
+            await p.AdicionarAsync(pagamento, innerCt).ConfigureAwait(false);
+            await unitOfWork.CommitAsync(innerCt).ConfigureAwait(false);
+            await tx.CommitAsync(innerCt).ConfigureAwait(false);
+            return Result.Success(pagamento);
+        }, ct);
 
     private bool EhConflitoConcorrencia(Exception ex) =>
         databaseErrorInspector.EhViolacaoDeUnicidade(ex) || databaseErrorInspector.EhConflitoDeSerializacao(ex);

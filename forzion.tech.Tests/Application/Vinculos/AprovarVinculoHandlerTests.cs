@@ -1,14 +1,17 @@
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 using Microsoft.Extensions.Logging;
 using Moq;
 using forzion.tech.Tests.Builders;
+using forzion.tech.Tests.TestSupport;
 
 namespace forzion.tech.Tests.Application.Vinculos;
 
@@ -35,9 +38,7 @@ public class AprovarVinculoHandlerTests
         var mockTx = new Mock<ITransaction>();
         mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
-        _transactionProvider
-            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(mockTx.Object);
+        _transactionProvider.SetupExecuteInTransaction<Result<VinculoResponse>>(mockTx.Object);
         var contaOnboarded = ContaRecebimento.Criar(Guid.NewGuid(), DateTime.UtcNow).Value;
         contaOnboarded.ConfigurarStripeConnect("acct_123", DateTime.UtcNow);
         contaOnboarded.ConfirmarOnboarding(DateTime.UtcNow);

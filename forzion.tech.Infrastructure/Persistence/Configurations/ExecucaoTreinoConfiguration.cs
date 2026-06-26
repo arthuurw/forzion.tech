@@ -17,7 +17,10 @@ public class ExecucaoTreinoConfiguration : IEntityTypeConfiguration<ExecucaoTrei
         builder.Property(e => e.CreatedAt).IsRequired();
 
         builder.HasIndex(e => e.TreinoId);
-        builder.HasIndex(e => e.AlunoId);
+
+        builder.HasIndex(e => new { e.AlunoId, e.DataExecucao })
+               .IsDescending(false, true)
+               .HasDatabaseName("ix_execucoes_treino_aluno_id_data_execucao");
 
         builder.HasIndex(e => new { e.AlunoId, e.IdempotencyKey })
                .IsUnique()

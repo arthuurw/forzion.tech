@@ -25,6 +25,21 @@ public class AssinaturaAlunoRepository(AppDbContext context) : IAssinaturaAlunoR
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<bool> AlunoEstaInadimplentePorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default)
+    {
+        var status = await (
+            from a in context.Alunos
+            where a.ContaId == contaId
+            join asg in context.AssinaturaAlunos on a.Id equals asg.AlunoId
+            where asg.Status != AssinaturaAlunoStatus.Cancelada
+            orderby asg.CreatedAt descending
+            select (AssinaturaAlunoStatus?)asg.Status)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return status == AssinaturaAlunoStatus.Inadimplente;
+    }
+
     // Keyset por Id (uuid é ordenável no Postgres): renovação bem-sucedida tira a linha do filtro,
     // então offset/Skip pularia não-processados. Cursor avança mesmo em falha → falha não reprocessa
     // no mesmo run (próximo cron pega), evitando loop infinito.

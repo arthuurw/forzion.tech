@@ -27,22 +27,15 @@ public class RequireAssinaturaAtivaFilterTests
         userContext.SetupGet(u => u.ContaId).Returns(contaId);
         userContext.SetupGet(u => u.PerfilId).Returns(aluno?.Id ?? Guid.NewGuid());
 
-        var alunoRepository = new Mock<IAlunoRepository>();
-        alunoRepository
-            .Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(aluno);
+        var inadimplente = aluno is not null && assinatura?.Status == AssinaturaAlunoStatus.Inadimplente;
 
         var assinaturaRepository = new Mock<IAssinaturaAlunoRepository>();
-        if (aluno is not null)
-        {
-            assinaturaRepository
-                .Setup(r => r.ObterAtualPorAlunoAsync(aluno.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(assinatura);
-        }
+        assinaturaRepository
+            .Setup(r => r.AlunoEstaInadimplentePorContaIdAsync(contaId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(inadimplente);
 
         var services = new ServiceCollection();
         services.AddSingleton(userContext.Object);
-        services.AddSingleton(alunoRepository.Object);
         services.AddSingleton(assinaturaRepository.Object);
         var provider = services.BuildServiceProvider();
 
@@ -197,7 +190,6 @@ public class RequireAssinaturaAtivaFilterTests
     [Fact]
     public async Task Post_TipoNaoAluno_NaoConsultaRepositorios()
     {
-        var alunoRepoMock = new Mock<IAlunoRepository>(MockBehavior.Strict);
         var assinaturaRepoMock = new Mock<IAssinaturaAlunoRepository>(MockBehavior.Strict);
 
         var userContext = new Mock<IUserContext>();
@@ -206,7 +198,6 @@ public class RequireAssinaturaAtivaFilterTests
 
         var services = new ServiceCollection();
         services.AddSingleton(userContext.Object);
-        services.AddSingleton(alunoRepoMock.Object);
         services.AddSingleton(assinaturaRepoMock.Object);
         var provider = services.BuildServiceProvider();
 
@@ -225,7 +216,6 @@ public class RequireAssinaturaAtivaFilterTests
         await filter.InvokeAsync(ctx, next);
 
         called.Should().BeTrue();
-        alunoRepoMock.VerifyNoOtherCalls();
         assinaturaRepoMock.VerifyNoOtherCalls();
     }
 }

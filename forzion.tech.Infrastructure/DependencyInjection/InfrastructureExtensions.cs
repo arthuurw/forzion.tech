@@ -48,6 +48,8 @@ public static class InfrastructureExtensions
         // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.
         services.AddSingleton(TimeProvider.System);
 
+        services.AddSingleton(_ => new BestEffortConcurrencyGate(
+            configuration.GetValue<int?>("DomainEvents:MaxConcorrenciaBestEffort") ?? 8));
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
         // Registry de durabilidade (singleton): declara os pares evento×handler que rodam no
@@ -66,8 +68,14 @@ public static class InfrastructureExtensions
         services.AddScoped<AppDbContext>(sp =>
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable(
-                    "__EFMigrationsHistory", MigrationHistorySchemaResolver.Resolve(connectionString)))
+                .UseNpgsql(connectionString, o =>
+                {
+                    o.MigrationsHistoryTable(
+                        "__EFMigrationsHistory", MigrationHistorySchemaResolver.Resolve(connectionString));
+                    o.CommandTimeout(15);
+                    o.ExecutionStrategy(deps => new AppRetryingExecutionStrategy(
+                        deps, maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5)));
+                })
                 .UseSnakeCaseNamingConvention()
                 .Options;
 

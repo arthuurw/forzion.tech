@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import type { ExecucaoTreinoResponse, ExercicioProgressao, VinculoAlunoItemResponse } from "@/types";
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithProviders } from "@/test/render";
+import type { AlunoDashboardResponse, ExecucaoTreinoResponse, ExercicioProgressao, VinculoAlunoItemResponse } from "@/types";
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() })),
@@ -28,10 +29,22 @@ vi.mock("@/lib/api/aluno", () => ({
     listExecucoes: vi.fn(),
     getMinhaProgressao: vi.fn(),
     getMeuVinculo: vi.fn(),
+    getDashboard: vi.fn(),
   },
 }));
 
 import { alunoApi } from "@/lib/api/aluno";
+
+const dashboard: AlunoDashboardResponse = {
+  totalFichas: 1,
+  fichasAtivas: [],
+  totalExecucoes: 1,
+  sessoesPorSemana: [
+    { semanaInicio: "2026-06-09T00:00:00Z", semanaFim: "2026-06-15T00:00:00Z", total: 2 },
+    { semanaInicio: "2026-06-16T00:00:00Z", semanaFim: "2026-06-22T00:00:00Z", total: 3 },
+  ],
+  vinculo: { ativo: true, pendente: false },
+};
 
 const vinculoAtivo: VinculoAlunoItemResponse = {
   vinculoId: "v-1",
@@ -73,11 +86,14 @@ describe("HistoricoAlunoPage — a11y charts", () => {
     vi.mocked(alunoApi.getMeuVinculo).mockResolvedValue({
       data: { vinculoAtivo, vinculoPendente: null },
     } as Awaited<ReturnType<typeof alunoApi.getMeuVinculo>>);
+    vi.mocked(alunoApi.getDashboard).mockResolvedValue({
+      data: dashboard,
+    } as Awaited<ReturnType<typeof alunoApi.getDashboard>>);
   });
 
   it("gráfico de frequência semanal tem figure com aria-label acessível", async () => {
     const { default: Page } = await import("@/app/(aluno)/aluno/historico/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(
@@ -88,7 +104,7 @@ describe("HistoricoAlunoPage — a11y charts", () => {
 
   it("gráfico de progressão por exercício tem figure com aria-label acessível", async () => {
     const { default: Page } = await import("@/app/(aluno)/aluno/historico/page");
-    render(<Page />);
+    renderWithProviders(<Page />, { skipAuth: true });
 
     await waitFor(() => {
       expect(

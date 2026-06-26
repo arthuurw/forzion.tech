@@ -7,6 +7,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Tests.Builders;
+using forzion.tech.Tests.TestSupport;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Lgpd;
@@ -63,14 +64,10 @@ public class AnonimizarContaHandlerTests
         _execucaoRepo.Setup(r => r.AnonimizarObservacoesPorAlunoIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                      .Returns(Task.CompletedTask);
 
-        // tx noop: sem transação real, BeginTransactionAsync devolveria null (Moq) e o
-        // `await using` quebraria — devolve um ITransaction mockado com commit/dispose noop.
         var mockTx = new Mock<ITransaction>();
         mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
-        _transactionProvider
-            .Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(mockTx.Object);
+        _transactionProvider.SetupExecuteInTransaction<Result>(mockTx.Object);
 
         _handler = new AnonimizarContaHandler(
             _contaRepo.Object,

@@ -57,23 +57,24 @@ public class EsqueceuSenhaHandler(
             agora.AddHours(1),
             agora).Value;
 
-        await using var transacao = await transactionProvider
-            .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
-            .ConfigureAwait(false);
-
-        await tokenRepository.InvalidarPendentesPorContaAsync(conta.Id, agora, cancellationToken).ConfigureAwait(false);
-        await tokenRepository.AdicionarAsync(resetToken, cancellationToken).ConfigureAwait(false);
-        emailCritico.Enfileirar(EmailCriticoTemplate.RedefinirSenha, conta.Email.Value, rawToken);
-
-        try
+        await transactionProvider.ExecuteInTransactionAsync(IsolationLevel.ReadCommitted, async (transacao, _) =>
         {
-            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-            await transacao.CommitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (dbErrorInspector.EhViolacaoDeUnicidade(ex))
-        {
-            logger.LogDebug(ex, "EsqueceuSenha: token pendente concorrente para {ContaId}.", conta.Id);
-        }
+            await tokenRepository.InvalidarPendentesPorContaAsync(conta.Id, agora, cancellationToken).ConfigureAwait(false);
+            await tokenRepository.AdicionarAsync(resetToken, cancellationToken).ConfigureAwait(false);
+            emailCritico.Enfileirar(EmailCriticoTemplate.RedefinirSenha, conta.Email.Value, rawToken);
+
+            try
+            {
+                await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+                await transacao.CommitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (dbErrorInspector.EhViolacaoDeUnicidade(ex))
+            {
+                logger.LogDebug(ex, "EsqueceuSenha: token pendente concorrente para {ContaId}.", conta.Id);
+            }
+
+            return true;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     private static string GenerateRawToken()

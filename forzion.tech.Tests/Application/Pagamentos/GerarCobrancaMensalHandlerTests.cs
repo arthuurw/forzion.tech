@@ -6,7 +6,9 @@ using forzion.tech.Application.Settings;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Tests.Builders;
+using forzion.tech.Tests.TestSupport;
 using forzion.tech.Tests.E2E;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,20 +28,13 @@ public class GerarCobrancaMensalHandlerTests
     private readonly Mock<ILogger<GerarCobrancaMensalHandler>> _logger = new();
     private readonly GerarCobrancaMensalHandler _handler;
 
-    private sealed class NoopTransaction : ITransaction
-    {
-        public Task CommitAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-    }
-
     private static readonly PixPaymentResult PixResult = new("pi_123", "qrcode", "https://img", DateTime.UtcNow.AddHours(1));
 
     public GerarCobrancaMensalHandlerTests()
     {
         var paymentSettings = Options.Create(new PaymentSettings { TaxaPlataformaPercent = 5m });
 
-        _transactionProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NoopTransaction());
+        _transactionProvider.SetupExecuteInTransaction<Result<Pagamento>>();
 
         var criarPagamentoService = new CriarPagamentoComIntentService(
             _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,

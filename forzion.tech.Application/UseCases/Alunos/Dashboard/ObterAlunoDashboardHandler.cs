@@ -17,14 +17,13 @@ public class ObterAlunoDashboardHandler(
     {
         var alunoId = userContext.PerfilId;
 
-        var (fichas, totalFichas) = await treinoAlunoRepository
-            .ListarDetalhesPorAlunoAsync(alunoId, 1, MaxFichas, cancellationToken)
+        var fichasAtivas = await treinoAlunoRepository
+            .ListarFichasResumoPorAlunoAsync(alunoId, MaxFichas, cancellationToken)
             .ConfigureAwait(false);
 
-        var fichasAtivas = fichas
-            .Select(f => new FichaAtivaResumo(
-                f.TreinoAluno.Id, f.Treino.Id, f.Treino.Nome, f.Treino.Objetivo, f.TreinoAluno.CreatedAt))
-            .ToList();
+        var totalFichas = await treinoAlunoRepository
+            .ContarAtivosPorAlunoAsync(alunoId, cancellationToken)
+            .ConfigureAwait(false);
 
         var totalExecucoes = await execucaoRepository
             .ContarPorAlunoAsync(alunoId, cancellationToken)
@@ -38,11 +37,8 @@ public class ObterAlunoDashboardHandler(
             .ConfigureAwait(false);
         var sessoesPorSemana = SessoesPorSemanaCalculator.Bucketizar(agora, Semanas, dias);
 
-        var vinculoAtivo = await vinculoRepository
-            .ObterAtivoPorAlunoAsync(alunoId, cancellationToken)
-            .ConfigureAwait(false);
-        var vinculoPendente = await vinculoRepository
-            .ObterPendentePorAlunoAsync(alunoId, cancellationToken)
+        var (vinculoAtivo, vinculoPendente) = await vinculoRepository
+            .ObterResumoVinculoPorAlunoAsync(alunoId, cancellationToken)
             .ConfigureAwait(false);
 
         return new ObterAlunoDashboardResponse(
@@ -50,6 +46,6 @@ public class ObterAlunoDashboardHandler(
             fichasAtivas,
             totalExecucoes,
             sessoesPorSemana,
-            new VinculoResumo(vinculoAtivo is not null, vinculoPendente is not null));
+            new VinculoResumo(vinculoAtivo, vinculoPendente));
     }
 }

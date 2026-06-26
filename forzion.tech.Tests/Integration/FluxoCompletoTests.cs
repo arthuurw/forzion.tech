@@ -7,9 +7,12 @@ using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
 using forzion.tech.Application.UseCases.Treinos.RegistrarExecucao;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
+using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared;
+using forzion.tech.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -126,8 +129,7 @@ public class FluxoCompletoTests
         mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
         var mockTxProvider = new Mock<IDbContextTransactionProvider>();
-        mockTxProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(mockTx.Object);
+        mockTxProvider.SetupExecuteInTransaction<Result<VinculoResponse>>(mockTx.Object);
 
         var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, _planoRepo.Object, _vinculoRepo.Object);
 

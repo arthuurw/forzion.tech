@@ -139,6 +139,19 @@ public class AppDbContext(
         return adapter;
     }
 
+    public async Task<T> ExecuteInTransactionAsync<T>(
+        IsolationLevel isolationLevel,
+        Func<ITransaction, CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken = default)
+    {
+        var strategy = Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+            return await operation(tx, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
     private sealed class EfCoreTransactionAdapter(IDbContextTransaction inner, AppDbContext context) : ITransaction
     {
         private bool _committed;

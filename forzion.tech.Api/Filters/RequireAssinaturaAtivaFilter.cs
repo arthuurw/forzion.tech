@@ -16,19 +16,9 @@ public sealed class RequireAssinaturaAtivaFilter : RequireAssinaturaAtivaFilterB
         if (userContext.TipoConta != TipoConta.Aluno)
             return false;
 
-        var alunoRepository = services.GetRequiredService<IAlunoRepository>();
-        var aluno = await alunoRepository
-            .ObterPorContaIdAsync(userContext.ContaId, ct)
-            .ConfigureAwait(false);
-
-        if (aluno is null)
-            return false;
-
         var assinaturaRepository = services.GetRequiredService<IAssinaturaAlunoRepository>();
-        var assinaturaAtual = await assinaturaRepository
-            .ObterAtualPorAlunoAsync(aluno.Id, ct)
+        return await assinaturaRepository
+            .AlunoEstaInadimplentePorContaIdAsync(userContext.ContaId, ct)
             .ConfigureAwait(false);
-
-        return assinaturaAtual?.Status == AssinaturaAlunoStatus.Inadimplente;
     }
 }
