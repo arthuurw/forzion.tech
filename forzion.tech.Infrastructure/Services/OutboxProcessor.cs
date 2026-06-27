@@ -23,7 +23,13 @@ public sealed class OutboxProcessor(
 {
     private readonly OutboxOptions _options = options.Value;
 
-    public async Task<int> ProcessarLoteAsync(CancellationToken cancellationToken = default)
+    public Task<int> ProcessarLoteAsync(CancellationToken cancellationToken = default)
+    {
+        var strategy = context.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(() => ProcessarLoteCoreAsync(cancellationToken));
+    }
+
+    private async Task<int> ProcessarLoteCoreAsync(CancellationToken cancellationToken)
     {
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);

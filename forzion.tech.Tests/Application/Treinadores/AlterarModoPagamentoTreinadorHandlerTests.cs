@@ -4,9 +4,12 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
+using System.Collections.Generic;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Tests.Builders;
+using forzion.tech.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -33,8 +36,7 @@ public class AlterarModoPagamentoTreinadorHandlerTests
         var tx = new Mock<ITransaction>();
         tx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         tx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
-        _txProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(tx.Object);
+        _txProvider.SetupExecuteInTransaction<Result<(List<string>, int, int)>>(tx.Object);
         _assinaturaRepo.Setup(r => r.ListarNaoCanceladasPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _vinculoRepo.Setup(r => r.ListarAtivosPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

@@ -6,7 +6,9 @@ using forzion.tech.Application.UseCases.Treinadores.TrocarPlanoTreinador;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Tests.E2E;
+using forzion.tech.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -24,18 +26,11 @@ public class TrocarPlanoTreinadorHandlerTests
     private readonly Mock<IDatabaseErrorInspector> _errorInspector = new();
     private readonly TrocarPlanoTreinadorHandler _handler;
 
-    private sealed class NoopTransaction : ITransaction
-    {
-        public Task CommitAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-    }
-
     private static readonly PixPaymentResult PixResult = new("pi_troca_123", "qrcode", "https://img", DateTime.UtcNow.AddHours(1));
 
     public TrocarPlanoTreinadorHandlerTests()
     {
-        _transactionProvider.Setup(p => p.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NoopTransaction());
+        _transactionProvider.SetupExecuteInTransaction<Result<PagamentoTreinador>>();
         _stripeService.Setup(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PixResult);

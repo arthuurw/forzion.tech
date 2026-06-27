@@ -7,6 +7,7 @@ using forzion.tech.Infrastructure.Services;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 namespace forzion.tech.Infrastructure.Persistence;
 
@@ -137,6 +138,19 @@ public class AppDbContext(
         var adapter = new EfCoreTransactionAdapter(tx, this);
         _transacaoAtiva = adapter;
         return adapter;
+    }
+
+    public async Task<T> ExecuteInTransactionAsync<T>(
+        IsolationLevel isolationLevel,
+        Func<ITransaction, CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken = default)
+    {
+        var strategy = new NpgsqlRetryingExecutionStrategy(this, maxRetryCount: 0, maxRetryDelay: TimeSpan.Zero, errorCodesToAdd: null);
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+            return await operation(tx, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
     }
 
     private sealed class EfCoreTransactionAdapter(IDbContextTransaction inner, AppDbContext context) : ITransaction

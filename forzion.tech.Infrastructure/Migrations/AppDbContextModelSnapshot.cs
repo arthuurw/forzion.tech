@@ -699,11 +699,12 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_execucoes_treino");
 
-                    b.HasIndex("AlunoId")
-                        .HasDatabaseName("ix_execucoes_treino_aluno_id");
-
                     b.HasIndex("TreinoId")
                         .HasDatabaseName("ix_execucoes_treino_treino_id");
+
+                    b.HasIndex("AlunoId", "DataExecucao")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_execucoes_treino_aluno_id_data_execucao");
 
                     b.HasIndex("AlunoId", "IdempotencyKey")
                         .IsUnique()

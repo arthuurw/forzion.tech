@@ -1,0 +1,3 @@
+# saídas cruas regeneráveis (o relatório versionado é o resultados-*.md)
+out/
+*.csv

@@ -65,16 +65,16 @@ public class AlterarModoPagamentoTreinadorHandler(
         if (alterarResult.IsFailure)
             return Result.Failure<AlterarModoPagamentoResponse>(alterarResult.Error!);
 
-        var paymentIntentsParaCancelar = new List<string>();
-        var assinaturasCriadas = 0;
-        var vinculosIgnorados = 0;
-
-        await using (var tx = await transactionProvider.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken).ConfigureAwait(false))
+        var txResult = await transactionProvider.ExecuteInTransactionAsync(IsolationLevel.Serializable, async (tx, _) =>
         {
+            var paymentIntents = new List<string>();
+            var criadas = 0;
+            var ignorados = 0;
+
             if (command.NovoModo == ModoPagamentoAluno.Externo)
-                paymentIntentsParaCancelar = await MigrarParaExternoAsync(command.TreinadorId, agora, cancellationToken).ConfigureAwait(false);
+                paymentIntents = await MigrarParaExternoAsync(command.TreinadorId, agora, cancellationToken).ConfigureAwait(false);
             else
-                (assinaturasCriadas, vinculosIgnorados) = await MigrarParaPlataformaAsync(command.TreinadorId, agora, cancellationToken).ConfigureAwait(false);
+                (criadas, ignorados) = await MigrarParaPlataformaAsync(command.TreinadorId, agora, cancellationToken).ConfigureAwait(false);
 
             var logResult = await logRepository.RegistrarAsync(
                 TipoAcaoAprovacao.AlteracaoModoPagamentoTreinador,
@@ -84,11 +84,17 @@ public class AlterarModoPagamentoTreinadorHandler(
                 agora,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             if (logResult.IsFailure)
-                return Result.Failure<AlterarModoPagamentoResponse>(logResult.Error!);
+                return Result.Failure<(List<string> PaymentIntents, int Criadas, int Ignorados)>(logResult.Error!);
 
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
-        }
+            return Result.Success((paymentIntents, criadas, ignorados));
+        }, cancellationToken).ConfigureAwait(false);
+
+        if (txResult.IsFailure)
+            return Result.Failure<AlterarModoPagamentoResponse>(txResult.Error!);
+
+        var (paymentIntentsParaCancelar, assinaturasCriadas, vinculosIgnorados) = txResult.Value;
 
         // Efeito externo só APÓS o commit (espelha CancelarMinhaAssinaturaAlunoHandler): se o commit
         // falhasse, não cancelaríamos Pix no Stripe sem o estado persistido. Best-effort por PI.

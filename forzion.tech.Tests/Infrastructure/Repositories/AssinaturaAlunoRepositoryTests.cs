@@ -248,4 +248,68 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         resultado[0].Id.Should().Be(a2.Id);
         resultado[1].Id.Should().Be(a1.Id);
     }
+
+    // --- AlunoEstaInadimplentePorContaIdAsync ---
+
+    private static async Task<Guid> ContaIdDoAlunoAsync(AppDbContext ctx, Guid alunoId) =>
+        (await ctx.Alunos.FindAsync(alunoId))!.ContaId;
+
+    [Fact]
+    public async Task AlunoEstaInadimplentePorContaIdAsync_Inadimplente_RetornaTrue()
+    {
+        await using var ctx = fixture.CreateContext();
+        var seed = await SeedContextAsync(ctx);
+        var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true);
+        assinatura.MarcarInadimplente(DateTime.UtcNow);
+        await ctx.SaveChangesAsync();
+        var contaId = await ContaIdDoAlunoAsync(ctx, seed.AlunoId);
+
+        var resultado = await Repo(ctx).AlunoEstaInadimplentePorContaIdAsync(contaId);
+
+        resultado.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AlunoEstaInadimplentePorContaIdAsync_Ativa_RetornaFalse()
+    {
+        await using var ctx = fixture.CreateContext();
+        var seed = await SeedContextAsync(ctx);
+        await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true);
+        var contaId = await ContaIdDoAlunoAsync(ctx, seed.AlunoId);
+
+        var resultado = await Repo(ctx).AlunoEstaInadimplentePorContaIdAsync(contaId);
+
+        resultado.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AlunoEstaInadimplentePorContaIdAsync_SemAssinatura_RetornaFalse()
+    {
+        await using var ctx = fixture.CreateContext();
+        var seed = await SeedContextAsync(ctx);
+        var contaId = await ContaIdDoAlunoAsync(ctx, seed.AlunoId);
+
+        var resultado = await Repo(ctx).AlunoEstaInadimplentePorContaIdAsync(contaId);
+
+        resultado.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AlunoEstaInadimplentePorContaIdAsync_CanceladaMaisRecente_IgnoraEUsaInadimplenteAnterior()
+    {
+        await using var ctx = fixture.CreateContext();
+        var seed = await SeedContextAsync(ctx);
+        var inadimplente = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true);
+        inadimplente.MarcarInadimplente(DateTime.UtcNow);
+        await ctx.SaveChangesAsync();
+
+        var seed2 = await SeedContextAsync(ctx, existingAlunoId: seed.AlunoId);
+        await SeedAssinaturaAlunoAsync(ctx, seed2, ativa: true, cancelada: true);
+
+        var contaId = await ContaIdDoAlunoAsync(ctx, seed.AlunoId);
+
+        var resultado = await Repo(ctx).AlunoEstaInadimplentePorContaIdAsync(contaId);
+
+        resultado.Should().BeTrue();
+    }
 }

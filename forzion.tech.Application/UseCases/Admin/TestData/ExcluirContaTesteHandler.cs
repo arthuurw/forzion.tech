@@ -56,40 +56,40 @@ public class ExcluirContaTesteHandler(
                 "testdata.tipo_nao_suportado",
                 "Hard-delete de teste cobre apenas conta de aluno; treinador exige offboarding completo."));
 
-        await using var tx = await transactionProvider
-            .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken).ConfigureAwait(false);
-
-        await mensagemSuporteRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await refreshTokenFamilyRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await contaMfaRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await mfaRecoveryCodeRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await passwordResetTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await emailVerificationTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await trocaEmailTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-
-        if (conta.TipoConta == TipoConta.Aluno)
+        return await transactionProvider.ExecuteInTransactionAsync(IsolationLevel.ReadCommitted, async (tx, _) =>
         {
-            var aluno = await alunoRepository
-                .ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-            if (aluno is not null)
+            await mensagemSuporteRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await refreshTokenFamilyRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await contaMfaRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await mfaRecoveryCodeRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await passwordResetTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await emailVerificationTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await trocaEmailTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+
+            if (conta.TipoConta == TipoConta.Aluno)
             {
-                await execucaoTreinoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
-                await assinaturaAlunoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
-                await treinoAlunoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
-                await assinanteRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
-                await vinculoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
-                await alunoRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+                var aluno = await alunoRepository
+                    .ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+                if (aluno is not null)
+                {
+                    await execucaoTreinoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                    await assinaturaAlunoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                    await treinoAlunoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                    await assinanteRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                    await vinculoRepository.ExcluirPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                    await alunoRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+                }
             }
-        }
 
-        await logAprovacaoRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await contaRepository.ExcluirAsync(conta, cancellationToken).ConfigureAwait(false);
+            await logAprovacaoRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await contaRepository.ExcluirAsync(conta, cancellationToken).ConfigureAwait(false);
 
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-        await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result.Success();
+            return Result.Success();
+        }, cancellationToken).ConfigureAwait(false);
     }
 }

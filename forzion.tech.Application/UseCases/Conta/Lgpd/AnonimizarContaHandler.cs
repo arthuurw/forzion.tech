@@ -94,107 +94,99 @@ public class AnonimizarContaHandler(
         // ExecuteUpdate, que persiste imediato fora do change tracker. A transação ambiente
         // os reúne com as mutações tracked + o log num único commit (all-or-nothing): sem
         // ela, uma falha tardia deixaria PII apagada com a conta ainda não-anonimizada.
-        await using var tx = await transactionProvider
-            .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken).ConfigureAwait(false);
-
-        if (conta.TipoConta == TipoConta.Aluno)
+        return await transactionProvider.ExecuteInTransactionAsync(IsolationLevel.ReadCommitted, async (tx, _) =>
         {
-            var aluno = await alunoRepository
-                .ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-            if (aluno is not null)
+            if (conta.TipoConta == TipoConta.Aluno)
             {
-                oldTelefone = aluno.Telefone;
-                alunoIdParaAssinante = aluno.Id;
-
-                var vinculos = await vinculoRepository
-                    .ListarAtivosEPendentesPorAlunoAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
-                foreach (var vinculo in vinculos)
+                var aluno = await alunoRepository
+                    .ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+                if (aluno is not null)
                 {
-                    // Ativo/AguardandoAprovacao expected; Inativar only fails on Inativo (guard already filtered by repo).
-                    var inativarResult = vinculo.Inativar(agora);
-                    if (inativarResult.IsFailure)
-                        return inativarResult;
+                    oldTelefone = aluno.Telefone;
+                    alunoIdParaAssinante = aluno.Id;
+
+                    var vinculos = await vinculoRepository
+                        .ListarAtivosEPendentesPorAlunoAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+                    foreach (var vinculo in vinculos)
+                    {
+                        // Ativo/AguardandoAprovacao expected; Inativar only fails on Inativo (guard already filtered by repo).
+                        var inativarResult = vinculo.Inativar(agora);
+                        if (inativarResult.IsFailure)
+                            return inativarResult;
+                    }
+
+                    await execucaoTreinoRepository
+                        .AnonimizarObservacoesPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
+
+                    var alunoResult = aluno.Anonimizar(agora);
+                    if (alunoResult.IsFailure)
+                        return alunoResult;
                 }
-
-                await execucaoTreinoRepository
-                    .AnonimizarObservacoesPorAlunoIdAsync(aluno.Id, cancellationToken).ConfigureAwait(false);
-
-                var alunoResult = aluno.Anonimizar(agora);
-                if (alunoResult.IsFailure)
-                    return alunoResult;
             }
-        }
-        else if (conta.TipoConta == TipoConta.Treinador)
-        {
-            var treinador = await treinadorRepository
-                .ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-            if (treinador is not null)
+            else if (conta.TipoConta == TipoConta.Treinador)
             {
-                oldTelefone = treinador.Telefone;
+                var treinador = await treinadorRepository
+                    .ObterPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+                if (treinador is not null)
+                {
+                    oldTelefone = treinador.Telefone;
 
-                var temVinculosAtivos = await vinculoRepository
-                    .TemVinculosAtivosAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
-                if (temVinculosAtivos)
-                    return Result.Failure(ContaErrors.OffboardingNecessario);
+                    var temVinculosAtivos = await vinculoRepository
+                        .TemVinculosAtivosAsync(treinador.Id, cancellationToken).ConfigureAwait(false);
+                    if (temVinculosAtivos)
+                        return Result.Failure(ContaErrors.OffboardingNecessario);
 
-                var treinadorResult = treinador.Anonimizar(agora);
-                if (treinadorResult.IsFailure)
-                    return treinadorResult;
+                    var treinadorResult = treinador.Anonimizar(agora);
+                    if (treinadorResult.IsFailure)
+                        return treinadorResult;
+                }
             }
-        }
 
-        var contaResult = conta.Anonimizar(agora);
-        if (contaResult.IsFailure)
-            return contaResult;
+            var contaResult = conta.Anonimizar(agora);
+            if (contaResult.IsFailure)
+                return contaResult;
 
-        conta.InvalidarSessoesAnteriores(agoraOffset);
+            conta.InvalidarSessoesAnteriores(agoraOffset);
 
-        if (alunoIdParaAssinante.HasValue)
-            await assinanteRepository
-                .AnonimizarPorAlunoIdAsync(alunoIdParaAssinante.Value, cancellationToken).ConfigureAwait(false);
+            if (alunoIdParaAssinante.HasValue)
+                await assinanteRepository
+                    .AnonimizarPorAlunoIdAsync(alunoIdParaAssinante.Value, cancellationToken).ConfigureAwait(false);
 
-        await emailDeliveryLogRepository
-            .AnonimizarPorEmailAsync(oldEmail, cancellationToken).ConfigureAwait(false);
+            await emailDeliveryLogRepository
+                .AnonimizarPorEmailAsync(oldEmail, cancellationToken).ConfigureAwait(false);
 
-        if (!string.IsNullOrEmpty(oldTelefone))
-            await whatsAppDeliveryLogRepository
-                .AnonimizarPorTelefoneAsync(oldTelefone, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(oldTelefone))
+                await whatsAppDeliveryLogRepository
+                    .AnonimizarPorTelefoneAsync(oldTelefone, cancellationToken).ConfigureAwait(false);
 
-        // Assunto/descrição das mensagens de suporte são texto livre = PII potencial. Apaga na mesma
-        // transação ambiente (ExecuteDelete) — all-or-nothing com o resto da anonimização (FR-10).
-        await mensagemSuporteRepository
-            .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await mensagemSuporteRepository
+                .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
-        // Sessões de refresh (família + tokens via cascade): o Rotulo guarda device/user-agent
-        // (PII potencial) e a sessão vincula-se ao titular. Purga na mesma transação; sem refresh
-        // válido, qualquer renovação pós-anonimização cai em 401 (NR-6/SEC-4).
-        await refreshTokenFamilyRepository
-            .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await refreshTokenFamilyRepository
+                .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
-        await contaMfaRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await mfaRecoveryCodeRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
-        await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await contaMfaRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await mfaRecoveryCodeRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
-        var logResult = await logAprovacaoRepository.RegistrarAsync(
-            TipoAcaoAprovacao.AnonimizacaoConta,
-            realizadoPorId: command.RealizadoPorId,
-            entidadeId: command.ContaId,
-            entidadeTipo: "Conta",
-            agora,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (logResult.IsFailure)
-            return Result.Failure(logResult.Error!);
+            var logResult = await logAprovacaoRepository.RegistrarAsync(
+                TipoAcaoAprovacao.AnonimizacaoConta,
+                realizadoPorId: command.RealizadoPorId,
+                entidadeId: command.ContaId,
+                entidadeTipo: "Conta",
+                agora,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (logResult.IsFailure)
+                return Result.Failure(logResult.Error!);
 
-        // JWT-01: enfileira a revogação do jti na MESMA transação — token revogado
-        // atomicamente com a anonimização, sem janela pós-commit em que ele siga válido.
-        await EnfileirarRevogacaoDoTitularSeSelfAsync(command, agora, cancellationToken).ConfigureAwait(false);
+            await EnfileirarRevogacaoDoTitularSeSelfAsync(command, agora, cancellationToken).ConfigureAwait(false);
 
-        // Single CommitAsync — domain events dispatched here.
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
-        await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result.Success();
+            return Result.Success();
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     // PasswordHash já foi zerado por Conta.Anonimizar (login impossível), mas o JWT é stateless
