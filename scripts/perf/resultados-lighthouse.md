@@ -39,13 +39,17 @@ rotas autenticadas BLOQUEADAS por falta de backend local (documentado, não fabr
 | Rota | Perf | LCP | FCP | TBT | CLS | Speed Index |
 |---|---|---|---|---|---|---|
 | `/`                   | **100** | 0.77s | 0.26s | 0 ms | 0.000 | 0.53s |
-| `/login`              | **97**  | 0.90s | 0.21s | 0 ms | **0.098** | 0.49s |
+| `/login`              | **100** | 0.78s | 0.21s | 0 ms | 0.000 | 0.49s |
 | `/cadastro/aluno`     | **100** | 0.76s | 0.21s | 0 ms | 0.000 | 0.46s |
 | `/cadastro/treinador` | **99**  | 0.58s | 0.21s | 0 ms | 0.000 | 0.93s |
 
 - Todas as 4 rotas são **estáticas** (`○` prerender). LCP/TBT/Perf excelentes em desktop-lab.
-- **`/login` CLS = 0.098** — encostado no limite "good" (0.1). É o único achado de risco: provável
-  shift de layout do form/logo na hidratação. Vale investigar (fora deste escopo de medição).
+- **`/login` CLS = 0.000 (RESOLVIDO)** — era 0.098 (near-miss do limite 0.1). Causa: o auth-gate
+  bloqueava o render por `isLoading`, mostrando `LoadingSpinner fullPage` (100vh) dentro do card
+  centralizado do `PublicLayout`; ao resolver a sessão (sem user) o card encolhia pro tamanho do form e
+  `my:"auto"` o recentralizava → shift do `main#main-content`. Fix: gate só por `user`
+  (`(public)/login/page.tsx`) → form renderiza desde o 1º frame, sem colapso/recenter. Re-medido 3 runs
+  warm: CLS 0.000/0.000/0.000, perf ≥99.
 - TBT = 0 em todas: o JS pesado é **assíncrono/diferido** (ver bundle abaixo) → não bloqueia a thread.
 
 ## BUNDLE — transfer por rota (Lighthouse network trace) + composição
@@ -77,28 +81,54 @@ Total: **7.2 MB** em 110 arquivos `.js` (todas as 55 rotas); CSS principal ~8 kB
 - **zod (75 kB gz) + stripe+sentry (87 kB gz)** carregam em TODA rota pública. Sentry global é esperado;
   Stripe.js poderia ser deferido em rotas sem checkout; zod-schemas no shared é o baseline de validação.
 
-## ROTAS AUTENTICADAS — NÃO MEDIDAS (bloqueadas por backend)
-`lighthouserc.auth.cjs` mede a11y/perf de `/aluno`, `/treinador`, `/admin` (1 por role) via cookies do
-storage-state Playwright (`e2e/.auth/<role>.json`). **Bloqueio:**
-- **Sem backend .NET local** (build/start usou `API_BASE_URL=http://x` dummy) → páginas authed não buscam
-  dados reais; data-fetches vão para host falso e falham → render não representativo.
-- Storage-states existem (`aluno/treinador/admin.json`, **Jun 24**) mas os JWT provavelmente **expiraram**
-  (3 dias) e exigem o backend para revalidar/refresh.
-- Subir backend (.NET API + Postgres/Supabase + seed + login real + seed-consent) = esforço fora do
-  razoável para esta task de medição. **Honestidade > cobertura:** documentado, não fabricado. Runbook abaixo.
+## ROTAS AUTENTICADAS — MEDIDAS (fase4, FR-4 / AC-3.1)
+A fase3 deixou as rotas LOGADAS (as pesadas) bloqueadas por falta de backend local; a fase4 destravou o
+full-app (backend perf_bench :5080 + frontend prod :3000 com `API_BASE_URL`→:5080, `JWT_SECRET/ISSUER/
+AUDIENCE` = bench). Sessão injetada via cookies (`token` JWT bench + `refresh` + `session_guard` + `consent`)
+no Chrome do Lighthouse — `scripts/perf/lighthouse-auth.mjs`, preset desktop, **3 runs→mediana**.
+
+| rota | path | LCP (warm) | TBT | CLS | FCP | perf | script gz |
+|---|---|---|---|---|---|---|---|
+| dashboard aluno | `/aluno` | 1.25s | 0 ms | 0.043 | 212 ms | 97 | 571 kB |
+| **histórico execuções** | `/aluno/historico` | 1.03s | 0 ms | **0.005** ✓ | 216 ms | 98 | 595 kB |
+| dashboard treinador | `/treinador` | 1.27s | 0 ms | 0.046 | 212 ms | 96 | 580 kB |
+| editor de ficha | `/treinador/treinos/{id}` | 1.03s | 0 ms | 0.000 | 214 ms | 98 | 496 kB |
+| dashboard admin | `/admin` | 1.0–1.3s | 0 ms | 0.003 | 211 ms | 95–97 | 594 kB |
+
+**Comparado às públicas** (LCP 0.58–0.90s, CLS 0.000, perf 99–100): as authed têm LCP ~1.0–1.3s (inclui o
+data-fetch client-side via BFF→backend). **TBT = 0 em todas** (thread principal livre). Script gz por rota
+496–595 kB, na mesma faixa do baseline público.
+
+**1 achado REAL de budget (report-only) — RESOLVIDO:**
+1. **`/aluno/historico` CLS = 0.159 → 0.005 (RESOLVIDO).** Era ACIMA do alvo 0.1; agora dentro. Causa: os 2
+   gráficos `dynamic()` usavam `loading: () => null` (altura 0 → pop-in quando o chunk montava). Fix: reserva
+   de altura no fallback dos charts dynamic (`Skeleton variant="rectangular"` 160/140 px, casando o
+   `ResponsiveContainer`). Re-medido full-app bench (backend perf_bench :5080 Release + frontend prod :3000),
+   `lighthouse-auth.mjs` desktop-lab, 3 runs warm → mediana: **CLS 0.005** (amostras 0.005/0.005/0.005),
+   LCP 1.03s (sem regressão), TBT 0, perf 98. Era REPRODUZÍVEL antes (5 runs = 0.159/0.108/0.159/0.159).
+
+**`/admin` LCP — REFUTADO (artefato de medição, NÃO é achado).** A mediana-de-3 inicial deu 2.50s, mas as
+3 amostras eram bimodais (2504/2622/**1086** ms): as 2 lentas foram **cold route-compile do Next** (1º hit
+da rota dispara compilação on-demand). Re-medido warm 7× → LCP **1.0–1.3s, perf 95–97 = VERDE**, igual às
+demais. LIÇÃO: aquecer cada rota (1 hit descartado) antes de coletar; mediana-de-3 sem warm-up captura o
+cold-compile. As demais rotas ficam VERDES e dentro dos alvos.
+
+Ambiente: desktop-**lab** (TBT proxy, não INP de campo), **localhost** (≠ CDN), **dados bench quentes**
+(Supabase Free seria PIOR no LCP por RTT+cache frio). Sinal durável = o CLS estrutural do histórico (independe
+de cache/compile: byte-idêntico em runs cold e warm), não o ms absoluto.
 
 ## BUDGETS PROPOSTOS (AC-3.3 — ALVO / report-only, NÃO gate hard)
 Base: web.dev "good" (LCP<2.5s, CLS<0.1, INP<200ms≈TBT<200ms) + folga sobre o medido. Enforcement = **warn**.
 | Métrica | Atual (público, desktop-lab) | Budget ALVO | Racional |
 |---|---|---|---|
 | **LCP** | 0.58–0.90s | **≤ 2.5s** | web.dev good; folga enorme em desktop, protege contra regressão mobile/field |
-| **CLS** | 0.000–**0.098** | **≤ 0.1** | login JÁ em 0.098 → near-miss; investigar shift do login antes de apertar |
+| **CLS** | 0.000 (todas) | **≤ 0.1** | near-miss do login (0.098) RESOLVIDO (gate de loading só por `user`); margem real p/ apertar |
 | **TBT** | 0 ms | **≤ 200ms** | proxy de INP<200ms; preserva a thread principal livre |
 | **Perf score** | 97–100 | **≥ 0.90** (warn) | acima do 0.85 atual do `lighthouserc.json`; margem real existe |
 | **First Load JS** (script transfer gz, público) | 568–894 kB | **≤ 600 kB** (warn) | `cad-aluno` (568) é o baseline; números > são inflados por prefetch de nav (não-bloqueante) |
 | **Guardrail de chunk** | exceljs 256 / recharts 103 gz | heavy libs (exceljs, recharts) **NUNCA** no shared/first-load; exceljs via `import()` dinâmico | impede regressão de árvore: o custo real está em libs grandes vazarem pro baseline |
 
-Atual × alvo: **Web Vitals já dentro de todos os alvos** (CLS do login é o único no fio). O budget de
+Atual × alvo: **Web Vitals já dentro de todos os alvos** (CLS do login resolvido — todas as públicas em 0.000). O budget de
 bundle é preventivo — o sistema passa hoje; o risco é exceljs/recharts migrarem para o shead em refactor.
 
 ## RUNBOOK (AC-3.4)
@@ -134,17 +164,33 @@ for u in / /login /cadastro/aluno /cadastro/treinador; do \
     --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage"; done
 ```
 
-### Lighthouse — rotas AUTENTICADAS (precisa backend)
+### Lighthouse — rotas AUTENTICADAS (full-app, fase4) — `scripts/perf/lighthouse-auth.mjs`
 ```bash
-# 1. backend up: docker compose up postgres + dotnet run --project forzion.tech.Api  → API_BASE_URL REAL
-# 2. frontend: build + start apontando NEXT_PUBLIC_API_BASE_URL/API_BASE_URL ao backend real
-# 3. sessões Playwright: npx playwright test auth.setup  (escreve e2e/.auth/<role>.json) + seed-consent
-# 4. por role (cookie via extraHeaders no lighthouserc.auth.cjs):
-LHCI_ROLE=aluno     npx lhci autorun --config=lighthouserc.auth.cjs
-LHCI_ROLE=treinador npx lhci autorun --config=lighthouserc.auth.cjs
-LHCI_ROLE=admin     npx lhci autorun --config=lighthouserc.auth.cjs
-# atalho que itera as 3 roles: npm run lhci:auth
+# 1. DB + backend perf_bench (ver resultados-load.md §Setup full-app):
+scripts/perf/00-setup-db.sh
+docker exec -i -e PGOPTIONS=--search_path=perf_bench forzion-perfbench \
+  psql -U postgres -d forzion_bench -f - < scripts/perf/patch-loadtest.sql   # contas + admin/system_user
+# API Release no schema perf_bench, env Bench, :5080 (gate/pool irrelevantes p/ lighthouse):
+ASPNETCORE_ENVIRONMENT=Bench ASPNETCORE_URLS=http://localhost:5080 \
+  ConnectionStrings__AppConnection='Host=localhost;Port=55432;Database=forzion_bench;Username=postgres;Password=bench;Search Path=perf_bench' \
+  Auth__JwtSecret=bench-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz-0123456789 \
+  Mfa__EncryptionKey=... DataProtection__EncryptionKey=... Internal__ApiKey=... \
+  Stripe__SecretKey=sk_test_x Stripe__WebhookSecret=whsec_x \
+  dotnet forzion.tech.Api/bin/Release/net10.0/forzion.tech.Api.dll
+# 2. frontend PROD :3000 apontando o BFF ao backend bench + verificando o JWT bench:
+cd frontend && NODE_ENV=production API_BASE_URL=http://localhost:5080 \
+  JWT_SECRET=bench-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz-0123456789 \
+  JWT_ISSUER=forzion.tech JWT_AUDIENCE=forzion.tech \
+  node_modules/.bin/next start -p 3000
+#   (warning de output:standalone é inócuo — serve 200; auth gating via middleware OK.)
+# 3. medir (loga bench, injeta cookies no Chrome do LH, 3 runs→mediana, 5 rotas):
+node scripts/perf/lighthouse-auth.mjs        # tabela em stdout; cru em ../perf-out/lh-auth/
 ```
+A sessão é injetada SEM login interativo: o runner chama `/auth/login` das contas bench, monta o header
+`Cookie: token=<JWT bench>; refresh=..; tipo_conta=..; session_guard=<uuid>; consent=..` e passa via
+`--extra-headers` ao Lighthouse. O middleware do front verifica o JWT com `JWT_SECRET` = `Auth:JwtSecret`
+do bench (issuer/audience `forzion.tech`) → render autenticado real. (O antigo `lighthouserc.auth.cjs` +
+storage-state Playwright cobre só a11y/1-rota-por-role; este runner cobre as 5 rotas pesadas com Web Vitals.)
 
 ### PROPOSTA — job de CI report-only (NÃO gate hard; decisão futura do usuário)
 - Job GH Actions **`lhci-report`** independente (não bloqueia merge; `continue-on-error` ou job não-required):
@@ -156,8 +202,8 @@ LHCI_ROLE=admin     npx lhci autorun --config=lighthouserc.auth.cjs
 - **Tornar GATE HARD (bloquear merge por regressão de budget) = decisão FUTURA do usuário** (muda o
   processo de CI + risco de flake por variância lab em runner compartilhado). Recomendação: rodar
   report-only por ~5–10 builds, observar a variância real, e SÓ então definir thresholds de bloqueio.
-  Atenção: `lighthouserc.json` hoje tem assert em **error** (CLS 0.1) e `/login` mede 0.098 → near-miss
-  que flakearia se promovido a gate hard sem corrigir o shift do login antes.
+  Atenção: `lighthouserc.json` tem assert em **error** (CLS 0.1); o near-miss do `/login` (0.098) foi
+  corrigido (CLS 0.000) — não há mais rota no fio que flakearia se o budget virar gate hard.
 
 ## Reproduzir (resumo)
 ```bash
