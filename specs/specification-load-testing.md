@@ -55,15 +55,18 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
 - **MEDIDO (pgbench, executável):** `run-pgbench.sh` roda as queries quentes em concorrência
   crescente. Curva mostra throughput saturar no nº de núcleos e, além disso, **latência inflar ~11×
   (0.70→7.71 ms) sem ganho de tps** — o mecanismo de enfileiramento que o cliff de pool amplifica.
-- **RUNBOOK (full-app, não executado local):** `k6-request-path.js` (login + dashboard + histórico)
-  concorrente a `k6-batch-trigger.js` (`/internal/processar-pre-avisos`, X-Internal-Key), com
-  `sample-pg-activity.sh` amostrando `pg_stat_activity` (`active`/`idle in transaction`). Compara
-  `gate=8` vs `unbounded`. Exige API no ar (Search Path=perf_bench) + contas bcrypt-logáveis.
-- **Ligação ALTO:** homolog despacha eventos best-effort em `Task.Run` UNBOUNDED
-  (`DomainEventDispatcher.cs`); a `perf/auditoria-performance` adiciona `BestEffortConcurrencyGate`
-  (bound 8, commit `a486f21`). Sob lote grande, o unbounded soma fan-out DB-bound ao request-path e
-  empurra além do joelho; o gate limita. Em Supabase Free (pool 20, 1–2 vCPU) o efeito é dramático.
-  Cross-ref [specification-concurrency] (outbox isola latência de provider).
+- **MEDIDO (full-app k6, AC-2.3):** `k6-request-path.js` (8 alunos: login + dashboard + execuções)
+  concorrente a `k6-batch-trigger.js` (`/internal/processar-pre-avisos`, 4.600 assinaturas na janela
+  → 4.600 events em fan-out), com `sample-pg-activity.sh`. Único diferencial: `DomainEvents:Max
+  ConcorrenciaBestEffort` (8 vs 100000). **Resultado (pool cap=20):** unbounded **fixa o pool no teto
+  20/20 em 91% do run** + cauda do dashboard 3.8× (233→877 ms); gate=8 nunca satura (teto 16) e fica
+  estável. CONFIRMA o achado ALTO. 0 falhas HTTP LOCAL (cache quente drena rápido) → caveat: Supabase
+  Free (cache frio+RTT+pool menor) converte a fixação do pool em timeout de aquisição (HTTP 500).
+- **Ligação ALTO (gate JÁ mergeado):** `DomainEventDispatcher` despacha eventos best-effort em
+  `Task.Run`; o `BestEffortConcurrencyGate` (registrado em `InfrastructureExtensions`, default **8**
+  via `DomainEvents:MaxConcorrenciaBestEffort`) bound-a o fan-out. A coluna "unbounded" da medição é o
+  estado PRÉ-gate reproduzido só por config (toggle alto), sem alterar código. Em Supabase Free (pool
+  20, 1–2 vCPU) o efeito é dramático. Cross-ref [specification-concurrency] (outbox isola latência de provider).
 
 ## 4. LIGHTHOUSE + BUNDLE (frontend → `resultados-lighthouse.md`)
 - Harness JÁ existe: `npm run lhci` (`@lhci/cli`; `lighthouserc.json` rotas públicas,
