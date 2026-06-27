@@ -159,14 +159,9 @@ public class AnonimizarContaHandler(
                 await whatsAppDeliveryLogRepository
                     .AnonimizarPorTelefoneAsync(oldTelefone, cancellationToken).ConfigureAwait(false);
 
-            // Assunto/descrição das mensagens de suporte são texto livre = PII potencial. Apaga na mesma
-            // transação ambiente (ExecuteDelete) — all-or-nothing com o resto da anonimização (FR-10).
             await mensagemSuporteRepository
                 .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
-            // Sessões de refresh (família + tokens via cascade): o Rotulo guarda device/user-agent
-            // (PII potencial) e a sessão vincula-se ao titular. Purga na mesma transação; sem refresh
-            // válido, qualquer renovação pós-anonimização cai em 401 (NR-6/SEC-4).
             await refreshTokenFamilyRepository
                 .ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
@@ -185,8 +180,6 @@ public class AnonimizarContaHandler(
             if (logResult.IsFailure)
                 return Result.Failure(logResult.Error!);
 
-            // JWT-01: enfileira a revogação do jti na MESMA transação — token revogado
-            // atomicamente com a anonimização, sem janela pós-commit em que ele siga válido.
             await EnfileirarRevogacaoDoTitularSeSelfAsync(command, agora, cancellationToken).ConfigureAwait(false);
 
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
