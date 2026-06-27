@@ -57,6 +57,7 @@ Vai escrever CÓDIGO ⇒ SEMPRE +coding +tests (carregar ANTES de codar, não de
 | concorrência/lock/idempotência     | concurrency, design-review |
 | design de feature sensível (PRE-código): auth/webhook/race/PII/pagamento | design-review |
 | perf backend/N+1/EF/pool           | performance |
+| medir perf/load test/EXPLAIN/seed bench/pgbench/k6/lighthouse/Web Vitals | load-testing, performance |
 | backup/restore/DR                  | dr, infrastructure |
 | card/board/pipeline/histórico de entrega | workflow |
 
@@ -80,6 +81,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 - `specification-design-review.md` — checklist PRE-código (design-time/pre-flight), gêmeo do coding; rodar ANTES de codar feature que toca auth/webhook/concorrência/PII/pagamento. Pega a CLASSE latente (race, defense-in-depth, abuso, PII em repouso) que teste+review não veem. Saída vai no `design.md` da feature; origem: auditoria 2026-06-14.
 - `specification-concurrency.md` — ordering: `coding §1` é o canônico.
 - `specification-performance.md` — enforcement FRACO (disciplina+revisão, sem gate hard).
+- `specification-load-testing.md` — harness de medição empírica (fase 3; scripts em `scripts/perf/`): seed sintético em schema ISOLADO, EXPLAIN antes/depois de índice, pgbench/k6, Lighthouse+bundle. REPORT-ONLY (gate hard = decisão futura do usuário). DB pesado (seed/EXPLAIN/pgbench) roda LOCAL/efêmero ou projeto Supabase de TESTE dedicado — NUNCA homolog (recurso compartilhado, cap de storage). Lighthouse pode rodar em homolog (read-only). GOTCHA: `npm run analyze` é no-op sob Turbopack → `next experimental-analyze`. Bench local ≠ Supabase Free: o sinal é o DELTA, não o ms absoluto.
 - `specification-infrastructure.md` — subir local SEM Docker → §LOCAL-RUN (receita Development+develop; gotcha launch-profile/Homolog; `.env.local` do frontend).
 - `specification-frontend-ui.md` — a11y WCAG AA com divergência documentada (F18).
 - `specification-seo.md` — ASPIRACIONAL (não implementado).
