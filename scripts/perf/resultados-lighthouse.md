@@ -39,13 +39,17 @@ rotas autenticadas BLOQUEADAS por falta de backend local (documentado, não fabr
 | Rota | Perf | LCP | FCP | TBT | CLS | Speed Index |
 |---|---|---|---|---|---|---|
 | `/`                   | **100** | 0.77s | 0.26s | 0 ms | 0.000 | 0.53s |
-| `/login`              | **97**  | 0.90s | 0.21s | 0 ms | **0.098** | 0.49s |
+| `/login`              | **100** | 0.78s | 0.21s | 0 ms | 0.000 | 0.49s |
 | `/cadastro/aluno`     | **100** | 0.76s | 0.21s | 0 ms | 0.000 | 0.46s |
 | `/cadastro/treinador` | **99**  | 0.58s | 0.21s | 0 ms | 0.000 | 0.93s |
 
 - Todas as 4 rotas são **estáticas** (`○` prerender). LCP/TBT/Perf excelentes em desktop-lab.
-- **`/login` CLS = 0.098** — encostado no limite "good" (0.1). É o único achado de risco: provável
-  shift de layout do form/logo na hidratação. Vale investigar (fora deste escopo de medição).
+- **`/login` CLS = 0.000 (RESOLVIDO)** — era 0.098 (near-miss do limite 0.1). Causa: o auth-gate
+  bloqueava o render por `isLoading`, mostrando `LoadingSpinner fullPage` (100vh) dentro do card
+  centralizado do `PublicLayout`; ao resolver a sessão (sem user) o card encolhia pro tamanho do form e
+  `my:"auto"` o recentralizava → shift do `main#main-content`. Fix: gate só por `user`
+  (`(public)/login/page.tsx`) → form renderiza desde o 1º frame, sem colapso/recenter. Re-medido 3 runs
+  warm: CLS 0.000/0.000/0.000, perf ≥99.
 - TBT = 0 em todas: o JS pesado é **assíncrono/diferido** (ver bundle abaixo) → não bloqueia a thread.
 
 ## BUNDLE — transfer por rota (Lighthouse network trace) + composição
@@ -91,7 +95,7 @@ no Chrome do Lighthouse — `scripts/perf/lighthouse-auth.mjs`, preset desktop, 
 | editor de ficha | `/treinador/treinos/{id}` | 1.03s | 0 ms | 0.000 | 214 ms | 98 | 496 kB |
 | dashboard admin | `/admin` | 1.0–1.3s | 0 ms | 0.003 | 211 ms | 95–97 | 594 kB |
 
-**Comparado às públicas** (LCP 0.58–0.90s, CLS ≤0.098, perf 97–100): as authed têm LCP ~1.0–1.3s (inclui o
+**Comparado às públicas** (LCP 0.58–0.90s, CLS 0.000, perf 99–100): as authed têm LCP ~1.0–1.3s (inclui o
 data-fetch client-side via BFF→backend). **TBT = 0 em todas** (thread principal livre). Script gz por rota
 496–595 kB, na mesma faixa do baseline público.
 
@@ -118,13 +122,13 @@ Base: web.dev "good" (LCP<2.5s, CLS<0.1, INP<200ms≈TBT<200ms) + folga sobre o 
 | Métrica | Atual (público, desktop-lab) | Budget ALVO | Racional |
 |---|---|---|---|
 | **LCP** | 0.58–0.90s | **≤ 2.5s** | web.dev good; folga enorme em desktop, protege contra regressão mobile/field |
-| **CLS** | 0.000–**0.098** | **≤ 0.1** | login JÁ em 0.098 → near-miss; investigar shift do login antes de apertar |
+| **CLS** | 0.000 (todas) | **≤ 0.1** | near-miss do login (0.098) RESOLVIDO (gate de loading só por `user`); margem real p/ apertar |
 | **TBT** | 0 ms | **≤ 200ms** | proxy de INP<200ms; preserva a thread principal livre |
 | **Perf score** | 97–100 | **≥ 0.90** (warn) | acima do 0.85 atual do `lighthouserc.json`; margem real existe |
 | **First Load JS** (script transfer gz, público) | 568–894 kB | **≤ 600 kB** (warn) | `cad-aluno` (568) é o baseline; números > são inflados por prefetch de nav (não-bloqueante) |
 | **Guardrail de chunk** | exceljs 256 / recharts 103 gz | heavy libs (exceljs, recharts) **NUNCA** no shared/first-load; exceljs via `import()` dinâmico | impede regressão de árvore: o custo real está em libs grandes vazarem pro baseline |
 
-Atual × alvo: **Web Vitals já dentro de todos os alvos** (CLS do login é o único no fio). O budget de
+Atual × alvo: **Web Vitals já dentro de todos os alvos** (CLS do login resolvido — todas as públicas em 0.000). O budget de
 bundle é preventivo — o sistema passa hoje; o risco é exceljs/recharts migrarem para o shead em refactor.
 
 ## RUNBOOK (AC-3.4)
@@ -198,8 +202,8 @@ storage-state Playwright cobre só a11y/1-rota-por-role; este runner cobre as 5 
 - **Tornar GATE HARD (bloquear merge por regressão de budget) = decisão FUTURA do usuário** (muda o
   processo de CI + risco de flake por variância lab em runner compartilhado). Recomendação: rodar
   report-only por ~5–10 builds, observar a variância real, e SÓ então definir thresholds de bloqueio.
-  Atenção: `lighthouserc.json` hoje tem assert em **error** (CLS 0.1) e `/login` mede 0.098 → near-miss
-  que flakearia se promovido a gate hard sem corrigir o shift do login antes.
+  Atenção: `lighthouserc.json` tem assert em **error** (CLS 0.1); o near-miss do `/login` (0.098) foi
+  corrigido (CLS 0.000) — não há mais rota no fio que flakearia se o budget virar gate hard.
 
 ## Reproduzir (resumo)
 ```bash

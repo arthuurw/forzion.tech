@@ -43,7 +43,7 @@ export default function LoginPage() {
     }
   }, [isLoading, user, router]);
 
-  if (isLoading || user) return <LoadingSpinner fullPage />;
+  if (user) return <LoadingSpinner fullPage />;
 
   const onSubmit = async (data: LoginFormData) => {
     setError("");
