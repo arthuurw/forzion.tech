@@ -86,7 +86,7 @@ no Chrome do Lighthouse — `scripts/perf/lighthouse-auth.mjs`, preset desktop, 
 | rota | path | LCP (warm) | TBT | CLS | FCP | perf | script gz |
 |---|---|---|---|---|---|---|---|
 | dashboard aluno | `/aluno` | 1.25s | 0 ms | 0.043 | 212 ms | 97 | 571 kB |
-| **histórico execuções** | `/aluno/historico` | 1.01s | 0 ms | **0.159** ⚠ | 214 ms | 92 | 595 kB |
+| **histórico execuções** | `/aluno/historico` | 1.03s | 0 ms | **0.005** ✓ | 216 ms | 98 | 595 kB |
 | dashboard treinador | `/treinador` | 1.27s | 0 ms | 0.046 | 212 ms | 96 | 580 kB |
 | editor de ficha | `/treinador/treinos/{id}` | 1.03s | 0 ms | 0.000 | 214 ms | 98 | 496 kB |
 | dashboard admin | `/admin` | 1.0–1.3s | 0 ms | 0.003 | 211 ms | 95–97 | 594 kB |
@@ -95,12 +95,13 @@ no Chrome do Lighthouse — `scripts/perf/lighthouse-auth.mjs`, preset desktop, 
 data-fetch client-side via BFF→backend). **TBT = 0 em todas** (thread principal livre). Script gz por rota
 496–595 kB, na mesma faixa do baseline público.
 
-**1 achado REAL de budget (report-only) — pós dupla-validação:**
-1. **`/aluno/historico` CLS = 0.159 — ACIMA do alvo 0.1.** REPRODUZÍVEL: 5 runs warm = 0.159/0.108/0.159/
-   0.159 (+ 3 da mediana original), todos > 0.1. Maior shift do app (público `/login` era 0.098, near-miss;
-   esta authed estoura). Culpado (audit `layout-shifts`): `main#main-content > MuiBox` empurra o layout
-   quando os 2 gráficos `dynamic()` montam — eles usam `loading: () => null` (altura 0 reservada → pop-in).
-   Os 2 maiores shifts (0.064 + 0.050) ≈ os 2 charts (Frequência + ProgressãoCarga). Fix → reservar altura.
+**1 achado REAL de budget (report-only) — RESOLVIDO:**
+1. **`/aluno/historico` CLS = 0.159 → 0.005 (RESOLVIDO).** Era ACIMA do alvo 0.1; agora dentro. Causa: os 2
+   gráficos `dynamic()` usavam `loading: () => null` (altura 0 → pop-in quando o chunk montava). Fix: reserva
+   de altura no fallback dos charts dynamic (`Skeleton variant="rectangular"` 160/140 px, casando o
+   `ResponsiveContainer`). Re-medido full-app bench (backend perf_bench :5080 Release + frontend prod :3000),
+   `lighthouse-auth.mjs` desktop-lab, 3 runs warm → mediana: **CLS 0.005** (amostras 0.005/0.005/0.005),
+   LCP 1.03s (sem regressão), TBT 0, perf 98. Era REPRODUZÍVEL antes (5 runs = 0.159/0.108/0.159/0.159).
 
 **`/admin` LCP — REFUTADO (artefato de medição, NÃO é achado).** A mediana-de-3 inicial deu 2.50s, mas as
 3 amostras eram bimodais (2504/2622/**1086** ms): as 2 lentas foram **cold route-compile do Next** (1º hit

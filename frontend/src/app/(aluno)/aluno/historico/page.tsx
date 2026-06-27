@@ -21,11 +21,11 @@ import { queryKeys } from "@/lib/query/keys";
 
 const FrequenciaChart = dynamic(
   () => import("./_charts/HistoricoCharts").then((m) => m.FrequenciaChart),
-  { ssr: false, loading: () => null },
+  { ssr: false, loading: () => <Skeleton variant="rectangular" height={160} sx={{ borderRadius: 1 }} /> },
 );
 const ProgressaoCargaChart = dynamic(
   () => import("./_charts/HistoricoCharts").then((m) => m.ProgressaoCargaChart),
-  { ssr: false, loading: () => null },
+  { ssr: false, loading: () => <Skeleton variant="rectangular" height={140} sx={{ borderRadius: 1 }} /> },
 );
 
 type Periodo = "7d" | "30d" | "60d" | "90d";
