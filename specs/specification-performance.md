@@ -42,6 +42,7 @@ DOC PARA AGENTES. Armadilhas de PERFORMANCE no backend .NET/EF Core/PG que revie
 
 ## 6. ENFORCEMENT (honesto — fraco hoje)
 - Sem gate hard atual. Sinais a propor (até existirem, vale só revisão + este checklist): contar SQL emitido em teste de integração (detecta N+1/regressão de query count), teste de contrato p/ paginação obrigatória, analyzer p/ `.Result`/`.Wait()`. Perf budget de backend (latência p95 por endpoint) é ALVO — hoje só frontend tem budget ([specification-observability]).
+- **Medição empírica reproduzível** (fecha parte desta lacuna): [specification-load-testing] + `scripts/perf/` — seed sintético em schema isolado, EXPLAIN ANALYZE antes/depois de índice, curva de contenção (pgbench) + load full-app (k6 runbook), Lighthouse/bundle. Report-only; gate hard segue sendo decisão futura do usuário.
 
 ## 7. FETCH-CACHE CLIENT (corta carga no PG)
 - Frontend usa TanStack Query v5 como camada de fetch-cache (fundação em `frontend/src/lib/query/`; detalhe em [specification-frontend §DADOS-CLIENT]). RELEVÂNCIA backend/DB: reads read-mostly cacheados no cliente NÃO re-batem o backend a cada navegação → menos pressão no Postgres (Supabase Free: shared CPU / 500MB). `refetchOnWindowFocus:false` global é CRÍTICO aqui — default `true` re-dispararia toda query ativa a cada foco de aba, bombardeando o DB.
