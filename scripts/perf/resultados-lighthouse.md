@@ -77,15 +77,35 @@ Total: **7.2 MB** em 110 arquivos `.js` (todas as 55 rotas); CSS principal ~8 kB
 - **zod (75 kB gz) + stripe+sentry (87 kB gz)** carregam em TODA rota pública. Sentry global é esperado;
   Stripe.js poderia ser deferido em rotas sem checkout; zod-schemas no shared é o baseline de validação.
 
-## ROTAS AUTENTICADAS — NÃO MEDIDAS (bloqueadas por backend)
-`lighthouserc.auth.cjs` mede a11y/perf de `/aluno`, `/treinador`, `/admin` (1 por role) via cookies do
-storage-state Playwright (`e2e/.auth/<role>.json`). **Bloqueio:**
-- **Sem backend .NET local** (build/start usou `API_BASE_URL=http://x` dummy) → páginas authed não buscam
-  dados reais; data-fetches vão para host falso e falham → render não representativo.
-- Storage-states existem (`aluno/treinador/admin.json`, **Jun 24**) mas os JWT provavelmente **expiraram**
-  (3 dias) e exigem o backend para revalidar/refresh.
-- Subir backend (.NET API + Postgres/Supabase + seed + login real + seed-consent) = esforço fora do
-  razoável para esta task de medição. **Honestidade > cobertura:** documentado, não fabricado. Runbook abaixo.
+## ROTAS AUTENTICADAS — MEDIDAS (fase4, FR-4 / AC-3.1)
+A fase3 deixou as rotas LOGADAS (as pesadas) bloqueadas por falta de backend local; a fase4 destravou o
+full-app (backend perf_bench :5080 + frontend prod :3000 com `API_BASE_URL`→:5080, `JWT_SECRET/ISSUER/
+AUDIENCE` = bench). Sessão injetada via cookies (`token` JWT bench + `refresh` + `session_guard` + `consent`)
+no Chrome do Lighthouse — `scripts/perf/lighthouse-auth.mjs`, preset desktop, **3 runs→mediana**.
+
+| rota | path | LCP | TBT | CLS | FCP | perf | script gz |
+|---|---|---|---|---|---|---|---|
+| dashboard aluno | `/aluno` | 1.25s | 0 ms | 0.043 | 212 ms | 97 | 571 kB |
+| **histórico execuções** | `/aluno/historico` | 1.01s | 0 ms | **0.159** ⚠ | 214 ms | 92 | 595 kB |
+| dashboard treinador | `/treinador` | 1.27s | 0 ms | 0.046 | 212 ms | 96 | 580 kB |
+| editor de ficha | `/treinador/treinos/{id}` | 1.03s | 0 ms | 0.000 | 214 ms | 98 | 496 kB |
+| **dashboard admin** | `/admin` | **2.50s** ⚠ | 0 ms | 0.003 | 712 ms | 77 | 594 kB |
+
+**Comparado às públicas** (LCP 0.58–0.90s, CLS ≤0.098, perf 97–100): as authed têm LCP maior (1.0–2.5s vs
+sub-1s) — esperado, pois o LCP inclui o data-fetch client-side via BFF→backend. **TBT = 0 em todas** (thread
+principal livre, igual às públicas). Script gz por rota 496–595 kB, na mesma faixa do baseline público.
+
+**2 achados REAIS de budget (report-only):**
+1. **`/aluno/historico` CLS = 0.159 — ACIMA do alvo 0.1.** Maior shift de todo o app (público `/login` era
+   0.098, near-miss; esta authed estoura). Provável shift na hidratação da lista paginada de execuções
+   (conteúdo empurra o layout ao chegar). Investigar reserva de altura antes de apertar o budget.
+2. **`/admin` LCP = 2.50s (FCP 712 ms, perf 77) — no fio do alvo 2.5s.** A rota authed mais lenta; o
+   dashboard admin carrega o maior payload de boot relativo (FCP 3× as demais). Candidata a code-split/
+   streaming do conteúdo above-the-fold.
+
+As demais (dashboard aluno/treinador, editor de ficha) ficam VERDES e dentro dos alvos. Ambiente: desktop-
+**lab** (TBT proxy, não INP de campo), **localhost** (≠ CDN), **dados bench quentes** (Supabase Free seria
+PIOR no LCP por RTT+cache frio). O sinal durável é o DELTA/forma (CLS do histórico, LCP do admin), não o ms.
 
 ## BUDGETS PROPOSTOS (AC-3.3 — ALVO / report-only, NÃO gate hard)
 Base: web.dev "good" (LCP<2.5s, CLS<0.1, INP<200ms≈TBT<200ms) + folga sobre o medido. Enforcement = **warn**.
@@ -134,17 +154,33 @@ for u in / /login /cadastro/aluno /cadastro/treinador; do \
     --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage"; done
 ```
 
-### Lighthouse — rotas AUTENTICADAS (precisa backend)
+### Lighthouse — rotas AUTENTICADAS (full-app, fase4) — `scripts/perf/lighthouse-auth.mjs`
 ```bash
-# 1. backend up: docker compose up postgres + dotnet run --project forzion.tech.Api  → API_BASE_URL REAL
-# 2. frontend: build + start apontando NEXT_PUBLIC_API_BASE_URL/API_BASE_URL ao backend real
-# 3. sessões Playwright: npx playwright test auth.setup  (escreve e2e/.auth/<role>.json) + seed-consent
-# 4. por role (cookie via extraHeaders no lighthouserc.auth.cjs):
-LHCI_ROLE=aluno     npx lhci autorun --config=lighthouserc.auth.cjs
-LHCI_ROLE=treinador npx lhci autorun --config=lighthouserc.auth.cjs
-LHCI_ROLE=admin     npx lhci autorun --config=lighthouserc.auth.cjs
-# atalho que itera as 3 roles: npm run lhci:auth
+# 1. DB + backend perf_bench (ver resultados-load.md §Setup full-app):
+scripts/perf/00-setup-db.sh
+docker exec -i -e PGOPTIONS=--search_path=perf_bench forzion-perfbench \
+  psql -U postgres -d forzion_bench -f - < scripts/perf/patch-loadtest.sql   # contas + admin/system_user
+# API Release no schema perf_bench, env Bench, :5080 (gate/pool irrelevantes p/ lighthouse):
+ASPNETCORE_ENVIRONMENT=Bench ASPNETCORE_URLS=http://localhost:5080 \
+  ConnectionStrings__AppConnection='Host=localhost;Port=55432;Database=forzion_bench;Username=postgres;Password=bench;Search Path=perf_bench' \
+  Auth__JwtSecret=bench-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz-0123456789 \
+  Mfa__EncryptionKey=... DataProtection__EncryptionKey=... Internal__ApiKey=... \
+  Stripe__SecretKey=sk_test_x Stripe__WebhookSecret=whsec_x \
+  dotnet forzion.tech.Api/bin/Release/net10.0/forzion.tech.Api.dll
+# 2. frontend PROD :3000 apontando o BFF ao backend bench + verificando o JWT bench:
+cd frontend && NODE_ENV=production API_BASE_URL=http://localhost:5080 \
+  JWT_SECRET=bench-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz-0123456789 \
+  JWT_ISSUER=forzion.tech JWT_AUDIENCE=forzion.tech \
+  node_modules/.bin/next start -p 3000
+#   (warning de output:standalone é inócuo — serve 200; auth gating via middleware OK.)
+# 3. medir (loga bench, injeta cookies no Chrome do LH, 3 runs→mediana, 5 rotas):
+node scripts/perf/lighthouse-auth.mjs        # tabela em stdout; cru em ../perf-out/lh-auth/
 ```
+A sessão é injetada SEM login interativo: o runner chama `/auth/login` das contas bench, monta o header
+`Cookie: token=<JWT bench>; refresh=..; tipo_conta=..; session_guard=<uuid>; consent=..` e passa via
+`--extra-headers` ao Lighthouse. O middleware do front verifica o JWT com `JWT_SECRET` = `Auth:JwtSecret`
+do bench (issuer/audience `forzion.tech`) → render autenticado real. (O antigo `lighthouserc.auth.cjs` +
+storage-state Playwright cobre só a11y/1-rota-por-role; este runner cobre as 5 rotas pesadas com Web Vitals.)
 
 ### PROPOSTA — job de CI report-only (NÃO gate hard; decisão futura do usuário)
 - Job GH Actions **`lhci-report`** independente (não bloqueia merge; `continue-on-error` ou job não-required):

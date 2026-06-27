@@ -58,6 +58,37 @@ retida 10–50× mais → o pool fixado no teto vira **timeout de aquisição** 
 não só cauda inflada. O número LOCAL **subestima** a severidade; o sinal durável é a **fixação do
 pool no teto sob unbounded vs folga sob gate=8**.
 
+## 3) AC-2.3 ENDURECIDO — forçando o HTTP 500 que o cache quente escondeu (fase4, FR-6)
+A fase3 provou a fixação do pool (20/20, 91% do run) mas **0 falha HTTP**: os reads sub-ms (cache
+quente, sem RTT) drenavam rápido demais p/ estourar o `Timeout` de aquisição. Para materializar o
+**cliff duro** do tier alvo (cache frio + RTT), repetimos o cenário sob latência de DB injetada e pool
+reduzido — emulando Supabase Free.
+
+Setup: API → Postgres **via toxiproxy** com toxic de latência **+50 ms/conn** (`scripts/perf/toxiproxy.sh`);
+`Maximum Pool Size=10`; `Timeout=10`. Mesmo cenário AC-2.3: 8 alunos request-path (logins do `setup()`
+concluídos ANTES do storm via `START_DELAY` no batch) ∥ 4 disparos de pré-aviso, **4.500 eventos por
+disparo** (18.000 no total). Único diferencial entre colunas: `DomainEvents:MaxConcorrenciaBestEffort`.
+
+| métrica | **gate=8** (default) | **unbounded** (toggle=100000) |
+|---|---|---|
+| **request-path falhas HTTP** | **0 / 594** | **8 / 120 (6.66%)** |
+| dashboard p95 | 568 ms | **60 s (timeout)** |
+| execuções p95 | 414 ms | 38.6 s |
+| throughput request-path | 5.56 req/s | **0.99 req/s (colapso 5.6×)** |
+| pool — pico de conexões | 10/10 (dreno rápido, 0 falha) | 10/10 (fixado → timeout de aquisição) |
+
+**Veredito — AC-6.3 CONFIRMADO:** sob latência+pool pequeno, o **unbounded materializa o HTTP 500/timeout
+de aquisição** que o local quente da fase3 escondeu — `http_req_failed = 6.66%`, p95 do dashboard estoura
+p/ 60 s e o throughput desaba 5.6×. Com **gate=8** o MESMO lote de 18.000 eventos passa com **0 falha** e
+p95 ~568 ms. O gate é o que mantém o request-path do lado certo do joelho da curva quando cada conexão do
+fan-out é retida 10–50× mais (o regime do tier alvo). Confirma que o número da fase3 **subestimava** a
+severidade: o cliff não é só cauda inflada, é **falha dura do request-path**.
+
+Ambiente: toxiproxy emula cold-cache/RTT mas NÃO é o tier real (1–2 vCPU compart.) — a aproximação
+declara o MECANISMO (pool fixado → timeout de aquisição sob fan-out unbounded), não o ms absoluto de prod.
+Reproduzir: `scripts/perf/toxiproxy.sh up && toxiproxy.sh toxic-add db 50`; API com pool=10 apontando à
+porta do db-proxy (:5434); rodar o cenário 1× gate=8 e 1× unbounded (logins antes do batch).
+
 ## Ligação com o BestEffortConcurrencyGate
 - O gate JÁ está no código (`InfrastructureExtensions.cs` registra `BestEffortConcurrencyGate`
   com default **8** via `DomainEvents:MaxConcorrenciaBestEffort`); `DomainEventDispatcher`

@@ -16,7 +16,8 @@ const KEY = __ENV.INTERNAL_KEY || 'bench-internal-key';
 export const options = {
   scenarios: {
     batch: { executor: 'constant-arrival-rate', rate: 1, timeUnit: '30s',
-      duration: '100s', preAllocatedVUs: 2, maxVUs: 4 },
+      duration: '100s', preAllocatedVUs: 2, maxVUs: 4,
+      startTime: __ENV.START_DELAY || '0s' },
   },
 };
 

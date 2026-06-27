@@ -62,11 +62,26 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
   20/20 em 91% do run** + cauda do dashboard 3.8× (233→877 ms); gate=8 nunca satura (teto 16) e fica
   estável. CONFIRMA o achado ALTO. 0 falhas HTTP LOCAL (cache quente drena rápido) → caveat: Supabase
   Free (cache frio+RTT+pool menor) converte a fixação do pool em timeout de aquisição (HTTP 500).
+- **MEDIDO (AC-2.3 ENDURECIDO, fase4 FR-6):** o local quente da fase3 não estourava HTTP (reads sub-ms
+  drenam rápido). Repetido sob **toxiproxy latência +50 ms/conn no Postgres + pool=10** (emula cache-frio/
+  RTT do tier alvo): **unbounded materializa o cliff DURO** — `http_req_failed = 6.66%` (timeout de
+  aquisição/500), dashboard p95→60s, throughput colapsa 5.6×; **gate=8 = 0 falha** (p95 568 ms) sob o MESMO
+  lote (18.000 events). Prova que o número da fase3 SUBESTIMAVA: não é só cauda, é falha dura do request-path.
+  `resultados-load.md §3`. Fix de medição: `setupTimeout`+`startTime` (logins do setup antes do storm).
+- **MEDIDO (AC-2.4 isolamento de provider, fase4 FR-5 / PERF-04):** `k6-provider-isolation.js` martela o
+  request-path quente + `POST /suporte/mensagens` (enfileira e-mail DURÁVEL via outbox), com e-mail (Resend)
+  atrás de toxiproxy. p95 do POST: **12.8 ms (lat0) vs 9.2 ms (+2.000 ms de provider) = FLAT** → a chamada
+  externa está diferida (outbox/worker), NÃO vaza pro request-path. Se fosse síncrona, p95→~2.012 ms.
+  CONFIRMA isolamento PERF-04. `resultados-provider-isolation.md`. Stripe = stretch não-executado (mesmo
+  mecanismo de outbox; flow não triggerável local sem mocar webhook/Connect).
 - **Ligação ALTO (gate JÁ mergeado):** `DomainEventDispatcher` despacha eventos best-effort em
   `Task.Run`; o `BestEffortConcurrencyGate` (registrado em `InfrastructureExtensions`, default **8**
   via `DomainEvents:MaxConcorrenciaBestEffort`) bound-a o fan-out. A coluna "unbounded" da medição é o
   estado PRÉ-gate reproduzido só por config (toggle alto), sem alterar código. Em Supabase Free (pool
   20, 1–2 vCPU) o efeito é dramático. Cross-ref [specification-concurrency] (outbox isola latência de provider).
+- **toxiproxy reutilizável** (`scripts/perf/toxiproxy.sh`): 2 proxies — db (:5434→perfbench:5432) e mail
+  (:9098→host:9099 sink). `up`/`toxic-add <db|mail> <ms>`/`toxic-clear`/`status`/`down`. Sink de e-mail em
+  **0.0.0.0** (toxiproxy no container alcança o host via `host.docker.internal`).
 
 ## 4. LIGHTHOUSE + BUNDLE (frontend → `resultados-lighthouse.md`)
 - Harness JÁ existe: `npm run lhci` (`@lhci/cli`; `lighthouserc.json` rotas públicas,
@@ -86,7 +101,13 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
   hidratação). First-load script 568–894 kB gz (inflado por prefetch de nav do App Router, não-bloqueante
   → TBT=0). Heavy chunks: exceljs 256 kB gz e recharts 103 kB gz CORRETAMENTE route-split (fora do
   público); zod 75 kB + stripe+sentry 87 kB carregam em TODA rota pública. Lighthouse é LAB (TBT, não
-  INP de campo); localhost ≠ CDN. Rotas autenticadas NÃO medidas (exigem backend+login — runbook no relatório).
+  INP de campo); localhost ≠ CDN.
+- **MEDIDO (AC-3.1 autenticado, fase4 FR-4):** `scripts/perf/lighthouse-auth.mjs` (preset desktop, 3 runs→
+  mediana) nas 5 rotas LOGADAS pesadas contra full-app (backend perf_bench :5080 + frontend prod :3000),
+  sessão injetada via cookie (JWT bench + `session_guard` + `consent`) sem login interativo. Resultado:
+  TBT=0 em todas; dashboard aluno/treinador + editor de ficha VERDES (LCP 1.0–1.3s). **2 achados de budget
+  REAIS:** `/aluno/historico` **CLS 0.159** (>0.1, maior shift do app — hidratação da lista) e `/admin`
+  **LCP 2.50s** (no fio; FCP 712 ms, perf 77 — rota authed mais lenta). `resultados-lighthouse.md`.
 - Budgets propostos (ALVO report-only): LCP≤2.5s, CLS≤0.1, TBT≤200ms, First Load JS≤600 kB +
   guardrail "exceljs/recharts NUNCA no shared/first-load". Números em `scripts/perf/resultados-lighthouse.md`.
 
@@ -100,8 +121,16 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
   crash de volume reusado é lenta ([specification-local-ci-repro §2]) — o bench usa container efêmero.
 - **lhci EPERM no Windows**: `lhci autorun` dá EPERM intermitente ao limpar o tmpdir do Chrome
   (race no `rmSync` do chrome-launcher) e ABORTA o batch no meio. Workaround: rodar `lighthouse`
-  por-URL (o JSON é escrito ANTES do cleanup → sobrevive). `next start` com `output:standalone` emite
-  warning mas serve 200; porta 3000 não auto-migra no Next 16 → usar `-p 3100`.
+  por-URL (o JSON é escrito ANTES do cleanup → sobrevive). O `lighthouse` por-URL **sai com código 1**
+  nesse cleanup APÓS escrever o relatório → o runner (`lighthouse-auth.mjs`) TOLERA o exit code e valida
+  pelo arquivo de saída, não pelo código. `next start` com `output:standalone` emite warning mas serve
+  200 (fase4 usou `-p 3000` sem problema; se 3000 ocupada, `-p 3100`).
+- **Auth do Lighthouse sem login interativo**: o front verifica o JWT no middleware com `JWT_SECRET`/
+  `JWT_ISSUER`/`JWT_AUDIENCE` (env de runtime). Setando-os = `Auth:JwtSecret`/issuer/audience do backend
+  bench, um JWT mintado em `/auth/login` das contas bench passa → basta injetar `token`+`session_guard`+
+  `consent` como Cookie via `--extra-headers`. O BFF `/api/backend/[...]` repassa o `token` como Bearer →
+  não precisa de `NEXT_PUBLIC_*` de API nem rebuild. Conta SystemAdmin exige linha em `system_users` (senão
+  `LoginPerfilResolver` lança 500) — criada no `patch-loadtest.sql`.
 
 ## 6. PROPOSTA — CI report-only (NÃO-implementação)
 Quando/se o usuário aprovar (muda processo de CI):
