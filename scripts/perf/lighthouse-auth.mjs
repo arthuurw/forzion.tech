@@ -90,6 +90,10 @@ for (const { role, tipo, email, routes } of PLAN) {
   const headersFile = path.join(OUT, `headers-${role}.json`);
   writeFileSync(headersFile, JSON.stringify({ Cookie: cookieHeader(tipo, data) }));
   for (const [name, route] of routes) {
+    // Warm-up DESCARTADO: o 1º hit de uma rota dispara o route-compile on-demand do Next
+    // (LCP/FCP inflados) — sem isto a mediana-de-3 captura o cold-compile, não o estado real.
+    console.error(`» ${role}:${name} warm-up (descartado)`);
+    try { lhRun(`${FE}${route}`, headersFile, path.join(OUT, `${name}-warm.json`)); } catch { /* warm-up pode falhar; ignorar */ }
     const samples = [];
     for (let i = 1; i <= RUNS; i++) {
       console.error(`» ${role}:${name} run ${i}/${RUNS}`);

@@ -83,29 +83,34 @@ full-app (backend perf_bench :5080 + frontend prod :3000 com `API_BASE_URL`→:5
 AUDIENCE` = bench). Sessão injetada via cookies (`token` JWT bench + `refresh` + `session_guard` + `consent`)
 no Chrome do Lighthouse — `scripts/perf/lighthouse-auth.mjs`, preset desktop, **3 runs→mediana**.
 
-| rota | path | LCP | TBT | CLS | FCP | perf | script gz |
+| rota | path | LCP (warm) | TBT | CLS | FCP | perf | script gz |
 |---|---|---|---|---|---|---|---|
 | dashboard aluno | `/aluno` | 1.25s | 0 ms | 0.043 | 212 ms | 97 | 571 kB |
 | **histórico execuções** | `/aluno/historico` | 1.01s | 0 ms | **0.159** ⚠ | 214 ms | 92 | 595 kB |
 | dashboard treinador | `/treinador` | 1.27s | 0 ms | 0.046 | 212 ms | 96 | 580 kB |
 | editor de ficha | `/treinador/treinos/{id}` | 1.03s | 0 ms | 0.000 | 214 ms | 98 | 496 kB |
-| **dashboard admin** | `/admin` | **2.50s** ⚠ | 0 ms | 0.003 | 712 ms | 77 | 594 kB |
+| dashboard admin | `/admin` | 1.0–1.3s | 0 ms | 0.003 | 211 ms | 95–97 | 594 kB |
 
-**Comparado às públicas** (LCP 0.58–0.90s, CLS ≤0.098, perf 97–100): as authed têm LCP maior (1.0–2.5s vs
-sub-1s) — esperado, pois o LCP inclui o data-fetch client-side via BFF→backend. **TBT = 0 em todas** (thread
-principal livre, igual às públicas). Script gz por rota 496–595 kB, na mesma faixa do baseline público.
+**Comparado às públicas** (LCP 0.58–0.90s, CLS ≤0.098, perf 97–100): as authed têm LCP ~1.0–1.3s (inclui o
+data-fetch client-side via BFF→backend). **TBT = 0 em todas** (thread principal livre). Script gz por rota
+496–595 kB, na mesma faixa do baseline público.
 
-**2 achados REAIS de budget (report-only):**
-1. **`/aluno/historico` CLS = 0.159 — ACIMA do alvo 0.1.** Maior shift de todo o app (público `/login` era
-   0.098, near-miss; esta authed estoura). Provável shift na hidratação da lista paginada de execuções
-   (conteúdo empurra o layout ao chegar). Investigar reserva de altura antes de apertar o budget.
-2. **`/admin` LCP = 2.50s (FCP 712 ms, perf 77) — no fio do alvo 2.5s.** A rota authed mais lenta; o
-   dashboard admin carrega o maior payload de boot relativo (FCP 3× as demais). Candidata a code-split/
-   streaming do conteúdo above-the-fold.
+**1 achado REAL de budget (report-only) — pós dupla-validação:**
+1. **`/aluno/historico` CLS = 0.159 — ACIMA do alvo 0.1.** REPRODUZÍVEL: 5 runs warm = 0.159/0.108/0.159/
+   0.159 (+ 3 da mediana original), todos > 0.1. Maior shift do app (público `/login` era 0.098, near-miss;
+   esta authed estoura). Culpado (audit `layout-shifts`): `main#main-content > MuiBox` empurra o layout
+   quando os 2 gráficos `dynamic()` montam — eles usam `loading: () => null` (altura 0 reservada → pop-in).
+   Os 2 maiores shifts (0.064 + 0.050) ≈ os 2 charts (Frequência + ProgressãoCarga). Fix → reservar altura.
 
-As demais (dashboard aluno/treinador, editor de ficha) ficam VERDES e dentro dos alvos. Ambiente: desktop-
-**lab** (TBT proxy, não INP de campo), **localhost** (≠ CDN), **dados bench quentes** (Supabase Free seria
-PIOR no LCP por RTT+cache frio). O sinal durável é o DELTA/forma (CLS do histórico, LCP do admin), não o ms.
+**`/admin` LCP — REFUTADO (artefato de medição, NÃO é achado).** A mediana-de-3 inicial deu 2.50s, mas as
+3 amostras eram bimodais (2504/2622/**1086** ms): as 2 lentas foram **cold route-compile do Next** (1º hit
+da rota dispara compilação on-demand). Re-medido warm 7× → LCP **1.0–1.3s, perf 95–97 = VERDE**, igual às
+demais. LIÇÃO: aquecer cada rota (1 hit descartado) antes de coletar; mediana-de-3 sem warm-up captura o
+cold-compile. As demais rotas ficam VERDES e dentro dos alvos.
+
+Ambiente: desktop-**lab** (TBT proxy, não INP de campo), **localhost** (≠ CDN), **dados bench quentes**
+(Supabase Free seria PIOR no LCP por RTT+cache frio). Sinal durável = o CLS estrutural do histórico (independe
+de cache/compile: byte-idêntico em runs cold e warm), não o ms absoluto.
 
 ## BUDGETS PROPOSTOS (AC-3.3 — ALVO / report-only, NÃO gate hard)
 Base: web.dev "good" (LCP<2.5s, CLS<0.1, INP<200ms≈TBT<200ms) + folga sobre o medido. Enforcement = **warn**.

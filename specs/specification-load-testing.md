@@ -105,9 +105,10 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
 - **MEDIDO (AC-3.1 autenticado, fase4 FR-4):** `scripts/perf/lighthouse-auth.mjs` (preset desktop, 3 runs→
   mediana) nas 5 rotas LOGADAS pesadas contra full-app (backend perf_bench :5080 + frontend prod :3000),
   sessão injetada via cookie (JWT bench + `session_guard` + `consent`) sem login interativo. Resultado:
-  TBT=0 em todas; dashboard aluno/treinador + editor de ficha VERDES (LCP 1.0–1.3s). **2 achados de budget
-  REAIS:** `/aluno/historico` **CLS 0.159** (>0.1, maior shift do app — hidratação da lista) e `/admin`
-  **LCP 2.50s** (no fio; FCP 712 ms, perf 77 — rota authed mais lenta). `resultados-lighthouse.md`.
+  TBT=0 em todas; LCP warm 1.0–1.3s, perf 95–98. **1 achado de budget REAL (pós dupla-validação):**
+  `/aluno/historico` **CLS 0.159** (>0.1, reprodutível em 5 runs; gráficos `dynamic()` com `loading:()=>null`
+  fazem pop-in sem altura reservada). **`/admin` LCP REFUTADO** — era cold route-compile do Next (mediana-de-3
+  sem warm-up); warm = 1.0–1.3s verde. O runner agora faz **warm-up descartado** por rota. `resultados-lighthouse.md`.
 - Budgets propostos (ALVO report-only): LCP≤2.5s, CLS≤0.1, TBT≤200ms, First Load JS≤600 kB +
   guardrail "exceljs/recharts NUNCA no shared/first-load". Números em `scripts/perf/resultados-lighthouse.md`.
 
