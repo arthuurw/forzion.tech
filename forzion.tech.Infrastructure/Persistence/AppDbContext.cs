@@ -7,6 +7,7 @@ using forzion.tech.Infrastructure.Services;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 namespace forzion.tech.Infrastructure.Persistence;
 
@@ -144,7 +145,7 @@ public class AppDbContext(
         Func<ITransaction, CancellationToken, Task<T>> operation,
         CancellationToken cancellationToken = default)
     {
-        var strategy = Database.CreateExecutionStrategy();
+        var strategy = new NpgsqlRetryingExecutionStrategy(this, maxRetryCount: 0, maxRetryDelay: TimeSpan.Zero, errorCodesToAdd: null);
         return await strategy.ExecuteAsync(async () =>
         {
             await using var tx = await BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
