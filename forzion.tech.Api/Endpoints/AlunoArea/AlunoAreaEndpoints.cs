@@ -1,6 +1,8 @@
 using forzion.tech.Api.Extensions;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.UseCases.Alunos;
+using forzion.tech.Application.UseCases.Alunos.AtualizarAnamneseAluno;
 using forzion.tech.Application.UseCases.Alunos.Dashboard;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
@@ -206,9 +208,51 @@ public static class AlunoAreaEndpoints
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
+        group.MapPut("/anamnese", async (
+            [FromBody] AtualizarAnamneseRequest request,
+            [FromServices] AtualizarAnamneseAlunoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var command = new AtualizarAnamneseAlunoCommand(
+                userContext.PerfilId,
+                request.DiasDisponiveis,
+                request.TempoDisponivelMinutos,
+                request.Finalidade,
+                request.FocoTreino,
+                request.NivelCondicionamento,
+                request.LimitacoesFisicas,
+                request.Doencas,
+                request.ObservacoesAdicionais,
+                request.ConsentimentoDadosSaude,
+                request.ConsentimentoDadosSaudeEm);
+
+            var result = await handler.HandleAsync(command, cancellationToken);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Aluno autenticado edita a própria anamnese (LGPD art. 18 III)")
+        .Produces<AlunoResponse>()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
         return endpoints;
     }
 }
+
+public record AtualizarAnamneseRequest(
+    int? DiasDisponiveis,
+    int? TempoDisponivelMinutos,
+    forzion.tech.Domain.Enums.FinalidadeTreino? Finalidade,
+    string? FocoTreino,
+    forzion.tech.Domain.Enums.NivelCondicionamento? NivelCondicionamento,
+    string? LimitacoesFisicas,
+    string? Doencas,
+    string? ObservacoesAdicionais,
+    bool ConsentimentoDadosSaude = false,
+    DateTime? ConsentimentoDadosSaudeEm = null);
 
 public record SolicitarTrocaTreinadorRequest(Guid NovoTreinadorId, Guid PacoteId);
 

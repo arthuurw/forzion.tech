@@ -133,6 +133,30 @@ public class Aluno : IHasDomainEvents
         return Result.Success();
     }
 
+    public Result AtualizarAnamnese(
+        int? diasDisponiveis,
+        TempoDisponivel? tempoDisponivelMinutos,
+        FinalidadeTreino? finalidade,
+        string? focoTreino,
+        NivelCondicionamento? nivelCondicionamento,
+        string? limitacoesFisicas,
+        string? doencas,
+        string? observacoesAdicionais,
+        DateTime agora)
+    {
+        DiasDisponiveis = diasDisponiveis;
+        TempoDisponivelMinutos = tempoDisponivelMinutos;
+        Finalidade = finalidade;
+        FocoTreino = focoTreino?.Trim();
+        NivelCondicionamento = nivelCondicionamento;
+        LimitacoesFisicas = limitacoesFisicas?.Trim();
+        Doencas = doencas?.Trim();
+        ObservacoesAdicionais = observacoesAdicionais?.Trim();
+        UpdatedAt = agora;
+
+        return Result.Success();
+    }
+
     public Result Ativar(DateTime agora)
     {
         if (Status == AlunoStatus.Ativo)

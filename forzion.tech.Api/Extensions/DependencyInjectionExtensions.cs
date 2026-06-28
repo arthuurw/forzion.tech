@@ -318,6 +318,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ObterMinhaProgressaoHandler>();
         services.AddScoped<ListarAlunosHandler>();
         services.AddScoped<AtualizarAlunoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Alunos.AtualizarAnamneseAluno.AtualizarAnamneseAlunoHandler>();
         services.AddScoped<AlterarStatusAlunoHandler>();
 
         services.AddScoped<CriarExercicioHandler>();
