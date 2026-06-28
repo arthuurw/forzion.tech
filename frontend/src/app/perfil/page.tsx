@@ -186,7 +186,7 @@ export default function PerfilPage() {
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 580 } }}>
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Meu Perfil</Typography>
+        <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>Meu Perfil</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Informações da conta e configurações de acesso
         </Typography>
@@ -202,7 +202,7 @@ export default function PerfilPage() {
             <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <PersonIcon fontSize="small" sx={{ color: "text.secondary" }} />
             </Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Dados da conta</Typography>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>Dados da conta</Typography>
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3, p: 2, bgcolor: "background.default", borderRadius: 2, flexWrap: "wrap" }}>
@@ -254,7 +254,7 @@ export default function PerfilPage() {
               <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <FitnessCenterIcon fontSize="small" sx={{ color: "text.secondary" }} />
               </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Meu Treinador</Typography>
+              <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>Meu Treinador</Typography>
             </Box>
 
             {meuVinculo?.vinculoAtivo ? (
@@ -305,7 +305,7 @@ export default function PerfilPage() {
               <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <AssignmentIcon fontSize="small" sx={{ color: "text.secondary" }} />
               </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Minha anamnese</Typography>
+              <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>Minha anamnese</Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Atualize disponibilidade, objetivos e informações de saúde que orientam o seu treino.
@@ -324,7 +324,7 @@ export default function PerfilPage() {
             <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(211,47,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <LockIcon fontSize="small" sx={{ color: "error.main" }} />
             </Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Alterar senha</Typography>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>Alterar senha</Typography>
           </Box>
 
           {senhaError && (
@@ -379,7 +379,7 @@ export default function PerfilPage() {
             <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <SecurityIcon fontSize="small" sx={{ color: "text.secondary" }} />
             </Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Privacidade (LGPD)</Typography>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>Privacidade (LGPD)</Typography>
           </Box>
           <Stack spacing={1.5}>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>

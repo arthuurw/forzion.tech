@@ -134,6 +134,7 @@ export default async function LandingPage() {
 
             <Typography
               variant="h2"
+              component="h1"
               sx={{ mb: 2.5, fontWeight: 800, fontSize: { xs: "2.25rem", md: "3.25rem" }, lineHeight: 1.15 }}
             >
               Profissionalize a gestão{" "}
