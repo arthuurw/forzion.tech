@@ -74,3 +74,15 @@ export const cadastroAlunoSchema = z
     path: ["confirmPassword"],
   });
 export type CadastroAlunoFormData = z.infer<typeof cadastroAlunoSchema>;
+
+export const anamneseSchema = z.object({
+  diasDisponiveis: z.string().min(1, "Selecione os dias disponíveis"),
+  tempoDisponivelMinutos: z.string().min(1, "Selecione o tempo disponível"),
+  finalidade: z.string().min(1, "Selecione a finalidade do treino"),
+  nivelCondicionamento: z.string().min(1, "Selecione o nível de condicionamento"),
+  focoTreino: z.string().max(200, "Máximo 200 caracteres").optional().or(z.literal("")),
+  limitacoesFisicas: z.string().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
+  doencas: z.string().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
+  observacoesAdicionais: z.string().max(1000, "Máximo 1000 caracteres").optional().or(z.literal("")),
+});
+export type AnamneseFormData = z.infer<typeof anamneseSchema>;

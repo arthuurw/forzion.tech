@@ -4,7 +4,9 @@ import {
   Box, Typography, Card, CardContent, Stack, TextField, Button, Divider, Chip, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete,
 } from "@mui/material";
+import Link from "next/link";
 import PersonIcon from "@mui/icons-material/Person";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import LockIcon from "@mui/icons-material/Lock";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
@@ -291,6 +293,26 @@ export default function PerfilPage() {
                 </Typography>
               </Box>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Anamnese — apenas para Alunos */}
+      {perfil?.tipoConta === "Aluno" && (
+        <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
+          <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AssignmentIcon fontSize="small" sx={{ color: "text.secondary" }} />
+              </Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Minha anamnese</Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Atualize disponibilidade, objetivos e informações de saúde que orientam o seu treino.
+            </Typography>
+            <Button component={Link} href="/perfil/anamnese" variant="outlined" size="small">
+              Editar anamnese
+            </Button>
           </CardContent>
         </Card>
       )}
