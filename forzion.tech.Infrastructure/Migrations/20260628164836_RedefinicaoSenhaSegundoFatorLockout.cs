@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace forzion.tech.Infrastructure.Migrations
 {
+    // lint-migrations:allow
     /// <inheritdoc />
     public partial class RedefinicaoSenhaSegundoFatorLockout : Migration
     {
