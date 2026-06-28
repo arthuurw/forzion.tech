@@ -69,6 +69,9 @@ export default function AppHeader({ onMenuToggle, showMenuButton = true }: AppHe
         <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
           <Box
             component="button"
+            aria-label="Abrir menu do usuário"
+            aria-haspopup="true"
+            aria-expanded={Boolean(anchor)}
             onClick={(e) => setAnchor(e.currentTarget as HTMLElement)}
             sx={{
               display: "flex",
