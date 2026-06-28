@@ -2,13 +2,13 @@
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Button, CircularProgress, Paper, Stack,
-  Radio, RadioGroup, FormControlLabel, FormControl, FormLabel, FormHelperText,
 } from "@mui/material";
-import { useForm, FormProvider, Controller } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircle";
 import Link from "next/link";
 import FormTextField from "@/components/forms/FormTextField";
+import FormSelect from "@/components/forms/FormSelect";
 import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import PagamentoSignup from "@/components/pagamento/PagamentoSignup";
@@ -184,43 +184,27 @@ export default function CadastroTreinadorPage() {
           <PasswordField name="password" label="Senha" required autoComplete="new-password" />
           <PasswordField name="confirmPassword" label="Confirmar senha" required autoComplete="new-password" />
 
-          <Controller
-            name="planoPlataformaId"
-            control={methods.control}
-            render={({ field, fieldState }) => (
-              <FormControl error={!!fieldState.error} required>
-                <FormLabel>Plano da plataforma</FormLabel>
-                {planos === null ? (
-                  <CircularProgress size={22} sx={{ mt: 1 }} aria-label="Carregando planos" />
-                ) : (
-                  <RadioGroup {...field}>
-                    {planos.map((p) => (
-                      <FormControlLabel
-                        key={p.planoId}
-                        value={p.planoId}
-                        control={<Radio />}
-                        label={`${p.nome} — ${p.preco === 0 ? "Grátis" : formatarBRL(p.preco)} · até ${p.maxAlunos} alunos`}
-                      />
-                    ))}
-                  </RadioGroup>
-                )}
-                {fieldState.error && <FormHelperText>{fieldState.error.message}</FormHelperText>}
-              </FormControl>
-            )}
-          />
+          {planos === null ? (
+            <CircularProgress size={22} sx={{ mt: 1 }} aria-label="Carregando planos" />
+          ) : (
+            <FormSelect
+              name="planoPlataformaId"
+              label="Plano da plataforma"
+              required
+              options={planos.map((p) => ({
+                value: p.planoId,
+                label: `${p.nome} — ${p.preco === 0 ? "Grátis" : formatarBRL(p.preco)} · até ${p.maxAlunos} alunos`,
+              }))}
+            />
+          )}
 
-          <Controller
+          <FormSelect
             name="modoPagamentoAluno"
-            control={methods.control}
-            render={({ field }) => (
-              <FormControl>
-                <FormLabel>Como seus alunos vão pagar você?</FormLabel>
-                <RadioGroup {...field}>
-                  <FormControlLabel value="Plataforma" control={<Radio />} label="Pela plataforma (cobrança automática via Stripe)" />
-                  <FormControlLabel value="Externo" control={<Radio />} label="Por fora (você combina e recebe direto; sem cobrança na plataforma)" />
-                </RadioGroup>
-              </FormControl>
-            )}
+            label="Como seus alunos vão pagar você?"
+            options={[
+              { value: "Plataforma", label: "Pela plataforma (cobrança automática via Stripe)" },
+              { value: "Externo", label: "Por fora (você combina e recebe direto; sem cobrança na plataforma)" },
+            ]}
           />
 
           <Button type="submit" variant="contained" color="primary" size="large" fullWidth disabled={loading}

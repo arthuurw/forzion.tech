@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import type { PlanoPlataformaResponse, TreinadorResponse } from "@/types";
@@ -23,6 +23,12 @@ function preencherDados() {
   fireEvent.change(screen.getByLabelText(/Confirmar senha/i), { target: { value: "Senha123" } });
 }
 
+function selecionarOpcao(campo: RegExp, opcao: RegExp) {
+  fireEvent.mouseDown(screen.getByRole("combobox", { name: campo }));
+  const listbox = within(screen.getByRole("listbox"));
+  fireEvent.click(listbox.getByText(opcao));
+}
+
 async function importPage() {
   const { default: Page } = await import("../cadastro/treinador/page");
   return Page;
@@ -36,10 +42,16 @@ describe("CadastroTreinadorPage (wizard)", () => {
     const Page = await importPage();
     render(<Page />);
 
-    expect(await screen.findByText(/Basic — /)).toBeInTheDocument();
-    expect(screen.getByText(/Free — Grátis/)).toBeInTheDocument();
-    expect(screen.getByText(/Pela plataforma/)).toBeInTheDocument();
-    expect(screen.getByText(/Por fora/)).toBeInTheDocument();
+    fireEvent.mouseDown(await screen.findByRole("combobox", { name: /Plano da plataforma/i }));
+    const planosList = within(screen.getByRole("listbox"));
+    expect(planosList.getByText(/Basic — /)).toBeInTheDocument();
+    expect(planosList.getByText(/Free — Grátis/)).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: /alunos vão pagar/i }));
+    const modoList = within(screen.getByRole("listbox"));
+    expect(modoList.getByText(/Pela plataforma/)).toBeInTheDocument();
+    expect(modoList.getByText(/Por fora/)).toBeInTheDocument();
   });
 
   it("plano Free finaliza em análise sem etapa de pagamento", async () => {
@@ -52,10 +64,10 @@ describe("CadastroTreinadorPage (wizard)", () => {
 
     const Page = await importPage();
     render(<Page />);
-    await screen.findByText(/Free — Grátis/);
+    await screen.findByRole("combobox", { name: /Plano da plataforma/i });
 
     preencherDados();
-    fireEvent.click(screen.getByRole("radio", { name: /Free/ }));
+    selecionarOpcao(/Plano da plataforma/i, /Free/);
     fireEvent.click(screen.getByRole("button", { name: /Continuar/ }));
 
     expect(await screen.findByText(/Solicitação enviada/)).toBeInTheDocument();
@@ -81,10 +93,10 @@ describe("CadastroTreinadorPage (wizard)", () => {
 
     const Page = await importPage();
     render(<Page />);
-    await screen.findByText(/Basic — /);
+    await screen.findByRole("combobox", { name: /Plano da plataforma/i });
 
     preencherDados();
-    fireEvent.click(screen.getByRole("radio", { name: /Basic/ }));
+    selecionarOpcao(/Plano da plataforma/i, /Basic/);
     fireEvent.click(screen.getByRole("button", { name: /Continuar/ }));
 
     expect(await screen.findByText(/Pagamento do plano/)).toBeInTheDocument();
@@ -104,10 +116,10 @@ describe("CadastroTreinadorPage (wizard)", () => {
 
     const Page = await importPage();
     render(<Page />);
-    await screen.findByText(/Basic — /);
+    await screen.findByRole("combobox", { name: /Plano da plataforma/i });
 
     preencherDados();
-    fireEvent.click(screen.getByRole("radio", { name: /Basic/ }));
+    selecionarOpcao(/Plano da plataforma/i, /Basic/);
     fireEvent.click(screen.getByRole("button", { name: /Continuar/ }));
 
     expect(await screen.findByText(/Pagamento do plano/)).toBeInTheDocument();
