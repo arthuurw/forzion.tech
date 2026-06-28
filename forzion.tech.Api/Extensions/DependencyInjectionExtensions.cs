@@ -125,7 +125,9 @@ public static class DependencyInjectionExtensions
             };
         });
 
-        if (environment.IsEnvironment("Test"))
+        var desabilitarRateLimitParaTeste = environment.IsEnvironment("Test")
+            && configuration.GetValue("RateLimiting:DesabilitarParaTeste", true);
+        if (desabilitarRateLimitParaTeste)
         {
             services.AddRateLimiter(opt =>
             {
@@ -155,18 +157,6 @@ public static class DependencyInjectionExtensions
                     return ValueTask.CompletedTask;
                 };
 
-                static string KeyFromIpOrSub(HttpContext ctx)
-                {
-                    var sub = ctx.User?.FindFirst("sub")?.Value
-                              ?? ctx.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                    if (!string.IsNullOrEmpty(sub))
-                        return $"u:{sub}";
-                    return $"ip:{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
-                }
-
-                static string KeyFromIp(HttpContext ctx) =>
-                    $"ip:{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
-
                 static FixedWindowRateLimiterOptions Fixed(int permit, TimeSpan window) => new()
                 {
                     PermitLimit = permit,
@@ -177,31 +167,31 @@ public static class DependencyInjectionExtensions
 
                 // auth: pré-autenticação — chave por IP (não há sub ainda)
                 opt.AddPolicy("auth", ctx =>
-                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIp(ctx),
                         _ => Fixed(10, TimeSpan.FromMinutes(1))));
 
                 opt.AddPolicy("mfa", ctx =>
-                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIpOrSub(ctx),
                         _ => Fixed(5, TimeSpan.FromMinutes(1))));
 
                 // write: por usuário se autenticado, IP caso contrário
                 opt.AddPolicy("write", ctx =>
-                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIpOrSub(ctx),
                         _ => Fixed(60, TimeSpan.FromMinutes(1))));
 
                 // read: idem
                 opt.AddPolicy("read", ctx =>
-                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIpOrSub(ctx),
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIpOrSub(ctx),
                         _ => Fixed(120, TimeSpan.FromMinutes(1))));
 
                 // internal: server-to-server (billing-renewal) — por IP origem
                 opt.AddPolicy("internal", ctx =>
-                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIp(ctx),
                         _ => Fixed(5, TimeSpan.FromMinutes(1))));
 
                 // webhook: Stripe/Resend — por IP (provedores têm faixas conhecidas)
                 opt.AddPolicy("webhook", ctx =>
-                    RateLimitPartition.GetFixedWindowLimiter(KeyFromIp(ctx),
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIp(ctx),
                         _ => Fixed(300, TimeSpan.FromMinutes(1))));
             });
         }
