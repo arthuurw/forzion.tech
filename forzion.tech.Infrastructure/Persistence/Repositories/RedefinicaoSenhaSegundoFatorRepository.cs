@@ -13,13 +13,4 @@ public class RedefinicaoSenhaSegundoFatorRepository(AppDbContext context) : IRed
 
     public async Task AdicionarAsync(RedefinicaoSenhaSegundoFator guard, CancellationToken cancellationToken = default) =>
         await context.RedefinicoesSenhaSegundoFator.AddAsync(guard, cancellationToken).ConfigureAwait(false);
-
-    public async Task ExcluirPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default)
-    {
-        var registros = await context.RedefinicoesSenhaSegundoFator
-            .Where(g => g.ContaId == contaId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        context.RedefinicoesSenhaSegundoFator.RemoveRange(registros);
-    }
 }
