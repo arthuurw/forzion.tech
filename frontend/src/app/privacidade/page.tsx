@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   Box,
   Container,
@@ -57,7 +56,7 @@ export default function PrivacidadePage() {
       <Container maxWidth="md">
         <Stack spacing={3}>
           <Box>
-            <Button component={Link} href="/" size="small" sx={{ mb: 2 }}>
+            <Button href="/" size="small" sx={{ mb: 2 }}>
               ← Voltar
             </Button>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
