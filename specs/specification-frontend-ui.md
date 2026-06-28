@@ -55,8 +55,8 @@ Identidade = **preto / amarelo / branco / cinza**. Regras p/ manter o padrão em
 - **Amarelo (`primary.main` #F5C400) só passa AA sobre superfície escura** (mesma origem do `brand.label` F18). Em fundo claro, amarelo só como: (a) fundo de pill ESCURA com texto amarelo, ou (b) detalhe gráfico NÃO-semântico (ex. nº de step). Texto/ícone semântico em fundo claro = `secondary.main` (preto) ou `text.*` — nunca amarelo.
 - **`SectionEyebrow`** (`src/app/_landing/SectionEyebrow.tsx`): rótulo de seção em pill (dot 7px + label uppercase amarelo), espelha o badge do Hero. Substitui os overlines olive `brand.label`. Prop `variant` = cor do FUNDO da seção onde vive:
   - `light` (seção clara): pill `bgcolor: secondary.main` (preto sólido) + texto/dot amarelo → amarelo sobre preto passa AA.
-  - `dark` (seção escura, ex. Hero): pill `bgcolor: rgba(245,196,0,0.08)` + borda `rgba(245,196,0,0.3)` + texto amarelo (recipe do Hero badge).
-  Usado em `HowItWorks`/`Diferenciais`/`Faq`. NÃO está em `components/ui/` (é landing-local).
+  - `dark` (seção escura, ex. Hero, Planos): pill `bgcolor: rgba(245,196,0,0.08)` + borda `rgba(245,196,0,0.3)` + texto amarelo (recipe do Hero badge).
+  Usado em `HowItWorks`/`Diferenciais`/`Faq` (`light`) e `Planos` (`dark`, slab preto). NÃO está em `components/ui/` (é landing-local).
 - **`Diferenciais`** (claro): check da coluna Forzion = `secondary.main` (preto) — NÃO verde `success.main` (fora da paleta + amarelo falharia contraste em fundo claro); X genéricas = `text.disabled`; header "Forzion" = `secondary.main`.
 
 ## INVENTÁRIO DE COMPONENTES UI (`src/components/ui/*`)
