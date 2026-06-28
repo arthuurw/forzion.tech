@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
-public class ErrorLogRepository(AppDbContext context) : IErrorLogRepository
+public class ErrorLogRepository(AppDbContext context, TimeProvider timeProvider) : IErrorLogRepository
 {
+    private const int RetencaoDias = 90;
+
     public async Task AdicionarAsync(ErrorLogEntry entry, CancellationToken cancellationToken = default) =>
         await context.ErrorLogs.AddAsync(entry, cancellationToken).ConfigureAwait(false);
 
@@ -23,4 +25,13 @@ public class ErrorLogRepository(AppDbContext context) : IErrorLogRepository
             .Take(limite)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<int> LimparAntigosAsync(CancellationToken cancellationToken = default)
+    {
+        var corte = timeProvider.GetUtcNow().UtcDateTime.AddDays(-RetencaoDias);
+        return await context.ErrorLogs
+            .Where(e => e.OcorridoEm < corte)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

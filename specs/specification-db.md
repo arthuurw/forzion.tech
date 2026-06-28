@@ -154,7 +154,7 @@ health_report_config — config runtime do relatório diário de saúde (1 linha
 
 health_snapshots — snapshot diário da saúde do ambiente. id(uuid,NN); capturado_em(tstz,NN); ambiente(varchar100,NN); status_geral(text,NN,StatusSaude); payload_json(text,NN,JSON das seções); created_at(NN). PK(id) idx(capturado_em).
 
-error_logs — log de ERROR/Critical (sink custom, best-effort) p/ a seção de erros. id(uuid,NN); ocorrido_em(tstz,NN); nivel(varchar20,NN); origem(varchar256,NN); mensagem(varchar4000,NN,truncada); created_at(NN). PK(id) idx(ocorrido_em).
+error_logs — log de ERROR/Critical (sink custom, best-effort) p/ a seção de erros. id(uuid,NN); ocorrido_em(tstz,NN); nivel(varchar20,NN); origem(varchar256,NN); mensagem(varchar4000,NN,truncada — PII mascarada na ESCRITA via `MascaraPii.Scrub`, [specification-lgpd]); created_at(NN). PK(id) idx(ocorrido_em). GC `LimparAntigosAsync` (`ExecuteDelete` em `ocorrido_em < agora-90d`, retenção LGPD) no GC horário `LimparTokensRevogadosService` — sem migration (reusa `ix_error_logs_ocorrido_em`).
 
 ### Outbox de efeitos externos
 outbox_efeitos — fila durável de efeito externo pós-commit (entrega garantida + retry; gravada no MESMO commit do agregado de origem). id(uuid,NN); tipo(varchar200,NN, `evt:<CLR>`|`fx:<nome>`); payload(jsonb,NN); status(text,NN,OutboxStatus); tentativas(int,NN); proxima_tentativa(tstz,NN, scan do worker `<= agora`); ultimo_erro(text,null); chave_idempotencia(varchar300,NN); criado_em(tstz,NN); processado_em(tstz,null). PK(id) UQ(chave_idempotencia) idx(status,proxima_tentativa). [sem FK — desacoplado; payload carrega ids].

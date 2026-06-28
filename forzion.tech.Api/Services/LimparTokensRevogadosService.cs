@@ -80,5 +80,17 @@ public class LimparTokensRevogadosService(
         {
             logger.LogError(ex, "Erro ao limpar dispositivos confiáveis expirados.");
         }
+
+        try
+        {
+            var errorLogRepo = scope.ServiceProvider.GetRequiredService<IErrorLogRepository>();
+            var logsRemovidos = await errorLogRepo.LimparAntigosAsync(stoppingToken).ConfigureAwait(false);
+            if (logsRemovidos > 0)
+                logger.LogInformation("Limpeza de error_logs (retenção 90d): {Count} registros removidos.", logsRemovidos);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao limpar error_logs além da retenção.");
+        }
     }
 }
