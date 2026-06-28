@@ -29,6 +29,7 @@ public class AutorizacaoNegativaMatrixTests : IClassFixture<AutorizacaoNegativaM
         "/treinador/notas-fiscais",
         "/treinador/pagamentos/recebimentos",
         "/treinador/vinculos",
+        "/treinador/plano/assinatura",
     ];
 
     private static readonly string[] SomenteAluno =
