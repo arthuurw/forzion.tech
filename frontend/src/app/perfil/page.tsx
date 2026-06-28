@@ -4,6 +4,7 @@ import {
   Box, Typography, Card, CardContent, Stack, TextField, Button, Divider, Chip, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import Link from "next/link";
 import PersonIcon from "@mui/icons-material/Person";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -284,7 +285,7 @@ export default function PerfilPage() {
             )}
 
             {meuVinculo?.vinculoPendente && (
-              <Box sx={{ mt: 2, p: 2, bgcolor: "rgba(255,193,7,0.08)", borderRadius: 2, border: "1px solid", borderColor: "warning.light" }}>
+              <Box sx={(theme) => ({ mt: 2, p: 2, bgcolor: alpha(theme.palette.warning.main, 0.08), borderRadius: 2, border: "1px solid", borderColor: "warning.light" })}>
                 <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 600 }}>
                   Solicitação de troca pendente
                 </Typography>
@@ -321,7 +322,7 @@ export default function PerfilPage() {
       <Card sx={{ border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(211,47,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Box sx={(theme) => ({ width: 36, height: 36, borderRadius: 2, bgcolor: alpha(theme.palette.error.main, 0.08), display: "flex", alignItems: "center", justifyContent: "center" })}>
               <LockIcon fontSize="small" sx={{ color: "error.main" }} />
             </Box>
             <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>Alterar senha</Typography>
