@@ -242,6 +242,26 @@ public class RedefinirSenhaHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ContaAnonimizada_RecusaSemReporHash()
+    {
+        var conta = BuildConta();
+        conta.Anonimizar(_timeProvider.GetUtcNow().UtcDateTime);
+        var token = BuildToken(contaId: conta.Id);
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(token);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_reset.token_invalido");
+        conta.PasswordHash.Should().BeEmpty();
+        token.UsedAt.Should().BeNull();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_ContaNaoEncontrada_LancaEstadoInconsistente()
     {
         var token = BuildToken();

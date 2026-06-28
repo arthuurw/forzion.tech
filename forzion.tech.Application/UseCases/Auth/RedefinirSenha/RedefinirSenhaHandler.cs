@@ -73,6 +73,9 @@ public class RedefinirSenhaHandler(
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
             ?? throw new EstadoInconsistenteException("Conta não encontrada.");
 
+        if (conta.AnonimizadaEm is not null)
+            return Result.Failure(Error.Business("auth_reset.token_invalido", "Token inválido ou já utilizado."));
+
         var mfa = await contaMfaRepository.BuscarPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         if (mfa is { Habilitado: true })
         {

@@ -40,7 +40,8 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             TimeProvider.System, Mock.Of<IUserContext>(), Mock.Of<ITokenRevogadoRepository>(),
             Mock.Of<IDatabaseErrorInspector>(), Mock.Of<IRefreshTokenFamilyRepository>(),
             Mock.Of<IContaMfaRepository>(), Mock.Of<IMfaRecoveryCodeRepository>(),
-            Mock.Of<IMfaChallengeRepository>(), Mock.Of<ITrustedDeviceRepository>());
+            Mock.Of<IMfaChallengeRepository>(), Mock.Of<ITrustedDeviceRepository>(),
+            Mock.Of<IPasswordResetTokenRepository>());
 
         public Mock<GerarNfseComissaoMensalHandler> GerarNfseComissaoMock { get; } = new(
             Mock.Of<IPagamentoRepository>(), Mock.Of<INotaFiscalRepository>(), Mock.Of<IServiceScopeFactory>(),

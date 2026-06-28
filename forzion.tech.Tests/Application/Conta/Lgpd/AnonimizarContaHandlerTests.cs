@@ -37,6 +37,7 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<IMfaRecoveryCodeRepository> _recoveryRepo = new();
     private readonly Mock<IMfaChallengeRepository> _challengeRepo = new();
     private readonly Mock<ITrustedDeviceRepository> _trustedDeviceRepo = new();
+    private readonly Mock<IPasswordResetTokenRepository> _resetTokenRepo = new();
 
     private readonly AnonimizarContaHandler _handler;
 
@@ -91,7 +92,8 @@ public class AnonimizarContaHandlerTests
             _contaMfaRepo.Object,
             _recoveryRepo.Object,
             _challengeRepo.Object,
-            _trustedDeviceRepo.Object);
+            _trustedDeviceRepo.Object,
+            _resetTokenRepo.Object);
     }
 
     private static Conta CriarContaComHash(TipoConta tipo, string email = "user@test.com") =>
@@ -239,6 +241,31 @@ public class AnonimizarContaHandlerTests
         _refreshFamilyRepo.Verify(
             r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PurgaTokensDeResetDoTitular()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Com Reset", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        var ordem = new List<string>();
+        _resetTokenRepo.Setup(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                       .Callback(() => ordem.Add("purga-reset")).Returns(Task.CompletedTask);
+        _uow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("commit")).Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _resetTokenRepo.Verify(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
+        ordem.Should().Equal("purga-reset", "commit");
     }
 
     [Fact]
