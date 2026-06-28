@@ -40,6 +40,11 @@ if [ -f /opt/forzion/app/infra/fail2ban/filter.d/forzion-nginx-auth.conf ]; then
   sudo systemctl restart fail2ban
 fi
 
+# --- Firewall (ufw) ---
+if [ -f /opt/forzion/app/scripts/setup-firewall.sh ]; then
+  bash /opt/forzion/app/scripts/setup-firewall.sh
+fi
+
 # --- .env (preencher após execução) ---
 if [ ! -f /opt/forzion/.env ]; then
   cat > /opt/forzion/.env <<'EOF'
