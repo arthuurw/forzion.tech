@@ -1,3 +1,4 @@
+using System.Net;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
@@ -129,7 +130,7 @@ public class AssinaturaAlunoCriadaEmailHandlerTests
             "joao@example.com",
             "AssinaturaAluno criada — forzion.tech",
             It.Is<string>(html =>
-                html.Contains("João") &&
+                html.Contains(WebUtility.HtmlEncode("João")) &&
                 html.Contains("Lucas") &&
                 html.Contains("Pacote Premium") &&
                 html.Contains("250")),
@@ -178,7 +179,7 @@ public class AssinaturaAlunoCriadaEmailHandlerTests
         _emailService.Verify(e => e.EnviarAsync(
             "pedro@example.com",
             "AssinaturaAluno criada — forzion.tech",
-            It.Is<string>(html => html.Contains("Padrão")),
+            It.Is<string>(html => html.Contains(WebUtility.HtmlEncode("Padrão"))),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

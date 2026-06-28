@@ -31,6 +31,7 @@ public class RedefinirSenhaHandler(
     IPasswordResetTokenRepository tokenRepository,
     IContaRepository contaRepository,
     IContaMfaRepository contaMfaRepository,
+    IRedefinicaoSenhaSegundoFatorRepository segundoFatorRepository,
     ITrustedDeviceRepository trustedDeviceRepository,
     IPasswordHasher passwordHasher,
     IRefreshTokenService refreshTokenService,
@@ -72,12 +73,15 @@ public class RedefinirSenhaHandler(
         var conta = await contaRepository.ObterPorIdAsync(token.ContaId, cancellationToken).ConfigureAwait(false)
             ?? throw new EstadoInconsistenteException("Conta não encontrada.");
 
+        if (conta.AnonimizadaEm is not null)
+            return Result.Failure(Error.Business("auth_reset.token_invalido", "Token inválido ou já utilizado."));
+
         var mfa = await contaMfaRepository.BuscarPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
         if (mfa is { Habilitado: true })
         {
-            var totpResult = VerificarTotp(mfa, command.CodigoTotp, agora);
-            if (totpResult.IsFailure)
-                return Result.Failure(totpResult.Error!);
+            var segundoFatorResult = await VerificarSegundoFatorAsync(conta.Id, mfa, command.CodigoTotp, agora, cancellationToken).ConfigureAwait(false);
+            if (segundoFatorResult.IsFailure)
+                return Result.Failure(segundoFatorResult.Error!);
         }
 
         var atualizarResult = conta.AtualizarSenha(passwordHasher.Hash(command.NovaSenha), agora);
@@ -103,6 +107,35 @@ public class RedefinirSenhaHandler(
         logger.LogInformation("Senha redefinida — conta {ContaId}.", conta.Id);
 
         return Result.Success();
+    }
+
+    private async Task<Result> VerificarSegundoFatorAsync(Guid contaId, Domain.Entities.ContaMfa mfa, string? codigo, DateTime agora, CancellationToken cancellationToken)
+    {
+        var guard = await segundoFatorRepository.BuscarPorContaIdAsync(contaId, cancellationToken).ConfigureAwait(false);
+
+        if (guard is not null)
+        {
+            var bloqueio = guard.GarantirNaoBloqueado(agora);
+            if (bloqueio.IsFailure)
+                return bloqueio;
+        }
+
+        var totpResult = VerificarTotp(mfa, codigo, agora);
+        if (totpResult.IsSuccess)
+        {
+            guard?.RegistrarSucesso(agora);
+            return Result.Success();
+        }
+
+        if (guard is null)
+        {
+            guard = Domain.Entities.RedefinicaoSenhaSegundoFator.Criar(contaId, agora).Value;
+            await segundoFatorRepository.AdicionarAsync(guard, cancellationToken).ConfigureAwait(false);
+        }
+
+        guard.RegistrarFalha(agora);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Failure(totpResult.Error!);
     }
 
     private Result VerificarTotp(Domain.Entities.ContaMfa mfa, string? codigo, DateTime agora)

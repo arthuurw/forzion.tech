@@ -52,7 +52,8 @@ public sealed class ErrorLogDbSinkProvider : ChannelBackgroundWorker<ErrorLogDbS
             var agora = _timeProvider.GetUtcNow().UtcDateTime;
             foreach (var entry in entries)
             {
-                var resultado = ErrorLogEntry.Criar(entry.OcorridoEm, entry.Nivel, entry.Origem, entry.Mensagem, agora);
+                var mensagem = MascaraPii.Scrub(entry.Mensagem) ?? string.Empty;
+                var resultado = ErrorLogEntry.Criar(entry.OcorridoEm, entry.Nivel, entry.Origem, mensagem, agora);
                 if (resultado.IsSuccess)
                     context.ErrorLogs.Add(resultado.Value);
             }

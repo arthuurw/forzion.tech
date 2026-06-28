@@ -8,6 +8,7 @@ using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -20,6 +21,7 @@ public class RedefinirSenhaHandlerTests
     private readonly Mock<IPasswordResetTokenRepository> _tokenRepo = new();
     private readonly Mock<IContaRepository> _contaRepo = new();
     private readonly Mock<IContaMfaRepository> _mfaRepo = new();
+    private readonly Mock<IRedefinicaoSenhaSegundoFatorRepository> _segundoFator = new();
     private readonly Mock<ITrustedDeviceRepository> _trustedDevice = new();
     private readonly Mock<IPasswordHasher> _hasher = new();
     private readonly Mock<IRefreshTokenService> _refresh = new();
@@ -38,7 +40,7 @@ public class RedefinirSenhaHandlerTests
     {
         _hasher.Setup(h => h.Hash(It.IsAny<string>())).Returns<string>(s => $"hash:{s}");
         _handler = new RedefinirSenhaHandler(
-            _tokenRepo.Object, _contaRepo.Object, _mfaRepo.Object, _trustedDevice.Object,
+            _tokenRepo.Object, _contaRepo.Object, _mfaRepo.Object, _segundoFator.Object, _trustedDevice.Object,
             _hasher.Object, _refresh.Object, _totp.Object, _protector.Object,
             _logRepo.Object, _unitOfWork.Object, _timeProvider, _validator, _logger.Object);
     }
@@ -176,7 +178,8 @@ public class RedefinirSenhaHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("mfa.codigo_invalido");
         token.UsedAt.Should().BeNull();
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _segundoFator.Verify(r => r.AdicionarAsync(It.IsAny<RedefinicaoSenhaSegundoFator>(), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -195,7 +198,7 @@ public class RedefinirSenhaHandlerTests
         result.IsFailure.Should().BeTrue();
         token.UsedAt.Should().BeNull();
         conta.PasswordHash.Should().Be("old-hash");
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -236,6 +239,26 @@ public class RedefinirSenhaHandlerTests
 
         segunda.IsFailure.Should().BeTrue();
         segunda.Error!.Message.Should().Contain("inválido ou já utilizado");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ContaAnonimizada_RecusaSemReporHash()
+    {
+        var conta = BuildConta();
+        conta.Anonimizar(_timeProvider.GetUtcNow().UtcDateTime);
+        var token = BuildToken(contaId: conta.Id);
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(token);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conta);
+
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("auth_reset.token_invalido");
+        conta.PasswordHash.Should().BeEmpty();
+        token.UsedAt.Should().BeNull();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -292,5 +315,60 @@ public class RedefinirSenhaHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.SenhaRedefinida), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SegundoFatorInvalido_FalhasRepetidas_BloqueiaPorContaImuneARotacaoDeIp()
+    {
+        var conta = BuildConta();
+        var token = BuildToken(contaId: conta.Id);
+        var mfa = MfaHabilitado(conta.Id);
+        var agora = _timeProvider.GetUtcNow().UtcDateTime;
+        var guard = RedefinicaoSenhaSegundoFator.Criar(conta.Id, agora).Value;
+
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>())).ReturnsAsync(token);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _mfaRepo.Setup(r => r.BuscarPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(mfa);
+        _segundoFator.Setup(r => r.BuscarPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(guard);
+        _protector.Setup(p => p.Revelar("cifrado")).Returns("SECRET");
+        _totp.Setup(t => t.Verificar("SECRET", "000000", It.IsAny<long?>())).Returns(new TotpVerificacao(false, 0));
+
+        Result ultimaFalha = Result.Success();
+        for (var i = 0; i < RedefinicaoSenhaSegundoFator.MaximoTentativas; i++)
+            ultimaFalha = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1", "000000"));
+
+        ultimaFalha.Error!.Code.Should().Be("mfa.codigo_invalido");
+
+        var bloqueado = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1", "000000"));
+
+        bloqueado.IsFailure.Should().BeTrue();
+        bloqueado.Error!.Code.Should().Be("auth_reset.segundo_fator_bloqueado");
+        token.UsedAt.Should().BeNull();
+        _totp.Verify(t => t.Verificar("SECRET", "000000", It.IsAny<long?>()), Times.Exactly(RedefinicaoSenhaSegundoFator.MaximoTentativas));
+    }
+
+    [Fact]
+    public async Task HandleAsync_SegundoFatorValido_DentroDoCap_Prossegue()
+    {
+        var conta = BuildConta();
+        var token = BuildToken(contaId: conta.Id);
+        var mfa = MfaHabilitado(conta.Id);
+        var agora = _timeProvider.GetUtcNow().UtcDateTime;
+        var guard = RedefinicaoSenhaSegundoFator.Criar(conta.Id, agora).Value;
+        guard.RegistrarFalha(agora);
+
+        _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>())).ReturnsAsync(token);
+        _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _mfaRepo.Setup(r => r.BuscarPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(mfa);
+        _segundoFator.Setup(r => r.BuscarPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(guard);
+        _protector.Setup(p => p.Revelar("cifrado")).Returns("SECRET");
+        _totp.Setup(t => t.Verificar("SECRET", "123456", 50)).Returns(new TotpVerificacao(true, 100));
+
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1", "123456"));
+
+        result.IsSuccess.Should().BeTrue();
+        conta.PasswordHash.Should().Be("hash:NovaSenha1");
+        token.UsedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -80,9 +80,12 @@ jobs:
   test-backend-unit:
     name: Backend — testes unit
     needs: [changes]
-    # PR-only: push -> homolog confia no PR (commit de merge ~= head do PR, repo
-    # solo). No push roda so a sanity de build (sanity-backend) + deploy.
-    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
+    # Roda em PR (path-filter backend|ci) E em TODO push. No push é gate crítico
+    # ANTES do deploy-homolog (ver `if:` do deploy): roda incondicional p/ produzir
+    # result=success explícito — se ficasse `skipped` (path-filter) o deploy, que
+    # exige `needs.test-backend-unit.result == 'success'`, NÃO rodaria. A sanity de
+    # build (sanity-backend) segue como smoke barato adicional no push.
+    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -276,12 +279,34 @@ jobs:
       - name: Build Storybook
         run: npm run storybook:build
 
+  # ─── SEGREDOS — GITLEAKS (árvore inteira, INDEPENDENTE do path-filter) ────────
+  # Job PRÓPRIO, sem `needs: [changes]` e sem `if:` de path-filter: roda em TODO
+  # disparo da workflow (PR + push) e varre a working tree COMPLETA por segredos em
+  # QUALQUER path versionado (docker-compose*, infra/, scripts/, .env*). Antes era um
+  # step do `security` (gated por frontend|backend|ci) → blind-spot: PR/push que só
+  # tocava infra/scripts/docker-compose pulava o scan de segredos. É `needs` do `gate`
+  # e gate crítico do `deploy-homolog`. `--no-git` varre os arquivos em disco (todo
+  # tracked do checkout) — pega segredo introduzido em qualquer path versionado.
+  gitleaks:
+    name: Security — gitleaks (árvore inteira)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Gitleaks (working tree)
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            detect --source=/repo --no-git \
+            --config=/repo/.gitleaks.toml --redact --no-banner
+
   # ─── SEGURANÇA / SUPPLY CHAIN (BACKEND .NET) ──────────────────────────────────
   security-backend:
     name: Security backend — vuln NuGet + SBOM
     needs: [changes]
-    # PR-only (ver test-backend-unit).
-    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
+    # Roda em PR (path-filter backend|ci) E em TODO push (gate crítico do deploy —
+    # ver deploy-homolog). No push roda incondicional p/ produzir result=success
+    # explícito (evita o gate ficar `skipped` e bloquear o deploy).
+    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -326,30 +351,20 @@ jobs:
           if-no-files-found: error
 
   # ─── SEGURANÇA / SUPPLY CHAIN (FRONTEND) ──────────────────────────────────────
-  # Roda em QUALQUER mudança de código (não só frontend): o step Gitleaks varre a
-  # árvore inteira por segredos — pular em PR backend-only abriria buraco de
-  # detecção. Os steps npm (audit/license/sbom) são frontend, mas o custo extra
-  # num PR backend-only é aceitável frente à cobertura de segredos.
+  # Gitleaks saiu daqui p/ job próprio `gitleaks` (varre a árvore inteira em todo
+  # disparo, sem path-filter). Aqui ficam osv/audit/license/sbom (npm). Roda em PR
+  # (path-filter frontend|backend|ci) E em TODO push — é gate crítico do deploy
+  # (ver deploy-homolog); no push roda incondicional p/ result=success explícito.
   security:
-    name: Security — gitleaks + osv + audit + license + sbom
+    name: Security — osv + audit + license + sbom
     needs: [changes]
-    # PR-only (ver test-backend-unit). Gitleaks/audit ja varreram o head do PR.
-    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true') }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.ci == 'true')) }}
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v6
-
-      # Gitleaks roda ANTES do npm ci: varre só a árvore versionada (sem
-      # node_modules instalado nem sbom gerado).
-      - name: Gitleaks (working tree)
-        working-directory: ${{ github.workspace }}
-        run: |
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
-            detect --source=/repo --no-git \
-            --config=/repo/.gitleaks.toml --redact --no-banner
 
       - name: OSV scanner (report-only)
         # Informativo: lockfile inclui deps dev. O gate bloqueante de vuln é o
@@ -473,7 +488,7 @@ jobs:
   # reprova; só 'failure'/'cancelled' reprovam o gate.
   gate:
     name: Gate
-    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, security, security-backend, sanity-backend, lint-migrations, zap-baseline]
+    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, gitleaks, security, security-backend, sanity-backend, lint-migrations, zap-baseline]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -493,16 +508,26 @@ jobs:
   # ─── DEPLOY HOMOLOG ──────────────────────────────────────────────────────────
   deploy-homolog:
     name: Deploy -> homolog
-    needs: [gate]
+    needs: [gate, test-backend-unit, security, security-backend, gitleaks]
     runs-on: ubuntu-latest
     environment: homolog
-    # GOTCHA: o `success()` IMPLÍCITO (todo `if:` sem status-function injeta um)
-    # avalia o grafo TRANSITIVO de needs. Com os testes pesados PR-only, em push
-    # eles ficam `skipped` -> `gate` passa (always()) mas o success() implícito do
-    # deploy vê ancestrais skipped e PULA o deploy mesmo com gate=success.
-    # Fix: `always()` desliga o success() implícito; exigimos gate=success + push
-    # explicitamente. Sem isto o merge em homolog NÃO deploya (regressão silenciosa).
-    if: ${{ always() && needs.gate.result == 'success' && github.event_name == 'push' }}
+    # GATES CRÍTICOS NO CAMINHO DE DEPLOY: o push -> homolog só deploya se os gates
+    # de testes unit + segurança (supply-chain) + segredos passarem DE FATO. Cada um
+    # é checado por `needs.<job>.result == 'success'` EXPLÍCITO.
+    # GOTCHA (RECORRENTE): o `success()` IMPLÍCITO (todo `if:` sem status-function
+    # injeta um) avalia o grafo TRANSITIVO de needs — um ancestral `skipped` pularia
+    # o deploy mesmo com tudo verde, e um gate crítico `skipped` (não-executado)
+    # NÃO pode liberar deploy. Fix: `always()` desliga o success() implícito e cada
+    # gate é exigido `== 'success'` (skipped ou failure BLOQUEIAM). Por isso os gates
+    # críticos rodam incondicional no push (não `skipped` por path-filter). Sem isto:
+    # ou o deploy não roda (regressão silenciosa), ou roda com gate pulado (buraco).
+    if: ${{ always()
+      && github.event_name == 'push'
+      && needs.gate.result == 'success'
+      && needs.test-backend-unit.result == 'success'
+      && needs.security.result == 'success'
+      && needs.security-backend.result == 'success'
+      && needs.gitleaks.result == 'success' }}
     steps:
       # Borda Hostinger dropa o IP rotativo do runner na 22 pública (timeout). Runner
       # entra no tailnet (nó efêmero tag:ci) e fala com a VPS pelo IP privado 100.x.y.z

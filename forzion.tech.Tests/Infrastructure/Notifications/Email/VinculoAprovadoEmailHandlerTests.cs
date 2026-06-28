@@ -1,3 +1,4 @@
+using System.Net;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
@@ -120,7 +121,7 @@ public class VinculoAprovadoEmailHandlerTests
         _emailService.Verify(e => e.EnviarAsync(
             "joao@example.com",
             "Vínculo aprovado — forzion.tech",
-            It.Is<string>(html => html.Contains("João") && html.Contains("Lucas")),
+            It.Is<string>(html => html.Contains(WebUtility.HtmlEncode("João")) && html.Contains("Lucas")),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

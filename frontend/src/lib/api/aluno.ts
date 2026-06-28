@@ -1,5 +1,18 @@
 import { apiClient } from "./client";
-import type { AlunoDashboardResponse, ExecucaoTreinoResponse, MeuVinculoResponse, ObjetivoTreino, ProgressaoAlunoResponse, TreinoAlunoStatus, TreinoExercicioResponse, PaginatedResponse, VinculoResponse } from "@/types";
+import type { AlunoDashboardResponse, AlunoResponse, ExecucaoTreinoResponse, MeuVinculoResponse, ObjetivoTreino, ProgressaoAlunoResponse, TreinoAlunoStatus, TreinoExercicioResponse, PaginatedResponse, VinculoResponse } from "@/types";
+
+export interface AtualizarAnamneseData {
+  diasDisponiveis: number | null;
+  tempoDisponivelMinutos: number | null;
+  finalidade: string | null;
+  focoTreino: string | null;
+  nivelCondicionamento: string | null;
+  limitacoesFisicas: string | null;
+  doencas: string | null;
+  observacoesAdicionais: string | null;
+  consentimentoDadosSaude: boolean;
+  consentimentoDadosSaudeEm: string | null;
+}
 
 export interface TreinoAlunoDetalheResponse {
   treinoAlunoId: string;
@@ -57,5 +70,13 @@ export const alunoApi = {
 
   getDashboard() {
     return apiClient.get<AlunoDashboardResponse>("/aluno/dashboard");
+  },
+
+  getMeuPerfilAluno(alunoId: string) {
+    return apiClient.get<AlunoResponse>(`/alunos/${alunoId}`);
+  },
+
+  atualizarAnamnese(data: AtualizarAnamneseData) {
+    return apiClient.put<AlunoResponse>("/aluno/anamnese", data);
   },
 };

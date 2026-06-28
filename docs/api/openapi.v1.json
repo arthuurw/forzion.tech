@@ -4883,6 +4883,74 @@
         ]
       }
     },
+    "/aluno/anamnese": {
+      "put": {
+        "tags": [
+          "Aluno"
+        ],
+        "summary": "Aluno autenticado edita a própria anamnese (LGPD art. 18 III)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizarAnamneseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlunoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/alunos": {
       "get": {
         "tags": [
@@ -7741,6 +7809,94 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "AtualizarAnamneseRequest": {
+        "required": [
+          "diasDisponiveis",
+          "tempoDisponivelMinutos",
+          "finalidade",
+          "focoTreino",
+          "nivelCondicionamento",
+          "limitacoesFisicas",
+          "doencas",
+          "observacoesAdicionais"
+        ],
+        "type": "object",
+        "properties": {
+          "diasDisponiveis": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tempoDisponivelMinutos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "finalidade": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FinalidadeTreino"
+              }
+            ]
+          },
+          "focoTreino": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nivelCondicionamento": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NivelCondicionamento"
+              }
+            ]
+          },
+          "limitacoesFisicas": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "doencas": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "observacoesAdicionais": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "consentimentoDadosSaude": {
+            "type": "boolean",
+            "default": false
+          },
+          "consentimentoDadosSaudeEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

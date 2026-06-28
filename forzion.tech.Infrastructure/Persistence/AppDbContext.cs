@@ -59,6 +59,7 @@ public class AppDbContext(
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
     public DbSet<TrocaEmailToken> TrocaEmailTokens => Set<TrocaEmailToken>();
     public DbSet<ReconciliacaoStripeEstado> ReconciliacoesStripeEstado => Set<ReconciliacaoStripeEstado>();
+    public DbSet<RedefinicaoSenhaSegundoFator> RedefinicoesSenhaSegundoFator => Set<RedefinicaoSenhaSegundoFator>();
 
     private EfCoreTransactionAdapter? _transacaoAtiva;
     private List<IDomainEvent>? _eventosBestEffortPosCommit;

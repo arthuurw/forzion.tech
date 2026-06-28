@@ -176,6 +176,28 @@ public class ErrorLogDbSinkProviderTests
     }
 
     [Fact]
+    public async Task Persistir_MensagemComEmailETelefone_GravaMascarado()
+    {
+        var (scopeFactory, _) = CriarScopeFactory();
+        var (lifetime, stoppingCts) = CriarLifetime();
+        using var provider = new ErrorLogDbSinkProvider(scopeFactory, TimeProvider.System);
+        provider.RegistrarDrenoNoShutdown(lifetime);
+
+        provider.CreateLogger("Cat").Log(
+            LogLevel.Error, 0, "falha para user@example.com fone 11987654321", null, (s, _) => s);
+
+        stoppingCts.Cancel();
+
+        using var scope = scopeFactory.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var log = await ctx.ErrorLogs.SingleAsync();
+        log.Mensagem.Should().NotContain("user@example.com");
+        log.Mensagem.Should().NotContain("11987654321");
+        log.Mensagem.Should().Contain("[email]");
+        log.Mensagem.Should().Contain("[num]");
+    }
+
+    [Fact]
     public void Dispose_SemShutdownExplicito_NaoLanca()
     {
         var (scopeFactory, _) = CriarScopeFactory();

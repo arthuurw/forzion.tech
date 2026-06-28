@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import {
   Dialog,
   DialogTitle,
@@ -12,6 +13,7 @@ import {
   Switch,
   Box,
   Divider,
+  Link as MuiLink,
 } from "@mui/material";
 import CookieIcon from "@mui/icons-material/Cookie";
 import { useConsent } from "@/hooks/useConsent";
@@ -78,6 +80,14 @@ export default function ConsentBanner({ forceOpen, onClose }: ConsentBannerProps
             <Typography variant="caption" color="text.secondary">
               Você pode alterar suas preferências a qualquer momento em{" "}
               <strong>Perfil → Privacidade (LGPD)</strong>.
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Compartilhamos dados com terceiros (Resend, Stripe, Meta) para
+              operar o serviço. Detalhes na{" "}
+              <MuiLink component={Link} href="/privacidade">
+                política de privacidade
+              </MuiLink>
+              .
             </Typography>
           </Stack>
         ) : (

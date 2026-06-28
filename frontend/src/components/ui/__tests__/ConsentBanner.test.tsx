@@ -48,6 +48,13 @@ describe("ConsentBanner", () => {
     expect(screen.getByRole("button", { name: /preferências/i })).toBeInTheDocument();
   });
 
+  it("discloses third parties and links to the privacy policy", () => {
+    render(<ConsentBanner />);
+    expect(screen.getByText(/terceiros \(Resend, Stripe, Meta\)/i)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /política de privacidade/i });
+    expect(link).toHaveAttribute("href", "/privacidade");
+  });
+
   it("Aceitar todos persists analytics=true in cookie", async () => {
     render(<ConsentBanner />);
     fireEvent.click(screen.getByRole("button", { name: /aceitar todos/i }));

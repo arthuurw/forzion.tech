@@ -4,9 +4,11 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using FluentAssertions;
+using FluentValidation;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Alunos;
+using forzion.tech.Application.UseCases.Alunos.AtualizarAnamneseAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
 using forzion.tech.Application.UseCases.Alunos.ListarFichasAluno;
 using forzion.tech.Application.UseCases.Alunos.ObterFichaAluno;
@@ -420,6 +422,56 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
+    // --- PUT /aluno/anamnese ---
+
+    [Fact]
+    public async Task Put_Anamnese_Aluno_Retorna200()
+    {
+        var resposta = new AlunoResponse(
+            AlunoId, "João", null, null, AlunoStatus.Ativo, ContaId, DateTime.UtcNow, DateTime.UtcNow, DiasDisponiveis: 4);
+        _factory.AtualizarAnamneseHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarAnamneseAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(resposta));
+
+        var response = await CriarClienteAluno().PutAsJsonAsync("/aluno/anamnese", new { DiasDisponiveis = 4 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Put_Anamnese_RoleErrada_Retorna403()
+    {
+        var response = await CriarClienteTreinador().PutAsJsonAsync("/aluno/anamnese", new { DiasDisponiveis = 4 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Put_Anamnese_AlunoNaoEncontrado_Retorna404()
+    {
+        _factory.AtualizarAnamneseHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarAnamneseAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AlunoNaoEncontradoException());
+
+        var response = await CriarClienteAluno().PutAsJsonAsync("/aluno/anamnese", new { DiasDisponiveis = 4 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Put_Anamnese_DadoSaudeSemConsentimento_Retorna400()
+    {
+        _factory.AtualizarAnamneseHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<AtualizarAnamneseAlunoCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<AlunoResponse>(
+                Error.Validation("aluno.consentimento_saude_obrigatorio", "Consentimento obrigatório.")));
+
+        var response = await CriarClienteAluno().PutAsJsonAsync("/aluno/anamnese",
+            new { Doencas = "Hipertensão", ConsentimentoDadosSaude = false });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     // --- WebApplicationFactory ---
 
     public class AlunoAreaWebFactory : WebApplicationFactory<Program>
@@ -474,6 +526,15 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
             Mock.Of<IPagamentoRepository>(),
             Mock.Of<IAssinaturaAlunoRepository>());
 
+        public Mock<AtualizarAnamneseAlunoHandler> AtualizarAnamneseHandlerMock { get; } = new(
+            Mock.Of<IAlunoRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IUserContext>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<IValidator<AtualizarAnamneseAlunoCommand>>(),
+            TimeProvider.System,
+            Mock.Of<ILogger<AtualizarAnamneseAlunoHandler>>());
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -492,6 +553,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
                 services.RemoveAll<ObterAssinaturaAlunoHandler>();
                 services.RemoveAll<ObterStatusPagamentoHandler>();
                 services.RemoveAll<ListarPagamentosAssinaturaAlunoHandler>();
+                services.RemoveAll<AtualizarAnamneseAlunoHandler>();
                 services.RemoveAll<IUserContext>();
 
                 services.AddScoped(_ => ObterVinculoHandlerMock.Object);
@@ -504,6 +566,7 @@ public class AlunoAreaEndpointsTests : IClassFixture<AlunoAreaEndpointsTests.Alu
                 services.AddScoped(_ => ObterAssinaturaAlunoHandlerMock.Object);
                 services.AddScoped(_ => ObterStatusPagamentoHandlerMock.Object);
                 services.AddScoped(_ => ListarPagamentosHandlerMock.Object);
+                services.AddScoped(_ => AtualizarAnamneseHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(ContaId);

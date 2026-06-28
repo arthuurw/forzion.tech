@@ -40,7 +40,8 @@ public class AnonimizarContaHandler(
     IContaMfaRepository contaMfaRepository,
     IMfaRecoveryCodeRepository mfaRecoveryCodeRepository,
     IMfaChallengeRepository mfaChallengeRepository,
-    ITrustedDeviceRepository trustedDeviceRepository)
+    ITrustedDeviceRepository trustedDeviceRepository,
+    IPasswordResetTokenRepository passwordResetTokenRepository)
 {
     public virtual Task<Result> HandleAsync(
         AnonimizarContaCommand command,
@@ -169,6 +170,7 @@ public class AnonimizarContaHandler(
             await mfaRecoveryCodeRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
             await mfaChallengeRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
             await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
+            await passwordResetTokenRepository.ExcluirPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 
             var logResult = await logAprovacaoRepository.RegistrarAsync(
                 TipoAcaoAprovacao.AnonimizacaoConta,
