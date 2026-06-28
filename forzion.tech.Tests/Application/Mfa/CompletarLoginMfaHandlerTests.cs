@@ -150,6 +150,54 @@ public class CompletarLoginMfaHandlerTests
     }
 
     [Fact]
+    public async Task Verificar_EmailCodigoErrado_ContaTentativaEFalhaSemEmitirSessao()
+    {
+        _mfaRepo.Setup(r => r.BuscarPorContaIdAsync(_conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(MfaHabilitado());
+        var challenge = MfaChallenge.Criar(_conta.Id, Hash("111111"), MfaProposito.LoginFallback, Agora.AddMinutes(10), Agora).Value;
+        _challengeRepo.Setup(r => r.BuscarUltimoPorContaEPropositoAsync(_conta.Id, MfaProposito.LoginFallback, It.IsAny<CancellationToken>())).ReturnsAsync(challenge);
+
+        var result = await _handler.HandleAsync(new CompletarLoginMfaCommand("999999", MfaFator.Email));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("mfa.codigo_invalido");
+        challenge.Tentativas.Should().Be(1);
+        challenge.UsadoEm.Should().BeNull();
+        _jwt.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
+        _refresh.Verify(s => s.EmitirNovaFamiliaAsync(It.IsAny<Conta>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Verificar_EmailChallengeBloqueadoPorTentativas_Falha()
+    {
+        _mfaRepo.Setup(r => r.BuscarPorContaIdAsync(_conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(MfaHabilitado());
+        var challenge = MfaChallenge.Criar(_conta.Id, Hash("654321"), MfaProposito.LoginFallback, Agora.AddMinutes(10), Agora).Value;
+        for (var i = 0; i < MfaChallenge.MaximoTentativas; i++)
+            challenge.RegistrarTentativa();
+        _challengeRepo.Setup(r => r.BuscarUltimoPorContaEPropositoAsync(_conta.Id, MfaProposito.LoginFallback, It.IsAny<CancellationToken>())).ReturnsAsync(challenge);
+
+        var result = await _handler.HandleAsync(new CompletarLoginMfaCommand("654321", MfaFator.Email));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("mfa.challenge_bloqueado");
+        _jwt.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Verificar_EmailChallengeExpirado_Falha()
+    {
+        _mfaRepo.Setup(r => r.BuscarPorContaIdAsync(_conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(MfaHabilitado());
+        var challenge = MfaChallenge.Criar(_conta.Id, Hash("654321"), MfaProposito.LoginFallback, Agora.AddMinutes(-1), Agora.AddMinutes(-10)).Value;
+        _challengeRepo.Setup(r => r.BuscarUltimoPorContaEPropositoAsync(_conta.Id, MfaProposito.LoginFallback, It.IsAny<CancellationToken>())).ReturnsAsync(challenge);
+
+        var result = await _handler.HandleAsync(new CompletarLoginMfaCommand("654321", MfaFator.Email));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("mfa.challenge_expirado");
+        _jwt.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Verificar_NaoHabilitado_Falha()
     {
         _mfaRepo.Setup(r => r.BuscarPorContaIdAsync(_conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ContaMfa?)null);
