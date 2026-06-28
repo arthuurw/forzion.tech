@@ -34,11 +34,13 @@ internal static class EmailTemplates
         </html>
         """;
 
+    private static string Enc(string? valor) => WebUtility.HtmlEncode(valor) ?? string.Empty;
+
     public static string TreinadorAprovado(string nome) =>
         Layout(
             "Conta aprovada!",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nome)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Sua conta de treinador foi <strong style="color:#2e7d32">aprovada</strong>.
               Você já pode acessar a plataforma e começar a cadastrar seus alunos.
@@ -53,7 +55,7 @@ internal static class EmailTemplates
         Layout(
             "Cadastro não aprovado",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nome)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Infelizmente seu cadastro de treinador <strong style="color:#c62828">não foi aprovado</strong>
               neste momento. Entre em contato com nosso suporte para mais informações.
@@ -64,7 +66,7 @@ internal static class EmailTemplates
         Layout(
             "Conta inativada",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nome)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Sua conta de treinador foi <strong style="color:#c62828">inativada</strong>.
               Caso acredite que isso foi um engano, entre em contato com nosso suporte.
@@ -75,9 +77,9 @@ internal static class EmailTemplates
         Layout(
             "Vínculo aprovado!",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{nomeAluno}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              <strong>{nomeTreinador}</strong> aprovou seu vínculo.
+              <strong>{Enc(nomeTreinador)}</strong> aprovou seu vínculo.
               Você já pode acessar suas fichas de treino na plataforma.
             </p>
             <a href="https://forzion.tech/login"
@@ -90,7 +92,7 @@ internal static class EmailTemplates
         Layout(
             "Boas-vindas à forzion.tech!",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nome)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Seu cadastro foi realizado com sucesso. Aguarde a aprovação de quem vai te treinar
               para acessar suas fichas de treino.
@@ -105,7 +107,7 @@ internal static class EmailTemplates
         Layout(
             "Conta inativada",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{nome}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nome)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Sua conta foi <strong style="color:#c62828">inativada</strong>.
               Caso acredite que isso foi um engano, entre em contato com quem te treina.
@@ -190,7 +192,7 @@ internal static class EmailTemplates
         return Layout(
             "Cobrança disponível",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Uma nova cobrança da sua assinatura está disponível.
             </p>
@@ -226,7 +228,7 @@ internal static class EmailTemplates
         return Layout(
             "Sua assinatura renova em 3 dias",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nome)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nome)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Seu plano forzion.tech renova automaticamente em <strong>3 dias</strong>.
             </p>
@@ -275,7 +277,7 @@ internal static class EmailTemplates
         return Layout(
             titulo,
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               <strong style="color:{corEnfase}">{mensagem}</strong>
             </p>
@@ -306,7 +308,7 @@ internal static class EmailTemplates
         return Layout(
             "Cobrança estornada",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Sua cobrança no valor de <strong>R$ {valorFormatado}</strong> foi
               <strong style="color:#2e7d32">estornada</strong>.
@@ -338,14 +340,14 @@ internal static class EmailTemplates
         return Layout(
             "URGENTE — Disputa de pagamento aberta",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              <strong style="color:#c62828">Atenção: uma disputa de pagamento (chargeback) foi aberta por {WebUtility.HtmlEncode(nomeAluno)}.</strong>
+              <strong style="color:#c62828">Atenção: uma disputa de pagamento (chargeback) foi aberta por {Enc(nomeAluno)}.</strong>
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Aluno</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(nomeAluno)}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(nomeAluno)}</td>
               </tr>
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor disputado</td>
@@ -353,7 +355,7 @@ internal static class EmailTemplates
               </tr>
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Motivo</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(motivoFormatado)}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(motivoFormatado)}</td>
               </tr>
             </table>
             <p style="color:#444;line-height:1.6">
@@ -393,7 +395,7 @@ internal static class EmailTemplates
         Layout(
             "Conta restrita por inadimplência",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Sua conta forzion.tech está <strong style="color:#c62828">restrita por inadimplência</strong>.
               Regularize seu pagamento para liberar acesso completo a fichas e execuções.
@@ -417,14 +419,14 @@ internal static class EmailTemplates
         Layout(
             "AssinaturaAluno criada!",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{nomeAluno}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              Sua assinatura com <strong>{nomeTreinador}</strong> foi criada com sucesso.
+              Sua assinatura com <strong>{Enc(nomeTreinador)}</strong> foi criada com sucesso.
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Pacote</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{nomePacote}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(nomePacote)}</td>
               </tr>
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor mensal</td>
@@ -448,9 +450,9 @@ internal static class EmailTemplates
         return Layout(
             "Assinatura cancelada",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              Sua assinatura com <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>
+              Sua assinatura com <strong>{Enc(nomeTreinador)}</strong>
               foi <strong style="color:#c62828">cancelada</strong> em <strong>{dataFormatada}</strong>.
             </p>
             <p style="color:#444;line-height:1.6">
@@ -467,9 +469,9 @@ internal static class EmailTemplates
         Layout(
             "Novo aluno aguardando aprovação",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong> solicitou vínculo com você
+              <strong>{Enc(nomeAluno)}</strong> solicitou vínculo com você
               e está <strong>aguardando aprovação</strong>.
             </p>
             <p style="color:#444;line-height:1.6">
@@ -488,9 +490,9 @@ internal static class EmailTemplates
         return Layout(
             "Aluno cancelou assinatura",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong> acabou de cancelar a assinatura
+              <strong>{Enc(nomeAluno)}</strong> acabou de cancelar a assinatura
               pelo portal.
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
@@ -521,7 +523,7 @@ internal static class EmailTemplates
         // Encode ANTES de injetar <br>: texto livre do usuário (assunto/descrição) é PII potencial
         // e vetor de HTML injection no corpo do e-mail. Encode neutraliza tags; só então quebras
         // de linha viram <br> (preserva formatação sem reabrir injeção).
-        var descricaoHtml = WebUtility.HtmlEncode(descricao).Replace("\n", "<br>", StringComparison.Ordinal);
+        var descricaoHtml = Enc(descricao).Replace("\n", "<br>", StringComparison.Ordinal);
         return Layout(
             "Nova mensagem de suporte",
             $"""
@@ -529,23 +531,23 @@ internal static class EmailTemplates
             <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Nome</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(nomeRemetente)}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(nomeRemetente)}</td>
               </tr>
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">E-mail</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(emailRemetente)}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(emailRemetente)}</td>
               </tr>
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Tipo de conta</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(tipoConta)}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(tipoConta)}</td>
               </tr>
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Categoria</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(categoria)}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(categoria)}</td>
               </tr>
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Assunto</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(assunto)}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(assunto)}</td>
               </tr>
             </table>
             <p style="color:#666;font-size:14px;margin:0 0 4px">Descrição</p>
@@ -560,7 +562,7 @@ internal static class EmailTemplates
         Layout(
             "Assinatura reativada!",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Seu pagamento foi processado com sucesso e sua assinatura está
               <strong style="color:#2e7d32">reativada</strong>.
@@ -596,7 +598,7 @@ internal static class EmailTemplates
         return Layout(
             titulo,
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               <strong style="color:{corEnfase}">{mensagem}</strong>
             </p>
@@ -624,7 +626,7 @@ internal static class EmailTemplates
         Layout(
             "Acesso restrito por inadimplência",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Seu acesso ao forzion.tech está <strong style="color:#c62828">restrito por inadimplência</strong>
               no plano. Regularize o pagamento para restaurar o acesso completo.
@@ -652,7 +654,7 @@ internal static class EmailTemplates
         return Layout(
             "Nota fiscal emitida",
             $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{WebUtility.HtmlEncode(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
               Sua nota fiscal de serviço eletrônica (NFS-e) foi
               <strong style="color:#2e7d32">emitida</strong> com sucesso.
@@ -660,7 +662,7 @@ internal static class EmailTemplates
             <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Número da NFS-e</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{WebUtility.HtmlEncode(numeroNfse)}</td>
+                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(numeroNfse)}</td>
               </tr>
               <tr>
                 <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor</td>
@@ -686,7 +688,7 @@ internal static class EmailTemplates
 
     public static string RelatorioSaude(HealthReport report)
     {
-        var ambiente = WebUtility.HtmlEncode(report.Ambiente);
+        var ambiente = Enc(report.Ambiente);
         var capturado = report.CapturadoEm.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
 
         var corpo = new StringBuilder();
@@ -744,9 +746,9 @@ internal static class EmailTemplates
         linhas.Append(Linha("Stripe configurado", SimNao(s.StripeConfigurado)));
         linhas.Append(Linha("WhatsApp configurado", SimNao(s.WhatsAppConfigurado)));
         if (!string.IsNullOrEmpty(s.Versao))
-            linhas.Append(Linha("Versão", WebUtility.HtmlEncode(s.Versao)));
+            linhas.Append(Linha("Versão", Enc(s.Versao)));
         if (!string.IsNullOrEmpty(s.Commit))
-            linhas.Append(Linha("Commit", WebUtility.HtmlEncode(s.Commit)));
+            linhas.Append(Linha("Commit", Enc(s.Commit)));
         return Secao("Infraestrutura", Tabela(linhas.ToString()));
     }
 
@@ -781,9 +783,9 @@ internal static class EmailTemplates
         foreach (var amostra in s.Amostras)
         {
             var quando = amostra.OcorridoEm.ToString("HH:mm", CultureInfo.InvariantCulture);
-            var nivel = WebUtility.HtmlEncode(amostra.Nivel);
-            var origem = WebUtility.HtmlEncode(amostra.Origem);
-            var mensagem = WebUtility.HtmlEncode(amostra.Mensagem);
+            var nivel = Enc(amostra.Nivel);
+            var origem = Enc(amostra.Origem);
+            var mensagem = Enc(amostra.Mensagem);
             itens.Append($"""
                 <li style="margin:0 0 8px;color:#444;font-size:13px;line-height:1.5">
                   <strong style="color:#c62828">{nivel}</strong> {quando} — {origem}<br>{mensagem}
@@ -812,8 +814,8 @@ internal static class EmailTemplates
         var itens = new StringBuilder();
         foreach (var amostra in s.FalhasAmostras)
         {
-            var tipo = WebUtility.HtmlEncode(amostra.Tipo);
-            var erro = WebUtility.HtmlEncode(amostra.UltimoErro ?? "");
+            var tipo = Enc(amostra.Tipo);
+            var erro = Enc(amostra.UltimoErro ?? "");
             itens.Append($"""
                 <li style="margin:0 0 8px;color:#444;font-size:13px;line-height:1.5">
                   <strong style="color:#c62828">{tipo}</strong> ({amostra.Tentativas} tentativas)<br>{erro}
