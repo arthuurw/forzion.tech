@@ -71,7 +71,7 @@ export default function PlanoTreinadorPage() {
       setErro("Erro ao carregar informações do plano.");
     }
     if (pRes.status === "fulfilled") {
-      setPlanos(pRes.value.data.filter((p) => p.tier !== "Elite" && p.isAtivo));
+      setPlanos(pRes.value.data);
     } else {
       setErro("Erro ao carregar informações do plano.");
     }
@@ -209,16 +209,25 @@ export default function PlanoTreinadorPage() {
   };
 
   const planoAtual = assinatura
-    ? planos.find((p) => p.planoId === assinatura.planoPlataformaId)
+    ? planos.find((p) => p.planoId === assinatura.planoPlataformaId) ?? null
     : null;
 
+  const precoAtual = assinatura?.valor ?? planoAtual?.preco ?? null;
+
+  const opcoesTroca = planos.filter(
+    (p) =>
+      p.tier !== "Elite" &&
+      p.isAtivo &&
+      (assinatura?.status === "Inadimplente" || p.planoId !== assinatura?.planoPlataformaId)
+  );
+
   const estimarProracao = (novoPlano: PlanoPlataformaResponse) => {
-    if (!assinatura || !planoAtual) return null;
+    if (!assinatura || precoAtual == null) return null;
     const diasRestantes = Math.max(
       0,
       dayjs(assinatura.dataProximaCobranca).diff(dayjs(), "day")
     );
-    const proracao = ((novoPlano.preco - planoAtual.preco) * diasRestantes) / 30;
+    const proracao = ((novoPlano.preco - precoAtual) * diasRestantes) / 30;
     return proracao > 0 ? Math.round(proracao * 100) / 100 : null;
   };
 
@@ -301,11 +310,9 @@ export default function PlanoTreinadorPage() {
       </Typography>
 
       <Stack spacing={2}>
-        {planos
-          .filter((p) => p.planoId !== assinatura?.planoPlataformaId)
-          .map((plano) => {
+        {opcoesTroca.map((plano) => {
             const proracao = estimarProracao(plano);
-            const eUpgrade = planoAtual && plano.preco > planoAtual.preco;
+            const eUpgrade = precoAtual != null && plano.preco > precoAtual;
             return (
               <Card key={plano.planoId} variant="outlined">
                 <CardContent>
@@ -322,7 +329,7 @@ export default function PlanoTreinadorPage() {
                           Proração estimada: {formatarBRL(proracao)}
                         </Typography>
                       )}
-                      {!eUpgrade && planoAtual && (
+                      {!eUpgrade && precoAtual != null && (
                         <Typography variant="caption" color="text.secondary">
                           Downgrade agendado para a próxima renovação
                         </Typography>
@@ -361,9 +368,11 @@ export default function PlanoTreinadorPage() {
             <Stack spacing={2} sx={{ mt: 1 }}>
               {erro && <Alert severity="error">{erro}</Alert>}
               <Typography variant="body2">
-                {planoAtual && planoSelecionado.preco > planoAtual.preco
-                  ? `Upgrade para ${planoSelecionado.nome}. O valor exato de proração será confirmado após processar.`
-                  : `Downgrade para ${planoSelecionado.nome}. O plano muda na próxima renovação.`}
+                {precoAtual == null
+                  ? `Confirmar troca para ${planoSelecionado.nome}.`
+                  : planoSelecionado.preco > precoAtual
+                    ? `Upgrade para ${planoSelecionado.nome}. O valor exato de proração será confirmado após processar.`
+                    : `Downgrade para ${planoSelecionado.nome}. O plano muda na próxima renovação.`}
               </Typography>
               <Divider />
               <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
