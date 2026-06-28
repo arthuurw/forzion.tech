@@ -240,7 +240,7 @@ Fluxos de cadastro/cobrança e como o `modoPagamentoAluno` muda a UI. Regra de n
 
 ### Wizard de cadastro do treinador (`(public)/cadastro/treinador/page.tsx`)
 2 passos client-side (estado `step: 1|2`, sem rota nova):
-- **Passo 1** — form (react-hook-form + Zod `cadastroTreinadorSchema`): dados + plano (radio, `GET /api/auth/planos` filtrando `isAtivo !== false`) + `modoPagamentoAluno` (radio Plataforma/Externo, default `Plataforma`). Submit → `POST /api/auth/register/treinador` com `planoPlataformaId`+`modoPagamentoAluno`.
+- **Passo 1** — form (react-hook-form + Zod `cadastroTreinadorSchema`): dados + plano (`FormSelect`, `GET /api/auth/planos` filtrando `isAtivo !== false`; enquanto `planos === null` mostra spinner no lugar do select) + `modoPagamentoAluno` (`FormSelect` Plataforma/Externo, default `Plataforma`). Submit → `POST /api/auth/register/treinador` com `planoPlataformaId`+`modoPagamentoAluno`.
   - Resposta `status === "AguardandoPagamento"` (plano pago) → guarda `treinadorId`, vai p/ passo 2.
   - Senão (Free → `AguardandoAprovacao`) → tela final `"analise"` ("cadastro em análise").
 - **Passo 2** — escolhe Pix/Cartão → `POST /api/auth/treinador/{id}/pagamento` `{ metodo }` → recebe `IniciarPagamentoPlanoResponse` → renderiza `<PagamentoSignup>`. Pix marca tela final imediata; Cartão marca final via callback `onPagoCartao`.
