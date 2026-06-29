@@ -2,15 +2,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  Box, Typography, Card, CardContent, Chip, Stack, Button, IconButton,
+  Box, Typography, Card, CardContent, Chip, Stack, Button,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import DetalheErro from "@/components/ui/DetalheErro";
@@ -62,43 +62,42 @@ export default function DetalheFichaAlunoPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3, flexWrap: "wrap" }}>
-        <IconButton onClick={() => router.push("/aluno/fichas")} aria-label="Voltar">
-          <ArrowBackIcon />
-        </IconButton>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>{ficha.nomeTreino}</Typography>
-          <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-            <Chip label={OBJETIVO_LABEL[ficha.objetivo] ?? ficha.objetivo} size="small" />
-            <StatusChip status={ficha.status} />
-          </Stack>
-        </Box>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ flexBasis: { xs: "100%", sm: "auto" }, justifyContent: "flex-end" }}
-        >
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<FileDownloadIcon />}
-            sx={{ flexGrow: { xs: 1, sm: 0 } }}
-            onClick={() => void exportarFichaParaExcel({ nome: ficha.nomeTreino, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
+      <PageHeader
+        title={ficha.nomeTreino}
+        backHref="/aluno/fichas"
+        action={
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ flexBasis: { xs: "100%", sm: "auto" }, justifyContent: "flex-end" }}
           >
-            Exportar
-          </Button>
-          {ficha.status === "Ativo" && (
             <Button
-              variant="contained"
-              startIcon={<PlayArrowIcon />}
+              variant="outlined"
+              size="small"
+              startIcon={<FileDownloadIcon />}
               sx={{ flexGrow: { xs: 1, sm: 0 } }}
-              onClick={() => router.push(`/aluno/fichas/${fichaId}/executar`)}
+              onClick={() => void exportarFichaParaExcel({ nome: ficha.nomeTreino, objetivo: ficha.objetivo, exercicios: ficha.exercicios })}
             >
-              Iniciar treino
+              Exportar
             </Button>
-          )}
-        </Stack>
-      </Box>
+            {ficha.status === "Ativo" && (
+              <Button
+                variant="contained"
+                startIcon={<PlayArrowIcon />}
+                sx={{ flexGrow: { xs: 1, sm: 0 } }}
+                onClick={() => router.push(`/aluno/fichas/${fichaId}/executar`)}
+              >
+                Iniciar treino
+              </Button>
+            )}
+          </Stack>
+        }
+      />
+
+      <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: "wrap", rowGap: 1 }}>
+        <Chip label={OBJETIVO_LABEL[ficha.objetivo] ?? ficha.objetivo} size="small" />
+        <StatusChip status={ficha.status} />
+      </Stack>
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 

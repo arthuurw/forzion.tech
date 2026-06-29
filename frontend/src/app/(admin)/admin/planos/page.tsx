@@ -9,6 +9,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -127,12 +128,14 @@ export default function PlanosAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Planos</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCriarOpen(true)}>
-          Novo plano
-        </Button>
-      </Box>
+      <PageHeader
+        title="Planos"
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCriarOpen(true)}>
+            Novo plano
+          </Button>
+        }
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -152,7 +155,7 @@ export default function PlanosAdminPage() {
               <Card variant="outlined">
                 <CardContent>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>{p.nome}</Typography>
+                    <Typography variant="h6">{p.nome}</Typography>
                     <Chip label={p.tier} size="small" variant="outlined" />
                   </Box>
                   <Typography variant="body2" color="text.secondary">Até {p.maxAlunos} alunos</Typography>

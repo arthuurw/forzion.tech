@@ -11,6 +11,7 @@ import FormTextField from "@/components/forms/FormTextField";
 import FormSelect from "@/components/forms/FormSelect";
 import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import PagamentoSignup from "@/components/pagamento/PagamentoSignup";
 import CheckoutTermos from "@/components/ui/CheckoutTermos";
 import {
@@ -112,7 +113,7 @@ export default function CadastroTreinadorPage() {
       <Stack spacing={3} sx={{ alignItems: "center", textAlign: "center" }}>
         <Paper elevation={0} variant="outlined" sx={{ p: 4, width: "100%" }}>
           <CheckCircleOutlineIcon sx={{ fontSize: 56, color: "primary.main", mb: 2 }} />
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
             {finalizado === "analise" ? "Solicitação enviada" : "Quase lá"}
           </Typography>
           {finalizado === "pix" && pagamento ? (
@@ -138,10 +139,10 @@ export default function CadastroTreinadorPage() {
     const planoEscolhido = planos?.find((p) => p.planoId === methods.getValues("planoPlataformaId"));
     return (
       <Box>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Pagamento do plano</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Escolha como pagar a assinatura da plataforma para concluir o cadastro.
-        </Typography>
+        <PageHeader
+          title="Pagamento do plano"
+          subtitle="Escolha como pagar a assinatura da plataforma para concluir o cadastro."
+        />
 
         <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
@@ -169,10 +170,10 @@ export default function CadastroTreinadorPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Criar conta profissional</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Escolha seu plano e como seus alunos vão pagar. O acesso é liberado após validação.
-      </Typography>
+      <PageHeader
+        title="Criar conta profissional"
+        subtitle="Escolha seu plano e como seus alunos vão pagar. O acesso é liberado após validação."
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 

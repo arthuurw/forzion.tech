@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import SemVinculoAtivoBanner from "@/components/aluno/SemVinculoAtivoBanner";
 import DataList from "@/components/ui/DataList";
 import DetalheErro from "@/components/ui/DetalheErro";
@@ -93,7 +94,7 @@ export default function HistoricoAlunoPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>Histórico de Sessões</Typography>
+      <PageHeader title="Histórico de Sessões" />
 
       <SemVinculoAtivoBanner vinculo={dashboard?.vinculo ?? { ativo: true, pendente: false }} />
 
@@ -106,7 +107,7 @@ export default function HistoricoAlunoPage() {
 
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>Frequência semanal</Typography>
+          <Typography variant="subtitle2" sx={{ mb: 2 }}>Frequência semanal</Typography>
           {dashLoading ? (
             <Skeleton variant="rectangular" height={160} sx={{ borderRadius: 1 }} />
           ) : (

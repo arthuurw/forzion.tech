@@ -7,6 +7,7 @@ import { useState } from "react";
 import Link from "next/link";
 import FormTextField from "@/components/forms/FormTextField";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import { emailSchema } from "@/lib/validations/common";
 
 const schema = z.object({ email: emailSchema });
@@ -42,13 +43,10 @@ export default function ResendVerificationPage() {
   if (sent) {
     return (
       <Box>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Verifique seu e-mail
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Se houver uma conta pendente de verificação associada ao e-mail informado,
-          você receberá um novo link em breve. O link é válido por 24 horas.
-        </Typography>
+        <PageHeader
+          title="Verifique seu e-mail"
+          subtitle="Se houver uma conta pendente de verificação associada ao e-mail informado, você receberá um novo link em breve. O link é válido por 24 horas."
+        />
         <Button component={Link} href="/login" variant="outlined" fullWidth>
           Voltar ao login
         </Button>
@@ -58,12 +56,10 @@ export default function ResendVerificationPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Reenviar verificação
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Informe seu e-mail e enviaremos um novo link de verificação.
-      </Typography>
+      <PageHeader
+        title="Reenviar verificação"
+        subtitle="Informe seu e-mail e enviaremos um novo link de verificação."
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 

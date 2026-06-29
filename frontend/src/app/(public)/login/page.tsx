@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import FormTextField from "@/components/forms/FormTextField";
 import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import { useAuth, homeRouteFor } from "@/lib/auth/context";
 import { loginSchema, type LoginFormData } from "@/lib/validations/common";
 import { authApi, AuthApiError } from "@/lib/api/auth";
@@ -145,12 +146,10 @@ export default function LoginPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Acesse sua conta
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Informe suas credenciais para acessar a plataforma.
-      </Typography>
+      <PageHeader
+        title="Acesse sua conta"
+        subtitle="Informe suas credenciais para acessar a plataforma."
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 

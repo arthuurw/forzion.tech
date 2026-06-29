@@ -32,7 +32,7 @@ export default function Diferenciais() {
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <SectionEyebrow label="DIFERENCIAIS" variant="light" />
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 2 }}>
+          <Typography variant="h4" sx={{ mt: 2 }}>
             O que nos diferencia
           </Typography>
         </Box>

@@ -13,6 +13,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import PageHeader from "@/components/ui/PageHeader";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
@@ -252,14 +253,14 @@ export default function ExerciciosTreinadorPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Exercícios</Typography>
-        {!isGlobal && (
+      <PageHeader
+        title="Exercícios"
+        action={!isGlobal ? (
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
             Novo exercício
           </Button>
-        )}
-      </Box>
+        ) : undefined}
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />

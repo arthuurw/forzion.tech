@@ -8,6 +8,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useRouter } from "next/navigation";
 import StatusChip from "@/components/ui/StatusChip";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { alunoApi, type TreinoAlunoDetalheResponse } from "@/lib/api/aluno";
@@ -33,7 +34,7 @@ export default function FichasAlunoPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>Fichas de Treino</Typography>
+      <PageHeader title="Fichas de Treino" />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 

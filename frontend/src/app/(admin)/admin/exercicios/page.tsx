@@ -161,7 +161,7 @@ export default function ExerciciosAdminPage() {
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Biblioteca Global</Typography>
+          <Typography variant="h5">Biblioteca Global</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Exercícios disponíveis para todos os treinadores copiarem.
           </Typography>

@@ -4,6 +4,7 @@ import {
   Typography,
   Stack,
   Divider,
+  // eslint-disable-next-line no-restricted-imports -- disclaimer estático role="note" (não-dismissível); AlertBanner é Collapse dismissível
   Alert,
   Table,
   TableBody,
@@ -12,8 +13,8 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
 } from "@mui/material";
+import PageHeader from "@/components/ui/PageHeader";
 
 export const metadata = {
   title: "Política de Privacidade — forzion.tech",
@@ -55,14 +56,7 @@ export default function PrivacidadePage() {
     <Box component="main" id="main-content" tabIndex={-1} sx={{ bgcolor: "background.default", minHeight: "100dvh", py: { xs: 4, md: 6 } }}>
       <Container maxWidth="md">
         <Stack spacing={3}>
-          <Box>
-            <Button href="/" size="small" sx={{ mb: 2 }}>
-              ← Voltar
-            </Button>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-              Política de Privacidade
-            </Typography>
-          </Box>
+          <PageHeader title="Política de Privacidade" backHref="/" />
 
           <Alert severity="info" role="note">
             Documento preliminar. As seções abaixo descrevem o tratamento de

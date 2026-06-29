@@ -189,7 +189,7 @@ export default async function LandingPage() {
             <Container maxWidth="md">
               <Box sx={{ textAlign: "center", mb: 6 }}>
                 <SectionEyebrow label="PLANOS" variant="dark" />
-                <Typography variant="h4" sx={{ fontWeight: 700, mt: 2, mb: 1, color: "white" }}>
+                <Typography variant="h4" sx={{ mt: 2, mb: 1, color: "white" }}>
                   Planos para cada porte de operação
                 </Typography>
                 <Typography variant="body1" sx={{ color: "rgba(255,255,255,0.72)" }}>
@@ -227,7 +227,7 @@ export default async function LandingPage() {
                     >
                       <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
                         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, mb: 0.5 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 700, color: i === 1 ? "secondary.main" : "white" }}>
+                          <Typography variant="h6" sx={{ color: i === 1 ? "secondary.main" : "white" }}>
                             {plano.nome}
                           </Typography>
                           {isInativo && (

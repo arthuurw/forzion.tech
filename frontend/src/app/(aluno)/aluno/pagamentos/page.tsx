@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  Box, Typography, CircularProgress, Alert,
-  Chip, Button, Dialog, DialogContent, DialogTitle, IconButton,
+  Box, Chip, Button, Dialog, DialogContent, DialogTitle, IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import type { PagamentoResponse } from "@/types";
@@ -12,6 +11,10 @@ import { PAGAMENTO_STATUS_COLORS, PAGAMENTO_STATUS_LABEL } from "@/lib/constants
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 import { extractApiError } from "@/lib/api/extractApiError";
+import PageHeader from "@/components/ui/PageHeader";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import AlertBanner from "@/components/ui/AlertBanner";
+import EmptyState from "@/components/ui/EmptyState";
 
 const COLUNAS: Column[] = [
   { label: "Data" },
@@ -30,9 +33,9 @@ interface Props {
 function TabelaPagamentos({ pagamentos, loading, error, onAtualizar }: Props) {
   const [pagamentoAberto, setPagamentoAberto] = useState<PagamentoResponse | null>(null);
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (pagamentos.length === 0) return <Alert severity="info">Nenhum pagamento encontrado.</Alert>;
+  if (loading) return <LoadingSpinner />;
+  if (error) return <AlertBanner open message={error} />;
+  if (pagamentos.length === 0) return <EmptyState message="Nenhum pagamento encontrado." />;
 
   return (
     <>
@@ -118,7 +121,7 @@ export default function PagamentosAlunoPage() {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 4 } }}>
-      <Typography variant="h5" sx={{ fontWeight: "bold", mb: 3 }}>Histórico de Pagamentos</Typography>
+      <PageHeader title="Histórico de Pagamentos" />
       <TabelaPagamentos
         pagamentos={pagamentos}
         loading={loading}

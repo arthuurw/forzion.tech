@@ -1,9 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  Box, Typography, Card, CardContent, Button, CircularProgress, Grid,
+  Box, Card, CardContent, Button, CircularProgress, Grid,
 } from "@mui/material";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { useForm, FormProvider, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TextField } from "@mui/material";
@@ -11,6 +10,7 @@ import FormTextField from "@/components/forms/FormTextField";
 import FormSelect from "@/components/forms/FormSelect";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import PageHeader from "@/components/ui/PageHeader";
 import { nfseApi } from "@/lib/api/nfse";
 import { extractApiError } from "@/lib/api/extractApiError";
 import {
@@ -103,15 +103,10 @@ export default function DadosFiscaisTreinadorPage() {
 
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 640 } }}>
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <ReceiptLongIcon sx={{ color: "text.secondary" }} />
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Dados fiscais</Typography>
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Usados como tomador na emissão das suas notas fiscais de serviço (NFS-e).
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Dados fiscais"
+        subtitle="Usados como tomador na emissão das suas notas fiscais de serviço (NFS-e)."
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />

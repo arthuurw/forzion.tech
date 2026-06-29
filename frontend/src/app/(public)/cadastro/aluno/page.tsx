@@ -29,6 +29,7 @@ import FormSelect from "@/components/forms/FormSelect";
 import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import PageHeader from "@/components/ui/PageHeader";
 import { cadastroAlunoSchema, type CadastroAlunoFormData } from "@/lib/validations/common";
 import { authApi, AuthApiError } from "@/lib/api/auth";
 import type { TreinadorResponse, PacoteResponse } from "@/types";
@@ -170,7 +171,7 @@ export default function CadastroAlunoPage() {
     return (
       <Paper elevation={0} variant="outlined" sx={{ p: 4, textAlign: "center" }}>
         <CheckCircleOutlineIcon sx={{ fontSize: 56, color: "primary.main", mb: 2 }} />
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
           Solicitação de vínculo enviada
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -186,12 +187,10 @@ export default function CadastroAlunoPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Criar conta como aluno
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Selecione o treinador e o plano de atendimento para iniciar.
-      </Typography>
+      <PageHeader
+        title="Criar conta como aluno"
+        subtitle="Selecione o treinador e o plano de atendimento para iniciar."
+      />
 
       {isMobile ? (
         <Box sx={{ mb: 3 }}>
@@ -332,7 +331,7 @@ export default function CadastroAlunoPage() {
 
             {selectedPacote && <CheckoutTermos valor={Number(selectedPacote.preco)} dense />}
 
-            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            <Typography variant="subtitle2">
               Disponibilidade
             </Typography>
             <FormSelect
@@ -350,7 +349,7 @@ export default function CadastroAlunoPage() {
 
             <Divider />
 
-            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            <Typography variant="subtitle2">
               Objetivos
             </Typography>
             <FormSelect
@@ -374,7 +373,7 @@ export default function CadastroAlunoPage() {
 
             <Divider />
 
-            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            <Typography variant="subtitle2">
               Saúde
             </Typography>
             <FormTextField

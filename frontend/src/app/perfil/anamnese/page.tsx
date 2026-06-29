@@ -19,6 +19,7 @@ import FormTextField from "@/components/forms/FormTextField";
 import FormSelect from "@/components/forms/FormSelect";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import PageHeader from "@/components/ui/PageHeader";
 import { anamneseSchema, type AnamneseFormData } from "@/lib/validations/common";
 import { DIAS_OPTIONS, TEMPO_OPTIONS, FINALIDADE_OPTIONS, NIVEL_OPTIONS } from "@/lib/constants/enrollmentOptions";
 import { alunoApi } from "@/lib/api/aluno";
@@ -112,12 +113,10 @@ export default function AnamnesePage() {
 
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 580 } }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Minha anamnese</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Atualize as informações que orientam o seu treino (LGPD art. 18, III).
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Minha anamnese"
+        subtitle="Atualize as informações que orientam o seu treino (LGPD art. 18, III)."
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -126,20 +125,20 @@ export default function AnamnesePage() {
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <FormProvider {...methods}>
             <Stack component="form" onSubmit={methods.handleSubmit(onSubmit)} spacing={2}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Disponibilidade</Typography>
+              <Typography variant="subtitle2">Disponibilidade</Typography>
               <FormSelect name="diasDisponiveis" label="Dias disponíveis por semana" options={DIAS_OPTIONS} required />
               <FormSelect name="tempoDisponivelMinutos" label="Tempo disponível por dia" options={TEMPO_OPTIONS} required />
 
               <Divider />
 
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Objetivos</Typography>
+              <Typography variant="subtitle2">Objetivos</Typography>
               <FormSelect name="finalidade" label="Finalidade do treino" options={FINALIDADE_OPTIONS} required />
               <FormTextField name="focoTreino" label="Foco de treino (opcional)" placeholder="Ex.: membros inferiores, postura, core..." size="small" />
               <FormSelect name="nivelCondicionamento" label="Nível de condicionamento atual" options={NIVEL_OPTIONS} required />
 
               <Divider />
 
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Saúde</Typography>
+              <Typography variant="subtitle2">Saúde</Typography>
               <FormTextField name="limitacoesFisicas" label="Limitações físicas (opcional)" placeholder="Ex.: dor no joelho, hérnia de disco..." multiline rows={2} size="small" />
               <FormTextField name="doencas" label="Doenças ou condições de saúde (opcional)" placeholder="Ex.: hipertensão, diabetes..." multiline rows={2} size="small" />
               <FormTextField name="observacoesAdicionais" label="Observações adicionais (opcional)" multiline rows={3} size="small" />

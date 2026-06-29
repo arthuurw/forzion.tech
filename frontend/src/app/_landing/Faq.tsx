@@ -44,7 +44,7 @@ export default function Faq() {
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <SectionEyebrow label="FAQ" variant="light" />
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 2 }}>
+          <Typography variant="h4" sx={{ mt: 2 }}>
             Perguntas frequentes
           </Typography>
         </Box>

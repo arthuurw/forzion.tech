@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  // eslint-disable-next-line no-restricted-imports -- painéis de status inline contextuais (downgrade agendado/inadimplente/aguardando pix); AlertBanner é o canal de feedback dismissível
   Alert,
   Box,
   Button,
@@ -23,6 +24,9 @@ import { useAuth } from "@/lib/auth/context";
 import { extractApiError, extractApiErrorInfo } from "@/lib/api/extractApiError";
 import { baixarMeusDados as baixarMeusDadosBlob } from "@/lib/utils/downloadBlob";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import PageHeader from "@/components/ui/PageHeader";
+import AlertBanner from "@/components/ui/AlertBanner";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { formatarBRL } from "@/lib/utils/formatting";
 import type {
   AssinaturaTreinadorResponse,
@@ -238,30 +242,22 @@ export default function PlanoTreinadorPage() {
     return "warning";
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ p: 4, display: "flex", justifyContent: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
 
   return (
     <Box sx={{ p: { xs: 2.5, md: 3.5 }, maxWidth: 720 }}>
-      <Typography variant="h5" sx={{ fontWeight: "bold", mb: 0.5 }}>
-        Meu plano
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Gerencie sua assinatura e troque de plano quando precisar.
-      </Typography>
+      <PageHeader
+        title="Meu plano"
+        subtitle="Gerencie sua assinatura e troque de plano quando precisar."
+      />
 
-      {erro && <Alert severity="error" sx={{ mb: 2 }}>{erro}</Alert>}
+      <AlertBanner open={!!erro} message={erro} />
 
       {assinatura && (
         <Card variant="outlined" sx={{ mb: 3 }}>
           <CardContent>
             <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 1, flexWrap: "wrap", gap: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+              <Typography variant="subtitle1">
                 {planoAtual?.nome ?? "Plano atual"}
               </Typography>
               <Chip
@@ -305,7 +301,7 @@ export default function PlanoTreinadorPage() {
         </Card>
       )}
 
-      <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>
         Trocar plano
       </Typography>
 
@@ -318,7 +314,7 @@ export default function PlanoTreinadorPage() {
                 <CardContent>
                   <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                      <Typography variant="subtitle1">
                         {plano.nome}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -366,7 +362,7 @@ export default function PlanoTreinadorPage() {
         <DialogContent id="troca-plano-dialog-desc">
           {etapa === "confirmando" && planoSelecionado && (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {erro && <Alert severity="error">{erro}</Alert>}
+              <AlertBanner open={!!erro} message={erro} />
               <Typography variant="body2">
                 {precoAtual == null
                   ? `Confirmar troca para ${planoSelecionado.nome}.`
@@ -464,7 +460,7 @@ export default function PlanoTreinadorPage() {
         onClose={fecharCancelar}
       >
         <Stack spacing={1.5} sx={{ mt: 2 }}>
-          {erroCancelar && <Alert severity="error">{erroCancelar}</Alert>}
+          <AlertBanner open={!!erroCancelar} message={erroCancelar} />
           <Typography variant="body2" color="text.secondary">
             Antes de cancelar, você pode baixar uma cópia dos seus dados.
           </Typography>

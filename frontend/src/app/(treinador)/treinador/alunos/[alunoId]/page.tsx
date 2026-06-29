@@ -1,17 +1,17 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   Box, Typography, Card, CardContent, Stack, Button,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Autocomplete, TextField, IconButton,
+  Autocomplete, TextField,
 } from "@mui/material";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import StatusChip from "@/components/ui/StatusChip";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { treinadorApi } from "@/lib/api/treinador";
@@ -36,7 +36,6 @@ const FICHAS_COLS: Column[] = [
 
 export default function DetalheAlunoPage() {
   const { alunoId } = useParams<{ alunoId: string }>();
-  const router = useRouter();
   const [aluno, setAluno] = useState<AlunoResponse | null>(null);
   const [fichas, setFichas] = useState<TreinoAlunoResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,15 +102,11 @@ export default function DetalheAlunoPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-        <IconButton onClick={() => router.push("/treinador/alunos")} aria-label="Voltar">
-          <ArrowBackIcon />
-        </IconButton>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>{aluno?.nome ?? "Aluno"}</Typography>
-        </Box>
-        {aluno && <StatusChip status={aluno.status} />}
-      </Box>
+      <PageHeader
+        title={aluno?.nome ?? "Aluno"}
+        backHref="/treinador/alunos"
+        action={aluno ? <StatusChip status={aluno.status} /> : undefined}
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />

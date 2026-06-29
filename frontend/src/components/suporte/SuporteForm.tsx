@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import FormTextField from "@/components/forms/FormTextField";
 import FormSelect from "@/components/forms/FormSelect";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import { contaApi, type PerfilResponse } from "@/lib/api/conta";
 import { apiClient } from "@/lib/api/client";
 import { extractApiError } from "@/lib/api/extractApiError";
@@ -64,7 +65,7 @@ export default function SuporteForm() {
       <Box sx={{ maxWidth: { xs: "100%", md: 580 } }}>
         <Card sx={{ border: "1px solid", borderColor: "divider" }}>
           <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+            <Typography variant="h6" sx={{ mb: 0.5 }}>
               Mensagem enviada
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -81,12 +82,10 @@ export default function SuporteForm() {
 
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 580 } }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Falar com o suporte</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Tem uma dúvida ou sugestão? Envie sua mensagem e responderemos por e-mail.
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Falar com o suporte"
+        subtitle="Tem uma dúvida ou sugestão? Envie sua mensagem e responderemos por e-mail."
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 

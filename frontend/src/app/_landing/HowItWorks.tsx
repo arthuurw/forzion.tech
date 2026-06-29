@@ -32,7 +32,7 @@ export default function HowItWorks() {
       <Container maxWidth="lg">
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <SectionEyebrow label="COMO FUNCIONA" variant="light" />
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 2 }}>
+          <Typography variant="h4" sx={{ mt: 2 }}>
             Uma estrutura pensada para o dia a dia
           </Typography>
         </Box>
@@ -75,7 +75,7 @@ export default function HowItWorks() {
                 >
                   {step}
                 </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, mt: 1, mb: 2 }}>
+                <Typography variant="h5" sx={{ mt: 1, mb: 2 }}>
                   {title}
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>

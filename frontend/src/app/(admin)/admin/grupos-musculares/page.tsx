@@ -8,6 +8,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -107,17 +108,15 @@ export default function GruposMuscularesAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Grupos Musculares</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Padronização para a biblioteca de exercícios.
-          </Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCriarOpen(true)}>
-          Novo grupo
-        </Button>
-      </Box>
+      <PageHeader
+        title="Grupos Musculares"
+        subtitle="Padronização para a biblioteca de exercícios."
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCriarOpen(true)}>
+            Novo grupo
+          </Button>
+        }
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />

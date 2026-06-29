@@ -6,6 +6,7 @@ import {
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { adminApi } from "@/lib/api/admin";
 import type { HealthSnapshotResponse, StatusSaude } from "@/types";
@@ -121,9 +122,7 @@ export default function SaudeAdminPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        Relatório de saúde
-      </Typography>
+      <PageHeader title="Relatório de saúde" />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -182,7 +181,7 @@ export default function SaudeAdminPage() {
 
       <Card variant="outlined">
         <CardContent>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Último snapshot</Typography>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>Último snapshot</Typography>
           {ultimoSnapshot ? (
             <Stack spacing={0.5}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

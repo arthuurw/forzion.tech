@@ -12,6 +12,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useRouter } from "next/navigation";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
@@ -174,12 +175,14 @@ export default function TreinosTreinadorPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Fichas de Treino</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openDialog}>
-          Nova ficha
-        </Button>
-      </Box>
+      <PageHeader
+        title="Fichas de Treino"
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openDialog}>
+            Nova ficha
+          </Button>
+        }
+      />
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2 }}>
         <TextField

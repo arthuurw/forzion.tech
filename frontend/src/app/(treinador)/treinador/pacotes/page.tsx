@@ -11,6 +11,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import PageHeader from "@/components/ui/PageHeader";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { treinadorApi } from "@/lib/api/treinador";
 import { extractApiError } from "@/lib/api/extractApiError";
 import type { PacoteResponse } from "@/types";
@@ -116,12 +118,14 @@ export default function PacotesTreinadorPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Pacotes de Treinos</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
-          Novo pacote
-        </Button>
-      </Box>
+      <PageHeader
+        title="Pacotes de Treinos"
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
+            Novo pacote
+          </Button>
+        }
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -145,7 +149,7 @@ export default function PacotesTreinadorPage() {
               >
                 <CardContent>
                   <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>{p.nome}</Typography>
+                    <Typography variant="h6" sx={{ mb: 0.5 }}>{p.nome}</Typography>
                     <Stack direction="row" spacing={0.5}>
                       <Tooltip title="Editar">
                         <IconButton
@@ -232,27 +236,16 @@ export default function PacotesTreinadorPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: excluir */}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
-        <DialogTitle>Excluir pacote</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            Tem certeza que deseja excluir <strong>{deleteTarget?.nome}</strong>?
-            Esta ação não pode ser desfeita.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={deleting}
-            onClick={handleExcluir}
-          >
-            Excluir
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Excluir pacote"
+        description={`Tem certeza que deseja excluir ${deleteTarget?.nome ?? ""}? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        destructive
+        loading={deleting}
+        onConfirm={handleExcluir}
+        onClose={() => setDeleteTarget(null)}
+      />
 
       {/* Dialog: editar */}
       <Dialog open={!!editTarget} onClose={() => setEditTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>

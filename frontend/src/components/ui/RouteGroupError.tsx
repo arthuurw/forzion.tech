@@ -38,7 +38,7 @@ export default function RouteGroupError({
       }}
     >
       <ReportProblemIcon sx={{ fontSize: 64, color: "error.main" }} />
-      <Typography variant="h5" sx={{ fontWeight: 700 }}>
+      <Typography variant="h5">
         Não foi possível carregar esta página
       </Typography>
       <Typography variant="body2" color="text.secondary">

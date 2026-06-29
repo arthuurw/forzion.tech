@@ -3,6 +3,8 @@ import { Box, Typography, Button, CircularProgress } from "@mui/material";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import PageHeader from "@/components/ui/PageHeader";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import type { ProblemDetails } from "@/types";
 
 type Status = "verifying" | "success" | "error";
@@ -56,12 +58,10 @@ function VerifyEmailInner() {
   if (status === "success") {
     return (
       <Box>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-          E-mail verificado!
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Sua conta foi ativada. Agora você já pode fazer login.
-        </Typography>
+        <PageHeader
+          title="E-mail verificado!"
+          subtitle="Sua conta foi ativada. Agora você já pode fazer login."
+        />
         <Button component={Link} href="/login" variant="contained" color="primary" fullWidth>
           Ir para o login
         </Button>
@@ -71,12 +71,7 @@ function VerifyEmailInner() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Falha na verificação
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        {error}
-      </Typography>
+      <PageHeader title="Falha na verificação" subtitle={error} />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
         <Button
           component={Link}
@@ -97,13 +92,7 @@ function VerifyEmailInner() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense
-      fallback={
-        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-          <CircularProgress aria-label="Carregando" />
-        </Box>
-      }
-    >
+    <Suspense fallback={<LoadingSpinner />}>
       <VerifyEmailInner />
     </Suspense>
   );
