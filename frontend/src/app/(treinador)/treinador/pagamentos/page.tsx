@@ -4,6 +4,7 @@ import { Box, Typography, Button, Chip, Stack, Paper, Divider } from "@mui/mater
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { formatarBRL } from "@/lib/utils/formatting";
 import { extractApiError } from "@/lib/api/extractApiError";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AlertBanner from "@/components/ui/AlertBanner";
@@ -31,8 +32,6 @@ const STATUS_ROTULO: Record<PagamentoStatus, string> = {
   Estornado: "Estornado",
   EmDisputa: "Em disputa",
 };
-
-const formatBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function HistoricoRecebimentos() {
   const [itens, setItens] = useState<RecebimentoTreinadorResponse[]>([]);
@@ -99,12 +98,12 @@ function HistoricoRecebimentos() {
                 <Chip label={STATUS_ROTULO[r.status]} color={STATUS_COR[r.status]} size="small" />
               </Stack>
               <Stack direction="row" spacing={2} sx={{ mt: 1, flexWrap: "wrap" }}>
-                <Typography variant="body2" color="text.secondary">Bruto: {formatBRL(r.bruto)}</Typography>
+                <Typography variant="body2" color="text.secondary">Bruto: {formatarBRL(r.bruto)}</Typography>
                 <Typography variant="body2" color="text.secondary">
                   Taxa: {r.taxaPercent != null ? `${r.taxaPercent}%` : "—"}
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                  Líquido estimado: {r.liquidoEstimado != null ? formatBRL(r.liquidoEstimado) : "—"}
+                  Líquido estimado: {r.liquidoEstimado != null ? formatarBRL(r.liquidoEstimado) : "—"}
                 </Typography>
               </Stack>
             </Paper>
