@@ -10,6 +10,7 @@ namespace forzion.tech.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // lint-migrations:allow
             migrationBuilder.DropIndex(
                 name: "ix_assinaturas_treinador_treinador_id",
                 table: "assinaturas_treinador");
