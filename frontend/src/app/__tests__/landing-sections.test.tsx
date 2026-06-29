@@ -25,7 +25,7 @@ describe("LandingPage — hero R1/R2", () => {
 describe("LandingPage — seções montadas", () => {
   it("seção 'Como funciona' presente", async () => {
     await renderLanding([]);
-    expect(screen.getByText("COMO FUNCIONA")).toBeInTheDocument();
+    expect(screen.getByText("Uma estrutura pensada para o dia a dia")).toBeInTheDocument();
   }, 20000);
 
   it("seção Diferenciais presente", async () => {

@@ -6,7 +6,6 @@ import HowItWorks from "./_landing/HowItWorks";
 import SocialProof from "./_landing/SocialProof";
 import Diferenciais from "./_landing/Diferenciais";
 import Faq from "./_landing/Faq";
-import SectionEyebrow from "./_landing/SectionEyebrow";
 import type { PlanoPlataformaResponse } from "@/types";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
@@ -112,25 +111,6 @@ export default async function LandingPage() {
           }}
         >
           <Container maxWidth="md" sx={{ position: "relative" }}>
-            <Box
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 1,
-                px: 2,
-                py: 0.75,
-                borderRadius: 10,
-                border: "1px solid",
-                borderColor: "rgba(245,196,0,0.3)",
-                bgcolor: "rgba(245,196,0,0.08)",
-                mb: 3,
-              }}
-            >
-              <Box sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: "primary.main" }} />
-              <Typography variant="caption" sx={{ color: "primary.main", fontWeight: 600, letterSpacing: "0.05em" }}>
-                SOFTWARE DE GESTÃO PARA PERSONAL TRAINERS
-              </Typography>
-            </Box>
 
             <Typography
               variant="h2"
@@ -185,11 +165,10 @@ export default async function LandingPage() {
 
         {/* Planos */}
         {planos.length > 0 && (
-          <Box sx={{ bgcolor: "secondary.main", py: { xs: 8, md: 12 } }}>
+          <Box sx={{ bgcolor: "secondary.main", py: { xs: 6, md: 8 } }}>
             <Container maxWidth="md">
               <Box sx={{ textAlign: "center", mb: 6 }}>
-                <SectionEyebrow label="PLANOS" variant="dark" />
-                <Typography variant="h4" sx={{ mt: 2, mb: 1, color: "white" }}>
+                <Typography variant="h4" sx={{ mb: 1, color: "white" }}>
                   Planos para cada porte de operação
                 </Typography>
                 <Typography variant="body1" sx={{ color: "rgba(255,255,255,0.72)" }}>
