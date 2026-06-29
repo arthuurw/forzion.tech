@@ -24,10 +24,13 @@ public class ReprocessarNotaFiscalHandler(
         if (nota is null)
             return Result.Failure(NotaFiscalErrors.NaoEncontrada);
 
-        if (nota.Status != NotaFiscalStatus.Erro)
+        if (nota.Status is not (NotaFiscalStatus.Erro or NotaFiscalStatus.BloqueadaDadosFiscais))
             return Result.Failure(NotaFiscalErrors.ReprocessamentoInvalido);
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        if (nota.Status == NotaFiscalStatus.BloqueadaDadosFiscais)
+            nota.ReabrirParaEmissao(agora);
 
         var logResult = LogAprovacao.Registrar(
             TipoAcaoAprovacao.ReprocessamentoNotaFiscal,
