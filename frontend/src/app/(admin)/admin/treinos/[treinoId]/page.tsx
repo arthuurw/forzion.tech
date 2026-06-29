@@ -6,6 +6,7 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
@@ -46,20 +47,22 @@ export default function DetalheTreinoAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <IconButton onClick={() => router.back()} aria-label="Voltar">
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>{treino?.nome ?? "Treino"}</Typography>
-          {treino && (
-            <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-              <Chip label={OBJETIVO_LABEL[treino.objetivo] ?? treino.objetivo} size="small" />
-              {treino.nomeAluno && (
-                <Chip label={`Aluno: ${treino.nomeAluno}`} size="small" variant="outlined" />
-              )}
-            </Stack>
-          )}
+          <PageHeader
+            title={treino?.nome ?? "Treino"}
+            action={treino ? (
+              <Stack direction="row" spacing={1}>
+                <Chip label={OBJETIVO_LABEL[treino.objetivo] ?? treino.objetivo} size="small" />
+                {treino.nomeAluno && (
+                  <Chip label={`Aluno: ${treino.nomeAluno}`} size="small" variant="outlined" />
+                )}
+              </Stack>
+            ) : undefined}
+          />
         </Box>
       </Box>
 

@@ -8,6 +8,7 @@ import {
 import InfoIcon from "@mui/icons-material/Info";
 import StatusChip from "@/components/ui/StatusChip";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
@@ -49,9 +50,7 @@ export default function AlunosAdminPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        Alunos
-      </Typography>
+      <PageHeader title="Alunos" />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 

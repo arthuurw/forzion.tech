@@ -4,7 +4,11 @@ import {
   Box, Typography, Card, CardContent, Stack, TextField, Button, Divider, Chip, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import Link from "next/link";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import PersonIcon from "@mui/icons-material/Person";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import LockIcon from "@mui/icons-material/Lock";
@@ -15,6 +19,8 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ConsentBanner from "@/components/ui/ConsentBanner";
+import PageHeader from "@/components/ui/PageHeader";
+import PasswordField from "@/components/forms/PasswordField";
 import { contaApi, type PerfilResponse } from "@/lib/api/conta";
 import { baixarMeusDados } from "@/lib/utils/downloadBlob";
 import { alunoApi } from "@/lib/api/aluno";
@@ -22,6 +28,21 @@ import { apiClient } from "@/lib/api/client";
 import { extractApiError } from "@/lib/api/extractApiError";
 import { useAuth } from "@/lib/auth/context";
 import type { MeuVinculoResponse, TreinadorResponse, PacoteResponse } from "@/types";
+
+const senhaSchema = z
+  .object({
+    senhaAtual: z.string().min(1, "Informe a senha atual."),
+    novaSenha: z.string().min(8, "A nova senha deve ter pelo menos 8 caracteres."),
+    confirmarSenha: z.string().min(1, "Confirme a nova senha."),
+  })
+  .refine((d) => d.novaSenha === d.confirmarSenha, {
+    message: "As senhas não coincidem.",
+    path: ["confirmarSenha"],
+  });
+type SenhaForm = z.infer<typeof senhaSchema>;
+
+const excluirContaSchema = z.object({ senha: z.string().min(1, "Informe sua senha.") });
+type ExcluirContaForm = z.infer<typeof excluirContaSchema>;
 
 export default function PerfilPage() {
   const { logout } = useAuth();
@@ -33,11 +54,15 @@ export default function PerfilPage() {
   const [nome, setNome] = useState("");
   const [savingPerfil, setSavingPerfil] = useState(false);
 
-  const [senhaAtual, setSenhaAtual] = useState("");
-  const [novaSenha, setNovaSenha] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [savingSenha, setSavingSenha] = useState(false);
-  const [senhaError, setSenhaError] = useState("");
+  const senhaForm = useForm<SenhaForm>({
+    resolver: zodResolver(senhaSchema),
+    defaultValues: { senhaAtual: "", novaSenha: "", confirmarSenha: "" },
+  });
+  const excluirContaForm = useForm<ExcluirContaForm>({
+    resolver: zodResolver(excluirContaSchema),
+    defaultValues: { senha: "" },
+  });
 
   const [meuVinculo, setMeuVinculo] = useState<MeuVinculoResponse | null>(null);
   const [trocaDialog, setTrocaDialog] = useState(false);
@@ -50,7 +75,6 @@ export default function PerfilPage() {
 
   const [exportingData, setExportingData] = useState<false | "xlsx" | "json">(false);
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
-  const [deleteSenha, setDeleteSenha] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [consentBannerOpen, setConsentBannerOpen] = useState(false);
 
@@ -132,12 +156,11 @@ export default function PerfilPage() {
     }
   };
 
-  const handleExcluirConta = async () => {
-    if (!deleteSenha.trim()) return;
+  const handleExcluirConta = excluirContaForm.handleSubmit(async ({ senha }) => {
     setDeletingAccount(true);
     setError("");
     try {
-      await contaApi.excluirConta(deleteSenha);
+      await contaApi.excluirConta(senha);
       setDeleteAccountDialog(false);
       await logout();
     } catch (err) {
@@ -145,9 +168,9 @@ export default function PerfilPage() {
       setDeleteAccountDialog(false);
     } finally {
       setDeletingAccount(false);
-      setDeleteSenha("");
+      excluirContaForm.reset();
     }
-  };
+  });
 
   const handleSalvarPerfil = async () => {
     if (!nome.trim()) return;
@@ -164,33 +187,25 @@ export default function PerfilPage() {
     }
   };
 
-  const handleAlterarSenha = async () => {
-    setSenhaError("");
-    if (novaSenha !== confirmarSenha) { setSenhaError("As senhas não coincidem."); return; }
-    if (novaSenha.length < 8) { setSenhaError("A nova senha deve ter pelo menos 8 caracteres."); return; }
+  const handleAlterarSenha = senhaForm.handleSubmit(async ({ senhaAtual, novaSenha }) => {
     setSavingSenha(true);
     setError("");
     try {
       await contaApi.alterarSenha({ senhaAtual, novaSenha });
       setSuccess("Senha alterada com sucesso.");
-      setSenhaAtual(""); setNovaSenha(""); setConfirmarSenha("");
+      senhaForm.reset();
     } catch (err) {
       setError(extractApiError(err, "Erro ao alterar senha. Verifique a senha atual."));
     } finally {
       setSavingSenha(false);
     }
-  };
+  });
 
   if (loading) return <LoadingSpinner />;
 
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 580 } }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Meu Perfil</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Informações da conta e configurações de acesso
-        </Typography>
-      </Box>
+      <PageHeader title="Meu Perfil" subtitle="Informações da conta e configurações de acesso" />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -199,10 +214,10 @@ export default function PerfilPage() {
       <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <PersonIcon fontSize="small" sx={{ color: "text.secondary" }} />
             </Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Dados da conta</Typography>
+            <Typography variant="subtitle1" component="h2">Dados da conta</Typography>
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3, p: 2, bgcolor: "background.default", borderRadius: 2, flexWrap: "wrap" }}>
@@ -251,10 +266,10 @@ export default function PerfilPage() {
         <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
           <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <FitnessCenterIcon fontSize="small" sx={{ color: "text.secondary" }} />
               </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Meu Treinador</Typography>
+              <Typography variant="subtitle1" component="h2">Meu Treinador</Typography>
             </Box>
 
             {meuVinculo?.vinculoAtivo ? (
@@ -284,7 +299,7 @@ export default function PerfilPage() {
             )}
 
             {meuVinculo?.vinculoPendente && (
-              <Box sx={{ mt: 2, p: 2, bgcolor: "rgba(255,193,7,0.08)", borderRadius: 2, border: "1px solid", borderColor: "warning.light" }}>
+              <Box sx={(theme) => ({ mt: 2, p: 2, bgcolor: alpha(theme.palette.warning.main, 0.08), borderRadius: 2, border: "1px solid", borderColor: "warning.light" })}>
                 <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 600 }}>
                   Solicitação de troca pendente
                 </Typography>
@@ -302,10 +317,10 @@ export default function PerfilPage() {
         <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
           <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <AssignmentIcon fontSize="small" sx={{ color: "text.secondary" }} />
               </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Minha anamnese</Typography>
+              <Typography variant="subtitle1" component="h2">Minha anamnese</Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Atualize disponibilidade, objetivos e informações de saúde que orientam o seu treino.
@@ -321,65 +336,53 @@ export default function PerfilPage() {
       <Card sx={{ border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(211,47,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Box sx={(theme) => ({ width: 36, height: 36, borderRadius: 2, bgcolor: alpha(theme.palette.error.main, 0.08), display: "flex", alignItems: "center", justifyContent: "center" })}>
               <LockIcon fontSize="small" sx={{ color: "error.main" }} />
             </Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Alterar senha</Typography>
+            <Typography variant="subtitle1" component="h2">Alterar senha</Typography>
           </Box>
 
-          {senhaError && (
-            <AlertBanner open severity="error" message={senhaError} onClose={() => setSenhaError("")} />
-          )}
-
-          <Stack spacing={2}>
-            <TextField
-              label="Senha atual"
-              type="password"
-              value={senhaAtual}
-              onChange={(e) => setSenhaAtual(e.target.value)}
-              size="small"
-              fullWidth
-              autoComplete="current-password"
-            />
-            <Divider />
-            <TextField
-              label="Nova senha"
-              type="password"
-              value={novaSenha}
-              onChange={(e) => setNovaSenha(e.target.value)}
-              size="small"
-              fullWidth
-              autoComplete="new-password"
-            />
-            <TextField
-              label="Confirmar nova senha"
-              type="password"
-              value={confirmarSenha}
-              onChange={(e) => setConfirmarSenha(e.target.value)}
-              size="small"
-              fullWidth
-              autoComplete="new-password"
-            />
-            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-              <Button
-                variant="contained"
-                disabled={!senhaAtual || !novaSenha || !confirmarSenha || savingSenha}
-                onClick={handleAlterarSenha}
-              >
-                {savingSenha ? "Alterando..." : "Alterar senha"}
-              </Button>
-            </Box>
-          </Stack>
+          <FormProvider {...senhaForm}>
+            <Stack component="form" spacing={2} onSubmit={handleAlterarSenha} noValidate>
+              <PasswordField
+                name="senhaAtual"
+                label="Senha atual"
+                size="small"
+                fullWidth
+                autoComplete="current-password"
+              />
+              <Divider />
+              <PasswordField
+                name="novaSenha"
+                label="Nova senha"
+                size="small"
+                fullWidth
+                autoComplete="new-password"
+              />
+              <PasswordField
+                name="confirmarSenha"
+                label="Confirmar nova senha"
+                size="small"
+                fullWidth
+                autoComplete="new-password"
+              />
+              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button type="submit" variant="contained" disabled={savingSenha}>
+                  {savingSenha ? "Alterando..." : "Alterar senha"}
+                </Button>
+              </Box>
+            </Stack>
+          </FormProvider>
         </CardContent>
       </Card>
       {/* Privacidade (LGPD) */}
       <Card sx={{ mt: 2.5, border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <SecurityIcon fontSize="small" sx={{ color: "text.secondary" }} />
             </Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Privacidade (LGPD)</Typography>
+            <Typography variant="subtitle1" component="h2">Privacidade (LGPD)</Typography>
           </Box>
           <Stack spacing={1.5}>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
@@ -412,10 +415,10 @@ export default function PerfilPage() {
             </Button>
             <Divider />
             <Button
-              variant="contained"
+              variant="outlined"
               color="error"
               size="small"
-              onClick={() => { setDeleteSenha(""); setDeleteAccountDialog(true); }}
+              onClick={() => { excluirContaForm.reset(); setDeleteAccountDialog(true); }}
               sx={{ alignSelf: "flex-start" }}
             >
               Excluir minha conta
@@ -433,18 +436,20 @@ export default function PerfilPage() {
         destructive
         loading={deletingAccount}
         onConfirm={handleExcluirConta}
-        onClose={() => { setDeleteAccountDialog(false); setDeleteSenha(""); }}
+        onClose={() => { setDeleteAccountDialog(false); excluirContaForm.reset(); }}
       >
-        <TextField
-          label="Senha"
-          type="password"
-          value={deleteSenha}
-          onChange={(e) => setDeleteSenha(e.target.value)}
-          size="small"
-          fullWidth
-          sx={{ mt: 2 }}
-          autoComplete="current-password"
-        />
+        <FormProvider {...excluirContaForm}>
+          <Box component="form" onSubmit={handleExcluirConta}>
+            <PasswordField
+              name="senha"
+              label="Senha"
+              size="small"
+              fullWidth
+              sx={{ mt: 2 }}
+              autoComplete="current-password"
+            />
+          </Box>
+        </FormProvider>
       </ConfirmDialog>
 
       {/* LGPD: reopen consent preferences */}

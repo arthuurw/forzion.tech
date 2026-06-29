@@ -1,5 +1,5 @@
 "use client";
-import { Box, Typography, Button, CircularProgress } from "@mui/material";
+import { Box, Button, CircularProgress } from "@mui/material";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +8,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PasswordField from "@/components/forms/PasswordField";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { registerPasswordSchema } from "@/lib/validations/common";
 import type { ProblemDetails } from "@/types";
 
@@ -39,12 +41,10 @@ function ResetPasswordInner() {
   if (!token) {
     return (
       <Box>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-          Link inválido
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          O link de redefinição é inválido ou foi removido da URL.
-        </Typography>
+        <PageHeader
+          title="Link inválido"
+          subtitle="O link de redefinição é inválido ou foi removido da URL."
+        />
         <Button component={Link} href="/forgot-password" variant="outlined" fullWidth>
           Solicitar novo link
         </Button>
@@ -79,12 +79,10 @@ function ResetPasswordInner() {
   if (success) {
     return (
       <Box>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Senha redefinida!
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Sua senha foi alterada com sucesso. Faça login com a nova senha.
-        </Typography>
+        <PageHeader
+          title="Senha redefinida!"
+          subtitle="Sua senha foi alterada com sucesso. Faça login com a nova senha."
+        />
         <Button component={Link} href="/login" variant="contained" color="primary" fullWidth>
           Ir para o login
         </Button>
@@ -94,12 +92,10 @@ function ResetPasswordInner() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Redefinir senha
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Crie uma nova senha para sua conta.
-      </Typography>
+      <PageHeader
+        title="Redefinir senha"
+        subtitle="Crie uma nova senha para sua conta."
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
@@ -141,13 +137,7 @@ function ResetPasswordInner() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense
-      fallback={
-        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-          <CircularProgress />
-        </Box>
-      }
-    >
+    <Suspense fallback={<LoadingSpinner />}>
       <ResetPasswordInner />
     </Suspense>
   );

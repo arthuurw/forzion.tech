@@ -5,8 +5,8 @@ import {
   TextField, MenuItem, Stack,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
@@ -69,10 +69,7 @@ export default function NotasFiscaisAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-        <ReceiptLongIcon sx={{ color: "text.secondary" }} />
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Notas fiscais</Typography>
-      </Box>
+      <PageHeader title="Notas fiscais" />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />

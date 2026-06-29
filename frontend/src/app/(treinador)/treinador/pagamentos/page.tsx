@@ -1,11 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Box, Typography, Button, Chip, Stack, CircularProgress, Alert, Paper, Divider } from "@mui/material";
+import { Box, Typography, Button, Chip, Stack, Paper, Divider } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { formatarBRL } from "@/lib/utils/formatting";
 import { extractApiError } from "@/lib/api/extractApiError";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import AlertBanner from "@/components/ui/AlertBanner";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import PageHeader from "@/components/ui/PageHeader";
 import type { OnboardingStatusResponse, PagamentoStatus, RecebimentoTreinadorResponse } from "@/types";
 
 const COOLDOWN_ACEITE =
@@ -28,8 +32,6 @@ const STATUS_ROTULO: Record<PagamentoStatus, string> = {
   Estornado: "Estornado",
   EmDisputa: "Em disputa",
 };
-
-const formatBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function HistoricoRecebimentos() {
   const [itens, setItens] = useState<RecebimentoTreinadorResponse[]>([]);
@@ -60,7 +62,7 @@ function HistoricoRecebimentos() {
   return (
     <Box sx={{ mt: 4 }}>
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5, flexWrap: "wrap" }}>
-        <Typography variant="h6" sx={{ fontWeight: "bold" }}>Histórico de recebimentos</Typography>
+        <Typography variant="h6">Histórico de recebimentos</Typography>
         {taxaPlataforma != null && (
           <Chip
             label={`Taxa da plataforma: ${taxaPlataforma}%`}
@@ -74,10 +76,10 @@ function HistoricoRecebimentos() {
         Líquido estimado já descontada a taxa da plataforma{taxaPlataforma != null ? ` de ${taxaPlataforma}%` : ""}.
       </Typography>
 
-      {erro && <Alert severity="error" sx={{ mb: 2 }}>{erro}</Alert>}
+      <AlertBanner open={!!erro} severity="error" message={erro} />
 
       {!carregado && carregando ? (
-        <CircularProgress size={24} />
+        <LoadingSpinner />
       ) : itens.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           Nenhum recebimento ainda. Cobranças pagas pelos seus alunos aparecem aqui.
@@ -96,12 +98,12 @@ function HistoricoRecebimentos() {
                 <Chip label={STATUS_ROTULO[r.status]} color={STATUS_COR[r.status]} size="small" />
               </Stack>
               <Stack direction="row" spacing={2} sx={{ mt: 1, flexWrap: "wrap" }}>
-                <Typography variant="body2" color="text.secondary">Bruto: {formatBRL(r.bruto)}</Typography>
+                <Typography variant="body2" color="text.secondary">Bruto: {formatarBRL(r.bruto)}</Typography>
                 <Typography variant="body2" color="text.secondary">
                   Taxa: {r.taxaPercent != null ? `${r.taxaPercent}%` : "—"}
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                  Líquido estimado: {r.liquidoEstimado != null ? formatBRL(r.liquidoEstimado) : "—"}
+                  Líquido estimado: {r.liquidoEstimado != null ? formatarBRL(r.liquidoEstimado) : "—"}
                 </Typography>
               </Stack>
             </Paper>
@@ -157,7 +159,7 @@ export default function PagamentosTreinadorPage() {
     }
   };
 
-  if (loading) return <Box sx={{ p: { xs: 2, md: 4 } }}><CircularProgress /></Box>;
+  if (loading) return <LoadingSpinner fullPage />;
 
   const externo = status?.modoPagamentoAluno === "Externo";
   const liberadoEm = status?.modoPagamentoPodeAlterarEm ? new Date(status.modoPagamentoPodeAlterarEm) : null;
@@ -220,7 +222,7 @@ export default function PagamentosTreinadorPage() {
       onConfirm={alternarModo}
       onClose={() => { if (!trocando) { setConfirmarTroca(false); setError(""); } }}
     >
-      {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+      <AlertBanner open={!!error} severity="error" message={error} />
     </ConfirmDialog>
   );
 
@@ -247,13 +249,10 @@ export default function PagamentosTreinadorPage() {
   if (externo) {
     return (
       <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 600 }}>
-        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>Recebimentos</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Você recebe seus alunos por fora da plataforma.
-        </Typography>
+        <PageHeader title="Recebimentos" subtitle="Você recebe seus alunos por fora da plataforma." />
 
-        {!confirmarTroca && error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {sucesso && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSucesso("")}>{sucesso}</Alert>}
+        {!confirmarTroca && <AlertBanner open={!!error} severity="error" message={error} />}
+        <AlertBanner open={!!sucesso} severity="success" message={sucesso} onClose={() => setSucesso("")} />
 
         <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
           <Stack spacing={1.5}>
@@ -268,7 +267,7 @@ export default function PagamentosTreinadorPage() {
         </Paper>
 
         <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" sx={{ fontWeight: "bold", mb: 0.5 }}>Histórico de recebimentos</Typography>
+          <Typography variant="h6" sx={{ mb: 0.5 }}>Histórico de recebimentos</Typography>
           <Typography variant="body2" color="text.secondary">
             No modo externo, os pagamentos são combinados direto com o aluno e não passam pela plataforma — não há
             histórico de recebimentos aqui.
@@ -282,13 +281,10 @@ export default function PagamentosTreinadorPage() {
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 600 }}>
-      <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>Recebimentos</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Configure sua conta Stripe para receber pagamentos dos alunos via Pix.
-      </Typography>
+      <PageHeader title="Recebimentos" subtitle="Configure sua conta Stripe para receber pagamentos dos alunos via Pix." />
 
-      {!confirmarTroca && error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {sucesso && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSucesso("")}>{sucesso}</Alert>}
+      {!confirmarTroca && <AlertBanner open={!!error} severity="error" message={error} />}
+      <AlertBanner open={!!sucesso} severity="success" message={sucesso} onClose={() => setSucesso("")} />
 
       <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
         <Stack spacing={2}>

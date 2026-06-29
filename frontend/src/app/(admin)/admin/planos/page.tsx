@@ -1,17 +1,23 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Box, Typography, Card, CardContent, CardActions, Grid, Button, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Stack, IconButton, Tooltip, MenuItem,
+  Stack, IconButton, Tooltip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import FormTextField from "@/components/forms/FormTextField";
+import FormSelect from "@/components/forms/FormSelect";
 import { adminApi } from "@/lib/api/admin";
 import type { PlanoPlataformaResponse, TierPlano } from "@/types";
 import { formatarBRL } from "@/lib/utils/formatting";
@@ -25,6 +31,31 @@ const TIER_OPTIONS: { value: TierPlano; label: string; disabled?: boolean }[] = 
   { value: "Elite",   label: "Elite (em breve)", disabled: true },
 ];
 
+const planoSchema = z.object({
+  nome: z.string().trim().min(1, "Informe o nome."),
+  tier: z.string().min(1, "Selecione o tier."),
+  maxAlunos: z.coerce.number().int("Use um número inteiro.").min(1, "Mínimo 1 aluno."),
+  preco: z.coerce.number().min(0, "Preço não pode ser negativo."),
+  descricao: z.string(),
+});
+type PlanoForm = z.infer<typeof planoSchema>;
+
+const DEFAULT_CRIAR: PlanoForm = { nome: "", tier: "Basic", maxAlunos: 1, preco: 0, descricao: "" };
+
+const isVazio = (v: unknown) => v === "" || v === null || v === undefined;
+
+function PlanoFormFields() {
+  return (
+    <Stack spacing={2} sx={{ pt: 1 }}>
+      <FormTextField name="nome" label="Nome" size="small" fullWidth autoFocus required />
+      <FormSelect name="tier" label="Tier" options={TIER_OPTIONS} required />
+      <FormTextField name="maxAlunos" label="Máximo de alunos" type="number" size="small" fullWidth required slotProps={{ htmlInput: { min: 1 } }} />
+      <FormTextField name="preco" label="Preço (R$)" type="number" size="small" fullWidth required slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />
+      <FormTextField name="descricao" label="Descrição (funcionalidades)" size="small" fullWidth multiline rows={2} placeholder="Ex: Basic + e-mail" />
+    </Stack>
+  );
+}
+
 export default function PlanosAdminPage() {
   const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,23 +63,26 @@ export default function PlanosAdminPage() {
   const [success, setSuccess] = useState("");
 
   const [criarOpen, setCriarOpen] = useState(false);
-  const [nome, setNome] = useState("");
-  const [tier, setTier] = useState<TierPlano>("Basic");
-  const [maxAlunos, setMaxAlunos] = useState("");
-  const [preco, setPreco] = useState("");
-  const [descricao, setDescricao] = useState("");
   const [saving, setSaving] = useState(false);
 
   const [editPlano, setEditPlano] = useState<PlanoPlataformaResponse | null>(null);
-  const [editNome, setEditNome] = useState("");
-  const [editTier, setEditTier] = useState<TierPlano>("Basic");
-  const [editMaxAlunos, setEditMaxAlunos] = useState("");
-  const [editPreco, setEditPreco] = useState("");
-  const [editDescricao, setEditDescricao] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [confirmExcluir, setConfirmExcluir] = useState<PlanoPlataformaResponse | null>(null);
   const [loadingExcluir, setLoadingExcluir] = useState(false);
+
+  const criarForm = useForm<z.input<typeof planoSchema>, unknown, PlanoForm>({
+    resolver: zodResolver(planoSchema),
+    defaultValues: DEFAULT_CRIAR,
+  });
+
+  const editForm = useForm<z.input<typeof planoSchema>, unknown, PlanoForm>({
+    resolver: zodResolver(planoSchema),
+    defaultValues: DEFAULT_CRIAR,
+  });
+
+  const precoCriarVazio = isVazio(criarForm.watch("preco"));
+  const precoEditVazio = isVazio(editForm.watch("preco"));
 
   const load = async () => {
     setLoading(true);
@@ -64,43 +98,38 @@ export default function PlanosAdminPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleCriar = async () => {
-    if (!nome.trim() || !maxAlunos || preco === "") return;
+  const handleCriar = criarForm.handleSubmit(async (data) => {
     setSaving(true);
     try {
-      await adminApi.criarPlano(nome.trim(), tier, Number(maxAlunos), Number(preco), descricao.trim() || undefined);
-      setSuccess(`Plano "${nome}" criado.`);
+      await adminApi.criarPlano(data.nome, data.tier as TierPlano, data.maxAlunos, data.preco, data.descricao.trim() || undefined);
+      setSuccess(`Plano "${data.nome}" criado.`);
       setCriarOpen(false);
-      setNome(""); setTier("Basic"); setMaxAlunos(""); setPreco(""); setDescricao("");
+      criarForm.reset(DEFAULT_CRIAR);
       load();
     } catch (err) {
       setError(extractApiError(err, "Erro ao criar plano."));
     } finally {
       setSaving(false);
     }
-  };
+  });
 
   const openEdit = (p: PlanoPlataformaResponse) => {
     setEditPlano(p);
-    setEditNome(p.nome);
-    setEditTier(p.tier);
-    setEditMaxAlunos(String(p.maxAlunos));
-    setEditPreco(String(p.preco));
-    setEditDescricao(p.descricao ?? "");
+    editForm.reset({ nome: p.nome, tier: p.tier, maxAlunos: p.maxAlunos, preco: p.preco, descricao: p.descricao ?? "" });
   };
 
-  const handleEditar = async () => {
+  const handleEditar = editForm.handleSubmit(async (data) => {
     if (!editPlano) return;
     setSavingEdit(true);
     try {
       await adminApi.atualizarPlano(editPlano.planoId, {
-        nome: editNome.trim() || undefined,
-        tier: editTier,
-        maxAlunos: editMaxAlunos ? Number(editMaxAlunos) : undefined,
-        preco: editPreco !== "" ? Number(editPreco) : undefined,
-        descricao: editDescricao.trim() || null,
+        nome: data.nome,
+        tier: data.tier as TierPlano,
+        maxAlunos: data.maxAlunos,
+        preco: data.preco,
+        descricao: data.descricao.trim() || null,
       });
-      setSuccess(`Plano "${editNome}" atualizado.`);
+      setSuccess(`Plano "${data.nome}" atualizado.`);
       setEditPlano(null);
       load();
     } catch (err) {
@@ -108,7 +137,7 @@ export default function PlanosAdminPage() {
     } finally {
       setSavingEdit(false);
     }
-  };
+  });
 
   const handleExcluir = async () => {
     if (!confirmExcluir) return;
@@ -127,12 +156,14 @@ export default function PlanosAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Planos</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCriarOpen(true)}>
-          Novo plano
-        </Button>
-      </Box>
+      <PageHeader
+        title="Planos"
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCriarOpen(true)}>
+            Novo plano
+          </Button>
+        }
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -152,7 +183,7 @@ export default function PlanosAdminPage() {
               <Card variant="outlined">
                 <CardContent>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>{p.nome}</Typography>
+                    <Typography variant="h6">{p.nome}</Typography>
                     <Chip label={p.tier} size="small" variant="outlined" />
                   </Box>
                   <Typography variant="body2" color="text.secondary">Até {p.maxAlunos} alunos</Typography>
@@ -189,57 +220,48 @@ export default function PlanosAdminPage() {
         </Grid>
       )}
 
-      {/* Criar */}
-      <Dialog open={criarOpen} onClose={() => setCriarOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
+      <Dialog
+        open={criarOpen}
+        onClose={() => { setCriarOpen(false); criarForm.reset(DEFAULT_CRIAR); }}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}
+      >
         <DialogTitle>Novo plano</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} size="small" fullWidth required />
-            <TextField
-              select label="Tier" value={tier} onChange={(e) => setTier(e.target.value as TierPlano)}
-              size="small" fullWidth required
-            >
-              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value} disabled={o.disabled}>{o.label}</MenuItem>)}
-            </TextField>
-            <TextField label="Máximo de alunos" type="number" value={maxAlunos} onChange={(e) => setMaxAlunos(e.target.value)} size="small" fullWidth required slotProps={{ htmlInput: { min: 1 } }} />
-            <TextField label="Preço (R$)" type="number" value={preco} onChange={(e) => setPreco(e.target.value)} size="small" fullWidth required slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />
-            <TextField label="Descrição (funcionalidades)" value={descricao} onChange={(e) => setDescricao(e.target.value)} size="small" fullWidth multiline rows={2} placeholder="Ex: Basic + e-mail" />
+        <FormProvider {...criarForm}>
+          <Stack component="form" onSubmit={handleCriar} noValidate>
+            <DialogContent>
+              <PlanoFormFields />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => { setCriarOpen(false); criarForm.reset(DEFAULT_CRIAR); }}>Cancelar</Button>
+              <Button type="submit" variant="contained" disabled={saving || precoCriarVazio}>Criar</Button>
+            </DialogActions>
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCriarOpen(false)}>Cancelar</Button>
-          <Button variant="contained" disabled={!nome.trim() || !maxAlunos || preco === "" || saving} onClick={handleCriar}>
-            Criar
-          </Button>
-        </DialogActions>
+        </FormProvider>
       </Dialog>
 
-      {/* Editar */}
-      <Dialog open={!!editPlano} onClose={() => setEditPlano(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
+      <Dialog
+        open={!!editPlano}
+        onClose={() => { setEditPlano(null); editForm.reset(DEFAULT_CRIAR); }}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}
+      >
         <DialogTitle>Editar — {editPlano?.nome}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField label="Nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} size="small" fullWidth />
-            <TextField
-              select label="Tier" value={editTier} onChange={(e) => setEditTier(e.target.value as TierPlano)}
-              size="small" fullWidth
-            >
-              {TIER_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value} disabled={o.disabled}>{o.label}</MenuItem>)}
-            </TextField>
-            <TextField label="Máximo de alunos" type="number" value={editMaxAlunos} onChange={(e) => setEditMaxAlunos(e.target.value)} size="small" fullWidth slotProps={{ htmlInput: { min: 1 } }} />
-            <TextField label="Preço (R$)" type="number" value={editPreco} onChange={(e) => setEditPreco(e.target.value)} size="small" fullWidth slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />
-            <TextField label="Descrição (funcionalidades)" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={2} placeholder="Ex: Basic + e-mail" />
+        <FormProvider {...editForm}>
+          <Stack component="form" onSubmit={handleEditar} noValidate>
+            <DialogContent>
+              <PlanoFormFields />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => { setEditPlano(null); editForm.reset(DEFAULT_CRIAR); }}>Cancelar</Button>
+              <Button type="submit" variant="contained" disabled={savingEdit || precoEditVazio}>Salvar</Button>
+            </DialogActions>
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditPlano(null)}>Cancelar</Button>
-          <Button variant="contained" disabled={savingEdit} onClick={handleEditar}>
-            Salvar
-          </Button>
-        </DialogActions>
+        </FormProvider>
       </Dialog>
 
-      {/* Confirmar exclusão */}
       <ConfirmDialog
         open={!!confirmExcluir}
         title="Excluir plano"

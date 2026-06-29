@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Paper, Stack, Chip, Button,
-  CircularProgress, Alert, Divider,
+  CircularProgress, Divider,
 } from "@mui/material";
 import { pagamentoApi } from "@/lib/api/pagamento";
 import { extractApiError } from "@/lib/api/extractApiError";
@@ -11,6 +11,10 @@ import type { AssinaturaAlunoResponse, PagamentoResponse } from "@/types";
 import PagamentoPix from "@/components/pagamento/PagamentoPix";
 import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import PageHeader from "@/components/ui/PageHeader";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import AlertBanner from "@/components/ui/AlertBanner";
+import EmptyState from "@/components/ui/EmptyState";
 
 const statusColor: Record<string, "default" | "success" | "warning" | "error"> = {
   Ativa: "success",
@@ -85,12 +89,12 @@ export default function AssinaturaAlunoPage() {
     }
   };
 
-  if (loading) return <Box sx={{ p: { xs: 2, md: 4 } }}><CircularProgress /></Box>;
+  if (loading) return <LoadingSpinner fullPage />;
 
   if (!assinatura) {
     return (
       <Box sx={{ p: { xs: 2, md: 4 } }}>
-        <Alert severity="info">Você não possui assinatura ativa no momento.</Alert>
+        <EmptyState message="Você não possui assinatura ativa no momento." />
       </Box>
     );
   }
@@ -99,10 +103,10 @@ export default function AssinaturaAlunoPage() {
 
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 500 } }}>
-      <Typography variant="h5" sx={{ fontWeight: "bold", mb: 3 }}>Minha Assinatura</Typography>
+      <PageHeader title="Minha Assinatura" />
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {sucesso && <Alert severity="success" sx={{ mb: 2 }}>{sucesso}</Alert>}
+      <AlertBanner open={!!error} message={error} />
+      <AlertBanner open={!!sucesso} severity="success" message={sucesso} />
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={2}>
@@ -134,9 +138,7 @@ export default function AssinaturaAlunoPage() {
           {pagamentoPendente && !mostrarPix && (
             <>
               <Divider />
-              <Alert severity="warning" sx={{ py: 0.5 }}>
-                Há um pagamento pendente.
-              </Alert>
+              <AlertBanner open severity="warning" message="Há um pagamento pendente." />
               <Button variant="contained" onClick={() => setMostrarPix(true)}>
                 Pagar agora
               </Button>

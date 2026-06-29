@@ -25,7 +25,7 @@ export default function SocialProof({ testimonials, count }: SocialProofProps) {
           <Typography variant="overline" sx={{ color: "brand.label", fontWeight: 700, letterSpacing: "0.1em" }}>
             DEPOIMENTOS
           </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
+          <Typography variant="h4" sx={{ mt: 1 }}>
             O que dizem nossos treinadores
           </Typography>
           {count !== undefined && count > 0 && (

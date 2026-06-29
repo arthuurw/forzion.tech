@@ -87,6 +87,26 @@ const config = [
   },
 
   {
+    files: ["src/app/**/*.{ts,tsx}"],
+    ignores: ["src/app/**/*.test.{ts,tsx}", "src/app/**/__tests__/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@mui/material",
+              importNames: ["Alert"],
+              message:
+                "Use <AlertBanner> (@/components/ui/AlertBanner) — canal canônico de feedback de erro/sucesso. Alert cru só com eslint-disable + motivo (ex.: erro terminal de pagamento, disclaimer estático role=note).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
     ignores: [
       "node_modules/**",
       ".next/**",

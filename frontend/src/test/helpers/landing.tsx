@@ -12,7 +12,18 @@ export async function renderLanding(
     json: async () => planos,
   });
   const { default: LandingPage } = await import("@/app/page");
-  const jsx = await LandingPage();
+  render(LandingPage());
+}
+
+export async function renderPlanos(
+  planos: ReturnType<typeof buildPlano>[],
+): Promise<void> {
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => planos,
+  });
+  const { default: PlanosSlab } = await import("@/app/_landing/PlanosSlab");
+  const jsx = await PlanosSlab();
   render(jsx);
 }
 

@@ -351,7 +351,7 @@ export default function DetalheFichaPage() {
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>{ficha.nome}</Typography>
+          <Typography variant="h5">{ficha.nome}</Typography>
           <Chip label={OBJETIVO_LABEL[ficha.objetivo] ?? ficha.objetivo} size="small" sx={{ mt: 0.5 }} />
         </Box>
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>

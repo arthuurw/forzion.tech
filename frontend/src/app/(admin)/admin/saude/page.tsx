@@ -1,11 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  Box, Typography, Card, CardContent, Button, Stack, Switch,
-  FormControlLabel, TextField, Chip, Divider,
+  Box, Typography, Card, CardContent, Button, Stack, Chip, Divider,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import FormTextField from "@/components/forms/FormTextField";
+import FormSwitch from "@/components/forms/FormSwitch";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { adminApi } from "@/lib/api/admin";
 import type { HealthSnapshotResponse, StatusSaude } from "@/types";
@@ -24,75 +29,115 @@ function parseDestinatarios(texto: string): string[] {
     .filter((x) => x.length > 0);
 }
 
+const saudeSchema = z
+  .object({
+    ativo: z.boolean(),
+    hora: z.string().regex(/^\d{2}:\d{2}$/, "Horário inválido."),
+    destinatarios: z.string(),
+    incluirLiveness: z.boolean(),
+    incluirKpis: z.boolean(),
+    incluirEntregabilidade: z.boolean(),
+    incluirErros: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.ativo) return;
+    const emails = parseDestinatarios(data.destinatarios);
+    if (emails.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe ao menos um destinatário quando o envio está ativo.",
+        path: ["destinatarios"],
+      });
+      return;
+    }
+    for (const email of emails) {
+      if (!z.string().email().safeParse(email).success) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Informe e-mails válidos.",
+          path: ["destinatarios"],
+        });
+        return;
+      }
+    }
+  });
+type SaudeForm = z.infer<typeof saudeSchema>;
+
 export default function SaudeAdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  const [ativo, setAtivo] = useState(false);
-  const [hora, setHora] = useState("07:00");
-  const [destinatarios, setDestinatarios] = useState("");
-  const [incluirLiveness, setIncluirLiveness] = useState(true);
-  const [incluirKpis, setIncluirKpis] = useState(true);
-  const [incluirEntregabilidade, setIncluirEntregabilidade] = useState(true);
-  const [incluirErros, setIncluirErros] = useState(true);
   const [ultimoEnvioEm, setUltimoEnvioEm] = useState<string | null>(null);
-
   const [ultimoSnapshot, setUltimoSnapshot] = useState<HealthSnapshotResponse | null>(null);
   const [snapshotIndisponivel, setSnapshotIndisponivel] = useState(false);
 
-  const loadSnapshots = async () => {
+  const form = useForm<SaudeForm>({
+    resolver: zodResolver(saudeSchema),
+    defaultValues: {
+      ativo: false,
+      hora: "07:00",
+      destinatarios: "",
+      incluirLiveness: true,
+      incluirKpis: true,
+      incluirEntregabilidade: true,
+      incluirErros: true,
+    },
+  });
+
+  const carregarUltimoSnapshot = useCallback(async () => {
     try {
-      const res = await adminApi.listHealthSnapshots({ limite: 1 });
-      setUltimoSnapshot(res.data[0] ?? null);
+      const snap = await adminApi.listHealthSnapshots({ limite: 1 });
+      setUltimoSnapshot(snap.data[0] ?? null);
       setSnapshotIndisponivel(false);
     } catch {
-      // snapshot é informativo; falha não bloqueia a página — placeholder distingue de "sem dados"
       setSnapshotIndisponivel(true);
     }
-  };
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [res] = await Promise.all([adminApi.getHealthReportConfig(), loadSnapshots()]);
-      if (res.status !== 204 && res.data) {
-        const c = res.data;
-        setAtivo(c.ativo);
-        setHora(c.horaEnvioUtc.slice(0, 5));
-        setDestinatarios(c.destinatarios.join("\n"));
-        setIncluirLiveness(c.incluirLiveness);
-        setIncluirKpis(c.incluirKpis);
-        setIncluirEntregabilidade(c.incluirEntregabilidade);
-        setIncluirErros(c.incluirErros);
-        setUltimoEnvioEm(c.ultimoEnvioEm);
-      }
-    } catch (err) {
-      setError(extractApiError(err, "Erro ao carregar a configuração do relatório de saúde."));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSalvar = async () => {
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [res] = await Promise.all([
+          adminApi.getHealthReportConfig(),
+          carregarUltimoSnapshot(),
+        ]);
+        if (res.status !== 204 && res.data) {
+          const c = res.data;
+          form.reset({
+            ativo: c.ativo,
+            hora: c.horaEnvioUtc.slice(0, 5),
+            destinatarios: c.destinatarios.join("\n"),
+            incluirLiveness: c.incluirLiveness,
+            incluirKpis: c.incluirKpis,
+            incluirEntregabilidade: c.incluirEntregabilidade,
+            incluirErros: c.incluirErros,
+          });
+          setUltimoEnvioEm(c.ultimoEnvioEm);
+        }
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao carregar a configuração do relatório de saúde."));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [carregarUltimoSnapshot, form]);
+
+  const handleSalvar = form.handleSubmit(async (data) => {
     setSaving(true);
     setError("");
     try {
       const res = await adminApi.updateHealthReportConfig({
-        ativo,
-        horaEnvioUtc: `${hora}:00`,
-        destinatarios: parseDestinatarios(destinatarios),
-        incluirLiveness,
-        incluirKpis,
-        incluirEntregabilidade,
-        incluirErros,
+        ativo: data.ativo,
+        horaEnvioUtc: `${data.hora}:00`,
+        destinatarios: parseDestinatarios(data.destinatarios),
+        incluirLiveness: data.incluirLiveness,
+        incluirKpis: data.incluirKpis,
+        incluirEntregabilidade: data.incluirEntregabilidade,
+        incluirErros: data.incluirErros,
       });
       setUltimoEnvioEm(res.data.ultimoEnvioEm);
       setSuccess("Configuração salva.");
@@ -101,7 +146,7 @@ export default function SaudeAdminPage() {
     } finally {
       setSaving(false);
     }
-  };
+  });
 
   const handleEnviarAgora = async () => {
     setRunning(true);
@@ -109,7 +154,7 @@ export default function SaudeAdminPage() {
     try {
       await adminApi.runHealthReport();
       setSuccess("Relatório enviado e snapshot gerado.");
-      await loadSnapshots();
+      await carregarUltimoSnapshot();
     } catch (err) {
       setError(extractApiError(err, "Erro ao executar o relatório. Salve uma configuração antes de enviar."));
     } finally {
@@ -121,68 +166,57 @@ export default function SaudeAdminPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        Relatório de saúde
-      </Typography>
-
+      <PageHeader title="Relatório de saúde" />
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
-
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
-          <Stack spacing={2}>
-            <FormControlLabel
-              control={<Switch checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />}
-              label="Envio diário ativo"
-            />
-            <TextField
-              label="Hora de envio (UTC)"
-              type="time"
-              value={hora}
-              onChange={(e) => setHora(e.target.value)}
-              size="small"
-              sx={{ maxWidth: 200 }}
-            />
-            <TextField
-              label="Destinatários"
-              value={destinatarios}
-              onChange={(e) => setDestinatarios(e.target.value)}
-              size="small"
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Um e-mail por linha (ou separados por vírgula)"
-              helperText="Obrigatório ao menos um quando o envio está ativo."
-            />
-
-            <Divider />
-            <Typography variant="subtitle2" color="text.secondary">Seções do relatório</Typography>
-            <FormControlLabel control={<Switch checked={incluirLiveness} onChange={(e) => setIncluirLiveness(e.target.checked)} />} label="Infraestrutura (liveness)" />
-            <FormControlLabel control={<Switch checked={incluirKpis} onChange={(e) => setIncluirKpis(e.target.checked)} />} label="Indicadores (KPIs)" />
-            <FormControlLabel control={<Switch checked={incluirEntregabilidade} onChange={(e) => setIncluirEntregabilidade(e.target.checked)} />} label="Entregabilidade de e-mail" />
-            <FormControlLabel control={<Switch checked={incluirErros} onChange={(e) => setIncluirErros(e.target.checked)} />} label="Erros (24h)" />
-
-            {ultimoEnvioEm && (
-              <Typography variant="caption" color="text.secondary">
-                Último envio: {new Date(ultimoEnvioEm).toLocaleString("pt-BR")}
-              </Typography>
-            )}
-
-            <Stack direction="row" spacing={1}>
-              <Button variant="contained" disabled={saving} onClick={handleSalvar}>
-                Salvar
-              </Button>
-              <Button variant="outlined" startIcon={<SendIcon />} disabled={running} onClick={handleEnviarAgora}>
-                Enviar agora
-              </Button>
+          <FormProvider {...form}>
+            <Stack component="form" onSubmit={handleSalvar} noValidate spacing={2}>
+              <FormSwitch name="ativo" label="Envio diário ativo" />
+              <FormTextField
+                name="hora"
+                label="Hora de envio (UTC)"
+                type="time"
+                size="small"
+                sx={{ maxWidth: 200 }}
+              />
+              <FormTextField
+                name="destinatarios"
+                label="Destinatários"
+                size="small"
+                fullWidth
+                multiline
+                rows={3}
+                placeholder="Um e-mail por linha (ou separados por vírgula)"
+                helperText="Obrigatório ao menos um quando o envio está ativo."
+              />
+              <Divider />
+              <Typography variant="subtitle2" color="text.secondary">Seções do relatório</Typography>
+              <FormSwitch name="incluirLiveness" label="Infraestrutura (liveness)" />
+              <FormSwitch name="incluirKpis" label="Indicadores (KPIs)" />
+              <FormSwitch name="incluirEntregabilidade" label="Entregabilidade de e-mail" />
+              <FormSwitch name="incluirErros" label="Erros (24h)" />
+              {ultimoEnvioEm && (
+                <Typography variant="caption" color="text.secondary">
+                  Último envio: {new Date(ultimoEnvioEm).toLocaleString("pt-BR")}
+                </Typography>
+              )}
+              <Stack direction="row" spacing={1}>
+                <Button type="submit" variant="contained" disabled={saving}>
+                  Salvar
+                </Button>
+                <Button variant="outlined" startIcon={<SendIcon />} disabled={running} onClick={handleEnviarAgora}>
+                  Enviar agora
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
+          </FormProvider>
         </CardContent>
       </Card>
-
       <Card variant="outlined">
         <CardContent>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Último snapshot</Typography>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>Último snapshot</Typography>
           {ultimoSnapshot ? (
             <Stack spacing={0.5}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

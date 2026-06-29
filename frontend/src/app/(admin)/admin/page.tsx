@@ -33,6 +33,15 @@ const PLANO_COLUMNS: Column[] = [
   { label: "Treinadores" },
 ];
 
+function StatCard({ value, label, color }: { value: number; label: string; color: string }) {
+  return (
+    <Paper sx={{ p: 3, borderLeft: `4px solid ${color}`, borderRadius: 2 }}>
+      <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color }}>{value}</Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>{label}</Typography>
+    </Paper>
+  );
+}
+
 export default function DashboardAdminPage() {
   const theme = useTheme();
   const queryClient = useQueryClient();
@@ -169,10 +178,7 @@ export default function DashboardAdminPage() {
       </Typography>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 2, mt: 1, mb: 3 }}>
         {treinadorStats.map((s) => (
-          <Paper key={s.name} sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}>
-            <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>{s.name}</Typography>
-          </Paper>
+          <StatCard key={s.name} value={s.value} label={s.name} color={s.color} />
         ))}
       </Box>
 
@@ -182,10 +188,7 @@ export default function DashboardAdminPage() {
       </Typography>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 2, mt: 1, mb: 4 }}>
         {alunoStats.map((s) => (
-          <Paper key={s.name} sx={{ p: 3, borderLeft: `4px solid ${s.color}`, borderRadius: 2 }}>
-            <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>{s.name}</Typography>
-          </Paper>
+          <StatCard key={s.name} value={s.value} label={s.name} color={s.color} />
         ))}
       </Box>
 
@@ -302,18 +305,9 @@ export default function DashboardAdminPage() {
         <Box>
           {/* Platform counters */}
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 2, mb: 3 }}>
-            <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.info.main}`, borderRadius: 2 }}>
-              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "info.main" }}>{planos.length}</Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Planos</Typography>
-            </Paper>
-            <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.success.main}`, borderRadius: 2 }}>
-              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "success.main" }}>{totalExercicios}</Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Exercícios Globais</Typography>
-            </Paper>
-            <Paper sx={{ p: 3, borderLeft: `4px solid ${theme.palette.error.main}`, borderRadius: 2 }}>
-              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1, color: "error.main" }}>{totalGrupos}</Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Grupos Musculares</Typography>
-            </Paper>
+            <StatCard value={planos.length} label="Planos" color={theme.palette.info.main} />
+            <StatCard value={totalExercicios} label="Exercícios Globais" color={theme.palette.success.main} />
+            <StatCard value={totalGrupos} label="Grupos Musculares" color={theme.palette.error.main} />
           </Box>
 
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.5fr 1fr" }, gap: 2 }}>

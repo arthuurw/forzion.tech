@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Box, Typography, Button, CircularProgress, Stack } from "@mui/material";
+import { Box, Typography, Button, Stack } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import Link from "next/link";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export default function OnboardingRetornoPage() {
   const [loading, setLoading] = useState(true);
@@ -17,13 +18,7 @@ export default function OnboardingRetornoPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <Box sx={{ p: 4, display: "flex", justifyContent: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 480, mx: "auto", textAlign: "center" }}>
@@ -31,7 +26,7 @@ export default function OnboardingRetornoPage() {
         {completo ? (
           <>
             <CheckCircleIcon color="success" sx={{ fontSize: 64 }} />
-            <Typography variant="h5" sx={{ fontWeight: "bold" }}>Cadastro concluído!</Typography>
+            <Typography variant="h5">Cadastro concluído!</Typography>
             <Typography variant="body2" color="text.secondary">
               Sua conta Stripe está ativa. Você já pode receber pagamentos dos alunos.
             </Typography>
@@ -39,7 +34,7 @@ export default function OnboardingRetornoPage() {
         ) : (
           <>
             <ErrorIcon color="warning" sx={{ fontSize: 64 }} />
-            <Typography variant="h5" sx={{ fontWeight: "bold" }}>Cadastro incompleto</Typography>
+            <Typography variant="h5">Cadastro incompleto</Typography>
             <Typography variant="body2" color="text.secondary">
               Seu cadastro na Stripe ainda não foi concluído. Volte à página de recebimentos para continuar.
             </Typography>

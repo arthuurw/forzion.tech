@@ -5,11 +5,12 @@ import {
   Box, Typography, Card, CardContent, Stack, IconButton, Chip,
   Tab, Tabs, Tooltip, Button,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoIcon from "@mui/icons-material/Info";
 import StatusChip from "@/components/ui/StatusChip";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import EmptyState from "@/components/ui/EmptyState";
 import DataList from "@/components/ui/DataList";
 import InfoLine from "@/components/ui/InfoLine";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -143,22 +144,12 @@ export default function DetalheTreinadorAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-        <IconButton onClick={() => router.push("/admin/treinadores")} aria-label="Voltar">
-          <ArrowBackIcon />
-        </IconButton>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            {treinador?.nome ?? "Treinador"}
-          </Typography>
-          {treinador && (
-            <Typography variant="caption" color="text.secondary">
-              Cadastro: {new Date(treinador.createdAt).toLocaleDateString("pt-BR")}
-            </Typography>
-          )}
-        </Box>
-        {treinador && <StatusChip status={treinador.status} />}
-      </Box>
+      <PageHeader
+        title={treinador?.nome ?? "Treinador"}
+        subtitle={treinador ? `Cadastro: ${new Date(treinador.createdAt).toLocaleDateString("pt-BR")}` : undefined}
+        backHref="/admin/treinadores"
+        action={treinador ? <StatusChip status={treinador.status} /> : undefined}
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
@@ -274,11 +265,7 @@ export default function DetalheTreinadorAdminPage() {
         pacotesLoading ? (
           <LoadingSpinner />
         ) : pacotes.length === 0 ? (
-          <Card variant="outlined">
-            <CardContent sx={{ textAlign: "center", py: 3 }}>
-              <Typography color="text.secondary">Nenhum pacote cadastrado.</Typography>
-            </CardContent>
-          </Card>
+          <EmptyState message="Nenhum pacote cadastrado." />
         ) : (
           <DataList
             loading={false}
@@ -311,7 +298,7 @@ export default function DetalheTreinadorAdminPage() {
       {tab === 4 && (
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 2 }}>
               Ações LGPD
             </Typography>
             <Stack spacing={1.5}>

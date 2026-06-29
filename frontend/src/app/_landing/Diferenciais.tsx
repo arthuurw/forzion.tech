@@ -1,7 +1,6 @@
 import { Box, Container, Typography, Grid } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import SectionEyebrow from "./SectionEyebrow";
 
 const ROWS = [
   {
@@ -28,11 +27,10 @@ const ROWS = [
 
 export default function Diferenciais() {
   return (
-    <Box sx={{ bgcolor: "background.paper", py: { xs: 8, md: 12 } }}>
+    <Box sx={{ bgcolor: "background.paper", py: { xs: 6, md: 8 } }}>
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: 8 }}>
-          <SectionEyebrow label="DIFERENCIAIS" variant="light" />
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 2 }}>
+          <Typography variant="h4">
             O que nos diferencia
           </Typography>
         </Box>

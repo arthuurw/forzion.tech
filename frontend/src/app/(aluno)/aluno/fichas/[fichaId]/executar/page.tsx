@@ -182,7 +182,7 @@ export default function ExecutarFichaPage() {
           <CheckIcon sx={{ color: "white", fontSize: 44 }} />
         </Box>
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5">
             {savedOffline ? "Sessão salva no aparelho" : "Sessão registrada"}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -229,7 +229,7 @@ export default function ExecutarFichaPage() {
       {showRestore && (
         <Card variant="outlined" sx={{ mb: 3, borderColor: "warning.main", borderWidth: 2 }} role="alert">
           <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               Treino em andamento encontrado
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -258,7 +258,7 @@ export default function ExecutarFichaPage() {
               <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.12) }}>
                 <FitnessCenterIcon sx={{ color: "primary.main", fontSize: 28 }} />
               </Box>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>{current.nomeExercicio}</Typography>
+              <Typography variant="h5">{current.nomeExercicio}</Typography>
             </Box>
 
             {/* Trainer note */}
@@ -271,8 +271,8 @@ export default function ExecutarFichaPage() {
                   border: "1px solid", borderColor: "primary.main",
                 }}
               >
-                <InfoOutlinedIcon sx={{ fontSize: 16, color: "#1A1A1A", mt: "1px", flexShrink: 0 }} />
-                <Typography variant="body2" sx={{ color: "#1A1A1A", fontStyle: "italic", lineHeight: 1.5 }}>
+                <InfoOutlinedIcon sx={{ fontSize: 16, color: "primary.contrastText", mt: "1px", flexShrink: 0 }} />
+                <Typography variant="body2" sx={{ color: "primary.contrastText", fontStyle: "italic", lineHeight: 1.5 }}>
                   {current.observacao}
                 </Typography>
               </Box>

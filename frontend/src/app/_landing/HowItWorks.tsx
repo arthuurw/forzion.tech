@@ -1,5 +1,4 @@
 import { Box, Container, Typography, Grid } from "@mui/material";
-import SectionEyebrow from "./SectionEyebrow";
 import StepMockup, { type StepVariant } from "./StepMockup";
 
 const STEPS: { step: string; title: string; description: string; variant: StepVariant }[] = [
@@ -28,11 +27,10 @@ const STEPS: { step: string; title: string; description: string; variant: StepVa
 
 export default function HowItWorks() {
   return (
-    <Box sx={{ bgcolor: "background.default", py: { xs: 8, md: 12 } }}>
+    <Box sx={{ bgcolor: "background.default", py: { xs: 6, md: 8 } }}>
       <Container maxWidth="lg">
         <Box sx={{ textAlign: "center", mb: 8 }}>
-          <SectionEyebrow label="COMO FUNCIONA" variant="light" />
-          <Typography variant="h4" sx={{ fontWeight: 700, mt: 2 }}>
+          <Typography variant="h4">
             Uma estrutura pensada para o dia a dia
           </Typography>
         </Box>
@@ -75,7 +73,7 @@ export default function HowItWorks() {
                 >
                   {step}
                 </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, mt: 1, mb: 2 }}>
+                <Typography variant="h5" sx={{ mt: 1, mb: 2 }}>
                   {title}
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>

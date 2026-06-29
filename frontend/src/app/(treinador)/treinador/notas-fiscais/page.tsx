@@ -7,6 +7,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import PageHeader from "@/components/ui/PageHeader";
 import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import {
   nfseApi, type NotaFiscalResumo,
@@ -58,18 +59,20 @@ export default function NotasFiscaisTreinadorPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Notas fiscais</Typography>
-        <Button
-          component={Link}
-          href="/treinador/dados-fiscais"
-          variant="outlined"
-          size="small"
-          startIcon={<SettingsIcon />}
-        >
-          Dados fiscais
-        </Button>
-      </Box>
+      <PageHeader
+        title="Notas fiscais"
+        action={
+          <Button
+            component={Link}
+            href="/treinador/dados-fiscais"
+            variant="outlined"
+            size="small"
+            startIcon={<SettingsIcon />}
+          >
+            Dados fiscais
+          </Button>
+        }
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 

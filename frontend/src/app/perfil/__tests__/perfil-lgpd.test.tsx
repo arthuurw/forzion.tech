@@ -153,8 +153,9 @@ describe("/perfil LGPD section", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toBeInTheDocument();
 
-    // Fill senha within the dialog specifically (label repeats outside)
-    const senhaInput = within(dialog).getByLabelText(/senha/i);
+    // Fill senha within the dialog specifically (label repeats outside);
+    // ^senha$ evita casar com o aria-label "Mostrar senha" do toggle do PasswordField
+    const senhaInput = within(dialog).getByLabelText(/^senha$/i);
     fireEvent.change(senhaInput, { target: { value: "minha-senha-123" } });
 
     const confirmBtn = within(dialog).getByRole("button", { name: /excluir conta/i });

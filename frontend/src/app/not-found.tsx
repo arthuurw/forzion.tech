@@ -16,7 +16,7 @@ export default function NotFound() {
       }}
     >
       <SearchOffIcon sx={{ fontSize: 64, color: "text.disabled" }} />
-      <Typography variant="h4" sx={{ fontWeight: 700 }}>
+      <Typography variant="h4">
         404
       </Typography>
       <Typography variant="h6" color="text.secondary">

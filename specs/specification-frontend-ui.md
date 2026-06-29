@@ -21,9 +21,10 @@ Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` ap
 | `text.primary` | `#111827` | 17.7:1 em #FFF / 16.7:1 em #F7F8FA (AA) |
 | `text.secondary` | `#4B5563` | gray-600; 7.6:1 em #FFF / 7.1:1 em #F7F8FA (AA) — F18 resolvido (era #6B7280 ≈4.6:1 em #F7F8FA) |
 | `divider` | `rgba(0,0,0,0.08)` | (MuiDivider override → `rgba(0,0,0,0.07)`) |
-| `brand.label` | `#7a6300` | **LEGADO** — era overline accent dos labels de seção da landing; substituído por `SectionEyebrow` (ver §LANDING). Sobrevive só em `SocialProof` (renderiza null no beta). Chave custom via module augmentation; não hardcodar. |
+| `brand.label` | `#7a6300` | **LEGADO sem uso visual** — era overline accent dos labels de seção da landing; as eyebrows (`SectionEyebrow`) foram removidas em 2026-06-28 (ver §LANDING). Chave custom sobrevive via module augmentation; não hardcodar. |
+| `action.subtleBg` | `alpha("#1A1A1A",0.06)` = `rgba(26,26,26,0.06)` | fundo sutil de ícone/avatar quadrado (perfil, seguranca). Token nomeado via augmentation de `TypeAction` — `bgcolor:"action.subtleBg"` no `sx`. NÃO hardcodar o literal (FPAD-12). |
 
-NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip herdam paleta MUI default desses severities.
+NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip herdam paleta MUI default desses severities. Cor/sombra em `sx` SEMPRE via token do tema, nunca literal: `#1A1A1A`→`secondary.main`, texto sobre amarelo→`primary.contrastText`, `#fff`→`background.paper`, fundo sutil→`action.subtleBg` (FPAD-12; literais residuais só em CSS puro `globals.css`, OG image e `contentStyle` do recharts, que não acessam o tema).
 
 ### Tipografia
 - `fontFamily`: `'Inter', 'Roboto', sans-serif`. Inter via Google Fonts (pesos 400/500/600/700, `display: swap` — ver [specification-frontend]).
@@ -53,10 +54,7 @@ Identidade = **preto / amarelo / branco / cinza**. Regras p/ manter o padrão em
 
 - **Ritmo de slabs pretos**: APENAS Hero e Planos usam `secondary.main` (#1A1A1A) como fundo de seção. As demais (`HowItWorks`, `Diferenciais`, `Faq`) ficam claras (`background.default`/`paper`). NUNCA colocar dois slabs pretos adjacentes — vira massa preta (testado: `Diferenciais` preto colado a `Planos` foi revertido). `SocialProof` renderiza null no beta, então Hero é visualmente adjacente a `HowItWorks` — por isso `HowItWorks` NÃO pode ser preto.
 - **Amarelo (`primary.main` #F5C400) só passa AA sobre superfície escura** (mesma origem do `brand.label` F18). Em fundo claro, amarelo só como: (a) fundo de pill ESCURA com texto amarelo, ou (b) detalhe gráfico NÃO-semântico (ex. nº de step). Texto/ícone semântico em fundo claro = `secondary.main` (preto) ou `text.*` — nunca amarelo.
-- **`SectionEyebrow`** (`src/app/_landing/SectionEyebrow.tsx`): rótulo de seção em pill (dot 7px + label uppercase amarelo), espelha o badge do Hero. Substitui os overlines olive `brand.label`. Prop `variant` = cor do FUNDO da seção onde vive:
-  - `light` (seção clara): pill `bgcolor: secondary.main` (preto sólido) + texto/dot amarelo → amarelo sobre preto passa AA.
-  - `dark` (seção escura, ex. Hero, Planos): pill `bgcolor: rgba(245,196,0,0.08)` + borda `rgba(245,196,0,0.3)` + texto amarelo (recipe do Hero badge).
-  Usado em `HowItWorks`/`Diferenciais`/`Faq` (`light`) e `Planos` (`dark`, slab preto). NÃO está em `components/ui/` (é landing-local).
+- **Eyebrows de seção REMOVIDAS** (decisão 2026-06-28): o componente `SectionEyebrow` e o badge do Hero ("SOFTWARE DE GESTÃO PARA PERSONAL TRAINERS") foram retirados da landing; `_landing/SectionEyebrow.tsx` DELETADO. Seções vão direto ao título (`HowItWorks`/`Diferenciais`/`Faq` no `h4`; `Planos` no `h4`; Hero no `h1`), sem pill uppercase amarela e sem `mt` de ancoragem. `py` dos slabs reduzido: `HowItWorks`/`Diferenciais`/`Faq`/`Planos` = `{xs:6,md:8}`; Hero mantém `{xs:10,md:16}`. HISTÓRICO (se reintroduzir rótulo de seção): a eyebrow era pill (dot 7px + label uppercase amarelo, `light`=pill preta/`dark`=pill `rgba(245,196,0,0.08)`) que substituía os overlines olive `brand.label`; amarelo como texto só passa AA sobre fundo ESCURO (ver bullet acima).
 - **`Diferenciais`** (claro): check da coluna Forzion = `secondary.main` (preto) — NÃO verde `success.main` (fora da paleta + amarelo falharia contraste em fundo claro); X genéricas = `text.disabled`; header "Forzion" = `secondary.main`.
 
 ## INVENTÁRIO DE COMPONENTES UI (`src/components/ui/*`)
@@ -64,6 +62,7 @@ Story = `*.stories.tsx`. A11y test (vitest-axe dedicado) = `*.a11y.test.tsx`. Co
 
 | Componente | Propósito | Props-chave | Story? | a11y test? |
 |---|---|---|---|---|
+| `PageHeader` | cabeçalho de página canônico (título + subtítulo + ação + voltar) | `title`, `subtitle?`, `action?`(ReactNode, slot à direita), `as?`(`h1`\|`h2`, def `h1`), `backHref?`(→ "Voltar" `outlined`) | ✅ | ✅ vitest-axe |
 | `AlertBanner` | alerta inline colapsável | `open`, `severity`(error\|warning\|info\|success, def error), `title?`, `message`, `onClose?` | ✅ | ✅ vitest-axe (4 severities + sem title + close) |
 | `StatusChip` | chip de status domínio | `status`(AlunoStatus\|TreinadorStatus\|VinculoStatus), `size`(small def) | ✅ | ✅ vitest-axe (rotulado: `aria-label="Status: ${label}"`) |
 | `EmptyState` | estado vazio + CTA | `message`, `actionLabel?`, `onAction?` | ✅ | ✅ vitest-axe |
@@ -86,7 +85,8 @@ Integração react-hook-form via `Controller` + `useFormContext` (RHF context ob
 | Componente | Propósito | Props-chave | Story? | a11y test? |
 |---|---|---|---|---|
 | `FormTextField` | TextField controlado | `name` + `...TextFieldProps`; `error`/`helperText` ← `fieldState.error.message` | ❌ | ❌ |
-| `FormSelect` | Select controlado | `name`, `label`, `options[]`(value/label), `required?`; `InputLabel id={name}-label` linkado | ❌ | ❌ |
+| `FormSelect` | Select controlado | `name`, `label`, `options[]`(value/label/`disabled?`), `required?`; `InputLabel id={name}-label` linkado | ❌ | ❌ |
+| `FormSwitch` | Switch booleano controlado | `name`, `label`; `FormControlLabel` + `Switch checked={field.value}` | ❌ | ❌ |
 | `PasswordField` | senha + toggle visibilidade | `name` + `...TextFieldProps` (sem `type`); IconButton `aria-label` "Mostrar/Ocultar senha" | ❌ | ❌ |
 
 NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/forms/FormTextField`). NENHUM form component tem story nem a11y test dedicado (gap — ver §GOVERNANCE).
@@ -99,6 +99,29 @@ NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/form
 - **Imports**: NÃO há barrel (`ui/index.ts`/`forms/index.ts` inexistentes); sempre path direto.
 - **Canal de erro canônico**: `AlertBanner` (inline) alimentado por `extractApiError` é o canal de feedback de erro — o `SnackbarProvider`/`useSnackbar` (toast global genérico) foi removido. Padrão e regra "`return null` em falha de load = BANIDO" em [specification-frontend] §TRATAMENTO DE ERRO.
 - **Componentes de domínio (não-`ui/`)**: `components/aluno/AlunoInadimplenteBanner.tsx` (banner persistente `role=alert`); `components/aluno/AlunoInadimplenteGate.tsx` (wrapper client-side: fetch on-mount de `obterMinhaAssinatura`, renderiza o banner quando status `Inadimplente`, falha silenciosa); `components/treinador/ProgressaoAluno.tsx` (gráficos recharts de progressão por exercício, props `alunoId`, seletor de período 7d/30d/60d/90d/6m/1a/tudo).
+
+## RÉGUA DE HEADER, BOTÕES, ESTADOS E FORMS (padronização — FPAD)
+Convenções estabilizadas na feature `frontend-padronizacao` (auditoria 2026-06-28). AD-005/006.
+
+### Cabeçalho de página → `<PageHeader>` (FPAD-07/08)
+- Todo cabeçalho de PÁGINA usa `<PageHeader>` — NÃO replicar `Typography`+`fontWeight` à mão. Renderiza `Typography variant="h5" component={as}` SEM override de `fontWeight` (o tema entrega `h5`=600). `as` default `h1` (um `h1` por página); `as="h2"` para subpágina sob um `h1` existente.
+- `action` = slot à direita (CTA da página, ex. "Novo plano"). `backHref` = botão "Voltar" `variant="outlined"` com `ArrowBackIcon`.
+- INVARIANTE: zero `fontWeight: 700`/`"bold"` inline em TÍTULO de página/seção (cabeçalho `h4`–`h6`) em `src/app` (FPAD-07.4). Título de Card/seção interna mantém só `variant`; PageHeader é para cabeçalho de página, não todo `Typography`. NÃO é alvo (e permanece com peso): ênfase em VALOR/número (stat `h3`/`h4` 800, preço/dificuldade `body2` 700) e grafismo de landing (`_landing/*`, `SectionEyebrow`) — não são títulos.
+
+### Régua de botões (FPAD-15 — documentada, SEM lint; decisão usuário 2026-06-28)
+- **Ação primária de página** (criar/novo/salvar principal): `variant="contained"`, tamanho default (não `small`).
+- **Secundária / navegação**: `outlined` ou `text`.
+- **Ação destrutiva FORA de `ConfirmDialog`** (ex. `perfil` excluir conta): `variant="outlined" color="error"` (FPAD-11) — `contained error` só dentro do fluxo de confirmação.
+- `size="small"`/`outlined` em botão de **card ou navegação** NÃO viola a régua (a régua ancora a ação primária de PÁGINA). Por isso NÃO há regra de lint para botões: um seletor `size=small`+`contained` dispararia falso-positivo nesses botões legítimos. Enforcement = review humano + esta régua. NÃO criar wrapper `<AppButton>` (evita over-abstraction; 44% da dívida tipográfica era header, não botão).
+
+### Estados crus → wrappers + lint (FPAD-09)
+- Loading/erro/vazio usam `<LoadingSpinner>`/`<AlertBanner>`/`<EmptyState>`; exclusão via `<ConfirmDialog>`.
+- Guard de lint (`eslint.config.mjs`, `no-restricted-imports` escopado a `src/app/**`, exclui `*.test`/`__tests__`): barra import de **`Alert`** cru de `@mui/material` → aponta `AlertBanner`. Exceção: 3 erros TERMINAIS de pagamento (`PagamentoCartao`/`PagamentoPix`/`PagamentoSignup`) mantêm `Alert` cru com `eslint-disable` + motivo (erro terminal não-dismissível ≠ AlertBanner colapsável).
+- **Só `Alert` é barrado por lint** (revisão de FPAD-09.4, que previa também `CircularProgress`/`Dialog`). Motivo (mesma classe de falso-positivo da régua de botões): `no-restricted-imports` barra o IMPORT, não distingue o uso legítimo — `CircularProgress` é permitido como loading INLINE de botão/campo (FPAD-09.1, ~14 usos legítimos) e `Dialog` cru é a base de TODO form-dialog (admin/treinador create-edit) e do próprio `ConfirmDialog`, sem wrapper alternativo. Barrar o import exigiria ~14+ `eslint-disable`, virando ruído. ENFORCEMENT: loading/vazio de PÁGINA usa `LoadingSpinner`/`EmptyState`; `CircularProgress` standalone de página é violação pega em REVIEW (não lint); `Dialog` de exclusão → `ConfirmDialog`. `Alert` foi barrado porque tem drop-in limpo (`AlertBanner`) e zero exceção de uso além das 3 terminais.
+
+### Forms via RHF + Zod (FPAD-10/13)
+- Dialogs CRUD admin (`grupos-musculares`/`planos`/`exercicios`), config de relatório de saúde (`saude`) e troca de senha do `perfil` usam **react-hook-form + Zod** (`zodResolver`), com schema Zod co-locado no módulo da página, `<FormProvider>` + `<Stack component="form" onSubmit={form.handleSubmit(...)} noValidate>`.
+- Campos via primitivos: `FormTextField` (texto/número), `FormSelect` (select rotulado; `options[].disabled?` p/ opção desabilitada — ex. `tier` Elite), `FormSwitch` (booleano), `PasswordField` (senha+toggle). Só validação imperativa fora do schema usa `Controller` cru (ex. `videoUrl`, checado por `watch` + botão `disabled`). Número com `z.coerce.number()` ⇒ tipar `useForm<z.input<S>, unknown, z.output<S>>` (input fica `unknown`); campo numérico opcionalmente obrigatório (ex. `preco`, onde vazio coage a 0) guarda o submit com `watch` + `disabled` pois `.min(0)` aceita 0.
 
 ## LINGUAGEM NEUTRA DE GÊNERO (copy user-facing)
 Toda copy nova nasce neutra. Origem: feature `texto-unissex` (sweep 2026-06-16). Aplica a JSX/strings de UI (sem lib i18n — copy hardcoded inline), títulos/corpo de e-mail (`Notifications/Email/**`) e corpo de template WhatsApp (`.specs/features/texto-unissex/WHATSAPP-COPY.md`). Estilo = **híbrido neutro**: reescrever pra neutro onde for natural; `(a)`/`(as)` só último recurso, nunca empilhado.

@@ -3,13 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import {
-  Box, Typography, Card, CardContent, Stack, IconButton, Chip,
+  Box, Typography, Card, CardContent, Stack, Chip,
   Tab, Tabs, ToggleButtonGroup, ToggleButton, Grid, Skeleton, Button,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import StatusChip from "@/components/ui/StatusChip";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import EmptyState from "@/components/ui/EmptyState";
 import DataList from "@/components/ui/DataList";
 import InfoLine from "@/components/ui/InfoLine";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -168,15 +169,11 @@ export default function DetalheAlunoAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-        <IconButton onClick={() => router.push("/admin/alunos")} aria-label="Voltar">
-          <ArrowBackIcon />
-        </IconButton>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>{aluno?.nome ?? "Aluno"}</Typography>
-        </Box>
-        {aluno && <StatusChip status={aluno.status} />}
-      </Box>
+      <PageHeader
+        title={aluno?.nome ?? "Aluno"}
+        backHref="/admin/alunos"
+        action={aluno ? <StatusChip status={aluno.status} /> : undefined}
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
@@ -343,11 +340,7 @@ export default function DetalheAlunoAdminPage() {
               ))}
             </Grid>
           ) : exercicios.length === 0 ? (
-            <Card variant="outlined">
-              <CardContent sx={{ textAlign: "center", py: 3 }}>
-                <Typography color="text.secondary">Nenhuma execução registrada no período.</Typography>
-              </CardContent>
-            </Card>
+            <EmptyState message="Nenhuma execução registrada no período." />
           ) : (
             <Grid container spacing={2}>
               {exercicios.map((ex) => {
@@ -390,7 +383,7 @@ export default function DetalheAlunoAdminPage() {
       {tab === 4 && (
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 2 }}>
               Ações LGPD
             </Typography>
             <Stack spacing={1.5}>

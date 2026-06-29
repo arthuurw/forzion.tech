@@ -9,6 +9,7 @@ import DevicesIcon from "@mui/icons-material/Devices";
 import { QRCodeSVG } from "qrcode.react";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import PageHeader from "@/components/ui/PageHeader";
 import StepUpDialog from "@/components/seguranca/StepUpDialog";
 import RecoveryCodesPanel from "@/components/seguranca/RecoveryCodesPanel";
 import { mfaApi, type MfaStatus, type IniciarTotpResult } from "@/lib/api/mfa";
@@ -103,12 +104,10 @@ export default function SegurancaPage() {
 
   return (
     <Box sx={{ maxWidth: { xs: "100%", md: 580 } }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>Segurança</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Autenticação de dois fatores e dispositivos confiáveis
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Segurança"
+        subtitle="Autenticação de dois fatores e dispositivos confiáveis"
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -116,10 +115,10 @@ export default function SegurancaPage() {
       <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ShieldIcon fontSize="small" sx={{ color: "text.secondary" }} />
             </Box>
-            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>Autenticação de dois fatores</Typography>
+            <Typography variant="subtitle1" component="h2">Autenticação de dois fatores</Typography>
             <Chip
               label={habilitado ? "Ativo" : "Inativo"}
               size="small"
@@ -167,10 +166,10 @@ export default function SegurancaPage() {
         <Card sx={{ border: "1px solid", borderColor: "divider" }}>
           <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <DevicesIcon fontSize="small" sx={{ color: "text.secondary" }} />
               </Box>
-              <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>Dispositivos confiáveis</Typography>
+              <Typography variant="subtitle1" component="h2">Dispositivos confiáveis</Typography>
             </Box>
             {status && status.dispositivos.length > 0 ? (
               <List disablePadding>
@@ -202,7 +201,7 @@ export default function SegurancaPage() {
               ou insira a chave manualmente. Depois, digite o código gerado.
             </Typography>
             {enroll && (
-              <Box sx={{ display: "flex", justifyContent: "center", p: 2, bgcolor: "#fff", borderRadius: 2 }}>
+              <Box sx={{ display: "flex", justifyContent: "center", p: 2, bgcolor: "background.paper", borderRadius: 2 }}>
                 <QRCodeSVG value={enroll.otpauthUri} size={180} aria-label="QR code para configurar o autenticador" />
               </Box>
             )}
