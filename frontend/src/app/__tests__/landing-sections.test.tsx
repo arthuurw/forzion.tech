@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { buildPlano } from "@/test/factories/plano";
-import { renderLanding, setupLandingTest } from "@/test/helpers/landing";
+import { renderLanding, renderPlanos, setupLandingTest } from "@/test/helpers/landing";
 
 setupLandingTest();
 
@@ -41,14 +41,14 @@ describe("LandingPage — seções montadas", () => {
 
 describe("LandingPage — descrição do plano (fonte: seed)", () => {
   it("renderiza a descrição completa vinda do plano", async () => {
-    await renderLanding([
+    await renderPlanos([
       buildPlano({ tier: "Pro", nome: "Pro", preco: 100, descricao: "Tudo do Basic + notificações por e-mail." }),
     ]);
     expect(screen.getByText("Tudo do Basic + notificações por e-mail.")).toBeInTheDocument();
   }, 20000);
 
   it("plano inativo exibe selo 'Em breve' e mantém a descrição", async () => {
-    await renderLanding([
+    await renderPlanos([
       buildPlano({ tier: "Elite", nome: "Elite", preco: 500, isAtivo: false, descricao: "O plano mais completo: tudo do Pro Plus somado a IA." }),
     ]);
     expect(screen.getByText("Em breve")).toBeInTheDocument();
@@ -56,14 +56,14 @@ describe("LandingPage — descrição do plano (fonte: seed)", () => {
   }, 20000);
 
   it("plano ativo não exibe 'Em breve'", async () => {
-    await renderLanding([buildPlano({ tier: "Pro", nome: "Pro", preco: 100, isAtivo: true })]);
+    await renderPlanos([buildPlano({ tier: "Pro", nome: "Pro", preco: 100, isAtivo: true })]);
     expect(screen.queryByText("Em breve")).not.toBeInTheDocument();
   }, 20000);
 });
 
 describe("LandingPage — dedupe cancelamento R8", () => {
   it("aviso CDC aparece exatamente uma vez para múltiplos planos pagos", async () => {
-    await renderLanding([
+    await renderPlanos([
       buildPlano({ tier: "Basic", nome: "Basic", preco: 50 }),
       buildPlano({ tier: "Pro", nome: "Pro", preco: 100 }),
     ]);
@@ -72,7 +72,7 @@ describe("LandingPage — dedupe cancelamento R8", () => {
   }, 20000);
 
   it("aviso CDC não renderiza quando todos os planos são gratuitos", async () => {
-    await renderLanding([buildPlano({ tier: "Free", nome: "Free", preco: 0 })]);
+    await renderPlanos([buildPlano({ tier: "Free", nome: "Free", preco: 0 })]);
     expect(screen.queryByText(/Cobrança mensal recorrente/)).not.toBeInTheDocument();
   }, 20000);
 });

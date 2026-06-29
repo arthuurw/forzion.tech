@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { buildPlano } from "@/test/factories/plano";
-import { renderLanding, setupLandingTest } from "@/test/helpers/landing";
+import { renderPlanos, setupLandingTest } from "@/test/helpers/landing";
 
 setupLandingTest();
 
@@ -10,13 +10,13 @@ describe("LandingPage — plano inativo", () => {
   // exceed the 5s default under parallel load — give this one an explicit timeout.
   it("exibe badge 'Em breve' para plano inativo", async () => {
     const inativo = buildPlano({ tier: "Elite", nome: "Elite", isAtivo: false });
-    await renderLanding([inativo]);
+    await renderPlanos([inativo]);
     expect(screen.getByText("Em breve")).toBeInTheDocument();
   }, 20000);
 
   it("plano inativo NÃO está envolto em link para /cadastro/treinador", async () => {
     const inativo = buildPlano({ tier: "Elite", nome: "Elite", isAtivo: false });
-    await renderLanding([inativo]);
+    await renderPlanos([inativo]);
 
     const badge = screen.getByText("Em breve");
     let node: HTMLElement | null = badge;
@@ -32,7 +32,7 @@ describe("LandingPage — plano inativo", () => {
 
   it("plano ativo continua com link para /cadastro/treinador", async () => {
     const pro = buildPlano({ tier: "Pro", nome: "Pro", isAtivo: true });
-    await renderLanding([pro]);
+    await renderPlanos([pro]);
     const proText = screen.getByText("Pro");
     let found = false;
     let node: HTMLElement | null = proText;
@@ -49,7 +49,7 @@ describe("LandingPage — plano inativo", () => {
 
   it("plano ativo não exibe badge 'Em breve'", async () => {
     const basic = buildPlano({ tier: "Basic", nome: "Basic", isAtivo: true });
-    await renderLanding([basic]);
+    await renderPlanos([basic]);
     expect(screen.queryByText("Em breve")).not.toBeInTheDocument();
   });
 });
