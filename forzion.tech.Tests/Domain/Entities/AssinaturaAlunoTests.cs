@@ -120,7 +120,7 @@ public class AssinaturaAlunoTests
         a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
-        a.RegistrarPagamentoFalho(TestData.Agora); // → Inadimplente
+        a.RegistrarPagamentoFalho(TestData.Agora);
         a.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
         a.TentativasFalhasConsecutivas.Should().Be(3);
 
@@ -269,10 +269,10 @@ public class AssinaturaAlunoTests
         a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
-        a.RegistrarPagamentoFalho(TestData.Agora); // marca inadimplente
+        a.RegistrarPagamentoFalho(TestData.Agora);
         a.ClearDomainEvents();
 
-        a.RegistrarPagamentoFalho(TestData.Agora); // 4ª tentativa
+        a.RegistrarPagamentoFalho(TestData.Agora);
 
         a.TentativasFalhasConsecutivas.Should().Be(4);
         a.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
@@ -300,7 +300,6 @@ public class AssinaturaAlunoTests
     public void RegistrarPagamentoFalho_AssinaturaPendente_ContaSemTransicionar()
     {
         var a = CriarValida();
-        // status = Pendente (sem Ativar)
 
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
@@ -332,12 +331,11 @@ public class AssinaturaAlunoTests
     [Fact]
     public void RegistrarPagamentoRegularizado_Inadimplente_DispatchaReativadaEvent()
     {
-        // G-PAY-3: transição Inadimplente → Ativa deve disparar AssinaturaAlunoReativadaEvent.
         var a = CriarValida();
         a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
-        a.RegistrarPagamentoFalho(TestData.Agora); // → Inadimplente
+        a.RegistrarPagamentoFalho(TestData.Agora);
         a.ClearDomainEvents();
 
         a.RegistrarPagamentoRegularizado(TestData.Agora);
@@ -458,7 +456,7 @@ public class AssinaturaAlunoTests
         a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);
-        a.RegistrarPagamentoFalho(TestData.Agora); // → Inadimplente
+        a.RegistrarPagamentoFalho(TestData.Agora);
         a.ClearDomainEvents();
 
         a.MarcarInadimplentePorDisputa(TestData.Agora);
@@ -472,7 +470,6 @@ public class AssinaturaAlunoTests
     public void MarcarInadimplentePorDisputa_AssinaturaPendente_NoOp()
     {
         var a = CriarValida();
-        // Pendente — não chamou Ativar.
 
         a.MarcarInadimplentePorDisputa(TestData.Agora);
 

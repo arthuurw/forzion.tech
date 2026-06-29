@@ -103,11 +103,8 @@ public class ContaAnonimizarTests
         var resultado = conta.Anonimizar(agora.AddHours(1));
 
         resultado.IsSuccess.Should().BeTrue();
-        // Email must NOT change on second call
         conta.Email.Value.Should().Be(emailAposAnonimizacao);
-        // AnonimizadaEm must NOT be updated
         conta.AnonimizadaEm.Should().Be(agora);
-        // No new event raised
         conta.DomainEvents.Should().BeEmpty();
     }
 

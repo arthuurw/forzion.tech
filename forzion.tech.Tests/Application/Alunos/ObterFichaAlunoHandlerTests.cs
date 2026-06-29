@@ -39,10 +39,10 @@ public class ObterFichaAlunoHandlerTests
     private static (TreinoAlunoDetalhe Detalhe, Guid Ex1, Guid Ex2) CriarDetalheComExercicios(Guid alunoId)
     {
         var treino = Treino.Criar("Treino Força", ObjetivoTreino.Forca, Guid.NewGuid(), DateTime.UtcNow).Value;
-        var ex1 = treino.AdicionarExercicio(Guid.NewGuid(), DateTime.UtcNow).Value; // Ordem 1
+        var ex1 = treino.AdicionarExercicio(Guid.NewGuid(), DateTime.UtcNow).Value;
         ex1.AdicionarSerie(4, 8, 12, "Série pesada", 80m, 90);
         ex1.AdicionarSerie(3, 10, 12, null, 70m, 60);
-        var ex2 = treino.AdicionarExercicio(Guid.NewGuid(), DateTime.UtcNow).Value; // Ordem 2
+        var ex2 = treino.AdicionarExercicio(Guid.NewGuid(), DateTime.UtcNow).Value;
         ex2.AdicionarSerie(3, 12, 15, null, null, 45);
         var treinoAluno = TreinoAluno.Criar(treino.Id, alunoId, DateTime.UtcNow).Value;
         return (new TreinoAlunoDetalhe(treinoAluno, treino), ex1.ExercicioId, ex2.ExercicioId);
@@ -118,7 +118,6 @@ public class ObterFichaAlunoHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Exercicios.Should().HaveCount(2);
-        // Ordenado por Ordem
         var primeiro = result.Value.Exercicios[0];
         primeiro.Ordem.Should().Be(1);
         primeiro.NomeExercicio.Should().Be("Supino");

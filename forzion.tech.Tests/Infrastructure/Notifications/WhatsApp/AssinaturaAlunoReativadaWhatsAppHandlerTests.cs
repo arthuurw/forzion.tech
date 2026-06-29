@@ -118,7 +118,6 @@ public class AssinaturaAlunoReativadaWhatsAppHandlerTests
     [Fact]
     public async Task HandleAsync_ResolveCanaisPorTreinadorId()
     {
-        // Confirma que usa ResolverPorTreinadorAsync com TreinadorId do evento.
         var aluno = Aluno.Criar(Guid.NewGuid(), "Ana", TestData.Agora, telefone: "11999997777").Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);

@@ -174,12 +174,10 @@ public static class DependencyInjectionExtensions
                     RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIpOrSub(ctx),
                         _ => Fixed(5, TimeSpan.FromMinutes(1))));
 
-                // write: por usuário se autenticado, IP caso contrário
                 opt.AddPolicy("write", ctx =>
                     RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIpOrSub(ctx),
                         _ => Fixed(60, TimeSpan.FromMinutes(1))));
 
-                // read: idem
                 opt.AddPolicy("read", ctx =>
                     RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIpOrSub(ctx),
                         _ => Fixed(120, TimeSpan.FromMinutes(1))));

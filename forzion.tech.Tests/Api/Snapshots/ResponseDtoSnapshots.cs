@@ -104,8 +104,6 @@ public class ResponseDtoSnapshots
         DataPagamento: null,
         CreatedAt: Criado));
 
-    // F33 (Fase 5) — DTOs adicionais que faltavam.
-
     [Fact]
     public Task PagamentoResponse_Treinador_OmiteClientSecret() => Verify(new PagamentoResponse(
         PagamentoId: Id1,

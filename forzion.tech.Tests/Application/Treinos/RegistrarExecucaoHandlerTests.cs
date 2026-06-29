@@ -210,7 +210,6 @@ public class RegistrarExecucaoHandlerTests
             CargaExecutada: 80.5m,
             Observacao: "pesado");
 
-        // exercita ctor/getters do RegistrarExecucaoItemCommand
         item.TreinoExercicioId.Should().NotBeEmpty();
         item.SeriesExecutadas.Should().Be(4);
         item.RepeticoesExecutadas.Should().Be(10);

@@ -118,7 +118,7 @@ public class ProcessarWebhookResendHandler(
             new Webhook(secret).Verify(command.Payload, headers);
             return true;
         }
-        // SEC-04: fail-closed pelo tipo concreto. Svix.Webhook.Verify lança
+        // fail-closed pelo tipo concreto. Svix.Webhook.Verify lança
         // WebhookVerificationException para TODA falha de verificação (assinatura inválida,
         // headers ausentes/malformados, timestamp fora da tolerância). Sem match por nome.
         catch (WebhookVerificationException)

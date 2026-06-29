@@ -24,12 +24,10 @@ public class ExecucaoTreinoRepositoryTests(InfrastructureTestFixture fixture)
     {
         var agora = DateTime.UtcNow;
 
-        // Conta / Treinador
         var emailTreinador = Email.Criar($"t{Guid.NewGuid():N}@test.com").Value;
         var contaTreinador = Conta.Criar(emailTreinador, "hash", TipoConta.Treinador, agora).Value;
         var treinador = Treinador.Criar(contaTreinador.Id, "Trainer" + nomeSuffix, agora).Value;
 
-        // Conta / Aluno
         var emailAluno = Email.Criar($"a{Guid.NewGuid():N}@test.com").Value;
         var contaAluno = Conta.Criar(emailAluno, "hash", TipoConta.Aluno, agora).Value;
         var aluno = Aluno.Criar(contaAluno.Id, "Aluno" + nomeSuffix, agora).Value;
@@ -39,19 +37,16 @@ public class ExecucaoTreinoRepositoryTests(InfrastructureTestFixture fixture)
         await ctx.Alunos.AddAsync(aluno);
         await ctx.SaveChangesAsync();
 
-        // GrupoMuscular
         var nomeGrupo = "Pernas" + nomeSuffix;
         var grupo = GrupoMuscular.Criar(nomeGrupo, agora).Value;
         await ctx.GruposMusculares.AddAsync(grupo);
         await ctx.SaveChangesAsync();
 
-        // Exercicio
         var nomeExercicio = "Agachamento" + nomeSuffix;
         var exercicio = Exercicio.Criar(nomeExercicio, grupo.Id, agora).Value;
         await ctx.Exercicios.AddAsync(exercicio);
         await ctx.SaveChangesAsync();
 
-        // Treino + TreinoExercicio
         var treino = Treino.Criar("Treino" + nomeSuffix, ObjetivoTreino.Forca, treinador.Id, agora).Value;
         var te = treino.AdicionarExercicio(exercicio.Id, agora).Value;
         await ctx.Treinos.AddAsync(treino);
@@ -194,7 +189,6 @@ public class ExecucaoTreinoRepositoryTests(InfrastructureTestFixture fixture)
         var (alunoAlvo, treinoId, treinoExercicioId, _, _) =
             await SeedProgressaoGraphAsync(ctx, "Iso1");
 
-        // Seed a second aluno in the same treino
         var emailAluno2 = Email.Criar($"a2{Guid.NewGuid():N}@test.com").Value;
         var conta2 = Conta.Criar(emailAluno2, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         var aluno2 = Aluno.Criar(conta2.Id, "OutroAluno", DateTime.UtcNow).Value;

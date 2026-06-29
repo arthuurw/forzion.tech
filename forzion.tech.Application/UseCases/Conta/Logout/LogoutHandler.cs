@@ -23,7 +23,7 @@ public class LogoutHandler(
         var familiaId = userContext.FamiliaId;
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        // Revoga a família deste device (NR-6): mata o refresh, não só o access via jti.
+        // Revoga a família deste device: mata o refresh, não só o access via jti.
         if (familiaId != Guid.Empty)
             await refreshTokenService.RevogarFamiliaAsync(familiaId, MotivoRevogacaoFamilia.Logout, agora, cancellationToken).ConfigureAwait(false);
 

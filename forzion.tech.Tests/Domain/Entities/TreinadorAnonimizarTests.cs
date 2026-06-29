@@ -54,7 +54,6 @@ public class TreinadorAnonimizarTests
 
         resultado.IsSuccess.Should().BeTrue();
         treinador.Nome.Should().Be("Usuário anonimizado");
-        // UpdatedAt must not be refreshed on second call
         treinador.UpdatedAt.Should().Be(agora);
     }
 

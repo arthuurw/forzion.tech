@@ -64,7 +64,7 @@ public class AnonimizarContaHandler(
             return Result.Failure(Error.NotFound("conta.nao_encontrada", "Conta não encontrada."));
 
         // Idempotente: já anonimizada. Ainda assim, self-service com jti ativo precisa
-        // revogar — a 1ª chamada pode ter anonimizado e falhado só na revogação (JWT-01).
+        // revogar — a 1ª chamada pode ter anonimizado e falhado só na revogação.
         if (conta.AnonimizadaEm is not null)
         {
             await RevogarTokenDoTitularSeSelfAsync(command, agora, cancellationToken).ConfigureAwait(false);
@@ -91,7 +91,7 @@ public class AnonimizarContaHandler(
         string? oldTelefone = null;
         Guid? alunoIdParaAssinante = null;
 
-        // ATOM-01: os bulk-anonymizers (observações/assinante/delivery-logs) usam
+        // os bulk-anonymizers (observações/assinante/delivery-logs) usam
         // ExecuteUpdate, que persiste imediato fora do change tracker. A transação ambiente
         // os reúne com as mutações tracked + o log num único commit (all-or-nothing): sem
         // ela, uma falha tardia deixaria PII apagada com a conta ainda não-anonimizada.

@@ -122,7 +122,6 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
     {
         await using var ctx = fixture.CreateContext();
         var seed = await SeedContextAsync(ctx);
-        // Criar com Status=Pendente; Ativar() → Status=Ativa; DataProximaCobranca=DateTime.UtcNow (passado)
         var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true);
 
         var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1), null, 1000);
@@ -137,7 +136,6 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
         var seed = await SeedContextAsync(ctx);
         var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true);
 
-        // Agendar cobrança para 1 mês no futuro
         assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddMonths(1), DateTime.UtcNow);
         await ctx.SaveChangesAsync();
 
@@ -151,7 +149,6 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
     {
         await using var ctx = fixture.CreateContext();
         var seed = await SeedContextAsync(ctx);
-        // Ativar e então cancelar → Status=Cancelada, DataProximaCobranca ainda no passado
         var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: true, cancelada: true);
 
         var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1), null, 1000);
@@ -164,7 +161,6 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
     {
         await using var ctx = fixture.CreateContext();
         var seed = await SeedContextAsync(ctx);
-        // Não chamar Ativar() → Status=Pendente
         var assinatura = await SeedAssinaturaAlunoAsync(ctx, seed, ativa: false);
 
         var resultado = await Repo(ctx).ListarParaRenovarAsync(DateTime.UtcNow.AddMinutes(1), null, 1000);
@@ -213,7 +209,6 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
     {
         await using var ctx = fixture.CreateContext();
 
-        // Seed aluno1 com 1 assinatura
         var seed1 = await SeedContextAsync(ctx);
         var a1 = await SeedAssinaturaAlunoAsync(ctx, seed1);
 

@@ -40,7 +40,6 @@ public class WhatsAppDeliveryLogTests
         // Private setters: properties are read-only after Criar.
         var log = WhatsAppDeliveryLog.Criar("wamid_x", "failed", "5511000000000", Agora, Agora);
 
-        // Verify the entity is usable (properties readable).
         log.MetaMessageId.Should().Be("wamid_x");
         log.EventType.Should().Be("failed");
     }

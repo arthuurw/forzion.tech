@@ -39,7 +39,7 @@ public static class StripeWebhookParser
         var chargesEnabled = type == "account.updated" &&
             (TryGetBoolValue(data?["charges_enabled"]) ?? false);
 
-        // G-PAY-5: distingue refund total vs parcial — só refund total muda status.
+        // distingue refund total vs parcial — só refund total muda status.
         var amountRefundedCents = type == "charge.refunded"
             ? TryGetLongValue(data?["amount_refunded"])
             : null;

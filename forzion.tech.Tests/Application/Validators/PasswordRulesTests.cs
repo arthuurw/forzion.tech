@@ -17,10 +17,10 @@ public class PasswordRulesTests
 
     [Theory]
     [InlineData("")]
-    [InlineData("Aa1aaaa")]      // 7 chars
-    [InlineData("senha123")]     // sem maiúscula
-    [InlineData("SENHA123")]     // sem minúscula
-    [InlineData("SenhaAbc")]     // sem dígito
+    [InlineData("Aa1aaaa")]
+    [InlineData("senha123")]
+    [InlineData("SENHA123")]
+    [InlineData("SenhaAbc")]
     public void Rejeita_SenhaForaDaPolitica(string senha) =>
         Validator.Validate(new Alvo(senha)).IsValid.Should().BeFalse();
 

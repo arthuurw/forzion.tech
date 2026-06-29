@@ -356,12 +356,10 @@ public class ExportarDadosPessoaisHandlerTests
         result.IsSuccess.Should().BeTrue();
         var export = result.Value;
 
-        // Conta DTO
         export.Conta.ContaId.Should().Be(conta.Id);
         export.Conta.Email.Should().Be("joana@test.com");
         export.Conta.TipoConta.Should().Be("Aluno");
 
-        // Aluno DTO — todos os campos opcionais
         export.Aluno.Should().NotBeNull();
         var a = export.Aluno!;
         a.AlunoId.Should().Be(aluno.Id);
@@ -377,14 +375,12 @@ public class ExportarDadosPessoaisHandlerTests
         a.Doencas.Should().Be("Nenhuma");
         a.ObservacoesAdicionais.Should().Be("Treina pela manhã");
 
-        // Assinatura DTO
         export.Assinaturas.Should().HaveCount(1);
         export.Assinaturas[0].AssinaturaId.Should().Be(assinatura.Id);
         export.Assinaturas[0].PacoteId.Should().Be(pacoteId);
         export.Assinaturas[0].TreinadorId.Should().Be(treinadorId);
         export.Assinaturas[0].Valor.Should().Be(149.90m);
 
-        // Pagamento DTO — MapPagamento
         export.Pagamentos.Should().HaveCount(1);
         export.Pagamentos[0].PagamentoId.Should().Be(pagamento.Id);
         export.Pagamentos[0].AssinaturaId.Should().Be(assinatura.Id);
@@ -398,20 +394,17 @@ public class ExportarDadosPessoaisHandlerTests
         export.Vinculos[0].TreinadorId.Should().Be(treinadorId);
         export.Vinculos[0].AlunoId.Should().Be(aluno.Id);
 
-        // Treino DTO — MapTreino
         export.Treinos.Should().HaveCount(1);
         export.Treinos[0].TreinoId.Should().Be(treino.Id);
         export.Treinos[0].Nome.Should().Be("Treino A");
         export.Treinos[0].Objetivo.Should().Be(ObjetivoTreino.Forca.ToString());
         export.Treinos[0].Dificuldade.Should().Be(DificuldadeTreino.Avancado.ToString());
 
-        // Execucao DTO — MapExecucao
         export.Execucoes.Should().HaveCount(1);
         export.Execucoes[0].ExecucaoId.Should().Be(execucao.Id);
         export.Execucoes[0].TreinoId.Should().Be(treino.Id);
         export.Execucoes[0].Observacao.Should().Be("Concluído com carga máxima");
 
-        // Email/WhatsApp logs — MapEmailLog / MapWhatsAppLog
         export.EmailDeliveryLogs.Should().HaveCount(1);
         export.EmailDeliveryLogs[0].LogId.Should().Be(emailLog.Id);
         export.EmailDeliveryLogs[0].EventType.Should().Be("delivered");
@@ -453,14 +446,12 @@ public class ExportarDadosPessoaisHandlerTests
         result.IsSuccess.Should().BeTrue();
         var export = result.Value;
 
-        // Treinador DTO — AprovadoEm preenchido
         export.Treinador.Should().NotBeNull();
         export.Treinador!.TreinadorId.Should().Be(treinador.Id);
         export.Treinador.Nome.Should().Be("Coach Pro");
         export.Treinador.Telefone.Should().Be("+5521988887777");
         export.Treinador.AprovadoEm.Should().Be(TestData.Agora);
 
-        // Vinculo / Pacote / Treino mapeados
         export.Vinculos.Should().HaveCount(1);
         export.Vinculos[0].TreinadorId.Should().Be(treinador.Id);
 
@@ -475,7 +466,6 @@ public class ExportarDadosPessoaisHandlerTests
         export.Treinos[0].TreinoId.Should().Be(treino.Id);
         export.Treinos[0].Objetivo.Should().Be(ObjetivoTreino.Resistencia.ToString());
 
-        // logs do titular
         export.EmailDeliveryLogs.Should().ContainSingle().Which.EventType.Should().Be("bounced");
         export.WhatsAppDeliveryLogs.Should().ContainSingle().Which.EventType.Should().Be("delivered");
     }

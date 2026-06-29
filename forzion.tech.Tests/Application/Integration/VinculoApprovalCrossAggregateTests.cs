@@ -55,7 +55,6 @@ public class VinculoApprovalCrossAggregateTests
 
     public VinculoApprovalCrossAggregateTests()
     {
-        // tx noop pra AprovarVinculo
         var mockTx = new Mock<ITransaction>();
         mockTx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         mockTx.Setup(t => t.DisposeAsync()).Returns(ValueTask.CompletedTask);
@@ -120,7 +119,6 @@ public class VinculoApprovalCrossAggregateTests
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
         _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
-        // ETAPA 1 — AprovarVinculo (Application).
         var result = await _aprovarHandler.HandleAsync(new AprovarVinculoCommand(vinculo.Id, treinadorId, pacote.Id));
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(VinculoStatus.Ativo);
@@ -132,7 +130,6 @@ public class VinculoApprovalCrossAggregateTests
         evento.AlunoId.Should().Be(alunoId);
         evento.VinculoId.Should().Be(vinculo.Id);
 
-        // ETAPA 2 — Downstream handler (Infrastructure).
         await _criarAssinaturaHandler.HandleAsync(evento);
 
         // INVARIANTE CROSS-AGGREGATE: assinatura criada com referencias coerentes.

@@ -311,7 +311,7 @@ public class StripeService(
         {
             var evento = EventUtility.ConstructEvent(payload, assinaturaStripe, _settings.WebhookSecret);
 
-            // SEC-03: ExpectLivemode null = sem enforcement (ambiente não-prod/teste).
+            // ExpectLivemode null = sem enforcement (ambiente não-prod/teste).
             if (_settings.ExpectLivemode is { } esperado && evento.Livemode != esperado)
             {
                 logger.LogWarning(

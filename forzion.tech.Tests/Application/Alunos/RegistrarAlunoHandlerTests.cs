@@ -102,7 +102,6 @@ public class RegistrarAlunoHandlerTests
     {
         var treinadorId = Guid.NewGuid();
         var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
-        // Status padrão = AguardandoAprovacao
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);

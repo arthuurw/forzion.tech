@@ -121,7 +121,7 @@ public class AnonimizarContaHandlerTests
     {
         var contaId = Guid.NewGuid();
         var conta = CriarContaComHash(TipoConta.Aluno);
-        conta.Anonimizar(TestData.Agora); // already anonymized
+        conta.Anonimizar(TestData.Agora);
 
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(conta);
@@ -389,7 +389,6 @@ public class AnonimizarContaHandlerTests
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(aluno);
 
-        // Admin: RealizadoPorId != ContaId, SenhaAtual = null
         var result = await _handler.HandleAsync(
             new AnonimizarContaCommand(contaId, adminId, SenhaAtual: null));
 

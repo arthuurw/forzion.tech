@@ -41,7 +41,6 @@ public class DomainEventHandlerIdempotenciaTests
         assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(assinatura);
 
-        // Primeira execução: aplica renovação.
         await handler.HandleAsync(evento);
         var dataProximaCobrancaAposP1 = assinatura.DataProximaCobranca;
         dataProximaCobrancaAposP1.Should().BeAfter(agora.AddDays(20), "primeiro dispatch avança a data ~1 mês");
@@ -81,7 +80,6 @@ public class DomainEventHandlerIdempotenciaTests
         planoRepo.Setup(r => r.ObterPorIdAsync(planoAlvo.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(planoAlvo);
 
-        // Primeira execução: troca o plano.
         await handler.HandleAsync(evento);
         assinatura.PlanoPlataformaId.Should().Be(planoAlvo.Id, "primeira execução aplica a troca");
 
@@ -178,7 +176,6 @@ public class DomainEventHandlerIdempotenciaTests
             .Callback<AssinaturaAluno, CancellationToken>((a, _) => assinaturasCriadas.Add(a))
             .Returns(Task.CompletedTask);
 
-        // Primeira execução: nenhuma assinatura existe → cria.
         assinaturaAlunoRepo.Setup(r => r.ObterPorVinculoIdAsync(vinculo.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AssinaturaAluno?)null);
         await handler.HandleAsync(evento);

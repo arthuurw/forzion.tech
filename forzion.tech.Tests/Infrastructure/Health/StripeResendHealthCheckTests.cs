@@ -107,7 +107,6 @@ public class ResendHealthCheckTests
 
         result.Status.Should().Be(HealthStatus.Healthy);
         result.Description.Should().Contain("não configurado");
-        // Nenhuma chamada HTTP deve ter sido feita
         handler.Protected().Verify(
             "SendAsync",
             Times.Never(),

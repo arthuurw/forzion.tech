@@ -59,7 +59,6 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
         var response = await _factory.CreateClient().SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        // G-SEC-4: response must be ProblemDetails (application/problem+json), not a plain string.
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 

@@ -34,7 +34,6 @@ public class PaginationExtensionsTests
     [Fact]
     public void ObterPaginacao_PaginaValida_RetornaValor()
     {
-        // covers the false branch of pagina < 1
         var result = CriarContexto(pagina: "5").ObterPaginacaoDoQuery();
         result.Pagina.Should().Be(5);
     }
@@ -42,7 +41,6 @@ public class PaginationExtensionsTests
     [Fact]
     public void ObterPaginacao_TamanhoPaginaValido_RetornaValor()
     {
-        // covers the false branch of tamanhoPagina < 1
         var result = CriarContexto(tamanhoPagina: "50").ObterPaginacaoDoQuery();
         result.TamanhoPagina.Should().Be(50);
     }

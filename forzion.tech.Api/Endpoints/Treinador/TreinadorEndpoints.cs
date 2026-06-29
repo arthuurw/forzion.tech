@@ -383,7 +383,6 @@ public static class TreinadorEndpoints
                 { "nome", "grupoMuscular" };
             var ordenarPor = ordenacaoExerciciosPermitida.Contains(ordenarPorRaw) ? ordenarPorRaw : "nome";
 
-            // apenasGlobal=true → só globais; senão → próprios + globais
             Guid? treinadorId = apenasGlobal ? null : userContext.PerfilId;
 
             var query = new ListarExerciciosQuery(treinadorId, p, tp,

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 namespace forzion.tech.Infrastructure.Services;
 
 /// <summary>
-/// Janelas de sessão por papel (NR-7). Lê <c>Auth:Sessao:&lt;papel&gt;:*</c> com defaults
+/// Janelas de sessão por papel. Lê <c>Auth:Sessao:&lt;papel&gt;:*</c> com defaults
 /// ancorados em OWORK/OWASP (spec §5, T0 2026-06-13): privilégio alto = janelas curtas.
 /// Access cai p/ <c>Auth:JwtExpirationMinutes</c> antes do default p/ não quebrar o ajuste global.
 /// </summary>
