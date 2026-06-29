@@ -11,6 +11,7 @@ import {
 interface Option {
   value: string | number;
   label: string;
+  disabled?: boolean;
 }
 
 interface FormSelectProps {
@@ -33,7 +34,7 @@ export default function FormSelect({ name, label, options, required }: FormSelec
           <InputLabel id={labelId}>{label}</InputLabel>
           <Select {...field} labelId={labelId} label={label}>
             {options.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
+              <MenuItem key={opt.value} value={opt.value} disabled={opt.disabled}>
                 {opt.label}
               </MenuItem>
             ))}

@@ -1,14 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  Box, Typography, Card, CardContent, Button, Stack, Switch,
-  FormControlLabel, Chip, Divider,
+  Box, Typography, Card, CardContent, Button, Stack, Chip, Divider,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import { useForm, FormProvider, Controller } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import FormTextField from "@/components/forms/FormTextField";
+import FormSwitch from "@/components/forms/FormSwitch";
 import AlertBanner from "@/components/ui/AlertBanner";
 import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -86,21 +86,23 @@ export default function SaudeAdminPage() {
     },
   });
 
+  const carregarUltimoSnapshot = useCallback(async () => {
+    try {
+      const snap = await adminApi.listHealthSnapshots({ limite: 1 });
+      setUltimoSnapshot(snap.data[0] ?? null);
+      setSnapshotIndisponivel(false);
+    } catch {
+      setSnapshotIndisponivel(true);
+    }
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         const [res] = await Promise.all([
           adminApi.getHealthReportConfig(),
-          (async () => {
-            try {
-              const snap = await adminApi.listHealthSnapshots({ limite: 1 });
-              setUltimoSnapshot(snap.data[0] ?? null);
-              setSnapshotIndisponivel(false);
-            } catch {
-              setSnapshotIndisponivel(true);
-            }
-          })(),
+          carregarUltimoSnapshot(),
         ]);
         if (res.status !== 204 && res.data) {
           const c = res.data;
@@ -122,7 +124,7 @@ export default function SaudeAdminPage() {
       }
     };
     load();
-  }, []);
+  }, [carregarUltimoSnapshot, form]);
 
   const handleSalvar = form.handleSubmit(async (data) => {
     setSaving(true);
@@ -152,13 +154,7 @@ export default function SaudeAdminPage() {
     try {
       await adminApi.runHealthReport();
       setSuccess("Relatório enviado e snapshot gerado.");
-      try {
-        const snap = await adminApi.listHealthSnapshots({ limite: 1 });
-        setUltimoSnapshot(snap.data[0] ?? null);
-        setSnapshotIndisponivel(false);
-      } catch {
-        setSnapshotIndisponivel(true);
-      }
+      await carregarUltimoSnapshot();
     } catch (err) {
       setError(extractApiError(err, "Erro ao executar o relatório. Salve uma configuração antes de enviar."));
     } finally {
@@ -177,18 +173,7 @@ export default function SaudeAdminPage() {
         <CardContent>
           <FormProvider {...form}>
             <Stack component="form" onSubmit={handleSalvar} noValidate spacing={2}>
-              <Controller
-                name="ativo"
-                control={form.control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
-                    }
-                    label="Envio diário ativo"
-                  />
-                )}
-              />
+              <FormSwitch name="ativo" label="Envio diário ativo" />
               <FormTextField
                 name="hora"
                 label="Hora de envio (UTC)"
@@ -208,46 +193,10 @@ export default function SaudeAdminPage() {
               />
               <Divider />
               <Typography variant="subtitle2" color="text.secondary">Seções do relatório</Typography>
-              <Controller
-                name="incluirLiveness"
-                control={form.control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
-                    label="Infraestrutura (liveness)"
-                  />
-                )}
-              />
-              <Controller
-                name="incluirKpis"
-                control={form.control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
-                    label="Indicadores (KPIs)"
-                  />
-                )}
-              />
-              <Controller
-                name="incluirEntregabilidade"
-                control={form.control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
-                    label="Entregabilidade de e-mail"
-                  />
-                )}
-              />
-              <Controller
-                name="incluirErros"
-                control={form.control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
-                    label="Erros (24h)"
-                  />
-                )}
-              />
+              <FormSwitch name="incluirLiveness" label="Infraestrutura (liveness)" />
+              <FormSwitch name="incluirKpis" label="Indicadores (KPIs)" />
+              <FormSwitch name="incluirEntregabilidade" label="Entregabilidade de e-mail" />
+              <FormSwitch name="incluirErros" label="Erros (24h)" />
               {ultimoEnvioEm && (
                 <Typography variant="caption" color="text.secondary">
                   Último envio: {new Date(ultimoEnvioEm).toLocaleString("pt-BR")}
