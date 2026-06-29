@@ -1,5 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useForm, FormProvider, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/keys";
 import {
@@ -13,6 +16,8 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
+import FormTextField from "@/components/forms/FormTextField";
+import FormSelect from "@/components/forms/FormSelect";
 import { adminApi } from "@/lib/api/admin";
 import { parseYouTubeId } from "@/lib/utils/youtube";
 import type { ExercicioResponse } from "@/types";
@@ -27,6 +32,15 @@ const COLUMNS: Column[] = [
   { label: "Descrição" },
   { label: "Ações", align: "right" },
 ];
+
+const exercicioSchema = z.object({
+  nome: z.string().trim().min(1, "Informe o nome."),
+  grupoMuscularId: z.string().min(1, "Selecione o grupo muscular."),
+  descricao: z.string().optional(),
+  comoExecutar: z.string().max(2000, "Máximo 2000 caracteres.").optional(),
+  videoUrl: z.string().optional(),
+});
+type ExercicioForm = z.infer<typeof exercicioSchema>;
 
 export default function ExerciciosAdminPage() {
   const { data: grupos = [], isError: gruposError } = useQuery({
@@ -47,16 +61,22 @@ export default function ExerciciosAdminPage() {
     deleting: loadingExcluir, setDeleting: setLoadingExcluir,
   } = useCRUDDialog<ExercicioResponse>();
 
-  const [nome, setNome] = useState("");
-  const [grupoMuscular, setGrupoMuscular] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [comoExecutar, setComoExecutar] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [editNome, setEditNome] = useState("");
-  const [editGrupo, setEditGrupo] = useState("");
-  const [editDescricao, setEditDescricao] = useState("");
-  const [editComoExecutar, setEditComoExecutar] = useState("");
-  const [editVideoUrl, setEditVideoUrl] = useState("");
+  const criarForm = useForm<ExercicioForm>({
+    resolver: zodResolver(exercicioSchema),
+    defaultValues: { nome: "", grupoMuscularId: "", descricao: "", comoExecutar: "", videoUrl: "" },
+  });
+
+  const editForm = useForm<ExercicioForm>({
+    resolver: zodResolver(exercicioSchema),
+    defaultValues: { nome: "", grupoMuscularId: "", descricao: "", comoExecutar: "", videoUrl: "" },
+  });
+
+  const grupoOptions = grupos.map((g) => ({ value: g.id, label: g.nome }));
+
+  const videoUrlWatch = criarForm.watch("videoUrl") ?? "";
+  const videoUrlInvalido = !!videoUrlWatch && parseYouTubeId(videoUrlWatch) === null;
+  const editVideoUrlWatch = editForm.watch("videoUrl") ?? "";
+  const editVideoUrlInvalido = !!editVideoUrlWatch && parseYouTubeId(editVideoUrlWatch) === null;
 
   const fetcher = useCallback(
     (p: number, ps: number) =>
@@ -73,66 +93,60 @@ export default function ExerciciosAdminPage() {
     usePaginatedList<ExercicioResponse>({ fetcher, errorMessage: "Erro ao carregar exercícios." });
 
   useEffect(() => {
-    if (grupos.length === 0) return;
-    setGrupoMuscular((g) => g || grupos[0].id);
-    setEditGrupo((g) => g || grupos[0].id);
-  }, [grupos]);
-
-  useEffect(() => {
-    // sem grupos o formulário fica sem seleção de grupo: avisa em vez de falhar mudo
     if (gruposError) {
       setError("Não foi possível carregar os grupos musculares. O cadastro de exercícios fica indisponível.");
     }
   }, [gruposError, setError]);
 
-  const resetForm = () => {
-    setNome("");
-    if (grupos.length > 0) setGrupoMuscular(grupos[0].id);
-    setDescricao("");
-    setComoExecutar("");
-    setVideoUrl("");
-  };
+  useEffect(() => {
+    if (!criarOpen || grupos.length === 0) return;
+    if (!criarForm.getValues("grupoMuscularId")) criarForm.setValue("grupoMuscularId", grupos[0].id);
+  }, [criarOpen, grupos]);
 
-  const videoUrlInvalido = videoUrl.trim() !== "" && parseYouTubeId(videoUrl) === null;
-  const editVideoUrlInvalido = editVideoUrl.trim() !== "" && parseYouTubeId(editVideoUrl) === null;
-
-  const handleCriar = async () => {
-    if (!nome.trim() || videoUrlInvalido) return;
+  const handleCriar = criarForm.handleSubmit(async (data) => {
     setSaving(true);
     try {
-      await adminApi.criarExercicioGlobal({ nome: nome.trim(), grupoMuscularId: grupoMuscular, descricao: descricao.trim() || null, comoExecutar: comoExecutar.trim() || null, videoUrl: videoUrl.trim() || null });
-      setSuccess(`"${nome.trim()}" adicionado.`);
+      await adminApi.criarExercicioGlobal({
+        nome: data.nome,
+        grupoMuscularId: data.grupoMuscularId,
+        descricao: data.descricao?.trim() || null,
+        comoExecutar: data.comoExecutar?.trim() || null,
+        videoUrl: data.videoUrl?.trim() || null,
+      });
+      setSuccess(`"${data.nome}" adicionado.`);
       closeCriar();
-      resetForm();
+      criarForm.reset();
       reload();
     } catch (err) {
       setError(extractApiError(err, "Erro ao criar exercício."));
     } finally {
       setSaving(false);
     }
-  };
+  });
 
   const handleOpenEdit = (ex: ExercicioResponse) => {
     openEdit(ex);
-    setEditNome(ex.nome);
-    setEditGrupo(ex.grupoMuscularId);
-    setEditDescricao(ex.descricao ?? "");
-    setEditComoExecutar(ex.comoExecutar ?? "");
-    setEditVideoUrl(ex.videoId ?? "");
+    editForm.reset({
+      nome: ex.nome,
+      grupoMuscularId: ex.grupoMuscularId,
+      descricao: ex.descricao ?? "",
+      comoExecutar: ex.comoExecutar ?? "",
+      videoUrl: ex.videoId ?? "",
+    });
   };
 
-  const handleEditar = async () => {
-    if (!editEx || editVideoUrlInvalido) return;
+  const handleEditar = editForm.handleSubmit(async (data) => {
+    if (!editEx) return;
     setSavingEdit(true);
     try {
       await adminApi.atualizarExercicioGlobal(editEx.exercicioId, {
-        nome: editNome.trim() || undefined,
-        grupoMuscularId: editGrupo || undefined,
-        descricao: editDescricao.trim() || null,
-        comoExecutar: editComoExecutar.trim(),
-        videoUrl: editVideoUrl.trim(),
+        nome: data.nome || undefined,
+        grupoMuscularId: data.grupoMuscularId || undefined,
+        descricao: data.descricao?.trim() || null,
+        comoExecutar: data.comoExecutar?.trim() ?? "",
+        videoUrl: data.videoUrl?.trim() ?? "",
       });
-      setSuccess(`"${editNome}" atualizado.`);
+      setSuccess(`"${data.nome}" atualizado.`);
       closeEdit();
       reload();
     } catch (err) {
@@ -140,7 +154,7 @@ export default function ExerciciosAdminPage() {
     } finally {
       setSavingEdit(false);
     }
-  };
+  });
 
   const handleExcluir = async () => {
     if (!confirmExcluir) return;
@@ -228,69 +242,74 @@ export default function ExerciciosAdminPage() {
         }}
       />
 
-      {/* Criar */}
-      <Dialog open={criarOpen} onClose={() => { closeCriar(); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
+      <Dialog open={criarOpen} onClose={() => { closeCriar(); criarForm.reset(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo exercício global</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} size="small" fullWidth required autoFocus />
-            <FormControl size="small" fullWidth required>
-              <InputLabel>Grupo muscular</InputLabel>
-              <Select value={grupoMuscular} label="Grupo muscular" onChange={(e) => setGrupoMuscular(e.target.value)}>
-                {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <TextField label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} size="small" fullWidth multiline rows={3} />
-            <TextField label="Como executar (opcional)" value={comoExecutar} onChange={(e) => setComoExecutar(e.target.value)} size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />
-            <TextField
-              label="Link do vídeo (YouTube, opcional)"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              size="small"
-              fullWidth
-              error={videoUrlInvalido}
-              helperText={videoUrlInvalido ? "Informe um link ou ID de vídeo do YouTube válido." : " "}
-            />
+        <FormProvider {...criarForm}>
+          <Stack component="form" onSubmit={handleCriar} noValidate>
+            <DialogContent>
+              <Stack spacing={2} sx={{ pt: 1 }}>
+                <FormTextField name="nome" label="Nome" size="small" fullWidth required autoFocus />
+                <FormSelect name="grupoMuscularId" label="Grupo muscular" options={grupoOptions} required />
+                <FormTextField name="descricao" label="Descrição (opcional)" size="small" fullWidth multiline rows={3} />
+                <FormTextField name="comoExecutar" label="Como executar (opcional)" size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />
+                <Controller
+                  name="videoUrl"
+                  control={criarForm.control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Link do vídeo (YouTube, opcional)"
+                      size="small"
+                      fullWidth
+                      error={videoUrlInvalido}
+                      helperText={videoUrlInvalido ? "Informe um link ou ID de vídeo do YouTube válido." : " "}
+                    />
+                  )}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => { closeCriar(); criarForm.reset(); }}>Cancelar</Button>
+              <Button type="submit" variant="contained" disabled={saving || videoUrlInvalido}>Adicionar</Button>
+            </DialogActions>
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { closeCriar(); resetForm(); }}>Cancelar</Button>
-          <Button variant="contained" disabled={!nome.trim() || saving || videoUrlInvalido} onClick={handleCriar}>Adicionar</Button>
-        </DialogActions>
+        </FormProvider>
       </Dialog>
 
-      {/* Editar */}
       <Dialog open={!!editEx} onClose={closeEdit} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar — {editEx?.nome}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField label="Nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} size="small" fullWidth />
-            <FormControl size="small" fullWidth>
-              <InputLabel>Grupo muscular</InputLabel>
-              <Select value={editGrupo} label="Grupo muscular" onChange={(e) => setEditGrupo(e.target.value as string)}>
-                {grupos.map((g) => <MenuItem key={g.id} value={g.id}>{g.nome}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <TextField label="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} size="small" fullWidth multiline rows={3} />
-            <TextField label="Como executar" value={editComoExecutar} onChange={(e) => setEditComoExecutar(e.target.value)} size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />
-            <TextField
-              label="Link do vídeo (YouTube)"
-              value={editVideoUrl}
-              onChange={(e) => setEditVideoUrl(e.target.value)}
-              size="small"
-              fullWidth
-              error={editVideoUrlInvalido}
-              helperText={editVideoUrlInvalido ? "Informe um link ou ID de vídeo do YouTube válido." : " "}
-            />
+        <FormProvider {...editForm}>
+          <Stack component="form" onSubmit={handleEditar} noValidate>
+            <DialogContent>
+              <Stack spacing={2} sx={{ pt: 1 }}>
+                <FormTextField name="nome" label="Nome" size="small" fullWidth />
+                <FormSelect name="grupoMuscularId" label="Grupo muscular" options={grupoOptions} required />
+                <FormTextField name="descricao" label="Descrição" size="small" fullWidth multiline rows={3} />
+                <FormTextField name="comoExecutar" label="Como executar" size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />
+                <Controller
+                  name="videoUrl"
+                  control={editForm.control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Link do vídeo (YouTube)"
+                      size="small"
+                      fullWidth
+                      error={editVideoUrlInvalido}
+                      helperText={editVideoUrlInvalido ? "Informe um link ou ID de vídeo do YouTube válido." : " "}
+                    />
+                  )}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={closeEdit}>Cancelar</Button>
+              <Button type="submit" variant="contained" disabled={savingEdit || editVideoUrlInvalido}>Salvar</Button>
+            </DialogActions>
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeEdit}>Cancelar</Button>
-          <Button variant="contained" disabled={savingEdit || editVideoUrlInvalido} onClick={handleEditar}>Salvar</Button>
-        </DialogActions>
+        </FormProvider>
       </Dialog>
 
-      {/* Excluir */}
       <ConfirmDialog
         open={!!confirmExcluir}
         title="Excluir exercício"
