@@ -115,7 +115,7 @@ public class AssinaturaAlunoTests
     [Fact]
     public void Ativar_StatusInadimplente_RetornaFalhaExigeRegularizacao()
     {
-        // G-PAY-4: Inadimplente → Ativa via Ativar é proibido; contador não seria zerado.
+        // Inadimplente → Ativa via Ativar é proibido; contador não seria zerado.
         var a = CriarValida();
         a.Ativar(TestData.Agora);
         a.RegistrarPagamentoFalho(TestData.Agora);

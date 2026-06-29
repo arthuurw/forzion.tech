@@ -183,7 +183,7 @@ public class OutboxProcessorRetryTests(InfrastructureTestFixture fixture)
         efeito.Tentativas.Should().Be(0);
     }
 
-    // OUT-02: cancelamento de shutdown re-lança (rollback do lease) em vez de queimar uma
+    // cancelamento de shutdown re-lança (rollback do lease) em vez de queimar uma
     // tentativa — o item volta Pendente, intacto, para o próximo boot.
     [Fact]
     public async Task ProcessarLote_CancelamentoDeShutdown_RelancaSemContarTentativa()

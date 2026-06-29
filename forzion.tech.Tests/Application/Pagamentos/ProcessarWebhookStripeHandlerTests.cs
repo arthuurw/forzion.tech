@@ -105,7 +105,7 @@ public class ProcessarWebhookStripeHandlerTests
     [Fact]
     public async Task HandleAsync_ProcessaEventoVerificado_NaoOBodyRaw()
     {
-        // SEC-02: body raw aponta pi_adulterado; a verificação devolve o evento real (pi_verificado).
+        // body raw aponta pi_adulterado; a verificação devolve o evento real (pi_verificado).
         // O handler DEVE agir sobre o verificado — busca pi_verificado, ignora o raw.
         var pagamento = Pagamento.Criar(Guid.NewGuid(), 150m, DateTime.UtcNow).Value;
         pagamento.DefinirDadosPix("pi_verificado", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);

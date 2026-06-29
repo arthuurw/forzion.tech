@@ -5,7 +5,7 @@ using forzion.tech.Infrastructure.Services;
 
 namespace forzion.tech.Tests.Infrastructure.Outbox;
 
-// OUT-01: registro de durabilidade não pode descartar a chave de idempotência em silêncio.
+// registro de durabilidade não pode descartar a chave de idempotência em silêncio.
 public class OutboxDurabilityRegistryTests
 {
     private sealed record EventoFake(DateTime OcorridoEm) : IDomainEvent;

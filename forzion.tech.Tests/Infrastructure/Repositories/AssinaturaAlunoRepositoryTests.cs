@@ -171,7 +171,7 @@ public class AssinaturaAlunoRepositoryTests(InfrastructureTestFixture fixture)
     [Fact]
     public async Task ListarParaRenovarAsync_KeysetPaginaTodasSemDuplicarNemPular()
     {
-        // PERF-01: prova que o loop keyset do cron processa todas as devidas em > 1 lote, sem
+        // prova que o loop keyset do cron processa todas as devidas em > 1 lote, sem
         // duplicar nem pular (DB do fixture acumula entre testes → asserções defensivas: subset+único).
         await using var ctx = fixture.CreateContext();
         var ate = DateTime.UtcNow.AddMinutes(1);

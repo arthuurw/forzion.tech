@@ -242,8 +242,6 @@ public class ExecucaoTreinoRepositoryTests(InfrastructureTestFixture fixture)
         idsPaginados.Should().BeEquivalentTo(execucoes.Select(e => e.Id));
     }
 
-    // ── ANON-02: AnonimizarObservacoesPorAlunoIdAsync ──────────────────────
-
     [Fact]
     public async Task AnonimizarObservacoesPorAlunoIdAsync_ComObservacao_NullaObservacaoDoAluno()
     {
