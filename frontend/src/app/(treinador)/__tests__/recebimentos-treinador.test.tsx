@@ -60,7 +60,6 @@ describe("PagamentosTreinadorPage (Recebimentos)", () => {
     server.use(
       http.post("*/treinador/modo-pagamento", async ({ request }) => {
         chamadaModo = (await request.json()) as { modo: string };
-        // Próxima leitura de status reflete o novo modo.
         onboardingHandler("Externo", false);
         return HttpResponse.json({ modo: "Externo", alteradoEm: new Date().toISOString(), assinaturasCriadas: 0, vinculosIgnorados: 0 });
       }),

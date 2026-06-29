@@ -13,7 +13,7 @@ public static class ExercicioEndpoints
     public static void MapExercicioEndpoints(this IEndpointRouteBuilder app)
     {
         // Grupo treinador-only: a policy de role barra aluno/admin e o filtro exige perfil_id.
-        // Substitui os guards ad-hoc PerfilId == Guid.Empty (least-privilege, SEC-02/SEC-03).
+        // Substitui os guards ad-hoc PerfilId == Guid.Empty (least-privilege).
         var group = app.MapGroup("/exercicios").WithTags("Exercícios")
             .RequireAuthorization("Treinador")
             .AddEndpointFilter<PaginacaoFilter>()

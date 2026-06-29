@@ -35,7 +35,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   return (
     <Box sx={{ display: "flex", minHeight: "100dvh" }}>
-      {/* Painel esquerdo — branding */}
       <Box
         sx={{
           width: { md: "42%", lg: "38%" },
@@ -119,7 +118,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         </Typography>
       </Box>
 
-      {/* Painel direito — formulário */}
       <Box
         component="main"
         id="main-content"

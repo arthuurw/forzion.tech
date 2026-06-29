@@ -1,5 +1,3 @@
-// F24 (Fase 5 test remediation) — stateful component story.
-// Estados cobertos: idle (default), destructive, loading, com children custom.
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { useState } from "react";
 import { Button, TextField } from "@mui/material";
@@ -99,7 +97,6 @@ export const Fechado: Story = {
   },
 };
 
-// Interativo via toggle pra testar manualmente o ciclo open/close.
 export const Interativo: Story = {
   render: () => {
     function Wrapper() {

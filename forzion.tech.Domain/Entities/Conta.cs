@@ -22,7 +22,7 @@ public class Conta : IHasDomainEvents
     public DateTime? UpdatedAt { get; private set; }
     public DateTime? AnonimizadaEm { get; private set; }
 
-    // SEC-05: epoch de sessão. Access token com nbf anterior a este carimbo é rejeitado.
+    // epoch de sessão. Access token com nbf anterior a este carimbo é rejeitado.
     // null = nunca invalidado (tokens vigentes valem). Bump em reset/troca de senha/logout-all/anonimização.
     public DateTimeOffset? SessoesInvalidasAntesDeUtc { get; private set; }
 

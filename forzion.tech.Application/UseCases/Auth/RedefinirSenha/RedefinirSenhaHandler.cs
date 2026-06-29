@@ -94,7 +94,7 @@ public class RedefinirSenhaHandler(
         if (marcarResult.IsFailure)
             return Result.Failure(marcarResult.Error!);
 
-        // Reset de senha revoga todas as sessões da conta (NR-6) — inclui o device de quem roubou a senha.
+        // Reset de senha revoga todas as sessões da conta — inclui o device de quem roubou a senha.
         await refreshTokenService.RevogarTodasPorContaAsync(conta.Id, MotivoRevogacaoFamilia.TrocaSenha, agora, cancellationToken).ConfigureAwait(false);
         await trustedDeviceRepository.RemoverPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);
 

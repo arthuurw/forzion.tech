@@ -21,7 +21,6 @@ public static class WebhookEndpoints
             [Microsoft.AspNetCore.Mvc.FromServices] ILogger<ProcessarWebhookStripeHandler> logger,
             CancellationToken cancellationToken) =>
         {
-            // Limita tamanho do body para prevenir DoS
             httpContext.Request.Body = new LimitedStream(httpContext.Request.Body, MaxWebhookBodyBytes);
 
             using var reader = new StreamReader(httpContext.Request.Body);
@@ -92,7 +91,6 @@ public static class WebhookEndpoints
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status400BadRequest);
 
-        // GET /webhooks/whatsapp — Meta verification handshake
         endpoints.MapGet("/webhooks/whatsapp", (
             HttpContext httpContext,
             [FromServices] IConfiguration configuration) =>
@@ -121,7 +119,6 @@ public static class WebhookEndpoints
         .Produces<string>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status403Forbidden);
 
-        // POST /webhooks/whatsapp — delivery-status events
         endpoints.MapPost("/webhooks/whatsapp", async (
             HttpContext httpContext,
             [FromServices] ProcessarWebhookWhatsAppHandler handler,

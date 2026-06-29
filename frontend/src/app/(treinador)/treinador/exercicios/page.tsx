@@ -359,7 +359,6 @@ export default function ExerciciosTreinadorPage() {
         )}
       </Card>
 
-      {/* Criar */}
       <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo exercício</DialogTitle>
         <DialogContent>
@@ -390,7 +389,6 @@ export default function ExerciciosTreinadorPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Editar */}
       <Dialog open={!!editEx} onClose={() => setEditEx(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar — {editEx?.nome}</DialogTitle>
         <DialogContent>
@@ -421,7 +419,6 @@ export default function ExerciciosTreinadorPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Copiar duplicado */}
       <ConfirmDialog
         open={!!confirmCopiarDuplicado}
         title="Exercício já existe na sua biblioteca"
@@ -432,7 +429,6 @@ export default function ExerciciosTreinadorPage() {
         onClose={() => setConfirmCopiarDuplicado(null)}
       />
 
-      {/* Excluir */}
       <ConfirmDialog
         open={!!confirmExcluir}
         title="Excluir exercício"

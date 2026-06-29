@@ -1,9 +1,3 @@
-// F6b (Fase 3 test remediation) — migrado de vi.mock("@/lib/api/pagamento")
-// pra MSW. apiClient real envia GET /aluno/pagamentos/:id; MSW intercepta.
-// Pega bugs de URL templating/serializacao escondidos pelo mock antigo.
-//
-// @stripe/* continua mockado: F7 (componente Stripe partial mock) ainda
-// pendente — fora do scope F6 (separacao de concerns).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useStripe, useElements } from "@stripe/react-stripe-js";
@@ -14,7 +8,6 @@ import PagamentoCartao from "@/components/pagamento/PagamentoCartao";
 import type { PagamentoResponse } from "@/types";
 import type React from "react";
 
-// Stripe mock: F7 territory, not F6.
 vi.mock("@stripe/stripe-js", () => ({
   loadStripe: vi.fn(() => Promise.resolve(null)),
 }));
@@ -26,7 +19,6 @@ vi.mock("@stripe/react-stripe-js", () => ({
   useElements: vi.fn(),
 }));
 
-// F36: fixtures consolidados via buildPagamento. Defaults pra este spec: Cartao Pendente com clientSecret valido.
 const CARTAO_DEFAULTS: Partial<PagamentoResponse> = {
   pagamentoId: "p1",
   assinaturaAlunoId: "a1",
@@ -144,28 +136,12 @@ describe("CartaoForm — submit com erro Stripe", () => {
   });
 });
 
-// F7: Stripe partial mock — args + success + processando.
-// Mantemos Elements/PaymentElement mockados (DOM), mas useStripe/useElements
-// retornam OBJETOS REALISTAS (com confirmPayment configuravel). Cobre:
-// - args passados pro confirmPayment (elements ref, return_url, redirect)
-// - happy path (resolve sem error) → onPago chamado
-// - estado "processando" durante await (CircularProgress visivel)
-// - erro generico (sem error.message) → fallback string
-//
-// Stripe.js completo (Elements DOM/clientSecret network) fica out-of-scope —
-// testado em E2E Playwright (F3/F29).
-
 describe("CartaoForm — F7 partial Stripe mock", () => {
   function realisticStripe(confirmPayment: ReturnType<typeof vi.fn>) {
-    // Objeto realista — mesma shape dos retornos da Stripe.js. Outros metodos
-    // (createToken, retrievePaymentIntent, etc) ficam fora pq o componente nao
-    // usa — adicionar conforme precisar.
     return { confirmPayment } as never;
   }
 
   function realisticElements() {
-    // Container Elements opaco — o componente passa `elements` direto pro
-    // confirmPayment; nao introspecciona. Vazio basta.
     return {} as never;
   }
 
@@ -190,7 +166,7 @@ describe("CartaoForm — F7 partial Stripe mock", () => {
   });
 
   it("success path (Stripe resolve sem error) → onPago é chamado", async () => {
-    const confirmPayment = vi.fn().mockResolvedValue({}); // sem error
+    const confirmPayment = vi.fn().mockResolvedValue({});
     vi.mocked(useStripe).mockReturnValue(realisticStripe(confirmPayment));
     vi.mocked(useElements).mockReturnValue(realisticElements());
 
@@ -219,7 +195,6 @@ describe("CartaoForm — F7 partial Stripe mock", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
 
-    // Loading do submit (CircularProgress aparece DENTRO do botao "Pagar").
     await waitFor(() => {
       expect(screen.getByRole("progressbar")).toBeInTheDocument();
     });

@@ -55,7 +55,7 @@ public class JwtService : IJwtService
             claims.Add(new Claim("fam", familiaId.ToString()));
 
         var agora = _timeProvider.GetUtcNow().UtcDateTime;
-        // Access curto por papel (NR-4/NR-7): janela menor encurta o roubo do access; a
+        // Access curto por papel: janela menor encurta o roubo do access; a
         // blacklist jti continua eficaz. Refresh (rotação) repõe o access em silêncio.
         var expiration = TimeSpan.FromMinutes(SessaoConfig.AccessMinutes(_configuration, conta.TipoConta));
 

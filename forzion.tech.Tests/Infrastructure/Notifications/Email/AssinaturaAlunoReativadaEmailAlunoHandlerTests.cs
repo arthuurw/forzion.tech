@@ -160,7 +160,6 @@ public class AssinaturaAlunoReativadaEmailAlunoHandlerTests
     [Fact]
     public async Task HandleAsync_ResolveCanaisPorTreinadorId()
     {
-        // Confirma que usa ResolverPorTreinadorAsync com TreinadorId do evento.
         var aluno = Aluno.Criar(ContaId, "Ana", TestData.Agora, email: "ana@x.com").Value;
         _alunoRepo.Setup(r => r.ObterPorIdAsync(AlunoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(aluno);

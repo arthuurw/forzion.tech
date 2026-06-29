@@ -53,11 +53,9 @@ public class PagamentoConfiguration : IEntityTypeConfiguration<Pagamento>
         builder.Property(p => p.CreatedAt).IsRequired();
         builder.Property(p => p.UpdatedAt);
 
-        // Índice de performance para listagem por assinatura
         builder.HasIndex(p => p.AssinaturaAlunoId)
             .HasDatabaseName("ix_pagamentos_assinatura_aluno_id");
 
-        // Índice de performance para query de status
         builder.HasIndex(p => new { p.AssinaturaAlunoId, p.Status })
             .HasDatabaseName("ix_pagamentos_assinatura_aluno_id_status");
 

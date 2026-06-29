@@ -368,7 +368,7 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
         resultado.Should().BeNull();
     }
 
-    // --- ListarAtivosEPendentesPorAlunoAsync (ANON-01) ---
+    // --- ListarAtivosEPendentesPorAlunoAsync ---
 
     [Fact]
     public async Task ListarAtivosEPendentes_RetornaApenasAtivoEAguardando_IgnoraInativo()

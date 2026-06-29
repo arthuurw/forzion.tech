@@ -1,8 +1,3 @@
-/**
- * Tests for Elite-tier "Em breve" behaviour in admin pages:
- *  - PlanosAdminPage: Elite option is disabled in tier dropdowns (create + edit).
- *  - TreinadoresAdminPage: Elite-tier plan is excluded from the plan-assignment autocomplete.
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -149,7 +144,6 @@ describe("TreinadoresAdminPage — Elite excluído do autocomplete de plano", ()
     await waitFor(() => {
       const listbox = screen.getByRole("listbox");
       expect(within(listbox).getByText(/Plano Basic/i)).toBeInTheDocument();
-      // Elite plan must NOT be in the listbox
       expect(within(listbox).queryByText(/Plano Elite/i)).not.toBeInTheDocument();
     });
   });

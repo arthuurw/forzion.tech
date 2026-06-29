@@ -42,7 +42,7 @@ public class RefreshTokenService(
         if (familia is null || !familia.EstaAtiva(agora))
             return RotacaoResultado.Invalido();
 
-        // Token já usado = refresh reapresentado (NR-3); a corrida concorrente cai no claim atômico.
+        // Token já usado = refresh reapresentado; a corrida concorrente cai no claim atômico.
         if (token.UsadoEm.HasValue)
             return Reuse(familia, agora);
 
@@ -87,7 +87,7 @@ public class RefreshTokenService(
     {
         var raw = GerarRaw();
         var idle = agora + SessaoConfig.IdleWindow(configuration, tipo);
-        // Idle nunca ultrapassa o teto absoluto da família (NR-5: idle ≠ eterno).
+        // Idle nunca ultrapassa o teto absoluto da família (idle ≠ eterno).
         var expiraEm = idle < familia.AbsolutoExpiraEm ? idle : familia.AbsolutoExpiraEm;
         return (raw, RefreshToken.Criar(familia.Id, Hash(raw), expiraEm, agora).Value);
     }

@@ -60,7 +60,6 @@ const config = [
     },
   },
 
-  // Scripts utilitarios (Node).
   {
     files: ["scripts/**/*.mjs", "scripts/**/*.js"],
     rules: {

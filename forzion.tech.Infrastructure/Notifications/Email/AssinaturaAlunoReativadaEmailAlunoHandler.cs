@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace forzion.tech.Infrastructure.Notifications.Email;
 
 /// <summary>
-/// G-PAY-3 — notifica aluno via email que sua assinatura foi reativada após
+/// notifica aluno via email que sua assinatura foi reativada após
 /// regularização de pagamento (Inadimplente → Ativa).
 /// Disparado por <see cref="AssinaturaAlunoReativadaEvent"/>.
 ///

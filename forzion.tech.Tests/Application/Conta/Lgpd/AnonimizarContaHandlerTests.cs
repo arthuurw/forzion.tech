@@ -121,7 +121,7 @@ public class AnonimizarContaHandlerTests
     {
         var contaId = Guid.NewGuid();
         var conta = CriarContaComHash(TipoConta.Aluno);
-        conta.Anonimizar(TestData.Agora); // already anonymized
+        conta.Anonimizar(TestData.Agora);
 
         _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(conta);
@@ -389,7 +389,6 @@ public class AnonimizarContaHandlerTests
         _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
                   .ReturnsAsync(aluno);
 
-        // Admin: RealizadoPorId != ContaId, SenhaAtual = null
         var result = await _handler.HandleAsync(
             new AnonimizarContaCommand(contaId, adminId, SenhaAtual: null));
 
@@ -559,7 +558,7 @@ public class AnonimizarContaHandlerTests
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // JWT-01: a revogação é enfileirada ANTES do CommitAsync (mesma transação), não num
+    // a revogação é enfileirada ANTES do CommitAsync (mesma transação), não num
     // commit separado pós-anonimização — fecha a janela em que o jti seguiria válido se o
     // processo caísse entre os dois commits.
     [Fact]
@@ -592,7 +591,7 @@ public class AnonimizarContaHandlerTests
         ordem.Should().Equal("revoga", "commit");
     }
 
-    // JWT-01 caminho idempotente: conta já anonimizada (1ª chamada pode ter falhado só na
+    // caminho idempotente: conta já anonimizada (1ª chamada pode ter falhado só na
     // revogação) + self + jti ativo → o retry ainda revoga e comita.
     [Fact]
     public async Task HandleAsync_ContaJaAnonimizada_SelfComJtiAtivo_RevogaToken()
@@ -616,7 +615,7 @@ public class AnonimizarContaHandlerTests
         _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // JWT-01: jti já revogado (logout concorrente) → não duplica nem comita. A pré-checagem
+    // jti já revogado (logout concorrente) → não duplica nem comita. A pré-checagem
     // evita o unique-violation que abortaria a transação.
     [Fact]
     public async Task HandleAsync_ContaJaAnonimizada_JtiJaRevogado_NaoDuplica()

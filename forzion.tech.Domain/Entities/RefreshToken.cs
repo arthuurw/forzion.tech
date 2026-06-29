@@ -5,7 +5,7 @@ namespace forzion.tech.Domain.Entities;
 
 /// <summary>
 /// Refresh token single-use de uma <see cref="RefreshTokenFamily"/>. O raw vive só no cookie;
-/// o DB guarda apenas o SHA-256 (NR-1). Rotação: usar marca <see cref="UsadoEm"/> e aponta o
+/// o DB guarda apenas o SHA-256. Rotação: usar marca <see cref="UsadoEm"/> e aponta o
 /// <see cref="SubstituidoPorId"/> (cadeia). Reuso de token já usado = sinal de roubo → o handler
 /// revoga a família inteira.
 /// </summary>

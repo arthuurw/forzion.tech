@@ -450,7 +450,6 @@ public class ProviderStateMiddleware
             return;
         }
 
-        // Verifica se o state atual mapeia pra erro.
         var (status, title) = MapStateToError(_state.Current);
         if (status > 0)
         {

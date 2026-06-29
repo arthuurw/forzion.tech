@@ -81,7 +81,7 @@ public class ProcessarWebhookResendHandlerTests
     [Fact]
     public async Task HandleAsync_FalhaDeVerifyNaoAssinatura_FailClosed_SemExcecao()
     {
-        // SEC-04: timestamp malformado faz o Verify lançar WebhookVerificationException por um
+        // timestamp malformado faz o Verify lançar WebhookVerificationException por um
         // caminho distinto de "assinatura inválida". Deve falhar fechado (Failure), não vazar 500.
         var cmd = new ProcessarWebhookResendCommand(
             "{\"type\":\"email.delivered\",\"data\":{}}",

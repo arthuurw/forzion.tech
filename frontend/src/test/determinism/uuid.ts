@@ -20,9 +20,6 @@ export function deterministicUuid(): void {
   vi.spyOn(globalThis.crypto, "randomUUID").mockImplementation(nextUuid);
 }
 
-/**
- * Reseta contador.
- */
 export function resetUuid(): void {
   counter = 0;
 }

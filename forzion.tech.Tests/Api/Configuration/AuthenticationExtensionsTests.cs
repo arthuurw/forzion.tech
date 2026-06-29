@@ -24,7 +24,6 @@ public class AuthenticationExtensionsTests
     [Fact]
     public void AddJwtAuthentication_SecretVazio_LancaInvalidOperationException()
     {
-        // covers L22: IsNullOrWhiteSpace(secret) → true → throw
         var services = new ServiceCollection();
         var act = () => services.AddJwtAuthentication(CriarConfig(secret: ""), CriarEnv());
         act.Should().Throw<InvalidOperationException>().WithMessage("*'Auth:JwtSecret'*");
@@ -33,7 +32,6 @@ public class AuthenticationExtensionsTests
     [Fact]
     public void AddJwtAuthentication_SecretAusente_LancaInvalidOperationException()
     {
-        // covers L18: ?? string.Empty (null path), then L22 throw
         var services = new ServiceCollection();
         var act = () => services.AddJwtAuthentication(CriarConfig(), CriarEnv());
         act.Should().Throw<InvalidOperationException>();
@@ -42,7 +40,6 @@ public class AuthenticationExtensionsTests
     [Fact]
     public void AddJwtAuthentication_SecretCurto_LancaInvalidOperationException()
     {
-        // covers L25: GetByteCount(secret) < 32 → throw
         var services = new ServiceCollection();
         var act = () => services.AddJwtAuthentication(CriarConfig(secret: "curto"), CriarEnv());
         act.Should().Throw<InvalidOperationException>().WithMessage("*32 bytes*");
@@ -55,8 +52,8 @@ public class AuthenticationExtensionsTests
         var act = () => services.AddJwtAuthentication(
             CriarConfig(
                 secret: "test-only-secret-at-least-32-chars!!",
-                issuer: "meu-issuer",     // covers L19: not-null path
-                audience: "meu-audience"  // covers L20: not-null path
+                issuer: "meu-issuer",
+                audience: "meu-audience"
             ),
             CriarEnv());
         act.Should().NotThrow();

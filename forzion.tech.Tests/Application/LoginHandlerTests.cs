@@ -256,7 +256,7 @@ public class LoginHandlerTests
     {
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         conta.MarcarEmailVerificado(DateTime.UtcNow);
-        var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value; // AguardandoAprovacao
+        var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value;
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
@@ -295,7 +295,7 @@ public class LoginHandlerTests
         var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
         conta.MarcarEmailVerificado(DateTime.UtcNow);
         var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value;
-        treinador.Reprovar(Guid.NewGuid(), DateTime.UtcNow); // → Inativo
+        treinador.Reprovar(Guid.NewGuid(), DateTime.UtcNow);
 
         _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);

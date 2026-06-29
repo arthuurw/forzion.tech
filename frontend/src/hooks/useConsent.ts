@@ -28,7 +28,6 @@ function parseConsentCookie(): ConsentPreferences | null {
 function writeConsentCookie(prefs: ConsentPreferences) {
   if (typeof document === "undefined") return;
   const value = encodeURIComponent(JSON.stringify(prefs));
-  // 1 year expiry, SameSite=Lax
   const maxAge = 60 * 60 * 24 * 365;
   document.cookie = `${COOKIE_NAME}=${value}; max-age=${maxAge}; path=/; SameSite=Lax`;
 }

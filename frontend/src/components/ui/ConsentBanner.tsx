@@ -34,7 +34,6 @@ export default function ConsentBanner({ forceOpen, onClose }: ConsentBannerProps
     consent?.analytics ?? false,
   );
 
-  // Show when no choice made yet, or when forced open from /perfil
   const open = forceOpen || consent === null;
 
   if (!open) return null;

@@ -16,9 +16,6 @@ export function seedRandom(seed: number = DETERMINISTIC_SEED): void {
   Math.random = () => prng();
 }
 
-/**
- * Restaura Math.random original.
- */
 export function restoreRandom(): void {
   if (originalRandom !== null) {
     Math.random = originalRandom;

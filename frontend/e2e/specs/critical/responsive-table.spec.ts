@@ -17,7 +17,6 @@ test.describe("responsive table", () => {
     await alunos.goto();
     await expect(alunos.heading).toBeVisible();
 
-    // Em desktop, espera <table> presente
     await expect(page.locator("table")).toBeVisible();
   });
 

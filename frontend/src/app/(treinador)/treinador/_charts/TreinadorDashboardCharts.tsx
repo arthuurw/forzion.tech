@@ -39,7 +39,6 @@ export default function TreinadorDashboardCharts({
 
   return (
     <>
-      {/* Charts */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1.4fr" }, gap: 2, mb: 4 }}>
         <Paper sx={{ p: 3, borderRadius: 2 }}>
           <Typography
@@ -107,7 +106,6 @@ export default function TreinadorDashboardCharts({
         </Paper>
       </Box>
 
-      {/* Receita por pacote */}
       {receitaPorPacote.length > 0 && (
         <Paper sx={{ p: 3, borderRadius: 2, mb: 4 }}>
           <Typography

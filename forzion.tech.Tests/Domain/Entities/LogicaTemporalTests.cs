@@ -48,7 +48,6 @@ public class LogicaTemporalTests
         var time = new FakeTimeProvider(Instante);
         var assinatura = CriarAssinatura(time.GetUtcNow().UtcDateTime);
 
-        // Data agendada 7 dias à frente do instante inicial.
         var dataAgendada = time.GetUtcNow().UtcDateTime.AddDays(7);
 
         // O tempo avança 30 dias: a data agendada agora está no passado.
@@ -68,7 +67,6 @@ public class LogicaTemporalTests
         var agora = time.GetUtcNow().UtcDateTime;
 
         var pagamento = Pagamento.Criar(Guid.NewGuid(), 99m, agora).Value;
-        // Expiração do Pix: 1 hora a partir do instante controlado.
         var expiracao = agora.AddHours(1);
         pagamento.DefinirDadosPix("pi_pix", "qr", "url", expiracao, agora);
 

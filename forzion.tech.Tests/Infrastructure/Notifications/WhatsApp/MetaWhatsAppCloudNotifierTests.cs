@@ -113,7 +113,7 @@ public class MetaWhatsAppCloudNotifierTests
     [Theory]
     [InlineData("+55 (11) 99999-9999", "5511999999999")]
     [InlineData("+5511999999999", "5511999999999")]
-    [InlineData("55 11 9999-9999", "551199999999")]   // sem parênteses, com espaços e hífen
+    [InlineData("55 11 9999-9999", "551199999999")]
     [InlineData("5511999999999", "5511999999999")]
     public async Task SendAsync_NormalizaTelefone_RemoveCaracteresEspeciais(string entrada, string esperado)
     {

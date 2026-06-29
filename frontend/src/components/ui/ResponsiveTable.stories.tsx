@@ -1,5 +1,3 @@
-// F24 (Fase 5 test remediation) — stateful component story.
-// Estados cobertos: populated, empty, com paginacao, mobile-like (via wrapper).
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { useState } from "react";
 import { Box, Button, Chip, Typography } from "@mui/material";

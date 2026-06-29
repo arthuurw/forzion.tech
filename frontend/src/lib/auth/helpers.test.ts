@@ -2,7 +2,6 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { extractTipoConta } from "@/lib/auth/jwt";
 import { homeRouteFor } from "@/lib/auth/context";
 
-// Build a minimal unsigned JWT for testing (signature is not verified by these functions)
 function makeJwt(payload: Record<string, unknown>): string {
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const body = btoa(JSON.stringify(payload));

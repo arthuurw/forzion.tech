@@ -24,16 +24,13 @@ test.describe("network: retry behavior", () => {
     await page.goto("/admin/alunos");
     await page.waitForLoadState("domcontentloaded");
 
-    // Espera ate API ter sido chamada uma vez (a falha)
     await page.waitForFunction(() => true, { timeout: 5_000 }).catch(() => undefined);
 
     expect(flaky.attempts(), "primeira tentativa registrada").toBeGreaterThanOrEqual(1);
 
-    // Banner de erro deve aparecer apos primeira falha
     const errorBanner = page.getByRole("alert").filter({ hasText: /erro/i });
     await expect(errorBanner.first()).toBeVisible({ timeout: 10_000 });
 
-    // Restaura rota e recarrega manualmente — espera sucesso
     await flaky.restore();
     await page.reload();
     await expect(page.getByRole("heading", { name: /^alunos$/i })).toBeVisible();

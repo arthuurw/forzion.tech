@@ -35,7 +35,6 @@ const grupos = (await call("GET", "/treinador/grupos-musculares", { token: t }))
 const grupoId = (Array.isArray(grupos) ? grupos : grupos.items ?? grupos.dados)[0]?.id
   ?? (Array.isArray(grupos) ? grupos : grupos.items ?? grupos.dados)[0]?.grupoMuscularId;
 
-// --- exercicio CRUD ---
 const exNome = `Ex Sweep ${env.E2E_PACOTE_ID.slice(0, 8)}`;
 const exCreate = await call("POST", "/treinador/exercicios", {
   token: t, body: { nome: exNome, grupoMuscularId: grupoId, descricao: "sweep" },
@@ -53,7 +52,6 @@ if (exId) {
   step("DELETE /treinador/exercicios/{id}", exDel.status, exDel.status >= 200 && exDel.status < 300);
 }
 
-// --- pacote CRUD ---
 const pcCreate = await call("POST", "/treinador/pacotes", { token: t, body: { nome: "Pacote Sweep", preco: 50, descricao: "sweep" } });
 step("POST /treinador/pacotes", pcCreate.status, pcCreate.status >= 200 && pcCreate.status < 300, pcCreate.status >= 400 ? pcCreate.text.slice(0, 90) : "");
 const pcId = pcCreate.json?.pacoteId ?? pcCreate.json?.id;
@@ -64,7 +62,6 @@ if (pcId) {
   step("DELETE /treinador/pacotes/{id}", pcDel.status, pcDel.status >= 200 && pcDel.status < 300, pcDel.status >= 400 ? pcDel.text.slice(0, 90) : "");
 }
 
-// --- treino CRUD + exercicio nested ---
 const trCreate = await call("POST", "/treinos", { token: t, body: { nome: "Treino Sweep", objetivo: 0, dificuldade: 0 } });
 step("POST /treinos", trCreate.status, trCreate.status >= 200 && trCreate.status < 300, trCreate.status >= 400 ? trCreate.text.slice(0, 120) : "");
 const trId = trCreate.json?.treinoId ?? trCreate.json?.id;
@@ -81,11 +78,9 @@ if (trId) {
   step("DELETE /treinos/{id}", trDel.status, trDel.status >= 200 && trDel.status < 300);
 }
 
-// --- conta perfil patch (any) ---
 const pf = await call("PATCH", "/conta/perfil", { token: a, body: { nome: "Aluno E2E" } });
 step("PATCH /conta/perfil (aluno)", pf.status, pf.status >= 200 && pf.status < 300, pf.status >= 400 ? pf.text.slice(0, 90) : "");
 
-// --- role isolation ---
 const iso1 = await call("GET", "/admin/treinadores", { token: t });
 step("ISO treinador->/admin/treinadores nega", iso1.status, iso1.status === 403);
 const iso2 = await call("GET", "/treinador/alunos", { token: a });

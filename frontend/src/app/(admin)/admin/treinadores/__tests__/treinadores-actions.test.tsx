@@ -1,7 +1,3 @@
-/**
- * Ações da página /admin/treinadores: aprovar, reprovar, inativar, excluir,
- * atribuir plano, filtro de status e navegação para detalhe.
- */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -154,7 +150,7 @@ describe("/admin/treinadores — ações", () => {
     await waitList();
 
     const planoButtons = screen.getAllByLabelText("Atribuir plano");
-    fireEvent.click(planoButtons[1]); // treinador Ativo
+    fireEvent.click(planoButtons[1]);
     const dialog = await screen.findByRole("dialog");
 
     const input = within(dialog).getByLabelText(/novo plano/i);
@@ -191,8 +187,6 @@ describe("/admin/treinadores — ações", () => {
     expect(mockPush).toHaveBeenCalledWith("/admin/treinadores/t-aguard");
   });
 
-  // R5 — em mobile (<md) as ações colapsam num kebab Menu; itens alcançáveis e
-  // disparam o handler certo.
   describe("mobile (<md) → kebab de ações", () => {
     let original: typeof window.matchMedia;
     beforeEach(() => {

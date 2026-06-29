@@ -1,18 +1,7 @@
-/**
- * Tests for ConsentBanner + useConsent (LGPD R3).
- *
- * Covers:
- * - Banner renders when no consent cookie exists
- * - "Aceitar todos" persists analytics=true in cookie
- * - "Só essenciais" persists analytics=false in cookie
- * - "Preferências" flow saves custom choice
- * - Sentry gated: not initialized when analytics consent is false
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import ConsentBanner from "../ConsentBanner";
 
-// Helper to set / clear the document.cookie "consent" value
 function setCookieConsent(value: string | null) {
   if (value === null) {
     document.cookie = "consent=; max-age=0; path=/";
@@ -126,14 +115,11 @@ describe("Sentry consent gate (instrumentation-client behavior)", () => {
   it("analytics consent defaults to OFF (false) when no cookie", () => {
     // Simulate what instrumentation-client.ts does: read cookie, check analytics
     setCookieConsent(null);
-    // readConsentCookie returns null → analytics = false
     const raw = document.cookie
       .split("; ")
       .find((row) => row.startsWith("consent="));
     expect(raw).toBeUndefined();
 
-    // When there's no cookie, Sentry should NOT be enabled
-    // We simulate the check:
     let parsed: { v: number; analytics: boolean } | null = null;
     if (raw) {
       try {

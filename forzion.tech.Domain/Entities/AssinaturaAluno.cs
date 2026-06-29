@@ -68,7 +68,7 @@ public class AssinaturaAluno : IHasDomainEvents
         if (Status == AssinaturaAlunoStatus.Cancelada)
             return Result.Failure(AssinaturaAlunoErrors.CanceladaNaoAtivavel);
 
-        // G-PAY-4: Inadimplente → Ativa NÃO pode ser feito via Ativar; o contador de falhas
+        // Inadimplente → Ativa NÃO pode ser feito via Ativar; o contador de falhas
         // consecutivas precisa ser zerado antes. Callers devem invocar RegistrarPagamentoRegularizado,
         // que transiciona atomicamente e reseta TentativasFalhasConsecutivas.
         if (Status == AssinaturaAlunoStatus.Inadimplente)
@@ -184,7 +184,6 @@ public class AssinaturaAluno : IHasDomainEvents
 
         TentativasFalhasConsecutivas = 0;
 
-        // G-PAY-3: só dispara evento na transição efetiva Inadimplente → Ativa.
         if (Status == AssinaturaAlunoStatus.Inadimplente)
         {
             Status = AssinaturaAlunoStatus.Ativa;

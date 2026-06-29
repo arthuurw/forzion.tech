@@ -276,7 +276,6 @@ export default function TreinosTreinadorPage() {
         }}
       />
 
-      {/* Dialog: criar */}
       <Dialog open={createOpen} onClose={() => { closeCreate(); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Nova ficha de treino</DialogTitle>
         <DialogContent>
@@ -356,7 +355,6 @@ export default function TreinosTreinadorPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: editar */}
       <Dialog open={!!editTarget} onClose={closeEdit} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar ficha</DialogTitle>
         <DialogContent>
@@ -420,7 +418,6 @@ export default function TreinosTreinadorPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: confirmar exclusão */}
       <ConfirmDialog
         open={!!deleteTarget}
         title="Excluir ficha"

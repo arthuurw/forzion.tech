@@ -25,7 +25,6 @@ test.describe("critical: Stripe Connect onboarding (treinador)", () => {
   test("treinador sem onboarding completo vê 'Configurar recebimentos'", async ({ page }) => {
     await page.goto("/treinador/pagamentos");
 
-    // Loading spinner aparece e some.
     await expect(page.getByRole("progressbar")).toBeHidden({ timeout: 10_000 });
 
     // Estado depende do treinador-cobaia: ou "Ativo" (onboarding completo),
@@ -69,7 +68,6 @@ test.describe("critical: Stripe Connect onboarding (treinador)", () => {
     });
 
     await btn.click();
-    // Aguarda o app processar o response.
     await expect.poll(() => onboardingCalled, { timeout: 10_000 }).toBe(true);
   });
 

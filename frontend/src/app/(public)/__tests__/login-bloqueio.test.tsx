@@ -1,8 +1,3 @@
-/**
- * Login — bloqueio de treinador não-ativo.
- * Backend retorna 403 + code; a página deve exibir o aviso correspondente
- * (aguardando aprovação / conta inativa) em vez de logar.
- */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";

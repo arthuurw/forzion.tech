@@ -49,7 +49,6 @@ async function garantirPagamentoPendente(
     );
   }
 
-  // login treinador via API (sem UI).
   const login = await request.post("/api/auth/login", {
     data: { email: TREINADOR_EMAIL, senha: TREINADOR_PASSWORD },
     failOnStatusCode: false,
@@ -58,7 +57,6 @@ async function garantirPagamentoPendente(
     test.skip(true, `Treinador login falhou (${login.status()}) — credenciais E2E invalidas.`);
   }
 
-  // Lista alunos do treinador, encontra alvo, pega assinaturaId.
   const alunos = await request.get("/api/backend/treinador/alunos", {
     failOnStatusCode: false,
   });
@@ -71,7 +69,6 @@ async function garantirPagamentoPendente(
   );
   test.skip(!alvo, `Aluno ${ALUNO_EMAIL} nao vinculado a esse treinador.`);
 
-  // Resolve assinaturaId via /aluno/assinatura ou /treinador/alunos/{id}/assinatura.
   const assinaturaRes = await request.get(
     `/api/backend/treinador/alunos/${alvo.alunoId}/assinatura`,
     { failOnStatusCode: false },

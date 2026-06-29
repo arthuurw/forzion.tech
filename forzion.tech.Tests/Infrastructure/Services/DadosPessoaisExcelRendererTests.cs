@@ -165,7 +165,6 @@ public class DadosPessoaisExcelRendererTests
     [Fact]
     public void Render_AbaVazia_AindaTemLinhaDeHeader()
     {
-        // all lists empty
         var bytes = Renderer.Render(ExportAluno());
 
         using var wb = WorkbookFromBytes(bytes);

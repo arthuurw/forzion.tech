@@ -117,7 +117,6 @@ describe("PlanoTreinadorPage", () => {
     render(<Page />);
 
     await waitFor(() => screen.getAllByText("Trocar")[0]);
-    // Click Trocar on Free (downgrade)
     const botoesTocar = screen.getAllByText("Trocar");
     fireEvent.click(botoesTocar[botoesTocar.length - 1]);
 

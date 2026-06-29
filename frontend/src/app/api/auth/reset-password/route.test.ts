@@ -1,6 +1,3 @@
-// Frontend proxy /api/auth/reset-password → backend POST /auth/reset-password.
-// Cobre passthrough + propagacao de 422 (token invalido/expirado/usado) e 400
-// (ValidationException senha fraca), conforme specification-email.md.
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";

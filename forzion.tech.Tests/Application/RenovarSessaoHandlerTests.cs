@@ -89,7 +89,7 @@ public class RenovarSessaoHandlerTests
     {
         var conta = NovaConta(TipoConta.Treinador);
         var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value;
-        treinador.Reprovar(Guid.NewGuid(), DateTime.UtcNow); // → Inativo
+        treinador.Reprovar(Guid.NewGuid(), DateTime.UtcNow);
         _refresh.Setup(s => s.RotacionarAsync("raw", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RotacaoResultado.Sucesso(conta, Guid.NewGuid(), "novoraw"));
         _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);

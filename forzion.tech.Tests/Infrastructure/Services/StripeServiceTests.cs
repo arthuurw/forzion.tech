@@ -101,7 +101,7 @@ public class StripeServiceTests
     [Fact]
     public async Task ValidarWebhookAsync_LivemodeDivergente_RetornaNull()
     {
-        // Payload é test-mode (sem campo livemode ⇒ false); serviço espera live ⇒ rejeita (SEC-03).
+        // Payload é test-mode (sem campo livemode ⇒ false); serviço espera live ⇒ rejeita.
         var assinatura = AssinarStripe(Payload, WebhookSecret, DateTimeOffset.UtcNow);
 
         var resultado = await CriarServico(expectLivemode: true).ValidarWebhookAsync(Payload, assinatura);

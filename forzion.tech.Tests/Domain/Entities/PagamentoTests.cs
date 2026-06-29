@@ -32,8 +32,6 @@ public class PagamentoTests
     [Fact]
     public void Criar_DispatchaPagamentoCriadoEvent()
     {
-        // P0 (M6 follow-up) — notifica aluno via email + WhatsApp (handlers
-        // em Infrastructure) que cobranca esta disponivel.
         var p = Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora, MetodoPagamento.Cartao).Value;
 
         p.DomainEvents.Should().ContainSingle();

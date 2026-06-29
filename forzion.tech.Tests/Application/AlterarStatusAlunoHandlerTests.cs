@@ -95,7 +95,7 @@ public class AlterarStatusAlunoHandlerTests
     public async Task HandleAsync_AtivarAlunoJaAtivo_RetornaFailureDaTransicaoDeDominio()
     {
         var aluno = new AlunoBuilder().ComNome("João").Build();
-        aluno.Ativar(TestData.Agora); // já fica Ativo
+        aluno.Ativar(TestData.Agora);
         _alunoRepo.Setup(r => r.ObterPorIdAsync(aluno.Id, It.IsAny<CancellationToken>())).ReturnsAsync(aluno);
         _userContext.Setup(u => u.IsSystemAdmin).Returns(true);
 

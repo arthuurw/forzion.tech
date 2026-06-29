@@ -17,7 +17,6 @@ vi.mock("next/server", () => ({
 
 const FUTURE = Math.floor(Date.now() / 1000) + 3600;
 
-// Tokens that should be treated as having an invalid signature.
 const INVALID_SIG_SENTINEL = "__INVALID_SIG__";
 
 vi.mock("jose", () => ({
@@ -25,7 +24,6 @@ vi.mock("jose", () => ({
     if (token === INVALID_SIG_SENTINEL) {
       throw new Error("JWTSignatureVerificationFailed");
     }
-    // Decode payload from the fake JWT used in tests.
     const parts = token.split(".");
     if (parts.length !== 3) throw new Error("invalid token");
     const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
@@ -118,12 +116,11 @@ describe("middleware — sem auth em área protegida", () => {
 
   it("token sem session_guard → trata como não autenticado → redirect /login", async () => {
     const token = makeJwt({ tipo_conta: "Aluno", exp: FUTURE });
-    await middleware(makeRequest("/aluno/fichas", { token })); // session_guard ausente
+    await middleware(makeRequest("/aluno/fichas", { token }));
     expect(redirectedTo()).toBe("/login");
   });
 });
 
-// G-SEC-3: assinatura JWT inválida
 describe("middleware — assinatura JWT inválida", () => {
   it("token com assinatura inválida em área protegida → redirect /login", async () => {
     await middleware(makeRequest("/aluno/fichas", {

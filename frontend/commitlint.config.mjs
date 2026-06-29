@@ -1,10 +1,8 @@
-// Convencional Commits enforcement.
 // Roda em commit-msg via .husky/commit-msg.
 const config = {
   extends: ["@commitlint/config-conventional"],
   ignores: [(message) => message.includes("dependabot[bot]")],
   rules: {
-    // Permite os scopes usados no projeto.
     "scope-enum": [
       2,
       "always",

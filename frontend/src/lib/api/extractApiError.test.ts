@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { extractApiError, extractApiErrorInfo } from "./extractApiError";
 
-/** Build a minimal axios-like error with response.data fields. */
 function makeAxiosError(data: Record<string, unknown>): unknown {
   return { response: { data } };
 }

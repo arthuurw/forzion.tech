@@ -149,7 +149,7 @@ public class RefreshTokenRepositoryTests(InfrastructureTestFixture fixture)
     [Fact]
     public async Task RotacionarAsync_DuasRotacoesConcorrentes_UmSucessoOutroReuse()
     {
-        // SEC-01: sem o claim atômico, 2 refresh concorrentes do mesmo token emitiriam 2 sucessores
+        // sem o claim atômico, 2 refresh concorrentes do mesmo token emitiriam 2 sucessores
         // (fork de sessão). Com ele, 1 vence e o outro vira reuse (família revogada).
         var (familia, raw) = await SeedSessaoAtivaAsync();
         var agora = Base.AddMinutes(30);

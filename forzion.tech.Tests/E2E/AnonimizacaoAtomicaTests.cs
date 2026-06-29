@@ -12,7 +12,7 @@ using Moq;
 
 namespace forzion.tech.Tests.E2E;
 
-// ATOM-01: prova de atomicidade contra Postgres real. Mock não serve aqui — o ponto é
+// prova de atomicidade contra Postgres real. Mock não serve aqui — o ponto é
 // que o ExecuteUpdate (que roda direto no banco, fora do change tracker) participe da
 // transação ambiente e seja revertido quando um passo posterior falha.
 [Collection(E2ECollection.Name)]

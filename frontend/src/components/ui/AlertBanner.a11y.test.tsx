@@ -3,12 +3,6 @@ import { axe } from "vitest-axe";
 import { describe, it, expect } from "vitest";
 import AlertBanner from "./AlertBanner";
 
-/**
- * A11y vitest-axe — AlertBanner.
- *
- * Cobre estados representativos: 4 severities + sem title + fechado.
- */
-
 describe("AlertBanner a11y", () => {
   it("severity error com title", async () => {
     const { container } = render(

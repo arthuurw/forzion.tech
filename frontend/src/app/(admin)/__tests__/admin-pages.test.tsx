@@ -1,9 +1,3 @@
-// F6e (Fase 3 test remediation) — migrado de vi.mock("@/lib/api/admin")
-// pra MSW. apiClient real envia GET; MSW intercepta. Pega bugs de URL,
-// params, e interceptor que mock antigo escondia.
-//
-// Mocks restantes (next/navigation, usePaginatedList hook, recharts) NAO sao
-// @/lib/api/* — fora do scope F6.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -580,7 +574,6 @@ describe("DetalheTreinadorAdminPage — tabs e pacotes", () => {
     expect(await screen.findByText("Carlos Ferreira")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Pacotes" }));
     expect(await screen.findByText("Pacote Premium")).toBeInTheDocument();
-    // Captura via MSW handler: verifica URL contém treinadorId correto.
     expect(pacotesPath).toContain("/admin/treinadores/t-001/pacotes");
   });
 

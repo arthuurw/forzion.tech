@@ -185,7 +185,6 @@ export default function DetalheAlunoAdminPage() {
         <Tab label="LGPD" />
       </Tabs>
 
-      {/* Tab 0: Dados */}
       {tab === 0 && aluno && (
         <Box>
           <Card variant="outlined" sx={{ mb: 2 }}>
@@ -254,7 +253,6 @@ export default function DetalheAlunoAdminPage() {
         </Box>
       )}
 
-      {/* Tab 1: Fichas */}
       {tab === 1 && (
         <DataList
           loading={fichasList.loading}
@@ -277,7 +275,6 @@ export default function DetalheAlunoAdminPage() {
         />
       )}
 
-      {/* Tab 2: Execuções */}
       {tab === 2 && (
         <DataList
           loading={execList.loading}
@@ -312,7 +309,6 @@ export default function DetalheAlunoAdminPage() {
         />
       )}
 
-      {/* Tab 3: Progressão */}
       {tab === 3 && (
         <Box>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
@@ -379,7 +375,6 @@ export default function DetalheAlunoAdminPage() {
         </Box>
       )}
 
-      {/* Tab 4: LGPD */}
       {tab === 4 && (
         <Card variant="outlined">
           <CardContent>

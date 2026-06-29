@@ -1,10 +1,3 @@
-/**
- * A11y tests for UI components:
- *  - ConfirmDialog: aria-describedby present; destructive → Cancel autoFocus;
- *    non-destructive → Confirm autoFocus
- *  - ResponsiveTable: keyboard activation (Enter/Space) fires onRowClick on both
- *    desktop (TableRow) and mobile (Box) views.
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useMediaQuery } from "@mui/material";

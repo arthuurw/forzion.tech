@@ -47,7 +47,7 @@ public class CorrelationMiddlewareTests(CorrelationMiddlewareTests.CorrelationWe
             .Which.Should().Be(idEntrada);
     }
 
-    // HDR-01: charset fora do seguro é descartado; servidor gera o próprio id (não ecoa lixo).
+    // charset fora do seguro é descartado; servidor gera o próprio id (não ecoa lixo).
     // TryAddWithoutValidation contorna a validação do HttpClient p/ injetar o valor hostil.
     [Fact]
     public async Task Get_ComHeaderEntradaCharsetInseguro_NaoEchoaGeraServerSide()
@@ -63,7 +63,7 @@ public class CorrelationMiddlewareTests(CorrelationMiddlewareTests.CorrelationWe
             .Which.Should().NotBe(hostil);
     }
 
-    // HDR-01: acima de 128 chars (mesmo charset seguro) é descartado p/ não inflar log/header.
+    // acima de 128 chars (mesmo charset seguro) é descartado p/ não inflar log/header.
     [Fact]
     public async Task Get_ComHeaderEntradaMuitoLongo_NaoEchoaVerbatim()
     {

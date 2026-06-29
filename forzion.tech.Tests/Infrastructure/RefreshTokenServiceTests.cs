@@ -50,7 +50,7 @@ public class RefreshTokenServiceTests
         familiaAdicionada.Should().NotBeNull();
         familiaAdicionada!.ContaId.Should().Be(conta.Id);
         tokenAdicionado.Should().NotBeNull();
-        // NR-1: o raw nunca é persistido — só o SHA-256.
+        // o raw nunca é persistido — só o SHA-256.
         tokenAdicionado!.TokenHash.Should().Be(Hash(emitido.RefreshRaw));
         tokenAdicionado.TokenHash.Should().NotBe(emitido.RefreshRaw);
         emitido.FamiliaId.Should().Be(familiaAdicionada.Id);
