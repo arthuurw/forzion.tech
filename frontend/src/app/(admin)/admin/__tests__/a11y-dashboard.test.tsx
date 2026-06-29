@@ -1,9 +1,3 @@
-/**
- * A11y + aggregate-endpoint tests for admin dashboard:
- *  1. Chart figures have aria-label (a11y — charts)
- *  2. IconButtons in treinadores page have aria-label (a11y — IconButtons)
- *  3. Admin dashboard consumes GET /admin/dashboard (single aggregate) — no burst.
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";

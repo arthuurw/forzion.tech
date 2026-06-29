@@ -172,7 +172,6 @@ export default function DashboardAdminPage() {
     <Box>
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
 
-      {/* Stat cards — Treinadores */}
       <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
         TREINADORES
       </Typography>
@@ -182,7 +181,6 @@ export default function DashboardAdminPage() {
         ))}
       </Box>
 
-      {/* Stat cards — Alunos */}
       <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem" }}>
         ALUNOS
       </Typography>
@@ -192,7 +190,6 @@ export default function DashboardAdminPage() {
         ))}
       </Box>
 
-      {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
         <Tabs value={tab} onChange={(_, v: number) => setTab(v)}>
           <Tab label="Visão Geral" />
@@ -201,7 +198,6 @@ export default function DashboardAdminPage() {
         </Tabs>
       </Box>
 
-      {/* ── Tab 0: Visão Geral ── */}
       {tab === 0 && (
         <AdminDashboardCharts
           treinadorStats={treinadorStats}
@@ -211,7 +207,6 @@ export default function DashboardAdminPage() {
         />
       )}
 
-      {/* ── Tab 1: Aprovações ── */}
       {tab === 1 && (
         <>
         <Paper sx={{ p: 3, borderRadius: 2 }}>
@@ -300,10 +295,8 @@ export default function DashboardAdminPage() {
         </>
       )}
 
-      {/* ── Tab 2: Plataforma ── */}
       {tab === 2 && (
         <Box>
-          {/* Platform counters */}
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 2, mb: 3 }}>
             <StatCard value={planos.length} label="Planos" color={theme.palette.info.main} />
             <StatCard value={totalExercicios} label="Exercícios Globais" color={theme.palette.success.main} />
@@ -311,7 +304,6 @@ export default function DashboardAdminPage() {
           </Box>
 
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.5fr 1fr" }, gap: 2 }}>
-            {/* Plans table */}
             <Paper sx={{ p: 3, borderRadius: 2 }}>
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 2 }}>
                 PLANOS DE TREINADORES
@@ -337,7 +329,6 @@ export default function DashboardAdminPage() {
               />
             </Paper>
 
-            {/* Recent trainers */}
             <Paper sx={{ p: 3, borderRadius: 2 }}>
               <Typography variant="overline" color="text.disabled" sx={{ letterSpacing: 2, fontSize: "0.7rem", display: "block", mb: 2 }}>
                 TREINADORES RECENTES

@@ -1,6 +1,3 @@
-// Frontend proxy /api/auth/verify-email → backend POST /auth/verify-email.
-// Cobre: passthrough do body, propagacao de status+ProblemDetails,
-// guard de JSON malformado (sem chamar backend).
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";

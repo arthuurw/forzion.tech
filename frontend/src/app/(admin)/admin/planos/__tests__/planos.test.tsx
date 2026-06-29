@@ -1,7 +1,3 @@
-/**
- * CRUD da página /admin/planos: listagem (vazia/preenchida/erro), criar,
- * editar e excluir — sucesso e erro.
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";

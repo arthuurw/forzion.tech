@@ -1,8 +1,3 @@
-// F6a (Fase 3 test remediation) — migrado de vi.mock("@/lib/api/admin")
-// pra MSW. apiClient real envia requests; MSW intercepta e responde com
-// fixtures. Pega bugs de URL/params/serializacao que o mock antigo escondia.
-//
-// Stripe mock continua via vi.mock — out of scope F6 (cobre F7 depois).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -31,8 +26,6 @@ const snapshot: HealthSnapshotResponse = {
 };
 
 beforeEach(() => {
-  // Handlers padrao: GET config + listar snapshots respondem 200. Tests
-  // que precisam de variacoes (PUT body capture, run, errors) sobrepoem.
   server.use(
     http.get("*/admin/health-report/config", () => HttpResponse.json(config)),
     http.get("*/admin/health-report/snapshots", () => HttpResponse.json([snapshot])),

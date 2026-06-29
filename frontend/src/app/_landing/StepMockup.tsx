@@ -69,7 +69,6 @@ function Ficha() {
     <Frame variant="ficha" label="Ficha de treino: exercícios, séries e observações">
       {(sh: string) => (
         <>
-          {/* card de trás: lista de exercícios */}
           <Shadowed id={sh} x={80} y={120} w={820} h={680} rx={28} />
           <Bar x={128} y={168} w={300} h={26} fill={C.text} />
           <rect x={128} y={212} width={150} height={28} rx={14} fill={C.subtle} stroke={C.line} strokeWidth={2} />
@@ -87,7 +86,6 @@ function Ficha() {
               </g>
             );
           })}
-          {/* card da frente: painel de séries (sobreposto à direita) */}
           <Shadowed id={sh} x={860} y={300} w={360} h={420} rx={26} />
           <Bar x={900} y={348} w={200} h={18} fill={C.text} />
           {series.map((i) => {
@@ -119,7 +117,6 @@ function Alunos() {
     <Frame variant="alunos" label="Carteira de alunos com status e ações">
       {(sh: string) => (
         <>
-          {/* card de trás: tabela de alunos */}
           <Shadowed id={sh} x={80} y={130} w={860} h={660} rx={28} />
           <Bar x={128} y={178} w={240} h={26} fill={C.text} />
           <rect x={128} y={222} width={210} height={42} rx={10} fill={C.surface} stroke={C.line} strokeWidth={2} />
@@ -137,7 +134,6 @@ function Alunos() {
               </g>
             );
           })}
-          {/* card da frente: stat "alunos ativos" (donut) */}
           <Shadowed id={sh} x={900} y={250} w={300} h={300} rx={26} />
           <Bar x={940} y={298} w={170} h={14} fill={C.muted} rx={7} />
           <circle cx={1050} cy={420} r={72} fill="none" stroke={C.subtle} strokeWidth={18} />
@@ -162,7 +158,6 @@ function Historico() {
     <Frame variant="historico" label="Histórico de execuções: frequência e progressão">
       {(sh: string) => (
         <>
-          {/* card de trás: frequência (barras) */}
           <Shadowed id={sh} x={80} y={110} w={780} h={430} rx={28} />
           <Bar x={128} y={158} w={240} h={16} fill={C.muted} rx={8} />
           {bars.map((h, i) => {
@@ -171,7 +166,6 @@ function Historico() {
             return <rect key={i} x={x} y={baseY - h} width={64} height={h} rx={8} fill={C.primary} />;
           })}
           <line x1={128} y1={470} x2={812} y2={470} stroke={C.line} strokeWidth={2} />
-          {/* card da frente: progressão (linha) sobreposto */}
           <Shadowed id={sh} x={560} y={380} w={640} h={420} rx={26} />
           <Bar x={600} y={430} w={220} h={14} fill={C.muted} rx={7} />
           {[0, 1, 2, 3].map((i) => (

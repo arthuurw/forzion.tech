@@ -26,7 +26,6 @@ test.describe("memory: navigation leak", () => {
   }) => {
     test.skip(browserName !== "chromium", "performance.memory + window.gc so em Chromium");
 
-    // Warmup
     await page.goto("/admin/alunos");
     await page.waitForLoadState("domcontentloaded");
     await page.goto("/admin/treinadores");
@@ -41,7 +40,6 @@ test.describe("memory: navigation leak", () => {
     const baseline = await measureHeap(page);
     expect(baseline, "heap baseline indisponivel").not.toBeNull();
 
-    // Stress: 10 navegacoes alternadas
     for (let i = 0; i < 10; i++) {
       await page.goto("/admin/alunos");
       await page.waitForLoadState("domcontentloaded");

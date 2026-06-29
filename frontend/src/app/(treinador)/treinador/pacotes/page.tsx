@@ -187,7 +187,6 @@ export default function PacotesTreinadorPage() {
         </Grid>
       )}
 
-      {/* Dialog: criar */}
       <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo pacote</DialogTitle>
         <DialogContent>
@@ -247,7 +246,6 @@ export default function PacotesTreinadorPage() {
         onClose={() => setDeleteTarget(null)}
       />
 
-      {/* Dialog: editar */}
       <Dialog open={!!editTarget} onClose={() => setEditTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar pacote</DialogTitle>
         <DialogContent>

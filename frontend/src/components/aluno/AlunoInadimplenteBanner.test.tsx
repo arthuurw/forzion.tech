@@ -1,4 +1,3 @@
-// IH.6 — AlunoInadimplenteBanner: banner persistente avisando inadimplencia.
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import AlunoInadimplenteBanner from "./AlunoInadimplenteBanner";

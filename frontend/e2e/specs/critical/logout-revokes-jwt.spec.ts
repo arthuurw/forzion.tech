@@ -26,7 +26,6 @@ test.describe("auth: logout revokes JWT", () => {
     expect(email, "E2E_ADMIN_EMAIL não configurado").toBeTruthy();
     expect(password, "E2E_ADMIN_PASSWORD não configurado").toBeTruthy();
 
-    // 1. Login completo via UI
     const login = new LoginPage(page);
     await login.goto();
     await login.submit(email!, password!);

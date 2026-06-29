@@ -49,7 +49,6 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
       } catch (err) {
         if (!active) return;
         if (isAxiosError(err) && err.response?.status === 401) {
-          // Sessão expirada — parar polling e alertar usuário
           stopPolling();
           setPollingError("auth");
         } else {
@@ -85,7 +84,6 @@ export default function PagamentoPix({ pagamentoId, onPago }: Props) {
   }
 
   if (pollingError === "network" && !pagamento) {
-    // Não foi possível obter nenhum dado após N tentativas consecutivas
     return (
       <Alert severity="warning" data-testid="polling-network-warning">
         Não foi possível verificar o status do pagamento. Tente recarregar a página.

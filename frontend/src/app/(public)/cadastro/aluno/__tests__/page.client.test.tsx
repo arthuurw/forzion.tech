@@ -44,7 +44,6 @@ describe("CadastroAlunoPage (R6 resumo + R8 consentimento anamnese)", () => {
     await screen.findByText("Disponibilidade");
   };
 
-  // R8 — "alterar" virou Button real (role button, focável), não mais Box span click-only.
   it("'alterar' é botão (role button) e volta ao passo de treinador", async () => {
     const treinadores = [{ treinadorId: "t-1", nome: "Carlos" }];
     const pacotes = [
@@ -63,12 +62,10 @@ describe("CadastroAlunoPage (R6 resumo + R8 consentimento anamnese)", () => {
     render(<CadastroAlunoPage />);
     fireEvent.click(screen.getByText("Carregar treinadores"));
     fireEvent.click(await screen.findByText("Carlos"));
-    // passo 1 (pacote): "alterar" presente como botão.
     const alterar = await screen.findByRole("button", { name: /alterar/i });
     expect(alterar).toBeInTheDocument();
 
     fireEvent.click(alterar);
-    // voltou ao passo 0: lista de treinadores, sem "Plano Mensal".
     expect(screen.queryByText("Plano Mensal")).not.toBeInTheDocument();
     expect(screen.getByText("Carlos")).toBeInTheDocument();
   });

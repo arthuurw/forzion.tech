@@ -56,7 +56,6 @@ test.describe("admin treinador destructive actions", () => {
     await treinadores.goto();
     await treinadores.filterByStatus("Aguardando aprovação");
 
-    // Localiza a linha do treinador alvo via e-mail (asserts presença).
     const row = page.locator("tbody tr").filter({ hasText: PENDING_EMAIL! });
     await expect(row).toBeVisible({ timeout: 10_000 });
 
@@ -66,11 +65,9 @@ test.describe("admin treinador destructive actions", () => {
     const treinadorId = await row.evaluate((el) => el.getAttribute("data-treinador-id"));
     expect(treinadorId, "row precisa expor data-treinador-id").toBeTruthy();
 
-    // Action: aprovar
     await row.getByRole("button", { name: /aprovar/i }).click();
     await page.getByRole("button", { name: /confirmar/i }).click();
 
-    // Verifica que sumiu da lista filtrada por AguardandoAprovacao
     await expect(row).toHaveCount(0, { timeout: 10_000 });
 
     // Cleanup: reverte pra AguardandoAprovacao via endpoint admin (mantém

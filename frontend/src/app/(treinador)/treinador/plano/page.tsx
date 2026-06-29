@@ -156,7 +156,6 @@ export default function PlanoTreinadorPage() {
           return;
         }
       } catch {
-        // continua polling
       }
       if (!mountedRef.current) return;
       delayRef.current = Math.min(delayRef.current * 2, 30_000);

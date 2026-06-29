@@ -118,7 +118,6 @@ export const adminApi = {
     return apiClient.delete(`/admin/exercicios/${exercicioId}`);
   },
 
-  // Alunos (visibilidade admin)
   listAlunos(params?: { nome?: string; status?: AlunoStatus; pagina?: number; tamanhoPagina?: number }) {
     return apiClient.get<PaginatedResponse<AlunoResponse>>("/admin/alunos", { params });
   },
@@ -153,7 +152,6 @@ export const adminApi = {
     return apiClient.get<ProgressaoAlunoResponse>(`/admin/alunos/${alunoId}/progressao`, { params });
   },
 
-  // Sub-recursos de treinadores (visibilidade admin)
   getTreinadorAlunos(treinadorId: string, params?: { status?: AlunoStatus; pagina?: number; tamanhoPagina?: number }) {
     return apiClient.get<PaginatedResponse<AlunoResponse>>(`/admin/treinadores/${treinadorId}/alunos`, { params });
   },
@@ -174,7 +172,6 @@ export const adminApi = {
     return apiClient.get<PacoteResponse[]>(`/admin/treinadores/${treinadorId}/pacotes`);
   },
 
-  // Relatório de saúde
   getHealthReportConfig() {
     return apiClient.get<HealthReportConfigResponse>("/admin/health-report/config");
   },
@@ -199,7 +196,6 @@ export const adminApi = {
     return apiClient.get<DashboardStatsResponse>("/admin/stats/dashboard");
   },
 
-  // LGPD admin actions
   /**
    * Exporta dados pessoais de uma conta (treinador ou aluno) — portabilidade.
    */

@@ -1,8 +1,3 @@
-/**
- * Cobre os handlers de conta da página /perfil que não são LGPD:
- * carregamento (Aluno + Treinador + erro), salvar nome, alterar senha
- * (validações + sucesso + erro) e o fluxo de troca de treinador.
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";

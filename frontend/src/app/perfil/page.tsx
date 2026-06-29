@@ -210,7 +210,6 @@ export default function PerfilPage() {
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
 
-      {/* Dados da conta */}
       <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
@@ -261,7 +260,6 @@ export default function PerfilPage() {
         </CardContent>
       </Card>
 
-      {/* Meu Treinador — apenas para Alunos */}
       {perfil?.tipoConta === "Aluno" && (
         <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
           <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
@@ -312,7 +310,6 @@ export default function PerfilPage() {
         </Card>
       )}
 
-      {/* Anamnese — apenas para Alunos */}
       {perfil?.tipoConta === "Aluno" && (
         <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
           <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
@@ -332,7 +329,6 @@ export default function PerfilPage() {
         </Card>
       )}
 
-      {/* Alterar senha */}
       <Card sx={{ border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
@@ -375,7 +371,6 @@ export default function PerfilPage() {
           </FormProvider>
         </CardContent>
       </Card>
-      {/* Privacidade (LGPD) */}
       <Card sx={{ mt: 2.5, border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
@@ -427,7 +422,6 @@ export default function PerfilPage() {
         </CardContent>
       </Card>
 
-      {/* LGPD: confirm delete account */}
       <ConfirmDialog
         open={deleteAccountDialog}
         title="Excluir minha conta"
@@ -452,7 +446,6 @@ export default function PerfilPage() {
         </FormProvider>
       </ConfirmDialog>
 
-      {/* LGPD: reopen consent preferences */}
       {consentBannerOpen && (
         <ConsentBanner forceOpen onClose={() => setConsentBannerOpen(false)} />
       )}

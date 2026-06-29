@@ -1,11 +1,3 @@
-/**
- * Property-based tests para funcoes puras de formatacao.
- *
- * Cobertura:
- * - formatarSeries: invariantes de output (sempre string, "—" para vazio)
- * - formatarData: extrai DD/MM de qualquer ISO valido
- * - getWeekLabel: produz formato DD/MM
- */
 import { describe, expect } from "vitest";
 import { fc, test } from "@fast-check/vitest";
 import { formatarSeries, formatarData, getWeekLabel } from "./formatting";

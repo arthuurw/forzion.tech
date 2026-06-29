@@ -10,8 +10,6 @@ import { mapStripeError } from "@/lib/pagamento/stripeErro";
 import { getStripe } from "@/lib/pagamento/stripeClient";
 import type { PagamentoResponse } from "@/types";
 
-// ── Inner form (must be inside <Elements>) ────────────────────────────────────
-
 interface FormProps {
   pagamento: PagamentoResponse;
   onPago?: () => void;
@@ -81,8 +79,6 @@ function CartaoForm({ pagamento, onPago }: FormProps) {
     </Paper>
   );
 }
-
-// ── Public component ──────────────────────────────────────────────────────────
 
 interface Props {
   pagamentoId: string;

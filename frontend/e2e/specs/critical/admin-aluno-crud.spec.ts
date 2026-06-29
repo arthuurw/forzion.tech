@@ -58,7 +58,6 @@ test.describe("admin aluno CRUD", () => {
     await page.getByRole("option", { name: /inativo/i }).click();
     await alunos.filterByNome("CRUD Test");
 
-    // Empty state ou nenhuma linha com "CRUD Test"
     const matchCount = page
       .locator("tbody tr")
       .filter({ hasText: "CRUD Test" })

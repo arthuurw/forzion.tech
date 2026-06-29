@@ -1,15 +1,3 @@
-// F6c (Fase 3 test remediation) — migrado de vi.mock("@/lib/api/pagamento")
-// e vi.mock("@/lib/api/aluno") pra MSW. apiClient real envia requests; MSW
-// intercepta. Cobre PagamentoPix, PagamentosTreinadorPage, OnboardingRetornoPage,
-// PagamentosAlunoPage.
-//
-// Endpoints reais (vide src/lib/api/pagamento.ts + aluno.ts):
-//   GET /aluno/pagamentos/:id              -> obterPagamento
-//   GET /aluno/pagamentos/assinatura/:id   -> listarPagamentosAssinatura
-//   GET /aluno/assinatura                  -> obterMinhaAssinatura
-//   GET /treinador/onboarding/status       -> verificarOnboarding
-//   POST /treinador/onboarding             -> iniciarOnboarding
-//   GET /aluno/vinculo                     -> alunoApi.getMeuVinculo (n/a aqui)
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -27,7 +15,6 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() })),
 }));
 
-// F36: makePagamento consolidado via buildPagamento.
 const PIX_DEFAULTS: Partial<PagamentoResponse> = {
   pagamentoId: "pay-1",
   assinaturaAlunoId: "ass-1",
@@ -148,12 +135,10 @@ describe("PagamentoPix", () => {
     const { rerender } = render(<PagamentoPix pagamentoId="pay-1" onPago={() => {}} />);
     expect(await screen.findByText("Pague via Pix")).toBeInTheDocument();
 
-    // Capturar baseline depois do mount + load inicial.
     const initial = tracker.count;
     rerender(<PagamentoPix pagamentoId="pay-1" onPago={() => {}} />);
     rerender(<PagamentoPix pagamentoId="pay-1" onPago={() => {}} />);
 
-    // Re-renders nao disparam fetch novo (efeito depende so de pagamentoId).
     expect(tracker.count).toBe(initial);
   });
 
@@ -174,7 +159,6 @@ describe("PagamentoPix", () => {
     const callsBeforeUnmount = tracker.count;
     unmount();
 
-    // clearInterval foi chamado pelo cleanup do useEffect.
     expect(clearSpy).toHaveBeenCalled();
 
     // Após unmount, mesmo se uma resposta pendente resolvesse, o `active`
@@ -220,7 +204,6 @@ describe("PagamentoPix", () => {
     errorSpy.mockRestore();
   });
 
-  // Bug 2 — PagamentoPix 401: sessão expirada durante polling
   it("401 na primeira chamada → para polling e exibe mensagem de sessão expirada", async () => {
     server.use(
       http.get("*/aluno/pagamentos/:id", () =>
@@ -269,11 +252,8 @@ describe("PagamentoPix", () => {
 
     render(<PagamentoPix pagamentoId="pay-1" />);
 
-    // Erro 1 (fetch inicial)
     await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
-    // Erro 2 (tick manual do interval)
     if (intervalCallback) await act(async () => { intervalCallback!(); await new Promise((r) => setTimeout(r, 30)); });
-    // Erro 3 (tick manual do interval)
     if (intervalCallback) await act(async () => { intervalCallback!(); await new Promise((r) => setTimeout(r, 30)); });
 
     expect(screen.getByTestId("polling-network-warning")).toBeInTheDocument();
@@ -475,8 +455,6 @@ describe("PagamentosAlunoPage", () => {
     expect(screen.queryByText("Pagar")).not.toBeInTheDocument();
   });
 
-  // R2 — migração p/ ResponsiveTable: <md vira card (sem <table>), ≥md mantém tabela.
-  // "Pagar" só no pagamento Pendente, nos dois modos.
   it("desktop (≥md) → renderiza <table>; 'Pagar' só no Pendente", async () => {
     setAssinatura();
     setListaPagamentos([
@@ -487,7 +465,6 @@ describe("PagamentosAlunoPage", () => {
     render(<PagamentosAlunoPage />);
     expect(await screen.findByText("Pago")).toBeInTheDocument();
     expect(screen.getByRole("table")).toBeInTheDocument();
-    // 2 pagamentos, 1 Pendente → 1 botão "Pagar".
     expect(screen.getAllByText("Pagar")).toHaveLength(1);
   });
 
@@ -530,7 +507,6 @@ describe("PagamentosAlunoPage", () => {
     expect(await screen.findByText("Pagamento via Pix")).toBeInTheDocument();
   });
 
-  // Bug 1 — 204 No Content: aluno sem assinatura → empty state, sem crash
   it("204 No Content (sem assinaturaAlunoId) → exibe 'Nenhum pagamento encontrado.' sem erro", async () => {
     server.use(
       http.get("*/aluno/assinatura", () => new HttpResponse(null, { status: 204 })),

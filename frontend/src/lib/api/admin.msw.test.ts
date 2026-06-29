@@ -1,16 +1,3 @@
-/**
- * Piloto MSW — Fase 3.
- *
- * Demonstra o padrao novo: apiClient REAL (sem vi.mock) + MSW
- * interceptando HTTP. Substitui o padrao antigo (vi.mock("@/lib/api/client"))
- * que sera migrado em massa na Fase 5.
- *
- * Vantagens demonstradas:
- * - Pega bug de URL/params reais (axios serializa, MSW recebe URL final)
- * - Type-safe via tipos OpenAPI gerados (handlers podem usar types.ts)
- * - Override por teste via server.use(...)
- * - Sem leak entre testes (afterEach resetHandlers automatico)
- */
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";

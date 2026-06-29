@@ -1,12 +1,3 @@
-/**
- * Vitest integration tests for /perfil/anamnese (aluno edita a própria anamnese — LGPD art. 18 III).
- *
- * Covers:
- * - prefill from GET /alunos/{perfilId}
- * - consent gating: dados de saúde exigem consentimento antes de salvar
- * - happy path: PUT /aluno/anamnese com consentimentoDadosSaude
- * - edge: aluno sem anamnese prévia renderiza o formulário em branco (fill-in, não erro)
- */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";

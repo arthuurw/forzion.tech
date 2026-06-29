@@ -73,7 +73,6 @@ describe("middleware — verificação de assinatura JWT real (jose)", () => {
   });
 
   it("token assinado com secret ERRADO (verificado com A) → redirect /login", async () => {
-    // Assina com B, mas o middleware verifica com A (process.env.JWT_SECRET).
     const token = await signToken(SECRET_B, { tipo_conta: "Aluno" });
     await middleware(makeRequest("/aluno/fichas", { token, session_guard: "1" }));
     expect(NextResponse.redirect).toHaveBeenCalledOnce();

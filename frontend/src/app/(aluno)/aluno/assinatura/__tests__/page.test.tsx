@@ -1,11 +1,3 @@
-/**
- * Cobre o fluxo de aluno cancelando a própria assinatura via portal:
- *   GET /aluno/assinatura                  -> obterMinhaAssinatura
- *   GET /aluno/pagamentos/assinatura/:id   -> listarPagamentosAssinatura
- *   POST /aluno/assinatura/cancelar        -> cancelarMinhaAssinatura
- *
- * MSW intercepta; apiClient real envia requests.
- */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -52,7 +44,6 @@ function respondAssinatura(assinatura: AssinaturaAlunoResponse) {
 describe("AssinaturaAlunoPage — 204 / sem assinatura", () => {
   afterEach(() => vi.clearAllMocks());
 
-  // Bug 1 — 204 No Content: aluno sem assinatura → empty state, sem crash
   it("204 No Content → exibe estado vazio sem crash", async () => {
     server.use(
       http.get("*/aluno/assinatura", () => new HttpResponse(null, { status: 204 })),
@@ -147,7 +138,6 @@ describe("AssinaturaAlunoPage — cancelar assinatura", () => {
     fireEvent.click(confirmBtns[confirmBtns.length - 1]);
 
     await waitFor(() => expect(postCalls).toBe(1));
-    // Após reload, status Cancelada removeu o botão de cancelar
     await waitFor(() => expect(screen.queryByRole("button", { name: "Cancelar assinatura" })).not.toBeInTheDocument());
     expect(await screen.findByText("Assinatura cancelada com sucesso.")).toBeInTheDocument();
   });

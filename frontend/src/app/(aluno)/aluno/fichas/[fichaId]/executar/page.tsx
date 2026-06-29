@@ -208,7 +208,6 @@ export default function ExecutarFichaPage() {
 
   return (
     <Box>
-      {/* Header */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
         <IconButton onClick={() => router.push(`/aluno/fichas/${fichaId}`)} aria-label="Voltar">
           <ArrowBackIcon />
@@ -253,7 +252,6 @@ export default function ExecutarFichaPage() {
       {current && (
         <Card variant="outlined" sx={{ mb: 3, borderColor: "primary.main", borderWidth: 2 }}>
           <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
-            {/* Exercise name */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
               <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.12) }}>
                 <FitnessCenterIcon sx={{ color: "primary.main", fontSize: 28 }} />
@@ -261,7 +259,6 @@ export default function ExecutarFichaPage() {
               <Typography variant="h5">{current.nomeExercicio}</Typography>
             </Box>
 
-            {/* Trainer note */}
             {current.observacao && (
               <Box
                 sx={{
@@ -284,7 +281,6 @@ export default function ExecutarFichaPage() {
               videoId={current.videoId}
             />
 
-            {/* Planned */}
             {(current.series ?? []).length > 0 && (
               <>
                 <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1 }}>
@@ -327,7 +323,6 @@ export default function ExecutarFichaPage() {
 
             <Divider sx={{ mb: 2.5 }} />
 
-            {/* Executed — one row per individual set */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1.5 }}>
               <Typography variant="overline" color="text.secondary" sx={{ display: "block" }}>
                 Executado
@@ -421,7 +416,6 @@ export default function ExecutarFichaPage() {
         </Card>
       )}
 
-      {/* Navigation */}
       <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between" }}>
         <Button
           variant="outlined"
@@ -469,7 +463,6 @@ export default function ExecutarFichaPage() {
         ))}
       </Box>
 
-      {/* Confirm dialog */}
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Registrar sessão</DialogTitle>
         <DialogContent>

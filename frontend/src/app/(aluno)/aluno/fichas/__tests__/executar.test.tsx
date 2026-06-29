@@ -1,10 +1,3 @@
-/**
- * Testes para ExecutarFichaPage.
- * Cobre: exibição do hint de agregação por exercício (Bug 4).
- *
- * Endpoint:
- *   GET /aluno/fichas/:id  -> alunoApi.getFicha
- */
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -119,14 +112,11 @@ describe("ExecutarFichaPage — hint de agregação por exercício", () => {
 
     await screen.findByText("Supino");
 
-    // O span com title contendo "média" deve existir
     // eslint-disable-next-line testing-library/no-node-access
     const infoIcon = document.querySelector('[title*="média"]');
     expect(infoIcon).not.toBeNull();
   });
 
-  // R6 — dots de progresso têm alvo de toque acessível (ButtonBase com aria-label)
-  // e navegam ao exercício correspondente.
   it("dots de progresso: botão com aria-label navega ao exercício (R6)", async () => {
     respondFicha(
       makeFicha({

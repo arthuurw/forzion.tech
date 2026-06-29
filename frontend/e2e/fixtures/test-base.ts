@@ -54,7 +54,6 @@ export const test = base.extend<{
       flaky: (pattern, failCount, failStatus) => flakyRoute(page, pattern, failCount, failStatus),
     };
     await use(fixture);
-    // Reseta para estado online ao fim do teste (best-effort).
     await context.setOffline(false).catch(() => undefined);
   },
 

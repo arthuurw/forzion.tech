@@ -20,7 +20,6 @@ test.describe("network: offline", () => {
     page,
     context,
   }) => {
-    // 1. Online — carrega lista de alunos
     await page.goto("/admin/alunos");
     await page.waitForLoadState("domcontentloaded");
     // Não exigimos lista populada (depende de seed) — só que NÃO há banner de erro
@@ -39,7 +38,6 @@ test.describe("network: offline", () => {
       page.getByRole("alert").filter({ hasText: "Erro ao carregar alunos." })
     ).toBeVisible({ timeout: 15_000 });
 
-    // 4. Reconecta e recarrega — banner some
     await context.setOffline(false);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(

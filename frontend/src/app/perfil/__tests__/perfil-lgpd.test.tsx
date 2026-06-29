@@ -1,12 +1,3 @@
-/**
- * Vitest integration tests for /perfil LGPD section (R4).
- *
- * Covers:
- * - "Baixar meus dados (Excel)" button triggers GET /conta/lgpd/exportar?formato=xlsx
- * - "Baixar como JSON" button triggers GET /conta/lgpd/exportar?formato=json
- * - "Excluir minha conta" button opens ConfirmDialog and calls DELETE /conta/lgpd with senha
- * - "Preferências de cookies" opens ConsentBanner
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -17,10 +8,8 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({}),
 }));
 
-// Mock dynamic import for ConsentBanner (used inside ConsentProvider)
 vi.mock("next/dynamic", () => ({
   default: (fn: () => Promise<{ default: React.ComponentType }>) => {
-    // Return a placeholder — we don't need full banner render in this test
     const Component = () => null;
     Component.displayName = "DynamicComponent";
     return Component;

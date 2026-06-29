@@ -161,7 +161,6 @@ export default function DetalheTreinadorAdminPage() {
         <Tab label="LGPD" />
       </Tabs>
 
-      {/* Tab 0: Alunos */}
       {tab === 0 && (
         <DataList
           loading={alunosList.loading}
@@ -192,7 +191,6 @@ export default function DetalheTreinadorAdminPage() {
         />
       )}
 
-      {/* Tab 1: Vínculos */}
       {tab === 1 && (
         <DataList
           loading={vinculosList.loading}
@@ -228,7 +226,6 @@ export default function DetalheTreinadorAdminPage() {
         />
       )}
 
-      {/* Tab 2: Treinos */}
       {tab === 2 && (
         <DataList
           loading={treinosList.loading}
@@ -260,7 +257,6 @@ export default function DetalheTreinadorAdminPage() {
         />
       )}
 
-      {/* Tab 3: Pacotes */}
       {tab === 3 && (
         pacotesLoading ? (
           <LoadingSpinner />
@@ -294,7 +290,6 @@ export default function DetalheTreinadorAdminPage() {
           />
         )
       )}
-      {/* Tab 4: LGPD */}
       {tab === 4 && (
         <Card variant="outlined">
           <CardContent>

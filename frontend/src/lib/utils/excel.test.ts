@@ -73,7 +73,6 @@ describe("sanitizeFilename", () => {
     expect(sanitizeFilename("...")).toBe("ficha");
   });
 
-  // Security: path traversal
   it("removes dots and slashes — prevents path traversal", () => {
     const result = sanitizeFilename("../../etc/passwd");
     expect(result).not.toContain("/");
@@ -282,7 +281,7 @@ describe("buildFichaRows — exercise data", () => {
     });
     const rows = buildFichaRows({ ...BASE, exercicios: [ex1, ex2] });
 
-    expect(rows).toHaveLength(4 + 1 + 2); // 7
+    expect(rows).toHaveLength(4 + 1 + 2);
   });
 
   it("does not mutate the original exercicios array", () => {

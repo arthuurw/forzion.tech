@@ -69,7 +69,6 @@ describe("POST /api/auth — resposta de login", () => {
     expect(setCookie).toContain("HttpOnly");
     expect(setCookie).toContain("SameSite=strict");
     expect(setCookie).toContain("session_guard=");
-    // session_guard deve ser um UUID aleatório (não mais o valor estático "1")
     expect(setCookie).not.toContain("session_guard=1;");
 
     const cookies = extractCookies(res);

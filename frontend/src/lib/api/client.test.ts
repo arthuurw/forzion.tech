@@ -109,7 +109,6 @@ describe("apiClient — interceptor de resposta", () => {
     await expect(handler({ message: "Network Error" })).rejects.toBeDefined();
   });
 
-  // FE-01: correlação Sentry sem id stale.
   it("grava __lastRequestId quando a resposta traz X-Request-Id", () => {
     fulfilledHandler()({ headers: { "x-request-id": "req-123" } });
     expect(fakeWindow.__lastRequestId).toBe("req-123");

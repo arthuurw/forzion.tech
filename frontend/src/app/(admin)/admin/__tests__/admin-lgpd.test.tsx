@@ -1,12 +1,3 @@
-/**
- * Vitest integration tests for admin LGPD actions (R5).
- *
- * Covers:
- * - adminApi.exportarDadosConta calls GET /admin/contas/{contaId}/lgpd/exportar
- * - adminApi.anonimizarConta calls DELETE /admin/contas/{contaId}/lgpd
- * - Admin treinador detail page renders LGPD tab with correct buttons
- * - Admin aluno detail page renders LGPD tab with correct buttons
- */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";

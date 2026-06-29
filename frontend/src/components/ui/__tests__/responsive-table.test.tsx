@@ -91,7 +91,6 @@ describe("ResponsiveTable — paginação", () => {
         renderCell={renderCell} pagination={pagination}
       />,
     );
-    // MUI TablePagination exibe o label de linhas por página
     expect(screen.getByText("Por página:")).toBeInTheDocument();
   });
 

@@ -442,7 +442,6 @@ export default function DetalheFichaPage() {
         )}
       </Card>
 
-      {/* Dialog: adicionar exercício */}
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile} slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Adicionar exercício</DialogTitle>
         <DialogContent>
@@ -565,7 +564,6 @@ export default function DetalheFichaPage() {
         onClose={() => setRemoveEx(null)}
       />
 
-      {/* Dialog: editar ficha */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar ficha</DialogTitle>
         <DialogContent>
@@ -610,7 +608,6 @@ export default function DetalheFichaPage() {
         onClose={() => setDeleteOpen(false)}
       />
 
-      {/* Dialog: editar séries do exercício */}
       <Dialog open={!!editExTarget} onClose={() => setEditExTarget(null)} maxWidth="md" fullWidth fullScreen={isMobile} slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar séries — {editExTarget?.nomeExercicio}</DialogTitle>
         <DialogContent>
@@ -701,7 +698,6 @@ export default function DetalheFichaPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: observação do exercício */}
       <Dialog open={!!obsTarget} onClose={() => setObsTarget(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>
           {obsTarget?.observacao ? "Editar observação" : "Adicionar observação"}
