@@ -19,6 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace forzion.tech.Infrastructure.DependencyInjection;
 
@@ -47,6 +48,15 @@ public static class InfrastructureExtensions
     {
         var connectionString = configuration.GetConnectionString("AppConnection");
         var isProduction = environment.IsProduction();
+
+        if (!string.IsNullOrWhiteSpace(connectionString)
+            && new NpgsqlConnectionStringBuilder(connectionString).Port == 6543)
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:AppConnection usa a porta 6543 (Transaction pooler do Supabase), "
+                + "que perde o search_path entre transações e corrompe migrations/schema. "
+                + "Use o Session pooler na porta 5432.");
+        }
 
         // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.
         services.AddSingleton(TimeProvider.System);
