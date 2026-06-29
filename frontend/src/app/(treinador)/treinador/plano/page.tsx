@@ -499,6 +499,11 @@ export default function PlanoTreinadorPage() {
                   </Alert>
                 </>
               )}
+              {respPagamento.metodoPagamento === "Pix" && !respPagamento.pixQrCode && (
+                <Alert severity="error">
+                  Não foi possível gerar o QR code Pix. Feche e tente novamente.
+                </Alert>
+              )}
               <Button onClick={fecharDialog} variant="outlined" fullWidth>
                 Fechar (verificarei depois)
               </Button>
