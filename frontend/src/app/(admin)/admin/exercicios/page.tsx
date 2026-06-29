@@ -281,7 +281,7 @@ export default function ExerciciosAdminPage() {
           <Stack component="form" onSubmit={handleEditar} noValidate>
             <DialogContent>
               <Stack spacing={2} sx={{ pt: 1 }}>
-                <FormTextField name="nome" label="Nome" size="small" fullWidth />
+                <FormTextField name="nome" label="Nome" size="small" fullWidth required />
                 <FormSelect name="grupoMuscularId" label="Grupo muscular" options={grupoOptions} required />
                 <FormTextField name="descricao" label="Descrição" size="small" fullWidth multiline rows={3} />
                 <FormTextField name="comoExecutar" label="Como executar" size="small" fullWidth multiline rows={3} slotProps={{ htmlInput: { maxLength: 2000 } }} />

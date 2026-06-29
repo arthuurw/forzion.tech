@@ -218,6 +218,8 @@ export default function PlanoTreinadorPage() {
 
   const precoAtual = assinatura?.valor ?? planoAtual?.preco ?? null;
 
+  const inadimplente = assinatura?.status === "Inadimplente";
+
   const opcoesTroca = planos.filter(
     (p) =>
       p.tier !== "Elite" &&
@@ -320,16 +322,19 @@ export default function PlanoTreinadorPage() {
                       <Typography variant="body2" color="text.secondary">
                         {formatarBRL(plano.preco)}/mês · até {plano.maxAlunos} alunos
                       </Typography>
-                      {eUpgrade && proracao !== null && proracao > 0 && (
+                      {inadimplente ? (
+                        <Typography variant="caption" color="text.secondary">
+                          Pagamento imediato para regularizar
+                        </Typography>
+                      ) : eUpgrade && proracao !== null && proracao > 0 ? (
                         <Typography variant="caption" color="text.secondary">
                           Proração estimada: {formatarBRL(proracao)}
                         </Typography>
-                      )}
-                      {!eUpgrade && precoAtual != null && (
+                      ) : !eUpgrade && precoAtual != null ? (
                         <Typography variant="caption" color="text.secondary">
                           Downgrade agendado para a próxima renovação
                         </Typography>
-                      )}
+                      ) : null}
                     </Box>
                     <Button
                       variant="outlined"
@@ -364,11 +369,13 @@ export default function PlanoTreinadorPage() {
             <Stack spacing={2} sx={{ mt: 1 }}>
               <AlertBanner open={!!erro} message={erro} />
               <Typography variant="body2">
-                {precoAtual == null
-                  ? `Confirmar troca para ${planoSelecionado.nome}.`
-                  : planoSelecionado.preco > precoAtual
-                    ? `Upgrade para ${planoSelecionado.nome}. O valor exato de proração será confirmado após processar.`
-                    : `Downgrade para ${planoSelecionado.nome}. O plano muda na próxima renovação.`}
+                {inadimplente
+                  ? `Regularizar assinatura no plano ${planoSelecionado.nome}. O pagamento será processado agora para reativar seu acesso.`
+                  : precoAtual == null
+                    ? `Confirmar troca para ${planoSelecionado.nome}.`
+                    : planoSelecionado.preco > precoAtual
+                      ? `Upgrade para ${planoSelecionado.nome}. O valor exato de proração será confirmado após processar.`
+                      : `Downgrade para ${planoSelecionado.nome}. O plano muda na próxima renovação.`}
               </Typography>
               <Divider />
               <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>

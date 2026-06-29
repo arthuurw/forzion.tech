@@ -13,7 +13,7 @@ export default function PlanosSkeleton() {
           </Typography>
         </Box>
         <Grid container spacing={3} sx={{ justifyContent: "center" }}>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <Grid key={i} size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: "flex" }}>
               <Card
                 sx={{

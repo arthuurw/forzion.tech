@@ -169,7 +169,7 @@ export default function GruposMuscularesAdminPage() {
           <Stack component="form" onSubmit={handleCriar} noValidate>
             <DialogContent>
               <Stack spacing={2} sx={{ pt: 1 }}>
-                <FormTextField name="nome" label="Nome" size="small" fullWidth autoFocus />
+                <FormTextField name="nome" label="Nome" size="small" fullWidth autoFocus required />
               </Stack>
             </DialogContent>
             <DialogActions>
@@ -186,7 +186,7 @@ export default function GruposMuscularesAdminPage() {
           <Stack component="form" onSubmit={handleEditar} noValidate>
             <DialogContent>
               <Stack spacing={2} sx={{ pt: 1 }}>
-                <FormTextField name="nome" label="Nome" size="small" fullWidth />
+                <FormTextField name="nome" label="Nome" size="small" fullWidth required />
               </Stack>
             </DialogContent>
             <DialogActions>

@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useForm, FormProvider, Controller } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   Box, Typography, Card, CardContent, CardActions, Grid, Button, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Stack, IconButton, Tooltip, TextField, MenuItem,
+  Stack, IconButton, Tooltip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -17,6 +17,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import FormTextField from "@/components/forms/FormTextField";
+import FormSelect from "@/components/forms/FormSelect";
 import { adminApi } from "@/lib/api/admin";
 import type { PlanoPlataformaResponse, TierPlano } from "@/types";
 import { formatarBRL } from "@/lib/utils/formatting";
@@ -33,13 +34,27 @@ const TIER_OPTIONS: { value: TierPlano; label: string; disabled?: boolean }[] = 
 const planoSchema = z.object({
   nome: z.string().trim().min(1, "Informe o nome."),
   tier: z.string().min(1, "Selecione o tier."),
-  maxAlunos: z.coerce.number().int().min(1, "Mínimo 1 aluno."),
+  maxAlunos: z.coerce.number().int("Use um número inteiro.").min(1, "Mínimo 1 aluno."),
   preco: z.coerce.number().min(0, "Preço não pode ser negativo."),
   descricao: z.string(),
 });
 type PlanoForm = z.infer<typeof planoSchema>;
 
 const DEFAULT_CRIAR: PlanoForm = { nome: "", tier: "Basic", maxAlunos: 1, preco: 0, descricao: "" };
+
+const isVazio = (v: unknown) => v === "" || v === null || v === undefined;
+
+function PlanoFormFields() {
+  return (
+    <Stack spacing={2} sx={{ pt: 1 }}>
+      <FormTextField name="nome" label="Nome" size="small" fullWidth autoFocus required />
+      <FormSelect name="tier" label="Tier" options={TIER_OPTIONS} required />
+      <FormTextField name="maxAlunos" label="Máximo de alunos" type="number" size="small" fullWidth required slotProps={{ htmlInput: { min: 1 } }} />
+      <FormTextField name="preco" label="Preço (R$)" type="number" size="small" fullWidth required slotProps={{ htmlInput: { min: 0, step: 0.01 } }} />
+      <FormTextField name="descricao" label="Descrição (funcionalidades)" size="small" fullWidth multiline rows={2} placeholder="Ex: Basic + e-mail" />
+    </Stack>
+  );
+}
 
 export default function PlanosAdminPage() {
   const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
@@ -65,6 +80,9 @@ export default function PlanosAdminPage() {
     resolver: zodResolver(planoSchema),
     defaultValues: DEFAULT_CRIAR,
   });
+
+  const precoCriarVazio = isVazio(criarForm.watch("preco"));
+  const precoEditVazio = isVazio(editForm.watch("preco"));
 
   const load = async () => {
     setLoading(true);
@@ -213,27 +231,11 @@ export default function PlanosAdminPage() {
         <FormProvider {...criarForm}>
           <Stack component="form" onSubmit={handleCriar} noValidate>
             <DialogContent>
-              <Stack spacing={2} sx={{ pt: 1 }}>
-                <FormTextField name="nome" label="Nome" size="small" fullWidth autoFocus required />
-                <Controller
-                  name="tier"
-                  control={criarForm.control}
-                  render={({ field }) => (
-                    <TextField {...field} select label="Tier" size="small" fullWidth required>
-                      {TIER_OPTIONS.map((o) => (
-                        <MenuItem key={o.value} value={o.value} disabled={o.disabled}>{o.label}</MenuItem>
-                      ))}
-                    </TextField>
-                  )}
-                />
-                <FormTextField name="maxAlunos" label="Máximo de alunos" type="number" size="small" fullWidth required />
-                <FormTextField name="preco" label="Preço (R$)" type="number" size="small" fullWidth required />
-                <FormTextField name="descricao" label="Descrição (funcionalidades)" size="small" fullWidth multiline rows={2} placeholder="Ex: Basic + e-mail" />
-              </Stack>
+              <PlanoFormFields />
             </DialogContent>
             <DialogActions>
               <Button onClick={() => { setCriarOpen(false); criarForm.reset(DEFAULT_CRIAR); }}>Cancelar</Button>
-              <Button type="submit" variant="contained" disabled={saving}>Criar</Button>
+              <Button type="submit" variant="contained" disabled={saving || precoCriarVazio}>Criar</Button>
             </DialogActions>
           </Stack>
         </FormProvider>
@@ -250,27 +252,11 @@ export default function PlanosAdminPage() {
         <FormProvider {...editForm}>
           <Stack component="form" onSubmit={handleEditar} noValidate>
             <DialogContent>
-              <Stack spacing={2} sx={{ pt: 1 }}>
-                <FormTextField name="nome" label="Nome" size="small" fullWidth autoFocus required />
-                <Controller
-                  name="tier"
-                  control={editForm.control}
-                  render={({ field }) => (
-                    <TextField {...field} select label="Tier" size="small" fullWidth required>
-                      {TIER_OPTIONS.map((o) => (
-                        <MenuItem key={o.value} value={o.value} disabled={o.disabled}>{o.label}</MenuItem>
-                      ))}
-                    </TextField>
-                  )}
-                />
-                <FormTextField name="maxAlunos" label="Máximo de alunos" type="number" size="small" fullWidth required />
-                <FormTextField name="preco" label="Preço (R$)" type="number" size="small" fullWidth required />
-                <FormTextField name="descricao" label="Descrição (funcionalidades)" size="small" fullWidth multiline rows={2} placeholder="Ex: Basic + e-mail" />
-              </Stack>
+              <PlanoFormFields />
             </DialogContent>
             <DialogActions>
               <Button onClick={() => { setEditPlano(null); editForm.reset(DEFAULT_CRIAR); }}>Cancelar</Button>
-              <Button type="submit" variant="contained" disabled={savingEdit}>Salvar</Button>
+              <Button type="submit" variant="contained" disabled={savingEdit || precoEditVazio}>Salvar</Button>
             </DialogActions>
           </Stack>
         </FormProvider>

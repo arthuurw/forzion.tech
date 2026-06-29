@@ -102,8 +102,6 @@ export default async function PlanosSlab() {
             );
           })}
         </Grid>
-        {/* Single CDC notice outside cards — was repeated per paid card (R8).
-            Guard restores the original preco > 0 scope that was lost when deduplicating from per-card to single notice. */}
         {planos.some(p => p.isAtivo !== false && p.preco > 0) && (
           <Typography
             variant="caption"

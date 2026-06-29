@@ -85,7 +85,8 @@ Integração react-hook-form via `Controller` + `useFormContext` (RHF context ob
 | Componente | Propósito | Props-chave | Story? | a11y test? |
 |---|---|---|---|---|
 | `FormTextField` | TextField controlado | `name` + `...TextFieldProps`; `error`/`helperText` ← `fieldState.error.message` | ❌ | ❌ |
-| `FormSelect` | Select controlado | `name`, `label`, `options[]`(value/label), `required?`; `InputLabel id={name}-label` linkado | ❌ | ❌ |
+| `FormSelect` | Select controlado | `name`, `label`, `options[]`(value/label/`disabled?`), `required?`; `InputLabel id={name}-label` linkado | ❌ | ❌ |
+| `FormSwitch` | Switch booleano controlado | `name`, `label`; `FormControlLabel` + `Switch checked={field.value}` | ❌ | ❌ |
 | `PasswordField` | senha + toggle visibilidade | `name` + `...TextFieldProps` (sem `type`); IconButton `aria-label` "Mostrar/Ocultar senha" | ❌ | ❌ |
 
 NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/forms/FormTextField`). NENHUM form component tem story nem a11y test dedicado (gap — ver §GOVERNANCE).
@@ -120,7 +121,7 @@ Convenções estabilizadas na feature `frontend-padronizacao` (auditoria 2026-06
 
 ### Forms via RHF + Zod (FPAD-10/13)
 - Dialogs CRUD admin (`grupos-musculares`/`planos`/`exercicios`), config de relatório de saúde (`saude`) e troca de senha do `perfil` usam **react-hook-form + Zod** (`zodResolver`), com schema Zod co-locado no módulo da página, `<FormProvider>` + `<Stack component="form" onSubmit={form.handleSubmit(...)} noValidate>`.
-- Campos via primitivos: `FormTextField` (texto/número), `FormSelect` (select rotulado), `PasswordField` (senha+toggle). Booleano (Switch/Checkbox) e campos com validação imperativa preservada (ex. `videoUrl`, `tier` com opção desabilitada) via `Controller` cru. Número com `z.coerce.number()` ⇒ tipar `useForm<z.input<S>, unknown, z.output<S>>` (input fica `unknown`).
+- Campos via primitivos: `FormTextField` (texto/número), `FormSelect` (select rotulado; `options[].disabled?` p/ opção desabilitada — ex. `tier` Elite), `FormSwitch` (booleano), `PasswordField` (senha+toggle). Só validação imperativa fora do schema usa `Controller` cru (ex. `videoUrl`, checado por `watch` + botão `disabled`). Número com `z.coerce.number()` ⇒ tipar `useForm<z.input<S>, unknown, z.output<S>>` (input fica `unknown`); campo numérico opcionalmente obrigatório (ex. `preco`, onde vazio coage a 0) guarda o submit com `watch` + `disabled` pois `.min(0)` aceita 0.
 
 ## LINGUAGEM NEUTRA DE GÊNERO (copy user-facing)
 Toda copy nova nasce neutra. Origem: feature `texto-unissex` (sweep 2026-06-16). Aplica a JSX/strings de UI (sem lib i18n — copy hardcoded inline), títulos/corpo de e-mail (`Notifications/Email/**`) e corpo de template WhatsApp (`.specs/features/texto-unissex/WHATSAPP-COPY.md`). Estilo = **híbrido neutro**: reescrever pra neutro onde for natural; `(a)`/`(as)` só último recurso, nunca empilhado.
