@@ -72,7 +72,7 @@ Postura/fluxo em [specification-security] §2.1; colunas em [specification-db]. 
   - Inv: valor>0; transições guardadas por status.
 
 ### Billing treinador↔plataforma (assinatura do treinador ao seu plano)
-- **AssinaturaTreinador*** — assinatura recorrente treinador→plataforma (state machine + contador + plano agendado). Const `LimiteTentativasFalhas=3`. `Criar(treinadorId, planoPlataformaId, valor, agora)` → `Status=Pendente`, `DataInicio=DataProximaCobranca=agora`, emite `AssinaturaTreinadorCriadaEvent`. Inv (factory): treinadorId/planoId≠Empty; valor>0. Métodos (todos retornam `Result` salvo nota; `agora` injetado):
+- **AssinaturaTreinador*** — assinatura recorrente treinador→plataforma (state machine + contador + plano agendado). Const `LimiteTentativasFalhas=3`. `Criar(treinadorId, planoPlataformaId, valor, agora)` → `Status=Pendente`, `DataInicio=DataProximaCobranca=agora`, emite `AssinaturaTreinadorCriadaEvent`. Inv (factory): treinadorId/planoId≠Empty; valor>0. **Invariante global: ≤1 assinatura não-cancelada por treinador** (garantida pelo índice único parcial `ux_assinaturas_treinador_nao_cancelada_por_treinador` — AD-002, [specification-db]); 23505 em `Criar` durante corrida → handler re-busca vencedor. Métodos (todos retornam `Result` salvo nota; `agora` injetado):
   - `Ativar(agora)` — →Ativa (falha se Cancelada; falha se Inadimplente → deve usar regularização). SEM evento.
   - `MarcarInadimplente(agora)` — só de Ativa. SEM evento (manual; automático via `RegistrarPagamentoFalho`).
   - `Cancelar(agora)` — →Cancelada, set DataCancelamento, emite `AssinaturaTreinadorCanceladaEvent` (falha se já Cancelada).
@@ -91,7 +91,7 @@ Postura/fluxo em [specification-security] §2.1; colunas em [specification-db]. 
   - `MarcarFalhou(agora)` / `MarcarExpirado(agora)` — só de Pendente. SEM evento.
   - `MarcarEstornado(agora)` — só de Pago (T4). SEM evento. Handler `ProcessarEstornoTreinadorAsync` chama adicionalmente `AssinaturaTreinador.MarcarInadimplentePorDisputa` para congelar acesso.
   - `MarcarEmDisputa(agora)` — só de Pago (T4). SEM evento. Handler `ProcessarDisputaTreinadorAsync` idem.
-  - Props: `Finalidade` (Cadastro/Renovacao/TrocaPlano), `PlanoAlvoId` (nullable, plano da troca). Reusa `PagamentoStatus`/`MetodoPagamento`. Máquina de estado: Pendente → Pago/Falhou/Expirado; Pago → Estornado/EmDisputa (terminais).
+  - Props: `Finalidade` (Cadastro/Renovacao/TrocaPlano/Contratacao), `PlanoAlvoId` (nullable, plano da troca). Reusa `PagamentoStatus`/`MetodoPagamento`. Máquina de estado: Pendente → Pago/Falhou/Expirado; Pago → Estornado/EmDisputa (terminais).
 
 ### Projeção / Observabilidade
 - **Assinante** — read model derivado de Aluno (sync via domain events; ver [specification-db]). `Criar(alunoId, nome, email?, agora)` (sem validação); `Sincronizar(nome, email?)`. Sem eventos.
@@ -125,7 +125,7 @@ Significado/transições de domínio (mapeamento de coluna em [specification-db]
 - **MetodoPagamento** {Pix, Cartao} — método da cobrança (default Pix).
 - **ModoPagamentoAluno** {Plataforma, Externo} (default Plataforma) — como o treinador cobra seus alunos (via plataforma/Stripe Connect ou por fora).
 - **AssinaturaTreinadorStatus** {Pendente, Ativa, Inadimplente, Cancelada} — ciclo da assinatura treinador→plataforma (mesma forma de `AssinaturaAlunoStatus`; máquina em §6).
-- **FinalidadePagamentoTreinador** {Cadastro, Renovacao, TrocaPlano} — discrimina o que o `PagamentoTreinador` cobra; o handler do `PagamentoTreinadorPagoEvent` ramifica por este valor.
+- **FinalidadePagamentoTreinador** {Cadastro=0, Renovacao=1, TrocaPlano=2, Contratacao=3} — discrimina o que o `PagamentoTreinador` cobra; o handler do `PagamentoTreinadorPagoEvent` ramifica por este valor; `Contratacao` early-returns no handler (ativação inline em `FinalizarContratacaoAsync` no webhook — [specification-stripe]).
 - **TipoAcaoAprovacao** {AprovacaoTreinador, ReprovacaoTreinador, InativacaoTreinador, AprovacaoVinculo, ReprovacaoVinculo, InativacaoVinculo, AtribuicaoPlanTreinador, ExclusaoTreinador, ExportacaoDados, AnonimizacaoConta, ConsentimentoAnamnese} — tipo registrado em LogAprovacao (ExportacaoDados/AnonimizacaoConta/ConsentimentoAnamnese = trilha LGPD; ConsentimentoAnamnese = consentimento art. 11 no cadastro do aluno, observacao = versão do termo). Persistido como text (`HasConversion<string>`) → novo valor sem migration.
 - **StatusSaude** {Ok, Degradado, Falha} — status geral do HealthSnapshot.
 - **CategoriaSuporte** {Duvida=0, Sugestao=1, Outro=2} — categoria do ticket de `MensagemSuporte`. Persistido como text (`HasConversion<string>`).

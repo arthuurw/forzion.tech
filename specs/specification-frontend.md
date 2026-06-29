@@ -226,7 +226,7 @@ Básico aqui; tokens exatos (paleta/radius/tipografia/component-defaults/anti-zo
   - `ModoPagamentoAluno`: `Plataforma | Externo` (como o aluno paga o treinador).
   - `IniciarPagamentoPlanoResponse`: `{ pagamentoId, valor, status, metodoPagamento, stripePaymentIntentId?, pixQrCode?, pixQrCodeUrl?, pixExpiracao?, clientSecret?, createdAt }` — payload do signup (Pix ou Cartão).
   - `OnboardingStatusResponse`: `{ onboardingCompleto, contaConfigurada, modoPagamentoAluno, modoPagamentoPodeAlterarEm }` (`modoPagamentoPodeAlterarEm`: data em que a troca de modo volta a ser permitida — servidor já soma o cooldown de 90d; null se nunca trocou; UI só compara com a data atual).
-  - `AssinaturaTreinadorResponse` (`status: AssinaturaTreinadorStatus = Pendente|Ativa|Inadimplente|Cancelada`), `TrocarPlanoTreinadorResponse` (`tipo: TipoTrocaPlano = Upgrade|Downgrade|InadimplenteRegularizacao|UpgradeImediato`), `PagamentoTreinadorStatusResponse`.
+  - `AssinaturaTreinadorResponse` (`status: AssinaturaTreinadorStatus = Pendente|Ativa|Inadimplente|Cancelada`), `TrocarPlanoTreinadorResponse` (`tipo: TipoTrocaPlano = Upgrade|Downgrade|InadimplenteRegularizacao|UpgradeImediato`), `PagamentoTreinadorStatusResponse`, `ContratarPlanoTreinadorResponse` (`{ pagamentoId, valorPagamento, metodoPagamento, pixQrCode?, pixQrCodeUrl?, pixExpiracao?, clientSecret? }` — mesmo shape de `IniciarPagamentoPlanoResponse`, reutilizável nos mesmos componentes Pix/Cartão).
 
 ## ELITE "EM BREVE"
 Plano tier=Elite indisponível para seleção/atribuição. Três pontos de aplicação:
@@ -251,11 +251,13 @@ Componente ANÔNIMO, props-driven `{ pagamento: IniciarPagamentoPlanoResponse, o
 - **Pix**: QR (`pixQrCodeUrl`) + copia-e-cola (`pixQrCode`, botão copiar) + expiração. SEM polling — webhook backend finaliza e dispara e-mail de verificação (Alert informa).
 - **Cartão**: Stripe `<Elements>` com `clientSecret` + `<PaymentElement>` → `stripe.confirmPayment({ redirect: "if_required" })` → `onPagoCartao()`. Sem `clientSecret` → Alert de erro. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (ausente → `stripePromise=null`). Erro de recusa exibido via `mapStripeError(error)` (`lib/pagamento/stripeErro`): mapeia `decline_code`/`code` conhecidos → cópia pt-BR curada; desconhecido → SEMPRE `FALLBACK` pt-BR (NUNCA ecoa `error.message` em inglês do Stripe ao usuário).
 
-### Troca de plano (`(treinador)/treinador/plano/page.tsx`)
-Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinaturaTreinador`) + chip status (Ativa=success, Inadimplente=error, Cancelada=default, demais=warning) + lista de planos (`listarPlanosPlataforma`, exclui `Elite`/inativos). Dialog de troca (`pagamentoApi.trocarPlano`):
-- `Downgrade`/`UpgradeImediato` → aplica direto, recarrega.
-- Upgrade c/ proração via Pix → exibe QR + **polling** 5s (`obterStatusPagamentoTreinador` até `Pago`) → sucesso. **Proração (T9)**: `estimarProracao` (renomeado de `calcularProracao`) calcula `(novoPlano.preco - planoAtual.preco) * diasRestantes / 30` client-side — exibida como **estimativa** (label "Proração estimada: R$ X") nos cards de plano para UX de preview. O **valor autoritativo** é o que o backend retorna em `TrocarPlanoTreinadorResponse.valorPagamento` após `confirmarTroca()` — exibido no dialog de pagamento. O frontend nunca envia o valor calculado ao backend (só `novoPlanoId`).
-- Inadimplente → Alert no card + regularização via mesma lista.
+### Contratar / Trocar plano (`(treinador)/treinador/plano/page.tsx`)
+Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinaturaTreinador`) + chip status (Ativa=success, Inadimplente=error, Cancelada=default, demais=warning). `opcoesTroca` listadas SÓ quando `assinatura!=null` (guarda que corrige bug 404 anterior). Catch de ações usa `extractApiError(err, fallback)` (exibe mensagem real do backend; NÃO hardcoda fallback descartando `detail`).
+- **`assinatura==null` (sem assinatura ativa)**: seção "Contratar plano" com lista de planos elegíveis (ativos, não-Elite) + botão "Contratar" → `pagamentoApi.contratarPlano(planoId, metodo)`; exibe dialog Pix/Cartão reutilizando `PagamentoPix`/`PagamentoCartao` existentes + polling até `Pago`.
+- **`assinatura!=null` (já tem assinatura)**: seção "Trocar plano" (`pagamentoApi.trocarPlano`):
+  - `Downgrade`/`UpgradeImediato` → aplica direto, recarrega.
+  - Upgrade c/ proração via Pix → exibe QR + **polling** 5s (`obterStatusPagamentoTreinador` até `Pago`) → sucesso. **Proração (T9)**: `estimarProracao` (renomeado de `calcularProracao`) calcula `(novoPlano.preco - planoAtual.preco) * diasRestantes / 30` client-side — exibida como **estimativa** (label "Proração estimada: R$ X") nos cards de plano para UX de preview. O **valor autoritativo** é o que o backend retorna em `TrocarPlanoTreinadorResponse.valorPagamento` após `confirmarTroca()` — exibido no dialog de pagamento. O frontend nunca envia o valor calculado ao backend (só `novoPlanoId`).
+  - Inadimplente → Alert no card + regularização via mesma lista.
 
 ### Dashboard treinador (`(treinador)/treinador/page.tsx`)
 - Banner onboarding Stripe ("Configure seus recebimentos" → `/treinador/pagamentos`): só quando `onboardingPendente && !modoExterno`. `modoExterno` = `OnboardingStatusResponse.modoPagamentoAluno === "Externo"` (via `verificarOnboarding`); modo Externo NÃO exige Stripe → banner oculto.
