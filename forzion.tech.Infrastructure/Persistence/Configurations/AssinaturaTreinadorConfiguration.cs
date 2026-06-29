@@ -51,7 +51,10 @@ public class AssinaturaTreinadorConfiguration : IEntityTypeConfiguration<Assinat
         builder.Property(a => a.CreatedAt).IsRequired();
         builder.Property(a => a.UpdatedAt);
 
-        builder.HasIndex(a => a.TreinadorId);
+        builder.HasIndex(a => a.TreinadorId)
+            .IsUnique()
+            .HasFilter("status <> 'Cancelada'")
+            .HasDatabaseName("ux_assinaturas_treinador_nao_cancelada_por_treinador");
         builder.HasIndex(a => new { a.Status, a.DataProximaCobranca });
     }
 }

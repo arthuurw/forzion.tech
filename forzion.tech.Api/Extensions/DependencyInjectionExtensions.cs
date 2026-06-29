@@ -83,6 +83,7 @@ using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.IniciarPagamentoPlano;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
 using forzion.tech.Application.UseCases.Treinadores.TrocarPlanoTreinador;
+using forzion.tech.Application.UseCases.Treinadores.ContratarPlanoTreinador;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CriarAssinaturaAluno;
 using forzion.tech.Application.UseCases.AssinaturaAlunos.CancelarAssinaturaAluno;
@@ -274,6 +275,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IniciarPagamentoPlanoHandler>();
         services.AddScoped<GerarCobrancaPlanoTreinadorHandler>();
         services.AddScoped<TrocarPlanoTreinadorHandler>();
+        services.AddScoped<ContratarPlanoTreinadorHandler>();
         services.AddScoped<CancelarMinhaAssinaturaTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();

@@ -7207,6 +7207,71 @@
         ]
       }
     },
+    "/treinador/plano/contratar": {
+      "post": {
+        "tags": [
+          "Pagamentos"
+        ],
+        "summary": "Contrata/reativa um plano para o treinador sem assinatura ativa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContratarPlanoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContratarPlanoTreinadorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/treinador/plano/cobrar": {
       "post": {
         "tags": [
@@ -8290,6 +8355,75 @@
           "criadaEm": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ContratarPlanoRequest": {
+        "required": [
+          "planoPlataformaId"
+        ],
+        "type": "object",
+        "properties": {
+          "planoPlataformaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metodo": {
+            "$ref": "#/components/schemas/MetodoPagamento"
+          }
+        }
+      },
+      "ContratarPlanoTreinadorResponse": {
+        "required": [
+          "pagamentoId",
+          "valorPagamento",
+          "metodoPagamento",
+          "pixQrCode",
+          "pixQrCodeUrl",
+          "pixExpiracao",
+          "clientSecret"
+        ],
+        "type": "object",
+        "properties": {
+          "pagamentoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "valorPagamento": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "metodoPagamento": {
+            "$ref": "#/components/schemas/MetodoPagamento"
+          },
+          "pixQrCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pixQrCodeUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pixExpiracao": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "clientSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

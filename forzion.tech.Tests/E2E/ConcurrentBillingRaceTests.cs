@@ -8,6 +8,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ProcessarWebhookStripe;
+using forzion.tech.Application.UseCases.Treinadores.ContratarPlanoTreinador;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -174,6 +175,57 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
         pago.Status.Should().Be(PagamentoStatus.Pago, "efeito único: pagamento termina Pago");
     }
 
+    [Fact]
+    public async Task ContratarPlanoTreinador_DuasChamadasParalelas_NaoCriaDuplicidade()
+    {
+        // TreinadorAprovadoComPlanoAsync registra com plano Free (Preco=0): pago=false →
+        // sem AssinaturaTreinador criada no onboarding; treinador chega aqui Status=Ativo,
+        // ObterAtual==null — condição necessária para o handler aceitar a contratação.
+        var (treinadorId, _) = await TreinadorAprovadoComPlanoAsync();
+        var planoBasicId = await ObterPlanoBasicIdAsync();
+
+        var command = new ContratarPlanoTreinadorCommand(treinadorId, planoBasicId);
+        using var startBarrier = new Barrier(participantCount: 2);
+        var intentsAntes = fixture.Stripe.PaymentIntentsCriados;
+
+        Task<HandlerOutcome> Run() => Task.Run(async () =>
+        {
+            startBarrier.SignalAndWait();
+            using var scope = fixture.Services.CreateScope();
+            var handler = scope.ServiceProvider.GetRequiredService<ContratarPlanoTreinadorHandler>();
+            try
+            {
+                var result = await handler.HandleAsync(command);
+                return new HandlerOutcome(Success: result.IsSuccess,
+                    PagamentoId: result.IsSuccess ? result.Value.PagamentoId : null,
+                    Exception: null);
+            }
+            catch (Exception ex)
+            {
+                return new HandlerOutcome(Success: false, PagamentoId: null, Exception: ex);
+            }
+        });
+
+        var resultados = await Task.WhenAll(Run(), Run());
+
+        resultados.Should().OnlyContain(r => r.Success,
+            "com 23505 + re-fetch o perdedor reutiliza a assinatura Pendente do vencedor. Falhas: {0}",
+            string.Join(" || ", resultados.Where(r => !r.Success).Select(FormatFalha)));
+
+        resultados.Select(r => r.PagamentoId).Distinct().Should().HaveCount(1,
+            "ambas retornam o MESMO pagamento de contratação (idempotência via re-uso do pendente)");
+
+        (fixture.Stripe.PaymentIntentsCriados - intentsAntes).Should().Be(1,
+            "idem-key determinística (mesma assinatura + bucket de minuto) ⇒ um único PaymentIntent no Stripe");
+
+        using var queryScope = fixture.Services.CreateScope();
+        var db = queryScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var naoCanceladas = await db.AssinaturasTreinador
+            .Where(a => a.TreinadorId == treinadorId && a.Status != AssinaturaTreinadorStatus.Cancelada)
+            .CountAsync();
+        naoCanceladas.Should().Be(1, "índice único parcial garante no máximo 1 assinatura não-cancelada por treinador");
+    }
+
     private async Task<Guid> CriarAssinaturaTreinadorAtivaAsync()
     {
         var (treinadorId, _) = await TreinadorAprovadoComPlanoAsync();
@@ -187,6 +239,16 @@ public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
         db.AssinaturasTreinador.Add(assinatura);
         await db.SaveChangesAsync();
         return assinatura.Id;
+    }
+
+    private async Task<Guid> ObterPlanoBasicIdAsync()
+    {
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.PlanosPlataforma
+            .Where(p => p.Tier == TierPlano.Basic && p.IsAtivo)
+            .Select(p => p.Id)
+            .FirstAsync();
     }
 
     private record HandlerOutcome(bool Success, Guid? PagamentoId, Exception? Exception);

@@ -607,6 +607,9 @@ public class ProcessarWebhookStripeHandler(
         if (pagamento.Finalidade == FinalidadePagamentoTreinador.Cadastro)
             await FinalizarCadastroAsync(pagamento, agora, ct).ConfigureAwait(false);
 
+        if (pagamento.Finalidade == FinalidadePagamentoTreinador.Contratacao)
+            await FinalizarContratacaoAsync(pagamento, agora, ct).ConfigureAwait(false);
+
         if (!await CommitarTransicaoPagamentoAsync(paymentIntentId, ct).ConfigureAwait(false))
             return ProcessarEventoResultado.JaConsistente;
         logger.LogInformation("PagamentoTreinador {PagamentoId} marcado como pago.", pagamento.Id);
@@ -643,6 +646,22 @@ public class ProcessarWebhookStripeHandler(
         }
 
         conta.EmitirRegistro(agora);
+    }
+
+    private async Task FinalizarContratacaoAsync(PagamentoTreinador pagamento, DateTime agora, CancellationToken ct)
+    {
+        var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(pagamento.AssinaturaTreinadorId, ct).ConfigureAwait(false);
+        if (assinatura is null)
+        {
+            logger.LogWarning("Contratação paga sem assinatura (pagamento {PagamentoId}).", pagamento.Id);
+            throw new InvalidOperationException($"Assinatura não encontrada para pagamento {pagamento.Id}. Retry necessário.");
+        }
+
+        var ativarResult = assinatura.Ativar(agora);
+        if (ativarResult.IsFailure)
+            throw new InvalidOperationException($"Falha ao ativar AssinaturaTreinador {assinatura.Id}: {ativarResult.Error!.Message}");
+
+        assinatura.AgendarProximaCobranca(agora.AddMonths(1), agora);
     }
 
     private async Task<ProcessarEventoResultado> ProcessarPagamentoTreinadorFalhouAsync(string paymentIntentId, CancellationToken ct)

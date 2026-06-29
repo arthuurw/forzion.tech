@@ -183,4 +183,15 @@ public class PagamentoTreinadorPagoHandlerTests
 
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task HandleAsync_Contratacao_Skip_AssinaturaRepoCommitNuncaChamados()
+    {
+        var evento = CriarEvento(Guid.NewGuid(), FinalidadePagamentoTreinador.Contratacao);
+
+        await _handler.HandleAsync(evento);
+
+        _assinaturaRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

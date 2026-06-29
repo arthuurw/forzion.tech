@@ -1601,4 +1601,29 @@ public class ProcessarWebhookStripeHandlerTests
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task HandleAsync_PaymentIntentSucceeded_PlanoTreinadorContratacao_AtivaAssinaturaAgendaProximaCobrancaSemAlterarStatusTreinador()
+    {
+        var planoId = Guid.NewGuid();
+        var treinadorId = Guid.NewGuid();
+        var assinatura = AssinaturaTreinador.Criar(treinadorId, planoId, 100m, DateTime.UtcNow).Value;
+        var pagamento = PagamentoTreinador.Criar(treinadorId, assinatura.Id, 100m, FinalidadePagamentoTreinador.Contratacao, DateTime.UtcNow).Value;
+        pagamento.DefinirDadosPix("pi_contratacao", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _pagamentoTreinadorRepo.Setup(r => r.ObterPorStripePaymentIntentIdAsync("pi_contratacao", It.IsAny<CancellationToken>())).ReturnsAsync(pagamento);
+        _assinaturaTreinadorRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(
+            new ProcessarWebhookStripeCommand(PaymentIntentTreinadorPayload("payment_intent.succeeded", "pi_contratacao"), ValidSig));
+
+        var agoraPago = _timeProvider.GetUtcNow().UtcDateTime;
+        result.IsSuccess.Should().BeTrue();
+        pagamento.Status.Should().Be(PagamentoStatus.Pago);
+        assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Ativa);
+        assinatura.DataProximaCobranca.Should().Be(agoraPago.AddMonths(1), "próxima cobrança é exatamente 1 mês após o pagamento");
+        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never,
+            "FinalizarContratacao não altera TreinadorStatus");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
