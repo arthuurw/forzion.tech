@@ -58,6 +58,39 @@ public class ReprocessarNotaFiscalHandlerTests
     }
 
     [Fact]
+    public async Task NotaBloqueada_ReabreParaPendenteEEnfileira()
+    {
+        var nota = NotaFiscal.CriarComissao(Guid.NewGuid(), new DateOnly(2026, 1, 1), new DateOnly(2026, 1, 31), 50m, Agora).Value;
+        nota.MarcarBloqueadaDadosFiscais(Agora);
+        _notaRepo.Setup(r => r.ObterPorIdAsync(nota.Id, It.IsAny<CancellationToken>())).ReturnsAsync(nota);
+
+        var result = await _handler.HandleAsync(nota.Id);
+
+        result.IsSuccess.Should().BeTrue();
+        nota.Status.Should().Be(NotaFiscalStatus.Pendente);
+        _enfileirador.Verify(e => e.Enfileirar(
+            "fx:emitir_nfse",
+            It.Is<EmitirNfsePayload>(p => p.NotaFiscalId == nota.Id),
+            $"fx:emitir_nfse:reprocessar:{nota.Id}"), Times.Once);
+    }
+
+    [Fact]
+    public async Task NotaEmErro_EnfileiraEMantemErro()
+    {
+        var nota = NotaEmErro();
+        _notaRepo.Setup(r => r.ObterPorIdAsync(nota.Id, It.IsAny<CancellationToken>())).ReturnsAsync(nota);
+
+        var result = await _handler.HandleAsync(nota.Id);
+
+        result.IsSuccess.Should().BeTrue();
+        nota.Status.Should().Be(NotaFiscalStatus.Erro);
+        _enfileirador.Verify(e => e.Enfileirar(
+            "fx:emitir_nfse",
+            It.Is<EmitirNfsePayload>(p => p.NotaFiscalId == nota.Id),
+            $"fx:emitir_nfse:reprocessar:{nota.Id}"), Times.Once);
+    }
+
+    [Fact]
     public async Task NotaNaoEmErro_NaoEnfileira()
     {
         var pendente = NotaFiscal.CriarComissao(Guid.NewGuid(), new DateOnly(2026, 1, 1), new DateOnly(2026, 1, 31), 50m, Agora).Value;

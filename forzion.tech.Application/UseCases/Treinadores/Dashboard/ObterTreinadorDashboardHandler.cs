@@ -10,6 +10,8 @@ public class ObterTreinadorDashboardHandler(
     IVinculoTreinadorAlunoRepository vinculoRepository,
     ITreinoRepository treinoRepository,
     IAssinaturaTreinadorRepository assinaturaRepository,
+    ITreinadorRepository treinadorRepository,
+    IPlanoPlataformaRepository planoRepository,
     VerificarOnboardingTreinadorHandler onboardingHandler,
     IUserContext userContext)
 {
@@ -63,6 +65,19 @@ public class ObterTreinadorDashboardHandler(
             .ObterAtualPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
         var plano = new TreinadorDashboardPlano(assinatura?.Status);
 
+        var treinador = await treinadorRepository
+            .ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+        var possuiDadosFiscais = treinador?.DadosFiscais is not null;
+        var modoInterno = treinador?.ModoPagamentoAluno == ModoPagamentoAluno.Plataforma;
+        var planoPago = false;
+        if (treinador?.PlanoPlataformaId is Guid planoId)
+        {
+            var planoTreinador = await planoRepository
+                .ObterPorIdAsync(planoId, cancellationToken).ConfigureAwait(false);
+            planoPago = planoTreinador is not null && planoTreinador.Tier != TierPlano.Free;
+        }
+        var dadosFiscaisPendentes = !possuiDadosFiscais && (planoPago || modoInterno);
+
         return new TreinadorDashboardResponse(
             counts,
             mrr,
@@ -71,6 +86,7 @@ public class ObterTreinadorDashboardHandler(
             objetivos,
             pendentes,
             onboarding,
-            plano);
+            plano,
+            dadosFiscaisPendentes);
     }
 }

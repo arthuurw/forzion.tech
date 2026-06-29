@@ -20,4 +20,5 @@ public record TreinadorDashboardResponse(
     IReadOnlyList<ObjetivoItem> Objetivos,
     IReadOnlyList<VinculoDetalheResponse> Pendentes,
     OnboardingStatusResponse Onboarding,
-    TreinadorDashboardPlano Plano);
+    TreinadorDashboardPlano Plano,
+    bool DadosFiscaisPendentes);

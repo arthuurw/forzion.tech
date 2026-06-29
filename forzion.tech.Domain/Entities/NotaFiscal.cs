@@ -129,6 +129,16 @@ public class NotaFiscal : IHasDomainEvents
         return Result.Success();
     }
 
+    public Result ReabrirParaEmissao(DateTime agora)
+    {
+        if (Status != NotaFiscalStatus.BloqueadaDadosFiscais)
+            return Result.Failure(NotaFiscalErrors.TransicaoReaberturaInvalida);
+
+        Status = NotaFiscalStatus.Pendente;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
     public Result RegistrarCancelamentoPendentePreEmissao(string motivo, DateTime agora)
     {
         if (Status is not (NotaFiscalStatus.Pendente or NotaFiscalStatus.Erro or NotaFiscalStatus.BloqueadaDadosFiscais))

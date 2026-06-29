@@ -130,6 +130,35 @@ public class NotaFiscalTests
     }
 
     [Fact]
+    public void ReabrirParaEmissao_DeBloqueada_VaiParaPendente()
+    {
+        var nf = Assinatura();
+        nf.MarcarBloqueadaDadosFiscais(Agora);
+
+        nf.ReabrirParaEmissao(Agora).IsSuccess.Should().BeTrue();
+        nf.Status.Should().Be(NotaFiscalStatus.Pendente);
+    }
+
+    [Fact]
+    public void ReabrirParaEmissao_DePendente_Falha()
+    {
+        var nf = Assinatura();
+
+        nf.ReabrirParaEmissao(Agora).IsFailure.Should().BeTrue();
+        nf.Status.Should().Be(NotaFiscalStatus.Pendente);
+    }
+
+    [Fact]
+    public void ReabrirParaEmissao_DeEmitida_Falha()
+    {
+        var nf = Assinatura();
+        nf.MarcarEmitida("CHAVE", "1", Agora, null, Agora);
+
+        nf.ReabrirParaEmissao(Agora).IsFailure.Should().BeTrue();
+        nf.Status.Should().Be(NotaFiscalStatus.Emitida);
+    }
+
+    [Fact]
     public void Cancelamento_FluxoCompleto_EmitidaSolicitadaCancelada()
     {
         var nf = Assinatura();

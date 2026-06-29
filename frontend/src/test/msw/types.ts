@@ -135,6 +135,15 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReconciliarPagamentosStripeResponse"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -3735,6 +3744,15 @@ export interface paths {
                         "application/json": components["schemas"]["VinculoResponse"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -5130,6 +5148,80 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/aluno/anamnese": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Aluno autenticado edita a própria anamnese (LGPD art. 18 III) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AtualizarAnamneseRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlunoResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -7505,6 +7597,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/treinador/plano/contratar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Contrata/reativa um plano para o treinador sem assinatura ativa */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ContratarPlanoRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ContratarPlanoTreinadorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/treinador/plano/cobrar": {
         parameters: {
             query?: never;
@@ -7712,6 +7871,22 @@ export interface components {
             email: null | string;
             telefone: null | string;
         };
+        AtualizarAnamneseRequest: {
+            /** Format: int32 */
+            diasDisponiveis: null | number | string;
+            /** Format: int32 */
+            tempoDisponivelMinutos: null | number | string;
+            finalidade: null | components["schemas"]["FinalidadeTreino"];
+            focoTreino: null | string;
+            nivelCondicionamento: null | components["schemas"]["NivelCondicionamento"];
+            limitacoesFisicas: null | string;
+            doencas: null | string;
+            observacoesAdicionais: null | string;
+            /** @default false */
+            consentimentoDadosSaude: boolean;
+            /** Format: date-time */
+            consentimentoDadosSaudeEm?: null | string;
+        };
         AtualizarExercicioGlobalRequest: {
             nome: null | string;
             /** Format: uuid */
@@ -7800,6 +7975,23 @@ export interface components {
             email: string;
             /** Format: date-time */
             criadaEm: string;
+        };
+        ContratarPlanoRequest: {
+            /** Format: uuid */
+            planoPlataformaId: string;
+            metodo?: components["schemas"]["MetodoPagamento"];
+        };
+        ContratarPlanoTreinadorResponse: {
+            /** Format: uuid */
+            pagamentoId: string;
+            /** Format: double */
+            valorPagamento: number | string;
+            metodoPagamento: components["schemas"]["MetodoPagamento"];
+            pixQrCode: null | string;
+            pixQrCodeUrl: null | string;
+            /** Format: date-time */
+            pixExpiracao: null | string;
+            clientSecret: null | string;
         };
         CriarExercicioGlobalRequest: {
             nome: string;
@@ -8394,6 +8586,9 @@ export interface components {
             erros: number | string;
             /** Format: date-time */
             desdeUtc: string;
+            truncado: boolean;
+            /** Format: int32 */
+            onboardingConfirmados: number | string;
         };
         RegenerarRecoveryCodesResult: {
             recoveryCodes: string[];
@@ -8564,6 +8759,7 @@ export interface components {
             pendentes: components["schemas"]["VinculoDetalheResponse"][];
             onboarding: components["schemas"]["OnboardingStatusResponse"];
             plano: components["schemas"]["TreinadorDashboardPlano"];
+            dadosFiscaisPendentes: boolean;
         };
         TreinadorResponse: {
             /** Format: uuid */

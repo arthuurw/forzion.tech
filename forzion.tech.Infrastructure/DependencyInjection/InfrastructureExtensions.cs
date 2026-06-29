@@ -291,6 +291,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorEmDisputaEvent>, CancelarNfseHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorEmDisputaEvent>, PagamentoTreinadorEmDisputaAlertHandler>();
         services.AddScoped<IDomainEventHandler<NotaFiscalEmitidaEvent>, NfseEmitidaEmailHandler>();
+        services.AddScoped<IDomainEventHandler<NotaFiscalBloqueadaDadosFiscaisEvent>, NotaFiscalBloqueadaDadosFiscaisEmailHandler>();
 
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
