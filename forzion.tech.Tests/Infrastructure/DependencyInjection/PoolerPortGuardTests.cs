@@ -46,6 +46,13 @@ public class PoolerPortGuardTests
     }
 
     [Fact]
+    public void OutraPorta_NaoLanca()
+    {
+        AplicarInfra("Host=localhost;Port=5433;Database=postgres;Username=u;Password=p")
+            .Should().NotThrow();
+    }
+
+    [Fact]
     public void ConnectionStringNula_NaoParseia_NaoLanca()
     {
         AplicarInfra(null).Should().NotThrow();
