@@ -246,6 +246,13 @@ public static class InfrastructureExtensions
         // E-mail — Resend when configured, no-op otherwise. Sempre embrulhado no
         // EnvironmentEmailDecorator: passthrough em prod, marcação/redirect em não-prod.
         var resendApiKey = configuration["Resend:ApiKey"];
+        if (isProduction && string.IsNullOrWhiteSpace(resendApiKey))
+        {
+            throw new InvalidOperationException(
+                "Resend:ApiKey não configurado — e-mail transacional viraria no-op silencioso em produção. "
+                + "Use User Secrets ou variável de ambiente.");
+        }
+
         if (!string.IsNullOrWhiteSpace(resendApiKey))
         {
             var resendApiUrl = configuration["Resend:ApiUrl"] ?? ResendDefaultApiUrl;

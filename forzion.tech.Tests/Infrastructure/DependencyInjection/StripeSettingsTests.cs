@@ -19,7 +19,9 @@ public class StripeSettingsTests
 
     private static ServiceProvider BuildProvider(string? environment, Dictionary<string, string?> config)
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(config).Build();
+        var settings = new Dictionary<string, string?>(config);
+        settings.TryAdd("Resend:ApiKey", "re_test_key");
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
