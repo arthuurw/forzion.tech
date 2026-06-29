@@ -1,12 +1,16 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Box, Typography, Card, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  Stack, TextField, IconButton, Tooltip,
+  Stack, IconButton, Tooltip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import FormTextField from "@/components/forms/FormTextField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -16,6 +20,11 @@ import { ResponsiveTable, type Column } from "@/components/ui/ResponsiveTable";
 import { adminApi } from "@/lib/api/admin";
 import type { GrupoMuscularResponse } from "@/types";
 import { extractApiError } from "@/lib/api/extractApiError";
+
+const grupoSchema = z.object({
+  nome: z.string().trim().min(1, "Informe o nome."),
+});
+type GrupoForm = z.infer<typeof grupoSchema>;
 
 const COLUMNS: Column[] = [
   { label: "Nome" },
@@ -30,15 +39,23 @@ export default function GruposMuscularesAdminPage() {
   const [success, setSuccess] = useState("");
 
   const [criarOpen, setCriarOpen] = useState(false);
-  const [nome, setNome] = useState("");
   const [saving, setSaving] = useState(false);
 
   const [editGrupo, setEditGrupo] = useState<GrupoMuscularResponse | null>(null);
-  const [editNome, setEditNome] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [confirmExcluir, setConfirmExcluir] = useState<GrupoMuscularResponse | null>(null);
   const [loadingExcluir, setLoadingExcluir] = useState(false);
+
+  const criarForm = useForm<GrupoForm>({
+    resolver: zodResolver(grupoSchema),
+    defaultValues: { nome: "" },
+  });
+
+  const editForm = useForm<GrupoForm>({
+    resolver: zodResolver(grupoSchema),
+    defaultValues: { nome: "" },
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,33 +72,32 @@ export default function GruposMuscularesAdminPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleCriar = async () => {
-    if (!nome.trim()) return;
+  const handleCriar = criarForm.handleSubmit(async (data) => {
     setSaving(true);
     try {
-      await adminApi.criarGrupoMuscular(nome.trim());
-      setSuccess(`"${nome.trim()}" adicionado.`);
+      await adminApi.criarGrupoMuscular(data.nome);
+      setSuccess(`"${data.nome}" adicionado.`);
       setCriarOpen(false);
-      setNome("");
+      criarForm.reset();
       load();
     } catch (err) {
       setError(extractApiError(err, "Erro ao criar grupo muscular."));
     } finally {
       setSaving(false);
     }
-  };
+  });
 
   const openEdit = (g: GrupoMuscularResponse) => {
     setEditGrupo(g);
-    setEditNome(g.nome);
+    editForm.reset({ nome: g.nome });
   };
 
-  const handleEditar = async () => {
+  const handleEditar = editForm.handleSubmit(async (data) => {
     if (!editGrupo) return;
     setSavingEdit(true);
     try {
-      await adminApi.atualizarGrupoMuscular(editGrupo.id, editNome.trim());
-      setSuccess(`"${editNome}" atualizado.`);
+      await adminApi.atualizarGrupoMuscular(editGrupo.id, data.nome);
+      setSuccess(`"${data.nome}" atualizado.`);
       setEditGrupo(null);
       load();
     } catch (err) {
@@ -89,7 +105,7 @@ export default function GruposMuscularesAdminPage() {
     } finally {
       setSavingEdit(false);
     }
-  };
+  });
 
   const handleExcluir = async () => {
     if (!confirmExcluir) return;
@@ -147,35 +163,40 @@ export default function GruposMuscularesAdminPage() {
         )}
       </Card>
 
-      {/* Criar */}
-      <Dialog open={criarOpen} onClose={() => setCriarOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
+      <Dialog open={criarOpen} onClose={() => { setCriarOpen(false); criarForm.reset(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Novo grupo muscular</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} size="small" fullWidth required autoFocus />
+        <FormProvider {...criarForm}>
+          <Stack component="form" onSubmit={handleCriar} noValidate>
+            <DialogContent>
+              <Stack spacing={2} sx={{ pt: 1 }}>
+                <FormTextField name="nome" label="Nome" size="small" fullWidth autoFocus />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => { setCriarOpen(false); criarForm.reset(); }}>Cancelar</Button>
+              <Button type="submit" variant="contained" disabled={saving}>Adicionar</Button>
+            </DialogActions>
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCriarOpen(false)}>Cancelar</Button>
-          <Button variant="contained" disabled={!nome.trim() || saving} onClick={handleCriar}>Adicionar</Button>
-        </DialogActions>
+        </FormProvider>
       </Dialog>
 
-      {/* Editar */}
-      <Dialog open={!!editGrupo} onClose={() => setEditGrupo(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
+      <Dialog open={!!editGrupo} onClose={() => { setEditGrupo(null); editForm.reset(); }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
         <DialogTitle>Editar — {editGrupo?.nome}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField label="Nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} size="small" fullWidth />
+        <FormProvider {...editForm}>
+          <Stack component="form" onSubmit={handleEditar} noValidate>
+            <DialogContent>
+              <Stack spacing={2} sx={{ pt: 1 }}>
+                <FormTextField name="nome" label="Nome" size="small" fullWidth />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => { setEditGrupo(null); editForm.reset(); }}>Cancelar</Button>
+              <Button type="submit" variant="contained" disabled={savingEdit}>Salvar</Button>
+            </DialogActions>
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditGrupo(null)}>Cancelar</Button>
-          <Button variant="contained" disabled={savingEdit} onClick={handleEditar}>Salvar</Button>
-        </DialogActions>
+        </FormProvider>
       </Dialog>
 
-      {/* Excluir */}
       <ConfirmDialog
         open={!!confirmExcluir}
         title="Excluir grupo"
