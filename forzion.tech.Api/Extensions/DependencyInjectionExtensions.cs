@@ -205,6 +205,7 @@ public static class DependencyInjectionExtensions
         services.AddHttpClient(); // necessário para IHttpClientFactory em ResendHealthCheck
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready" })
+            .AddCheck<forzion.tech.Infrastructure.Health.SchemaHealthCheck>("schema", tags: new[] { "ready" })
             .AddCheck<forzion.tech.Infrastructure.Health.StripeHealthCheck>("stripe", tags: new[] { "ready" })
             .AddCheck<forzion.tech.Infrastructure.Health.ResendHealthCheck>("resend", tags: new[] { "ready" })
             .AddCheck<forzion.tech.Infrastructure.Health.WhatsAppHealthCheck>("whatsapp", tags: new[] { "ready" });
