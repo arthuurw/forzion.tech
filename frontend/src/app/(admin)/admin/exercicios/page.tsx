@@ -13,6 +13,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AlertBanner from "@/components/ui/AlertBanner";
+import PageHeader from "@/components/ui/PageHeader";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
@@ -173,17 +174,15 @@ export default function ExerciciosAdminPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
-        <Box>
-          <Typography variant="h5">Biblioteca Global</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Exercícios disponíveis para todos os treinadores copiarem.
-          </Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCriar}>
-          Novo exercício
-        </Button>
-      </Box>
+      <PageHeader
+        title="Biblioteca Global"
+        subtitle="Exercícios disponíveis para todos os treinadores copiarem."
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCriar}>
+            Novo exercício
+          </Button>
+        }
+      />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
