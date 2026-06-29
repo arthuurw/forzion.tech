@@ -11485,7 +11485,8 @@
           "objetivos",
           "pendentes",
           "onboarding",
-          "plano"
+          "plano",
+          "dadosFiscaisPendentes"
         ],
         "type": "object",
         "properties": {
@@ -11531,6 +11532,9 @@
           },
           "plano": {
             "$ref": "#/components/schemas/TreinadorDashboardPlano"
+          },
+          "dadosFiscaisPendentes": {
+            "type": "boolean"
           }
         }
       },

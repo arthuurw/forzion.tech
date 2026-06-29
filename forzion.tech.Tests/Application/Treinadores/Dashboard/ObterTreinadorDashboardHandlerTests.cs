@@ -3,8 +3,10 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Treinadores.Dashboard;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.ValueObjects;
 using Moq;
 
 namespace forzion.tech.Tests.Application.Treinadores.Dashboard;
@@ -14,6 +16,8 @@ public class ObterTreinadorDashboardHandlerTests
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
     private readonly Mock<ITreinoRepository> _treinoRepo = new();
     private readonly Mock<IAssinaturaTreinadorRepository> _assinaturaRepo = new();
+    private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
+    private readonly Mock<IPlanoPlataformaRepository> _planoRepo = new();
     private readonly Mock<VerificarOnboardingTreinadorHandler> _onboardingHandler =
         new(null!, null!, null!, null!, null!, null!);
     private readonly Mock<IUserContext> _userContext = new();
@@ -44,7 +48,30 @@ public class ObterTreinadorDashboardHandlerTests
             .ReturnsAsync(Result.Success(new OnboardingStatusResponse(true, true, ModoPagamentoAluno.Plataforma, null)));
 
         _handler = new ObterTreinadorDashboardHandler(
-            _vinculoRepo.Object, _treinoRepo.Object, _assinaturaRepo.Object, _onboardingHandler.Object, _userContext.Object);
+            _vinculoRepo.Object, _treinoRepo.Object, _assinaturaRepo.Object,
+            _treinadorRepo.Object, _planoRepo.Object, _onboardingHandler.Object, _userContext.Object);
+    }
+
+    private Treinador SetupTreinador(bool comDados, TierPlano? tierPlano, ModoPagamentoAluno modo)
+    {
+        Guid? planoId = null;
+        if (tierPlano is { } tier)
+        {
+            var plano = PlanoPlataforma.Criar("Plano", tier, 50, tier == TierPlano.Free ? 0m : 99.90m, DateTime.UtcNow).Value;
+            planoId = plano.Id;
+            _planoRepo.Setup(r => r.ObterPorIdAsync(plano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plano);
+        }
+
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Treinador", DateTime.UtcNow, null, planoId, modo).Value;
+        if (comDados)
+        {
+            var endereco = EnderecoFiscal.Criar("Rua", "1", "Centro", "3550308", "SP", "01001000", null).Value;
+            var dados = DadosFiscais.Criar(TipoDocumentoFiscal.Cpf, "11144477735", "Razao", endereco, null).Value;
+            treinador.DefinirDadosFiscais(dados, DateTime.UtcNow);
+        }
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(_treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        return treinador;
     }
 
     [Fact]
@@ -147,5 +174,45 @@ public class ObterTreinadorDashboardHandlerTests
         var result = await _handler.HandleAsync();
 
         result.Plano.Status.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemDadosFiscaisEPlanoPago_DadosFiscaisPendentesTrue()
+    {
+        SetupTreinador(comDados: false, TierPlano.Pro, ModoPagamentoAluno.Externo);
+
+        var result = await _handler.HandleAsync();
+
+        result.DadosFiscaisPendentes.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemDadosFiscaisEModoInterno_DadosFiscaisPendentesTrue()
+    {
+        SetupTreinador(comDados: false, TierPlano.Free, ModoPagamentoAluno.Plataforma);
+
+        var result = await _handler.HandleAsync();
+
+        result.DadosFiscaisPendentes.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemDadosFiscaisPlanoGratuitoEModoExterno_DadosFiscaisPendentesFalse()
+    {
+        SetupTreinador(comDados: false, TierPlano.Free, ModoPagamentoAluno.Externo);
+
+        var result = await _handler.HandleAsync();
+
+        result.DadosFiscaisPendentes.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ComDadosFiscais_DadosFiscaisPendentesFalse()
+    {
+        SetupTreinador(comDados: true, TierPlano.Pro, ModoPagamentoAluno.Plataforma);
+
+        var result = await _handler.HandleAsync();
+
+        result.DadosFiscaisPendentes.Should().BeFalse();
     }
 }
