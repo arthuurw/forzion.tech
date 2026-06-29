@@ -9,6 +9,9 @@ declare module "@mui/material/styles" {
   interface PaletteOptions {
     brand?: { label?: string };
   }
+  interface TypeAction {
+    subtleBg: string;
+  }
 }
 
 const theme = createTheme(
@@ -43,6 +46,7 @@ const theme = createTheme(
         secondary: "#4B5563",
       },
       divider: "rgba(0,0,0,0.08)",
+      action: { subtleBg: alpha("#1A1A1A", 0.06) },
       // Overline accent for landing section labels; darker than primary for AA contrast on light bg.
       brand: { label: "#7a6300" },
     },
