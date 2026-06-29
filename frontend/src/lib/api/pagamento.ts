@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import type {
   AssinaturaAlunoResponse,
   AssinaturaTreinadorResponse,
+  ContratarPlanoTreinadorResponse,
   ListarPagamentosAssinaturaAlunoResponse,
   ListarRecebimentosTreinadorResultado,
   MetodoPagamento,
@@ -59,6 +60,9 @@ export const pagamentoApi = {
   },
   trocarPlano(planoPlataformaId: string, metodo: MetodoPagamento = "Pix") {
     return apiClient.post<TrocarPlanoTreinadorResponse>("/treinador/plano/trocar", { planoPlataformaId, metodo });
+  },
+  contratarPlano(planoPlataformaId: string, metodo: MetodoPagamento = "Pix") {
+    return apiClient.post<ContratarPlanoTreinadorResponse>("/treinador/plano/contratar", { planoPlataformaId, metodo });
   },
   obterStatusPagamentoTreinador(pagamentoId: string) {
     return apiClient.get<PagamentoTreinadorStatusResponse>(`/treinador/plano/pagamento/${pagamentoId}`);

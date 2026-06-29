@@ -17,8 +17,8 @@ public sealed class PagamentoTreinadorPagoHandler(
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
 
-        // Cadastro é finalizado inline no ProcessarWebhookStripeHandler (atomicidade).
-        if (domainEvent.Finalidade == FinalidadePagamentoTreinador.Cadastro)
+        // Cadastro e Contratacao são finalizados inline no ProcessarWebhookStripeHandler (atomicidade).
+        if (domainEvent.Finalidade is FinalidadePagamentoTreinador.Cadastro or FinalidadePagamentoTreinador.Contratacao)
             return;
 
         var assinatura = await assinaturaTreinadorRepository.ObterPorIdAsync(domainEvent.AssinaturaTreinadorId, cancellationToken).ConfigureAwait(false);

@@ -9,6 +9,7 @@ using forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStripe;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
 using forzion.tech.Application.UseCases.Treinadores.IniciarPagamentoPlano;
 using forzion.tech.Application.UseCases.Treinadores.TrocarPlanoTreinador;
+using forzion.tech.Application.UseCases.Treinadores.ContratarPlanoTreinador;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -164,6 +165,23 @@ public static class PagamentosEndpoints
         })
         .WithSummary("Troca o plano do treinador (upgrade/downgrade/regularização)")
         .Produces<TrocarPlanoTreinadorResponse>()
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        treinadorPlanoGroup.MapPost("/contratar", async (
+            [FromBody] ContratarPlanoRequest body,
+            [FromServices] ContratarPlanoTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new ContratarPlanoTreinadorCommand(userContext.PerfilId, body.PlanoPlataformaId, body.Metodo), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Contrata/reativa um plano para o treinador sem assinatura ativa")
+        .Produces<ContratarPlanoTreinadorResponse>()
+        .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -340,6 +358,8 @@ public static class PagamentosEndpoints
     public sealed record ReconciliarPagamentosStripeRequest(DateTime? DesdeUtc);
 
     public sealed record TrocarPlanoRequest(Guid PlanoPlataformaId, MetodoPagamento Metodo = MetodoPagamento.Pix);
+
+    public sealed record ContratarPlanoRequest(Guid PlanoPlataformaId, MetodoPagamento Metodo = MetodoPagamento.Pix);
 
     private static bool ChaveInternaValida(HttpContext ctx, IConfiguration cfg) =>
         InternalApiKeyValidator.ChaveInternaValida(ctx, cfg);

@@ -367,6 +367,16 @@ export interface TrocarPlanoTreinadorResponse {
   dataEfetivacao: string | null;
 }
 
+export interface ContratarPlanoTreinadorResponse {
+  pagamentoId: string;
+  valorPagamento: number;
+  metodoPagamento: MetodoPagamento;
+  pixQrCode: string | null;
+  pixQrCodeUrl: string | null;
+  pixExpiracao: string | null;
+  clientSecret: string | null;
+}
+
 export interface PagamentoTreinadorStatusResponse {
   pagamentoId: string;
   status: PagamentoStatus;

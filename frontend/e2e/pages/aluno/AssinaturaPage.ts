@@ -19,6 +19,6 @@ export class AssinaturaPage extends BasePage {
     this.statusChip = page.locator(".MuiChip-label").first();
     this.pagarAgoraButton = page.getByRole("button", { name: /pagar agora/i });
     this.errorAlert = page.locator('[role="alert"]').filter({ hasText: /erro/i });
-    this.infoAlert = page.locator('[role="alert"]').filter({ hasText: /não possui/i });
+    this.infoAlert = page.getByText(/não possui/i);
   }
 }
