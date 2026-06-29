@@ -22,8 +22,9 @@ Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` ap
 | `text.secondary` | `#4B5563` | gray-600; 7.6:1 em #FFF / 7.1:1 em #F7F8FA (AA) — F18 resolvido (era #6B7280 ≈4.6:1 em #F7F8FA) |
 | `divider` | `rgba(0,0,0,0.08)` | (MuiDivider override → `rgba(0,0,0,0.07)`) |
 | `brand.label` | `#7a6300` | **LEGADO** — era overline accent dos labels de seção da landing; substituído por `SectionEyebrow` (ver §LANDING). Sobrevive só em `SocialProof` (renderiza null no beta). Chave custom via module augmentation; não hardcodar. |
+| `action.subtleBg` | `alpha("#1A1A1A",0.06)` = `rgba(26,26,26,0.06)` | fundo sutil de ícone/avatar quadrado (perfil, seguranca). Token nomeado via augmentation de `TypeAction` — `bgcolor:"action.subtleBg"` no `sx`. NÃO hardcodar o literal (FPAD-12). |
 
-NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip herdam paleta MUI default desses severities.
+NOTA: `warning`/`info`/`success` NÃO redefinidos → AlertBanner/StatusChip herdam paleta MUI default desses severities. Cor/sombra em `sx` SEMPRE via token do tema, nunca literal: `#1A1A1A`→`secondary.main`, texto sobre amarelo→`primary.contrastText`, `#fff`→`background.paper`, fundo sutil→`action.subtleBg` (FPAD-12; literais residuais só em CSS puro `globals.css`, OG image e `contentStyle` do recharts, que não acessam o tema).
 
 ### Tipografia
 - `fontFamily`: `'Inter', 'Roboto', sans-serif`. Inter via Google Fonts (pesos 400/500/600/700, `display: swap` — ver [specification-frontend]).
@@ -64,6 +65,7 @@ Story = `*.stories.tsx`. A11y test (vitest-axe dedicado) = `*.a11y.test.tsx`. Co
 
 | Componente | Propósito | Props-chave | Story? | a11y test? |
 |---|---|---|---|---|
+| `PageHeader` | cabeçalho de página canônico (título + subtítulo + ação + voltar) | `title`, `subtitle?`, `action?`(ReactNode, slot à direita), `as?`(`h1`\|`h2`, def `h1`), `backHref?`(→ "Voltar" `outlined`) | ✅ | ✅ vitest-axe |
 | `AlertBanner` | alerta inline colapsável | `open`, `severity`(error\|warning\|info\|success, def error), `title?`, `message`, `onClose?` | ✅ | ✅ vitest-axe (4 severities + sem title + close) |
 | `StatusChip` | chip de status domínio | `status`(AlunoStatus\|TreinadorStatus\|VinculoStatus), `size`(small def) | ✅ | ✅ vitest-axe (rotulado: `aria-label="Status: ${label}"`) |
 | `EmptyState` | estado vazio + CTA | `message`, `actionLabel?`, `onAction?` | ✅ | ✅ vitest-axe |
@@ -99,6 +101,28 @@ NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/form
 - **Imports**: NÃO há barrel (`ui/index.ts`/`forms/index.ts` inexistentes); sempre path direto.
 - **Canal de erro canônico**: `AlertBanner` (inline) alimentado por `extractApiError` é o canal de feedback de erro — o `SnackbarProvider`/`useSnackbar` (toast global genérico) foi removido. Padrão e regra "`return null` em falha de load = BANIDO" em [specification-frontend] §TRATAMENTO DE ERRO.
 - **Componentes de domínio (não-`ui/`)**: `components/aluno/AlunoInadimplenteBanner.tsx` (banner persistente `role=alert`); `components/aluno/AlunoInadimplenteGate.tsx` (wrapper client-side: fetch on-mount de `obterMinhaAssinatura`, renderiza o banner quando status `Inadimplente`, falha silenciosa); `components/treinador/ProgressaoAluno.tsx` (gráficos recharts de progressão por exercício, props `alunoId`, seletor de período 7d/30d/60d/90d/6m/1a/tudo).
+
+## RÉGUA DE HEADER, BOTÕES, ESTADOS E FORMS (padronização — FPAD)
+Convenções estabilizadas na feature `frontend-padronizacao` (auditoria 2026-06-28). AD-005/006.
+
+### Cabeçalho de página → `<PageHeader>` (FPAD-07/08)
+- Todo cabeçalho de PÁGINA usa `<PageHeader>` — NÃO replicar `Typography`+`fontWeight` à mão. Renderiza `Typography variant="h5" component={as}` SEM override de `fontWeight` (o tema entrega `h5`=600). `as` default `h1` (um `h1` por página); `as="h2"` para subpágina sob um `h1` existente.
+- `action` = slot à direita (CTA da página, ex. "Novo plano"). `backHref` = botão "Voltar" `variant="outlined"` com `ArrowBackIcon`.
+- INVARIANTE: zero `fontWeight: 700`/`"bold"` inline em TÍTULO de página/seção (cabeçalho `h4`–`h6`) em `src/app` (FPAD-07.4). Título de Card/seção interna mantém só `variant`; PageHeader é para cabeçalho de página, não todo `Typography`. NÃO é alvo (e permanece com peso): ênfase em VALOR/número (stat `h3`/`h4` 800, preço/dificuldade `body2` 700) e grafismo de landing (`_landing/*`, `SectionEyebrow`) — não são títulos.
+
+### Régua de botões (FPAD-15 — documentada, SEM lint; decisão usuário 2026-06-28)
+- **Ação primária de página** (criar/novo/salvar principal): `variant="contained"`, tamanho default (não `small`).
+- **Secundária / navegação**: `outlined` ou `text`.
+- **Ação destrutiva FORA de `ConfirmDialog`** (ex. `perfil` excluir conta): `variant="outlined" color="error"` (FPAD-11) — `contained error` só dentro do fluxo de confirmação.
+- `size="small"`/`outlined` em botão de **card ou navegação** NÃO viola a régua (a régua ancora a ação primária de PÁGINA). Por isso NÃO há regra de lint para botões: um seletor `size=small`+`contained` dispararia falso-positivo nesses botões legítimos. Enforcement = review humano + esta régua. NÃO criar wrapper `<AppButton>` (evita over-abstraction; 44% da dívida tipográfica era header, não botão).
+
+### Estados crus → wrappers + lint (FPAD-09)
+- Loading/erro/vazio usam `<LoadingSpinner>`/`<AlertBanner>`/`<EmptyState>`; exclusão via `<ConfirmDialog>`.
+- Guard de lint (`eslint.config.mjs`, `no-restricted-imports` escopado a `src/app/**`, exclui `*.test`/`__tests__`): barra import de **`Alert`** cru de `@mui/material` → aponta `AlertBanner`. **Estado real: só `Alert` é barrado** (não `CircularProgress`/`Dialog`). Exceção: 3 erros TERMINAIS de pagamento (`PagamentoCartao`/`PagamentoPix`/`PagamentoSignup`) mantêm `Alert` cru com `eslint-disable` + motivo (erro terminal não-dismissível ≠ AlertBanner colapsável).
+
+### Forms via RHF + Zod (FPAD-10/13)
+- Dialogs CRUD admin (`grupos-musculares`/`planos`/`exercicios`), config de relatório de saúde (`saude`) e troca de senha do `perfil` usam **react-hook-form + Zod** (`zodResolver`), com schema Zod co-locado no módulo da página, `<FormProvider>` + `<Stack component="form" onSubmit={form.handleSubmit(...)} noValidate>`.
+- Campos via primitivos: `FormTextField` (texto/número), `FormSelect` (select rotulado), `PasswordField` (senha+toggle). Booleano (Switch/Checkbox) e campos com validação imperativa preservada (ex. `videoUrl`, `tier` com opção desabilitada) via `Controller` cru. Número com `z.coerce.number()` ⇒ tipar `useForm<z.input<S>, unknown, z.output<S>>` (input fica `unknown`).
 
 ## LINGUAGEM NEUTRA DE GÊNERO (copy user-facing)
 Toda copy nova nasce neutra. Origem: feature `texto-unissex` (sweep 2026-06-16). Aplica a JSX/strings de UI (sem lib i18n — copy hardcoded inline), títulos/corpo de e-mail (`Notifications/Email/**`) e corpo de template WhatsApp (`.specs/features/texto-unissex/WHATSAPP-COPY.md`). Estilo = **híbrido neutro**: reescrever pra neutro onde for natural; `(a)`/`(as)` só último recurso, nunca empilhado.
