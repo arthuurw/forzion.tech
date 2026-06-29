@@ -12,6 +12,8 @@ using forzion.tech.Infrastructure.Outbox.Handlers;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Moq;
 
 namespace forzion.tech.Tests.Infrastructure;
 
@@ -46,7 +48,7 @@ public class HandlerDiRegistrationTests
         services.AddLogging();
         // IConfiguration needs to be registered as a singleton for BindConfiguration to work.
         services.AddSingleton<IConfiguration>(config);
-        services.AddInfrastructure(config);
+        services.AddInfrastructure(config, Mock.Of<IHostEnvironment>(e => e.EnvironmentName == "Development"));
         return services.BuildServiceProvider();
     }
 

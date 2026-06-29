@@ -220,7 +220,7 @@ public static class DependencyInjectionExtensions
 
         if (!environment.IsEnvironment("Test"))
         {
-            services.AddInfrastructure(configuration);
+            services.AddInfrastructure(configuration, environment);
             services.AddMfaProtection(configuration);
             services.AddDataProtectionPersistence(configuration);
             services.AddHostedService<LimparTokensRevogadosService>();

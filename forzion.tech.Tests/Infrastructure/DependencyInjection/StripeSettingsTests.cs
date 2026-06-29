@@ -3,11 +3,12 @@ using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Moq;
 
 namespace forzion.tech.Tests.Infrastructure.DependencyInjection;
 
-[Collection(EnvironmentSensitiveCollection.Name)]
 public class StripeSettingsTests
 {
     private static readonly Dictionary<string, string?> ConfigBase = new()
@@ -22,18 +23,7 @@ public class StripeSettingsTests
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
-
-        var original = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        try
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", environment);
-            services.AddInfrastructure(configuration);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", original);
-        }
-
+        services.AddInfrastructure(configuration, Mock.Of<IHostEnvironment>(e => e.EnvironmentName == environment));
         return services.BuildServiceProvider();
     }
 

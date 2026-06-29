@@ -74,7 +74,7 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
 
         builder.ConfigureServices((ctx, services) =>
         {
-            services.AddInfrastructure(ctx.Configuration);
+            services.AddInfrastructure(ctx.Configuration, ctx.HostingEnvironment);
             services.RemoveAll<IStripeService>();
             services.AddSingleton<IStripeService>(Stripe);
             services.RemoveAll<IDomainEventDispatcher>();

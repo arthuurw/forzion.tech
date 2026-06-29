@@ -3,11 +3,12 @@ using forzion.tech.Application.Settings;
 using forzion.tech.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Moq;
 
 namespace forzion.tech.Tests.Infrastructure.DependencyInjection;
 
-[Collection(EnvironmentSensitiveCollection.Name)]
 public class InternalSettingsTests
 {
     private static ServiceProvider BuildProvider(string? environment, Dictionary<string, string?>? config = null)
@@ -16,18 +17,7 @@ public class InternalSettingsTests
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
-
-        var original = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        try
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", environment);
-            services.AddInfrastructure(configuration);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", original);
-        }
-
+        services.AddInfrastructure(configuration, Mock.Of<IHostEnvironment>(e => e.EnvironmentName == environment));
         return services.BuildServiceProvider();
     }
 

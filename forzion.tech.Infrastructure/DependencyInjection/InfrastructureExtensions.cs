@@ -16,6 +16,7 @@ using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -41,9 +42,11 @@ public static class InfrastructureExtensions
 
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         var connectionString = configuration.GetConnectionString("AppConnection");
+        var isProduction = environment.IsProduction();
 
         // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.
         services.AddSingleton(TimeProvider.System);
@@ -152,9 +155,6 @@ public static class InfrastructureExtensions
             .ValidateOnStart();
         // se ExpectLivemode não foi configurado explicitamente, default por ambiente —
         // Production espera live; demais (incl. Homolog público em test-mode) não enforça.
-        var isProduction = string.Equals(
-            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-            "Production", StringComparison.OrdinalIgnoreCase);
         services.PostConfigure<StripeSettings>(s => s.ExpectLivemode ??= isProduction);
         services.AddScoped<IStripeService, StripeService>();
 

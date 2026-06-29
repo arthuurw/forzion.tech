@@ -3,7 +3,9 @@ using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Moq;
 
 namespace forzion.tech.Tests.Infrastructure.DependencyInjection;
 
@@ -28,7 +30,7 @@ public class NfseSettingsTests
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
-        services.AddInfrastructure(configuration);
+        services.AddInfrastructure(configuration, Mock.Of<IHostEnvironment>(e => e.EnvironmentName == "Development"));
         return services.BuildServiceProvider();
     }
 
