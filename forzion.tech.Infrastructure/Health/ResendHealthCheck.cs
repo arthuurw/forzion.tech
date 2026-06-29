@@ -1,12 +1,16 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 
 namespace forzion.tech.Infrastructure.Health;
 
 // Probe leve: GET /api-keys exige autenticação válida, sem side-effect e sem payload grande.
 // Degraded em vez de Unhealthy — Resend fora do ar não impede leitura/treino, só envio de e-mail.
-public sealed class ResendHealthCheck(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IHealthCheck
+public sealed class ResendHealthCheck(
+    IHttpClientFactory httpClientFactory,
+    IConfiguration configuration,
+    IHostEnvironment environment) : IHealthCheck
 {
 #pragma warning disable S1075 // Endpoint fixo da API do Resend (host público estável), não config de ambiente.
     private const string ApiKeysUrl = "https://api.resend.com/api-keys";
@@ -20,7 +24,9 @@ public sealed class ResendHealthCheck(IHttpClientFactory httpClientFactory, ICon
         var apiKey = configuration["Resend:ApiKey"];
 
         if (string.IsNullOrWhiteSpace(apiKey))
-            return HealthCheckResult.Healthy("Resend não configurado.");
+            return environment.IsProduction()
+                ? HealthCheckResult.Unhealthy("Resend não configurado em produção — e-mail transacional está como no-op.")
+                : HealthCheckResult.Healthy("Resend não configurado.");
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(Timeout);
