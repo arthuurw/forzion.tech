@@ -214,7 +214,7 @@ export default function PerfilPage() {
       <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <PersonIcon fontSize="small" sx={{ color: "text.secondary" }} />
             </Box>
             <Typography variant="subtitle1" component="h2">Dados da conta</Typography>
@@ -266,7 +266,7 @@ export default function PerfilPage() {
         <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
           <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <FitnessCenterIcon fontSize="small" sx={{ color: "text.secondary" }} />
               </Box>
               <Typography variant="subtitle1" component="h2">Meu Treinador</Typography>
@@ -317,7 +317,7 @@ export default function PerfilPage() {
         <Card sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}>
           <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <AssignmentIcon fontSize="small" sx={{ color: "text.secondary" }} />
               </Box>
               <Typography variant="subtitle1" component="h2">Minha anamnese</Typography>
@@ -379,7 +379,7 @@ export default function PerfilPage() {
       <Card sx={{ mt: 2.5, border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "rgba(26,26,26,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <SecurityIcon fontSize="small" sx={{ color: "text.secondary" }} />
             </Box>
             <Typography variant="subtitle1" component="h2">Privacidade (LGPD)</Typography>

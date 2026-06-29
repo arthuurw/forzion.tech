@@ -1,5 +1,5 @@
 "use client";
-import { Box, Typography, Button, CircularProgress } from "@mui/material";
+import { Box, Typography, Button, CircularProgress, Link as MuiLink } from "@mui/material";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -94,9 +94,9 @@ export default function ForgotPasswordPage() {
       <Box sx={{ mt: 3, textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">
           Lembrou a senha?{" "}
-          <Link href="/login" style={{ color: "#1A1A1A", fontWeight: 600 }}>
+          <MuiLink component={Link} href="/login" sx={{ color: "secondary.main", fontWeight: 600 }}>
             Fazer login
-          </Link>
+          </MuiLink>
         </Typography>
       </Box>
     </Box>

@@ -139,7 +139,7 @@ export default function DetalheFichaAlunoPage() {
                       alignItems: "center", justifyContent: "center", mt: 0.25, flexShrink: 0,
                     }}
                   >
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#1A1A1A", lineHeight: 1 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: "primary.contrastText", lineHeight: 1 }}>
                       {idx + 1}
                     </Typography>
                   </Box>
@@ -156,8 +156,8 @@ export default function DetalheFichaAlunoPage() {
                           border: "1px solid", borderColor: "primary.main",
                         }}
                       >
-                        <InfoOutlinedIcon sx={{ fontSize: 15, color: "#1A1A1A", mt: "1px", flexShrink: 0 }} />
-                        <Typography variant="caption" sx={{ color: "#1A1A1A", fontStyle: "italic", lineHeight: 1.5 }}>
+                        <InfoOutlinedIcon sx={{ fontSize: 15, color: "primary.contrastText", mt: "1px", flexShrink: 0 }} />
+                        <Typography variant="caption" sx={{ color: "primary.contrastText", fontStyle: "italic", lineHeight: 1.5 }}>
                           {ex.observacao}
                         </Typography>
                       </Box>

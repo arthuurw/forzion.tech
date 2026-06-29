@@ -271,8 +271,8 @@ export default function ExecutarFichaPage() {
                   border: "1px solid", borderColor: "primary.main",
                 }}
               >
-                <InfoOutlinedIcon sx={{ fontSize: 16, color: "#1A1A1A", mt: "1px", flexShrink: 0 }} />
-                <Typography variant="body2" sx={{ color: "#1A1A1A", fontStyle: "italic", lineHeight: 1.5 }}>
+                <InfoOutlinedIcon sx={{ fontSize: 16, color: "primary.contrastText", mt: "1px", flexShrink: 0 }} />
+                <Typography variant="body2" sx={{ color: "primary.contrastText", fontStyle: "italic", lineHeight: 1.5 }}>
                   {current.observacao}
                 </Typography>
               </Box>

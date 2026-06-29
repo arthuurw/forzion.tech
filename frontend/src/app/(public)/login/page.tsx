@@ -1,6 +1,6 @@
 "use client";
 import {
-  Box, Typography, Button, CircularProgress, Divider, TextField, Checkbox, FormControlLabel, Stack,
+  Box, Typography, Button, CircularProgress, Divider, TextField, Checkbox, FormControlLabel, Stack, Link as MuiLink,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useForm, FormProvider } from "react-hook-form";
@@ -293,13 +293,13 @@ export default function LoginPage() {
       <Box sx={{ textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary">
           Ainda não tem conta?{" "}
-          <Link href="/cadastro/treinador" style={{ color: "#1A1A1A", fontWeight: 600 }}>
+          <MuiLink component={Link} href="/cadastro/treinador" sx={{ color: "secondary.main", fontWeight: 600 }}>
             Cadastre-se como treinador
-          </Link>
+          </MuiLink>
           {" "}ou{" "}
-          <Link href="/cadastro/aluno" style={{ color: "#1A1A1A", fontWeight: 600 }}>
+          <MuiLink component={Link} href="/cadastro/aluno" sx={{ color: "secondary.main", fontWeight: 600 }}>
             como aluno
-          </Link>
+          </MuiLink>
         </Typography>
       </Box>
         </>
