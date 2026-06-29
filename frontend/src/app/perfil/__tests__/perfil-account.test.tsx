@@ -92,6 +92,12 @@ describe("/perfil — alterar senha", () => {
     fireEvent.click(screen.getByRole("button", { name: /alterar senha/i }));
   }
 
+  it("submit vazio exibe erro de campo obrigatório", async () => {
+    renderWithProviders(<PerfilPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /alterar senha/i }));
+    expect(await screen.findByText(/informe a senha atual/i)).toBeInTheDocument();
+  });
+
   it("senhas divergentes mostram erro", async () => {
     renderWithProviders(<PerfilPage />);
     await fillSenha("old12345", "novaSenha1", "outraSenha2");
