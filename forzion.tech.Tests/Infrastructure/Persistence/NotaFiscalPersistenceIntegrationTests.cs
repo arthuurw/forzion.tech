@@ -3,6 +3,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Infrastructure.Persistence;
+using forzion.tech.Infrastructure.Persistence.Repositories;
 using forzion.tech.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -127,6 +128,71 @@ public class NotaFiscalPersistenceIntegrationTests(InfrastructureTestFixture fix
             nota.CompetenciaInicio.Should().Be(inicio);
             nota.CompetenciaFim.Should().Be(fim);
             nota.PagamentoTreinadorId.Should().BeNull();
+        }
+    }
+
+    [Fact]
+    public async Task ListarBloqueadasPorTreinador_RetornaSoBloqueadasDoTreinador()
+    {
+        Guid treinadorA;
+        Guid notaBloqueadaA;
+        await using (var ctx = fixture.CreateContext())
+        {
+            treinadorA = await SeedTreinadorAsync(ctx);
+            var pagamentoA = await SeedPagamentoAsync(ctx, treinadorA);
+            var bloqueada = NotaFiscal.CriarAssinatura(treinadorA, pagamentoA, 99.90m, Agora).Value;
+            bloqueada.MarcarBloqueadaDadosFiscais(Agora);
+            var pendenteComissao = NotaFiscal.CriarComissao(treinadorA, new DateOnly(2026, 5, 1), new DateOnly(2026, 5, 31), 42.50m, Agora).Value;
+            await ctx.NotasFiscais.AddAsync(bloqueada);
+            await ctx.NotasFiscais.AddAsync(pendenteComissao);
+
+            var treinadorB = await SeedTreinadorAsync(ctx);
+            var pagamentoB = await SeedPagamentoAsync(ctx, treinadorB);
+            var bloqueadaB = NotaFiscal.CriarAssinatura(treinadorB, pagamentoB, 99.90m, Agora).Value;
+            bloqueadaB.MarcarBloqueadaDadosFiscais(Agora);
+            await ctx.NotasFiscais.AddAsync(bloqueadaB);
+            await ctx.SaveChangesAsync();
+            notaBloqueadaA = bloqueada.Id;
+        }
+
+        await using (var ctx = fixture.CreateContext())
+        {
+            var repo = new NotaFiscalRepository(ctx);
+            var bloqueadas = await repo.ListarBloqueadasPorTreinadorAsync(treinadorA);
+
+            bloqueadas.Should().ContainSingle()
+                .Which.Id.Should().Be(notaBloqueadaA);
+        }
+    }
+
+    [Fact]
+    public async Task ListarBloqueadasPorTreinador_Tracked_PersisteReabertura()
+    {
+        Guid treinadorId;
+        Guid notaId;
+        await using (var ctx = fixture.CreateContext())
+        {
+            treinadorId = await SeedTreinadorAsync(ctx);
+            var pagamentoId = await SeedPagamentoAsync(ctx, treinadorId);
+            var nota = NotaFiscal.CriarAssinatura(treinadorId, pagamentoId, 99.90m, Agora).Value;
+            nota.MarcarBloqueadaDadosFiscais(Agora);
+            await ctx.NotasFiscais.AddAsync(nota);
+            await ctx.SaveChangesAsync();
+            notaId = nota.Id;
+        }
+
+        await using (var ctx = fixture.CreateContext())
+        {
+            var repo = new NotaFiscalRepository(ctx);
+            var bloqueadas = await repo.ListarBloqueadasPorTreinadorAsync(treinadorId);
+            bloqueadas.Single().ReabrirParaEmissao(Agora);
+            await ctx.SaveChangesAsync();
+        }
+
+        await using (var ctx = fixture.CreateContext())
+        {
+            var nota = await ctx.NotasFiscais.FindAsync(notaId);
+            nota!.Status.Should().Be(NotaFiscalStatus.Pendente);
         }
     }
 
