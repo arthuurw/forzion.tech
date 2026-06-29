@@ -214,4 +214,45 @@ describe("PlanoTreinadorPage", () => {
     });
     expect(screen.getByText("Basic")).toBeInTheDocument();
   });
+
+  it("sem assinatura (null) renderiza seção Contratar e não Trocar", async () => {
+    server.use(
+      http.get("*/treinador/plano/assinatura", () => HttpResponse.json(null)),
+      http.get("*/auth/planos", () => HttpResponse.json([PLANO_BASIC, PLANO_PRO])),
+    );
+    const { default: Page } = await import("../treinador/plano/page");
+    render(<Page />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Contratar plano")).toBeInTheDocument();
+    });
+    expect(screen.getAllByText("Contratar").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Trocar plano")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Trocar/i })).not.toBeInTheDocument();
+  });
+
+  it("erro no contratar exibe mensagem real do backend via extractApiError", async () => {
+    server.use(
+      http.get("*/treinador/plano/assinatura", () => HttpResponse.json(null)),
+      http.get("*/auth/planos", () => HttpResponse.json([PLANO_BASIC])),
+      http.post("*/treinador/plano/contratar", () =>
+        HttpResponse.json(
+          { detail: "Plano inativo.", code: "plano_plataforma.inativo" },
+          { status: 422 },
+        ),
+      ),
+    );
+    const { default: Page } = await import("../treinador/plano/page");
+    render(<Page />);
+
+    await waitFor(() => screen.getByText("Contratar plano"));
+    fireEvent.click(screen.getByRole("button", { name: "Contratar" }));
+
+    await screen.findByText("Confirmar contratação");
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => {
+      expect(screen.queryAllByText("Plano inativo.").length).toBeGreaterThan(0);
+    });
+  });
 });

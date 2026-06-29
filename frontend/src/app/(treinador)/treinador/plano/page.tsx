@@ -30,11 +30,13 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { formatarBRL } from "@/lib/utils/formatting";
 import type {
   AssinaturaTreinadorResponse,
+  ContratarPlanoTreinadorResponse,
   PlanoPlataformaResponse,
   TrocarPlanoTreinadorResponse,
 } from "@/types";
 
 type Etapa = "idle" | "confirmando" | "pagando" | "sucesso";
+type ModoFluxo = "troca" | "contratar";
 
 export const CANCELAR_PLANO_DESCRICAO =
   "Seu acesso será encerrado imediatamente. Ação irreversível pelo portal.";
@@ -50,8 +52,10 @@ export default function PlanoTreinadorPage() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
   const [etapa, setEtapa] = useState<Etapa>("idle");
+  const [modoFluxo, setModoFluxo] = useState<ModoFluxo | null>(null);
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoPlataformaResponse | null>(null);
   const [trocaResp, setTrocaResp] = useState<TrocarPlanoTreinadorResponse | null>(null);
+  const [contratoResp, setContratoResp] = useState<ContratarPlanoTreinadorResponse | null>(null);
   const [processando, setProcessando] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const delayRef = useRef(5_000);
@@ -101,8 +105,16 @@ export default function PlanoTreinadorPage() {
     };
   }, [pararPolling]);
 
-  const iniciarTroca = async (plano: PlanoPlataformaResponse) => {
+  const iniciarTroca = (plano: PlanoPlataformaResponse) => {
     setPlanoSelecionado(plano);
+    setModoFluxo("troca");
+    setEtapa("confirmando");
+    setErro("");
+  };
+
+  const iniciarContratar = (plano: PlanoPlataformaResponse) => {
+    setPlanoSelecionado(plano);
+    setModoFluxo("contratar");
     setEtapa("confirmando");
     setErro("");
   };
@@ -124,8 +136,26 @@ export default function PlanoTreinadorPage() {
           iniciarPolling(res.data.pagamentoId);
         }
       }
-    } catch {
-      setErro("Erro ao processar troca de plano. Tente novamente.");
+    } catch (err) {
+      setErro(extractApiError(err, "Erro ao processar troca de plano. Tente novamente."));
+    } finally {
+      setProcessando(false);
+    }
+  };
+
+  const confirmarContratar = async () => {
+    if (!planoSelecionado) return;
+    setProcessando(true);
+    setErro("");
+    try {
+      const res = await pagamentoApi.contratarPlano(planoSelecionado.planoId);
+      setContratoResp(res.data);
+      setEtapa("pagando");
+      if (res.data.pagamentoId && res.data.metodoPagamento === "Pix") {
+        iniciarPolling(res.data.pagamentoId);
+      }
+    } catch (err) {
+      setErro(extractApiError(err, "Erro ao processar contratação de plano. Tente novamente."));
     } finally {
       setProcessando(false);
     }
@@ -168,8 +198,10 @@ export default function PlanoTreinadorPage() {
   const fecharDialog = () => {
     pararPolling();
     setEtapa("idle");
+    setModoFluxo(null);
     setPlanoSelecionado(null);
     setTrocaResp(null);
+    setContratoResp(null);
     setErro("");
   };
 
@@ -219,12 +251,18 @@ export default function PlanoTreinadorPage() {
 
   const inadimplente = assinatura?.status === "Inadimplente";
 
-  const opcoesTroca = planos.filter(
-    (p) =>
-      p.tier !== "Elite" &&
-      p.isAtivo &&
-      (assinatura?.status === "Inadimplente" || p.planoId !== assinatura?.planoPlataformaId)
-  );
+  const opcoesTroca = assinatura
+    ? planos.filter(
+        (p) =>
+          p.tier !== "Elite" &&
+          p.isAtivo &&
+          (assinatura.status === "Inadimplente" || p.planoId !== assinatura.planoPlataformaId)
+      )
+    : [];
+
+  const opcoesContratar = !assinatura
+    ? planos.filter((p) => p.tier !== "Elite" && p.isAtivo)
+    : [];
 
   const estimarProracao = (novoPlano: PlanoPlataformaResponse) => {
     if (!assinatura || precoAtual == null) return null;
@@ -242,6 +280,8 @@ export default function PlanoTreinadorPage() {
     if (s === "Cancelada") return "default";
     return "warning";
   };
+
+  const respPagamento = modoFluxo === "contratar" ? contratoResp : trocaResp;
 
   if (loading) return <LoadingSpinner />;
 
@@ -302,86 +342,122 @@ export default function PlanoTreinadorPage() {
         </Card>
       )}
 
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Trocar plano
-      </Typography>
-
-      <Stack spacing={2}>
-        {opcoesTroca.map((plano) => {
-            const proracao = estimarProracao(plano);
-            const eUpgrade = precoAtual != null && plano.preco > precoAtual;
-            return (
+      {!assinatura && (
+        <>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Contratar plano
+          </Typography>
+          <Stack spacing={2}>
+            {opcoesContratar.map((plano) => (
               <Card key={plano.planoId} variant="outlined">
                 <CardContent>
                   <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="subtitle1">
-                        {plano.nome}
-                      </Typography>
+                      <Typography variant="subtitle1">{plano.nome}</Typography>
                       <Typography variant="body2" color="text.secondary">
                         {formatarBRL(plano.preco)}/mês · até {plano.maxAlunos} alunos
                       </Typography>
-                      {inadimplente ? (
-                        <Typography variant="caption" color="text.secondary">
-                          Pagamento imediato para regularizar
-                        </Typography>
-                      ) : eUpgrade && proracao !== null && proracao > 0 ? (
-                        <Typography variant="caption" color="text.secondary">
-                          Proração estimada: {formatarBRL(proracao)}
-                        </Typography>
-                      ) : !eUpgrade && precoAtual != null ? (
-                        <Typography variant="caption" color="text.secondary">
-                          Downgrade agendado para a próxima renovação
-                        </Typography>
-                      ) : null}
                     </Box>
                     <Button
                       variant="outlined"
                       size="small"
-                      startIcon={<SwapHorizIcon />}
-                      onClick={() => iniciarTroca(plano)}
+                      onClick={() => iniciarContratar(plano)}
                     >
-                      Trocar
+                      Contratar
                     </Button>
                   </Stack>
                 </CardContent>
               </Card>
-            );
-          })}
-      </Stack>
+            ))}
+          </Stack>
+        </>
+      )}
+
+      {assinatura && (
+        <>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Trocar plano
+          </Typography>
+          <Stack spacing={2}>
+            {opcoesTroca.map((plano) => {
+              const proracao = estimarProracao(plano);
+              const eUpgrade = precoAtual != null && plano.preco > precoAtual;
+              return (
+                <Card key={plano.planoId} variant="outlined">
+                  <CardContent>
+                    <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="subtitle1">
+                          {plano.nome}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {formatarBRL(plano.preco)}/mês · até {plano.maxAlunos} alunos
+                        </Typography>
+                        {inadimplente ? (
+                          <Typography variant="caption" color="text.secondary">
+                            Pagamento imediato para regularizar
+                          </Typography>
+                        ) : eUpgrade && proracao !== null && proracao > 0 ? (
+                          <Typography variant="caption" color="text.secondary">
+                            Proração estimada: {formatarBRL(proracao)}
+                          </Typography>
+                        ) : !eUpgrade && precoAtual != null ? (
+                          <Typography variant="caption" color="text.secondary">
+                            Downgrade agendado para a próxima renovação
+                          </Typography>
+                        ) : null}
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<SwapHorizIcon />}
+                        onClick={() => iniciarTroca(plano)}
+                      >
+                        Trocar
+                      </Button>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Stack>
+        </>
+      )}
 
       <Dialog
         open={etapa !== "idle"}
         onClose={fecharDialog}
         maxWidth="xs"
         fullWidth
-        aria-describedby="troca-plano-dialog-desc"
+        aria-describedby="plano-dialog-desc"
         slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}
       >
         <DialogTitle>
-          {etapa === "confirmando" && "Confirmar troca de plano"}
+          {etapa === "confirmando" && (modoFluxo === "contratar" ? "Confirmar contratação" : "Confirmar troca de plano")}
           {etapa === "pagando" && "Pagamento"}
-          {etapa === "sucesso" && "Troca concluída"}
+          {etapa === "sucesso" && (modoFluxo === "contratar" ? "Plano contratado!" : "Troca concluída")}
         </DialogTitle>
-        <DialogContent id="troca-plano-dialog-desc">
+        <DialogContent id="plano-dialog-desc">
           {etapa === "confirmando" && planoSelecionado && (
             <Stack spacing={2} sx={{ mt: 1 }}>
               <AlertBanner open={!!erro} message={erro} />
               <Typography variant="body2">
-                {inadimplente
-                  ? `Regularizar assinatura no plano ${planoSelecionado.nome}. O pagamento será processado agora para reativar seu acesso.`
-                  : precoAtual == null
-                    ? `Confirmar troca para ${planoSelecionado.nome}.`
-                    : planoSelecionado.preco > precoAtual
-                      ? `Upgrade para ${planoSelecionado.nome}. O valor exato de proração será confirmado após processar.`
-                      : `Downgrade para ${planoSelecionado.nome}. O plano muda na próxima renovação.`}
+                {modoFluxo === "contratar"
+                  ? `Contratar o plano ${planoSelecionado.nome}.`
+                  : inadimplente
+                    ? `Regularizar assinatura no plano ${planoSelecionado.nome}. O pagamento será processado agora para reativar seu acesso.`
+                    : precoAtual == null
+                      ? `Confirmar troca para ${planoSelecionado.nome}.`
+                      : planoSelecionado.preco > precoAtual
+                        ? `Upgrade para ${planoSelecionado.nome}. O valor exato de proração será confirmado após processar.`
+                        : `Downgrade para ${planoSelecionado.nome}. O plano muda na próxima renovação.`}
               </Typography>
               <Divider />
               <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
                 <Button onClick={fecharDialog} disabled={processando}>Cancelar</Button>
                 <Button
                   variant="contained"
-                  onClick={confirmarTroca}
+                  onClick={modoFluxo === "contratar" ? confirmarContratar : confirmarTroca}
                   disabled={processando}
                 >
                   {processando ? <CircularProgress size={20} /> : "Confirmar"}
@@ -390,30 +466,32 @@ export default function PlanoTreinadorPage() {
             </Stack>
           )}
 
-          {etapa === "pagando" && trocaResp && (
+          {etapa === "pagando" && respPagamento && (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {trocaResp.valorPagamento !== null && trocaResp.valorPagamento !== undefined && (
+              {respPagamento.valorPagamento != null && (
                 <Typography variant="body2" color="primary.main" sx={{ fontWeight: "bold" }}>
-                  Valor: {formatarBRL(trocaResp.valorPagamento)}
+                  Valor: {formatarBRL(respPagamento.valorPagamento)}
                 </Typography>
               )}
-              {trocaResp.pixQrCode && (
+              {respPagamento.pixQrCode && (
                 <>
                   <Typography variant="body2">
                     Escaneie o QR code abaixo para confirmar o pagamento.
-                    A troca será aplicada automaticamente após a confirmação.
+                    {modoFluxo === "troca"
+                      ? " A troca será aplicada automaticamente após a confirmação."
+                      : " O plano será ativado automaticamente após a confirmação."}
                   </Typography>
                   <Box sx={{ textAlign: "center", my: 1 }}>
-                    {trocaResp.pixQrCodeUrl && (
+                    {respPagamento.pixQrCodeUrl && (
                       <Box
                         component="img"
-                        src={trocaResp.pixQrCodeUrl}
+                        src={respPagamento.pixQrCodeUrl}
                         alt="QR Code Pix"
                         sx={{ maxWidth: 200 }}
                       />
                     )}
                     <Typography variant="caption" sx={{ display: "block", wordBreak: "break-all", mt: 1 }}>
-                      {trocaResp.pixQrCode}
+                      {respPagamento.pixQrCode}
                     </Typography>
                   </Box>
                   <Alert severity="info" icon={false}>
@@ -430,7 +508,14 @@ export default function PlanoTreinadorPage() {
           {etapa === "sucesso" && (
             <Stack spacing={2} sx={{ mt: 1, alignItems: "center", textAlign: "center" }}>
               <CheckCircleIcon sx={{ fontSize: 56, color: "success.main" }} />
-              {trocaResp?.tipo === "Downgrade" ? (
+              {modoFluxo === "contratar" ? (
+                <>
+                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>Plano contratado!</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Você agora está no plano {planoSelecionado?.nome}.
+                  </Typography>
+                </>
+              ) : trocaResp?.tipo === "Downgrade" ? (
                 <>
                   <Typography variant="body1" sx={{ fontWeight: "bold" }}>Downgrade agendado</Typography>
                   <Typography variant="body2" color="text.secondary">

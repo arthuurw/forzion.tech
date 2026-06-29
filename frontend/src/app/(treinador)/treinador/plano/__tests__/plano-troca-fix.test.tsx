@@ -122,15 +122,16 @@ describe("PlanoTreinadorPage — troca robusta (FPAD-01/02/03)", () => {
     expect(await screen.findByText(/Downgrade para Pro/)).toBeInTheDocument();
   });
 
-  it("FPAD-02.4: copy neutra quando não há base de preço (sem assinatura)", async () => {
+  it("FPAD-02.4: copy neutra quando não há base de preço (sem assinatura — contratar)", async () => {
     setupHandlers(null, [PLANO_BASIC, PLANO_PRO]);
     await renderPage();
 
-    await waitFor(() => screen.getAllByRole("button", { name: "Trocar" }));
-    const trocar = screen.getAllByRole("button", { name: "Trocar" });
-    fireEvent.click(trocar[trocar.length - 1]);
+    await waitFor(() => screen.getAllByRole("button", { name: "Contratar" }));
+    const contratar = screen.getAllByRole("button", { name: "Contratar" });
+    fireEvent.click(contratar[contratar.length - 1]);
 
-    expect(await screen.findByText(/Confirmar troca para Pro/)).toBeInTheDocument();
+    expect(await screen.findByText("Confirmar contratação")).toBeInTheDocument();
+    expect(screen.getByText(/Contratar o plano Pro/)).toBeInTheDocument();
     expect(screen.queryByText(/Upgrade para Pro/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Downgrade para Pro/)).not.toBeInTheDocument();
   });
