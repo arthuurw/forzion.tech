@@ -1235,6 +1235,8 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<DefinirDadosFiscaisTreinadorHandler> DefinirDadosFiscaisHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
+            Mock.Of<INotaFiscalRepository>(),
+            Mock.Of<IOutboxEnfileirador>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<DefinirDadosFiscaisTreinadorHandler>>(),
