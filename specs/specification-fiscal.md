@@ -57,6 +57,7 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
   - `MarcarEmitida(chave, numero, dataEmissao, danfseRef?, agora)`: {Pendente|Erro}→Emitida; exige chave; seta ChaveAcesso/NumeroNfse/DataEmissao/DanfseRef; limpa erro; **emite `NotaFiscalEmitidaEvent(Id, TreinadorId, chave, agora)`**.
   - `MarcarErro(codigo, motivo, agora)`: {Pendente|Erro}→Erro (retry permitido).
   - `MarcarBloqueadaDadosFiscais(agora)`: Pendente→BloqueadaDadosFiscais; emite `NotaFiscalBloqueadaDadosFiscaisEvent`.
+  - `ReabrirParaEmissao(agora)`: BloqueadaDadosFiscais→Pendente; SEM domain event (re-enqueue é do caller). Primitiva do destrave (auto em `DefinirDadosFiscais` + admin reprocessar). Outro status → `Result.Failure(TransicaoReaberturaInvalida)` sem mutar.
   - `RegistrarCancelamentoPendentePreEmissao(motivo, agora)` (R8): {Pendente|Erro|BloqueadaDadosFiscais}→(sem mudar Status) seta `CancelamentoPendentePreEmissao=true` + `MotivoCancelamentoPendente`. Para estorno/disputa que chega ANTES da emissão.
   - `SolicitarCancelamento(agora)`: Emitida→CancelamentoSolicitado; limpa `CancelamentoPendentePreEmissao`.
   - `MarcarCancelada(agora)`: CancelamentoSolicitado→Cancelada.
@@ -71,15 +72,20 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 ## PERSISTÊNCIA
 - Tabela `notas_fiscais` + colunas owned `dados_fiscais_*` em `treinadores`. Migration `CriarNotasFiscaisEDadosFiscaisTreinador` (schema-agnostic, search_path). Detalhe de colunas/índices em [specification-db].
 - Idempotência por índice UNIQUE: `ix_notas_fiscais_pagamento_treinador_id_unique` (fluxo 1), `ix_notas_fiscais_treinador_tipo_competencia_unique` (fluxo 2). Check `ck_notas_fiscais_valor_nao_negativo`.
-- `INotaFiscalRepository`: `AdicionarAsync`, `ObterPorIdAsync`, `ObterPorPagamentoTreinadorAsync`, `ListarPorTreinadorAsync`(keyset), `ListarPorStatusAsync`(keyset; **tracked** — sem `AsNoTracking`, p/ reconciliação persistir; R1), `ListarAdminAsync`(filtro+keyset), `ExisteComissaoAsync(treinador, competencia)`, `ListarTreinadoresComComissaoAsync(treinadorIds, competencia)` (batch — evita N+1 no lote de comissão; R-menor d).
+- `INotaFiscalRepository`: `AdicionarAsync`, `ObterPorIdAsync`, `ObterPorPagamentoTreinadorAsync`, `ListarPorTreinadorAsync`(keyset), `ListarPorStatusAsync`(keyset; **tracked** — sem `AsNoTracking`, p/ reconciliação persistir; R1), `ListarAdminAsync`(filtro+keyset), `ExisteComissaoAsync(treinador, competencia)`, `ListarTreinadoresComComissaoAsync(treinadorIds, competencia)` (batch — evita N+1 no lote de comissão; R-menor d), `ListarBloqueadasPorTreinadorAsync(treinadorId)` (**tracked** — sem `AsNoTracking`, p/ o destrave persistir a transição `ReabrirParaEmissao`; usada pelo `DefinirDadosFiscaisTreinadorHandler`).
 
 ## FLUXOS
 
 ### Fluxo 1 — emissão da assinatura (por pagamento)
-- `EmitirNfseAssinaturaHandler` (Application, domain-event handler de `PagamentoTreinadorPagoEvent`): valor>0; dados fiscais presentes → `CriarAssinatura` + `Enfileirar("fx:emitir_nfse", payload, "fx:emitir_nfse:assinatura:{pagamentoTreinadorId}")` ANTES do commit. Dados fiscais ausentes → `MarcarBloqueadaDadosFiscais` + enfileira notificação. Valor 0 (Free/proração) → no-op.
+- `EmitirNfseAssinaturaHandler` (Application, domain-event handler de `PagamentoTreinadorPagoEvent`): valor>0; dados fiscais presentes → `CriarAssinatura` + `Enfileirar("fx:emitir_nfse", payload, "fx:emitir_nfse:assinatura:{pagamentoTreinadorId}")` ANTES do commit. Dados fiscais ausentes → `MarcarBloqueadaDadosFiscais` (o `NotaFiscalBloqueadaDadosFiscaisEvent` dispara o e-mail de bloqueio — ver §E-mail de bloqueio). Valor 0 (Free/proração) → no-op.
 - **Durável**: registrado em `OutboxDurabilityRegistry.RegistrarHandlerAdicional` (par com `PagamentoTreinadorPagoHandler`) — roda no worker com retry, NÃO best-effort. Dispatcher pula handler durável in-memory (sem double-run).
 - `EmitirNfseEfeitoHandler` (Infrastructure/worker, `IOutboxEfeitoHandler`): drena `fx:emitir_nfse` → `EmissorNfseNacionalService.EmitirAsync` → sucesso `MarcarEmitida`(+chave+DANFSe); rejeição do gov (`resultado.Sucesso==false`) `MarcarErro` (commita `Pendente→Erro` — caminho de negócio, sem throw); exceção propaga (retry). Aceita nota em `Erro` (reprocessamento, sem reset).
   - **FAIL-LOUD em transição inesperada (IDEMP-01/G1)**: se a transição de domínio pós-gov vem `IsFailure` por estado inesperado — ex.: gov retorna `Sucesso==true` mas SEM `ChaveAcesso` ⇒ `MarcarEmitida` falha em `ChaveAcessoObrigatoria` — o handler `throw InvalidOperationException` (contexto da nota) em vez de `log+return`. Antes, o `log+return` marcava o efeito `Concluido` deixando a nota presa `Pendente`/`Erro` SEM chave, silenciosa (viola a invariante L65). Agora `OutboxProcessor.RegistrarFalha` retenta; esgotado ⇒ `Falhou`+`LogCritical` (visível ao operador). **DEPENDÊNCIA ASSUMIDA**: o retry pós-throw só é seguro porque o gov DEDUPLICA re-emissão pelo `nDPS` estável (`NumeroDpsEstavel()`, L55) — re-transmitir o MESMO `nDPS` não gera 2ª nota fiscal. Validar essa dedup em Produção Restrita (sandbox-first). Provado por `EmitirNfseEfeitoHandlerTests` (Sucesso sem ChaveAcesso ⇒ lança, não marca `Concluido`).
+
+### Destrave de NFS-e bloqueada
+- **Auto ao preencher dados fiscais**: `DefinirDadosFiscaisTreinadorHandler` (Application), após `DefinirDadosFiscais` OK e ANTES do `CommitAsync` existente: `ListarBloqueadasPorTreinadorAsync(treinador.Id)` → por nota `ReabrirParaEmissao(agora)` (se `IsSuccess`) + `Enfileirar("fx:emitir_nfse", payload, "fx:emitir_nfse:desbloqueio:{notaId}")`. Tudo no MESMO commit (atômico — transição + enqueue, ou nada). Sem bloqueadas → nenhum enqueue, gravar conclui normal.
+- **Admin reprocessar** (fallback manual): `ReprocessarNotaFiscalHandler` aceita `{Erro, BloqueadaDadosFiscais}`. `BloqueadaDadosFiscais` → `ReabrirParaEmissao(agora)` antes do enqueue (`fx:emitir_nfse:reprocessar:{notaId}`); `Erro` → comportamento atual (sem transição extra). Outros status → `ReprocessamentoInvalido` (422).
+- **Defense-in-depth**: reabrir é seguro mesmo com dados ainda ausentes — `EmitirNfseEfeitoHandler` re-checa `DadosFiscais` e re-bloqueia se ausente (sem emissão inválida). Chave de outbox por nota = idempotência; `ReabrirParaEmissao` em nota já `Pendente` → `Failure` (no-op).
 
 ### Fluxo 2 — comissão mensal agregada
 - `GerarNfseComissaoMensalHandler` (Application, chamado pelo cron): por treinador com fee no período (keyset/lote), soma via `IPagamentoRepository.ListarComissaoPorTreinadorNoPeriodoAsync` (join `pagamentos`×`assinatura_alunos`, `Pago` + `DataPagamento ∈ [inicio, fimExclusivo)`, `GROUP BY treinador_id`). `CriarComissao` + enqueue `fx:emitir_nfse:comissao:{treinadorId}:{yyyyMM}`. Sem fee → sem nota.
@@ -104,6 +110,12 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 - **UNGATED por tier** (sem `IPlanoNotificationPolicy`): documento fiscal é OBRIGAÇÃO, não perk de plano — igual aos e-mails de billing do próprio treinador. Ver [specification-email].
 - **Best-effort in-memory** (NÃO outbox): perda transitória é recuperável (portal T19 + reconciliação T24); só o e-mail de suporte é durável.
 
+### E-mail de bloqueio por dados fiscais (P3)
+- `NotaFiscalBloqueadaDadosFiscaisEmailHandler` (Infrastructure/Notifications/Email, domain-event handler de `NotaFiscalBloqueadaDadosFiscaisEvent`): molde EXATO do `NfseEmitidaEmailHandler` — nota via `ObterPorIdAsync` → treinador → conta; envia ao e-mail de login. Template `EmailTemplates.NfseBloqueadaDadosFiscais(nomeTreinador, linkDadosFiscais)`; link `{FrontendBaseUrl}/treinador/dados-fiscais`. `Habilitado` check; null em qualquer ponto → LogWarning + no-op.
+- **Sem PII no corpo/log**: e-mail traz só nome + link (NÃO CPF/CNPJ); logs usam `TreinadorId`/`NotaFiscalId`, nunca documento.
+- **UNGATED por tier** (obrigação fiscal, igual ao `NfseEmitida`). **Best-effort in-memory** (NÃO outbox; NÃO em `OutboxDurabilityRegistry`) — o banner fiscal proativo no dashboard é a rede de segurança.
+- **Banner proativo** (`dadosFiscaisPendentes` no `GET /treinador/dashboard`): `true` quando dados fiscais ausentes E (plano pago, tier `!= Free`, OU `ModoPagamentoAluno.Plataforma`); dashboard frontend renderiza banner warning com link `/treinador/dados-fiscais`.
+
 ## ENDPOINTS
 | Método/Rota | Auth | Função |
 |-------------|------|--------|
@@ -112,12 +124,12 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 | `GET /treinador/notas-fiscais` | `IUserContext` (próprias) | lista (keyset) |
 | `GET /treinador/notas-fiscais/{id}/danfse` | `IUserContext` (próprias) | download DANFSe |
 | `GET /admin/notas-fiscais` | admin | lista + filtro (status/treinador) + paginação |
-| `POST /admin/notas-fiscais/{id}/reprocessar` | admin | re-enfileira nota em `Erro` |
+| `POST /admin/notas-fiscais/{id}/reprocessar` | admin | re-enfileira nota em `Erro` ou `BloqueadaDadosFiscais` (esta reaberta p/ `Pendente` antes) |
 | `POST /internal/gerar-nfse-comissao` | X-Internal-Key | dispara fluxo 2 |
 | `POST /internal/reconciliar-nfse` | X-Internal-Key | dispara reconciliação |
 
 - **DANFSe cross-tenant**: nota de outro treinador devolve o MESMO 404 (`NaoEncontrada`) que nota inexistente — não vazar existência (404 ≠ 403).
-- **Reprocessar**: só status `Erro` (senão `ReprocessamentoInvalido` 422); chave de outbox por tentativa `fx:emitir_nfse:reprocessar:{notaId}:{ticks}` (cada reprocessamento é efeito novo; índice único do outbox barraria reuso da chave original).
+- **Reprocessar**: status `{Erro, BloqueadaDadosFiscais}` (senão `ReprocessamentoInvalido` 422); `BloqueadaDadosFiscais` → `ReabrirParaEmissao` (→`Pendente`) antes do enqueue. Chave de outbox estável `fx:emitir_nfse:reprocessar:{notaId}` (reprocessos repetidos colapsam na mesma chave idempotente — provado por `ReprocessarNotaFiscalHandlerTests`).
 - Internal endpoints: `AllowAnonymous` + `InternalApiKeyValidator.ChaveInternaValida` (FixedTimeEquals) + `RequireRateLimiting("internal")`. Detalhe em [specification-security].
 
 ## SEGURANÇA (resumo — canônico em [specification-security])
