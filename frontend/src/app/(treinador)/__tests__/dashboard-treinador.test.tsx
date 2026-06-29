@@ -51,6 +51,7 @@ function buildDashboard(overrides: Partial<TreinadorDashboardResponse> = {}): Tr
     pendentes: [],
     onboarding: { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
     plano: { status: "Ativa" },
+    dadosFiscaisPendentes: false,
     ...overrides,
   };
 }
@@ -191,6 +192,7 @@ describe("DashboardTreinadorPage — agregado /treinador/dashboard (T5)", () => 
     pendentes: [],
     onboarding: { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
     plano: { status: "Inadimplente" },
+    dadosFiscaisPendentes: false,
   };
 
   beforeEach(() => {

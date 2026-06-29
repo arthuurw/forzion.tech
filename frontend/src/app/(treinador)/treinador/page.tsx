@@ -79,6 +79,7 @@ export default function DashboardTreinadorPage() {
         onboardingPendente: !d.onboarding.onboardingCompleto,
         modoExterno: d.onboarding.modoPagamentoAluno === "Externo",
         planoInadimplente: d.plano.status === "Inadimplente",
+        dadosFiscaisPendentes: d.dadosFiscaisPendentes,
         pacoteNomes: new Map(d.receitaPorPacote.map((p) => [p.pacoteId, p.nome])),
       };
     },
@@ -143,6 +144,29 @@ export default function DashboardTreinadorPage() {
           </Typography>
           <Button variant="contained" color="error" size="small" onClick={() => router.push("/treinador/plano")}>
             Regularizar pagamento
+          </Button>
+        </Paper>
+      )}
+
+      {data?.dadosFiscaisPendentes && (
+        <Paper
+          sx={{
+            p: 2.5,
+            mb: 3,
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "warning.main",
+            bgcolor: (theme) => alpha(theme.palette.warning.main, 0.1),
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Complete seus dados fiscais
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Preencha seus dados fiscais para que suas notas fiscais possam ser emitidas automaticamente.
+          </Typography>
+          <Button variant="contained" color="warning" size="small" onClick={() => router.push("/treinador/dados-fiscais")}>
+            Completar dados fiscais
           </Button>
         </Paper>
       )}

@@ -495,6 +495,7 @@ export interface TreinadorDashboardResponse {
   pendentes: VinculoDetalheResponse[];
   onboarding: OnboardingStatusResponse;
   plano: TreinadorDashboardPlano;
+  dadosFiscaisPendentes: boolean;
 }
 
 export interface FichaAtivaResumo {

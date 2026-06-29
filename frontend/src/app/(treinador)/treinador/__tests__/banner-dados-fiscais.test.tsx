@@ -31,7 +31,7 @@ vi.mock("@/lib/api/treinador", () => ({
 
 import { treinadorApi } from "@/lib/api/treinador";
 
-const dashboard: TreinadorDashboardResponse = {
+const baseDashboard: TreinadorDashboardResponse = {
   counts: { ativos: 5, aguardando: 2, inativos: 1 },
   mrr: 750,
   receitaPorPacote: [{ pacoteId: "pac-1", nome: "Mensal", alunos: 5, receita: 750 }],
@@ -43,35 +43,36 @@ const dashboard: TreinadorDashboardResponse = {
   dadosFiscaisPendentes: false,
 };
 
-describe("DashboardTreinadorPage — a11y charts", () => {
+async function renderPage() {
+  const { default: Page } = await import("@/app/(treinador)/treinador/page");
+  renderWithProviders(<Page />, { skipAuth: true });
+}
+
+describe("DashboardTreinadorPage — banner dados fiscais", () => {
   beforeEach(() => {
-    vi.mocked(treinadorApi.getDashboard).mockResolvedValue({ data: dashboard } as never);
+    vi.clearAllMocks();
   });
 
-  it("figure 'Alunos por status' (PieChart) tem aria-label acessível", async () => {
-    const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    renderWithProviders(<Page />, { skipAuth: true });
+  it("renderiza o banner com link quando dadosFiscaisPendentes é true", async () => {
+    vi.mocked(treinadorApi.getDashboard).mockResolvedValue({
+      data: { ...baseDashboard, dadosFiscaisPendentes: true },
+    } as never);
 
-    await waitFor(() => {
-      expect(screen.getByRole("figure", { name: "Alunos por status" })).toBeInTheDocument();
-    });
+    await renderPage();
+
+    const banner = await screen.findByText("Complete seus dados fiscais");
+    expect(banner).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /completar dados fiscais/i })).toBeInTheDocument();
   });
 
-  it("figure 'Fichas por objetivo' (BarChart) renderiza quando há fichas", async () => {
-    const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    renderWithProviders(<Page />, { skipAuth: true });
+  it("não renderiza o banner quando dadosFiscaisPendentes é false", async () => {
+    vi.mocked(treinadorApi.getDashboard).mockResolvedValue({
+      data: { ...baseDashboard, dadosFiscaisPendentes: false },
+    } as never);
 
-    await waitFor(() => {
-      expect(screen.getByRole("figure", { name: "Fichas por objetivo" })).toBeInTheDocument();
-    });
-  });
+    await renderPage();
 
-  it("figure 'Receita por pacote' (BarChart) renderiza quando há receita de vínculos ativos", async () => {
-    const { default: Page } = await import("@/app/(treinador)/treinador/page");
-    renderWithProviders(<Page />, { skipAuth: true });
-
-    await waitFor(() => {
-      expect(screen.getByRole("figure", { name: "Receita por pacote" })).toBeInTheDocument();
-    });
+    await screen.findByText("Ativos");
+    expect(screen.queryByText("Complete seus dados fiscais")).not.toBeInTheDocument();
   });
 });
