@@ -14,5 +14,6 @@ public static class ProblemDetailsTitulos
         [StatusCodes.Status422UnprocessableEntity] = "Não foi possível processar.",
         [StatusCodes.Status429TooManyRequests] = "Muitas requisições. Tente novamente em instantes.",
         [StatusCodes.Status500InternalServerError] = "Erro interno.",
+        [StatusCodes.Status502BadGateway] = "Serviço externo indisponível.",
     };
 }

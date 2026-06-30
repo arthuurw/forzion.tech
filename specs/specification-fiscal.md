@@ -121,6 +121,7 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 |-------------|------|--------|
 | `PUT /treinador/dados-fiscais` | `IUserContext` (próprio) | grava dados fiscais; CPF/CNPJ inválido → 422 |
 | `GET /treinador/dados-fiscais` | `IUserContext` (próprio) | lê dados fiscais |
+| `GET /treinador/cep/{cep}` | `Treinador` (`read` RL) | autofill: resolve CEP→endereço (ViaCEP); ver §Autofill de endereço |
 | `GET /treinador/notas-fiscais` | `IUserContext` (próprias) | lista (keyset) |
 | `GET /treinador/notas-fiscais/{id}/danfse` | `IUserContext` (próprias) | download DANFSe |
 | `GET /admin/notas-fiscais` | admin | lista + filtro (status/treinador) + paginação |
@@ -131,6 +132,14 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 - **DANFSe cross-tenant**: nota de outro treinador devolve o MESMO 404 (`NaoEncontrada`) que nota inexistente — não vazar existência (404 ≠ 403).
 - **Reprocessar**: status `{Erro, BloqueadaDadosFiscais}` (senão `ReprocessamentoInvalido` 422); `BloqueadaDadosFiscais` → `ReabrirParaEmissao` (→`Pendente`) antes do enqueue. Chave de outbox estável `fx:emitir_nfse:reprocessar:{notaId}` (reprocessos repetidos colapsam na mesma chave idempotente — provado por `ReprocessarNotaFiscalHandlerTests`).
 - Internal endpoints: `AllowAnonymous` + `InternalApiKeyValidator.ChaveInternaValida` (FixedTimeEquals) + `RequireRateLimiting("internal")`. Detalhe em [specification-security].
+
+### Autofill de endereço (CEP → endereço, dados fiscais)
+- Objetivo UX: ao digitar o CEP no form de dados fiscais, preencher `Logradouro/Complemento/Bairro/Localidade/Uf/CodigoMunicipioIbge` — reduz erro de digitação no IBGE/UF que reprova `DadosFiscais.Criar`. NÃO é fonte fiscal autoritativa; treinador confere/edita; gravação valida tudo de novo no `PUT /treinador/dados-fiscais`.
+- `IConsultaCepService` (Application/Interfaces): `ConsultarAsync(cep, ct) → Result<ConsultaCepResultado>`. `ConsultaCepResultado(Logradouro, Complemento, Bairro, Localidade, Uf, CodigoMunicipioIbge)`. Erros `ConsultaCepErrors`: `CepInvalido` (Validation→400, ≠8 dígitos), `CepNaoEncontrado` (NotFound→404, ViaCEP `{erro:true}`), `ServicoIndisponivel` (**ExternalService→502**, não-2xx/timeout/HttpRequestException/InvalidOperationException/null).
+- Impl `ViaCepConsultaCepService` (Infrastructure/Services): normaliza CEP a 8 dígitos via `Domain.Shared.Digitos.Apenas` (curto-circuita lixo sem rede); `GET {ViaCep:UrlBase}{cep}/json/`. ViaCEP retorna 200 mesmo p/ CEP inexistente (corpo `{erro:true}`) → `BoolTolerante` (`JsonConverter<bool>`) aceita o `erro` como bool OU string (`"true"`) pois o campo varia no contrato ViaCEP. Sem retry (autofill é best-effort, não outbox). GOTCHA: `InvalidOperationException` (ex.: `BaseAddress` ausente quando `ViaCep:UrlBase` em branco → `GetAsync` relativo lança) está no catch → degrada para `ServicoIndisponivel` (502), nunca 500.
+- Endpoint `GET /treinador/cep/{cep}` (group `Treinador`, `RequireRateLimiting("read")`): `IsFailure → ToProblemResult()` (status derivado do `ErrorType`: 400/404/**502**); sucesso → `ConsultaCepResponse`. SEM special-case inline — o 502 sai do mapa `ExternalService` ([specification-backend] §ErrorType). Auth do grupo já restringe a treinador logado.
+- Config `ViaCep:*` (sem classe Options dedicada; lido direto): `UrlBase` (`https://viacep.com.br/ws/`), `TimeoutSegundos` (default 4). `HttpClient` nomeado `"viacep"`; `IConsultaCepService` Scoped. SEM gate Habilitado/Null — ViaCEP é público e sem credencial; indisponibilidade degrada via 502 (form continua usável manualmente).
+- Frontend: `dados-fiscais/page.tsx` → `nfseApi.consultarCep` (`lib/api/nfse.ts`) dispara quando o CEP atinge 8 dígitos (`soDigitos`); `AbortController` cancela a busca anterior (digitação rápida não corre). Popula `logradouro/bairro/uf(upper)/codigoMunicipioIbge` (+`complemento`) SÓ quando o campo vier não-vazio — CEP único/geral (logradouro/bairro `""`) NÃO apaga valor já digitado. `localidade` NÃO tem campo no form (município carregado pelo IBGE). Falha: 404 → "CEP não encontrado, confira o número digitado."; demais (502/rede) → "Não foi possível buscar o CEP, preencha o endereço manualmente." (distinção via `extractApiErrorInfo(err).status`; não bloqueia entrada manual).
 
 ## SEGURANÇA (resumo — canônico em [specification-security])
 - Cert A1 (.pfx) = cert cliente mTLS via `HttpClientHandler.ClientCertificates` (`X509KeyStorageFlags.EphemeralKeySet`, sem persistir chave). Mesmo A1 assina o XML e faz o TLS.
@@ -146,7 +155,8 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 ## TESTES
 - Unit (xUnit, sem Docker): Domain (`NotaFiscalTests` transições, `DadosFiscaisTests` dígito verificador), Application (`EmitirNfseAssinaturaHandlerTests`, `GerarNfseComissaoMensalHandlerTests`, `CancelarNfseHandlerTests`, `ReconciliarNfseHandlerTests`), Infra (`NullEmissorNfseServiceTests`, `EmissorNfseNacionalServiceTests` com `HttpMessageHandler` mockado, `NfseEmitidaEmailHandlerTests`, `NfseSettingsTests`), Api (`TreinadorEndpointsTests`/`AdminEndpointsTests`/`InternalEndpointsTests` NFS-e), DI smoke (`HandlerDiRegistrationTests`).
 - Integration (Testcontainers, só CI): `NotaFiscalRepository` round-trip + UNIQUE, `EmitirNfseEfeitoHandler`/`CancelarNfseEfeitoHandler` worker+DB, query de comissão.
-- Frontend (vitest): `dados-fiscais`, `notas-fiscais` (treinador), `admin/notas-fiscais`.
+- Autofill CEP: `ViaCepConsultaCepServiceTests` (8-dígitos guard, `{erro:true}`→NaoEncontrado, não-2xx/timeout→Indisponivel, `BoolTolerante`), `TreinadorEndpointsTests` (CEP→200/400/404/502).
+- Frontend (vitest): `dados-fiscais` (inclui autofill por CEP), `notas-fiscais` (treinador), `admin/notas-fiscais`.
 
 ## DICAS / GOTCHAS
 - Gate Null/Nacional: sem warning no startup = Nacional ativo (Null loga no ctor). Simétrico a e-mail/WhatsApp.

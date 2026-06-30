@@ -23,6 +23,15 @@ export interface EnderecoFiscal {
   cep: string;
 }
 
+export interface ConsultaCepResponse {
+  logradouro: string;
+  complemento: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  codigoMunicipioIbge: string;
+}
+
 export interface DadosFiscaisResponse {
   tipoDocumento: TipoDocumentoFiscal;
   documento: string;
@@ -90,6 +99,9 @@ export const nfseApi = {
   },
   salvarDadosFiscais(payload: DadosFiscaisPayload) {
     return apiClient.put<DadosFiscaisResponse>("/treinador/dados-fiscais", payload);
+  },
+  consultarCep(cep: string, signal?: AbortSignal) {
+    return apiClient.get<ConsultaCepResponse>(`/treinador/cep/${cep}`, { signal });
   },
   listNotasTreinador(params?: { aposId?: string; limite?: number }, signal?: AbortSignal) {
     return apiClient.get<ListarNotasFiscaisResponse>("/treinador/notas-fiscais", { params, signal });

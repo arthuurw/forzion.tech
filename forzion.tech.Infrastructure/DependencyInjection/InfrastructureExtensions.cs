@@ -229,6 +229,19 @@ public static class InfrastructureExtensions
                 new NullEmissorNfseService(sp.GetRequiredService<ILogger<NullEmissorNfseService>>()));
         }
 
+        var viaCepUrlBase = configuration["ViaCep:UrlBase"];
+        var viaCepTimeout = configuration.GetValue<int?>("ViaCep:TimeoutSegundos") ?? 4;
+        services.AddHttpClient("viacep", client =>
+        {
+            if (!string.IsNullOrWhiteSpace(viaCepUrlBase))
+                client.BaseAddress = new Uri(viaCepUrlBase);
+            client.Timeout = TimeSpan.FromSeconds(viaCepTimeout);
+        });
+        services.AddScoped<IConsultaCepService>(sp =>
+            new ViaCepConsultaCepService(
+                sp.GetRequiredService<IHttpClientFactory>().CreateClient("viacep"),
+                sp.GetRequiredService<ILogger<ViaCepConsultaCepService>>()));
+
         services.AddOptions<DeliveryLogSettings>()
             .BindConfiguration("DeliveryLog")
             .Validate(s => !isProduction || !string.IsNullOrWhiteSpace(s.RecipientHashKey),

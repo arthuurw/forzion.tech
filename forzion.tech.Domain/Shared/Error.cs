@@ -9,7 +9,8 @@ public enum ErrorType
     Business,
     Validation,
     NotFound,
-    Conflict
+    Conflict,
+    ExternalService
 }
 
 public sealed record Error(string Code, string Message, ErrorType Type = ErrorType.Business)
@@ -18,4 +19,5 @@ public sealed record Error(string Code, string Message, ErrorType Type = ErrorTy
     public static Error Validation(string code, string message) => new(code, message, ErrorType.Validation);
     public static Error NotFound(string code, string message) => new(code, message, ErrorType.NotFound);
     public static Error Conflict(string code, string message) => new(code, message, ErrorType.Conflict);
+    public static Error ExternalService(string code, string message) => new(code, message, ErrorType.ExternalService);
 }

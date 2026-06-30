@@ -4440,6 +4440,71 @@
         ]
       }
     },
+    "/treinador/cep/{cep}": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Resolve um CEP em endereço estruturado (autofill dos dados fiscais)",
+        "parameters": [
+          {
+            "name": "cep",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultaCepResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/treinador/notas-fiscais": {
       "get": {
         "tags": [
@@ -8333,6 +8398,37 @@
         "type": "object",
         "properties": {
           "codigo": {
+            "type": "string"
+          }
+        }
+      },
+      "ConsultaCepResponse": {
+        "required": [
+          "logradouro",
+          "complemento",
+          "bairro",
+          "localidade",
+          "uf",
+          "codigoMunicipioIbge"
+        ],
+        "type": "object",
+        "properties": {
+          "logradouro": {
+            "type": "string"
+          },
+          "complemento": {
+            "type": "string"
+          },
+          "bairro": {
+            "type": "string"
+          },
+          "localidade": {
+            "type": "string"
+          },
+          "uf": {
+            "type": "string"
+          },
+          "codigoMunicipioIbge": {
             "type": "string"
           }
         }
