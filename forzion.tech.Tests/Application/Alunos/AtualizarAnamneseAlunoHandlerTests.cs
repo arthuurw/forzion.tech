@@ -3,6 +3,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.AtualizarAnamneseAluno;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -116,6 +117,25 @@ public class AtualizarAnamneseAlunoHandlerTests
         logRegistrado.CreatedAt.Should().NotBe(consentidoEmCliente);
         logRegistrado.CreatedAt.Should().BeOnOrAfter(antesDaChamada).And.BeOnOrBefore(DateTime.UtcNow);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DadoSaudeSemReportado_ObservacaoUsaVersaoDaConstante()
+    {
+        var aluno = ArrangeAlunoProprio();
+        LogAprovacao? logRegistrado = null;
+        _logAprovacaoRepo
+            .Setup(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()))
+            .Callback<LogAprovacao, CancellationToken>((l, _) => logRegistrado = l);
+
+        var result = await _handler.HandleAsync(new AtualizarAnamneseAlunoCommand(
+            aluno.Id,
+            Doencas: "Hipertensão",
+            ConsentimentoDadosSaude: true));
+
+        result.IsSuccess.Should().BeTrue();
+        logRegistrado.Should().NotBeNull();
+        logRegistrado!.Observacao.Should().Be(AnamneseConsentimento.Versao);
     }
 
     [Fact]

@@ -102,8 +102,8 @@ public class RegistrarAlunoHandler(
         if (command.ColetaDadosSaude)
         {
             var observacao = command.ConsentimentoDadosSaudeEm is { } reportado
-                ? $"v1; cliente reportou: {reportado.ToUniversalTime():o}"
-                : "v1";
+                ? $"{AnamneseConsentimento.Versao}; cliente reportou: {reportado.ToUniversalTime():o}"
+                : AnamneseConsentimento.Versao;
 
             var consentLog = await logAprovacaoRepository.RegistrarAsync(
                 TipoAcaoAprovacao.ConsentimentoAnamnese,
