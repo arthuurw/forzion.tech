@@ -568,17 +568,11 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await consultaCep.ConsultarAsync(cep, cancellationToken).ConfigureAwait(false);
-            if (result.IsSuccess)
-            {
-                var r = result.Value;
-                return Results.Ok(new ConsultaCepResponse(
-                    r.Logradouro, r.Complemento, r.Bairro, r.Localidade, r.Uf, r.CodigoMunicipioIbge));
-            }
+            if (result.IsFailure) return result.ToProblemResult();
 
-            if (result.Error!.Code == ConsultaCepErrors.ServicoIndisponivel.Code)
-                return Results.Problem(detail: result.Error.Message, statusCode: StatusCodes.Status502BadGateway);
-
-            return result.ToProblemResult();
+            var r = result.Value;
+            return Results.Ok(new ConsultaCepResponse(
+                r.Logradouro, r.Complemento, r.Bairro, r.Localidade, r.Uf, r.CodigoMunicipioIbge));
         })
         .RequireRateLimiting("read")
         .WithSummary("Resolve um CEP em endereço estruturado (autofill dos dados fiscais)")

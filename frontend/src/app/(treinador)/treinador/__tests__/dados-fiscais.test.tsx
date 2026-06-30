@@ -149,7 +149,26 @@ describe("DadosFiscaisTreinadorPage", () => {
     expect(cepSpy).not.toHaveBeenCalled();
   });
 
-  it("exibe aviso não-bloqueante e mantém campos editáveis quando o CEP falha", async () => {
+  it("exibe aviso não-bloqueante e mantém campos editáveis quando o serviço de CEP falha", async () => {
+    server.use(
+      http.get("*/treinador/dados-fiscais", () => HttpResponse.json(null)),
+      http.get("*/treinador/cep/*", () => HttpResponse.json({}, { status: 502 })),
+    );
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /salvar dados fiscais/i })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/^CEP/i), { target: { value: "01001000" } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Não foi possível buscar o CEP/i)).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(/Logradouro/i)).toBeEnabled();
+  });
+
+  it("distingue CEP inexistente (404) do serviço indisponível na mensagem", async () => {
     server.use(
       http.get("*/treinador/dados-fiscais", () => HttpResponse.json(null)),
       http.get("*/treinador/cep/*", () => HttpResponse.json({}, { status: 404 })),
@@ -163,9 +182,38 @@ describe("DadosFiscaisTreinadorPage", () => {
     fireEvent.change(screen.getByLabelText(/^CEP/i), { target: { value: "99999999" } });
 
     await waitFor(() => {
-      expect(screen.getByText(/Não foi possível buscar o CEP/i)).toBeInTheDocument();
+      expect(screen.getByText(/CEP não encontrado/i)).toBeInTheDocument();
     });
-    expect(screen.getByLabelText(/Logradouro/i)).toBeEnabled();
+  });
+
+  it("não apaga logradouro/bairro já preenchidos quando o CEP único retorna campos vazios", async () => {
+    server.use(
+      http.get("*/treinador/dados-fiscais", () => HttpResponse.json(DADOS)),
+      http.get("*/treinador/cep/*", () =>
+        HttpResponse.json({
+          logradouro: "",
+          complemento: "",
+          bairro: "",
+          localidade: "Brasília",
+          uf: "DF",
+          codigoMunicipioIbge: "5300108",
+        }),
+      ),
+    );
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Logradouro/i)).toHaveValue("Rua A");
+    });
+
+    fireEvent.change(screen.getByLabelText(/^CEP/i), { target: { value: "70040010" } });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^UF/i)).toHaveValue("DF");
+    });
+    expect(screen.getByLabelText(/Logradouro/i)).toHaveValue("Rua A");
+    expect(screen.getByLabelText(/Bairro/i)).toHaveValue("Centro");
+    expect(screen.getByLabelText(/Código IBGE/i)).toHaveValue("5300108");
   });
 
   it("bloqueia submit com validação client-side quando campos vazios", async () => {

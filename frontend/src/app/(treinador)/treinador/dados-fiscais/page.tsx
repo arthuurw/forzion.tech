@@ -12,7 +12,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import PageHeader from "@/components/ui/PageHeader";
 import { nfseApi } from "@/lib/api/nfse";
-import { extractApiError } from "@/lib/api/extractApiError";
+import { extractApiError, extractApiErrorInfo } from "@/lib/api/extractApiError";
 import {
   dadosFiscaisSchema, type DadosFiscaisFormData,
   mascararDocumento, mascararCep, soDigitos,
@@ -64,14 +64,17 @@ export default function DadosFiscaisTreinadorPage() {
     try {
       const { data } = await nfseApi.consultarCep(digitos, controller.signal);
       if (controller.signal.aborted) return;
-      methods.setValue("logradouro", data.logradouro, { shouldValidate: true });
-      methods.setValue("bairro", data.bairro, { shouldValidate: true });
-      methods.setValue("uf", (data.uf ?? "").toUpperCase(), { shouldValidate: true });
-      methods.setValue("codigoMunicipioIbge", data.codigoMunicipioIbge, { shouldValidate: true });
+      if (data.logradouro) methods.setValue("logradouro", data.logradouro, { shouldValidate: true });
+      if (data.bairro) methods.setValue("bairro", data.bairro, { shouldValidate: true });
+      if (data.uf) methods.setValue("uf", data.uf.toUpperCase(), { shouldValidate: true });
+      if (data.codigoMunicipioIbge) methods.setValue("codigoMunicipioIbge", data.codigoMunicipioIbge, { shouldValidate: true });
       if (data.complemento) methods.setValue("complemento", data.complemento, { shouldValidate: true });
-    } catch {
+    } catch (err) {
       if (controller.signal.aborted) return;
-      setCepAviso("Não foi possível buscar o CEP, preencha o endereço manualmente.");
+      const { status } = extractApiErrorInfo(err);
+      setCepAviso(status === 404
+        ? "CEP não encontrado, confira o número digitado."
+        : "Não foi possível buscar o CEP, preencha o endereço manualmente.");
     } finally {
       if (cepAbortRef.current === controller) setCepLoading(false);
     }

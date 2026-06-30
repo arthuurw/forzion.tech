@@ -14,7 +14,7 @@ public sealed class ViaCepConsultaCepService(HttpClient httpClient, ILogger<ViaC
 
     public async Task<Result<ConsultaCepResultado>> ConsultarAsync(string cep, CancellationToken cancellationToken)
     {
-        var digitos = new string((cep ?? string.Empty).Where(char.IsDigit).ToArray());
+        var digitos = Digitos.Apenas(cep);
         if (digitos.Length != 8)
             return Result.Failure<ConsultaCepResultado>(ConsultaCepErrors.CepInvalido);
 
@@ -40,7 +40,7 @@ public sealed class ViaCepConsultaCepService(HttpClient httpClient, ILogger<ViaC
                 dto.Uf ?? string.Empty,
                 dto.Ibge ?? string.Empty));
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
             logger.LogWarning(ex, "Falha ao consultar CEP no ViaCEP.");
             return Result.Failure<ConsultaCepResultado>(ConsultaCepErrors.ServicoIndisponivel);

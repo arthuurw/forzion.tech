@@ -81,6 +81,18 @@ public class ViaCepConsultaCepServiceTests
     }
 
     [Fact]
+    public async Task ConsultarAsync_SemBaseAddressConfigurada_RetornaServicoIndisponivelSemExcecao()
+    {
+        var client = new HttpClient(new FakeHandler(_ => Resposta(HttpStatusCode.OK, PayloadSe)));
+        var svc = new ViaCepConsultaCepService(client, Mock.Of<ILogger<ViaCepConsultaCepService>>());
+
+        var resultado = await svc.ConsultarAsync("01001000", CancellationToken.None);
+
+        resultado.IsFailure.Should().BeTrue();
+        resultado.Error.Should().Be(ConsultaCepErrors.ServicoIndisponivel);
+    }
+
+    [Fact]
     public async Task ConsultarAsync_IbgeVazioEmCepValido_RetornaSucessoComIbgeVazio()
     {
         const string payload =
