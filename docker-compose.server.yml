@@ -28,7 +28,6 @@ services:
       WhatsApp__ApiVersion: ${WHATSAPP_API_VERSION:-v21.0}
       WhatsApp__AppSecret: ${WHATSAPP_APP_SECRET:-}
       WhatsApp__WebhookVerifyToken: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-}
-      # Guardrails de não-produção: default prod-safe (sem marcação/redirect). Em homolog via APP_ENV, setar as envs.
       WhatsApp__MarcarComoTeste: ${WHATSAPP_MARK_AS_TEST:-false}
       WhatsApp__RedirecionarDestinatariosPara: ${WHATSAPP_REDIRECT_TO:-}
       WhatsApp__AllowlistTelefones: ${WHATSAPP_ALLOWLIST_PHONES:-}
