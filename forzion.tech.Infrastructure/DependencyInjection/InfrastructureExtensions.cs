@@ -170,8 +170,8 @@ public static class InfrastructureExtensions
                 "Stripe:SecretKey não configurado. Use User Secrets ou variável de ambiente.")
             .Validate(s => !string.IsNullOrWhiteSpace(s.WebhookSecret),
                 "Stripe:WebhookSecret não configurado. Use User Secrets ou variável de ambiente.")
-            .Validate(s => s.TaxaPlataformaPercent > 0 && s.TaxaPlataformaPercent <= 100,
-                "Stripe:TaxaPlataformaPercent deve estar entre 0 e 100.")
+            .Validate(s => s.TaxaPlataformaPercent > 0 && s.TaxaPlataformaPercent < 100,
+                "Stripe:TaxaPlataformaPercent deve ser maior que 0 e menor que 100.")
             .Validate(s => !(s.SecretKey.StartsWith("sk_live_", StringComparison.Ordinal) && s.ExpectLivemode != true),
                 "Stripe:SecretKey usa prefixo sk_live_ mas Stripe__ExpectLivemode não é true. Defina Stripe__ExpectLivemode=true em produção.")
             .Validate(s => !(s.SecretKey.StartsWith("sk_test_", StringComparison.Ordinal) && s.ExpectLivemode == true),
