@@ -16,8 +16,10 @@ using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace forzion.tech.Infrastructure.DependencyInjection;
 
@@ -41,9 +43,34 @@ public static class InfrastructureExtensions
 
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         var connectionString = configuration.GetConnectionString("AppConnection");
+        var isProduction = environment.IsProduction();
+
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            NpgsqlConnectionStringBuilder builder;
+            try
+            {
+                builder = new NpgsqlConnectionStringBuilder(connectionString);
+            }
+            catch (Exception ex) when (ex is ArgumentException or FormatException)
+            {
+                throw new InvalidOperationException(
+                    "ConnectionStrings:AppConnection não está no formato keyword=value do Npgsql "
+                    + "(ex.: cole a string do Session pooler, não a URI postgresql://).", ex);
+            }
+
+            if (builder.Port == 6543)
+            {
+                throw new InvalidOperationException(
+                    "ConnectionStrings:AppConnection usa a porta 6543 (Transaction pooler do Supabase), "
+                    + "que perde o search_path entre transações e corrompe migrations/schema. "
+                    + "Use o Session pooler na porta 5432.");
+            }
+        }
 
         // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.
         services.AddSingleton(TimeProvider.System);
@@ -152,9 +179,6 @@ public static class InfrastructureExtensions
             .ValidateOnStart();
         // se ExpectLivemode não foi configurado explicitamente, default por ambiente —
         // Production espera live; demais (incl. Homolog público em test-mode) não enforça.
-        var isProduction = string.Equals(
-            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-            "Production", StringComparison.OrdinalIgnoreCase);
         services.PostConfigure<StripeSettings>(s => s.ExpectLivemode ??= isProduction);
         services.AddScoped<IStripeService, StripeService>();
 
@@ -236,6 +260,13 @@ public static class InfrastructureExtensions
         // E-mail — Resend when configured, no-op otherwise. Sempre embrulhado no
         // EnvironmentEmailDecorator: passthrough em prod, marcação/redirect em não-prod.
         var resendApiKey = configuration["Resend:ApiKey"];
+        if (isProduction && string.IsNullOrWhiteSpace(resendApiKey))
+        {
+            throw new InvalidOperationException(
+                "Resend:ApiKey não configurado — e-mail transacional viraria no-op silencioso em produção. "
+                + "Use User Secrets ou variável de ambiente.");
+        }
+
         if (!string.IsNullOrWhiteSpace(resendApiKey))
         {
             var resendApiUrl = configuration["Resend:ApiUrl"] ?? ResendDefaultApiUrl;

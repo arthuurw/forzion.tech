@@ -3,6 +3,7 @@ using FluentAssertions;
 using forzion.tech.Infrastructure.Health;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using Moq.Protected;
 
@@ -71,9 +72,13 @@ public class ResendHealthCheckTests
         Registration = new HealthCheckRegistration("resend", _ => null!, null, null)
     };
 
+    private static IHostEnvironment Env(string name) =>
+        Mock.Of<IHostEnvironment>(e => e.EnvironmentName == name);
+
     private static (ResendHealthCheck check, Mock<HttpMessageHandler> handler) CriarComHandler(
         string? apiKey,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
+        HttpStatusCode statusCode = HttpStatusCode.OK,
+        string environment = "Development")
     {
         var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handlerMock
@@ -95,7 +100,7 @@ public class ResendHealthCheckTests
                 : new Dictionary<string, string?>())
             .Build();
 
-        return (new ResendHealthCheck(factoryMock.Object, config), handlerMock);
+        return (new ResendHealthCheck(factoryMock.Object, config, Env(environment)), handlerMock);
     }
 
     [Fact]
@@ -168,7 +173,34 @@ public class ResendHealthCheckTests
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Resend:ApiKey"] = "re_test_key" })
             .Build();
 
-        var check = new ResendHealthCheck(factoryMock.Object, config);
+        var check = new ResendHealthCheck(factoryMock.Object, config, Env("Development"));
+
+        var result = await check.CheckHealthAsync(FakeCtx);
+
+        result.Status.Should().Be(HealthStatus.Degraded);
+        result.Status.Should().NotBe(HealthStatus.Unhealthy);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_Producao_SemChave_RetornaUnhealthy()
+    {
+        var (check, handler) = CriarComHandler(apiKey: null, environment: "Production");
+
+        var result = await check.CheckHealthAsync(FakeCtx);
+
+        result.Status.Should().Be(HealthStatus.Unhealthy);
+        handler.Protected().Verify(
+            "SendAsync",
+            Times.Never(),
+            ItExpr.IsAny<HttpRequestMessage>(),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_Producao_ChaveConfigurada401_RetornaDegraded_NaoUnhealthy()
+    {
+        var (check, _) = CriarComHandler(
+            apiKey: "re_live_key", statusCode: HttpStatusCode.Unauthorized, environment: "Production");
 
         var result = await check.CheckHealthAsync(FakeCtx);
 

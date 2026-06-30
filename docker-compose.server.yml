@@ -12,6 +12,25 @@ services:
       DataProtection__EncryptionKey: ${DATA_PROTECTION_KEY}
       Cors__AllowedOrigins: ${CORS_ORIGINS}
       DeliveryLog__RecipientHashKey: ${DELIVERY_LOG_HASH_KEY}
+      Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+      Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+      Stripe__UrlBase: ${STRIPE_URL_BASE:-https://forzion.tech}
+      Resend__ApiKey: ${RESEND_API_KEY:-}
+      Resend__WebhookSecret: ${RESEND_WEBHOOK_SECRET:-}
+      Email__RedirecionarDestinatariosPara: ${EMAIL_REDIRECT_TO:-}
+      Email__AllowlistDominios: ${EMAIL_ALLOWLIST_DOMAINS:-}
+      App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-https://forzion.tech}
+      Internal__ApiKey: ${INTERNAL_API_KEY:-}
+      Seed__ZapTestEmail: ${SEED_ZAP_TEST_EMAIL:-zap-test@forzion.tech}
+      Seed__ZapTestPassword: ${SEED_ZAP_TEST_PASSWORD:-}
+      WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}
+      WhatsApp__ApiVersion: ${WHATSAPP_API_VERSION:-v21.0}
+      WhatsApp__AppSecret: ${WHATSAPP_APP_SECRET:-}
+      WhatsApp__WebhookVerifyToken: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-}
+      WhatsApp__MarcarComoTeste: ${WHATSAPP_MARK_AS_TEST:-false}
+      WhatsApp__RedirecionarDestinatariosPara: ${WHATSAPP_REDIRECT_TO:-}
+      WhatsApp__AllowlistTelefones: ${WHATSAPP_ALLOWLIST_PHONES:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
