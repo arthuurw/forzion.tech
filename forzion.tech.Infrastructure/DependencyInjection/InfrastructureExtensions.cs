@@ -242,6 +242,19 @@ public static class InfrastructureExtensions
                 sp.GetRequiredService<IHttpClientFactory>().CreateClient("viacep"),
                 sp.GetRequiredService<ILogger<ViaCepConsultaCepService>>()));
 
+        var hibpUrlBase = configuration["Hibp:UrlBase"];
+        var hibpTimeout = configuration.GetValue<int?>("Hibp:TimeoutSegundos") ?? 3;
+        services.AddHttpClient("hibp", client =>
+        {
+            if (!string.IsNullOrWhiteSpace(hibpUrlBase))
+                client.BaseAddress = new Uri(hibpUrlBase);
+            client.Timeout = TimeSpan.FromSeconds(hibpTimeout);
+        });
+        services.AddScoped<IPwnedPasswordsService>(sp =>
+            new HibpPwnedPasswordsService(
+                sp.GetRequiredService<IHttpClientFactory>().CreateClient("hibp"),
+                sp.GetRequiredService<ILogger<HibpPwnedPasswordsService>>()));
+
         services.AddOptions<DeliveryLogSettings>()
             .BindConfiguration("DeliveryLog")
             .Validate(s => !isProduction || !string.IsNullOrWhiteSpace(s.RecipientHashKey),
