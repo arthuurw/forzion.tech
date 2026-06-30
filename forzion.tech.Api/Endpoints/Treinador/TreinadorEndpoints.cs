@@ -37,6 +37,7 @@ using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -561,6 +562,31 @@ public static class TreinadorEndpoints
         .Produces<DadosFiscaisResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound);
 
+        group.MapGet("/cep/{cep}", async (
+            string cep,
+            [FromServices] IConsultaCepService consultaCep,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await consultaCep.ConsultarAsync(cep, cancellationToken).ConfigureAwait(false);
+            if (result.IsSuccess)
+            {
+                var r = result.Value;
+                return Results.Ok(new ConsultaCepResponse(
+                    r.Logradouro, r.Complemento, r.Bairro, r.Localidade, r.Uf, r.CodigoMunicipioIbge));
+            }
+
+            if (result.Error!.Code == ConsultaCepErrors.ServicoIndisponivel.Code)
+                return Results.Problem(detail: result.Error.Message, statusCode: StatusCodes.Status502BadGateway);
+
+            return result.ToProblemResult();
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Resolve um CEP em endereço estruturado (autofill dos dados fiscais)")
+        .Produces<ConsultaCepResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status502BadGateway);
+
         group.MapGet("/notas-fiscais", async (
             [FromServices] ListarNotasFiscaisTreinadorHandler handler,
             [FromServices] IUserContext userContext,
@@ -606,6 +632,14 @@ public record DadosFiscaisRequest(
     string Cep,
     string? Complemento = null,
     string? InscricaoMunicipal = null);
+
+public record ConsultaCepResponse(
+    string Logradouro,
+    string Complemento,
+    string Bairro,
+    string Localidade,
+    string Uf,
+    string CodigoMunicipioIbge);
 
 public record IniciarOnboardingRequest(string UrlRetorno, string UrlCancelamento);
 public record AlterarModoPagamentoRequest(ModoPagamentoAluno Modo);

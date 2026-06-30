@@ -1046,11 +1046,81 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    // --- GET /treinador/cep/{cep} ---
+
+    [Fact]
+    public async Task Get_Cep_Valido_Retorna200ComIbge()
+    {
+        _factory.ConsultaCepServiceMock
+            .Setup(s => s.ConsultarAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(new ConsultaCepResultado(
+                "Praça da Sé", "lado ímpar", "Sé", "São Paulo", "SP", "3550308")));
+
+        var response = await CriarClienteTreinador().GetAsync("/treinador/cep/01001000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("codigoMunicipioIbge").GetString().Should().Be("3550308");
+        body.GetProperty("logradouro").GetString().Should().Be("Praça da Sé");
+    }
+
+    [Fact]
+    public async Task Get_Cep_Malformado_Retorna400()
+    {
+        _factory.ConsultaCepServiceMock
+            .Setup(s => s.ConsultarAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<ConsultaCepResultado>(ConsultaCepErrors.CepInvalido));
+
+        var response = await CriarClienteTreinador().GetAsync("/treinador/cep/123");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Get_Cep_Inexistente_Retorna404()
+    {
+        _factory.ConsultaCepServiceMock
+            .Setup(s => s.ConsultarAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<ConsultaCepResultado>(ConsultaCepErrors.CepNaoEncontrado));
+
+        var response = await CriarClienteTreinador().GetAsync("/treinador/cep/99999999");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Get_Cep_ServicoIndisponivel_Retorna502()
+    {
+        _factory.ConsultaCepServiceMock
+            .Setup(s => s.ConsultarAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<ConsultaCepResultado>(ConsultaCepErrors.ServicoIndisponivel));
+
+        var response = await CriarClienteTreinador().GetAsync("/treinador/cep/01001000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadGateway);
+    }
+
+    [Fact]
+    public async Task Get_Cep_SemAutenticacao_Retorna401()
+    {
+        var response = await _factory.CreateClient().GetAsync("/treinador/cep/01001000");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_Cep_RoleErrada_Retorna403()
+    {
+        var response = await CriarClienteAdmin().GetAsync("/treinador/cep/01001000");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     // --- WebApplicationFactory ---
 
     public class TreinadorWebFactory : WebApplicationFactory<Program>
     {
         public Mock<IAssinaturaTreinadorRepository> AssinaturaTreinadorRepositoryMock { get; } = new();
+
+        public Mock<IConsultaCepService> ConsultaCepServiceMock { get; } = new();
 
         public Mock<ListarAlunosHandler> ListarAlunosHandlerMock { get; } = new(
             Mock.Of<IAlunoRepository>(),
@@ -1294,7 +1364,9 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<IJwtService>();
                 services.RemoveAll<ITokenRevogadoRepository>();
                 services.RemoveAll<IAssinaturaTreinadorRepository>();
+                services.RemoveAll<IConsultaCepService>();
 
+                services.AddScoped(_ => ConsultaCepServiceMock.Object);
                 services.AddScoped(_ => ListarAlunosHandlerMock.Object);
                 services.AddScoped(_ => AprovarVinculoHandlerMock.Object);
                 services.AddScoped(_ => DesvincularAlunoHandlerMock.Object);
