@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Box, Card, CardContent, Button, CircularProgress, Grid,
+  Box, Card, CardContent, Button, CircularProgress, Grid, InputAdornment,
 } from "@mui/material";
 import { useForm, FormProvider, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,12 +42,40 @@ export default function DadosFiscaisTreinadorPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepAviso, setCepAviso] = useState("");
+  const cepAbortRef = useRef<AbortController | null>(null);
 
   const methods = useForm<DadosFiscaisFormData>({
     resolver: zodResolver(dadosFiscaisSchema),
     defaultValues: DEFAULTS,
   });
   const tipoDocumento = useWatch({ control: methods.control, name: "tipoDocumento" });
+
+  const buscarCep = async (valorMascarado: string) => {
+    const digitos = soDigitos(valorMascarado);
+    if (digitos.length !== 8) return;
+
+    cepAbortRef.current?.abort();
+    const controller = new AbortController();
+    cepAbortRef.current = controller;
+    setCepAviso("");
+    setCepLoading(true);
+    try {
+      const { data } = await nfseApi.consultarCep(digitos, controller.signal);
+      if (controller.signal.aborted) return;
+      methods.setValue("logradouro", data.logradouro, { shouldValidate: true });
+      methods.setValue("bairro", data.bairro, { shouldValidate: true });
+      methods.setValue("uf", (data.uf ?? "").toUpperCase(), { shouldValidate: true });
+      methods.setValue("codigoMunicipioIbge", data.codigoMunicipioIbge, { shouldValidate: true });
+      if (data.complemento) methods.setValue("complemento", data.complemento, { shouldValidate: true });
+    } catch {
+      if (controller.signal.aborted) return;
+      setCepAviso("Não foi possível buscar o CEP, preencha o endereço manualmente.");
+    } finally {
+      if (cepAbortRef.current === controller) setCepLoading(false);
+    }
+  };
 
   useEffect(() => {
     nfseApi
@@ -110,6 +138,7 @@ export default function DadosFiscaisTreinadorPage() {
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
+      <AlertBanner open={!!cepAviso} severity="warning" message={cepAviso} onClose={() => setCepAviso("")} />
 
       <Card sx={{ border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
@@ -163,13 +192,26 @@ export default function DadosFiscaisTreinadorPage() {
                     render={({ field, fieldState }) => (
                       <TextField
                         {...field}
-                        onChange={(e) => field.onChange(mascararCep(e.target.value))}
+                        onChange={(e) => {
+                          const masked = mascararCep(e.target.value);
+                          field.onChange(masked);
+                          void buscarCep(masked);
+                        }}
                         label="CEP"
                         size="small"
                         fullWidth
                         required
                         error={!!fieldState.error}
                         helperText={fieldState.error?.message}
+                        slotProps={{
+                          input: {
+                            endAdornment: cepLoading ? (
+                              <InputAdornment position="end">
+                                <CircularProgress size={16} />
+                              </InputAdornment>
+                            ) : undefined,
+                          },
+                        }}
                       />
                     )}
                   />

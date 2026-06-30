@@ -68,6 +68,106 @@ describe("DadosFiscaisTreinadorPage", () => {
     });
   });
 
+  it("preenche endereço e IBGE ao completar 8 dígitos no CEP", async () => {
+    server.use(
+      http.get("*/treinador/dados-fiscais", () => HttpResponse.json(null)),
+      http.get("*/treinador/cep/01001000", () =>
+        HttpResponse.json({
+          logradouro: "Praça da Sé",
+          complemento: "lado ímpar",
+          bairro: "Sé",
+          localidade: "São Paulo",
+          uf: "sp",
+          codigoMunicipioIbge: "3550308",
+        }),
+      ),
+    );
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /salvar dados fiscais/i })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/^CEP/i), { target: { value: "01001000" } });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Logradouro/i)).toHaveValue("Praça da Sé");
+    });
+    expect(screen.getByLabelText(/Bairro/i)).toHaveValue("Sé");
+    expect(screen.getByLabelText(/^UF/i)).toHaveValue("SP");
+    expect(screen.getByLabelText(/Código IBGE/i)).toHaveValue("3550308");
+    expect(screen.getByLabelText(/Complemento/i)).toHaveValue("lado ímpar");
+    expect(screen.getByLabelText(/Número/i)).toHaveValue("");
+    expect(screen.getByLabelText(/Logradouro/i)).toBeEnabled();
+    expect(screen.getByLabelText(/Código IBGE/i)).toBeEnabled();
+  });
+
+  it("não sobrescreve complemento quando o CEP não retorna complemento", async () => {
+    server.use(
+      http.get("*/treinador/dados-fiscais", () =>
+        HttpResponse.json({ ...DADOS, endereco: { ...DADOS.endereco, complemento: "Casa 2" } }),
+      ),
+      http.get("*/treinador/cep/20040002", () =>
+        HttpResponse.json({
+          logradouro: "Av. Rio Branco",
+          complemento: "",
+          bairro: "Centro",
+          localidade: "Rio de Janeiro",
+          uf: "RJ",
+          codigoMunicipioIbge: "3304557",
+        }),
+      ),
+    );
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Complemento/i)).toHaveValue("Casa 2");
+    });
+
+    fireEvent.change(screen.getByLabelText(/^CEP/i), { target: { value: "20040002" } });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Logradouro/i)).toHaveValue("Av. Rio Branco");
+    });
+    expect(screen.getByLabelText(/Complemento/i)).toHaveValue("Casa 2");
+  });
+
+  it("não consulta CEP no carregamento inicial dos dados salvos", async () => {
+    const cepSpy = vi.fn();
+    server.use(
+      http.get("*/treinador/dados-fiscais", () => HttpResponse.json(DADOS)),
+      http.get("*/treinador/cep/*", () => {
+        cepSpy();
+        return HttpResponse.json({});
+      }),
+    );
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Nome \/ Razão social/i)).toHaveValue("João Treinador");
+    });
+    expect(cepSpy).not.toHaveBeenCalled();
+  });
+
+  it("exibe aviso não-bloqueante e mantém campos editáveis quando o CEP falha", async () => {
+    server.use(
+      http.get("*/treinador/dados-fiscais", () => HttpResponse.json(null)),
+      http.get("*/treinador/cep/*", () => HttpResponse.json({}, { status: 404 })),
+    );
+    await renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /salvar dados fiscais/i })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/^CEP/i), { target: { value: "99999999" } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Não foi possível buscar o CEP/i)).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(/Logradouro/i)).toBeEnabled();
+  });
+
   it("bloqueia submit com validação client-side quando campos vazios", async () => {
     const putSpy = vi.fn();
     server.use(
