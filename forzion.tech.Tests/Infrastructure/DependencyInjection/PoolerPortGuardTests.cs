@@ -1,9 +1,6 @@
 using FluentAssertions;
 using forzion.tech.Infrastructure.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Moq;
 
 namespace forzion.tech.Tests.Infrastructure.DependencyInjection;
 
@@ -15,13 +12,8 @@ public class PoolerPortGuardTests
         if (connectionString is not null)
             dict["ConnectionStrings:AppConnection"] = connectionString;
 
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(dict).Build();
-        var services = new ServiceCollection();
-        services.AddSingleton<IConfiguration>(configuration);
-        services.AddLogging();
-
-        return () => services.AddInfrastructure(
-            configuration, Mock.Of<IHostEnvironment>(e => e.EnvironmentName == "Development"));
+        var (services, configuration) = InfraHarness.Montar(dict);
+        return () => services.AddInfrastructure(configuration, InfraHarness.Env("Development"));
     }
 
     [Fact]
@@ -56,5 +48,12 @@ public class PoolerPortGuardTests
     public void ConnectionStringNula_NaoParseia_NaoLanca()
     {
         AplicarInfra(null).Should().NotThrow();
+    }
+
+    [Fact]
+    public void FormatoUri_LancaInvalidOperationComMensagemAmigavel()
+    {
+        AplicarInfra("postgresql://user:pwd@aws.pooler.supabase.com:6543/postgres")
+            .Should().Throw<InvalidOperationException>().WithMessage("*keyword=value*");
     }
 }

@@ -1,11 +1,7 @@
 using FluentAssertions;
-using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Services;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Moq;
 
 namespace forzion.tech.Tests.Infrastructure.DependencyInjection;
 
@@ -24,20 +20,11 @@ public class NfseSettingsTests
         ["Nfse:AliquotaIss"] = "2.0"
     };
 
-    private static ServiceProvider BuildProvider(Dictionary<string, string?>? config = null)
-    {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(config ?? []).Build();
-        var services = new ServiceCollection();
-        services.AddSingleton<IConfiguration>(configuration);
-        services.AddLogging();
-        services.AddInfrastructure(configuration, Mock.Of<IHostEnvironment>(e => e.EnvironmentName == "Development"));
-        return services.BuildServiceProvider();
-    }
-
     [Fact]
     public void HabilitadoSemCertificado_FalhaBoot()
     {
-        using var sp = BuildProvider(new Dictionary<string, string?> { ["Nfse:Habilitado"] = "true" });
+        using var sp = InfraHarness.BuildProvider("Development",
+            new Dictionary<string, string?> { ["Nfse:Habilitado"] = "true" });
 
         var act = () => _ = sp.GetRequiredService<IOptions<NfseSettings>>().Value;
 
@@ -47,7 +34,7 @@ public class NfseSettingsTests
     [Fact]
     public void Desabilitado_SobeComDefaults()
     {
-        using var sp = BuildProvider();
+        using var sp = InfraHarness.BuildProvider("Development");
 
         var settings = sp.GetRequiredService<IOptions<NfseSettings>>().Value;
 
@@ -58,7 +45,7 @@ public class NfseSettingsTests
     [Fact]
     public void HabilitadoComConfigCompleta_Sobe()
     {
-        using var sp = BuildProvider(ConfigCompleta);
+        using var sp = InfraHarness.BuildProvider("Development", ConfigCompleta);
 
         var settings = sp.GetRequiredService<IOptions<NfseSettings>>().Value;
 
@@ -71,7 +58,7 @@ public class NfseSettingsTests
     public void HabilitadoSemAliquota_FalhaBoot()
     {
         var config = new Dictionary<string, string?>(ConfigCompleta) { ["Nfse:AliquotaIss"] = "0" };
-        using var sp = BuildProvider(config);
+        using var sp = InfraHarness.BuildProvider("Development", config);
 
         var act = () => _ = sp.GetRequiredService<IOptions<NfseSettings>>().Value;
 

@@ -22,7 +22,7 @@ public sealed class SchemaHealthCheck(AppDbContext dbContext, IConfiguration con
             .SingleAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return string.Equals(atual, esperado, StringComparison.Ordinal)
+        return string.Equals(atual, esperado, StringComparison.OrdinalIgnoreCase)
             ? HealthCheckResult.Healthy()
             : HealthCheckResult.Unhealthy(
                 $"current_schema() = '{atual}', esperado '{esperado}' — search_path divergente (possível Transaction pooler :6543).");

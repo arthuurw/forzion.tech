@@ -49,13 +49,27 @@ public static class InfrastructureExtensions
         var connectionString = configuration.GetConnectionString("AppConnection");
         var isProduction = environment.IsProduction();
 
-        if (!string.IsNullOrWhiteSpace(connectionString)
-            && new NpgsqlConnectionStringBuilder(connectionString).Port == 6543)
+        if (!string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new InvalidOperationException(
-                "ConnectionStrings:AppConnection usa a porta 6543 (Transaction pooler do Supabase), "
-                + "que perde o search_path entre transações e corrompe migrations/schema. "
-                + "Use o Session pooler na porta 5432.");
+            NpgsqlConnectionStringBuilder builder;
+            try
+            {
+                builder = new NpgsqlConnectionStringBuilder(connectionString);
+            }
+            catch (Exception ex) when (ex is ArgumentException or FormatException)
+            {
+                throw new InvalidOperationException(
+                    "ConnectionStrings:AppConnection não está no formato keyword=value do Npgsql "
+                    + "(ex.: cole a string do Session pooler, não a URI postgresql://).", ex);
+            }
+
+            if (builder.Port == 6543)
+            {
+                throw new InvalidOperationException(
+                    "ConnectionStrings:AppConnection usa a porta 6543 (Transaction pooler do Supabase), "
+                    + "que perde o search_path entre transações e corrompe migrations/schema. "
+                    + "Use o Session pooler na porta 5432.");
+            }
         }
 
         // Fonte de tempo determinística (BCL .NET 8); testes injetam FakeTimeProvider.

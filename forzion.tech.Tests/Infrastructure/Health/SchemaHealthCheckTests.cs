@@ -41,6 +41,18 @@ public class SchemaHealthCheckTests(InfrastructureTestFixture fixture)
     }
 
     [Fact]
+    public async Task CurrentSchemaCaseDiferente_RetornaHealthy()
+    {
+        var connectionString = ConnComSearchPath("public");
+        await using var ctx = fixture.CreateContext(connectionString);
+        var check = new SchemaHealthCheck(ctx, ConfigCom(ConnComSearchPath("PUBLIC")));
+
+        var result = await check.CheckHealthAsync(FakeCtx);
+
+        result.Status.Should().Be(HealthStatus.Healthy);
+    }
+
+    [Fact]
     public async Task CurrentSchemaDivergente_RetornaUnhealthy()
     {
         var connectionString = ConnComSearchPath("public");

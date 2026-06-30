@@ -1,11 +1,7 @@
 using FluentAssertions;
-using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Services;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Moq;
 
 namespace forzion.tech.Tests.Infrastructure.DependencyInjection;
 
@@ -17,18 +13,6 @@ public class StripeSettingsTests
         ["Stripe:WebhookSecret"] = "whsec_base",
     };
 
-    private static ServiceProvider BuildProvider(string? environment, Dictionary<string, string?> config)
-    {
-        var settings = new Dictionary<string, string?>(config);
-        settings.TryAdd("Resend:ApiKey", "re_test_key");
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
-        var services = new ServiceCollection();
-        services.AddSingleton<IConfiguration>(configuration);
-        services.AddLogging();
-        services.AddInfrastructure(configuration, Mock.Of<IHostEnvironment>(e => e.EnvironmentName == environment));
-        return services.BuildServiceProvider();
-    }
-
     [Fact]
     public void ChaveSkLive_ExpectLivemodeNaoConfigurado_EmDesenvolvimento_FalhaBoot()
     {
@@ -36,7 +20,7 @@ public class StripeSettingsTests
         {
             ["Stripe:SecretKey"] = "sk_live_verysecretkey123",
         };
-        using var sp = BuildProvider("Development", config);
+        using var sp = InfraHarness.BuildProvider("Development", config);
 
         var act = () => _ = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
 
@@ -53,7 +37,7 @@ public class StripeSettingsTests
             ["Stripe:SecretKey"] = "sk_test_verysecretkey456",
             ["Stripe:ExpectLivemode"] = "true",
         };
-        using var sp = BuildProvider("Development", config);
+        using var sp = InfraHarness.BuildProvider("Development", config);
 
         var act = () => _ = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
 
@@ -70,7 +54,7 @@ public class StripeSettingsTests
             ["Stripe:SecretKey"] = "sk_live_validprodkey",
             ["Stripe:ExpectLivemode"] = "true",
         };
-        using var sp = BuildProvider("Production", config);
+        using var sp = InfraHarness.BuildProvider("Production", config);
 
         var settings = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
 
@@ -81,7 +65,7 @@ public class StripeSettingsTests
     [Fact]
     public void ChaveSkTest_ExpectLivemodeNaoConfigurado_EmDesenvolvimento_Sobe()
     {
-        using var sp = BuildProvider("Development", new Dictionary<string, string?>(ConfigBase));
+        using var sp = InfraHarness.BuildProvider("Development", new Dictionary<string, string?>(ConfigBase));
 
         var settings = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
 
@@ -96,7 +80,7 @@ public class StripeSettingsTests
         {
             ["Stripe:TaxaPlataformaPercent"] = "101",
         };
-        using var sp = BuildProvider("Development", config);
+        using var sp = InfraHarness.BuildProvider("Development", config);
 
         var act = () => _ = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
 
@@ -110,7 +94,7 @@ public class StripeSettingsTests
         {
             ["Stripe:TaxaPlataformaPercent"] = "100",
         };
-        using var sp = BuildProvider("Development", config);
+        using var sp = InfraHarness.BuildProvider("Development", config);
 
         var settings = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
 
