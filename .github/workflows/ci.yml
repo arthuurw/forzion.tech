@@ -167,7 +167,7 @@ jobs:
         run: >
           bash scripts/check-coverage.sh coverage-report/Summary.json
           "__overall__:branch=80"
-          "forzion.tech.Infrastructure:branch=76,line=65,method=52"
+          "forzion.tech.Infrastructure:branch=76,line=88,method=87"
 
       - name: Coverage summary (backend)
         if: always()
