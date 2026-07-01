@@ -29,7 +29,7 @@ test.describe("smoke @smoke", () => {
       pacoteId: pacoteId!,
       nome: "Smoke Test Aluno",
       email,
-      senha: "Senha@12345",
+      senha: "Senha@123456",
       telefone: "11999990000",
       diasDisponiveis: 3,
       tempoDisponivelMinutos: 60,

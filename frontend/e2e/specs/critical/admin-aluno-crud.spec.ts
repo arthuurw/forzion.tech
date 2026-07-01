@@ -26,7 +26,7 @@ test.describe("admin aluno CRUD", () => {
       pacoteId: pacoteId!,
       nome: "CRUD Test Aluno",
       email: seededEmail,
-      senha: "Senha@12345",
+      senha: "Senha@123456",
       telefone: "11988887777",
     });
   });
