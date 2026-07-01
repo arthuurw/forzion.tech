@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FluentValidation.Results;
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 using forzion.tech.Application.UseCases.Conta.AlterarSenha;
@@ -48,9 +49,21 @@ public class PasswordPolicyValidatorsTests
     public async Task HibpIndisponivel_FailOpen_Passa(string alvo) =>
         (await Validar(alvo, SenhaValida, comprometida: false)).IsValid.Should().BeTrue();
 
-    private static Task<ValidationResult> Validar(string alvo, string senha, bool comprometida)
+    [Theory]
+    [MemberData(nameof(Alvos))]
+    public async Task SenhaInvalida_NaoConsultaHibp(string alvo) =>
+        (await Validar(alvo, Senha11, new HibpQueFalhaSeChamado())).IsValid.Should().BeFalse();
+
+    [Theory]
+    [MemberData(nameof(Alvos))]
+    public async Task SenhaNula_RejeitaSemConsultarHibp(string alvo) =>
+        (await Validar(alvo, null!, new HibpQueFalhaSeChamado())).IsValid.Should().BeFalse();
+
+    private static Task<ValidationResult> Validar(string alvo, string senha, bool comprometida) =>
+        Validar(alvo, senha, new FakePwnedPasswordsService(comprometida));
+
+    private static Task<ValidationResult> Validar(string alvo, string senha, IPwnedPasswordsService svc)
     {
-        var svc = new FakePwnedPasswordsService(comprometida);
         return alvo switch
         {
             "aluno" => new RegistrarAlunoCommandValidator(svc)
@@ -63,5 +76,11 @@ public class PasswordPolicyValidatorsTests
                 .ValidateAsync(new RedefinirSenhaCommand(TokenValido, senha)),
             _ => throw new ArgumentOutOfRangeException(nameof(alvo)),
         };
+    }
+
+    private sealed class HibpQueFalhaSeChamado : IPwnedPasswordsService
+    {
+        public Task<bool> EstaComprometidaAsync(string senha, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("HIBP não deve ser consultado para senha inválida.");
     }
 }
