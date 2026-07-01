@@ -76,4 +76,19 @@ describe("DetalheAlunoPage — pacote via getAluno (T2)", () => {
 
     expect(screen.queryByText(/Pacote:/i)).not.toBeInTheDocument();
   });
+
+  it("erro ao carregar aluno exibe alerta de erro", async () => {
+    server.use(
+      http.get("*/treinador/alunos/aluno-1/fichas", () => HttpResponse.json([])),
+      http.get("*/treinador/alunos/aluno-1", () => HttpResponse.json({}, { status: 500 })),
+    );
+    const { default: Page } = await import(
+      "@/app/(treinador)/treinador/alunos/[alunoId]/page"
+    );
+    render(<Page />);
+
+    expect(
+      await screen.findByText("Erro ao carregar dados do aluno."),
+    ).toBeInTheDocument();
+  });
 });
