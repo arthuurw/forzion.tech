@@ -24,5 +24,8 @@ jobs:
 
       # --error: falha o job em qualquer finding bloqueante.
       # Escopo via .semgrepignore (nginx/infra + fixtures de teste fora).
+      # exclude-rule renovate-missing-minimum-release-age: exige minimumReleaseAge
+      # em CADA packageRule; a protecao 7-dias ja vale global (catch-all no
+      # renovate.json), entao a exigencia por-entrada seria so ruido redundante.
       - name: Semgrep scan
-        run: semgrep scan --config p/default --error --metrics=off
+        run: semgrep scan --config p/default --error --metrics=off --exclude-rule=package_managers.renovate.renovate-missing-minimum-release-age.renovate-missing-minimum-release-age
