@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { clearSessionCookies } from "@/lib/auth/sessionCookies";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
@@ -19,7 +20,6 @@ export async function POST() {
   }
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.delete("token");
-  response.cookies.delete("session_guard");
+  clearSessionCookies(response);
   return response;
 }

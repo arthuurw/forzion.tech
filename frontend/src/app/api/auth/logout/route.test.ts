@@ -39,9 +39,10 @@ describe("POST /api/auth/logout", () => {
     expect(receivedAuth).toBe("Bearer valid-token");
     expect(body.ok).toBe(true);
 
-    const setCookie = res.headers.get("set-cookie");
-    expect(setCookie).toContain("token=;");
-    expect(setCookie).toContain("session_guard=;");
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    for (const name of ["token", "refresh", "session_guard", "tipo_conta"])
+      expect(setCookie).toContain(`${name}=;`);
+    expect(setCookie).toContain("Path=/");
   });
 
   it("sem token → nao chama backend e limpa cookies mesmo assim", async () => {
@@ -74,7 +75,8 @@ describe("POST /api/auth/logout", () => {
     const res = await POST();
     expect(res.status).toBe(200);
 
-    const setCookie = res.headers.get("set-cookie");
-    expect(setCookie).toContain("token=;");
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    for (const name of ["token", "refresh", "session_guard", "tipo_conta"])
+      expect(setCookie).toContain(`${name}=;`);
   });
 });
