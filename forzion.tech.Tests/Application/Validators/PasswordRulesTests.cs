@@ -18,9 +18,10 @@ public class PasswordRulesTests
     [Theory]
     [InlineData("")]
     [InlineData("Aa1aaaa")]
-    [InlineData("senha123")]
-    [InlineData("SENHA123")]
-    [InlineData("SenhaAbc")]
+    [InlineData("SenhaForte1")]
+    [InlineData("senhaforte123")]
+    [InlineData("SENHAFORTE123")]
+    [InlineData("SenhaForteAbc")]
     public void Rejeita_SenhaForaDaPolitica(string senha) =>
         Validator.Validate(new Alvo(senha)).IsValid.Should().BeFalse();
 
@@ -30,5 +31,5 @@ public class PasswordRulesTests
 
     [Fact]
     public void Aceita_SenhaForte() =>
-        Validator.Validate(new Alvo("Senha123")).IsValid.Should().BeTrue();
+        Validator.Validate(new Alvo("SenhaForte123")).IsValid.Should().BeTrue();
 }

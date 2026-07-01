@@ -10,6 +10,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.ValueObjects;
+using forzion.tech.Tests.TestDoubles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -31,7 +32,7 @@ public class RedefinirSenhaHandlerTests
     private readonly Mock<ILogAprovacaoRepository> _logRepo = new();
     private readonly Mock<ILogger<RedefinirSenhaHandler>> _logger = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero));
-    private readonly RedefinirSenhaCommandValidator _validator = new();
+    private readonly RedefinirSenhaCommandValidator _validator = new(new FakePwnedPasswordsService());
     private readonly RedefinirSenhaHandler _handler;
 
     private const string RawToken = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2";
@@ -81,7 +82,7 @@ public class RedefinirSenhaHandlerTests
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((PasswordResetToken?)null);
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Should().Contain("inválido");
@@ -95,7 +96,7 @@ public class RedefinirSenhaHandlerTests
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(token);
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Should().Contain("inválido ou já utilizado");
@@ -110,7 +111,7 @@ public class RedefinirSenhaHandlerTests
 
         _timeProvider.Advance(TimeSpan.FromMinutes(2)); // token agora expirado
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Should().Contain("expirado");
@@ -126,10 +127,10 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsSuccess.Should().BeTrue();
-        conta.PasswordHash.Should().Be("hash:NovaSenha1");
+        conta.PasswordHash.Should().Be("hash:NovaSenha123");
         token.UsedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -144,7 +145,7 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsSuccess.Should().BeTrue();
         conta.SessoesInvalidasAntesDeUtc.Should().Be(_timeProvider.GetUtcNow());
@@ -158,7 +159,7 @@ public class RedefinirSenhaHandlerTests
         _tokenRepo.Setup(r => r.BuscarPorHashAsync(token.TokenHash, It.IsAny<CancellationToken>())).ReturnsAsync(token);
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsSuccess.Should().BeTrue();
         _trustedDevice.Verify(r => r.RemoverPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
@@ -173,7 +174,7 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(conta);
         _mfaRepo.Setup(r => r.BuscarPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(MfaHabilitado(conta.Id));
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("mfa.codigo_invalido");
@@ -193,7 +194,7 @@ public class RedefinirSenhaHandlerTests
         _protector.Setup(p => p.Revelar("cifrado")).Returns("SECRET");
         _totp.Setup(t => t.Verificar("SECRET", "000000", 50)).Returns(new TotpVerificacao(false, 0));
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1", "000000"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123", "000000"));
 
         result.IsFailure.Should().BeTrue();
         token.UsedAt.Should().BeNull();
@@ -213,10 +214,10 @@ public class RedefinirSenhaHandlerTests
         _protector.Setup(p => p.Revelar("cifrado")).Returns("SECRET");
         _totp.Setup(t => t.Verificar("SECRET", "123456", 50)).Returns(new TotpVerificacao(true, 100));
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1", "123456"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123", "123456"));
 
         result.IsSuccess.Should().BeTrue();
-        conta.PasswordHash.Should().Be("hash:NovaSenha1");
+        conta.PasswordHash.Should().Be("hash:NovaSenha123");
         token.UsedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
         mfa.UltimoTimeStep.Should().Be(100);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -232,10 +233,10 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        var primeira = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var primeira = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
         primeira.IsSuccess.Should().BeTrue();
 
-        var segunda = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "OutraSenha1"));
+        var segunda = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "OutraSenha123"));
 
         segunda.IsFailure.Should().BeTrue();
         segunda.Error!.Message.Should().Contain("inválido ou já utilizado");
@@ -252,7 +253,7 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("auth_reset.token_invalido");
@@ -270,7 +271,7 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Conta?)null);
 
-        var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
         await act.Should().ThrowAsync<EstadoInconsistenteException>().WithMessage("*Conta não encontrada*");
     }
 
@@ -279,15 +280,15 @@ public class RedefinirSenhaHandlerTests
     [InlineData("short", "*inválido*")]
     public async Task HandleAsync_TokenInvalido_FalhaValidacao(string token, string messageContains)
     {
-        var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(token, "NovaSenha1"));
+        var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(token, "NovaSenha123"));
         await act.Should().ThrowAsync<ValidationException>().WithMessage(messageContains);
     }
 
     [Theory]
-    [InlineData("curta1A", "*8 caracteres*")]
+    [InlineData("curta1A", "*12 caracteres*")]
     [InlineData("semuppercase1", "*maiúscula*")]
     [InlineData("SEMLOWERCASE1", "*minúscula*")]
-    [InlineData("SemDigitoAa", "*dígito*")]
+    [InlineData("SemDigitoAbcd", "*dígito*")]
     public async Task HandleAsync_SenhaFraca_FalhaValidacao(string senha, string messageContains)
     {
         var act = async () => await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, senha));
@@ -311,7 +312,7 @@ public class RedefinirSenhaHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(conta.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123"));
 
         result.IsSuccess.Should().BeTrue();
         _logRepo.Verify(r => r.AdicionarAsync(It.Is<LogAprovacao>(l => l.TipoAcao == TipoAcaoAprovacao.SenhaRedefinida), It.IsAny<CancellationToken>()), Times.Once);
@@ -335,11 +336,11 @@ public class RedefinirSenhaHandlerTests
 
         Result ultimaFalha = Result.Success();
         for (var i = 0; i < RedefinicaoSenhaSegundoFator.MaximoTentativas; i++)
-            ultimaFalha = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1", "000000"));
+            ultimaFalha = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123", "000000"));
 
         ultimaFalha.Error!.Code.Should().Be("mfa.codigo_invalido");
 
-        var bloqueado = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1", "000000"));
+        var bloqueado = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123", "000000"));
 
         bloqueado.IsFailure.Should().BeTrue();
         bloqueado.Error!.Code.Should().Be("auth_reset.segundo_fator_bloqueado");
@@ -364,10 +365,10 @@ public class RedefinirSenhaHandlerTests
         _protector.Setup(p => p.Revelar("cifrado")).Returns("SECRET");
         _totp.Setup(t => t.Verificar("SECRET", "123456", 50)).Returns(new TotpVerificacao(true, 100));
 
-        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha1", "123456"));
+        var result = await _handler.HandleAsync(new RedefinirSenhaCommand(RawToken, "NovaSenha123", "123456"));
 
         result.IsSuccess.Should().BeTrue();
-        conta.PasswordHash.Should().Be("hash:NovaSenha1");
+        conta.PasswordHash.Should().Be("hash:NovaSenha123");
         token.UsedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

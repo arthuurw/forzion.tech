@@ -17,13 +17,13 @@ public record RedefinirSenhaCommand(string Token, string NovaSenha, string? Codi
 
 public class RedefinirSenhaCommandValidator : AbstractValidator<RedefinirSenhaCommand>
 {
-    public RedefinirSenhaCommandValidator()
+    public RedefinirSenhaCommandValidator(IPwnedPasswordsService pwnedPasswords)
     {
         RuleFor(x => x.Token)
             .NotEmpty().WithMessage("O token é obrigatório.")
             .Length(64).WithMessage("Token inválido.");
 
-        RuleFor(x => x.NovaSenha).SenhaForte();
+        RuleFor(x => x.NovaSenha).SenhaForte().SenhaNaoComprometida(pwnedPasswords);
     }
 }
 

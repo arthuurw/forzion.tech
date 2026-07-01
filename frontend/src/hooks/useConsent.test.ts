@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useConsent, readConsentCookie } from "@/hooks/useConsent";
 
@@ -52,5 +52,39 @@ describe("useConsent / readConsentCookie", () => {
   it("cookie malformado (JSON inválido) → null (catch)", () => {
     document.cookie = `consent=${encodeURIComponent("{not-json")}; path=/`;
     expect(readConsentCookie()).toBeNull();
+  });
+
+  it("sob https anexa ; Secure ao consent cookie", () => {
+    const writes: string[] = [];
+    const spy = vi
+      .spyOn(document, "cookie", "set")
+      .mockImplementation((v) => {
+        writes.push(v);
+      });
+    vi.stubGlobal("location", { protocol: "https:" });
+
+    const { result } = renderHook(() => useConsent());
+    act(() => result.current.acceptAll());
+
+    expect(writes.at(-1)).toContain("; Secure");
+    spy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("sob http omite Secure", () => {
+    const writes: string[] = [];
+    const spy = vi
+      .spyOn(document, "cookie", "set")
+      .mockImplementation((v) => {
+        writes.push(v);
+      });
+    vi.stubGlobal("location", { protocol: "http:" });
+
+    const { result } = renderHook(() => useConsent());
+    act(() => result.current.acceptAll());
+
+    expect(writes.at(-1)).not.toContain("Secure");
+    spy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });

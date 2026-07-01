@@ -229,4 +229,43 @@ describe("Backend proxy /api/backend/[...path]", () => {
       expect(res.status).toBe(204);
     });
   });
+
+  describe("Origin-check (CSRF defense-in-depth)", () => {
+    it("POST cross-origin → 403 cross-origin", async () => {
+      setupCookies({});
+      const req = createMockRequest({
+        method: "POST",
+        headers: { origin: "http://evil.com" },
+        body: { a: 1 },
+      });
+      const res = await POST(req, makeCtx(["admin", "x"]));
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toBe("cross-origin");
+    });
+
+    it("POST same-origin → segue para backend", async () => {
+      setupCookies({});
+      server.use(http.post("*/admin/x", () => HttpResponse.json({})));
+
+      const req = createMockRequest({
+        method: "POST",
+        headers: { origin: "http://localhost:3000" },
+        body: { a: 1 },
+      });
+      const res = await POST(req, makeCtx(["admin", "x"]));
+      expect(res.status).toBe(200);
+    });
+
+    it("GET cross-origin → não é checado (passa)", async () => {
+      setupCookies({});
+      server.use(http.get("*/admin/x", () => HttpResponse.json({})));
+
+      const req = createMockRequest({
+        method: "GET",
+        headers: { origin: "http://evil.com" },
+      });
+      const res = await GET(req, makeCtx(["admin", "x"]));
+      expect(res.status).toBe(200);
+    });
+  });
 });

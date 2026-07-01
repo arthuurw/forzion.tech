@@ -29,7 +29,9 @@ function writeConsentCookie(prefs: ConsentPreferences) {
   if (typeof document === "undefined") return;
   const value = encodeURIComponent(JSON.stringify(prefs));
   const maxAge = 60 * 60 * 24 * 365;
-  document.cookie = `${COOKIE_NAME}=${value}; max-age=${maxAge}; path=/; SameSite=Lax`;
+  const secure =
+    typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${COOKIE_NAME}=${value}; max-age=${maxAge}; path=/; SameSite=Lax${secure}`;
 }
 
 /**

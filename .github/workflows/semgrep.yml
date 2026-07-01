@@ -20,9 +20,12 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       # --error: falha o job em qualquer finding bloqueante.
       # Escopo via .semgrepignore (nginx/infra + fixtures de teste fora).
+      # exclude-rule renovate-missing-minimum-release-age: exige minimumReleaseAge
+      # em CADA packageRule; a protecao 7-dias ja vale global (catch-all no
+      # renovate.json), entao a exigencia por-entrada seria so ruido redundante.
       - name: Semgrep scan
-        run: semgrep scan --config p/default --error --metrics=off
+        run: semgrep scan --config p/default --error --metrics=off --exclude-rule=package_managers.renovate.renovate-missing-minimum-release-age.renovate-missing-minimum-release-age

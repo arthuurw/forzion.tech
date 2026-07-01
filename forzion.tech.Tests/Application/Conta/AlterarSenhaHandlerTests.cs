@@ -7,6 +7,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
+using forzion.tech.Tests.TestDoubles;
 using Microsoft.Extensions.Logging;
 using Moq;
 using DomainConta = forzion.tech.Domain.Entities.Conta;
@@ -171,25 +172,25 @@ public class AlterarSenhaHandlerTests
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
-    private static readonly AlterarSenhaCommandValidator _realValidator = new();
+    private static readonly AlterarSenhaCommandValidator _realValidator = new(new FakePwnedPasswordsService());
 
     [Theory]
-    [InlineData("", "Senha@123")]
+    [InlineData("", "SenhaForte123")]
     [InlineData("atual", "")]
     [InlineData("atual", "Ab1")]
-    [InlineData("atual", "abcdefg1")]
-    [InlineData("atual", "ABCDEFG1")]
-    [InlineData("atual", "Abcdefgh")]
-    public void Validator_CommandInvalido_Falha(string senhaAtual, string novaSenha)
+    [InlineData("atual", "abcdefghijk1")]
+    [InlineData("atual", "ABCDEFGHIJK1")]
+    [InlineData("atual", "Abcdefghijkl")]
+    public async Task Validator_CommandInvalido_Falha(string senhaAtual, string novaSenha)
     {
-        var result = _realValidator.Validate(new AlterarSenhaCommand(senhaAtual, novaSenha));
+        var result = await _realValidator.ValidateAsync(new AlterarSenhaCommand(senhaAtual, novaSenha));
         result.IsValid.Should().BeFalse();
     }
 
     [Fact]
-    public void Validator_CommandValido_Passa()
+    public async Task Validator_CommandValido_Passa()
     {
-        var result = _realValidator.Validate(new AlterarSenhaCommand("SenhaAtual1", "NovaSenha@9"));
+        var result = await _realValidator.ValidateAsync(new AlterarSenhaCommand("SenhaAtual1", "NovaSenha@123"));
         result.IsValid.Should().BeTrue();
     }
 

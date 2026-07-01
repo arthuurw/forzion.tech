@@ -28,6 +28,7 @@ test.describe("security: CSP + security headers", () => {
     assertCspDirective(csp, "script-src", "'self'");
     assertCspDirective(csp, "script-src", "https://js.stripe.com");
     assertCspDirective(csp, "frame-ancestors", "'none'");
+    assertCspDirective(csp, "object-src", "'none'");
     assertCspDirective(csp, "connect-src", "'self'");
     assertCspDirective(csp, "connect-src", "https://api.stripe.com");
     assertCspHasDirective(csp, "base-uri");

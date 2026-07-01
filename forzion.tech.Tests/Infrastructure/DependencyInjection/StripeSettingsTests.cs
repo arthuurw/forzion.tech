@@ -88,7 +88,7 @@ public class StripeSettingsTests
     }
 
     [Fact]
-    public void TaxaIgualA100_Sobe()
+    public void TaxaIgualA100_FalhaBoot()
     {
         var config = new Dictionary<string, string?>(ConfigBase)
         {
@@ -96,8 +96,50 @@ public class StripeSettingsTests
         };
         using var sp = InfraHarness.BuildProvider("Development", config);
 
+        var act = () => _ = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
+
+        act.Should().Throw<OptionsValidationException>();
+    }
+
+    [Fact]
+    public void TaxaJustoAbaixoDe100_Sobe()
+    {
+        var config = new Dictionary<string, string?>(ConfigBase)
+        {
+            ["Stripe:TaxaPlataformaPercent"] = "99.99",
+        };
+        using var sp = InfraHarness.BuildProvider("Development", config);
+
         var settings = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
 
-        settings.TaxaPlataformaPercent.Should().Be(100m);
+        settings.TaxaPlataformaPercent.Should().Be(99.99m);
+    }
+
+    [Fact]
+    public void TaxaZero_FalhaBoot()
+    {
+        var config = new Dictionary<string, string?>(ConfigBase)
+        {
+            ["Stripe:TaxaPlataformaPercent"] = "0",
+        };
+        using var sp = InfraHarness.BuildProvider("Development", config);
+
+        var act = () => _ = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
+
+        act.Should().Throw<OptionsValidationException>();
+    }
+
+    [Fact]
+    public void TaxaMetade_Sobe()
+    {
+        var config = new Dictionary<string, string?>(ConfigBase)
+        {
+            ["Stripe:TaxaPlataformaPercent"] = "50",
+        };
+        using var sp = InfraHarness.BuildProvider("Development", config);
+
+        var settings = sp.GetRequiredService<IOptions<StripeSettings>>().Value;
+
+        settings.TaxaPlataformaPercent.Should().Be(50m);
     }
 }

@@ -14,10 +14,10 @@ public record AlterarSenhaCommand(string SenhaAtual, string NovaSenha);
 
 public class AlterarSenhaCommandValidator : AbstractValidator<AlterarSenhaCommand>
 {
-    public AlterarSenhaCommandValidator()
+    public AlterarSenhaCommandValidator(IPwnedPasswordsService pwnedPasswords)
     {
         RuleFor(x => x.SenhaAtual).NotEmpty().WithMessage("A senha atual é obrigatória.");
-        RuleFor(x => x.NovaSenha).SenhaForte();
+        RuleFor(x => x.NovaSenha).SenhaForte().SenhaNaoComprometida(pwnedPasswords);
     }
 }
 

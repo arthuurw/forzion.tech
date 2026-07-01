@@ -22,7 +22,7 @@ namespace forzion.tech.Tests.E2E;
 [Trait("Category", "Integration")]
 public class ConcurrentBillingRaceTests(RealPipelineFixture fixture)
 {
-    private const string SenhaPadrao = "Senha@12345";
+    private const string SenhaPadrao = "SenhaForte123";
 
     [Fact]
     public async Task GerarCobrancaMensal_DuasChamadasParalelas_NaoCriaDuplicidade()

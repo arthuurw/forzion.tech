@@ -12,6 +12,11 @@
   "rangeStrategy": "bump",
   "packageRules": [
     {
+      "description": "Release age minimo global (supply-chain)",
+      "matchPackageNames": ["*"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
       "description": "Auto-merge patches sem revisao",
       "matchUpdateTypes": ["patch", "pin", "digest"],
       "automerge": true,

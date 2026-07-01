@@ -29,6 +29,10 @@ public static class InfrastructureExtensions
     private const string ResendDefaultApiUrl = "https://api.resend.com/emails";
 #pragma warning restore S1075
 
+#pragma warning disable S1075 // Fallback default; overridden via Hibp:UrlBase config key
+    private const string HibpDefaultUrl = "https://api.pwnedpasswords.com/";
+#pragma warning restore S1075
+
     private static IEmailService EnvolverComDecorator(IServiceProvider sp, IEmailService inner) =>
         new EnvironmentEmailDecorator(
             inner,
@@ -170,8 +174,8 @@ public static class InfrastructureExtensions
                 "Stripe:SecretKey não configurado. Use User Secrets ou variável de ambiente.")
             .Validate(s => !string.IsNullOrWhiteSpace(s.WebhookSecret),
                 "Stripe:WebhookSecret não configurado. Use User Secrets ou variável de ambiente.")
-            .Validate(s => s.TaxaPlataformaPercent > 0 && s.TaxaPlataformaPercent <= 100,
-                "Stripe:TaxaPlataformaPercent deve estar entre 0 e 100.")
+            .Validate(s => s.TaxaPlataformaPercent > 0 && s.TaxaPlataformaPercent < 100,
+                "Stripe:TaxaPlataformaPercent deve ser maior que 0 e menor que 100.")
             .Validate(s => !(s.SecretKey.StartsWith("sk_live_", StringComparison.Ordinal) && s.ExpectLivemode != true),
                 "Stripe:SecretKey usa prefixo sk_live_ mas Stripe__ExpectLivemode não é true. Defina Stripe__ExpectLivemode=true em produção.")
             .Validate(s => !(s.SecretKey.StartsWith("sk_test_", StringComparison.Ordinal) && s.ExpectLivemode == true),
@@ -241,6 +245,19 @@ public static class InfrastructureExtensions
             new ViaCepConsultaCepService(
                 sp.GetRequiredService<IHttpClientFactory>().CreateClient("viacep"),
                 sp.GetRequiredService<ILogger<ViaCepConsultaCepService>>()));
+
+        var hibpUrlBaseCfg = configuration["Hibp:UrlBase"];
+        var hibpUrlBase = string.IsNullOrWhiteSpace(hibpUrlBaseCfg) ? HibpDefaultUrl : hibpUrlBaseCfg;
+        var hibpTimeout = configuration.GetValue<int?>("Hibp:TimeoutSegundos") ?? 3;
+        services.AddHttpClient("hibp", client =>
+        {
+            client.BaseAddress = new Uri(hibpUrlBase);
+            client.Timeout = TimeSpan.FromSeconds(hibpTimeout);
+        });
+        services.AddScoped<IPwnedPasswordsService>(sp =>
+            new HibpPwnedPasswordsService(
+                sp.GetRequiredService<IHttpClientFactory>().CreateClient("hibp"),
+                sp.GetRequiredService<ILogger<HibpPwnedPasswordsService>>()));
 
         services.AddOptions<DeliveryLogSettings>()
             .BindConfiguration("DeliveryLog")
