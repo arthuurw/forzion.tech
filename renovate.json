@@ -10,6 +10,7 @@
   "timezone": "America/Sao_Paulo",
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
+  "minimumReleaseAge": "7 days",
   "packageRules": [
     {
       "description": "Auto-merge patches sem revisao",
