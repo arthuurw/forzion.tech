@@ -6,9 +6,12 @@ using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Settings;
+using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Pagamentos.ListarRecebimentosTreinador;
+using forzion.tech.Application.UseCases.Pagamentos.ObterStatusPagamento;
 using forzion.tech.Application.UseCases.Treinadores.GerarCobrancaPlanoTreinador;
+using forzion.tech.Domain.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -32,6 +35,13 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", ContaId.ToString());
+        return client;
+    }
+
+    private HttpClient ClienteAluno()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("TestAluno", ContaId.ToString());
         return client;
     }
 
@@ -88,6 +98,14 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task Get_StatusPagamento_ComAlunoAutenticado_NaoRetorna401()
+    {
+        var response = await ClienteAluno().GetAsync($"/aluno/pagamentos/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     public class PagamentosWebFactory : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -135,8 +153,29 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
                     });
                 services.AddScoped(_ => recebimentosMock.Object);
 
+                services.RemoveAll<ObterStatusPagamentoHandler>();
+                var statusPagamentoMock = new Mock<ObterStatusPagamentoHandler>(
+                    Mock.Of<IPagamentoRepository>(),
+                    Mock.Of<IAssinaturaAlunoRepository>());
+                statusPagamentoMock
+                    .Setup(h => h.HandleAsync(It.IsAny<ObterStatusPagamentoQuery>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(Result.Failure<PagamentoResponse>(
+                        Error.NotFound("pagamento_nao_encontrado", "Pagamento não encontrado.")));
+                services.AddScoped(_ => statusPagamentoMock.Object);
+
                 services.AddAuthentication("Test")
-                    .AddScheme<AuthenticationSchemeOptions, TreinadorTestAuthHandler>("Test", _ => { });
+                    .AddPolicyScheme("Test", "Test", options =>
+                    {
+                        options.ForwardDefaultSelector = context =>
+                        {
+                            var header = context.Request.Headers.Authorization.FirstOrDefault();
+                            return header is not null && header.StartsWith("TestAluno", StringComparison.Ordinal)
+                                ? "TestAluno"
+                                : "TestTreinador";
+                        };
+                    })
+                    .AddScheme<AuthenticationSchemeOptions, TreinadorTestAuthHandler>("TestTreinador", _ => { })
+                    .AddScheme<AuthenticationSchemeOptions, AlunoTestAuthHandler>("TestAluno", _ => { });
             });
         }
     }
@@ -162,6 +201,30 @@ public class PagamentosEndpointsTests : IClassFixture<PagamentosEndpointsTests.P
             };
             var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, "Test")));
+        }
+    }
+
+    public class AlunoTestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+    {
+        public AlunoTestAuthHandler(
+            IOptionsMonitor<AuthenticationSchemeOptions> options,
+            ILoggerFactory logger,
+            UrlEncoder encoder)
+            : base(options, logger, encoder) { }
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            if (string.IsNullOrEmpty(Request.Headers.Authorization.FirstOrDefault()))
+                return Task.FromResult(AuthenticateResult.Fail("Sem token"));
+
+            var claims = new[]
+            {
+                new Claim("sub", ContaId.ToString()),
+                new Claim("tipo_conta", "Aluno"),
+                new Claim("perfil_id", PerfilId.ToString()),
+            };
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAluno"));
+            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, "TestAluno")));
         }
     }
 }
