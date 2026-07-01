@@ -49,7 +49,7 @@ A idem-key do PaymentIntent é DETERMINÍSTICA e montada pelo CALLER, não deriv
 | `Stripe:PublishableKey` | passada pro frontend via `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | client-side | frontend desliga `<Elements>` (stripePromise null) |
 | `Stripe:WebhookSecret` | `StripeService.ValidarWebhookAsync` | HMAC-SHA256 verify | boot falha |
 | `Stripe:ExpectLivemode` | `StripeService.ValidarWebhookAsync` (SEC-03) | bool? — exige `evento.Livemode` == valor; rejeita webhook divergente | `null` = sem enforcement (não-prod) |
-| `Stripe:TaxaPlataformaPercent` | `StripeSettings` + `PaymentSettings` (espelho App) | taxa plataforma (0,100] | default `5m`; ValidateOnStart falha se fora do range |
+| `Stripe:TaxaPlataformaPercent` | `StripeSettings` + `PaymentSettings` (espelho App) | taxa plataforma (0,100) | default `5m`; ValidateOnStart falha se fora do range |
 | `Stripe:UrlBase` | frontend base usada em URLs de retorno onboarding | retorno Stripe → app | vazio → links quebram |
 | `Stripe:TimeoutSegundos` | `StripeClientFactory` (cliente global) | timeout HttpClient (PERF-04) | default `30` (SDK default 80s) |
 | `Stripe:MaxNetworkRetries` | `StripeClientFactory` (cliente global) | retries de transporte | default `2` |
@@ -57,8 +57,8 @@ A idem-key do PaymentIntent é DETERMINÍSTICA e montada pelo CALLER, não deriv
 
 - Local (dev): User Secrets ou `.env` na raiz (compose pega `STRIPE_SECRET_KEY`, etc).
 - Deploy: env vars no compose → `Stripe__SecretKey`/`Stripe__WebhookSecret`/`Stripe__UrlBase` ← `${STRIPE_*}` (vêm do `/opt/forzion/.env` na VM). `Internal__ApiKey` ← `${INTERNAL_API_KEY}`.
-- ValidateOnStart enforça: SecretKey/WebhookSecret não-vazios, TaxaPlataformaPercent ∈ (0,100].
-- **Decisão SPH-09 — taxa == 100% (auditoria 2026-06-25)**: verificado via Stripe docs (`context7`) — erro `off_session_payment_application_fee_amount_too_high` = "application_fee_amount must be ≤ amount". Stripe ACEITA `fee == amount`. Logo `TaxaPlataformaPercent ∈ (0,100]` é o bound Stripe-correto; `> 100` ⇒ `fee > amount` ⇒ Stripe rejeita. `taxa == 100` (treinador líquido zero) é misconfig de negócio mas Stripe-válido — documentado como resíduo, NÃO bloqueado no boot.
+- ValidateOnStart enforça: SecretKey/WebhookSecret não-vazios, TaxaPlataformaPercent ∈ (0,100) (`taxa > 0 && taxa < 100`; `taxa <= 0` OU `taxa >= 100` ⇒ boot ABORTA — fail-closed boot guard, conforma AD-003).
+- **Decisão SPH-09 — taxa == 100% (auditoria 2026-06-25; endurecido 2026-06-30)**: verificado via Stripe docs (`context7`) — erro `off_session_payment_application_fee_amount_too_high` = "application_fee_amount must be ≤ amount". Stripe ACEITA `fee == amount` (`> 100` ⇒ `fee > amount` ⇒ Stripe rejeita). PORÉM `taxa == 100` (treinador líquido zero) é misconfig de negócio — o boot guard agora **fail-closed rejeita `taxa >= 100`** (range válido `(0,100)`, `taxa > 0 && taxa < 100` via ValidateOnStart), pegando o misconfig no startup em vez de aceitá-lo. (Antes: `<= 100`, que permitia 100% erroneamente.)
 
 ## COMPONENTES
 - `StripeService` (Infrastructure/Services) — implementa `IStripeService`. Wrapper fino sobre Stripe.net SDK; sem retry custom.
