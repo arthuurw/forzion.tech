@@ -730,7 +730,7 @@ public class TreinoAlunoRepositoryTests(InfrastructureTestFixture fixture)
         var treinoOutro = await SeedTreinoAsync(ctx, treinadorId);
 
         var taAlvo1 = await SeedTreinoAlunoAsync(ctx, treinoAlvo.Id, aluno1Id);
-        var taAlvo2 = await SeedTreinoAlunoAsync(ctx, treinoAlvo.Id, aluno2Id);
+        var taAlvo2 = await SeedTreinoAlunoAsync(ctx, treinoAlvo.Id, aluno2Id, TreinoAlunoStatus.Inativo);
         var taOutro = await SeedTreinoAlunoAsync(ctx, treinoOutro.Id, aluno1Id);
 
         await Repo(ctx).RemoverPorTreinoIdAsync(treinoAlvo.Id);
