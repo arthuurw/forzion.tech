@@ -15,7 +15,7 @@ using Moq;
 
 namespace forzion.tech.Tests.Application.Pagamentos;
 
-public class ProcessarWebhookStripeHandlerTests
+public partial class ProcessarWebhookStripeHandlerTests
 {
     private readonly Mock<IPagamentoRepository> _pagamentoRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();

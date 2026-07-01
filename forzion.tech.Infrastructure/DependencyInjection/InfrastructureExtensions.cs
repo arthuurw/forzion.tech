@@ -188,7 +188,11 @@ public static class InfrastructureExtensions
 
         var stripeSettings = configuration.GetSection("Stripe").Get<StripeSettings>();
         if (!string.IsNullOrWhiteSpace(stripeSettings?.SecretKey))
-            Stripe.StripeConfiguration.StripeClient = StripeClientFactory.Construir(stripeSettings);
+        {
+            var stripeClient = StripeClientFactory.Construir(stripeSettings);
+            Stripe.StripeConfiguration.StripeClient = stripeClient;
+            services.AddSingleton<Stripe.IStripeClient>(stripeClient);
+        }
 
         services.AddOptions<NfseSettings>()
             .BindConfiguration("Nfse")

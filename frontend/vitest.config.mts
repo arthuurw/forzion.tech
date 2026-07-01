@@ -66,9 +66,9 @@ export default defineConfig({
           functions: 85,
           statements: 85,
         },
-        // Fase 6 atingiu target final em src/app/api/** (cobertura completa
-        // dos 8 route handlers). src/app/** ainda em baseline — pages Next
-        // serao expandidas em fases futuras (E2E + storybook + a11y).
+        // src/app/api/** = cobertura completa dos route handlers. src/app/**
+        // (pages Next) subiu no coverage-uplift (COV-06..09); piso ratcheado
+        // a ~(atingido − margem) p/ travar o ganho.
         "src/app/api/**": {
           lines: 90,
           branches: 85,
@@ -76,10 +76,10 @@ export default defineConfig({
           statements: 90,
         },
         "src/app/**": {
-          lines: 70,
-          branches: 60,
-          functions: 55,
-          statements: 65,
+          lines: 81,
+          branches: 75,
+          functions: 66,
+          statements: 78,
         },
       },
     },

@@ -122,13 +122,13 @@ jobs:
       - name: Gates de cobertura (Domain / Application / Api)
         run: >
           bash scripts/check-coverage.sh coverage-report/Summary.json
-          "forzion.tech.Domain:branch=75,line=85,method=85"
-          "forzion.tech.Application:branch=75,line=85,method=85"
-          "forzion.tech.Api:line=85,method=70"
+          "forzion.tech.Domain:branch=86,line=93,method=95"
+          "forzion.tech.Application:branch=81,line=90,method=93"
+          "forzion.tech.Api:branch=77,line=88,method=81"
 
-  # Roda a suíte COMPLETA: os gates global (branch50) e Infra (branch35) só fecham
-  # com a cobertura da UNIÃO unit+integração. Infra35 também falha se a integração
-  # parar de rodar em silêncio.
+  # Roda a suíte COMPLETA: os gates global (branch) e Infra (branch/line/method) só
+  # fecham com a cobertura da UNIÃO unit+integração. O gate Infra também falha se a
+  # integração parar de rodar em silêncio (a cobertura dos repos despenca sem ela).
   test-backend-integration:
     name: Backend — testes integração
     needs: [changes]
@@ -166,8 +166,8 @@ jobs:
       - name: Gates de cobertura (global + Infrastructure)
         run: >
           bash scripts/check-coverage.sh coverage-report/Summary.json
-          "__overall__:branch=50"
-          "forzion.tech.Infrastructure:branch=35"
+          "__overall__:branch=80"
+          "forzion.tech.Infrastructure:branch=76,line=88,method=87"
 
       - name: Coverage summary (backend)
         if: always()
