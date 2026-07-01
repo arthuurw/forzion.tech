@@ -10,9 +10,13 @@ namespace forzion.tech.Infrastructure.Services;
 public class StripeService(
     IOptions<StripeSettings> settings,
     TimeProvider timeProvider,
-    ILogger<StripeService> logger) : IStripeService
+    ILogger<StripeService> logger,
+    IStripeClient? client = null) : IStripeService
 {
     private readonly StripeSettings _settings = settings.Value;
+
+    private readonly IStripeClient? _client = client;
+    private IStripeClient Client => _client ?? StripeConfiguration.StripeClient;
 
     // C4: Chave passada explicitamente em cada chamada — sem dependência de estado global
     private RequestOptions RequestOptions => new() { ApiKey = _settings.SecretKey };
@@ -33,7 +37,7 @@ public class StripeService(
 
     public async Task<string> CriarContaConnectAsync(string email, string nome, CancellationToken cancellationToken = default)
     {
-        var service = new AccountService();
+        var service = new AccountService(Client);
         var options = new AccountCreateOptions
         {
             Type = "express",
@@ -62,7 +66,7 @@ public class StripeService(
         string urlCancelamento,
         CancellationToken cancellationToken = default)
     {
-        var service = new AccountLinkService();
+        var service = new AccountLinkService(Client);
         var options = new AccountLinkCreateOptions
         {
             Account = stripeAccountId,
@@ -85,7 +89,7 @@ public class StripeService(
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(valor);
         var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(valor, taxaPlataformaPercent);
 
-        var service = new PaymentIntentService();
+        var service = new PaymentIntentService(Client);
         var options = new PaymentIntentCreateOptions
         {
             Amount = valorCentavos,
@@ -127,7 +131,7 @@ public class StripeService(
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(valor);
         var (valorCentavos, taxaCentavos) = MoneyCentavos.ValorETaxaCentavos(valor, taxaPlataformaPercent);
 
-        var service = new PaymentIntentService();
+        var service = new PaymentIntentService(Client);
         var options = new PaymentIntentCreateOptions
         {
             Amount = valorCentavos,
@@ -155,7 +159,7 @@ public class StripeService(
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(valor);
         var (valorCentavos, _) = MoneyCentavos.ValorETaxaCentavos(valor, 0m);
 
-        var service = new PaymentIntentService();
+        var service = new PaymentIntentService(Client);
         var options = new PaymentIntentCreateOptions
         {
             Amount = valorCentavos,
@@ -194,7 +198,7 @@ public class StripeService(
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(valor);
         var (valorCentavos, _) = MoneyCentavos.ValorETaxaCentavos(valor, 0m);
 
-        var service = new PaymentIntentService();
+        var service = new PaymentIntentService(Client);
         var options = new PaymentIntentCreateOptions
         {
             Amount = valorCentavos,
@@ -215,14 +219,14 @@ public class StripeService(
 
     public async Task<bool> ContaEstaAtivadaAsync(string stripeAccountId, CancellationToken cancellationToken = default)
     {
-        var service = new AccountService();
+        var service = new AccountService(Client);
         var account = await service.GetAsync(stripeAccountId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
         return account.ChargesEnabled;
     }
 
     public async Task CriarReembolsoAsync(Guid pagamentoId, string paymentIntentId, bool reverterTransferencia, CancellationToken cancellationToken = default)
     {
-        var service = new RefundService();
+        var service = new RefundService(Client);
         var options = new RefundCreateOptions { PaymentIntent = paymentIntentId };
 
         if (reverterTransferencia)
@@ -239,7 +243,7 @@ public class StripeService(
 
     public async Task<CancelarPaymentIntentResultado> CancelarPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default)
     {
-        var service = new PaymentIntentService();
+        var service = new PaymentIntentService(Client);
         var intent = await service.GetAsync(paymentIntentId, requestOptions: RequestOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         switch (intent.Status)
@@ -283,7 +287,7 @@ public class StripeService(
             UncategorizedText = MontarTextoEvidencia(evidencias),
         };
 
-        var service = new DisputeService();
+        var service = new DisputeService(Client);
         await service.UpdateAsync(
             disputeId,
             new DisputeUpdateOptions { Evidence = evidence },
@@ -344,7 +348,7 @@ public class StripeService(
         CancellationToken cancellationToken = default)
     {
         var maxPorRun = _settings.MaxEventosReconciliacaoPorRun;
-        var service = new EventService();
+        var service = new EventService(Client);
         var options = new EventListOptions
         {
             Created = new DateRangeOptions
