@@ -6,6 +6,7 @@ using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Seed;
 using forzion.tech.Infrastructure.Services;
 using forzion.tech.Tests.Infrastructure.Services;
+using forzion.tech.Tests.TestDoubles;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,8 @@ public class E2ECollection : ICollectionFixture<RealPipelineFixture>
 }
 
 // Sobe a app com handlers/infra REAIS contra um Postgres efêmero (Testcontainers),
-// aplicando migrations reais + seed. Único ponto não-real: IStripeService (fake).
+// aplicando migrations reais + seed. Pontos não-reais: IStripeService e
+// IPwnedPasswordsService (fakes).
 //
 // Usa o ambiente "Test" porque ele desliga o rate limiter (evita 429 em rajada de
 // requests) e faz o AddApiServices PULAR o AddInfrastructure automático — então
@@ -77,6 +79,8 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
             services.AddInfrastructure(ctx.Configuration, ctx.HostingEnvironment);
             services.RemoveAll<IStripeService>();
             services.AddSingleton<IStripeService>(Stripe);
+            services.RemoveAll<IPwnedPasswordsService>();
+            services.AddSingleton<IPwnedPasswordsService>(new FakePwnedPasswordsService());
             services.RemoveAll<IDomainEventDispatcher>();
             services.AddScoped<IDomainEventDispatcher, DispatcherBestEffortSincrono>();
             services.AddSingleton<ILoggerProvider>(new CapturaErroLoggerProvider(ErrosCapturados));
