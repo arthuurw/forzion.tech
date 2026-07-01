@@ -1,6 +1,6 @@
 import { test, expect, useAuthRole } from "../../fixtures/test-base";
 import { AdminAlunosPage } from "../../pages/admin/AdminAlunosPage";
-import { seedAluno, cleanupContaByEmail, makeTestEmail } from "../../utils/seed";
+import { seedAluno, cleanupContaByEmail, makeTestEmail, makeTestSenha } from "../../utils/seed";
 
 /**
  * Critical 2/8 — admin lista, filtra e gerencia alunos.
@@ -26,7 +26,7 @@ test.describe("admin aluno CRUD", () => {
       pacoteId: pacoteId!,
       nome: "CRUD Test Aluno",
       email: seededEmail,
-      senha: "Senha@123456",
+      senha: makeTestSenha(),
       telefone: "11988887777",
     });
   });

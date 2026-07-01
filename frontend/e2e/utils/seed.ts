@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { APIRequestContext } from "@playwright/test";
 
 export interface SeedAlunoInput {
@@ -80,4 +81,8 @@ export async function cleanupContaByEmail(
 
 export function makeTestEmail(prefix: string): string {
   return `${prefix}+${Date.now()}@e2e.test`;
+}
+
+export function makeTestSenha(): string {
+  return `Aa1!${randomUUID()}`;
 }
