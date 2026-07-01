@@ -15,7 +15,7 @@ namespace forzion.tech.Tests.E2E;
 [Trait("Category", "Integration")]
 public class CrossTenantAuthorizationE2ETests(RealPipelineFixture fixture)
 {
-    private const string SenhaPadrao = "Senha@12345";
+    private const string SenhaPadrao = "SenhaForte123";
     private readonly Dictionary<Guid, string> _emailPorTreinador = new();
 
     [Fact]

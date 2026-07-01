@@ -18,6 +18,7 @@ using forzion.tech.Application.UseCases.Pacotes.CriarPacote;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
 using forzion.tech.Application.UseCases.Treinos.CriarTreino;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Tests.TestDoubles;
 
 namespace forzion.tech.Tests.Application.Validators;
 
@@ -55,11 +56,11 @@ public class CadastrarAlunoCommandValidatorTests
 
 public class RegistrarAlunoCommandValidatorTests
 {
-    private readonly RegistrarAlunoCommandValidator _validator = new();
+    private readonly RegistrarAlunoCommandValidator _validator = new(new FakePwnedPasswordsService());
 
     private static RegistrarAlunoCommand Cmd(
         string email = "joao@x.com",
-        string senha = "Senha123",
+        string senha = "SenhaForte123",
         string nome = "Joao",
         int? diasDisponiveis = null,
         int? tempoMin = null) =>
@@ -68,51 +69,51 @@ public class RegistrarAlunoCommandValidatorTests
             TempoDisponivelMinutos: tempoMin);
 
     [Fact]
-    public void Valido_QuandoTudoOk() => _validator.Validate(Cmd()).IsValid.Should().BeTrue();
+    public async Task Valido_QuandoTudoOk() => (await _validator.ValidateAsync(Cmd())).IsValid.Should().BeTrue();
 
     [Fact]
-    public void Invalido_QuandoEmailVazio() => _validator.Validate(Cmd(email: "")).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoEmailVazio() => (await _validator.ValidateAsync(Cmd(email: ""))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoSenhaMenorQue8() => _validator.Validate(Cmd(senha: "Aa1aaaa")).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoSenhaMenorQue12() => (await _validator.ValidateAsync(Cmd(senha: "SenhaForte1"))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoSenhaSemMinuscula() => _validator.Validate(Cmd(senha: "SENHA123")).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoSenhaSemMinuscula() => (await _validator.ValidateAsync(Cmd(senha: "SENHAFORTE123"))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoSenhaSemMaiuscula() => _validator.Validate(Cmd(senha: "senha123")).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoSenhaSemMaiuscula() => (await _validator.ValidateAsync(Cmd(senha: "senhaforte123"))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoSenhaSemNumero() => _validator.Validate(Cmd(senha: "SenhaAbc")).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoSenhaSemNumero() => (await _validator.ValidateAsync(Cmd(senha: "SenhaForteAbc"))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoTreinadorIdEmpty()
+    public async Task Invalido_QuandoTreinadorIdEmpty()
     {
-        var cmd = new RegistrarAlunoCommand("j@x.com", "Senha123", "Joao", Guid.Empty, Guid.NewGuid());
-        _validator.Validate(cmd).IsValid.Should().BeFalse();
+        var cmd = new RegistrarAlunoCommand("j@x.com", "SenhaForte123", "Joao", Guid.Empty, Guid.NewGuid());
+        (await _validator.ValidateAsync(cmd)).IsValid.Should().BeFalse();
     }
 
     [Fact]
-    public void Invalido_QuandoPacoteIdEmpty()
+    public async Task Invalido_QuandoPacoteIdEmpty()
     {
-        var cmd = new RegistrarAlunoCommand("j@x.com", "Senha123", "Joao", Guid.NewGuid(), Guid.Empty);
-        _validator.Validate(cmd).IsValid.Should().BeFalse();
+        var cmd = new RegistrarAlunoCommand("j@x.com", "SenhaForte123", "Joao", Guid.NewGuid(), Guid.Empty);
+        (await _validator.ValidateAsync(cmd)).IsValid.Should().BeFalse();
     }
 
     [Fact]
-    public void Invalido_QuandoDiasDisponiveisZero() => _validator.Validate(Cmd(diasDisponiveis: 0)).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoDiasDisponiveisZero() => (await _validator.ValidateAsync(Cmd(diasDisponiveis: 0))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoDiasDisponiveisMaiorQue7() => _validator.Validate(Cmd(diasDisponiveis: 8)).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoDiasDisponiveisMaiorQue7() => (await _validator.ValidateAsync(Cmd(diasDisponiveis: 8))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Valido_QuandoTempoMinutos60() => _validator.Validate(Cmd(tempoMin: 60)).IsValid.Should().BeTrue();
+    public async Task Valido_QuandoTempoMinutos60() => (await _validator.ValidateAsync(Cmd(tempoMin: 60))).IsValid.Should().BeTrue();
 
     [Fact]
-    public void Invalido_QuandoTempoMinutosForaEnum()
+    public async Task Invalido_QuandoTempoMinutosForaEnum()
     {
         // 999 nao e valor valido do TempoDisponivel enum.
-        _validator.Validate(Cmd(tempoMin: 999)).IsValid.Should().BeFalse();
+        (await _validator.ValidateAsync(Cmd(tempoMin: 999))).IsValid.Should().BeFalse();
     }
 }
 
@@ -151,37 +152,40 @@ public class LoginCommandValidatorTests
 
 public class RegistrarTreinadorCommandValidatorTests
 {
-    private readonly RegistrarTreinadorCommandValidator _validator = new();
+    private readonly RegistrarTreinadorCommandValidator _validator = new(new FakePwnedPasswordsService());
 
     private static RegistrarTreinadorCommand Cmd(
         string email = "t@x.com",
-        string senha = "Senha123",
+        string senha = "SenhaForte123",
         string nome = "Coach",
         string? tel = null) => new(email, senha, nome, Guid.NewGuid(), forzion.tech.Domain.Enums.ModoPagamentoAluno.Plataforma, tel);
 
     [Fact]
-    public void Valido_QuandoTudoOk() => _validator.Validate(Cmd()).IsValid.Should().BeTrue();
+    public async Task Valido_QuandoTudoOk() => (await _validator.ValidateAsync(Cmd())).IsValid.Should().BeTrue();
 
     [Fact]
-    public void Invalido_QuandoEmailVazio() => _validator.Validate(Cmd(email: "")).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoEmailVazio() => (await _validator.ValidateAsync(Cmd(email: ""))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoSenhaSemMaiuscula() => _validator.Validate(Cmd(senha: "senha123")).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoSenhaSemMaiuscula() => (await _validator.ValidateAsync(Cmd(senha: "senhaforte123"))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoSenhaAcimaDe72Chars()
-        => _validator.Validate(Cmd(senha: "Sa1" + new string('x', 70))).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoSenhaMenorQue12() => (await _validator.ValidateAsync(Cmd(senha: "SenhaForte1"))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoNomeAcimaDe100Chars()
-        => _validator.Validate(Cmd(nome: new string('a', 101))).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoSenhaAcimaDe72Chars()
+        => (await _validator.ValidateAsync(Cmd(senha: "Sa1" + new string('x', 70)))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Invalido_QuandoTelefoneAcimaDe20Chars()
-        => _validator.Validate(Cmd(tel: new string('9', 21))).IsValid.Should().BeFalse();
+    public async Task Invalido_QuandoNomeAcimaDe100Chars()
+        => (await _validator.ValidateAsync(Cmd(nome: new string('a', 101)))).IsValid.Should().BeFalse();
 
     [Fact]
-    public void Valido_QuandoTelefoneNull() => _validator.Validate(Cmd(tel: null)).IsValid.Should().BeTrue();
+    public async Task Invalido_QuandoTelefoneAcimaDe20Chars()
+        => (await _validator.ValidateAsync(Cmd(tel: new string('9', 21)))).IsValid.Should().BeFalse();
+
+    [Fact]
+    public async Task Valido_QuandoTelefoneNull() => (await _validator.ValidateAsync(Cmd(tel: null))).IsValid.Should().BeTrue();
 }
 
 public class CriarTreinoCommandValidatorTests
@@ -259,24 +263,24 @@ public class AtualizarPerfilCommandValidatorTests
 public class ValidacaoPtBrMessagesTests
 {
     [Fact]
-    public void RegistrarAluno_EmailVazio_MensagemPtBr_SemTermoIngles()
+    public async Task RegistrarAluno_EmailVazio_MensagemPtBr_SemTermoIngles()
     {
-        var validator = new RegistrarAlunoCommandValidator();
-        var cmd = new RegistrarAlunoCommand("", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid());
+        var validator = new RegistrarAlunoCommandValidator(new FakePwnedPasswordsService());
+        var cmd = new RegistrarAlunoCommand("", "SenhaForte123", "Joao", Guid.NewGuid(), Guid.NewGuid());
 
-        var msg = validator.Validate(cmd).Errors.First(e => e.PropertyName == "Email").ErrorMessage;
+        var msg = (await validator.ValidateAsync(cmd)).Errors.First(e => e.PropertyName == "Email").ErrorMessage;
 
         msg.Should().Be("O e-mail é obrigatório.");
         msg.Should().NotContainAny("must", "empty", "'Email'");
     }
 
     [Fact]
-    public void RegistrarTreinador_NomeVazio_MensagemPtBr_SemTermoIngles()
+    public async Task RegistrarTreinador_NomeVazio_MensagemPtBr_SemTermoIngles()
     {
-        var validator = new RegistrarTreinadorCommandValidator();
-        var cmd = new RegistrarTreinadorCommand("t@x.com", "Senha123", "", Guid.NewGuid(), ModoPagamentoAluno.Plataforma, null);
+        var validator = new RegistrarTreinadorCommandValidator(new FakePwnedPasswordsService());
+        var cmd = new RegistrarTreinadorCommand("t@x.com", "SenhaForte123", "", Guid.NewGuid(), ModoPagamentoAluno.Plataforma, null);
 
-        var msg = validator.Validate(cmd).Errors.Single(e => e.PropertyName == "Nome").ErrorMessage;
+        var msg = (await validator.ValidateAsync(cmd)).Errors.Single(e => e.PropertyName == "Nome").ErrorMessage;
 
         msg.Should().Be("O nome é obrigatório.");
         msg.Should().NotContainAny("must", "empty");

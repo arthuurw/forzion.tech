@@ -8,6 +8,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
+using forzion.tech.Tests.TestDoubles;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -34,7 +35,7 @@ public class RegistrarTreinadorHandlerTests
             .Returns(Task.CompletedTask);
         _handler = new RegistrarTreinadorHandler(
             _contaRepo.Object, _treinadorRepo.Object, _planoRepo.Object, _assinaturaRepo.Object,
-            _passwordHasher.Object, _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), TimeProvider.System, _logger.Object);
+            _passwordHasher.Object, _unitOfWork.Object, new RegistrarTreinadorCommandValidator(new FakePwnedPasswordsService()), TimeProvider.System, _logger.Object);
     }
 
     private Guid SetupPlano(TierPlano tier, decimal preco, bool ativo = true)
@@ -46,7 +47,7 @@ public class RegistrarTreinadorHandlerTests
     }
 
     private RegistrarTreinadorCommand Cmd(Guid planoId, ModoPagamentoAluno modo = ModoPagamentoAluno.Plataforma)
-        => new("ana@teste.com", "Senha123", "Ana", planoId, modo);
+        => new("ana@teste.com", "SenhaForte123", "Ana", planoId, modo);
 
     [Fact]
     public async Task HandleAsync_PlanoFree_AguardandoAprovacao_SemAssinatura_EnviaVerificacao()
@@ -120,7 +121,7 @@ public class RegistrarTreinadorHandlerTests
     [Fact]
     public async Task HandleAsync_PlanoIdVazio_LancaValidationException()
     {
-        var act = async () => await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "Senha123", "Ana", Guid.Empty, ModoPagamentoAluno.Plataforma));
+        var act = async () => await _handler.HandleAsync(new RegistrarTreinadorCommand("ana@teste.com", "SenhaForte123", "Ana", Guid.Empty, ModoPagamentoAluno.Plataforma));
         await act.Should().ThrowAsync<ValidationException>();
     }
 }

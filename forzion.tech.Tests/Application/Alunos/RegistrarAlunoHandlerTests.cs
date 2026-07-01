@@ -8,6 +8,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
+using forzion.tech.Tests.TestDoubles;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -38,7 +39,7 @@ public class RegistrarAlunoHandlerTests
             _passwordHasher.Object,
             _unitOfWork.Object,
             _logAprovacaoRepo.Object,
-            new RegistrarAlunoCommandValidator(),
+            new RegistrarAlunoCommandValidator(new FakePwnedPasswordsService()),
             TimeProvider.System,
             _logger.Object);
     }
@@ -69,7 +70,7 @@ public class RegistrarAlunoHandlerTests
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
 
-        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id));
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id));
 
         result.Value.Nome.Should().Be("Joao");
         result.Value.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
@@ -90,7 +91,7 @@ public class RegistrarAlunoHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "SenhaForte123", "Joao", treinadorId, Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("treinador.nao_disponivel");
@@ -106,7 +107,7 @@ public class RegistrarAlunoHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
-        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "SenhaForte123", "Joao", treinadorId, Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("treinador.nao_disponivel");
@@ -119,7 +120,7 @@ public class RegistrarAlunoHandlerTests
         var conta = global::forzion.tech.Domain.Entities.Conta.Criar(Email.Criar("joao@teste.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(conta);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "SenhaForte123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<EmailJaCadastradoException>();
     }
 
@@ -129,7 +130,7 @@ public class RegistrarAlunoHandlerTests
         _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Conta?)null);
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
 
-        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand("joao@teste.com", "SenhaForte123", "Joao", Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<TreinadorNaoEncontradoException>();
     }
 
@@ -152,7 +153,7 @@ public class RegistrarAlunoHandlerTests
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Pacote?)null);
 
         var act = async () => await _handler.HandleAsync(
-            new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, Guid.NewGuid()));
+            new RegistrarAlunoCommand("joao@teste.com", "SenhaForte123", "Joao", treinadorId, Guid.NewGuid()));
 
         await act.Should().ThrowAsync<PacoteNaoEncontradoException>();
     }
@@ -171,7 +172,7 @@ public class RegistrarAlunoHandlerTests
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
 
         var result = await _handler.HandleAsync(
-            new RegistrarAlunoCommand("joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id));
+            new RegistrarAlunoCommand("joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Should().Contain("não pertence ao treinador");
@@ -184,7 +185,7 @@ public class RegistrarAlunoHandlerTests
         var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
 
         var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand(
-            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
             Doencas: "Hipertensão",
             ConsentimentoDadosSaude: false));
 
@@ -205,7 +206,7 @@ public class RegistrarAlunoHandlerTests
             .Callback<LogAprovacao, CancellationToken>((l, _) => logRegistrado = l);
 
         var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
-            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
             Doencas: "Hipertensão",
             ConsentimentoDadosSaude: true,
             ConsentimentoDadosSaudeEm: consentidoEmCliente));
@@ -231,7 +232,7 @@ public class RegistrarAlunoHandlerTests
             .Callback<LogAprovacao, CancellationToken>((l, _) => logRegistrado = l);
 
         var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
-            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
             Doencas: "Hipertensão",
             ConsentimentoDadosSaude: true));
 
@@ -247,7 +248,7 @@ public class RegistrarAlunoHandlerTests
         var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
 
         var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand(
-            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
             ObservacoesAdicionais: "Tenho diabetes tipo 2",
             ConsentimentoDadosSaude: false));
 
@@ -262,7 +263,7 @@ public class RegistrarAlunoHandlerTests
         var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
 
         var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
-            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id));
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id));
 
         result.IsSuccess.Should().BeTrue();
         _logAprovacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -284,7 +285,7 @@ public class RegistrarAlunoHandlerTests
             validatorNoOp.Object, TimeProvider.System, _logger.Object);
 
         var result = await handler.HandleAsync(new RegistrarAlunoCommand(
-            "joao@teste.com", "Senha123", "Joao", treinadorId, pacote.Id,
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
             Doencas: "Hipertensão",
             ConsentimentoDadosSaude: false));
 

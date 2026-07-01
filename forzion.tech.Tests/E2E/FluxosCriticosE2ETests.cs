@@ -19,7 +19,7 @@ namespace forzion.tech.Tests.E2E;
 [Trait("Category", "Integration")]
 public class FluxosCriticosE2ETests(RealPipelineFixture fixture)
 {
-    private const string SenhaPadrao = "Senha@12345";
+    private const string SenhaPadrao = "SenhaForte123";
 
     // --- Fluxo 1: cadastro de treinador → login admin → aprovação ---
 

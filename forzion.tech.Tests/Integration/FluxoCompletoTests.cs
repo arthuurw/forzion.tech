@@ -12,6 +12,7 @@ using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Tests.TestDoubles;
 using forzion.tech.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -51,11 +52,11 @@ public class FluxoCompletoTests
 
         var handler = new RegistrarTreinadorHandler(
             _contaRepo.Object, _treinadorRepo.Object, _planoRepo.Object, Mock.Of<IAssinaturaTreinadorRepository>(),
-            _passwordHasher.Object, _unitOfWork.Object, new RegistrarTreinadorCommandValidator(), TimeProvider.System,
+            _passwordHasher.Object, _unitOfWork.Object, new RegistrarTreinadorCommandValidator(new FakePwnedPasswordsService()), TimeProvider.System,
             Mock.Of<ILogger<RegistrarTreinadorHandler>>());
 
         var result = await handler.HandleAsync(
-            new RegistrarTreinadorCommand("treinador@teste.com", "Senha123", "Carlos", planoFree.Id, ModoPagamentoAluno.Plataforma));
+            new RegistrarTreinadorCommand("treinador@teste.com", "SenhaForte123", "Carlos", planoFree.Id, ModoPagamentoAluno.Plataforma));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(TreinadorStatus.AguardandoAprovacao);
@@ -96,11 +97,11 @@ public class FluxoCompletoTests
             _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object, _treinadorRepo.Object,
             _pacoteRepo.Object, _passwordHasher.Object, _unitOfWork.Object,
             Mock.Of<ILogAprovacaoRepository>(),
-            new RegistrarAlunoCommandValidator(), TimeProvider.System,
+            new RegistrarAlunoCommandValidator(new FakePwnedPasswordsService()), TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         var result = await handler.HandleAsync(
-            new RegistrarAlunoCommand("aluno@teste.com", "Senha123", "Joao", treinador.Id, pacote.Id));
+            new RegistrarAlunoCommand("aluno@teste.com", "SenhaForte123", "Joao", treinador.Id, pacote.Id));
 
         result.Value.Status.Should().Be(AlunoStatus.AguardandoAprovacao);
         _vinculoRepo.Verify(r => r.AdicionarAsync(It.IsAny<VinculoTreinadorAluno>(), It.IsAny<CancellationToken>()), Times.Once);
