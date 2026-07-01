@@ -45,6 +45,7 @@ export function createMockRequest(init: MockRequestInit = {}): NextRequest {
   const headers = new Headers(init.headers ?? {});
   const urlStr = init.url ?? "http://localhost:3000/";
   const parsedUrl = new URL(urlStr);
+  if (!headers.has("host")) headers.set("host", parsedUrl.host);
 
   const body = init.body !== undefined ? JSON.stringify(init.body) : "";
   const arrayBuffer = body
