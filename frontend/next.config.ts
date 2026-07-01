@@ -32,6 +32,7 @@ const buildCsp = () =>
     // blob:: worker do Sentry Session Replay.
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
+    "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
   ].join("; ");
