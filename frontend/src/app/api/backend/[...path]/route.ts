@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { isCrossOrigin } from "@/lib/security/sameOrigin";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
@@ -7,7 +8,13 @@ const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 // Nenhum outro header (Cookie, Authorization, X-Forwarded-For, etc.) é repassado.
 const ALLOWED_REQUEST_HEADERS = ["content-type", "accept", "x-step-up-token"];
 
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
 async function proxy(request: NextRequest, path: string[]): Promise<NextResponse> {
+  if (MUTATING_METHODS.has(request.method) && isCrossOrigin(request)) {
+    return NextResponse.json({ error: "cross-origin" }, { status: 403 });
+  }
+
   // A9 — Sanitização de path: rejeitar segmentos que permitiriam path traversal.
   if (path.some((s) => s === ".." || s === ".")) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
