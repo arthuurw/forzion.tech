@@ -1,5 +1,5 @@
 import { test, expect, useAuthRole } from "../../fixtures/test-base";
-import { seedAluno, cleanupContaByEmail, makeTestEmail } from "../../utils/seed";
+import { seedAluno, cleanupContaByEmail, makeTestEmail, makeTestSenha } from "../../utils/seed";
 
 /**
  * Smoke 4/5 — cria aluno via API e cleanup como admin.
@@ -29,7 +29,7 @@ test.describe("smoke @smoke", () => {
       pacoteId: pacoteId!,
       nome: "Smoke Test Aluno",
       email,
-      senha: "Senha@123456",
+      senha: makeTestSenha(),
       telefone: "11999990000",
       diasDisponiveis: 3,
       tempoDisponivelMinutos: 60,
