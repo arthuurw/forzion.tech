@@ -89,7 +89,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
-    "@commitlint/cli": "^20.5.3",
+    "@commitlint/cli": "^21.1.0",
     "@commitlint/config-conventional": "^20.5.3",
     "@cyclonedx/cyclonedx-npm": "^4.2.1",
     "@eslint/eslintrc": "^3.3.5",
