@@ -71,6 +71,18 @@ public class HibpPwnedPasswordsServiceTests
     }
 
     [Fact]
+    public async Task EstaComprometidaAsync_CancelamentoDoCaller_Propaga()
+    {
+        var (svc, _) = Criar(_ => throw new TaskCanceledException());
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var acao = async () => await svc.EstaComprometidaAsync(Senha, cts.Token);
+
+        await acao.Should().ThrowAsync<TaskCanceledException>();
+    }
+
+    [Fact]
     public async Task EstaComprometidaAsync_EnviaApenasPrefixoDe5_KAnonymity()
     {
         var (svc, handler) = Criar(_ => Resposta(HttpStatusCode.OK, CorpusCom($"{Sufixo}:99")));

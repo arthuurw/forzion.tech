@@ -28,8 +28,8 @@ public sealed class HibpPwnedPasswordsService(HttpClient httpClient, ILogger<Hib
             var corpo = await resposta.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             return ContemSufixoComprometido(corpo, sufixo);
         }
-        // Fail-open: indisponibilidade do HIBP nunca bloqueia signup/troca de senha.
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException
+            && !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Falha ao consultar HIBP; check de senha vazada fail-open.");
             return false;

@@ -29,6 +29,10 @@ public static class InfrastructureExtensions
     private const string ResendDefaultApiUrl = "https://api.resend.com/emails";
 #pragma warning restore S1075
 
+#pragma warning disable S1075 // Fallback default; overridden via Hibp:UrlBase config key
+    private const string HibpDefaultUrl = "https://api.pwnedpasswords.com/";
+#pragma warning restore S1075
+
     private static IEmailService EnvolverComDecorator(IServiceProvider sp, IEmailService inner) =>
         new EnvironmentEmailDecorator(
             inner,
@@ -242,12 +246,12 @@ public static class InfrastructureExtensions
                 sp.GetRequiredService<IHttpClientFactory>().CreateClient("viacep"),
                 sp.GetRequiredService<ILogger<ViaCepConsultaCepService>>()));
 
-        var hibpUrlBase = configuration["Hibp:UrlBase"];
+        var hibpUrlBaseCfg = configuration["Hibp:UrlBase"];
+        var hibpUrlBase = string.IsNullOrWhiteSpace(hibpUrlBaseCfg) ? HibpDefaultUrl : hibpUrlBaseCfg;
         var hibpTimeout = configuration.GetValue<int?>("Hibp:TimeoutSegundos") ?? 3;
         services.AddHttpClient("hibp", client =>
         {
-            if (!string.IsNullOrWhiteSpace(hibpUrlBase))
-                client.BaseAddress = new Uri(hibpUrlBase);
+            client.BaseAddress = new Uri(hibpUrlBase);
             client.Timeout = TimeSpan.FromSeconds(hibpTimeout);
         });
         services.AddScoped<IPwnedPasswordsService>(sp =>
