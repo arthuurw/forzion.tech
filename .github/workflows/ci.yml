@@ -7,7 +7,7 @@ on:
     # Se TODOS os arquivos casarem paths-ignore, o workflow não dispara.
     paths-ignore: ["**.md", "docs/**", "specs/**"]
   pull_request:
-    branches: [homolog]
+    branches: [homolog, main]
     paths-ignore: ["**.md", "docs/**", "specs/**"]
 
 # Cancela runs antigos do mesmo ref quando um novo push chega.
