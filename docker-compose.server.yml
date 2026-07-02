@@ -31,6 +31,9 @@ services:
       WhatsApp__MarcarComoTeste: ${WHATSAPP_MARK_AS_TEST:-false}
       WhatsApp__RedirecionarDestinatariosPara: ${WHATSAPP_REDIRECT_TO:-}
       WhatsApp__AllowlistTelefones: ${WHATSAPP_ALLOWLIST_PHONES:-}
+    mem_limit: 1536m
+    cpu_shares: 1024
+    pids_limit: 512
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
@@ -49,6 +52,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER: ${JWT_ISSUER:-forzion.tech}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-forzion.tech}
+    mem_limit: 768m
+    cpu_shares: 1024
+    pids_limit: 512
     restart: unless-stopped
     depends_on:
       backend:
