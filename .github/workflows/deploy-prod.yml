@@ -1,0 +1,130 @@
+name: Deploy -> prod
+
+on:
+  workflow_run:
+    workflows: ["Release images (prod -> GHCR)"]
+    types: [completed]
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-prod:
+    name: Deploy -> prod
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Conecta no tailnet
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          version: latest
+
+      - name: Deploy na VM (pull + up -d -p prd)
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          host: ${{ secrets.VM_TAILNET_IP }}
+          username: ubuntu
+          key: ${{ secrets.HOMOLOG_SSH_KEY }}
+          envs: SHA
+          script: |
+            set -e
+            cd /opt/forzion/app-prod
+            git fetch origin main
+            git checkout "$SHA"
+
+            EF=/opt/forzion/.env.prod
+            export REGISTRY=ghcr.io/arthuurw
+            export TAG="$SHA"
+            DC="docker compose -p prd -f docker-compose.server.yml --env-file $EF"
+
+            PREV_BACKEND="$($DC images -q backend 2>/dev/null || true)"
+            PREV_FRONTEND="$($DC images -q frontend 2>/dev/null || true)"
+
+            $DC pull backend frontend
+
+            DB_CONNECTION="$(grep -E '^DB_CONNECTION=' "$EF" | head -1 | cut -d= -f2-)"
+            DB_CONNECTION="${DB_CONNECTION%\"}"; DB_CONNECTION="${DB_CONNECTION#\"}"
+            export DB_CONNECTION
+            ENV_FILE="$EF" bash scripts/migrate-dryrun.sh
+
+            $DC run --rm --no-deps backend migrate
+
+            $DC up -d --remove-orphans
+
+            health_ok=0
+            for _ in $(seq 1 30); do
+              if $DC exec -T backend curl -fsS http://localhost:8080/health >/dev/null 2>&1 \
+                 && $DC exec -T backend curl -fsS http://localhost:8080/health/ready >/dev/null 2>&1; then
+                health_ok=1; break
+              fi
+              sleep 4
+            done
+
+            if [ "$health_ok" != 1 ]; then
+              if [ -z "$PREV_BACKEND" ] || [ -z "$PREV_FRONTEND" ]; then
+                echo "::error::Health gate REPROVADO e SEM imagem anterior para rollback (PREV vazio). Deploy inicial ou imagem podada — intervenção manual necessária."
+                exit 1
+              fi
+              echo "::error::Health gate REPROVADO pós-deploy — revertendo para a imagem anterior."
+              IMG_BACKEND="$($DC config --images backend | head -1)"
+              IMG_FRONTEND="$($DC config --images frontend | head -1)"
+              docker tag "$PREV_BACKEND" "$IMG_BACKEND"
+              docker tag "$PREV_FRONTEND" "$IMG_FRONTEND"
+              $DC up -d --no-build --remove-orphans
+              exit 1
+            fi
+
+            $DC restart nginx
+
+            docker image prune -f
+
+            echo "Deploy prod OK -- $SHA"
+
+      - name: Healthchecks ping (success)
+        if: success()
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/deploy-prod" || true
+
+      - name: Healthchecks ping (failure)
+        if: failure()
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/deploy-prod/fail" || true
+
+      - name: Notificar falha via issue
+        if: failure()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const sha = context.payload.workflow_run.head_sha;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `[deploy-prod] Falha no deploy de ${sha.slice(0, 8)}`;
+            const body = [
+              '⚠️ Workflow **Deploy -> prod** falhou.',
+              '',
+              `**Run:** ${runUrl}`,
+              `**SHA:** ${sha}`,
+              '',
+              'Prod pode estar servindo a imagem ANTERIOR (rollback por tag) ou exigindo intervenção manual (PREV vazio).',
+              '',
+              'Investigar (ordem dos layers):',
+              '1. Tailnet: runner conectou? ACL `tag:ci -> VM:22` liberada?',
+              '2. SSH: `VM_TAILNET_IP`/`HOMOLOG_SSH_KEY` válidos?',
+              '3. Pull GHCR: `docker login ghcr.io` persistido na VM (~/.docker/config.json)? Imagem do SHA existe?',
+              '4. Gate A (migrate-dryrun): schema/DB_CONNECTION de `.env.prod` corretos?',
+              '5. Gate C (health): `docker compose -p prd logs backend --tail 200` na VM.',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ops', 'deploy-prod-failed']
+            });
