@@ -34,15 +34,15 @@ jobs:
         with:
           host: ${{ secrets.VM_TAILNET_IP }}
           username: ubuntu
-          key: ${{ secrets.HOMOLOG_SSH_KEY }}
+          key: ${{ secrets.PROD_SSH_KEY }}
           envs: SHA
           script: |
             set -e
-            cd /opt/forzion/app-prod
+            cd /opt/forzion/prod/app
             git fetch origin main
             git checkout "$SHA"
 
-            EF=/opt/forzion/.env.prod
+            EF=/opt/forzion/prod/.env
             export REGISTRY=ghcr.io/arthuurw
             export TAG="$SHA"
             DC="docker compose -p prd -f docker-compose.server.yml --env-file $EF"
@@ -116,9 +116,9 @@ jobs:
               '',
               'Investigar (ordem dos layers):',
               '1. Tailnet: runner conectou? ACL `tag:ci -> VM:22` liberada?',
-              '2. SSH: `VM_TAILNET_IP`/`HOMOLOG_SSH_KEY` válidos?',
+              '2. SSH: `VM_TAILNET_IP`/`PROD_SSH_KEY` válidos?',
               '3. Pull GHCR: `docker login ghcr.io` persistido na VM (~/.docker/config.json)? Imagem do SHA existe?',
-              '4. Gate A (migrate-dryrun): schema/DB_CONNECTION de `.env.prod` corretos?',
+              '4. Gate A (migrate-dryrun): schema/DB_CONNECTION de `/opt/forzion/prod/.env` corretos?',
               '5. Gate C (health): `docker compose -p prd logs backend --tail 200` na VM.',
             ].join('\n');
             await github.rest.issues.create({
