@@ -1,4 +1,5 @@
 using FluentAssertions;
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Engajamento;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -7,6 +8,7 @@ using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
+using Moq;
 
 namespace forzion.tech.Tests.Infrastructure.Repositories;
 
@@ -19,6 +21,7 @@ public class NudgeAderenciaScanIntegrationTests(InfrastructureTestFixture fixtur
     private static NudgeAderenciaHandler Handler(AppDbContext ctx) =>
         new(new ExecucaoTreinoRepository(ctx),
             new NotificacaoRepository(ctx, new NpgsqlDatabaseErrorInspector()),
+            Mock.Of<IEmailEsfriamentoNotifier>(),
             new FakeTimeProvider(new DateTimeOffset(Hoje.AddHours(12))));
 
     private static async Task<(Guid contaAlunoId, Guid alunoId, Guid treinoId)> SeedAlunoAtivoAsync(AppDbContext ctx)

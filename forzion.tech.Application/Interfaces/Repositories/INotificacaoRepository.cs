@@ -4,7 +4,8 @@ namespace forzion.tech.Application.Interfaces.Repositories;
 
 public interface INotificacaoRepository
 {
-    Task AdicionarAsync(Notificacao notificacao, CancellationToken cancellationToken = default);
+    // true = linha nova inserida; false = no-op idempotente (23505 no índice parcial de dedup).
+    Task<bool> AdicionarAsync(Notificacao notificacao, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Notificacao>> ListarPorContaAsync(Guid contaId, int skip, int take, CancellationToken cancellationToken = default);
 

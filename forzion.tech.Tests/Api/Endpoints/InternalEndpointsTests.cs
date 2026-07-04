@@ -54,7 +54,8 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             TimeProvider.System, Mock.Of<ILogger<ReconciliarNfseHandler>>());
 
         public Mock<NudgeAderenciaHandler> NudgeMock { get; } = new(
-            Mock.Of<IExecucaoTreinoRepository>(), Mock.Of<INotificacaoRepository>(), TimeProvider.System);
+            Mock.Of<IExecucaoTreinoRepository>(), Mock.Of<INotificacaoRepository>(),
+            Mock.Of<IEmailEsfriamentoNotifier>(), TimeProvider.System);
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

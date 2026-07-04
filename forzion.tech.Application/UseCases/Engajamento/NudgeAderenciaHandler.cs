@@ -1,3 +1,4 @@
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -7,6 +8,7 @@ namespace forzion.tech.Application.UseCases.Engajamento;
 public class NudgeAderenciaHandler(
     IExecucaoTreinoRepository execucaoTreinoRepository,
     INotificacaoRepository notificacaoRepository,
+    IEmailEsfriamentoNotifier emailEsfriamentoNotifier,
     TimeProvider timeProvider)
 {
     private static readonly int[] MarcosStreak = [7, 14, 30];
@@ -50,8 +52,11 @@ public class NudgeAderenciaHandler(
                 var notificacao = Notificacao.Criar(snapshot.ContaId, tipo, titulo, corpo, agora, diaReferencia: hoje);
                 if (notificacao.IsFailure) continue;
 
-                await notificacaoRepository.AdicionarAsync(notificacao.Value, cancellationToken).ConfigureAwait(false);
+                var inserido = await notificacaoRepository.AdicionarAsync(notificacao.Value, cancellationToken).ConfigureAwait(false);
                 gerados++;
+
+                if (inserido && tipo is TipoNotificacao.LembreteLeve or TipoNotificacao.Recuperacao)
+                    await emailEsfriamentoNotifier.NotificarAsync(snapshot.AlunoId, tipo, cancellationToken).ConfigureAwait(false);
             }
         }
         return gerados;

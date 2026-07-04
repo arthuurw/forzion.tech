@@ -161,10 +161,10 @@ public class NotificacoesEndpointsTests : IClassFixture<NotificacoesEndpointsTes
         public void Seed(Notificacao n) => _store.Add(n);
         public void Limpar() => _store.Clear();
 
-        public Task AdicionarAsync(Notificacao notificacao, CancellationToken cancellationToken = default)
+        public Task<bool> AdicionarAsync(Notificacao notificacao, CancellationToken cancellationToken = default)
         {
             _store.Add(notificacao);
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public Task<IReadOnlyList<Notificacao>> ListarPorContaAsync(Guid contaId, int skip, int take, CancellationToken cancellationToken = default) =>

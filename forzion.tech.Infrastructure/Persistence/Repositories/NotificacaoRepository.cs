@@ -7,16 +7,18 @@ namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
 public class NotificacaoRepository(AppDbContext context, IDatabaseErrorInspector dbErrorInspector) : INotificacaoRepository
 {
-    public async Task AdicionarAsync(Notificacao notificacao, CancellationToken cancellationToken = default)
+    public async Task<bool> AdicionarAsync(Notificacao notificacao, CancellationToken cancellationToken = default)
     {
         await context.Notificacoes.AddAsync(notificacao, cancellationToken).ConfigureAwait(false);
         try
         {
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return true;
         }
         catch (Exception ex) when (dbErrorInspector.EhViolacaoDeUnicidade(ex))
         {
             context.Entry(notificacao).State = EntityState.Detached;
+            return false;
         }
     }
 

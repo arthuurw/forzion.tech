@@ -1,4 +1,5 @@
 using FluentAssertions;
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Engajamento;
 using forzion.tech.Domain.Entities;
@@ -15,11 +16,15 @@ public class NudgeAderenciaHandlerTests
         new(new DateTimeOffset(2026, 7, 4, 12, 0, 0, TimeSpan.Zero));
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<INotificacaoRepository> _notificacaoRepo = new();
+    private readonly Mock<IEmailEsfriamentoNotifier> _esfriamentoNotifier = new();
     private readonly NudgeAderenciaHandler _handler;
 
     public NudgeAderenciaHandlerTests()
     {
-        _handler = new NudgeAderenciaHandler(_execucaoRepo.Object, _notificacaoRepo.Object, _timeProvider);
+        _notificacaoRepo.Setup(r => r.AdicionarAsync(It.IsAny<Notificacao>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _handler = new NudgeAderenciaHandler(
+            _execucaoRepo.Object, _notificacaoRepo.Object, _esfriamentoNotifier.Object, _timeProvider);
     }
 
     [Theory]
@@ -130,6 +135,60 @@ public class NudgeAderenciaHandlerTests
             It.Is<Notificacao>(n => n.Tipo == TipoNotificacao.Reforco), It.IsAny<CancellationToken>()), Times.Once);
         _notificacaoRepo.Verify(r => r.AdicionarAsync(
             It.Is<Notificacao>(n => n.Tipo == TipoNotificacao.MarcoStreak), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_LembreteLeveInsertNovo_EnviaEmailEsfriamento()
+    {
+        var alunoId = Guid.NewGuid();
+        ComSnapshots(new AderenciaAlunoSnapshot(alunoId, Guid.NewGuid(), Hoje.AddDays(-2), Streak: 0));
+
+        await _handler.HandleAsync();
+
+        _esfriamentoNotifier.Verify(n => n.NotificarAsync(alunoId, TipoNotificacao.LembreteLeve, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_RecuperacaoInsertNovo_EnviaEmailEsfriamento()
+    {
+        var alunoId = Guid.NewGuid();
+        ComSnapshots(new AderenciaAlunoSnapshot(alunoId, Guid.NewGuid(), Hoje.AddDays(-4), Streak: 0));
+
+        await _handler.HandleAsync();
+
+        _esfriamentoNotifier.Verify(n => n.NotificarAsync(alunoId, TipoNotificacao.Recuperacao, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Reforco_NaoEnviaEmail()
+    {
+        ComSnapshots(new AderenciaAlunoSnapshot(Guid.NewGuid(), Guid.NewGuid(), Hoje, Streak: 0));
+
+        await _handler.HandleAsync();
+
+        _esfriamentoNotifier.Verify(n => n.NotificarAsync(It.IsAny<Guid>(), It.IsAny<TipoNotificacao>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_MarcoStreak_NaoEnviaEmail()
+    {
+        ComSnapshots(new AderenciaAlunoSnapshot(Guid.NewGuid(), Guid.NewGuid(), Hoje, Streak: 7));
+
+        await _handler.HandleAsync();
+
+        _esfriamentoNotifier.Verify(n => n.NotificarAsync(It.IsAny<Guid>(), It.IsAny<TipoNotificacao>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_LembreteLeveInsertNoOp_NaoReenvia()
+    {
+        _notificacaoRepo.Setup(r => r.AdicionarAsync(It.IsAny<Notificacao>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        ComSnapshots(new AderenciaAlunoSnapshot(Guid.NewGuid(), Guid.NewGuid(), Hoje.AddDays(-2), Streak: 0));
+
+        await _handler.HandleAsync();
+
+        _esfriamentoNotifier.Verify(n => n.NotificarAsync(It.IsAny<Guid>(), It.IsAny<TipoNotificacao>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private void ComSnapshots(params AderenciaAlunoSnapshot[] snapshots) =>
