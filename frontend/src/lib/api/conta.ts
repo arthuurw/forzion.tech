@@ -15,12 +15,19 @@ export interface AlterarSenhaData {
   novaSenha: string;
 }
 
+export interface PreferenciasNotificacaoData {
+  emailEngajamentoOptOut: boolean;
+}
+
 export const contaApi = {
   getPerfil() {
     return apiClient.get<PerfilResponse>("/conta/perfil");
   },
   atualizarPerfil(data: AtualizarPerfilData) {
     return apiClient.patch("/conta/perfil", data);
+  },
+  atualizarPreferenciasNotificacao(data: PreferenciasNotificacaoData) {
+    return apiClient.patch("/conta/preferencias-notificacao", data);
   },
   alterarSenha(data: AlterarSenhaData) {
     return apiClient.post("/conta/senha", data);
