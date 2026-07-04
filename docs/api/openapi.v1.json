@@ -290,6 +290,39 @@
         ]
       }
     },
+    "/internal/processar-engajamento": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Processa o scan diário de engajamento (nudges de aderência + digest do treinador) — requer X-Internal-Key",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/internal/gerar-nfse-comissao": {
       "post": {
         "tags": [
@@ -5455,6 +5488,67 @@
         ]
       }
     },
+    "/conta/preferencias-notificacao": {
+      "patch": {
+        "tags": [
+          "Conta"
+        ],
+        "summary": "Atualiza a preferência de e-mails de engajamento do usuário autenticado",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenciasNotificacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/conta/senha": {
       "post": {
         "tags": [
@@ -6019,6 +6113,100 @@
                 }
               }
             }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/notificacoes": {
+      "get": {
+        "tags": [
+          "Notificacoes"
+        ],
+        "summary": "Lista as notificações da conta autenticada (mais recentes primeiro, paginado)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificacaoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/notificacoes/nao-lidas/contador": {
+      "get": {
+        "tags": [
+          "Notificacoes"
+        ],
+        "summary": "Retorna a quantidade de notificações não-lidas da conta autenticada",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContadorNaoLidasResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/notificacoes/{id}/lida": {
+      "patch": {
+        "tags": [
+          "Notificacoes"
+        ],
+        "summary": "Marca uma notificação da conta autenticada como lida",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
           }
         },
         "security": [
@@ -8433,6 +8621,22 @@
           }
         }
       },
+      "ContadorNaoLidasResponse": {
+        "required": [
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "ContaTesteResumo": {
         "required": [
           "contaId",
@@ -10221,6 +10425,46 @@
           "CancelamentoExpirado"
         ]
       },
+      "NotificacaoResponse": {
+        "required": [
+          "id",
+          "tipo",
+          "titulo",
+          "corpo",
+          "linkRelativo",
+          "lida",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoNotificacao"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "corpo": {
+            "type": "string"
+          },
+          "linkRelativo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lida": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ObjetivoItem": {
         "required": [
           "objetivo",
@@ -10493,7 +10737,8 @@
         "required": [
           "nome",
           "email",
-          "tipoConta"
+          "tipoConta",
+          "emailEngajamentoOptOut"
         ],
         "type": "object",
         "properties": {
@@ -10505,6 +10750,9 @@
           },
           "tipoConta": {
             "type": "string"
+          },
+          "emailEngajamentoOptOut": {
+            "type": "boolean"
           }
         }
       },
@@ -10626,6 +10874,17 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "PreferenciasNotificacaoRequest": {
+        "required": [
+          "emailEngajamentoOptOut"
+        ],
+        "type": "object",
+        "properties": {
+          "emailEngajamentoOptOut": {
+            "type": "boolean"
           }
         }
       },
@@ -11512,6 +11771,17 @@
           "ComissaoMarketplace"
         ]
       },
+      "TipoNotificacao": {
+        "enum": [
+          "NovoTreino",
+          "ExecucaoRegistrada",
+          "Reforco",
+          "LembreteLeve",
+          "Recuperacao",
+          "MarcoStreak",
+          "DigestTreinador"
+        ]
+      },
       "TipoTrocaPlano": {
         "enum": [
           "Upgrade",
@@ -12255,6 +12525,9 @@
     },
     {
       "name": "Suporte"
+    },
+    {
+      "name": "Notificacoes"
     },
     {
       "name": "Exercícios"

@@ -1,3 +1,4 @@
+using System.Reflection;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
@@ -13,6 +14,7 @@ public sealed class ContaBuilder
     private string _passwordHash = "hash-deterministico";
     private TipoConta _tipoConta = TipoConta.Aluno;
     private DateTime _agora = TestData.Agora;
+    private bool _engajamentoEmailOptOut;
 
     public ContaBuilder ComEmail(string email)
     {
@@ -38,7 +40,23 @@ public sealed class ContaBuilder
         return this;
     }
 
-    public Conta Build() => Conta.Criar(_email, _passwordHash, _tipoConta, _agora).Value;
+    public ContaBuilder ComEngajamentoEmailOptOut(bool valor = true)
+    {
+        _engajamentoEmailOptOut = valor;
+        return this;
+    }
+
+    public Conta Build()
+    {
+        var conta = Conta.Criar(_email, _passwordHash, _tipoConta, _agora).Value;
+        if (_engajamentoEmailOptOut)
+        {
+            typeof(Conta)
+                .GetField("<NotificacoesEngajamentoEmailOptOut>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(conta, true);
+        }
+        return conta;
+    }
 
     public static implicit operator Conta(ContaBuilder builder) => builder.Build();
 }

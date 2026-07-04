@@ -366,6 +366,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("email_verificado");
 
+                    b.Property<bool>("NotificacoesEngajamentoEmailOptOut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("notificacoes_engajamento_email_opt_out");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1181,6 +1187,68 @@ namespace forzion.tech.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("ck_notas_fiscais_valor_nao_negativo", "\"valor\" >= 0");
                         });
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.Notificacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Corpo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("corpo");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DestinatarioContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("destinatario_conta_id");
+
+                    b.Property<DateOnly?>("DiaReferencia")
+                        .HasColumnType("date")
+                        .HasColumnName("dia_referencia");
+
+                    b.Property<bool>("Lida")
+                        .HasColumnType("boolean")
+                        .HasColumnName("lida");
+
+                    b.Property<string>("LinkRelativo")
+                        .HasColumnType("text")
+                        .HasColumnName("link_relativo");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tipo");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("titulo");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notificacoes");
+
+                    b.HasIndex("DestinatarioContaId", "Lida", "CreatedAt")
+                        .HasDatabaseName("ix_notificacoes_conta_lida_created");
+
+                    b.HasIndex("DestinatarioContaId", "Tipo", "DiaReferencia")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notificacoes_dedup")
+                        .HasFilter("dia_referencia IS NOT NULL");
+
+                    b.ToTable("notificacoes", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.OutboxEfeito", b =>
@@ -2430,6 +2498,16 @@ namespace forzion.tech.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_notas_fiscais_treinadores_treinador_id");
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.Notificacao", b =>
+                {
+                    b.HasOne("forzion.tech.Domain.Entities.Conta", null)
+                        .WithMany()
+                        .HasForeignKey("DestinatarioContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notificacoes_contas_destinatario_conta_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Pacote", b =>

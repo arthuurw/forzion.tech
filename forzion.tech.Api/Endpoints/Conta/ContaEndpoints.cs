@@ -6,6 +6,7 @@ using forzion.tech.Application.UseCases.Conta.AtualizarPerfil;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Conta.Logout;
 using forzion.tech.Application.UseCases.Conta.ObterPerfil;
+using forzion.tech.Application.UseCases.Conta.PreferenciasNotificacao;
 using forzion.tech.Application.UseCases.Conta.TrocarEmail;
 using forzion.tech.Infrastructure.Notifications.Email;
 using Microsoft.AspNetCore.Mvc;
@@ -41,6 +42,22 @@ public static class ContaEndpoints
             return Results.NoContent();
         })
         .WithSummary("Atualiza o nome do usuário autenticado")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)
+        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPatch("/preferencias-notificacao", async (
+            [FromBody] PreferenciasNotificacaoRequest request,
+            [FromServices] AtualizarPreferenciaNotificacaoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(new AtualizarPreferenciaNotificacaoCommand(request.EmailEngajamentoOptOut), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Atualiza a preferência de e-mails de engajamento do usuário autenticado")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
@@ -166,6 +183,7 @@ public static class ContaEndpoints
 }
 
 public record AtualizarPerfilRequest(string Nome);
+public record PreferenciasNotificacaoRequest(bool EmailEngajamentoOptOut);
 public record AlterarSenhaRequest(string SenhaAtual, string NovaSenha);
 public record AnonimizarContaSelfRequest(string Senha);
 public record TrocarEmailRequest(string NovoEmail);

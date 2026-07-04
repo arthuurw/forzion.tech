@@ -1,5 +1,6 @@
 using forzion.tech.Api.Extensions;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
+using forzion.tech.Application.UseCases.Engajamento;
 using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
 using forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
 using forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao;
@@ -94,6 +95,27 @@ public static class InternalEndpoints
         })
         .WithTags("Internal")
         .WithSummary("Dispara pré-aviso de renovação 3 dias antes para planos de treinadores — requer X-Internal-Key")
+        .AllowAnonymous()
+        .RequireRateLimiting("internal")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        endpoints.MapPost("/internal/processar-engajamento", async (
+            HttpContext httpContext,
+            [FromServices] NudgeAderenciaHandler handler,
+            [FromServices] DigestTreinadorHandler digestHandler,
+            IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            if (!InternalApiKeyValidator.ChaveInternaValida(httpContext, configuration))
+                return Results.Unauthorized();
+
+            var gerados = await handler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            var digests = await digestHandler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            return Results.Ok(new { gerados, digests });
+        })
+        .WithTags("Internal")
+        .WithSummary("Processa o scan diário de engajamento (nudges de aderência + digest do treinador) — requer X-Internal-Key")
         .AllowAnonymous()
         .RequireRateLimiting("internal")
         .Produces<object>()

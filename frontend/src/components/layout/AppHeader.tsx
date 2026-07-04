@@ -17,6 +17,7 @@ import ShieldIcon from "@mui/icons-material/Shield";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
+import NotificacoesBell from "@/components/notificacoes/NotificacoesBell";
 import { useAuth, homeRouteFor } from "@/lib/auth/context";
 import Link from "next/link";
 
@@ -67,6 +68,8 @@ export default function AppHeader({ onMenuToggle, showMenuButton = true }: AppHe
         </Link>
 
         <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
+          <NotificacoesBell />
+
           <Box
             component="button"
             aria-label="Abrir menu do usuário"

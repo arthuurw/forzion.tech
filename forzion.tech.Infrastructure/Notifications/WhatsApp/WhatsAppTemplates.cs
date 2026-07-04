@@ -63,4 +63,7 @@ public static class WhatsAppTemplates
 
     public static WhatsAppTemplateMessage NovoAlunoPendente(string nomeTreinador, string nomeAluno)
         => new("novo_aluno_pendente", [nomeTreinador, nomeAluno]);
+
+    public static WhatsAppTemplateMessage NovoTreinoDisponivel(string nomeAluno)
+        => new("novo_treino_disponivel", [nomeAluno]);
 }

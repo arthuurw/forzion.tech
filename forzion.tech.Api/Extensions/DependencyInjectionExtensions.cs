@@ -292,6 +292,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IDadosPessoaisExcelRenderer, forzion.tech.Infrastructure.Services.DadosPessoaisExcelRenderer>();
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosAlunoHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Engajamento.NudgeAderenciaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Engajamento.DigestTreinadorHandler>();
 
         services.AddScoped<ObterHealthReportConfigHandler>();
         services.AddScoped<AtualizarHealthReportConfigHandler>();
@@ -389,6 +391,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<ObterPerfilHandler>();
         services.AddScoped<AtualizarPerfilHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.PreferenciasNotificacao.AtualizarPreferenciaNotificacaoHandler>();
         services.AddScoped<AlterarSenhaHandler>();
         services.AddScoped<LogoutHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Suporte.EnviarMensagem.EnviarMensagemSuporteHandler>();

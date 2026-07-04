@@ -6,6 +6,7 @@ using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Handlers;
 using forzion.tech.Infrastructure.Notifications.Alerts;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Notifications.InApp;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using forzion.tech.Infrastructure.Outbox;
 using forzion.tech.Infrastructure.Outbox.Handlers;
@@ -151,6 +152,7 @@ public static class InfrastructureExtensions
         services.AddScoped<ITrustedDeviceRepository, TrustedDeviceRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IWhatsAppDeliveryLogRepository, WhatsAppDeliveryLogRepository>();
+        services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
         services.AddScoped<IPlanoNotificationPolicy, Notifications.PlanoNotificationPolicy>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
@@ -376,6 +378,13 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<AssinaturaAlunoReativadaEvent>, AssinaturaAlunoReativadaWhatsAppHandler>();
         services.AddScoped<IDomainEventHandler<AlunoRegistradoEvent>, AlunoRegistradoSincronizarAssinanteHandler>();
         services.AddScoped<IDomainEventHandler<AlunoAtualizadoEvent>, AlunoAtualizadoSincronizarAssinanteHandler>();
+
+        services.AddScoped<IDomainEventHandler<TreinoDisponibilizadoEvent>, TreinoDisponibilizadoInAppHandler>();
+        services.AddScoped<IDomainEventHandler<TreinoDisponibilizadoEvent>, TreinoDisponibilizadoEmailHandler>();
+        services.AddScoped<IDomainEventHandler<TreinoDisponibilizadoEvent>, TreinoDisponibilizadoWhatsAppHandler>();
+        services.AddScoped<IDomainEventHandler<ExecucaoRegistradaEvent>, ExecucaoRegistradaInAppHandler>();
+        services.AddScoped<IEmailEsfriamentoNotifier, EmailEsfriamentoNotifier>();
+        services.AddScoped<IDigestTreinadorEmailNotifier, DigestTreinadorEmailNotifier>();
 
         // WhatsAppSettings — guardrail de ambiente (defaults prod-safe)
         services.AddOptions<WhatsAppSettings>().BindConfiguration("WhatsApp");

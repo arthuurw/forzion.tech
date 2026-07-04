@@ -60,6 +60,7 @@ public class AppDbContext(
     public DbSet<TrocaEmailToken> TrocaEmailTokens => Set<TrocaEmailToken>();
     public DbSet<ReconciliacaoStripeEstado> ReconciliacoesStripeEstado => Set<ReconciliacaoStripeEstado>();
     public DbSet<RedefinicaoSenhaSegundoFator> RedefinicoesSenhaSegundoFator => Set<RedefinicaoSenhaSegundoFator>();
+    public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
 
     private EfCoreTransactionAdapter? _transacaoAtiva;
     private List<IDomainEvent>? _eventosBestEffortPosCommit;

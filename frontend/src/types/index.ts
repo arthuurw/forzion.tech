@@ -257,6 +257,26 @@ export interface PaginatedResponse<T> {
   tamanhoPagina: number;
 }
 
+// Espelha o enum C# Domain/Enums/TipoNotificacao (JsonStringEnumConverter casa por nome).
+export type TipoNotificacao =
+  | "NovoTreino"
+  | "ExecucaoRegistrada"
+  | "Reforco"
+  | "LembreteLeve"
+  | "Recuperacao"
+  | "MarcoStreak"
+  | "DigestTreinador";
+
+export interface NotificacaoResponse {
+  id: string;
+  tipo: TipoNotificacao;
+  titulo: string;
+  corpo: string;
+  linkRelativo: string | null;
+  lida: boolean;
+  createdAt: string;
+}
+
 export interface PontoProgressao {
   data: string;
   cargaMaxima: number | null;
