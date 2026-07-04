@@ -1,5 +1,6 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Events;
 using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
@@ -17,6 +18,31 @@ public class ExecucaoTreinoTests
         var e = CriarExecucao();
         e.Exercicios.Should().BeEmpty();
         e.Observacao.Should().BeNull();
+    }
+
+    [Fact]
+    public void Criar_DadosValidos_EmiteExecucaoRegistradaEventComIds()
+    {
+        var treinoId = Guid.NewGuid();
+        var alunoId = Guid.NewGuid();
+
+        var e = ExecucaoTreino.Criar(treinoId, alunoId, TestData.Agora, TestData.Agora).Value;
+
+        var evento = e.DomainEvents.OfType<ExecucaoRegistradaEvent>().Should().ContainSingle().Subject;
+        evento.AlunoId.Should().Be(alunoId);
+        evento.TreinoId.Should().Be(treinoId);
+        evento.ExecucaoTreinoId.Should().Be(e.Id);
+        evento.OcorridoEm.Should().Be(TestData.Agora);
+    }
+
+    [Fact]
+    public void ClearDomainEvents_RemoveEventoEmitido()
+    {
+        var e = CriarExecucao();
+
+        e.ClearDomainEvents();
+
+        e.DomainEvents.Should().BeEmpty();
     }
 
     [Fact]
