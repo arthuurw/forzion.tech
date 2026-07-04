@@ -54,6 +54,7 @@ src/
     charts/            — ChartFigure (figure+aria-label wrapper de recharts)
     forms/             — FormTextField, FormSelect, PasswordField
     layout/            — AppLayout, AppHeader, PublicLayout, NavConfig
+    notificacoes/      — NotificacoesBell (sino + badge não-lidas + feed, montado no AppHeader)
     observability/     — WebVitals
     pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
     seguranca/         — StepUpDialog, StepUpProvider, RecoveryCodesPanel (MFA/step-up)
@@ -171,7 +172,7 @@ interceptor resposta:
 - **Step-up** (`lib/auth/stepUpController.ts`): registry `registerStepUpHandler`/`requestStepUp` (promise in-flight compartilhada anti-tempestade). `StepUpProvider` (`components/seguranca/`) registra um handler que abre `StepUpDialog` (pede TOTP ou OTP por e-mail → `POST /auth/step-up/iniciar`+`/verificar`) e resolve com o token `step_up`; o interceptor injeta no header e refaz a request. Token NÃO persistido — vive só na request retried.
 - `ASSINATURA_INADIMPLENTE_EVENT` + `ASSINATURA_INADIMPLENTE_MESSAGE` exportados do client.
 - Enforcement server-side: backend `RequireAssinaturaAtivaFilter` retorna 403 `ASSINATURA_INADIMPLENTE` em endpoints restritos (ex.: POST execuções). Cross-ref inadimplência: [specification-stripe].
-- Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`, `nfse.ts`.
+- Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`, `nfse.ts`, `notificacoes.ts`.
 
 ## DADOS-CLIENT (TanStack Query)
 Camada de fetch-cache sobre o `apiClient`. Motivação: cada página era `useState(loading/error/data)` + `load()` em `useEffect` → toda navegação re-batia o backend mesmo p/ dados read-mostly. Cache+dedup por `queryKey` corta isso (e a carga no PG — ver [specification-performance §7]).
@@ -194,6 +195,12 @@ Camada de fetch-cache sobre o `apiClient`. Motivação: cada página era `useSta
 - Mobile (<md): `Drawer` temporário + `BottomNavigation` fixo (inferior, com `safe-area-inset-bottom`).
 - `NavConfig` por `TipoConta`: items de navegação derivados do role. `NavItem.drawerOnly?: boolean` marca itens secundários que aparecem só no `Drawer`, nunca na `BottomNavigation` mobile. Treinador: 8 itens no drawer (Alunos, Fichas, Exercícios, Pacotes, Notas fiscais, Recebimentos[drawerOnly], Plano[drawerOnly], Suporte); bottom-nav filtra `drawerOnly` → 6.
 - **Inatividade**: `useInactivity` — warn aos 25 min (5 min antes), logout automático aos 30 min.
+
+## NOTIFICAÇÕES (feed in-app — feature notificacoes-engajamento-treino)
+- **`components/notificacoes/NotificacoesBell.tsx`** — montado no `AppHeader` (à esquerda do menu do usuário), visível a TODOS os papéis; feed SELF-scoped (backend resolve por `ContaId` do token, não recebe id). No mount busca só o contador (`contarNaoLidas` → `Badge`); ao abrir o `Menu` busca o feed (`listar`, estados loading/erro/vazio via `LoadingSpinner`/`AlertBanner`/`EmptyState`). Clique num item → `marcarLida(id)` com update otimista (marca local + decrementa contador; reverte via erro no `AlertBanner`). Não-lidas destacadas (dot + peso). Sem polling (contador só no mount).
+- **`lib/api/notificacoes.ts`** (`notificacoesApi`, via `apiClient`): `listar(pagina=1, tamanhoPagina=20)` → `GET /notificacoes`, `contarNaoLidas()` → `GET /notificacoes/nao-lidas/contador`, `marcarLida(id)` → `PATCH /notificacoes/{id}/lida`.
+- **Opt-out de e-mails de engajamento** (`app/perfil/page.tsx`): Card "Notificações" com `Switch` "Receber e-mails de engajamento". Inicializa de `perfil.emailEngajamentoOptOut` (`GET /conta/perfil`, invertido → `receberEngajamento`); toggle chama `contaApi.atualizarPreferenciasNotificacao({emailEngajamentoOptOut: !receber})` (`PATCH /conta/preferencias-notificacao`) com update otimista + reversão no erro. Copy deixa claro que billing/conta continuam chegando.
+- Tipos: `NotificacaoResponse{id, tipo: TipoNotificacao, titulo, corpo, linkRelativo, lida, createdAt}` + union `TipoNotificacao` (espelha o enum C#) em `types/index.ts`; `PerfilResponse.emailEngajamentoOptOut` + `PreferenciasNotificacaoData` em `lib/api/conta.ts`.
 
 ## SEGURANÇA / MFA (`src/app/seguranca/`)
 Página autenticada de segurança da conta (link no `AppHeader`/nav). Cliente em `lib/api/mfa.ts` (via `apiClient` → `/conta/mfa/*`). Tipos em `types/index.ts` (`MfaStatus`, `CompletarMfaResponse`, `LoginResponse.mfaRequerido/mfaPendingToken`, etc.).
