@@ -290,6 +290,39 @@
         ]
       }
     },
+    "/internal/processar-engajamento": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Processa o scan diário de engajamento (nudges de aderência) — requer X-Internal-Key",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/internal/gerar-nfse-comissao": {
       "post": {
         "tags": [

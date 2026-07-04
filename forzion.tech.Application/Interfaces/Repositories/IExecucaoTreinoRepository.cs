@@ -27,6 +27,12 @@ public record ProgressaoAggRow(
 
 public record SessaoDiaCount(DateTime Dia, int Total);
 
+public record AderenciaAlunoSnapshot(
+    Guid AlunoId,
+    Guid ContaId,
+    DateOnly UltimaExecucao,
+    int Streak);
+
 public interface IExecucaoTreinoRepository
 {
     Task AdicionarAsync(ExecucaoTreino execucao, CancellationToken cancellationToken = default);
@@ -41,6 +47,13 @@ public interface IExecucaoTreinoRepository
     /// Bounded by the window; week bucketing is done in the application layer.
     /// </summary>
     Task<IReadOnlyList<SessaoDiaCount>> ContarSessoesPorDiaAsync(Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Projeção set-based p/ o scan de engajamento: por aluno com vínculo ativo e ao menos uma
+    /// execução, a última data de execução + streak (dias consecutivos terminando nela, janela
+    /// limitada). Duas queries agregadas (sem N+1); streak calculado em memória sobre os dias distintos.
+    /// </summary>
+    Task<IReadOnlyList<AderenciaAlunoSnapshot>> ProjetarAderenciaAtivosAsync(DateOnly hoje, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns per-(exercício, grupoMuscular, date) aggregated rows in the period,

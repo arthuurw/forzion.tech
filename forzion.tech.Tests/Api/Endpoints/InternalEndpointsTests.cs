@@ -6,6 +6,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Outbox;
 using forzion.tech.Application.Settings;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
+using forzion.tech.Application.UseCases.Engajamento;
 using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
 using forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
 using forzion.tech.Domain.Shared;
@@ -52,6 +53,9 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             Mock.Of<INotaFiscalRepository>(), Mock.Of<IEmissorNfseService>(), Mock.Of<IServiceScopeFactory>(),
             TimeProvider.System, Mock.Of<ILogger<ReconciliarNfseHandler>>());
 
+        public Mock<NudgeAderenciaHandler> NudgeMock { get; } = new(
+            Mock.Of<IExecucaoTreinoRepository>(), Mock.Of<INotificacaoRepository>(), TimeProvider.System);
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -69,6 +73,8 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
                 services.AddSingleton(AnonimizarMock.Object);
                 services.AddSingleton(GerarNfseComissaoMock.Object);
                 services.AddSingleton(ReconciliarNfseMock.Object);
+                services.RemoveAll<NudgeAderenciaHandler>();
+                services.AddSingleton(NudgeMock.Object);
             });
         }
     }
@@ -157,6 +163,28 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
     public async Task ReconciliarNfse_SemChave_Retorna401()
     {
         var response = await factory.CreateClient().PostAsync("/internal/reconciliar-nfse", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ProcessarEngajamento_ComChave_Retorna200()
+    {
+        factory.NudgeMock
+            .Setup(h => h.HandleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(4);
+
+        var req = new HttpRequestMessage(HttpMethod.Post, "/internal/processar-engajamento");
+        req.Headers.Add("X-Internal-Key", ChaveValida);
+        var response = await factory.CreateClient().SendAsync(req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ProcessarEngajamento_SemChave_Retorna401()
+    {
+        var response = await factory.CreateClient().PostAsync("/internal/processar-engajamento", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

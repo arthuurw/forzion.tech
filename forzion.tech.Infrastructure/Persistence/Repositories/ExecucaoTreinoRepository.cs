@@ -99,6 +99,55 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
             .ConfigureAwait(false);
     }
 
+    private const int JanelaStreakDias = 31;
+
+    public async Task<IReadOnlyList<AderenciaAlunoSnapshot>> ProjetarAderenciaAtivosAsync(
+        DateOnly hoje, CancellationToken cancellationToken = default)
+    {
+        var ultimas = await (
+            from e in _context.ExecucoesTreino
+            join a in _context.Alunos on e.AlunoId equals a.Id
+            where _context.VinculosTreinadorAluno.Any(v => v.AlunoId == e.AlunoId && v.Status == Domain.Enums.VinculoStatus.Ativo)
+            group e.DataExecucao by new { e.AlunoId, a.ContaId } into g
+            select new { g.Key.AlunoId, g.Key.ContaId, Ultima = g.Max() }
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        if (ultimas.Count == 0) return [];
+
+        var limite = DateTime.SpecifyKind(hoje.AddDays(-JanelaStreakDias).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+
+        var diasRecentes = await (
+            from e in _context.ExecucoesTreino
+            where e.DataExecucao >= limite &&
+                _context.VinculosTreinadorAluno.Any(v => v.AlunoId == e.AlunoId && v.Status == Domain.Enums.VinculoStatus.Ativo)
+            group e by new { e.AlunoId, Dia = e.DataExecucao.Date } into g
+            select new { g.Key.AlunoId, g.Key.Dia }
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        var diasPorAluno = diasRecentes
+            .GroupBy(x => x.AlunoId)
+            .ToDictionary(g => g.Key, g => g.Select(x => DateOnly.FromDateTime(x.Dia)).ToHashSet());
+
+        return ultimas.Select(u =>
+        {
+            var ultima = DateOnly.FromDateTime(u.Ultima);
+            var streak = diasPorAluno.TryGetValue(u.AlunoId, out var dias) ? CalcularStreak(ultima, dias) : 0;
+            return new AderenciaAlunoSnapshot(u.AlunoId, u.ContaId, ultima, streak);
+        }).ToList();
+    }
+
+    private static int CalcularStreak(DateOnly ultima, HashSet<DateOnly> dias)
+    {
+        var streak = 0;
+        var cursor = ultima;
+        while (dias.Contains(cursor))
+        {
+            streak++;
+            cursor = cursor.AddDays(-1);
+        }
+        return streak;
+    }
+
     public async Task<IReadOnlyList<ProgressaoAggRow>> ProjetarProgressaoAsync(
         Guid alunoId, DateTime de, DateTime ate, CancellationToken cancellationToken = default)
     {
