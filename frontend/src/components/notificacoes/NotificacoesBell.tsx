@@ -26,10 +26,16 @@ export default function NotificacoesBell() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let ativo = true;
     notificacoesApi
       .contarNaoLidas()
-      .then((res) => setNaoLidas(res.data.total))
+      .then((res) => {
+        if (ativo) setNaoLidas(res.data.total);
+      })
       .catch(() => {});
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   const abrir = async (el: HTMLElement) => {

@@ -22,7 +22,7 @@ import { renderWithProviders } from "@/test/render";
 beforeEach(() => {
   server.use(
     http.get("*/conta/perfil", () =>
-      HttpResponse.json({ nome: "João Teste", email: "joao@teste.com", tipoConta: "Aluno" }),
+      HttpResponse.json({ nome: "João Teste", email: "joao@teste.com", tipoConta: "Aluno", emailEngajamentoOptOut: false }),
     ),
     http.get("*/aluno/vinculo", () =>
       HttpResponse.json({ vinculoAtivo: null, vinculoPendente: null }),
@@ -41,6 +41,16 @@ describe("/perfil — preferência de notificações", () => {
   it("renderiza o toggle de engajamento marcado por padrão", async () => {
     renderWithProviders(<PerfilPage />);
     expect(await findToggle()).toBeChecked();
+  });
+
+  it("reflete opt-out persistido: toggle desmarcado quando emailEngajamentoOptOut=true", async () => {
+    server.use(
+      http.get("*/conta/perfil", () =>
+        HttpResponse.json({ nome: "João Teste", email: "joao@teste.com", tipoConta: "Aluno", emailEngajamentoOptOut: true }),
+      ),
+    );
+    renderWithProviders(<PerfilPage />);
+    expect(await findToggle()).not.toBeChecked();
   });
 
   it("desmarcar envia opt-out=true e mostra sucesso", async () => {

@@ -88,6 +88,7 @@ export default function PerfilPage() {
         const res = await contaApi.getPerfil();
         setPerfil(res.data);
         setNome(res.data.nome);
+        setReceberEngajamento(!res.data.emailEngajamentoOptOut);
         if (res.data.tipoConta === "Aluno") {
           const vinculoRes = await alunoApi.getMeuVinculo();
           setMeuVinculo(vinculoRes.data);

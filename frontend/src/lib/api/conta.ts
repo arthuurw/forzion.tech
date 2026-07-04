@@ -4,6 +4,7 @@ export interface PerfilResponse {
   nome: string;
   email: string;
   tipoConta: string;
+  emailEngajamentoOptOut: boolean;
 }
 
 export interface AtualizarPerfilData {
