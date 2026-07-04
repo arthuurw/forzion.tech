@@ -118,6 +118,48 @@ public class NudgeAderenciaScanIntegrationTests(InfrastructureTestFixture fixtur
     }
 
     [Fact]
+    public async Task ProjetarDigestTreinadores_AgregaTreinouEFaltou()
+    {
+        await using var ctx = fixture.CreateContext();
+        var agora = DateTime.UtcNow;
+
+        var contaTreinador = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Treinador, agora).Value;
+        var treinador = Treinador.Criar(contaTreinador.Id, "Carlos", agora).Value;
+        var contaTreinou = Conta.Criar(Email.Criar($"a{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Aluno, agora).Value;
+        var alunoTreinou = Aluno.Criar(contaTreinou.Id, "Treinou", agora).Value;
+        var contaFaltou = Conta.Criar(Email.Criar($"a{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Aluno, agora).Value;
+        var alunoFaltou = Aluno.Criar(contaFaltou.Id, "Faltou", agora).Value;
+
+        await ctx.Contas.AddRangeAsync(contaTreinador, contaTreinou, contaFaltou);
+        await ctx.Treinadores.AddAsync(treinador);
+        await ctx.Alunos.AddRangeAsync(alunoTreinou, alunoFaltou);
+        await ctx.SaveChangesAsync();
+
+        var pacote = Pacote.Criar(treinador.Id, "Pacote", 100m, agora).Value;
+        await ctx.Pacotes.AddAsync(pacote);
+        await ctx.SaveChangesAsync();
+
+        foreach (var al in new[] { alunoTreinou, alunoFaltou })
+        {
+            var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, al.Id, agora).Value;
+            vinculo.Aprovar(treinador.Id, pacote.Id, agora);
+            await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
+        }
+        var treino = Treino.Criar("Treino A", ObjetivoTreino.Forca, treinador.Id, agora).Value;
+        await ctx.Treinos.AddAsync(treino);
+        await ctx.SaveChangesAsync();
+
+        await AddExecucaoAsync(ctx, treino.Id, alunoTreinou.Id, Hoje.AddHours(9));
+
+        var snapshots = await new ExecucaoTreinoRepository(ctx)
+            .ProjetarDigestTreinadoresAsync(DateOnly.FromDateTime(Hoje));
+
+        var snapshot = snapshots.Single(s => s.TreinadorContaId == contaTreinador.Id);
+        snapshot.Treinaram.Should().Be(1);
+        snapshot.NaoTreinaram.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Scan_StreakDeSeteDias_GeraReforcoEMarcoStreak()
     {
         await using var ctx = fixture.CreateContext();
