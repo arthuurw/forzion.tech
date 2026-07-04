@@ -36,6 +36,21 @@ internal static class EmailTemplates
 
     private static string Enc(string? valor) => WebUtility.HtmlEncode(valor) ?? string.Empty;
 
+    public static string NovoTreinoDisponivel(string nomeAluno) =>
+        Layout(
+            "Novo treino disponível",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Seu treinador acabou de disponibilizar um <strong>novo treino</strong> para você.
+              Acesse a plataforma e comece agora.
+            </p>
+            <a href="https://forzion.tech/login"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver treino
+            </a>
+            """);
+
     public static string TreinadorAprovado(string nome) =>
         Layout(
             "Conta aprovada!",
