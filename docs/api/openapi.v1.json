@@ -6028,6 +6028,100 @@
         ]
       }
     },
+    "/notificacoes": {
+      "get": {
+        "tags": [
+          "Notificacoes"
+        ],
+        "summary": "Lista as notificações da conta autenticada (mais recentes primeiro, paginado)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificacaoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/notificacoes/nao-lidas/contador": {
+      "get": {
+        "tags": [
+          "Notificacoes"
+        ],
+        "summary": "Retorna a quantidade de notificações não-lidas da conta autenticada",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContadorNaoLidasResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/notificacoes/{id}/lida": {
+      "patch": {
+        "tags": [
+          "Notificacoes"
+        ],
+        "summary": "Marca uma notificação da conta autenticada como lida",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/exercicios": {
       "post": {
         "tags": [
@@ -8433,6 +8527,22 @@
           }
         }
       },
+      "ContadorNaoLidasResponse": {
+        "required": [
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "ContaTesteResumo": {
         "required": [
           "contaId",
@@ -10221,6 +10331,46 @@
           "CancelamentoExpirado"
         ]
       },
+      "NotificacaoResponse": {
+        "required": [
+          "id",
+          "tipo",
+          "titulo",
+          "corpo",
+          "linkRelativo",
+          "lida",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoNotificacao"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "corpo": {
+            "type": "string"
+          },
+          "linkRelativo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lida": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ObjetivoItem": {
         "required": [
           "objetivo",
@@ -11512,6 +11662,17 @@
           "ComissaoMarketplace"
         ]
       },
+      "TipoNotificacao": {
+        "enum": [
+          "NovoTreino",
+          "ExecucaoRegistrada",
+          "Reforco",
+          "LembreteLeve",
+          "Recuperacao",
+          "MarcoStreak",
+          "DigestTreinador"
+        ]
+      },
       "TipoTrocaPlano": {
         "enum": [
           "Upgrade",
@@ -12255,6 +12416,9 @@
     },
     {
       "name": "Suporte"
+    },
+    {
+      "name": "Notificacoes"
     },
     {
       "name": "Exercícios"

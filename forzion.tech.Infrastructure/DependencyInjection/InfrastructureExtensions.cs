@@ -151,6 +151,7 @@ public static class InfrastructureExtensions
         services.AddScoped<ITrustedDeviceRepository, TrustedDeviceRepository>();
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IWhatsAppDeliveryLogRepository, WhatsAppDeliveryLogRepository>();
+        services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
         services.AddScoped<IPlanoNotificationPolicy, Notifications.PlanoNotificationPolicy>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
