@@ -7,6 +7,8 @@ using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Handlers;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Notifications.InApp;
+using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using forzion.tech.Infrastructure.Outbox;
 using forzion.tech.Infrastructure.Outbox.Handlers;
 using forzion.tech.Infrastructure.Services;
@@ -182,6 +184,47 @@ public class HandlerDiRegistrationTests
         scope.ServiceProvider.GetServices<IOutboxEfeitoHandler>()
             .Should().Contain(h => h is EmitirNfseEfeitoHandler);
     }
+
+    [Fact]
+    public void DI_TreinoDisponibilizadoEvent_TemHandlersInAppEmailWhatsApp()
+    {
+        using var provider = BuildProvider();
+        using var scope = provider.CreateScope();
+
+        var handlers = scope.ServiceProvider
+            .GetServices<IDomainEventHandler<TreinoDisponibilizadoEvent>>()
+            .ToList();
+
+        handlers.Should().Contain(h => h is TreinoDisponibilizadoInAppHandler);
+        handlers.Should().Contain(h => h is TreinoDisponibilizadoEmailHandler);
+        handlers.Should().Contain(h => h is TreinoDisponibilizadoWhatsAppHandler);
+    }
+
+    [Fact]
+    public void DI_ExecucaoRegistradaEvent_TemHandlerInApp()
+    {
+        using var provider = BuildProvider();
+        using var scope = provider.CreateScope();
+
+        var handlers = scope.ServiceProvider
+            .GetServices<IDomainEventHandler<ExecucaoRegistradaEvent>>()
+            .ToList();
+
+        handlers.Should().ContainSingle(h => h is ExecucaoRegistradaInAppHandler);
+    }
+
+    [Fact]
+    public void CanaisExternosDeEngajamento_ConsultamPlanoNotificationPolicy()
+    {
+        DependeDe<TreinoDisponibilizadoEmailHandler>(typeof(IPlanoNotificationPolicy)).Should().BeTrue();
+        DependeDe<TreinoDisponibilizadoWhatsAppHandler>(typeof(IPlanoNotificationPolicy)).Should().BeTrue();
+        DependeDe<ExecucaoRegistradaInAppHandler>(typeof(IPlanoNotificationPolicy)).Should().BeFalse();
+    }
+
+    private static bool DependeDe<T>(Type dependencia) =>
+        typeof(T).GetConstructors().Single()
+            .GetParameters()
+            .Any(p => p.ParameterType == dependencia);
 
     private static string CriarPfxTemporario()
     {
