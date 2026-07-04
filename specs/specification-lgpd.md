@@ -105,6 +105,9 @@ Nenhum e-mail ou telefone cru em qualquer nível de log (`LogDebug`…`LogCritic
 ## RETENÇÃO DE LOGS DE ERRO
 `error_logs` é purgada após **90 dias** (`ErrorLogRepository.LimparAntigosAsync`, `ExecuteDelete` em `ocorrido_em < agora-90d`), rodada no GC horário `LimparTokensRevogadosService` (5º bloco try/catch independente). Antes a tabela crescia sem teto e retinha PII potencial indefinidamente (art.6). Filtro por `ocorrido_em` (indexado, `ix_error_logs_ocorrido_em`) — sem migration nova. Ver [specification-db] §Observabilidade.
 
+## RETENÇÃO DE NOTIFICAÇÕES
+`notificacoes` é purgada após **90 dias** (`NotificacaoRepository.PurgarAntesDeAsync`, `ExecuteDelete` em `created_at < agora-90d`), rodada no GC horário `LimparTokensRevogadosService` (6º bloco try/catch independente, alinhado a `error_logs`). O corpo da notificação pode conter PII leve (nome do aluno, mesmo nível dos e-mails) — a retenção por 90d é a mitigação de lifecycle (art.6 minimização); não há telefone/e-mail cru no corpo nem em log. Idempotente (cutoff relativo por data). Ver [specification-db] §Notificações.
+
 ## AUDITORIA
 `logs_aprovacao` com `TipoAcaoAprovacao.ExportacaoDados` / `AnonimizacaoConta` / `ConsentimentoAnamnese` (text enum; sem migration). Registra quem (`realizado_por`) / quando / alvo (`entidade_id` + tipo `Conta`). **Atribuição da exportação** (`ExportarDadosPessoaisCommand(ContaId, RealizadoPorId)`): self (`/conta/lgpd/exportar`) ⇒ `realizado_por = alvo = titular`; admin (`/admin/contas/{id}/lgpd/exportar`) ⇒ `realizado_por = ContaId do admin`, `alvo = titular` (exportação por admin fica atribuída a ele). Auditoria OBRIGATÓRIA/fail-closed: `LogAprovacao` é commitado ANTES de devolver o export; falha ao registrar ⇒ export NÃO retorna. `ConsentimentoAnamnese` = consentimento art. 11 no cadastro do aluno (observacao = versão do termo).
 

@@ -6,6 +6,8 @@ public class LimparTokensRevogadosService(
     IServiceProvider serviceProvider,
     ILogger<LimparTokensRevogadosService> logger) : BackgroundService
 {
+    private const int RetencaoNotificacaoDias = 90;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Purga já no boot (antes do delay): instância que reinicia em <1h (deploy/scale) nunca
@@ -91,6 +93,20 @@ public class LimparTokensRevogadosService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Erro ao limpar error_logs além da retenção.");
+        }
+
+        try
+        {
+            var notificacaoRepo = scope.ServiceProvider.GetRequiredService<INotificacaoRepository>();
+            var agora = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+            var limite = agora.AddDays(-RetencaoNotificacaoDias);
+            var notificacoesRemovidas = await notificacaoRepo.PurgarAntesDeAsync(limite, stoppingToken).ConfigureAwait(false);
+            if (notificacoesRemovidas > 0)
+                logger.LogInformation("Limpeza de notificações (retenção {Dias}d): {Count} registros removidos.", RetencaoNotificacaoDias, notificacoesRemovidas);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao limpar notificações além da retenção.");
         }
     }
 }
