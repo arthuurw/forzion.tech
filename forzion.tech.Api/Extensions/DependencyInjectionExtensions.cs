@@ -293,6 +293,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosAlunoHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosTreinadorHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Engajamento.NudgeAderenciaHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Engajamento.DigestTreinadorHandler>();
 
         services.AddScoped<ObterHealthReportConfigHandler>();
         services.AddScoped<AtualizarHealthReportConfigHandler>();

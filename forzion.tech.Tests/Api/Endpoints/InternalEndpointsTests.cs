@@ -57,6 +57,10 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             Mock.Of<IExecucaoTreinoRepository>(), Mock.Of<INotificacaoRepository>(),
             Mock.Of<IEmailEsfriamentoNotifier>(), TimeProvider.System);
 
+        public Mock<DigestTreinadorHandler> DigestMock { get; } = new(
+            Mock.Of<IExecucaoTreinoRepository>(), Mock.Of<INotificacaoRepository>(),
+            Mock.Of<IDigestTreinadorEmailNotifier>(), TimeProvider.System);
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -76,6 +80,8 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
                 services.AddSingleton(ReconciliarNfseMock.Object);
                 services.RemoveAll<NudgeAderenciaHandler>();
                 services.AddSingleton(NudgeMock.Object);
+                services.RemoveAll<DigestTreinadorHandler>();
+                services.AddSingleton(DigestMock.Object);
             });
         }
     }

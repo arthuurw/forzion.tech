@@ -33,6 +33,12 @@ public record AderenciaAlunoSnapshot(
     DateOnly UltimaExecucao,
     int Streak);
 
+public record DigestTreinadorSnapshot(
+    Guid TreinadorId,
+    Guid TreinadorContaId,
+    int Treinaram,
+    int NaoTreinaram);
+
 public interface IExecucaoTreinoRepository
 {
     Task AdicionarAsync(ExecucaoTreino execucao, CancellationToken cancellationToken = default);
@@ -54,6 +60,13 @@ public interface IExecucaoTreinoRepository
     /// limitada). Duas queries agregadas (sem N+1); streak calculado em memória sobre os dias distintos.
     /// </summary>
     Task<IReadOnlyList<AderenciaAlunoSnapshot>> ProjetarAderenciaAtivosAsync(DateOnly hoje, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Projeção set-based p/ o digest diário: por treinador com ≥1 vínculo ativo, quantos alunos
+    /// treinaram (ao menos uma execução em <paramref name="hoje"/> UTC) e quantos não treinaram.
+    /// Uma query com EXISTS correlacionado + agregação em memória (sem N+1).
+    /// </summary>
+    Task<IReadOnlyList<DigestTreinadorSnapshot>> ProjetarDigestTreinadoresAsync(DateOnly hoje, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns per-(exercício, grupoMuscular, date) aggregated rows in the period,

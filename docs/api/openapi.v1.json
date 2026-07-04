@@ -295,7 +295,7 @@
         "tags": [
           "Internal"
         ],
-        "summary": "Processa o scan diário de engajamento (nudges de aderência) — requer X-Internal-Key",
+        "summary": "Processa o scan diário de engajamento (nudges de aderência + digest do treinador) — requer X-Internal-Key",
         "responses": {
           "200": {
             "description": "OK",

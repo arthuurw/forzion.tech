@@ -79,6 +79,22 @@ internal static class EmailTemplates
             </a>
             """);
 
+    public static string DigestTreinador(string nomeTreinador, int treinaram, int naoTreinaram) =>
+        Layout(
+            "Resumo de aderência do dia",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Veja como foi a aderência dos seus alunos hoje:</p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0">
+              <tr><td style="padding:4px 0;color:#444"><strong>{treinaram}</strong> aluno(s) treinaram</td></tr>
+              <tr><td style="padding:4px 0;color:#444"><strong>{naoTreinaram}</strong> aluno(s) não treinaram</td></tr>
+            </table>
+            <a href="https://forzion.tech/login"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver detalhes
+            </a>
+            """);
+
     public static string TreinadorAprovado(string nome) =>
         Layout(
             "Conta aprovada!",

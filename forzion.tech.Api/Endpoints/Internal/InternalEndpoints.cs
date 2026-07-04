@@ -103,6 +103,7 @@ public static class InternalEndpoints
         endpoints.MapPost("/internal/processar-engajamento", async (
             HttpContext httpContext,
             [FromServices] NudgeAderenciaHandler handler,
+            [FromServices] DigestTreinadorHandler digestHandler,
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
@@ -110,10 +111,11 @@ public static class InternalEndpoints
                 return Results.Unauthorized();
 
             var gerados = await handler.HandleAsync(cancellationToken).ConfigureAwait(false);
-            return Results.Ok(new { gerados });
+            var digests = await digestHandler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            return Results.Ok(new { gerados, digests });
         })
         .WithTags("Internal")
-        .WithSummary("Processa o scan diário de engajamento (nudges de aderência) — requer X-Internal-Key")
+        .WithSummary("Processa o scan diário de engajamento (nudges de aderência + digest do treinador) — requer X-Internal-Key")
         .AllowAnonymous()
         .RequireRateLimiting("internal")
         .Produces<object>()

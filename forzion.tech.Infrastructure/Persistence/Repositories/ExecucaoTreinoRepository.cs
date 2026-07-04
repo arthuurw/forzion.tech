@@ -136,6 +136,35 @@ public class ExecucaoTreinoRepository(AppDbContext context) : IExecucaoTreinoRep
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<DigestTreinadorSnapshot>> ProjetarDigestTreinadoresAsync(
+        DateOnly hoje, CancellationToken cancellationToken = default)
+    {
+        var inicio = DateTime.SpecifyKind(hoje.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+        var fim = inicio.AddDays(1);
+
+        var linhas = await (
+            from v in _context.VinculosTreinadorAluno
+            where v.Status == Domain.Enums.VinculoStatus.Ativo
+            join t in _context.Treinadores on v.TreinadorId equals t.Id
+            select new
+            {
+                v.TreinadorId,
+                t.ContaId,
+                Treinou = _context.ExecucoesTreino.Any(e =>
+                    e.AlunoId == v.AlunoId && e.DataExecucao >= inicio && e.DataExecucao < fim)
+            }
+        ).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return linhas
+            .GroupBy(l => new { l.TreinadorId, l.ContaId })
+            .Select(g => new DigestTreinadorSnapshot(
+                g.Key.TreinadorId,
+                g.Key.ContaId,
+                g.Count(x => x.Treinou),
+                g.Count(x => !x.Treinou)))
+            .ToList();
+    }
+
     private static int CalcularStreak(DateOnly ultima, HashSet<DateOnly> dias)
     {
         var streak = 0;
