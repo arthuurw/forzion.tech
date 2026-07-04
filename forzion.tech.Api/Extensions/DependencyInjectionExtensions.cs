@@ -390,6 +390,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<ObterPerfilHandler>();
         services.AddScoped<AtualizarPerfilHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Conta.PreferenciasNotificacao.AtualizarPreferenciaNotificacaoHandler>();
         services.AddScoped<AlterarSenhaHandler>();
         services.AddScoped<LogoutHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Suporte.EnviarMensagem.EnviarMensagemSuporteHandler>();

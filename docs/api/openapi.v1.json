@@ -5488,6 +5488,67 @@
         ]
       }
     },
+    "/conta/preferencias-notificacao": {
+      "patch": {
+        "tags": [
+          "Conta"
+        ],
+        "summary": "Atualiza a preferência de e-mails de engajamento do usuário autenticado",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenciasNotificacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/conta/senha": {
       "post": {
         "tags": [
@@ -10809,6 +10870,17 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "PreferenciasNotificacaoRequest": {
+        "required": [
+          "emailEngajamentoOptOut"
+        ],
+        "type": "object",
+        "properties": {
+          "emailEngajamentoOptOut": {
+            "type": "boolean"
           }
         }
       },
