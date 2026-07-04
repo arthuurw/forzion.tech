@@ -1,5 +1,6 @@
 ﻿{
   Nome: Arthur Webster,
   Email: arthur@forzion.tech,
-  TipoConta: Aluno
+  TipoConta: Aluno,
+  EmailEngajamentoOptOut: false
 }

@@ -140,7 +140,8 @@ public class ResponseDtoSnapshots
     public Task PerfilResponse() => Verify(new PerfilResponse(
         Nome: "Arthur Webster",
         Email: "arthur@forzion.tech",
-        TipoConta: "Aluno"));
+        TipoConta: "Aluno",
+        EmailEngajamentoOptOut: false));
 
     [Fact]
     public Task PlanoPlataformaResponse() => Verify(new PlanoPlataformaResponse(

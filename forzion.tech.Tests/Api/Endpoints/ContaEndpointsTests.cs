@@ -37,7 +37,7 @@ public class ContaEndpointsTests : IClassFixture<ContaEndpointsTests.ContaWebFac
     private static readonly Guid PerfilId = Guid.NewGuid();
 
     private static readonly PerfilResponse RespostaPerfil =
-        new("Carlos Treinador", "carlos@test.com", "Treinador");
+        new("Carlos Treinador", "carlos@test.com", "Treinador", false);
 
     public ContaEndpointsTests(ContaWebFactory factory)
     {

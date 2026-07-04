@@ -10737,7 +10737,8 @@
         "required": [
           "nome",
           "email",
-          "tipoConta"
+          "tipoConta",
+          "emailEngajamentoOptOut"
         ],
         "type": "object",
         "properties": {
@@ -10749,6 +10750,9 @@
           },
           "tipoConta": {
             "type": "string"
+          },
+          "emailEngajamentoOptOut": {
+            "type": "boolean"
           }
         }
       },
