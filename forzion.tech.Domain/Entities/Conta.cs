@@ -21,6 +21,7 @@ public class Conta : IHasDomainEvents
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public DateTime? AnonimizadaEm { get; private set; }
+    public bool NotificacoesEngajamentoEmailOptOut { get; }
 
     // epoch de sessão. Access token com nbf anterior a este carimbo é rejeitado.
     // null = nunca invalidado (tokens vigentes valem). Bump em reset/troca de senha/logout-all/anonimização.

@@ -42,5 +42,9 @@ public class ContaConfiguration : IEntityTypeConfiguration<Conta>
         builder.Property(c => c.SessoesInvalidasAntesDeUtc)
             .HasColumnName("sessoes_invalidas_antes_de_utc")
             .HasColumnType("timestamptz");
+
+        builder.Property(c => c.NotificacoesEngajamentoEmailOptOut)
+            .HasColumnName("notificacoes_engajamento_email_opt_out")
+            .HasDefaultValue(false);
     }
 }
