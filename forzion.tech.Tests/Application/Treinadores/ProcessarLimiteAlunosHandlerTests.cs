@@ -274,6 +274,46 @@ public class ProcessarLimiteAlunosHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_Deadline_RecomputoAoVivoDivergeDaLeituraInicial_CancelaApara()
+    {
+        var treinador = SetupUmTreinador();
+        var agora = _time.GetUtcNow().UtcDateTime;
+        treinador.MarcarAcimaDoCap(agora.AddMonths(-3));
+
+        _vinculoRepo
+            .Setup(r => r.ContarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(5);
+        _planoEfetivoResolver
+            .SetupSequence(r => r.ResolverAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Basic, 3, false))
+            .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.ProPlus, 10, false));
+
+        var resultado = await _handler.HandleAsync();
+
+        treinador.AlunosAcimaDoCapDesde.Should().BeNull();
+        _vinculoRepo.Verify(r => r.ListarAtivosPorTreinadorOrdenadoAsync(treinador.Id, It.IsAny<CancellationToken>()), Times.Never);
+        _notificacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Notificacao>(), It.IsAny<CancellationToken>()), Times.Never);
+        resultado.Should().Be(new ProcessarLimiteAlunosResultado(0, 0, 0));
+    }
+
+    [Fact]
+    public async Task HandleAsync_NovoExcedente_TreinadorFree_EnviaInicioMesmoAssim()
+    {
+        var treinador = SetupUmTreinador();
+        _planoEfetivoResolver
+            .Setup(r => r.ResolverAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Free, 3, true));
+        _vinculoRepo
+            .Setup(r => r.ContarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(5);
+
+        await _handler.HandleAsync();
+
+        _emailSender.Verify(e => e.EnviarInicioAsync(
+            treinador.Id, 2, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task HandleAsync_RodandoDuasVezesSeguidas_NaoAparaNemNotificaDeNovo()
     {
         var treinador = SetupUmTreinador();
