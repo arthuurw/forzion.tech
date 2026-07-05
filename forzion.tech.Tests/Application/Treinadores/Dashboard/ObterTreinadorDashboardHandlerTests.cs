@@ -18,6 +18,7 @@ public class ObterTreinadorDashboardHandlerTests
     private readonly Mock<IAssinaturaTreinadorRepository> _assinaturaRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IPlanoPlataformaRepository> _planoRepo = new();
+    private readonly Mock<IPlanoEfetivoResolver> _planoEfetivoResolver = new();
     private readonly Mock<VerificarOnboardingTreinadorHandler> _onboardingHandler =
         new(null!, null!, null!, null!, null!, null!);
     private readonly Mock<IUserContext> _userContext = new();
@@ -27,6 +28,10 @@ public class ObterTreinadorDashboardHandlerTests
     public ObterTreinadorDashboardHandlerTests()
     {
         _userContext.SetupGet(u => u.PerfilId).Returns(_treinadorId);
+
+        _planoEfetivoResolver
+            .Setup(r => r.ResolverAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(null, TierPlano.Free, 3, true));
 
         _vinculoRepo
             .Setup(r => r.ContarPorStatusAsync(_treinadorId, It.IsAny<CancellationToken>()))
@@ -49,7 +54,8 @@ public class ObterTreinadorDashboardHandlerTests
 
         _handler = new ObterTreinadorDashboardHandler(
             _vinculoRepo.Object, _treinoRepo.Object, _assinaturaRepo.Object,
-            _treinadorRepo.Object, _planoRepo.Object, _onboardingHandler.Object, _userContext.Object);
+            _treinadorRepo.Object, _planoRepo.Object, _planoEfetivoResolver.Object,
+            _onboardingHandler.Object, _userContext.Object);
     }
 
     private Treinador SetupTreinador(bool comDados, TierPlano? tierPlano, ModoPagamentoAluno modo)
@@ -174,6 +180,116 @@ public class ObterTreinadorDashboardHandlerTests
         var result = await _handler.HandleAsync();
 
         result.Plano.Status.Should().BeNull();
+    }
+
+    // Money assertion (FE-01): tier efetivo (o que realmente vale, resolvido via
+    // IPlanoEfetivoResolver) DIVERGE do plano contratado/pendente quando a assinatura ainda
+    // não está Ativa — a UI não pode confundir "escolhido" com "em vigor".
+    [Fact]
+    public async Task HandleAsync_AssinaturaPendente_TierEfetivoDivergeDoPlanoContratado()
+    {
+        var proPlanoId = Guid.NewGuid();
+        var assinaturaPendente = forzion.tech.Domain.Entities.AssinaturaTreinador
+            .Criar(_treinadorId, proPlanoId, 149.90m, DateTime.UtcNow).Value;
+        _assinaturaRepo
+            .Setup(r => r.ObterAtualPorTreinadorAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assinaturaPendente);
+        _planoEfetivoResolver
+            .Setup(r => r.ResolverAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(null, TierPlano.Free, 3, true));
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.Status.Should().Be(AssinaturaTreinadorStatus.Pendente);
+        result.Plano.PlanoContratadoId.Should().Be(proPlanoId);
+        result.Plano.TierEfetivo.Should().Be(TierPlano.Free);
+        result.Plano.TierEfetivo.Should().NotBe(TierPlano.Pro,
+            "o plano contratado (Pro, ainda pendente) não pode ser confundido com o tier efetivo (Free)");
+    }
+
+    [Fact]
+    public async Task HandleAsync_CapEfetivoEExcedente_RefletemPlanoEfetivoEAtivos()
+    {
+        _vinculoRepo
+            .Setup(r => r.ContarPorStatusAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<VinculoStatus, int> { [VinculoStatus.Ativo] = 5 });
+        _planoEfetivoResolver
+            .Setup(r => r.ResolverAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Basic, 3, false));
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.AlunosAtivos.Should().Be(5);
+        result.Plano.CapEfetivo.Should().Be(3);
+        result.Plano.Excedente.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AtivosAbaixoDoCap_ExcedenteZero()
+    {
+        _vinculoRepo
+            .Setup(r => r.ContarPorStatusAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<VinculoStatus, int> { [VinculoStatus.Ativo] = 1 });
+        _planoEfetivoResolver
+            .Setup(r => r.ResolverAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Basic, 10, false));
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.Excedente.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorComCortesia_TemCortesiaTrue()
+    {
+        var treinador = SetupTreinador(comDados: false, TierPlano.Pro, ModoPagamentoAluno.Plataforma);
+        treinador.DefinirCortesia(Guid.NewGuid(), DateTime.UtcNow);
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.TemCortesia.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorSemCortesia_TemCortesiaFalse()
+    {
+        SetupTreinador(comDados: false, TierPlano.Pro, ModoPagamentoAluno.Plataforma);
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.TemCortesia.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorAcimaDoCap_GracaAteTresMesesDepoisDoCarimbo()
+    {
+        var carimbo = new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc);
+        var treinador = SetupTreinador(comDados: false, TierPlano.Pro, ModoPagamentoAluno.Plataforma);
+        treinador.MarcarAcimaDoCap(carimbo);
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.GracaAte.Should().Be(carimbo.AddMonths(3));
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorSemCarimbo_GracaAteNula()
+    {
+        SetupTreinador(comDados: false, TierPlano.Pro, ModoPagamentoAluno.Plataforma);
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.GracaAte.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemAssinatura_PlanoContratadoIdVemDoTreinador()
+    {
+        var treinador = SetupTreinador(comDados: false, TierPlano.Pro, ModoPagamentoAluno.Plataforma);
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.PlanoContratadoId.Should().Be(treinador.PlanoPlataformaId);
     }
 
     [Fact]

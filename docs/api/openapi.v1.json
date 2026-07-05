@@ -11935,7 +11935,14 @@
       },
       "TreinadorDashboardPlano": {
         "required": [
-          "status"
+          "status",
+          "tierEfetivo",
+          "planoContratadoId",
+          "alunosAtivos",
+          "capEfetivo",
+          "excedente",
+          "gracaAte",
+          "temCortesia"
         ],
         "type": "object",
         "properties": {
@@ -11948,6 +11955,50 @@
                 "$ref": "#/components/schemas/AssinaturaTreinadorStatus"
               }
             ]
+          },
+          "tierEfetivo": {
+            "$ref": "#/components/schemas/TierPlano"
+          },
+          "planoContratadoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "alunosAtivos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "capEfetivo": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excedente": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "gracaAte": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "temCortesia": {
+            "type": "boolean"
           }
         }
       },
