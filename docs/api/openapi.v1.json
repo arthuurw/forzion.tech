@@ -1771,7 +1771,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Atribui um PlanoPlataforma a um treinador",
+        "summary": "Define (ou remove, com planoId=null) a cortesia de plano de um treinador",
         "parameters": [
           {
             "name": "id",
@@ -1787,7 +1787,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AtribuirPlanoRequest"
+                "$ref": "#/components/schemas/DefinirCortesiaRequest"
               }
             }
           },
@@ -1806,6 +1806,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8090,18 +8100,6 @@
           null
         ]
       },
-      "AtribuirPlanoRequest": {
-        "required": [
-          "planoId"
-        ],
-        "type": "object",
-        "properties": {
-          "planoId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      },
       "AtualizarAlunoRequest": {
         "required": [
           "nome",
@@ -9050,6 +9048,21 @@
             "items": {
               "$ref": "#/components/schemas/AlunoFinalidadeItem"
             }
+          }
+        }
+      },
+      "DefinirCortesiaRequest": {
+        "required": [
+          "planoId"
+        ],
+        "type": "object",
+        "properties": {
+          "planoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
