@@ -23,4 +23,10 @@ describe("GracaLimiteBanner", () => {
     expect(screen.getByText(/Faltam inativar 1 aluno\(s\)/)).toBeInTheDocument();
     expect(screen.queryByText(/Faltam inativar 4 aluno\(s\)/)).not.toBeInTheDocument();
   });
+
+  it("mostra link 'Ver planos' apontando para /treinador/plano", () => {
+    render(<GracaLimiteBanner gracaAte="2026-09-15T12:00:00Z" excedente={4} />);
+    const link = screen.getByRole("link", { name: "Ver planos" });
+    expect(link).toHaveAttribute("href", "/treinador/plano");
+  });
 });
