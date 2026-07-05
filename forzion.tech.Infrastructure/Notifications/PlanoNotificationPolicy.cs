@@ -6,13 +6,13 @@ using Microsoft.Extensions.Logging;
 namespace forzion.tech.Infrastructure.Notifications;
 
 /// <summary>
-/// Implementa <see cref="IPlanoNotificationPolicy"/>: treinador → plano → tier → canais.
-/// Sem plano (null) ou sem plano encontrado → nenhum canal (só plataforma).
+/// Implementa <see cref="IPlanoNotificationPolicy"/>: treinador → plano efetivo → tier → canais.
+/// Treinador não encontrado → nenhum canal (só plataforma).
 /// Resolução por aluno: vínculo ativo → senão assinatura atual → senão restritivo.
 /// </summary>
 public sealed class PlanoNotificationPolicy(
     ITreinadorRepository treinadorRepository,
-    IPlanoPlataformaRepository planoRepository,
+    IPlanoEfetivoResolver planoEfetivoResolver,
     IVinculoTreinadorAlunoRepository vinculoRepository,
     IAssinaturaAlunoRepository assinaturaRepository,
     ILogger<PlanoNotificationPolicy> logger) : IPlanoNotificationPolicy
@@ -20,14 +20,12 @@ public sealed class PlanoNotificationPolicy(
     public async Task<CanaisNotificacao> ResolverPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default)
     {
         var treinador = await treinadorRepository.ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false);
-        if (treinador?.PlanoPlataformaId is not { } planoId)
+        if (treinador is null)
             return CanaisNotificacao.Nenhum;
 
-        var plano = await planoRepository.ObterPorIdAsync(planoId, cancellationToken).ConfigureAwait(false);
-        if (plano is null)
-            return CanaisNotificacao.Nenhum;
+        var planoEfetivo = await planoEfetivoResolver.ResolverAsync(treinadorId, cancellationToken).ConfigureAwait(false);
 
-        return new CanaisNotificacao(plano.Tier.PermiteEmail(), plano.Tier.PermiteWhatsApp());
+        return new CanaisNotificacao(planoEfetivo.Tier.PermiteEmail(), planoEfetivo.Tier.PermiteWhatsApp());
     }
 
     public async Task<CanaisNotificacao> ResolverPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default)
