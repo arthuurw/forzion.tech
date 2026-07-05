@@ -76,6 +76,7 @@ public class AuthorizationGuardTests
         "ObterStatusPagamentoHandler",
         "ObterTreinadorHandler",
         "ObterVinculoAlunoHandler",
+        "ProcessarLimiteAlunosHandler",
         "ProcessarWebhookStripeHandler",
         "ReativarVinculoHandler",
         "ReconciliarNfseHandler",
