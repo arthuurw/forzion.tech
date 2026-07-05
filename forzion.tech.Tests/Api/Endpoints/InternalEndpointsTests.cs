@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
@@ -9,6 +10,7 @@ using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Engajamento;
 using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
 using forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
+using forzion.tech.Application.UseCases.Treinadores.ProcessarLimiteAlunos;
 using forzion.tech.Domain.Shared;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -61,6 +63,10 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             Mock.Of<IExecucaoTreinoRepository>(), Mock.Of<INotificacaoRepository>(),
             Mock.Of<IDigestTreinadorEmailNotifier>(), TimeProvider.System);
 
+        public Mock<ProcessarLimiteAlunosHandler> ProcessarLimiteAlunosMock { get; } = new(
+            Mock.Of<ITreinadorRepository>(), Mock.Of<IServiceScopeFactory>(), TimeProvider.System,
+            Mock.Of<ILogger<ProcessarLimiteAlunosHandler>>());
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -82,6 +88,8 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
                 services.AddSingleton(NudgeMock.Object);
                 services.RemoveAll<DigestTreinadorHandler>();
                 services.AddSingleton(DigestMock.Object);
+                services.RemoveAll<ProcessarLimiteAlunosHandler>();
+                services.AddSingleton(ProcessarLimiteAlunosMock.Object);
             });
         }
     }
@@ -192,6 +200,42 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
     public async Task ProcessarEngajamento_SemChave_Retorna401()
     {
         var response = await factory.CreateClient().PostAsync("/internal/processar-engajamento", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ProcessarLimiteAlunos_ComChave_Retorna200ComContagens()
+    {
+        factory.ProcessarLimiteAlunosMock
+            .Setup(h => h.HandleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessarLimiteAlunosResultado(2, 3, 1));
+
+        var req = new HttpRequestMessage(HttpMethod.Post, "/internal/processar-limite-alunos");
+        req.Headers.Add("X-Internal-Key", ChaveValida);
+        var response = await factory.CreateClient().SendAsync(req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("carimbados").GetInt32().Should().Be(2);
+        body.GetProperty("lembretes").GetInt32().Should().Be(3);
+        body.GetProperty("aparados").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ProcessarLimiteAlunos_SemChave_Retorna401()
+    {
+        var response = await factory.CreateClient().PostAsync("/internal/processar-limite-alunos", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ProcessarLimiteAlunos_ChaveInvalida_Retorna401()
+    {
+        var req = new HttpRequestMessage(HttpMethod.Post, "/internal/processar-limite-alunos");
+        req.Headers.Add("X-Internal-Key", "chave-errada");
+        var response = await factory.CreateClient().SendAsync(req);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
