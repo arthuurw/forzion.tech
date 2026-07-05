@@ -281,6 +281,14 @@ export default function PlanoTreinadorPage() {
     return proracao > 0 ? Math.round(proracao * 100) / 100 : null;
   };
 
+  const impactoTroca = (novoPlano: PlanoPlataformaResponse) => {
+    if (!dashboardPlano) return null;
+    const x = novoPlano.maxAlunos;
+    const y = dashboardPlano.alunosAtivos;
+    if (x >= y) return null;
+    return { x, y, z: y - x };
+  };
+
   const statusColor = (s: AssinaturaTreinadorResponse["status"]) => {
     if (s === "Ativa") return "success";
     if (s === "Inadimplente") return "error";
@@ -486,6 +494,14 @@ export default function PlanoTreinadorPage() {
                         ? `Upgrade para ${planoSelecionado.nome}. O valor exato de proração será confirmado após processar.`
                         : `Downgrade para ${planoSelecionado.nome}. O plano muda na próxima renovação.`}
               </Typography>
+              {modoFluxo === "troca" && impactoTroca(planoSelecionado) && (
+                <Alert severity="warning" icon={false}>
+                  {(() => {
+                    const impacto = impactoTroca(planoSelecionado)!;
+                    return `Este plano comporta ${impacto.x}. Você tem ${impacto.y}. Precisará inativar ${impacto.z}.`;
+                  })()}
+                </Alert>
+              )}
               <Divider />
               <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
                 <Button onClick={fecharDialog} disabled={processando}>Cancelar</Button>
