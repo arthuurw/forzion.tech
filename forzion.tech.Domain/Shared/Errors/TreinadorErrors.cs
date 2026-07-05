@@ -23,4 +23,5 @@ public static class TreinadorErrors
     public static Error DadosFiscaisObrigatorios => Error.Validation("treinador.dados_fiscais_obrigatorios", "Os dados fiscais são obrigatórios.");
     public static Error DadosFiscaisAnonimizado => Error.Conflict("treinador.dados_fiscais_anonimizado", "Não é possível alterar dados fiscais de um treinador anonimizado.");
     public static Error NaoEncontrado => Error.NotFound("treinador.nao_encontrado", "Treinador não encontrado.");
+    public static Error PlanoCortesiaIdInvalido => Error.Validation("treinador.plano_cortesia_id_invalido", "O identificador do plano de cortesia é inválido.");
 }

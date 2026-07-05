@@ -20,6 +20,8 @@ public class Treinador : IHasDomainEvents
     public Guid ContaId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
     public Guid? PlanoPlataformaId { get; private set; }
+    public Guid? PlanoCortesiaId { get; private set; }
+    public DateTime? AlunosAcimaDoCapDesde { get; private set; }
     public ModoPagamentoAluno ModoPagamentoAluno { get; private set; }
     public DateTime? ModoPagamentoAlunoAlteradoEm { get; private set; }
     public TreinadorStatus Status { get; private set; }
@@ -144,6 +146,32 @@ public class Treinador : IHasDomainEvents
         PlanoPlataformaId = planoPlataformaId;
         UpdatedAt = agora;
         return Result.Success();
+    }
+
+    public Result DefinirCortesia(Guid? planoCortesiaId, DateTime agora)
+    {
+        if (planoCortesiaId.HasValue && planoCortesiaId.Value == Guid.Empty)
+            return Result.Failure(TreinadorErrors.PlanoCortesiaIdInvalido);
+
+        PlanoCortesiaId = planoCortesiaId;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public void MarcarAcimaDoCap(DateTime agora)
+    {
+        if (AlunosAcimaDoCapDesde is not null) return;
+
+        AlunosAcimaDoCapDesde = agora;
+        UpdatedAt = agora;
+    }
+
+    public void LimparAcimaDoCap(DateTime agora)
+    {
+        if (AlunosAcimaDoCapDesde is null) return;
+
+        AlunosAcimaDoCapDesde = null;
+        UpdatedAt = agora;
     }
 
     public Result Anonimizar(DateTime agora)
