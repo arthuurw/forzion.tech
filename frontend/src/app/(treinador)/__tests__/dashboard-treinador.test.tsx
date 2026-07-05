@@ -37,6 +37,7 @@ function buildVinculo(overrides: Partial<VinculoDetalheResponse> = {}): VinculoD
     createdAt: "2025-01-01T00:00:00Z",
     pacoteId: "pac-1",
     temVinculoAtivoPrevio: false,
+    preservarNoLimite: false,
     ...overrides,
   };
 }

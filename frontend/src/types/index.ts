@@ -118,7 +118,7 @@ export interface VinculoDetalheResponse extends VinculoResponse {
   nomeAluno: string;
   emailAluno: string | null;
   temVinculoAtivoPrevio: boolean;
-  preservarNoLimite?: boolean;
+  preservarNoLimite: boolean;
 }
 
 export interface DefinirPreservacaoVinculoResponse {

@@ -141,7 +141,7 @@ export default function AlunosTreinadorPage() {
   };
 
   const isPreservado = (v: VinculoDetalheResponse) =>
-    preservarOverrides[v.vinculoId] ?? v.preservarNoLimite ?? false;
+    preservarOverrides[v.vinculoId] ?? v.preservarNoLimite;
 
   const handleTogglePreservar = async (v: VinculoDetalheResponse) => {
     const novoValor = !isPreservado(v);
