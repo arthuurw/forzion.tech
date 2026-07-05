@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Box, Typography, Select, MenuItem, FormControl, InputLabel, IconButton,
   Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button, Autocomplete, TextField,
@@ -16,6 +16,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AlertBanner from "@/components/ui/AlertBanner";
 import PageHeader from "@/components/ui/PageHeader";
 import DataList from "@/components/ui/DataList";
+import GracaLimiteBanner from "@/components/treinador/GracaLimiteBanner";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
 import { extractApiError } from "@/lib/api/extractApiError";
@@ -46,6 +47,20 @@ export default function AlunosTreinadorPage() {
   const [reativarDialog, setReativarDialog] = useState<VinculoDetalheResponse | null>(null);
   const [selectedPacoteReativar, setSelectedPacoteReativar] = useState<PacoteResponse | null>(null);
   const [loadingReativar, setLoadingReativar] = useState(false);
+
+  const [gracaAte, setGracaAte] = useState<string | null>(null);
+  const [excedente, setExcedente] = useState(0);
+  const [preservarOverrides, setPreservarOverrides] = useState<Record<string, boolean>>({});
+  const [preservarLoading, setPreservarLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    treinadorApi.getDashboard()
+      .then((res) => {
+        setGracaAte(res.data.plano.gracaAte);
+        setExcedente(res.data.plano.excedente);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetcher = useCallback(
     (p: number, ps: number) =>
@@ -125,9 +140,27 @@ export default function AlunosTreinadorPage() {
     }
   };
 
+  const isPreservado = (v: VinculoDetalheResponse) =>
+    preservarOverrides[v.vinculoId] ?? v.preservarNoLimite ?? false;
+
+  const handleTogglePreservar = async (v: VinculoDetalheResponse) => {
+    const novoValor = !isPreservado(v);
+    setPreservarLoading(v.vinculoId);
+    try {
+      await treinadorApi.definirPreservacaoVinculo(v.vinculoId, novoValor);
+      setPreservarOverrides((prev) => ({ ...prev, [v.vinculoId]: novoValor }));
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar preservação do vínculo."));
+    } finally {
+      setPreservarLoading(null);
+    }
+  };
+
   return (
     <Box>
       <PageHeader title="Alunos" />
+
+      <GracaLimiteBanner gracaAte={gracaAte} excedente={excedente} />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -187,6 +220,21 @@ export default function AlunosTreinadorPage() {
               )}
               {v.status === "Ativo" && (
                 <>
+                  <Tooltip title="Manter este aluno caso o limite do plano seja excedido">
+                    <FormControlLabel
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{ mr: 0.5 }}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={isPreservado(v)}
+                          disabled={preservarLoading === v.vinculoId}
+                          onChange={() => handleTogglePreservar(v)}
+                        />
+                      }
+                      label={<Typography variant="caption">Manter</Typography>}
+                    />
+                  </Tooltip>
                   <Tooltip title="Ver detalhes">
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); router.push(`/treinador/alunos/${v.alunoId}`); }}>
                       <OpenInNewIcon fontSize="small" />
