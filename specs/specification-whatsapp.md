@@ -127,8 +127,8 @@ Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUT
 - Envio: falha = log only (sem rethrow) → não vaza p/ usuário, não quebra transação.
 
 ## TESTES
-- Unit (xUnit, sem Docker): `MetaWhatsAppCloudNotifierTests`, `NullWhatsAppNotifierTests`, `ProcessarWebhookWhatsAppHandlerTests`, `WhatsAppDeliveryLogTests`, e handler tests dos 5 adaptados + 10 novos (Infrastructure/Notifications/WhatsApp/ e Email/). Cobrem: Habilitado false no-op, entidade não encontrada, telefone null, happy path (assert template Name + body params).
-- Suíte não-integração: verde. E2E/Infra (Testcontainers) exigem Docker → CI.
+- Unit (xUnit, sem Docker) em `forzion.tech.Tests`: notifier/webhook/handler tests (`MetaWhatsAppCloudNotifierTests`, `ProcessarWebhookWhatsAppHandlerTests`, `WhatsAppDeliveryLogTests`, handlers dos 5 adaptados + 10 novos). Cobrem: Habilitado false no-op, entidade não encontrada, telefone null, happy path (assert template Name + body params).
+- E2E/Infra (Testcontainers) exigem Docker → CI.
 
 ## GAPS / ROADMAP — status
 Paridade email→WhatsApp **FECHADA** (todos os eventos de e-mail relevantes têm WhatsApp; verify/reset e health-report admin permanecem N/A por serem channel-bound/internos). Itens estruturais FECHADOS: type:template, `EnvironmentWhatsAppDecorator`, padronização event-handlers, `Habilitado`, catálogo central, E.164, webhook de status.

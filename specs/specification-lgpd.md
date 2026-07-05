@@ -39,23 +39,7 @@ Métodos idempotentes (Result), disparam scrub de PII e mantêm o registro:
   - `xlsx`: renderizado por `IDadosPessoaisExcelRenderer` (Infrastructure, ClosedXML); retorna `FileContentResult`, `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `filename: meus-dados.xlsx`.
 
 ### ESTRUTURA DO WORKBOOK EXCEL (mapa seção→aba)
-10 abas, nesta ordem:
-
-| # | Aba | Conteúdo |
-|---|-----|----------|
-| 1 | Conta | Campos da entidade `Conta` |
-| 2 | Perfil | `Aluno` (todos os campos incl. anamnese) OU `Treinador` — mutuamente exclusivos |
-| 3 | Vínculos | Vínculos aluno↔treinador do titular |
-| 4 | Assinaturas | Assinaturas do titular |
-| 5 | Pagamentos | Pagamentos do titular |
-| 6 | Pacotes | Pacotes do treinador (vazia se aluno) |
-| 7 | Treinos | Fichas de treino |
-| 8 | Execuções | Execuções de exercícios |
-| 9 | Logs E-mail | Delivery logs de e-mail |
-| 10 | Logs WhatsApp | Delivery logs de WhatsApp |
-
-- **Aba vazia**: criada com linha de cabeçalho (sem dados) — garante completude LGPD art. 18 IV.
-- **Formatação**: datas em pt-BR (`dd/MM/yyyy HH:mm`), valores monetários numéricos, GUIDs como strings.
+10 abas em ordem (Conta, Perfil, Vínculos, Assinaturas, Pagamentos, Pacotes, Treinos, Execuções, Logs E-mail, Logs WhatsApp) — mapeamento aba↔seção no `IDadosPessoaisExcelRenderer` (Infrastructure, ClosedXML). Perfil = `Aluno` (incl. anamnese) OU `Treinador` (mutuamente exclusivos); Pacotes vazia se aluno. Não-óbvios: aba sem dados é criada com linha de cabeçalho (completude LGPD art. 18 IV); datas pt-BR `dd/MM/yyyy HH:mm`, monetários numéricos, GUIDs como string.
 
 ## ENDPOINTS
 | Método/Rota | Auth | Notas |
@@ -112,8 +96,8 @@ Nenhum e-mail ou telefone cru em qualquer nível de log (`LogDebug`…`LogCritic
 `logs_aprovacao` com `TipoAcaoAprovacao.ExportacaoDados` / `AnonimizacaoConta` / `ConsentimentoAnamnese` (text enum; sem migration). Registra quem (`realizado_por`) / quando / alvo (`entidade_id` + tipo `Conta`). **Atribuição da exportação** (`ExportarDadosPessoaisCommand(ContaId, RealizadoPorId)`): self (`/conta/lgpd/exportar`) ⇒ `realizado_por = alvo = titular`; admin (`/admin/contas/{id}/lgpd/exportar`) ⇒ `realizado_por = ContaId do admin`, `alvo = titular` (exportação por admin fica atribuída a ele). Auditoria OBRIGATÓRIA/fail-closed: `LogAprovacao` é commitado ANTES de devolver o export; falha ao registrar ⇒ export NÃO retorna. `ConsentimentoAnamnese` = consentimento art. 11 no cadastro do aluno (observacao = versão do termo).
 
 ## TESTES
-- Backend: Domain (Anonimizar de Conta/Aluno/Treinador — PII some, idempotência, evento), Application (export agrega todas as seções sem terceiros; anonimização scrub + retém financeiro + bloqueio treinador-ativo + senha errada), endpoints (200/401/403). ~40 testes.
-- Frontend: `ConsentBanner` (Sentry off sem consentimento, persistência), /perfil export/delete, admin actions; e2e `lgpd/{export-data,delete-account,consent-cookies}` verdes.
+- Backend (~40): Domain (Anonimizar Conta/Aluno/Treinador — PII some, idempotência, evento), Application (export agrega todas as seções sem terceiros; anonimização scrub + retém financeiro + bloqueio treinador-ativo + senha errada), endpoints (200/401/403).
+- Frontend: `ConsentBanner` (Sentry off sem consentimento, persistência), /perfil export/delete, admin actions; e2e `lgpd/{export-data,delete-account,consent-cookies}`.
 
 ## PENDÊNCIAS / GOTCHAS
 - **Jurídico**: copy do banner + política de privacidade + contato DPO = placeholders (validar com jurídico).

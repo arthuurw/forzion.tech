@@ -32,51 +32,11 @@ Headers de segurança + CSP aplicados na camada Next via `next.config.ts` (`head
 - TS6 ativo. `.npmrc` com `legacy-peer-deps=true` (madge@8 peerOptional TS `^5.4.4` conflita com TS6; funcional em runtime).
 
 ## ESTRUTURA DE DIRETÓRIOS (`src/`)
-```
-src/
-  app/
-    (admin)/           — grupo Admin (layout próprio, AppLayout)
-    (aluno)/           — grupo Aluno (layout próprio, AppLayout)
-    (treinador)/       — grupo Treinador (layout próprio, AppLayout)
-    (public)/          — grupo público (layout próprio, PublicLayout)
-    _landing/          — componentes da homepage
-    api/
-      auth/            — Route Handlers de autenticação (login, logout, me, register, etc.)
-      backend/[...path]/ — proxy reverso → backend .NET
-    perfil/            — página de perfil (acessível a todos os roles)
-    layout.tsx         — root layout
-    page.tsx           — homepage /
-    error.tsx          — error boundary de rota
-    global-error.tsx   — error boundary global
-    not-found.tsx
-  components/
-    aluno/             — SemVinculoAtivoBanner (aviso aluno sem vínculo ativo)
-    charts/            — ChartFigure (figure+aria-label wrapper de recharts)
-    forms/             — FormTextField, FormSelect, PasswordField
-    layout/            — AppLayout, AppHeader, PublicLayout, NavConfig
-    notificacoes/      — NotificacoesBell (sino + badge não-lidas + feed, montado no AppHeader)
-    observability/     — WebVitals
-    pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
-    seguranca/         — StepUpDialog, StepUpProvider, RecoveryCodesPanel (MFA/step-up)
-    suporte/           — SuporteForm (form compartilhado aluno/treinador)
-    treinador/         — componentes específicos do treinador
-    ui/                — componentes compartilhados (ErrorBoundary, AlertBanner, LoadingSpinner, DataList, etc.)
-  hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent, useCursorList, useExecucaoDraft, useExecucaoRetryQueue
-  lib/
-    api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
-    auth/              — context.tsx, jwt.ts, helpers.ts, buildPlaceholder.ts
-    constants/         — enrollmentOptions, labels
-    execucao/          — execData.ts, retryQueueStore.ts (draft/fila de execução offline)
-    rateLimit.ts       — rate limiter em memória (login)
-    storage/           — safeStorage.ts (localStorage guard SSR/quota — EXOFF-06)
-    theme/             — ThemeRegistry.tsx, index.ts (MUI theme)
-    utils/             — formatting.ts, excel.ts
-    validations/       — common.ts (schemas Zod)
-  proxy.ts             — RBAC redirect (Next.js proxy; ex-middleware, runtime nodejs)
-  styles/globals.css
-  test/                — infraestrutura de testes (MSW, factories, setup, pact)
-  types/index.ts       — tipos de domínio compartilhados
-```
+Layout re-derivável por `ls src/` — abaixo SÓ as convenções organizadoras não-óbvias (não versionar a árvore file-a-file, apodrece):
+- `app/` — App Router com **route-groups por role**: `(admin)`/`(aluno)`/`(treinador)` (layout `AppLayout`), `(public)` (layout `PublicLayout`); `api/auth/` = Route Handlers de auth, `api/backend/[...path]/` = proxy reverso → backend .NET.
+- `components/` — por domínio + `ui/` compartilhado.
+- `lib/` — `api/` (client + módulos por domínio), `auth/`, `execucao/` (draft/fila offline), `query/`, `security/`, `observability/`, `theme/`, `validations/` (Zod).
+- **Gotchas com home própria** (referenciados alhures): `proxy.ts` = RBAC redirect (ex-middleware, runtime nodejs); `lib/storage/safeStorage.ts` = guard localStorage SSR/quota (EXOFF-06).
 
 ## ROOT LAYOUT (`src/app/layout.tsx`)
 Árvore de providers (ordem importa):
@@ -135,24 +95,11 @@ Endpoints/contratos na §API ROUTES DE AUTH; aqui só os fatos não-óbvios de c
 - Nunca expõe o token ao cliente.
 
 ## API ROUTES DE AUTH (Next.js Route Handlers)
-| Rota | Método | Descrição |
-|------|--------|-----------|
-| `/api/auth` | POST | Login → seta cookies httpOnly (token+refresh+session_guard) + hint tipo_conta |
-| `/api/auth/refresh` | POST | Renovação silenciosa: repassa cookie refresh → rotaciona token+refresh, ou 401+limpa |
-| `/api/auth/me` | GET | Verifica JWT → SessionUser; access vencido + refresh → rotaciona server-side |
-| `/api/auth/logout` | POST | Invalida backend (jti + família) + limpa cookies |
-| `/api/auth/mfa/verificar` | POST | Conclui 2º fator: lê cookie `mfa_pending` → Bearer; seta sessão + trusted_device |
-| `/api/auth/mfa/email/enviar` | POST | Envia OTP de login por e-mail (repassa `mfa_pending`) |
-| `/api/auth/register/treinador` | POST | Cadastro treinador (rate limit, proxy). Body inclui `planoPlataformaId`+`modoPagamentoAluno` |
-| `/api/auth/register/aluno` | POST | Cadastro aluno (rate limit, proxy) |
-| `/api/auth/planos` | GET | Planos da plataforma p/ wizard de cadastro (proxy `/auth/planos`, `cache: "no-store"`, sem rate limit) |
-| `/api/auth/treinador/[treinadorId]/pagamento` | POST | Inicia pagamento do plano no signup (rate limit, proxy `/auth/treinador/{id}/pagamento`). Body `{ metodo }` |
-| `/api/auth/verify-email` | POST | Verificação de e-mail |
-| `/api/auth/forgot-password` | POST | Solicita reset |
-| `/api/auth/reset-password` | POST | Executa reset |
-| `/api/auth/resend-verification` | POST | Reenvio de verificação |
-| `/api/auth/treinadores` | GET | Listagem pública de treinadores (cadastro aluno) |
-| `/api/auth/treinadores/[treinadorId]/pacotes` | GET | Pacotes do treinador (cadastro aluno) |
+Enumeração de rotas re-derivável por `ls src/app/api/auth/`; contratos de cookie/sessão na §AUTH FLOW. Aqui só os fatos não-óbvios que a listagem não carrega:
+- Login/refresh/me/logout/mfa: setam/limpam cookies httpOnly (nunca Bearer) — ver §AUTH FLOW.
+- `register/treinador` body inclui `planoPlataformaId`+`modoPagamentoAluno`; `register/aluno` idem cadastro.
+- `planos` (GET, proxy `/auth/planos`) usa `cache: "no-store"` e **sem rate limit** (wizard de cadastro).
+- `treinador/[id]/pagamento` (POST, body `{ metodo }`) inicia pagamento do plano no signup.
 
 **Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP. Mapa em memória por processo (não persistido entre restarts). Aplicado em login e register.
 
@@ -307,13 +254,11 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 - Submit via `apiClient.post("/suporte/mensagens", {categoria, assunto, descricao})` (catch-all `/api/backend` com Bearer; SEM route proxy dedicado — identidade vem do token no backend). 202 → tela de sucesso; erro → `AlertBanner` (`extractApiError`).
 
 ## TESTES (`vitest.config.mts`)
-3 projects vitest:
-
-| Project | Env | Pool | Setup | Include |
-|---------|-----|------|-------|---------|
-| `unit` | node | threads | `src/test/setup/unit.ts` | `src/lib/**/*.test.ts`, `src/lib/**/*.property.test.ts`, `src/hooks/**/*.test.ts`, `src/hooks/**/*.property.test.ts`, `src/proxy.test.ts`, `src/proxy.signature.test.ts` (exclui: hooks RTL/DOM e excel/downloadBlob/admin.msw/auth-context que rodam em `integration`) |
-| `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/components/**/__tests__/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/utils/downloadBlob.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts`, hooks RTL: `useInactivity`, `useConsent`, `usePaginatedList`, `useCRUDDialog`, `useCursorList`, `useExecucaoDraft`, `useExecucaoRetryQueue` |
-| `api` | node | threads | `src/test/setup/api.ts` | `src/app/api/**/*.test.ts` |
+3 projects vitest (env/pool/setup por project; include-globs re-deriváveis do `vitest.config.mts`):
+- `unit` — node/threads. Pura lógica em `src/lib/**` + `src/hooks/**` (`*.test.ts`/`*.property.test.ts`) + `src/proxy*.test.ts`. **Exclui** os testes RTL/DOM e excel/downloadBlob/admin.msw/auth-context (rodam em `integration`).
+- `integration` — jsdom/forks. Componentes/páginas (`*.test.tsx`, `__tests__/`) + hooks que precisam de DOM (ex.: `useInactivity`, `useConsent`, `useExecucaoDraft`/`RetryQueue`).
+- `api` — node/threads. Route Handlers `src/app/api/**/*.test.ts`.
+- GOTCHA de partição: um hook/util roda em `unit` OU `integration` conforme precise de DOM — mover teste entre esses exige ajustar o include (senão roda no pool errado). Ver `vitest.config.mts`.
 
 **Coverage (v8)**: thresholds por glob (l/b/f por camada) — canônico em [specification-tests] §8 (enforced em `vitest run --coverage`).
 
@@ -353,16 +298,10 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 | `openapi:check` | `openapi:sync && git diff --exit-code src/test/msw/types.ts` (drift check) |
 
 ## ENV / SECRETS (frontend)
-| Variável | Onde | Descrição |
-|----------|------|-----------|
-| `API_BASE_URL` | server-side | URL backend .NET (obrigatório em prod; default `https://localhost:7220` em dev) |
-| `NEXT_PUBLIC_API_BASE_URL` | client-side | Base do apiClient (default `/api/backend`; sem NEXT_PUBLIC só usa proxy) |
-| `JWT_SECRET` | server-side | Chave para `jose.jwtVerify` em `/api/auth/me` |
-| `JWT_ISSUER` | server-side | Issuer JWT para validação |
-| `JWT_AUDIENCE` | server-side | Audience JWT para validação |
-| `SENTRY_AUTH_TOKEN` | build | Upload de source maps (optional; build funciona sem) |
-| `SENTRY_ORG` | build | Org do Sentry |
-| `SENTRY_PROJECT` | build | Projeto do Sentry |
+Lista completa re-derivável de `.env.example`. Invariantes não-óbvios:
+- **Split server vs client**: `API_BASE_URL` (server-side, proxy → backend .NET; obrigatório em prod, default `https://localhost:7220` em dev) ≠ `NEXT_PUBLIC_API_BASE_URL` (client-side, base do apiClient; default `/api/backend`, i.e. só o proxy quando ausente).
+- `JWT_SECRET`/`JWT_ISSUER`/`JWT_AUDIENCE` (server-side) só p/ `jose.jwtVerify` em `/api/auth/me`. `JWT_SECRET`+`API_BASE_URL` obrigatórios em prod (guard lança no build — §CONFIGURAÇÃO DE BUILD).
+- `SENTRY_AUTH_TOKEN`/`_ORG`/`_PROJECT` (build): só upload de source maps; build funciona sem token.
 
 ## OBSERVABILIDADE
 - **Sentry**: erros + replay (RUM). DSN configurado no container (no-op sem DSN). Source maps com `SENTRY_AUTH_TOKEN`.
@@ -376,9 +315,9 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 
 ## DICAS / GOTCHAS
 - `legacy-peer-deps=true` em `.npmrc` (madge@8 + TS6) — ver §TYPESCRIPT; NÃO remover sem atualizar madge.
-- npm override `"@pact-foundation/pact": { "https-proxy-agent": "^7.0.6" }`: pact v16 bundla `https-proxy-agent@9` (ESM puro); override força CJS-compatível. NÃO remover ao atualizar pact.
-- jsdom mantido em `^26` (não `^27`): jsdom 27 tem dep `@csstools/css-calc` ESM-only que quebra vitest pool `forks` (Node 20 sem `--experimental-require-module`).
-- `SBOM` usa `--ignore-npm-errors` para tolerar `typescript@6 invalid` (peer dep madge) e pacotes `@emnapi/*`/`@napi-rs/*` extraneous (deps opcionais NAPI-RS do pact v16).
+- npm override `"@pact-foundation/pact": { "https-proxy-agent": "^7.0.6" }`: pact v17 bundla `https-proxy-agent@9` (ESM puro); override força CJS-compatível. NÃO remover ao atualizar pact.
+- jsdom mantido em `^26` (não `^27`): jsdom 27 tem dep `@csstools/css-calc` ESM-only que quebra o vitest pool `forks`.
+- `SBOM` usa `--ignore-npm-errors` para tolerar `typescript@6 invalid` (peer dep madge) e pacotes `@emnapi/*`/`@napi-rs/*` extraneous (deps opcionais NAPI-RS do pact v17).
 - AppLayout-logout-antes-de-redirect (evita loop com o proxy): ver §APPLAYOUT.
 - Proxy NÃO interceta `/api/*`; auth das API routes é dos próprios Route Handlers: ver §PROXY.
 - `API_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL` (server vs client, proxy `/api/backend` em prod): ver §ENV + §API PROXY.

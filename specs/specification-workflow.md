@@ -32,7 +32,7 @@ Ordem e gate de ENTRADA de cada estado (o gate é o que precisa estar verdadeiro
 | 6 | **Testing/Verify** | código + testes escritos; rodando gates + `/verify` | suíte verde local |
 | 7 | **Developed (Awaiting PR)** | comportamento verificado, push na branch de trabalho; **PR ainda NÃO aberto** (AGENTS.md regra 8) | commit refs |
 | 8 | **In Review** | PR aberto; CI rodando/code-review | PR ref |
-| 9 | **Done** | PR mergeado (→ homolog/master) | PR mergeado + data |
+| 9 | **Done** | PR mergeado (→ `homolog` staging; prod = promoção `homolog`→`main`) | PR mergeado + data |
 | — | **Deferred** | adiado/parado (saiu do fluxo ativo) | nota STATE |
 
 Estados pequenos (2–4) podem ser pulados em escopo Small/Medium (auto-sizing do `tlc-spec-driven`): nesse caso o card salta direto p/ o estado relevante. O pipeline NÃO força cerimônia onde a feature não pede.

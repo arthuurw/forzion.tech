@@ -27,7 +27,7 @@ DOC PARA AGENTES. Continuidade: backup, restore, rollback de deploy, runbook de 
     pg_restore -h host.docker.internal -p 55432 -U postgres -d postgres `
     --no-owner --no-privileges /out/homolog.dump
   # validar (socket local = trust, sem senha)
-  docker exec drill-pg17 psql -U postgres -d postgres -c 'SELECT count(*) FROM homolog."__EFMigrationsHistory";'  # = nº de migrations aplicadas no dump (31 no drill 2026-06-11; total atual = contar em forzion.tech.Infrastructure/Migrations/*.cs excluindo Designer+Snapshot; canônico em [specification-db §STACK])
+  docker exec drill-pg17 psql -U postgres -d postgres -c 'SELECT count(*) FROM homolog."__EFMigrationsHistory";'  # = nº de migrations aplicadas no dump (31 no drill 2026-06-11; total atual canônico em [specification-db §STACK])
   docker exec drill-pg17 psql -U postgres -d postgres -c 'SELECT count(*) FROM homolog.contas;'
   # teardown
   docker rm -f drill-pg17; Remove-Item -Recurse -Force $drill; Remove-Item Env:\SRC_PW
@@ -64,7 +64,7 @@ Alvo SaaS financeiro: RTO<15min (processo)/<4h (VM); RPO<5min · ≥2 instância
 ### Fase 1 — Quick-wins sem downtime (1–2 dias) [parcialmente em execução — DR-01/02]
 - [FEITO 2026-06-11 — DR-01] Conexão runtime via **Session pooler Supabase (:5432, IPv4)** em vez de direct (IPv6-only): pooling de conexão + IPv4, drop-in SEM código (session suporta migration/prepared stmt → `MigrateAsync` no boot intacto). Transaction :6543 descartado (quebraria migration no boot). Flip aplicado na VM + verificado (`/health/ready`=Healthy; `pg_stat_activity.forzion_api` com `application_name=Supavisor`). Detalhe canônico: [specification-db] §DICAS.
 - [ALVO/em execução] Documentar tier Supabase atual + janela/retenção real de backup em §1 desta spec.
-- [ALVO/em execução] 1º restore drill real (projeto temp Supabase · container `postgres:17` · validar `__EFMigrationsHistory` = migrations aplicadas no dump (total atual: contar em `Migrations/*.cs` excluindo Designer+Snapshot, canônico em [specification-db §STACK]; 31 no drill 2026-06-11) + contagem `contas`) e resultado documentado (§2).
+- [ALVO/em execução] 1º restore drill real (projeto temp Supabase · container `postgres:17` · validar `__EFMigrationsHistory` = migrations aplicadas no dump — total canônico em [specification-db §STACK]; 31 no drill 2026-06-11 — + contagem `contas`) e resultado documentado (§2).
 
 ### Fase 2 — Supabase Pro, PITR e read-offloading (1–2 semanas) [ALVO]
 - [ALVO] Upgrade para Supabase Pro → habilita PITR (Point-in-Time Recovery, RPO<1min) + read-replica na mesma região sa-east-1.
@@ -95,7 +95,7 @@ Registro de cada execução do drill de §2 (data · escopo · counts · tempo �
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-06-11 | homolog · dump lógico `-Fc` (pg_dump 18, host direto) → restore em `postgres:17` local | 31 | 5 | 32 | dump 3s · restore <1s | ✅ sucesso — restore validado, dados íntegros | arthuurw |
 
-> 2026-06-11 — 1º drill PROVOU o pipeline (dump→restore→counts coerentes). **31 migrations = HEAD deployado de homolog**; o repo tem mais migrations agora (total: contar em `Migrations/*.cs`, canônico em [specification-db §STACK]) — as adicionadas após o drill ainda não deployadas → NÃO é perda de dado. 32 tabelas BASE casa com o anchor "32/schema". Credencial usada = dev (`forzion_api`, lê homolog ok); host direto IPv6 funcionou do host Windows (não de container).
+> 2026-06-11 — 1º drill PROVOU o pipeline (dump→restore→counts coerentes). **31 migrations = HEAD deployado de homolog**; o repo tem mais migrations agora (total canônico em [specification-db §STACK]) — as adicionadas após o drill ainda não deployadas → NÃO é perda de dado. 32 tabelas BASE casa com o anchor "32/schema". Credencial usada = dev (`forzion_api`, lê homolog ok); host direto IPv6 funcionou do host Windows (não de container).
 > Decisão aberta (não-código, usuário): tier = **Free** = sem backup gerenciado, e este dump foi pontual (sem cópia off-site recorrente) → **RPO segue ∞**. Para fechar: ou migrar p/ **Pro** (daily backup + PITR) ou agendar `db dump` off-site recorrente (cron/Action). Registrar a escolha aqui.
 
 ## 9. REFERÊNCIAS
