@@ -22,7 +22,7 @@ Aplicar via `scripts/setup-git.ps1` (Windows) ou `scripts/setup-git.sh` (POSIX).
 | `fetch.prune` | `true` | `git fetch` remove refs locais de branches deletadas no remoto |
 | `core.autocrlf` | `true` (Win) / `input` (POSIX) | alinha line endings com pre-commit `dotnet format` (ENDOFLINE check) |
 
-- **NÃO confundir `init.defaultBranch=main` (cliente) com o default branch do REPO**: o GitHub default branch deste repo é `homolog` (`origin/HEAD → homolog`), e é a base de PR. `init.defaultBranch=main` só nomeia a branch inicial de um `git init` novo (inócuo aqui) — NÃO é a base de PR nem espelha o remoto.
+- **GitHub default branch deste repo = `main`** (`origin/HEAD → main`), que é a branch de PRODUÇÃO. `homolog` = branch de STAGING e base de PR de FEATURE. Fluxo: feature → PR → `homolog`; promoção `homolog` → `main` = release de prod. `init.defaultBranch=main` (cliente) só nomeia a branch inicial de um `git init` novo — coincide com o repo mas é config independente.
 
 Aliases opcionais (não setados por default):
 - `git config --global alias.cap '!f() { git commit -m "$1" && git push; }; f'` — `git cap "msg"` = commit + push.
@@ -92,7 +92,7 @@ docs(infra): add git workflow spec + setup script
 ## PUSH / PR
 - Branch local mesmo nome do remoto (convenção). `git push` sem args = pusha branch atual pro mesmo nome em `origin`.
 - **PR é MANUAL — não abrir automaticamente** (decisão 2026-06-10, até segunda ordem; uso consciente de recursos de CI + o usuário decide o que vira PR): concluir em `commit + push` na branch; o usuário pede o PR quando quiser. Ver AGENTS.md `DEFINITION OF DONE` passo 8.
-- Quando solicitado: PR vai pra `homolog` (default branch do repo, base de PR). NÃO existe `master`/produção viva hoje — promoção a prod é aspiracional.
+- Quando solicitado: PR de feature vai pra `homolog` (staging, base de PR). Release de prod = PR/merge `homolog` → `main`: push em `main` dispara `release-images.yml` (build+push imagens GHCR `ghcr.io/arthuurw/forzion/{backend,frontend}`) → `deploy-prod.yml` (`workflow_run`, `environment: production`, `docker-compose.server.yml`, gated por `vars.PROD_DEPLOY_ENABLED=='true'`). NÃO existe `master`.
 - **Push → `homolog` NÃO é só deploy — passa por gates críticos primeiro**: o merge/push em `homolog` roda, ANTES de `deploy-homolog`, os gates críticos `test-backend-unit` + `security` + `security-backend` + `gitleaks` (este último varre a árvore INTEIRA por segredos, sem path-filter). `deploy-homolog` só dispara com `always() && event==push && <cada gate>.result == 'success'` (gate FALHO ou PULADO bloqueia o deploy). Implicação no fluxo: um push que reprova teste-unit/CVE/segredo NÃO deploya — monitorar o run pós-push (`gh run watch`), não assumir que push = deploy garantido. Canônico em [specification-tests] §7 + §10.
 - `gh pr create --fill --base homolog` cria PR com title/body do commit topo.
 - Após merge no remoto, branch local pode ser deletada (`git branch -d`).

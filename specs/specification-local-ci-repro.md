@@ -13,7 +13,7 @@ Atualizar quando: mudar matriz de versões CI (node/dotnet), surgir novo gate/wo
 | OS | Linux | Windows + Docker Desktop | CRLF, MSYS path-mangling, fsync de volume glacial. |
 
 ## 1. REPRODUÇÃO POR GATE (comando local · rodável? · caveat)
-Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8. Workflows extra em PR homolog: `semgrep`, `openapi-drift`, `hygiene`, `contract`.
+Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8. Gates PR bloqueantes adicionais no `ci.yml`: `lint-migrations`, `zap-baseline` (DAST passivo efêmero). Workflows extra em PR: `semgrep`, `openapi-drift`, `hygiene`, `contract`.
 
 | Gate/check | Comando local | Rodável Win? | Caveat |
 |---|---|---|---|
@@ -58,12 +58,12 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 
 ## 3. COVERAGE BACKEND — números reais medidos (unit, `Category!=Integration`)
 Medido 2026-06-06 (pós-billing treinador + raise de cobertura; SDK 8/10 idênticos → não é artefato de SDK). Contagem unit: ver [specification-tests] §4 (canônico; re-detectar via `dotnet test`). Gates (pisos) por módulo: CANÔNICO em [specification-tests] §8 — aqui só os reais:
-| Módulo | Line | Branch | Method | Status vs gate (b75/l85/m85; Api l85/m70) |
+| Módulo | Line | Branch | Method | Status vs gate (pisos canônicos em [specification-tests] §8) |
 |---|---|---|---|---|
 | Domain | 95.22% | 92.67% | 94.85% | ✅ |
 | Application | 94.82% | 84.55% | 96.14% | ✅ |
 | Api | 86.36% | 56.72% | 77.34% | ✅ (line 86.36 ≥ 85 — margem fina; endpoints billing baixaram de 87.74) |
-| Infrastructure | 6.2% | 67.15% | 34.87% | n/a unit (branch 35 só na suíte de integração) |
+| Infrastructure | 6.2% | 67.15% | 34.87% | n/a unit (gate Infra só avalia na suíte de integração — pisos em [specification-tests] §8) |
 - **Gate Application usa `ThresholdType="line,method"` → exige AMBOS line E method ≥85**: passar line mas method <85 REPROVA (já ocorreu — handlers novos sem cobertura de método). Baseline conservador no `ci.yml` fica abaixo do real; piso canônico em [specification-tests] §8.
 - Reproduzir 1 gate: `dotnet test forzion.tech.Tests --no-build -c Release --filter "Category!=Integration" -p:CollectCoverage=true -p:Include="[forzion.tech.Application]*" -p:Threshold=85 -p:ThresholdType="line,method" -p:ThresholdStat=Total` (rebuild antes; não encadear vários).
 

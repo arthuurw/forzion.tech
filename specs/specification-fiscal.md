@@ -53,16 +53,7 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 ### `NotaFiscal` (Domain/Entities) — agregado
 - Factories `Result<T>`: `CriarAssinatura(treinadorId, pagamentoTreinadorId, valor, agora)` (Tipo=AssinaturaSaaS); `CriarComissao(treinadorId, competenciaInicio, competenciaFim, valor, agora)` (Tipo=ComissaoMarketplace). Ambas: `valor<=0` rejeitado; nascem `Pendente`; setam `NumeroDps = NumeroDpsEstavel()`.
 - `NumeroDpsEstavel()` (idempotência da reemissão; gov dedup): `AS-{PagamentoTreinadorId}` (assinatura) | `CM-{TreinadorId}-{yyyyMM}` (comissão).
-- Máquina de estado (`enum NotaFiscalStatus {Pendente=0, Emitida=1, Erro=2, BloqueadaDadosFiscais=3, CancelamentoSolicitado=4, Cancelada=5, CancelamentoExpirado=6}`), transições guard'd (`Result` + `NotaFiscalErrors`):
-  - `MarcarEmitida(chave, numero, dataEmissao, danfseRef?, agora)`: {Pendente|Erro}→Emitida; exige chave; seta ChaveAcesso/NumeroNfse/DataEmissao/DanfseRef; limpa erro; **emite `NotaFiscalEmitidaEvent(Id, TreinadorId, chave, agora)`**.
-  - `MarcarErro(codigo, motivo, agora)`: {Pendente|Erro}→Erro (retry permitido).
-  - `MarcarBloqueadaDadosFiscais(agora)`: Pendente→BloqueadaDadosFiscais; emite `NotaFiscalBloqueadaDadosFiscaisEvent`.
-  - `ReabrirParaEmissao(agora)`: BloqueadaDadosFiscais→Pendente; SEM domain event (re-enqueue é do caller). Primitiva do destrave (auto em `DefinirDadosFiscais` + admin reprocessar). Outro status → `Result.Failure(TransicaoReaberturaInvalida)` sem mutar.
-  - `RegistrarCancelamentoPendentePreEmissao(motivo, agora)` (R8): {Pendente|Erro|BloqueadaDadosFiscais}→(sem mudar Status) seta `CancelamentoPendentePreEmissao=true` + `MotivoCancelamentoPendente`. Para estorno/disputa que chega ANTES da emissão.
-  - `SolicitarCancelamento(agora)`: Emitida→CancelamentoSolicitado; limpa `CancelamentoPendentePreEmissao`.
-  - `MarcarCancelada(agora)`: CancelamentoSolicitado→Cancelada.
-  - `MarcarCancelamentoExpirado(agora)`: CancelamentoSolicitado→CancelamentoExpirado.
-- Campos `CancelamentoPendentePreEmissao` (bool, default false) + `MotivoCancelamentoPendente` (string?, ≤500) — migração `AdicionarCancelamentoPendentePreEmissaoNfse`.
+- Máquina de estado (`enum NotaFiscalStatus {Pendente=0, Emitida=1, Erro=2, BloqueadaDadosFiscais=3, CancelamentoSolicitado=4, Cancelada=5, CancelamentoExpirado=6}`), transições guard'd (`Result` + `NotaFiscalErrors`) — enumerar em `NotaFiscal.cs`. Não-óbvios: `MarcarEmitida` exige chave e emite `NotaFiscalEmitidaEvent`; `MarcarBloqueadaDadosFiscais` emite `NotaFiscalBloqueadaDadosFiscaisEvent`; `ReabrirParaEmissao` (BloqueadaDadosFiscais→Pendente) SEM domain event (re-enqueue é do caller; primitiva do destrave — auto em `DefinirDadosFiscais` + admin reprocessar); **R8** `RegistrarCancelamentoPendentePreEmissao` seta `CancelamentoPendentePreEmissao=true`+`MotivoCancelamentoPendente` (≤500) SEM mudar Status, p/ estorno/disputa que chega ANTES da emissão — migração `AdicionarCancelamentoPendentePreEmissaoNfse`.
 - ChaveAcesso só é setada em `MarcarEmitida` — invariante: nota sem chave nunca foi transmitida com sucesso (base da reconciliação).
 
 ### `DadosFiscais` (Domain/ValueObjects) — VO owned por `Treinador`
@@ -72,7 +63,7 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 ## PERSISTÊNCIA
 - Tabela `notas_fiscais` + colunas owned `dados_fiscais_*` em `treinadores`. Migration `CriarNotasFiscaisEDadosFiscaisTreinador` (schema-agnostic, search_path). Detalhe de colunas/índices em [specification-db].
 - Idempotência por índice UNIQUE: `ix_notas_fiscais_pagamento_treinador_id_unique` (fluxo 1), `ix_notas_fiscais_treinador_tipo_competencia_unique` (fluxo 2). Check `ck_notas_fiscais_valor_nao_negativo`.
-- `INotaFiscalRepository`: `AdicionarAsync`, `ObterPorIdAsync`, `ObterPorPagamentoTreinadorAsync`, `ListarPorTreinadorAsync`(keyset), `ListarPorStatusAsync`(keyset; **tracked** — sem `AsNoTracking`, p/ reconciliação persistir; R1), `ListarAdminAsync`(filtro+keyset), `ExisteComissaoAsync(treinador, competencia)`, `ListarTreinadoresComComissaoAsync(treinadorIds, competencia)` (batch — evita N+1 no lote de comissão; R-menor d), `ListarBloqueadasPorTreinadorAsync(treinadorId)` (**tracked** — sem `AsNoTracking`, p/ o destrave persistir a transição `ReabrirParaEmissao`; usada pelo `DefinirDadosFiscaisTreinadorHandler`).
+- `INotaFiscalRepository` (impl Infra) — CRUD + keyset por status/treinador/admin; enumerar em `INotaFiscalRepository.cs`. Não-óbvios: `ListarPorStatusAsync` (R1) e `ListarBloqueadasPorTreinadorAsync` são **tracked** (sem `AsNoTracking`, p/ reconciliação/destrave persistirem a transição); `ListarTreinadoresComComissaoAsync` é batch (evita N+1 no lote de comissão); idempotência via `ExisteComissaoAsync`.
 
 ## FLUXOS
 
@@ -153,10 +144,9 @@ DOC PARA AGENTES. Fonte de verdade do módulo fiscal: emissão de NFS-e Nacional
 - Dados fiscais de nota EMITIDA sobrevivem à anonimização (guarda fiscal ~5 anos): obrigação fiscal > apagamento. Exceção legítima documentada.
 
 ## TESTES
-- Unit (xUnit, sem Docker): Domain (`NotaFiscalTests` transições, `DadosFiscaisTests` dígito verificador), Application (`EmitirNfseAssinaturaHandlerTests`, `GerarNfseComissaoMensalHandlerTests`, `CancelarNfseHandlerTests`, `ReconciliarNfseHandlerTests`), Infra (`NullEmissorNfseServiceTests`, `EmissorNfseNacionalServiceTests` com `HttpMessageHandler` mockado, `NfseEmitidaEmailHandlerTests`, `NfseSettingsTests`), Api (`TreinadorEndpointsTests`/`AdminEndpointsTests`/`InternalEndpointsTests` NFS-e), DI smoke (`HandlerDiRegistrationTests`).
+- Unit (xUnit, sem Docker) em `forzion.tech.Tests`: Domain (`NotaFiscalTests` transições, `DadosFiscaisTests` dígito verificador), Application (handlers emissão/comissão/cancelamento/reconciliação), Infra (`EmissorNfseNacionalServiceTests` com `HttpMessageHandler` mock, `NfseEmitidaEmailHandlerTests`, `NfseSettingsTests`), Api, DI smoke. Autofill CEP: `ViaCepConsultaCepServiceTests` (8-dígitos guard, `{erro:true}`→NaoEncontrado, timeout→Indisponivel, `BoolTolerante`) + endpoint 200/400/404/502.
 - Integration (Testcontainers, só CI): `NotaFiscalRepository` round-trip + UNIQUE, `EmitirNfseEfeitoHandler`/`CancelarNfseEfeitoHandler` worker+DB, query de comissão.
-- Autofill CEP: `ViaCepConsultaCepServiceTests` (8-dígitos guard, `{erro:true}`→NaoEncontrado, não-2xx/timeout→Indisponivel, `BoolTolerante`), `TreinadorEndpointsTests` (CEP→200/400/404/502).
-- Frontend (vitest): `dados-fiscais` (inclui autofill por CEP), `notas-fiscais` (treinador), `admin/notas-fiscais`.
+- Frontend (vitest): `dados-fiscais` (inclui autofill CEP), `notas-fiscais`, `admin/notas-fiscais`.
 
 ## DICAS / GOTCHAS
 - Gate Null/Nacional: sem warning no startup = Nacional ativo (Null loga no ctor). Simétrico a e-mail/WhatsApp.
