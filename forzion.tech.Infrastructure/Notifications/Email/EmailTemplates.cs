@@ -745,6 +745,80 @@ internal static class EmailTemplates
             """);
     }
 
+    public static string LimiteAlunosExcedido(string nomeTreinador, int excedente, DateTime dataLimite, string linkPortal)
+    {
+        var dataFormatada = dataLimite.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR"));
+        return Layout(
+            "Você excedeu o limite de alunos do seu plano",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Seu plano atual comporta menos alunos ativos do que você tem hoje. Você está com
+              <strong style="color:#ef6c00">{excedente}</strong> aluno(s) acima do limite.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Você tem até <strong>{dataFormatada}</strong> para regularizar (fazer upgrade de plano ou
+              escolher quais alunos manter). Após essa data, o excedente será desativado automaticamente,
+              priorizando os alunos que você marcar para preservar.
+            </p>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Gerenciar plano e alunos
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, entre em contato com o suporte forzion.tech.
+            </p>
+            """);
+    }
+
+    public static string LimiteAlunosLembrete(string nomeTreinador, int excedente, DateTime dataLimite, string linkPortal)
+    {
+        var dataFormatada = dataLimite.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR"));
+        return Layout(
+            "Lembrete — regularize o limite de alunos",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Você continua com <strong style="color:#ef6c00">{excedente}</strong> aluno(s) acima do limite
+              do seu plano.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Você tem até <strong>{dataFormatada}</strong> para regularizar. Após essa data, o excedente
+              será desativado automaticamente, priorizando os alunos que você marcar para preservar.
+            </p>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Gerenciar plano e alunos
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, entre em contato com o suporte forzion.tech.
+            </p>
+            """);
+    }
+
+    public static string LimiteAlunosAplicado(string nomeTreinador, int quantidadeDesativada, string linkPortal) =>
+        Layout(
+            "Ajuste aplicado — limite de alunos do seu plano",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              O prazo de regularização do limite de alunos do seu plano terminou. Para respeitar o limite,
+              <strong style="color:#c62828">{quantidadeDesativada}</strong> vínculo(s) de aluno foram
+              desativados automaticamente.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Os alunos marcados para preservar (ou os vínculos mais antigos, quando aplicável) foram
+              mantidos. Você pode fazer upgrade de plano a qualquer momento para reativar alunos.
+            </p>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Gerenciar plano e alunos
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, entre em contato com o suporte forzion.tech.
+            </p>
+            """);
+
     public static string NfseBloqueadaDadosFiscais(string nomeTreinador, string linkDadosFiscais) =>
         Layout(
             "Ação necessária — complete seus dados fiscais",

@@ -387,6 +387,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<ExecucaoRegistradaEvent>, ExecucaoRegistradaInAppHandler>();
         services.AddScoped<IEmailEsfriamentoNotifier, EmailEsfriamentoNotifier>();
         services.AddScoped<IDigestTreinadorEmailNotifier, DigestTreinadorEmailNotifier>();
+        services.AddScoped<ILimiteAlunosEmailSender, LimiteAlunosEmailSender>();
 
         // WhatsAppSettings — guardrail de ambiente (defaults prod-safe)
         services.AddOptions<WhatsAppSettings>().BindConfiguration("WhatsApp");

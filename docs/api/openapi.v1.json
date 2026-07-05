@@ -11792,7 +11792,10 @@
           "LembreteLeve",
           "Recuperacao",
           "MarcoStreak",
-          "DigestTreinador"
+          "DigestTreinador",
+          "LimiteAlunosExcedido",
+          "LimiteAlunosLembrete",
+          "LimiteAlunosAplicado"
         ]
       },
       "TipoTrocaPlano": {

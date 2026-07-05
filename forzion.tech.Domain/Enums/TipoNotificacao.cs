@@ -8,5 +8,8 @@ public enum TipoNotificacao
     LembreteLeve,
     Recuperacao,
     MarcoStreak,
-    DigestTreinador
+    DigestTreinador,
+    LimiteAlunosExcedido,
+    LimiteAlunosLembrete,
+    LimiteAlunosAplicado
 }
