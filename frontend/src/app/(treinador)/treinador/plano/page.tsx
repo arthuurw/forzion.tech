@@ -20,6 +20,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import dayjs from "dayjs";
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { treinadorApi } from "@/lib/api/treinador";
 import { useAuth } from "@/lib/auth/context";
 import { extractApiError, extractApiErrorInfo } from "@/lib/api/extractApiError";
 import { baixarMeusDados as baixarMeusDadosBlob } from "@/lib/utils/downloadBlob";
@@ -27,11 +28,14 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import PageHeader from "@/components/ui/PageHeader";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import TierEfetivoBadge from "@/components/treinador/TierEfetivoBadge";
 import { formatarBRL } from "@/lib/utils/formatting";
+import { permiteEmailEngajamento, permiteWhatsapp } from "@/lib/utils/tier";
 import type {
   AssinaturaTreinadorResponse,
   ContratarPlanoTreinadorResponse,
   PlanoPlataformaResponse,
+  TreinadorDashboardPlano,
   TrocarPlanoTreinadorResponse,
 } from "@/types";
 
@@ -49,6 +53,7 @@ const OFFBOARDING_MENSAGEM =
 export default function PlanoTreinadorPage() {
   const [assinatura, setAssinatura] = useState<AssinaturaTreinadorResponse | null>(null);
   const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
+  const [dashboardPlano, setDashboardPlano] = useState<TreinadorDashboardPlano | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
   const [etapa, setEtapa] = useState<Etapa>("idle");
@@ -69,9 +74,10 @@ export default function PlanoTreinadorPage() {
 
   const carregar = useCallback(async () => {
     setErro("");
-    const [aRes, pRes] = await Promise.allSettled([
+    const [aRes, pRes, dRes] = await Promise.allSettled([
       pagamentoApi.obterAssinaturaTreinador(),
       pagamentoApi.listarPlanosPlataforma(),
+      treinadorApi.getDashboard(),
     ]);
     if (aRes.status === "fulfilled") {
       setAssinatura(aRes.value.data);
@@ -83,6 +89,7 @@ export default function PlanoTreinadorPage() {
     } else {
       setErro("Erro ao carregar informações do plano.");
     }
+    setDashboardPlano(dRes.status === "fulfilled" ? dRes.value.data.plano : null);
     setLoading(false);
   }, []);
 
@@ -294,6 +301,30 @@ export default function PlanoTreinadorPage() {
 
       <AlertBanner open={!!erro} message={erro} />
 
+      {dashboardPlano && (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Canais de notificação do seu plano
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+              <Chip
+                size="small"
+                label={`E-mail de engajamento — ${permiteEmailEngajamento(dashboardPlano.tierEfetivo) ? "disponível" : "indisponível"}`}
+                color={permiteEmailEngajamento(dashboardPlano.tierEfetivo) ? "success" : "default"}
+                variant={permiteEmailEngajamento(dashboardPlano.tierEfetivo) ? "filled" : "outlined"}
+              />
+              <Chip
+                size="small"
+                label={`WhatsApp — ${permiteWhatsapp(dashboardPlano.tierEfetivo) ? "disponível" : "indisponível"}`}
+                color={permiteWhatsapp(dashboardPlano.tierEfetivo) ? "success" : "default"}
+                variant={permiteWhatsapp(dashboardPlano.tierEfetivo) ? "filled" : "outlined"}
+              />
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
       {assinatura && (
         <Card variant="outlined" sx={{ mb: 3 }}>
           <CardContent>
@@ -301,11 +332,14 @@ export default function PlanoTreinadorPage() {
               <Typography variant="subtitle1">
                 {planoAtual?.nome ?? "Plano atual"}
               </Typography>
-              <Chip
-                label={assinatura.status}
-                color={statusColor(assinatura.status)}
-                size="small"
-              />
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                <Chip
+                  label={assinatura.status}
+                  color={statusColor(assinatura.status)}
+                  size="small"
+                />
+                {dashboardPlano && <TierEfetivoBadge plano={dashboardPlano} planos={planos} />}
+              </Stack>
             </Stack>
             <Typography variant="body2" color="text.secondary">
               {formatarBRL(assinatura.valor)}/mês

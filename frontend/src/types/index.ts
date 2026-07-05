@@ -492,6 +492,13 @@ export interface TreinadorDashboardCounts {
 
 export interface TreinadorDashboardPlano {
   status: AssinaturaTreinadorStatus | null;
+  tierEfetivo: TierPlano;
+  planoContratadoId: string | null;
+  alunosAtivos: number;
+  capEfetivo: number;
+  excedente: number;
+  gracaAte: string | null;
+  temCortesia: boolean;
 }
 
 export interface ReceitaPorPacoteItem {

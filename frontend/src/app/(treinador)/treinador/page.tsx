@@ -12,9 +12,11 @@ import LinkOffIcon from "@mui/icons-material/LinkOff";
 import { useRouter } from "next/navigation";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
+import TierEfetivoBadge from "@/components/treinador/TierEfetivoBadge";
 import { treinadorApi } from "@/lib/api/treinador";
+import { pagamentoApi } from "@/lib/api/pagamento";
 import { extractApiError } from "@/lib/api/extractApiError";
-import type { VinculoDetalheResponse } from "@/types";
+import type { PlanoPlataformaResponse, VinculoDetalheResponse } from "@/types";
 import { OBJETIVO_LABEL, ALUNO_STATUS_COLORS } from "@/lib/constants/labels";
 
 const TreinadorDashboardCharts = dynamic(
@@ -51,6 +53,10 @@ export default function DashboardTreinadorPage() {
     staleTime: 60 * 1000,
     queryFn: async () => {
       const { data: d } = await treinadorApi.getDashboard();
+      const planos: PlanoPlataformaResponse[] = await pagamentoApi
+        .listarPlanosPlataforma()
+        .then((r) => r.data)
+        .catch(() => []);
 
       const alunoStats: StatItem[] = [
         { name: "Ativos", value: d.counts.ativos, color: ALUNO_STATUS_COLORS.Ativos },
@@ -81,6 +87,8 @@ export default function DashboardTreinadorPage() {
         planoInadimplente: d.plano.status === "Inadimplente",
         dadosFiscaisPendentes: d.dadosFiscaisPendentes,
         pacoteNomes: new Map(d.receitaPorPacote.map((p) => [p.pacoteId, p.nome])),
+        plano: d.plano,
+        planos,
       };
     },
   });
@@ -124,6 +132,12 @@ export default function DashboardTreinadorPage() {
   return (
     <Box>
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+
+      {data?.plano && (
+        <Box sx={{ mb: 2 }}>
+          <TierEfetivoBadge plano={data.plano} planos={data.planos} />
+        </Box>
+      )}
 
       {data?.planoInadimplente && (
         <Paper
