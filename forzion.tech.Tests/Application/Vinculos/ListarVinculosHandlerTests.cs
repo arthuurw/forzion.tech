@@ -81,4 +81,19 @@ public class ListarVinculosHandlerTests
         item.NomeAluno.Should().Be("Maria");
         item.TemVinculoAtivoPrevio.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task HandleAsync_VinculoPreservado_RetornaPreservarNoLimiteTrue()
+    {
+        var treinadorId = Guid.NewGuid();
+        var vinculo = VinculoTreinadorAluno.Criar(treinadorId, Guid.NewGuid(), DateTime.UtcNow).Value;
+        vinculo.DefinirPreservacao(true, DateTime.UtcNow);
+        var items = new List<VinculoComDetalheAluno> { new(vinculo, "Maria", "maria@email.com", false) };
+        _vinculoRepo.Setup(r => r.ListarComDetalhesAsync(treinadorId, null, 1, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((items, 1));
+
+        var result = await _handler.HandleAsync(treinadorId, null, 1, 20);
+
+        result.Items[0].PreservarNoLimite.Should().BeTrue();
+    }
 }

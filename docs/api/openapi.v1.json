@@ -12573,7 +12573,8 @@
           "nomeAluno",
           "emailAluno",
           "createdAt",
-          "temVinculoAtivoPrevio"
+          "temVinculoAtivoPrevio",
+          "preservarNoLimite"
         ],
         "type": "object",
         "properties": {
@@ -12613,6 +12614,9 @@
             "format": "date-time"
           },
           "temVinculoAtivoPrevio": {
+            "type": "boolean"
+          },
+          "preservarNoLimite": {
             "type": "boolean"
           }
         }
