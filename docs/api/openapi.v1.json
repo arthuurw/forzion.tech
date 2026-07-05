@@ -3642,6 +3642,72 @@
         ]
       }
     },
+    "/treinador/alunos/{vinculoId}/preservar": {
+      "patch": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Marca/desmarca um vínculo para ser preservado na apara da graça de limite de alunos",
+        "parameters": [
+          {
+            "name": "vinculoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefinirPreservacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinirPreservacaoVinculoResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/treinador/alunos": {
       "get": {
         "tags": [
@@ -9063,6 +9129,33 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "DefinirPreservacaoRequest": {
+        "required": [
+          "preservar"
+        ],
+        "type": "object",
+        "properties": {
+          "preservar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DefinirPreservacaoVinculoResponse": {
+        "required": [
+          "vinculoId",
+          "preservarNoLimite"
+        ],
+        "type": "object",
+        "properties": {
+          "vinculoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "preservarNoLimite": {
+            "type": "boolean"
           }
         }
       },

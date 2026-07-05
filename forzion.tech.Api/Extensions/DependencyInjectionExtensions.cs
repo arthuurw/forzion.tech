@@ -310,6 +310,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<AprovarVinculoHandler>();
         services.AddScoped<DesvincularAlunoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Vinculos.DefinirPreservacaoVinculo.DefinirPreservacaoVinculoHandler>();
         services.AddScoped<ListarVinculosHandler>();
         services.AddScoped<ReativarVinculoHandler>();
         services.AddScoped<SolicitarTrocaTreinadorHandler>();
