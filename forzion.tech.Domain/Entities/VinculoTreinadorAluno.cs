@@ -20,6 +20,7 @@ public class VinculoTreinadorAluno : IHasDomainEvents
     public DateTime? AprovadoEm { get; private set; }
     public DateTime? DataInicio { get; private set; }
     public DateTime? DataFim { get; private set; }
+    public bool PreservarNoLimite { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private VinculoTreinadorAluno() { }
@@ -69,6 +70,12 @@ public class VinculoTreinadorAluno : IHasDomainEvents
 
         Status = VinculoStatus.Inativo;
         DataFim = agora;
+        return Result.Success();
+    }
+
+    public Result DefinirPreservacao(bool preservar, DateTime agora)
+    {
+        PreservarNoLimite = preservar;
         return Result.Success();
     }
 }
