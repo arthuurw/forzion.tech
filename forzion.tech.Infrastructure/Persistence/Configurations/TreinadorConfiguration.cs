@@ -41,6 +41,16 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
+        builder.Property(t => t.PlanoCortesiaId);
+
+        builder.HasOne<PlanoPlataforma>()
+            .WithMany()
+            .HasForeignKey(t => t.PlanoCortesiaId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
+        builder.Property(t => t.AlunosAcimaDoCapDesde);
+
         builder.Property(t => t.ModoPagamentoAluno)
             .HasConversion<string>()
             .HasDefaultValue(ModoPagamentoAluno.Plataforma)

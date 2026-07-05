@@ -43,6 +43,8 @@ public class VinculoTreinadorAlunoConfiguration : IEntityTypeConfiguration<Vincu
 
         builder.Property(v => v.CreatedAt).IsRequired();
 
+        builder.Property(v => v.PreservarNoLimite).HasDefaultValue(false);
+
         builder.HasIndex(v => new { v.TreinadorId, v.AlunoId });
         builder.HasIndex(v => v.AlunoId);
         builder.HasIndex(v => new { v.TreinadorId, v.Status });
