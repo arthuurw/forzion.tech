@@ -37,7 +37,8 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 | Linguagem | TypeScript | 6 |
 | Forms | React Hook Form + Zod | 7 + 4 |
 | HTTP | Axios | 1.x |
-| Estado global | Zustand | 5 |
+| Dados / cache servidor | @tanstack/react-query | 5 |
+| Estado de sessão (client) | React Context (`AuthContext`) | — |
 | Datas | Day.js | 1.x |
 | Runtime | React | 19 |
 | Gráficos | Recharts | 3.x |
@@ -57,9 +58,9 @@ Interface web da plataforma forzion.tech para personal trainers e alunos.
 | E2E + a11y de página | Playwright + @axe-core/playwright | 1.x |
 | Component workshop | Storybook 10 + test-runner | 10 |
 | Mutation testing | Stryker (lib + hooks) | 9 |
-| Contract testing | Pact (consumer-driven, broker self-hosted) | 16 |
+| Contract testing | Pact (consumer-driven, broker self-hosted) | 17 |
 | Performance | Lighthouse CI + bundle-analyzer + linkinator | — |
-| Dead code | knip + madge | 5 / 8 |
+| Dead code | knip + madge | 6 / 8 |
 
 > Os planos de harness (`docs/frontend-harness-plan.md`, `docs/frontend-harness-rationale.md`) ficam fora do controle de versão — `docs/` é gitignored (ver `.gitignore` na raiz). Consulte-os localmente se presentes.
 
@@ -88,7 +89,7 @@ npm run lint           # eslint .
 
 # ── Testes Vitest (projects) ────────────────────────
 npm test               # todos os projects, single run
-npm run test:unit      # project unit (node) — lib, hooks, middleware
+npm run test:unit      # project unit (node) — lib, hooks, proxy
 npm run test:integration # project integration (jsdom) — componentes/páginas
 npm run test:api       # project api (node) — route handlers
 npm run test:watch     # watch (project unit)
@@ -174,7 +175,9 @@ frontend/
 │   │   │       │   └── [treinoId]/     # Detalhe de treino (read-only)
 │   │   │       ├── planos/             # CRUD planos globais (nome, tier, maxAlunos, preço, descricao, ativo)
 │   │   │       ├── grupos-musculares/  # CRUD grupos musculares
-│   │   │       └── exercicios/         # Biblioteca global de exercícios
+│   │   │       ├── exercicios/         # Biblioteca global de exercícios
+│   │   │       ├── notas-fiscais/      # NFS-e do sistema (status, reprocessar)
+│   │   │       └── saude/              # Relatório de saúde (config, snapshots, run)
 │   │   │
 │   │   ├── (treinador)/                # Route group — Treinador
 │   │   │   ├── layout.tsx
@@ -190,6 +193,9 @@ frontend/
 │   │   │       ├── pacotes/            # CRUD pacotes (nome + descrição + preço)
 │   │   │       ├── pagamentos/         # Stripe Connect onboarding + status da conta
 │   │   │       ├── plano/              # Assinatura do plano da plataforma: status, troca, renovação (Pix/cartão)
+│   │   │       ├── dados-fiscais/      # Dados fiscais (CPF/CNPJ + endereço) p/ NFS-e; autofill CEP
+│   │   │       ├── notas-fiscais/      # NFS-e emitidas + DANFSe
+│   │   │       ├── suporte/            # Envio de mensagem de suporte
 │   │   │       └── onboarding/
 │   │   │           └── retorno/        # Retorno pós-onboarding Stripe (verifica status)
 │   │   │
@@ -204,7 +210,8 @@ frontend/
 │   │   │       │       └── executar/   # Execução passo a passo com registro de cargas
 │   │   │       ├── historico/          # Histórico de execuções com gráficos
 │   │   │       ├── assinatura/         # Status da assinatura + pagamento pendente
-│   │   │       └── pagamentos/         # Histórico de cobranças (Pix ou cartão)
+│   │   │       ├── pagamentos/         # Histórico de cobranças (Pix ou cartão)
+│   │   │       └── suporte/            # Envio de mensagem de suporte
 │   │   │
 │   │   ├── (public)/                   # Route group — sem auth
 │   │   │   ├── layout.tsx              # PublicLayout
@@ -222,6 +229,9 @@ frontend/
 │   │   │   │   ├── route.ts            # POST /api/auth — login; seta cookies httpOnly; token não retornado no body
 │   │   │   │   ├── me/route.ts         # GET /api/auth/me — verifica JWT via jose jwtVerify (HMAC)
 │   │   │   │   ├── logout/route.ts     # POST /api/auth/logout — revoga JTI, limpa cookies
+│   │   │   │   ├── refresh/route.ts    # POST /api/auth/refresh — rotaciona a sessão (cookie refresh)
+│   │   │   │   ├── mfa/                 # 2º fator de login — email/enviar, verificar
+│   │   │   │   ├── planos/route.ts      # GET — planos públicos p/ cadastro
 │   │   │   │   ├── register/
 │   │   │   │   │   ├── treinador/route.ts
 │   │   │   │   │   └── aluno/route.ts
@@ -241,8 +251,11 @@ frontend/
 │   │   │   └── HowItWorks.tsx          # Seção "Como funciona" da landing page
 │   │   ├── perfil/
 │   │   │   ├── layout.tsx
-│   │   │   └── page.tsx                # Perfil + alterar senha + LGPD (exportar/excluir conta, cookies)
-│   │   ├── layout.tsx                  # Root layout — AuthProvider + SnackbarProvider + viewport
+│   │   │   ├── page.tsx                # Perfil + alterar senha (step-up) + troca de e-mail + preferências
+│   │   │   └── anamnese/               # Edição self-service da anamnese (Aluno — LGPD art. 18 III)
+│   │   ├── seguranca/                  # MFA/2FA — enroll TOTP, recovery codes, dispositivos confiáveis
+│   │   ├── privacidade/                # LGPD — exportar dados (JSON/XLSX), excluir conta, consentimento de cookies
+│   │   ├── layout.tsx                  # Root layout — AuthProvider + QueryProvider + SnackbarProvider + viewport
 │   │   ├── page.tsx                    # Landing page (hero + planos + CTA)
 │   │   ├── error.tsx                   # Error boundary global
 │   │   └── not-found.tsx
@@ -262,6 +275,10 @@ frontend/
 │   │   │   └── PagamentoCartao.tsx     # Stripe Elements (PaymentElement) + confirmPayment
 │   │   ├── treinador/
 │   │   │   └── ProgressaoAluno.tsx     # Gráfico de progressão do aluno
+│   │   ├── notificacoes/
+│   │   │   └── NotificacoesBell.tsx    # Sino + contador de não-lidas + feed in-app (AppHeader)
+│   │   ├── suporte/
+│   │   │   └── SuporteForm.tsx         # Form de mensagem de suporte (posta /suporte/mensagens)
 │   │   └── ui/
 │   │       ├── AlertBanner.tsx         # Banner de erro/sucesso inline
 │   │       ├── ConsentBanner.tsx       # Banner de consentimento de cookies (LGPD); reabrível via /perfil
@@ -287,11 +304,19 @@ frontend/
 │   │   │   ├── treinador.ts            # Alunos, vínculos, fichas, exercícios, pacotes
 │   │   │   ├── aluno.ts                # Fichas, execuções, vínculo
 │   │   │   ├── pagamento.ts            # Onboarding Stripe, cobranças, pagamentos
-│   │   │   └── conta.ts                # Perfil, senha
+│   │   │   ├── conta.ts                # Perfil, senha, troca e-mail, preferências, LGPD
+│   │   │   ├── auth.ts                 # Login, MFA, cadastro, listagens públicas
+│   │   │   ├── mfa.ts                  # Enroll TOTP, recovery codes, step-up
+│   │   │   ├── nfse.ts                 # Dados fiscais, CEP, notas fiscais, DANFSe
+│   │   │   └── notificacoes.ts         # Feed in-app + contador de não-lidas
 │   │   ├── auth/
 │   │   │   ├── AuthContext.tsx         # Contexto de sessão React
 │   │   │   ├── context.ts             # homeRouteFor
-│   │   │   └── jwt.ts                 # parseJwtPayload + extractTipoConta (base64-decode, sem HMAC — uso só em middleware)
+│   │   │   ├── jwt.ts                 # parseJwtPayload + extractTipoConta (base64-decode; uso só no proxy)
+│   │   │   ├── sessionCookies.ts      # Set/clear dos cookies (token/refresh/mfa_pending/trusted_device)
+│   │   │   └── stepUpController.ts    # Orquestra o desafio step-up + header X-Step-Up-Token
+│   │   ├── query/
+│   │   │   └── QueryProvider.tsx      # Provider do @tanstack/react-query
 │   │   ├── constants/
 │   │   │   ├── labels.ts               # Maps enum → label PT-BR
 │   │   │   └── enrollmentOptions.ts    # Opções de select do cadastro aluno
@@ -304,7 +329,7 @@ frontend/
 │   │   │   └── common.ts               # Schemas Zod reutilizáveis
 │   │   └── rateLimit.ts                # Rate limiter in-memory para /api/auth (10 req/min por IP)
 │   │
-│   ├── middleware.ts                   # Proteção de rotas server-side
+│   ├── proxy.ts                        # Proteção de rotas server-side (Next 16 — ex middleware.ts)
 │   ├── styles/
 │   │   └── globals.css                 # Reset + 100dvh + safe-area-inset
 │   └── types/
@@ -340,6 +365,8 @@ frontend/
 | `/admin/planos` | SystemAdmin | CRUD planos globais (nome, tier, maxAlunos, preço, descricao, ativo) |
 | `/admin/grupos-musculares` | SystemAdmin | CRUD grupos musculares |
 | `/admin/exercicios` | SystemAdmin | Biblioteca global de exercícios (CRUD + grupo muscular) |
+| `/admin/notas-fiscais` | SystemAdmin | NFS-e do sistema — filtro por status/treinador, reprocessar notas em erro |
+| `/admin/saude` | SystemAdmin | Relatório de saúde — config, snapshots, execução sob demanda |
 | `/treinador` | Treinador | Dashboard — stat cards, donut alunos por status, vínculos pendentes inline |
 | `/treinador/alunos` | Treinador | Lista de alunos vinculados com filtro por status |
 | `/treinador/alunos/[alunoId]` | Treinador | Detalhe do aluno + fichas vinculadas + progressão |
@@ -350,6 +377,9 @@ frontend/
 | `/treinador/pagamentos` | Treinador | Stripe Connect onboarding — configura conta de recebimentos |
 | `/treinador/plano` | Treinador | Assinatura do plano da plataforma — status, troca (upgrade/downgrade), renovação via Pix/cartão com polling |
 | `/treinador/onboarding/retorno` | Treinador | Retorno pós-onboarding Stripe — verifica e exibe status |
+| `/treinador/dados-fiscais` | Treinador | Dados fiscais (CPF/CNPJ + endereço) para NFS-e; autofill de CEP |
+| `/treinador/notas-fiscais` | Treinador | NFS-e emitidas + link da DANFSe |
+| `/treinador/suporte` | Treinador | Envio de mensagem de suporte |
 | `/aluno` | Aluno | Dashboard |
 | `/aluno/fichas` | Aluno | Lista fichas ativas vinculadas ao aluno |
 | `/aluno/fichas/[fichaId]` | Aluno | Detalhe da ficha com exercícios, instruções e botão exportar |
@@ -357,20 +387,30 @@ frontend/
 | `/aluno/historico` | Aluno | Histórico de execuções com gráficos de progressão |
 | `/aluno/assinatura` | Aluno | Status da assinatura + pagamento pendente (Pix ou cartão) |
 | `/aluno/pagamentos` | Aluno | Histórico de cobranças com tabela e dialog de pagamento inline |
-| `/perfil` | todos | Dados da conta + alterar senha + **LGPD**: exportar dados (JSON), excluir conta (exige senha), preferências de cookies |
+| `/aluno/suporte` | Aluno | Envio de mensagem de suporte |
+| `/perfil` | todos | Dados da conta + alterar senha (step-up) + trocar e-mail + preferências de notificação |
+| `/perfil/anamnese` | Aluno | Edição self-service da anamnese (LGPD art. 18 III) |
+| `/seguranca` | todos | MFA/2FA — enroll TOTP, recovery codes, dispositivos confiáveis |
+| `/privacidade` | todos | **LGPD**: exportar dados (JSON/XLSX), excluir conta (anonimização, exige senha), consentimento de cookies |
+
+O sino de notificações (`NotificacoesBell`, no `AppHeader`) mostra o contador de não-lidas e o feed in-app (`/notificacoes`), disponível em todas as áreas autenticadas.
 
 ---
 
 ## Autenticação e Sessão
 
-O fluxo usa dois cookies complementares, ambos `httpOnly`:
+Cookies setados server-side em `src/lib/auth/sessionCookies.ts` (`SameSite=strict`, `Secure` em produção):
 
-| Cookie | `httpOnly` | `SameSite` | Uso |
-|--------|-----------|-----------|-----|
-| `token` | ✅ | `strict` | JWT completo — lido pelo middleware e por `/api/auth/me`; não acessível via JS |
-| `session_guard` | ✅ | `strict` | Flag de sessão; ausência invalida sessão mesmo com `token` presente |
+| Cookie | `httpOnly` | Uso |
+|--------|-----------|-----|
+| `token` | ✅ | Access token JWT — lido pelo proxy e por `/api/auth/me`; `maxAge` = `exp` do JWT |
+| `refresh` | ✅ | Refresh token raw — só viaja browser↔proxy; usado por `POST /api/auth/refresh` para rotacionar a sessão. `maxAge` idle por papel (espelha `Auth:Sessao` do backend) |
+| `session_guard` | ✅ | Flag de sessão; ausência invalida a sessão mesmo com `token` presente |
+| `mfa_pending` | ✅ | Scope token `mfa_pending` entre login e 2º fator (login com MFA) |
+| `trusted_device` | ✅ | Token de dispositivo confiável (pula o 2º fator por 30 dias) |
+| `tipo_conta` | ❌ | Hint de roteamento (não é segredo) — lido pelo proxy sem verificar HMAC |
 
-`maxAge` de ambos é derivado do `exp` do JWT — expiram juntos com o token.
+O backend é a autoridade dos prazos reais (`RefreshToken.ExpiraEm` idle + `RefreshTokenFamily` absoluto); o `maxAge` do cookie é só um espelho — um cookie sobrevivente a um token expirado server-side apenas resulta em `401 → /login` no próximo refresh.
 
 > O cookie `token_access` (JS-readable, usado anteriormente pelo interceptor Axios) foi **removido** por risco de XSS. O token nunca é exposto ao browser — o proxy server-side injeta o Bearer.
 
@@ -378,10 +418,16 @@ O fluxo usa dois cookies complementares, ambos `httpOnly`:
 
 1. Página `/login` chama `POST /api/auth` (Route Handler — server-side)
 2. Route Handler repassa para `POST /auth/login` na API backend
-3. Em sucesso: seta cookies `token` + `session_guard` (httpOnly, maxAge = exp do JWT)
-4. **Token JWT não é retornado no body da resposta** — permanece exclusivamente nos cookies
+3. Se a conta tem **MFA habilitado** (e sem cookie `trusted_device` válido): o backend responde com scope token `mfa_pending`, gravado no cookie homônimo; a UI pede o 2º fator (TOTP/recovery, ou `POST /api/auth/mfa/email/enviar` para OTP por e-mail) e completa em `POST /api/auth/mfa/verificar` (opção "lembrar dispositivo" seta `trusted_device`)
+4. Em sucesso: seta cookies `token` + `refresh` + `session_guard` + `tipo_conta` (`token` não retornado no body — permanece só nos cookies)
 5. `AuthContext.login()` atualiza o estado React com os dados do usuário
 6. `router.push(homeRouteFor(tipoConta))` redireciona para a área correta
+
+### Refresh e Step-up
+
+- **Refresh**: `POST /api/auth/refresh` lê o cookie `refresh` (httpOnly), chama `POST /auth/refresh` no backend, rotaciona o par access+refresh e regrava os cookies. Reuso de refresh já usado revoga a família de sessão no backend.
+- **Step-up**: ações sensíveis (trocar senha/e-mail, desabilitar MFA, onboarding Stripe) exigem um token `step_up` recente. `src/lib/auth/stepUpController.ts` (`requestStepUp`) orquestra o desafio (TOTP ou OTP e-mail) e injeta o header `X-Step-Up-Token` na chamada protegida.
+- **MFA management**: página `/seguranca` faz o enroll TOTP (QR + confirmação), gera/regenera recovery codes e gerencia dispositivos confiáveis.
 
 ### Validação de Sessão no Mount
 
@@ -428,20 +474,21 @@ Suporta `GET`, `POST`, `PUT`, `PATCH`, `DELETE`. Repassa body, query string e he
 
 ## Proteção de Rotas
 
-### Server-side — `middleware.ts`
+### Server-side — `proxy.ts`
 
-Executa em cada request (exceto assets estáticos e `/api/`). Lê `token` + `session_guard` (httpOnly) e extrai `tipo_conta` do JWT payload via **base64-decode** (sem verificação HMAC — performance; a verificação HMAC acontece em `/api/auth/me` e o backend valida em cada chamada autenticada):
+Next.js 16 renomeou `middleware.ts` → **`proxy.ts`**. Executa em cada request (exceto assets estáticos e `/api/`). Quando `token` + `session_guard` estão presentes, **verifica o JWT via HMAC** (`jose.jwtVerify` com `JWT_SECRET`) para obter o `tipo_conta`. Quando só há `refresh` (access expirado), usa o cookie-hint `tipo_conta` (não-httpOnly) para rotear e deixa a página renovar a sessão em vez de bouncear para `/login`:
 
 | Situação | Comportamento |
 |----------|--------------|
-| Sem autenticação em área protegida | Redireciona `/login` |
+| Sem `token`/`refresh` em área protegida | Redireciona `/login` |
+| Access expirado mas `refresh` presente | Deixa passar — a página dispara `POST /api/auth/refresh` |
 | Autenticado em `/login` | Redireciona para área do `TipoConta` |
 | Autenticado em área errada (ex: Aluno em `/admin`) | Redireciona para área correta |
 | `/` e `/cadastro/*` | Sempre acessíveis |
 
 ### Client-side — `AppLayout.tsx`
 
-Camada extra de proteção após o middleware:
+Camada extra de proteção após o proxy:
 
 ```
 mount → isLoading: spinner
@@ -794,7 +841,11 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 | `lib/api/treinador.ts` | `listarAlunos`, `obterAluno`, `atualizarAluno`, `listarVinculos`, `aprovarVinculo`, `desvincularAluno`, `listarTreinos`, `listarExercicios`, `criarExercicio`, `atualizarExercicio`, `excluirExercicio`, `copiarExercicioGlobal`, `listarPacotes`, `criarPacote`, `atualizarPacote` |
 | `lib/api/aluno.ts` | `listarFichas`, `obterFicha`, `listarExecucoes`, `registrarExecucao`, `obterVinculo`, `solicitarTrocaTreinador` |
 | `lib/api/pagamento.ts` | `iniciarOnboarding`, `verificarOnboarding`, `gerarCobranca`, `obterPagamento`, `listarPagamentosAssinatura`, `obterMinhaAssinatura`, `cancelarMinhaAssinatura` — **billing treinador:** `obterAssinaturaTreinador`, `cobrarRenovacaoPlano`, `trocarPlano`, `obterStatusPagamentoTreinador`, `listarPlanosPlataforma` |
-| `lib/api/conta.ts` | `obterPerfil`, `atualizarPerfil`, `alterarSenha`, `logout`, `exportarDados` (LGPD; Blob JSON), `excluirConta(senha)` (LGPD; anonimização) |
+| `lib/api/conta.ts` | `obterPerfil`, `atualizarPerfil`, `alterarSenha` (step-up), troca de e-mail, preferências de notificação, `exportarDados` (LGPD; Blob JSON/XLSX), `excluirConta(senha)` (LGPD; anonimização) |
+| `lib/api/auth.ts` | `login`, `completarMfa`, `enviarCodigoEmailMfa`, `registerTreinador`, `registerAluno`, `resendVerification`, `iniciarPagamentoTreinador`, `listarPlanos`, `listarTreinadores`, `listarPacotes` |
+| `lib/api/mfa.ts` | `iniciarTotp`, `confirmarTotp`, `getStatus`, `desabilitar`, `regenerarRecovery`, `iniciarStepUp` |
+| `lib/api/nfse.ts` | `getDadosFiscais`, `salvarDadosFiscais`, `consultarCep`, `listNotasTreinador`, `listNotasAdmin`, `getDanfse`, `reprocessarNota` |
+| `lib/api/notificacoes.ts` | `listar`, `contarNaoLidas`, `marcarLida` |
 
 ---
 
@@ -877,7 +928,7 @@ body {
 | Token no body | **Removido**: login retorna dados do usuário sem o campo `token` |
 | `SameSite: strict` | Cookies não enviados em requests cross-site |
 | HMAC verification | `/api/auth/me` usa `jose.jwtVerify` com `JWT_SECRET` — token forjado no cookie é rejeitado |
-| Middleware | Base64-decode apenas (performance); verificação HMAC em `/api/auth/me` + backend |
+| Proxy de roteamento (`proxy.ts`) | Verifica o JWT via HMAC (`jwtVerify`) quando `token`+`session_guard` presentes; com só `refresh`, usa o hint `tipo_conta` e deixa a página renovar |
 | Proxy server-side | Browser nunca vê a URL real do backend |
 | Rate limit | 10 req/60s por IP real (`x-real-ip` nginx, não spoofável via `x-forwarded-for`) |
 
@@ -905,7 +956,7 @@ Harness completo em camadas. Os documentos de plano/rationale por fase ficam em 
 
 | Project | Env | Escopo | Setup |
 |---------|-----|--------|-------|
-| `unit` | node | `src/lib/**`, `src/hooks/**`, `middleware` | `src/test/setup/unit.ts` |
+| `unit` | node | `src/lib/**`, `src/hooks/**`, `proxy` | `src/test/setup/unit.ts` |
 | `integration` | jsdom | componentes e páginas React (`*.test.tsx`) | `src/test/setup/integration.ts` |
 | `api` | node | route handlers (`src/app/api/**`) | `src/test/setup/api.ts` |
 
