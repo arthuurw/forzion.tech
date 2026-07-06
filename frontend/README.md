@@ -274,7 +274,9 @@ frontend/
 │   │   │   ├── PagamentoPix.tsx        # QR Code + copia e cola + polling 30s de status
 │   │   │   └── PagamentoCartao.tsx     # Stripe Elements (PaymentElement) + confirmPayment
 │   │   ├── treinador/
-│   │   │   └── ProgressaoAluno.tsx     # Gráfico de progressão do aluno
+│   │   │   ├── ProgressaoAluno.tsx     # Gráfico de progressão do aluno
+│   │   │   ├── TierEfetivoBadge.tsx    # Chip do tier efetivo (+ aviso de divergência/pagamento pendente)
+│   │   │   └── GracaLimiteBanner.tsx   # Banner da janela de graça de limite de alunos
 │   │   ├── notificacoes/
 │   │   │   └── NotificacoesBell.tsx    # Sino + contador de não-lidas + feed in-app (AppHeader)
 │   │   ├── suporte/
@@ -317,6 +319,8 @@ frontend/
 │   │   │   └── stepUpController.ts    # Orquestra o desafio step-up + header X-Step-Up-Token
 │   │   ├── query/
 │   │   │   └── QueryProvider.tsx      # Provider do @tanstack/react-query
+│   │   ├── hooks/
+│   │   │   └── useTreinadorDashboard.ts # React Query — dashboard do treinador (tier efetivo, graça)
 │   │   ├── constants/
 │   │   │   ├── labels.ts               # Maps enum → label PT-BR
 │   │   │   └── enrollmentOptions.ts    # Opções de select do cadastro aluno
@@ -324,7 +328,8 @@ frontend/
 │   │   │   └── index.ts                # Tema MUI (paleta + tipografia + overrides responsivos)
 │   │   ├── utils/
 │   │   │   ├── formatting.ts           # Funções de formatação
-│   │   │   └── excel.ts                # Exportação de fichas para .xlsx (ExcelJS)
+│   │   │   ├── excel.ts                # Exportação de fichas para .xlsx (ExcelJS)
+│   │   │   └── tier.ts                 # Ordem/labels de tier + tier efetivo (resolverTierEfetivoInfo)
 │   │   ├── validations/
 │   │   │   └── common.ts               # Schemas Zod reutilizáveis
 │   │   └── rateLimit.ts                # Rate limiter in-memory para /api/auth (10 req/min por IP)
@@ -368,14 +373,14 @@ frontend/
 | `/admin/notas-fiscais` | SystemAdmin | NFS-e do sistema — filtro por status/treinador, reprocessar notas em erro |
 | `/admin/saude` | SystemAdmin | Relatório de saúde — config, snapshots, execução sob demanda |
 | `/treinador` | Treinador | Dashboard — stat cards, donut alunos por status, vínculos pendentes inline |
-| `/treinador/alunos` | Treinador | Lista de alunos vinculados com filtro por status |
+| `/treinador/alunos` | Treinador | Lista de alunos vinculados (filtro por status); toggle de preservação por vínculo + banner de graça de limite |
 | `/treinador/alunos/[alunoId]` | Treinador | Detalhe do aluno + fichas vinculadas + progressão |
 | `/treinador/treinos` | Treinador | Lista fichas (filtro por objetivo/dificuldade); criar; duplicar |
 | `/treinador/treinos/[treinoId]` | Treinador | Editor de ficha — exercícios, séries, cargas, ordem + exportar Excel |
 | `/treinador/exercicios` | Treinador | Biblioteca pessoal + copiar exercícios globais |
 | `/treinador/pacotes` | Treinador | CRUD pacotes (nome, descrição, preço) |
 | `/treinador/pagamentos` | Treinador | Stripe Connect onboarding — configura conta de recebimentos |
-| `/treinador/plano` | Treinador | Assinatura do plano da plataforma — status, troca (upgrade/downgrade), renovação via Pix/cartão com polling |
+| `/treinador/plano` | Treinador | Assinatura do plano — status, troca (upgrade/downgrade), renovação via Pix/cartão com polling; badge de tier efetivo (cortesia/divergência) |
 | `/treinador/onboarding/retorno` | Treinador | Retorno pós-onboarding Stripe — verifica e exibe status |
 | `/treinador/dados-fiscais` | Treinador | Dados fiscais (CPF/CNPJ + endereço) para NFS-e; autofill de CEP |
 | `/treinador/notas-fiscais` | Treinador | NFS-e emitidas + link da DANFSe |
