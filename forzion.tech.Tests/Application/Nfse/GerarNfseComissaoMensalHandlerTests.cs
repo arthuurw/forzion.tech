@@ -149,6 +149,26 @@ public class GerarNfseComissaoMensalHandlerTests
     }
 
     [Fact]
+    public async Task Handle_PassaDateTimeUtcParaRepositorio()
+    {
+        DateTime capturadoInicio = default;
+        DateTime capturadoFim = default;
+        _pagamentoRepo.Setup(r => r.ListarComissaoPorTreinadorNoPeriodoAsync(
+                It.IsAny<DateTime>(), It.IsAny<DateTime>(), 10m, It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<DateTime, DateTime, decimal, Guid?, int, CancellationToken>((inicio, fim, _, _, _, _) =>
+            {
+                capturadoInicio = inicio;
+                capturadoFim = fim;
+            })
+            .ReturnsAsync([]);
+
+        await _handler.HandleAsync(Cmd());
+
+        capturadoInicio.Kind.Should().Be(DateTimeKind.Utc);
+        capturadoFim.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    [Fact]
     public async Task CompetenciaInvalida_Falha()
     {
         var result = await _handler.HandleAsync(new GerarNfseComissaoMensalCommand(Fim, Inicio));
