@@ -12132,6 +12132,13 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "planoCortesiaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },

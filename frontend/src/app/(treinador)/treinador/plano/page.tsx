@@ -30,7 +30,7 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import TierEfetivoBadge from "@/components/treinador/TierEfetivoBadge";
 import { formatarBRL } from "@/lib/utils/formatting";
-import { permiteEmailEngajamento, permiteWhatsapp } from "@/lib/utils/tier";
+import { permiteEmailEngajamento, permiteWhatsapp, type TierEfetivoStatus } from "@/lib/utils/tier";
 import type {
   AssinaturaTreinadorResponse,
   ContratarPlanoTreinadorResponse,
@@ -53,6 +53,7 @@ const OFFBOARDING_MENSAGEM =
 export default function PlanoTreinadorPage() {
   const [assinatura, setAssinatura] = useState<AssinaturaTreinadorResponse | null>(null);
   const [planos, setPlanos] = useState<PlanoPlataformaResponse[]>([]);
+  const [planosStatus, setPlanosStatus] = useState<TierEfetivoStatus>("loading");
   const [dashboardPlano, setDashboardPlano] = useState<TreinadorDashboardPlano | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
@@ -74,6 +75,7 @@ export default function PlanoTreinadorPage() {
 
   const carregar = useCallback(async () => {
     setErro("");
+    setPlanosStatus("loading");
     const [aRes, pRes, dRes] = await Promise.allSettled([
       pagamentoApi.obterAssinaturaTreinador(),
       pagamentoApi.listarPlanosPlataforma(),
@@ -86,8 +88,10 @@ export default function PlanoTreinadorPage() {
     }
     if (pRes.status === "fulfilled") {
       setPlanos(pRes.value.data);
+      setPlanosStatus("resolved");
     } else {
       setErro("Erro ao carregar informações do plano.");
+      setPlanosStatus("error");
     }
     setDashboardPlano(dRes.status === "fulfilled" ? dRes.value.data.plano : null);
     setLoading(false);
@@ -346,7 +350,9 @@ export default function PlanoTreinadorPage() {
                   color={statusColor(assinatura.status)}
                   size="small"
                 />
-                {dashboardPlano && <TierEfetivoBadge plano={dashboardPlano} planos={planos} />}
+                {dashboardPlano && (
+                  <TierEfetivoBadge plano={dashboardPlano} planos={planos} planosStatus={planosStatus} />
+                )}
               </Stack>
             </Stack>
             <Typography variant="body2" color="text.secondary">

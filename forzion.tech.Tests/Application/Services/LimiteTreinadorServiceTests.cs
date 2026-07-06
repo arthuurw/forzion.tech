@@ -28,7 +28,7 @@ public class LimiteTreinadorServiceTests
         var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        _planoEfetivoResolver.Setup(r => r.ResolverAsync(treinadorId, It.IsAny<CancellationToken>()))
+        _planoEfetivoResolver.Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Basic, 10, false));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
@@ -43,7 +43,7 @@ public class LimiteTreinadorServiceTests
         var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        _planoEfetivoResolver.Setup(r => r.ResolverAsync(treinadorId, It.IsAny<CancellationToken>()))
+        _planoEfetivoResolver.Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Basic, 5, false));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
@@ -67,7 +67,7 @@ public class LimiteTreinadorServiceTests
         var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        _planoEfetivoResolver.Setup(r => r.ResolverAsync(treinadorId, It.IsAny<CancellationToken>()))
+        _planoEfetivoResolver.Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Free, 3, true));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(3);
 
@@ -82,7 +82,7 @@ public class LimiteTreinadorServiceTests
         var treinador = Treinador.Criar(Guid.NewGuid(), "Ana", DateTime.UtcNow).Value;
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
-        _planoEfetivoResolver.Setup(r => r.ResolverAsync(treinadorId, It.IsAny<CancellationToken>()))
+        _planoEfetivoResolver.Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Pro, 20, false));
         _vinculoRepo.Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>())).ReturnsAsync(19);
 

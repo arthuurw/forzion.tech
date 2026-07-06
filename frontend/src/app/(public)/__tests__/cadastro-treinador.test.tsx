@@ -58,7 +58,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
     planosHandler();
     const treinador: TreinadorResponse = {
       treinadorId: "t-1", nome: "Maria", contaId: "c-1", status: "AguardandoAprovacao",
-      planoPlataformaId: "plano-free", createdAt: new Date().toISOString(),
+      planoPlataformaId: "plano-free", planoCortesiaId: null, createdAt: new Date().toISOString(),
     };
     server.use(http.post("*/auth/register/treinador", () => HttpResponse.json(treinador, { status: 201 })));
 
@@ -78,7 +78,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
     planosHandler();
     const treinador: TreinadorResponse = {
       treinadorId: "t-9", nome: "Maria", contaId: "c-1", status: "AguardandoPagamento",
-      planoPlataformaId: "plano-basic", createdAt: new Date().toISOString(),
+      planoPlataformaId: "plano-basic", planoCortesiaId: null, createdAt: new Date().toISOString(),
     };
     server.use(
       http.post("*/auth/register/treinador", () => HttpResponse.json(treinador, { status: 201 })),
@@ -110,7 +110,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
     planosHandler();
     const treinador: TreinadorResponse = {
       treinadorId: "t-9", nome: "Maria", contaId: "c-1", status: "AguardandoPagamento",
-      planoPlataformaId: "plano-basic", createdAt: new Date().toISOString(),
+      planoPlataformaId: "plano-basic", planoCortesiaId: null, createdAt: new Date().toISOString(),
     };
     server.use(http.post("*/auth/register/treinador", () => HttpResponse.json(treinador, { status: 201 })));
 

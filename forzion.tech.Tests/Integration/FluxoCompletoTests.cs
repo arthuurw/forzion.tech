@@ -135,6 +135,8 @@ public class FluxoCompletoTests
         var planoEfetivoResolver = new Mock<IPlanoEfetivoResolver>();
         planoEfetivoResolver.Setup(r => r.ResolverAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(plano.Id, plano.Tier, plano.MaxAlunos, false));
+        planoEfetivoResolver.Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(plano.Id, plano.Tier, plano.MaxAlunos, false));
         var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, planoEfetivoResolver.Object, _vinculoRepo.Object);
 
         var contaRecebimentoRepo = new Mock<IContaRecebimentoRepository>();

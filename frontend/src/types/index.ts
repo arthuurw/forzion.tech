@@ -102,6 +102,7 @@ export interface TreinadorResponse {
   contaId: string;
   status: TreinadorStatus;
   planoPlataformaId: string | null;
+  planoCortesiaId: string | null;
   createdAt: string;
 }
 

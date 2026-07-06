@@ -148,10 +148,19 @@ public class Treinador : IHasDomainEvents
         return Result.Success();
     }
 
-    public Result DefinirCortesia(Guid? planoCortesiaId, DateTime agora)
+    public Result DefinirCortesia(
+        Guid? planoCortesiaId,
+        DateTime agora,
+        decimal? precoNovoPlano = null,
+        decimal? precoPlanoAtivo = null)
     {
         if (planoCortesiaId.HasValue && planoCortesiaId.Value == Guid.Empty)
             return Result.Failure(TreinadorErrors.PlanoCortesiaIdInvalido);
+        if (Status == TreinadorStatus.Inativo)
+            return Result.Failure(TreinadorErrors.PlanoTreinadorInativo);
+        if (planoCortesiaId.HasValue && precoNovoPlano.HasValue && precoPlanoAtivo.HasValue
+            && precoNovoPlano.Value < precoPlanoAtivo.Value)
+            return Result.Failure(TreinadorErrors.CortesiaAbaixoDoPago);
 
         PlanoCortesiaId = planoCortesiaId;
         UpdatedAt = agora;

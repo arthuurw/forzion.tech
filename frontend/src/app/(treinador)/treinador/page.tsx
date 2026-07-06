@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/keys";
 import dynamic from "next/dynamic";
@@ -13,10 +13,12 @@ import { useRouter } from "next/navigation";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import TierEfetivoBadge from "@/components/treinador/TierEfetivoBadge";
+import { useTreinadorDashboard } from "@/lib/hooks/useTreinadorDashboard";
 import { treinadorApi } from "@/lib/api/treinador";
 import { pagamentoApi } from "@/lib/api/pagamento";
 import { extractApiError } from "@/lib/api/extractApiError";
-import type { PlanoPlataformaResponse, VinculoDetalheResponse } from "@/types";
+import type { VinculoDetalheResponse } from "@/types";
+import type { TierEfetivoStatus } from "@/lib/utils/tier";
 import { OBJETIVO_LABEL, ALUNO_STATUS_COLORS } from "@/lib/constants/labels";
 
 const TreinadorDashboardCharts = dynamic(
@@ -48,50 +50,55 @@ export default function DashboardTreinadorPage() {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const { data, isPending, isError, error: queryError } = useQuery({
-    queryKey: queryKeys.treinador.dashboard,
+  const { data: dashboard, isPending, isError, error: queryError } = useTreinadorDashboard();
+
+  const {
+    data: planos = [],
+    isPending: planosPending,
+    isError: planosIsError,
+  } = useQuery({
+    queryKey: queryKeys.catalog.planosPlataforma,
     staleTime: 60 * 1000,
-    queryFn: async () => {
-      const { data: d } = await treinadorApi.getDashboard();
-      const planos: PlanoPlataformaResponse[] = await pagamentoApi
-        .listarPlanosPlataforma()
-        .then((r) => r.data)
-        .catch(() => []);
-
-      const alunoStats: StatItem[] = [
-        { name: "Ativos", value: d.counts.ativos, color: ALUNO_STATUS_COLORS.Ativos },
-        { name: "Aguardando", value: d.counts.aguardando, color: ALUNO_STATUS_COLORS.Aguardando },
-        { name: "Inativos", value: d.counts.inativos, color: ALUNO_STATUS_COLORS.Inativos },
-      ];
-
-      const receitaPorPacote: ReceitaPacoteItem[] = d.receitaPorPacote.map((p) => ({
-        name: p.nome,
-        receita: p.receita,
-        alunos: p.alunos,
-      }));
-
-      const objetivoData: ObjetivoItem[] = d.objetivos
-        .slice()
-        .sort((a, b) => b.total - a.total)
-        .map((o) => ({ name: OBJETIVO_LABEL[o.objetivo] ?? o.objetivo, total: o.total }));
-
-      return {
-        alunoStats,
-        objetivoData,
-        pendentes: d.pendentes,
-        totalFichas: d.totalFichas,
-        mrr: d.mrr,
-        receitaPorPacote,
-        onboardingPendente: !d.onboarding.onboardingCompleto,
-        modoExterno: d.onboarding.modoPagamentoAluno === "Externo",
-        planoInadimplente: d.plano.status === "Inadimplente",
-        dadosFiscaisPendentes: d.dadosFiscaisPendentes,
-        pacoteNomes: new Map(d.receitaPorPacote.map((p) => [p.pacoteId, p.nome])),
-        plano: d.plano,
-        planos,
-      };
-    },
+    queryFn: () => pagamentoApi.listarPlanosPlataforma().then((r) => r.data),
   });
+
+  const planosStatus: TierEfetivoStatus = planosPending ? "loading" : planosIsError ? "error" : "resolved";
+
+  const data = useMemo(() => {
+    if (!dashboard) return undefined;
+
+    const alunoStats: StatItem[] = [
+      { name: "Ativos", value: dashboard.counts.ativos, color: ALUNO_STATUS_COLORS.Ativos },
+      { name: "Aguardando", value: dashboard.counts.aguardando, color: ALUNO_STATUS_COLORS.Aguardando },
+      { name: "Inativos", value: dashboard.counts.inativos, color: ALUNO_STATUS_COLORS.Inativos },
+    ];
+
+    const receitaPorPacote: ReceitaPacoteItem[] = dashboard.receitaPorPacote.map((p) => ({
+      name: p.nome,
+      receita: p.receita,
+      alunos: p.alunos,
+    }));
+
+    const objetivoData: ObjetivoItem[] = dashboard.objetivos
+      .slice()
+      .sort((a, b) => b.total - a.total)
+      .map((o) => ({ name: OBJETIVO_LABEL[o.objetivo] ?? o.objetivo, total: o.total }));
+
+    return {
+      alunoStats,
+      objetivoData,
+      pendentes: dashboard.pendentes,
+      totalFichas: dashboard.totalFichas,
+      mrr: dashboard.mrr,
+      receitaPorPacote,
+      onboardingPendente: !dashboard.onboarding.onboardingCompleto,
+      modoExterno: dashboard.onboarding.modoPagamentoAluno === "Externo",
+      planoInadimplente: dashboard.plano.status === "Inadimplente",
+      dadosFiscaisPendentes: dashboard.dadosFiscaisPendentes,
+      pacoteNomes: new Map(dashboard.receitaPorPacote.map((p) => [p.pacoteId, p.nome])),
+      plano: dashboard.plano,
+    };
+  }, [dashboard]);
 
   useEffect(() => {
     if (isError) setError(extractApiError(queryError, "Erro ao carregar dados do painel."));
@@ -135,7 +142,7 @@ export default function DashboardTreinadorPage() {
 
       {data?.plano && (
         <Box sx={{ mb: 2 }}>
-          <TierEfetivoBadge plano={data.plano} planos={data.planos} />
+          <TierEfetivoBadge plano={data.plano} planos={planos} planosStatus={planosStatus} />
         </Box>
       )}
 

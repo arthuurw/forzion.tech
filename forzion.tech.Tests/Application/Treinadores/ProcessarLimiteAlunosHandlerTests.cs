@@ -68,7 +68,7 @@ public class ProcessarLimiteAlunosHandlerTests
     private void SetupPlanoEAtivos(int maxAlunos, int ativos)
     {
         _planoEfetivoResolver
-            .Setup(r => r.ResolverAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ResolverAsync(It.IsAny<Treinador>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Basic, maxAlunos, false));
         _vinculoRepo
             .Setup(r => r.ContarAtivosPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -77,17 +77,17 @@ public class ProcessarLimiteAlunosHandlerTests
 
     // Setup "vivo": Contar/Listar derivam do estado REAL da lista (Status mutável via Inativar),
     // reproduzindo o comportamento de um DB real — necessário pros testes de idempotência/apara.
-    private List<VinculoTreinadorAluno> SetupVinculosVivos(Guid treinadorId, int maxAlunos, params VinculoTreinadorAluno[] vinculos)
+    private List<VinculoTreinadorAluno> SetupVinculosVivos(Treinador treinador, int maxAlunos, params VinculoTreinadorAluno[] vinculos)
     {
         var lista = vinculos.ToList();
         _planoEfetivoResolver
-            .Setup(r => r.ResolverAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Basic, maxAlunos, false));
         _vinculoRepo
-            .Setup(r => r.ContarAtivosPorTreinadorAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ContarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => lista.Count(v => v.Status == VinculoStatus.Ativo));
         _vinculoRepo
-            .Setup(r => r.ListarAtivosPorTreinadorOrdenadoAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ListarAtivosPorTreinadorOrdenadoAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => lista.Where(v => v.Status == VinculoStatus.Ativo).ToList());
         return lista;
     }
@@ -140,7 +140,7 @@ public class ProcessarLimiteAlunosHandlerTests
             It.Is<Notificacao>(n => n.Tipo == TipoNotificacao.LimiteAlunosExcedido && n.Corpo.Contains('2')),
             It.IsAny<CancellationToken>()), Times.Once);
         _emailSender.Verify(e => e.EnviarInicioAsync(
-            treinador.Id, 2, _time.GetUtcNow().UtcDateTime.AddMonths(3), It.IsAny<CancellationToken>()), Times.Once);
+            treinador.ContaId, treinador.Nome, 2, _time.GetUtcNow().UtcDateTime.AddMonths(3), It.IsAny<CancellationToken>()), Times.Once);
         resultado.Should().Be(new ProcessarLimiteAlunosResultado(1, 0, 0));
     }
 
@@ -156,7 +156,7 @@ public class ProcessarLimiteAlunosHandlerTests
         await _handler.HandleAsync();
 
         _emailSender.Verify(e => e.EnviarInicioAsync(
-            It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]
@@ -176,7 +176,7 @@ public class ProcessarLimiteAlunosHandlerTests
         _notificacaoRepo.Verify(r => r.AdicionarAsync(
             It.Is<Notificacao>(n => n.Tipo == TipoNotificacao.LimiteAlunosLembrete),
             It.IsAny<CancellationToken>()), Times.Once);
-        _emailSender.Verify(e => e.EnviarLembreteAsync(treinador.Id, 2, dataLimite, It.IsAny<CancellationToken>()), Times.Once);
+        _emailSender.Verify(e => e.EnviarLembreteAsync(treinador.ContaId, treinador.Nome, 2, dataLimite, It.IsAny<CancellationToken>()), Times.Once);
         resultado.Should().Be(new ProcessarLimiteAlunosResultado(0, 1, 0));
     }
 
@@ -207,7 +207,7 @@ public class ProcessarLimiteAlunosHandlerTests
         var v2 = VinculoAtivoEm(treinador.Id, agora.AddDays(-30));
         var v3 = VinculoAtivoEm(treinador.Id, agora.AddDays(-20));
         var v4 = VinculoAtivoEm(treinador.Id, agora.AddDays(-10), preservar: true);
-        var lista = SetupVinculosVivos(treinador.Id, maxAlunos: 3, v0, v1, v2, v3, v4);
+        var lista = SetupVinculosVivos(treinador, maxAlunos: 3, v0, v1, v2, v3, v4);
 
         var resultado = await _handler.HandleAsync();
 
@@ -221,7 +221,7 @@ public class ProcessarLimiteAlunosHandlerTests
         _notificacaoRepo.Verify(r => r.AdicionarAsync(
             It.Is<Notificacao>(n => n.Tipo == TipoNotificacao.LimiteAlunosAplicado && n.Corpo.Contains('2')),
             It.IsAny<CancellationToken>()), Times.Once);
-        _emailSender.Verify(e => e.EnviarAplicadoAsync(treinador.Id, 2, It.IsAny<CancellationToken>()), Times.Once);
+        _emailSender.Verify(e => e.EnviarAplicadoAsync(treinador.ContaId, treinador.Nome, 2, It.IsAny<CancellationToken>()), Times.Once);
         resultado.Should().Be(new ProcessarLimiteAlunosResultado(0, 0, 1));
     }
 
@@ -237,7 +237,7 @@ public class ProcessarLimiteAlunosHandlerTests
         var v2 = VinculoAtivoEm(treinador.Id, agora.AddDays(-30), preservar: true);
         var v3 = VinculoAtivoEm(treinador.Id, agora.AddDays(-20), preservar: true);
         var v4 = VinculoAtivoEm(treinador.Id, agora.AddDays(-10));
-        var lista = SetupVinculosVivos(treinador.Id, maxAlunos: 2, v0, v1, v2, v3, v4);
+        var lista = SetupVinculosVivos(treinador, maxAlunos: 2, v0, v1, v2, v3, v4);
 
         var resultado = await _handler.HandleAsync();
 
@@ -259,7 +259,7 @@ public class ProcessarLimiteAlunosHandlerTests
 
         var v0 = VinculoAtivoEm(treinador.Id, agora.AddDays(-50));
         var v1 = VinculoAtivoEm(treinador.Id, agora.AddDays(-40));
-        var lista = SetupVinculosVivos(treinador.Id, maxAlunos: 5, v0, v1);
+        var lista = SetupVinculosVivos(treinador, maxAlunos: 5, v0, v1);
         // ativos(2) <= cap(5): excedente vivo é 0 mesmo com carimbo vencido — simula uma
         // regularização (upgrade/pagamento) que aconteceu entre a leitura inicial e a apara.
 
@@ -284,7 +284,7 @@ public class ProcessarLimiteAlunosHandlerTests
             .Setup(r => r.ContarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(5);
         _planoEfetivoResolver
-            .SetupSequence(r => r.ResolverAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .SetupSequence(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Basic, 3, false))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.ProPlus, 10, false));
 
@@ -301,7 +301,7 @@ public class ProcessarLimiteAlunosHandlerTests
     {
         var treinador = SetupUmTreinador();
         _planoEfetivoResolver
-            .Setup(r => r.ResolverAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Free, 3, true));
         _vinculoRepo
             .Setup(r => r.ContarAtivosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
@@ -310,7 +310,7 @@ public class ProcessarLimiteAlunosHandlerTests
         await _handler.HandleAsync();
 
         _emailSender.Verify(e => e.EnviarInicioAsync(
-            treinador.Id, 2, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+            treinador.ContaId, treinador.Nome, 2, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -323,7 +323,7 @@ public class ProcessarLimiteAlunosHandlerTests
         var v0 = VinculoAtivoEm(treinador.Id, agora.AddDays(-50));
         var v1 = VinculoAtivoEm(treinador.Id, agora.AddDays(-40));
         var v2 = VinculoAtivoEm(treinador.Id, agora.AddDays(-30));
-        SetupVinculosVivos(treinador.Id, maxAlunos: 1, v0, v1, v2);
+        SetupVinculosVivos(treinador, maxAlunos: 1, v0, v1, v2);
 
         var primeira = await _handler.HandleAsync();
         var segunda = await _handler.HandleAsync();
@@ -333,7 +333,7 @@ public class ProcessarLimiteAlunosHandlerTests
         _notificacaoRepo.Verify(r => r.AdicionarAsync(
             It.Is<Notificacao>(n => n.Tipo == TipoNotificacao.LimiteAlunosAplicado),
             It.IsAny<CancellationToken>()), Times.Once);
-        _emailSender.Verify(e => e.EnviarAplicadoAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+        _emailSender.Verify(e => e.EnviarAplicadoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -371,7 +371,7 @@ public class ProcessarLimiteAlunosHandlerTests
 
         _unitOfWork.Verify(u => u.DescartarAlteracoesPendentes(), Times.Once);
         _emailSender.Verify(e => e.EnviarInicioAsync(
-            It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
         resultado.Should().Be(new ProcessarLimiteAlunosResultado(0, 0, 0));
     }
 

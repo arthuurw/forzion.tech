@@ -15,7 +15,17 @@ public class PlanoEfetivoResolver(
     public async Task<PlanoEfetivo> ResolverAsync(Guid treinadorId, CancellationToken cancellationToken = default)
     {
         var treinador = await treinadorRepository.ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+        return await ResolverInternoAsync(treinadorId, treinador, cancellationToken).ConfigureAwait(false);
+    }
 
+    public Task<PlanoEfetivo> ResolverAsync(Treinador treinador, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(treinador);
+        return ResolverInternoAsync(treinador.Id, treinador, cancellationToken);
+    }
+
+    private async Task<PlanoEfetivo> ResolverInternoAsync(Guid treinadorId, Treinador? treinador, CancellationToken cancellationToken)
+    {
         PlanoPlataforma? planoAssinatura = null;
         var assinatura = await assinaturaRepository.ObterAtualPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
         if (assinatura is not null && assinatura.Status == AssinaturaTreinadorStatus.Ativa)

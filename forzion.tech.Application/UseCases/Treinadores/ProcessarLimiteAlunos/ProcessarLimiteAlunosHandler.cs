@@ -7,9 +7,9 @@ using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Treinadores.ProcessarLimiteAlunos;
 
-// Autoridade única (GRACE-01..07/NOTIF-01..03): carimba o início da graça, envia lembretes,
-// e apara o excedente no fim da janela de 3 meses. Recomputa tudo ao vivo a cada execução —
-// idempotente por design (uma regularização entre execuções zera o excedente naturalmente).
+// Autoridade única: carimba o início da graça, envia lembretes, e apara o excedente no fim
+// da janela de 3 meses. Recomputa tudo ao vivo a cada execução — idempotente por design (uma
+// regularização entre execuções zera o excedente naturalmente).
 public class ProcessarLimiteAlunosHandler(
     ITreinadorRepository treinadorRepository,
     IServiceScopeFactory scopeFactory,
@@ -65,7 +65,7 @@ public class ProcessarLimiteAlunosHandler(
         var treinador = await treinadorRepo.ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false);
         if (treinador is null) return (false, false, false);
 
-        var planoEfetivo = await planoEfetivoResolver.ResolverAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+        var planoEfetivo = await planoEfetivoResolver.ResolverAsync(treinador, cancellationToken).ConfigureAwait(false);
         var ativos = await vinculoRepo.ContarAtivosPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
         var excedente = Math.Max(0, ativos - planoEfetivo.MaxAlunos);
 
@@ -90,7 +90,7 @@ public class ProcessarLimiteAlunosHandler(
                 "Limite de alunos excedido",
                 $"Você está com {excedente} aluno(s) acima do limite do seu plano. Regularize até {dataLimiteInicio:dd/MM/yyyy}.",
                 agora,
-                (id, ct) => emailSender.EnviarInicioAsync(id, excedente, dataLimiteInicio, ct),
+                ct => emailSender.EnviarInicioAsync(treinador.ContaId, treinador.Nome, excedente, dataLimiteInicio, ct),
                 cancellationToken).ConfigureAwait(false);
 
             return (true, false, false);
@@ -109,7 +109,7 @@ public class ProcessarLimiteAlunosHandler(
                 "Lembrete — regularize o limite de alunos",
                 $"Você continua com {excedente} aluno(s) acima do limite do seu plano. Prazo: {dataLimiteAtual:dd/MM/yyyy}.",
                 agora,
-                (id, ct) => emailSender.EnviarLembreteAsync(id, excedente, dataLimiteAtual, ct),
+                ct => emailSender.EnviarLembreteAsync(treinador.ContaId, treinador.Nome, excedente, dataLimiteAtual, ct),
                 cancellationToken).ConfigureAwait(false);
 
             return (false, enviouLembrete, false);
@@ -119,7 +119,7 @@ public class ProcessarLimiteAlunosHandler(
         // método) — uma regularização concorrente pode ter commitado nos awaits acima, e a
         // apara precisa enxergar o estado atual, não o de alguns awaits atrás.
         var ativosAgora = await vinculoRepo.ContarAtivosPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
-        var planoAgora = await planoEfetivoResolver.ResolverAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+        var planoAgora = await planoEfetivoResolver.ResolverAsync(treinador, cancellationToken).ConfigureAwait(false);
         var excedenteAgora = Math.Max(0, ativosAgora - planoAgora.MaxAlunos);
 
         if (excedenteAgora == 0)
@@ -152,7 +152,7 @@ public class ProcessarLimiteAlunosHandler(
             "Ajuste aplicado no limite de alunos",
             $"{desativar.Count} vínculo(s) foram desativados automaticamente por excesso de capacidade.",
             agora,
-            (id, ct) => emailSender.EnviarAplicadoAsync(id, desativar.Count, ct),
+            ct => emailSender.EnviarAplicadoAsync(treinador.ContaId, treinador.Nome, desativar.Count, ct),
             cancellationToken).ConfigureAwait(false);
 
         // Log só com contagem/ids — nunca nome/telefone/e-mail de aluno (LGPD, design.md §5).
@@ -188,7 +188,7 @@ public class ProcessarLimiteAlunosHandler(
         string titulo,
         string corpo,
         DateTime agora,
-        Func<Guid, CancellationToken, Task> enviarEmail,
+        Func<CancellationToken, Task> enviarEmail,
         CancellationToken cancellationToken)
     {
         var notificacaoResult = Notificacao.Criar(
@@ -198,7 +198,7 @@ public class ProcessarLimiteAlunosHandler(
 
         var inserido = await notificacaoRepo.AdicionarAsync(notificacaoResult.Value, cancellationToken).ConfigureAwait(false);
         if (inserido)
-            await enviarEmail(treinador.Id, cancellationToken).ConfigureAwait(false);
+            await enviarEmail(cancellationToken).ConfigureAwait(false);
 
         return inserido;
     }

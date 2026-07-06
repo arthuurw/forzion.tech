@@ -33,6 +33,9 @@ public class DefinirCortesiaHandler(
         var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
+        decimal? precoNovoPlano = null;
+        decimal? precoPlanoAtivo = null;
+
         if (command.PlanoId is { } planoId)
         {
             var plano = await planoRepository.ObterPorIdAsync(planoId, cancellationToken).ConfigureAwait(false)
@@ -41,18 +44,20 @@ public class DefinirCortesiaHandler(
             if (plano.Tier == TierPlano.Elite)
                 return Result.Failure<TreinadorResponse>(PlanoPlataformaErrors.EliteIndisponivel);
 
-            var assinatura = await assinaturaRepository.ObterAtualPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
-            var valorPago = assinatura is not null && assinatura.Status == AssinaturaTreinadorStatus.Ativa
-                ? assinatura.Valor
-                : 0m;
+            precoNovoPlano = plano.Preco;
 
-            if (plano.Preco < valorPago)
-                return Result.Failure<TreinadorResponse>(TreinadorErrors.CortesiaAbaixoDoPago);
+            var assinatura = await assinaturaRepository.ObterAtualPorTreinadorAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false);
+            if (assinatura is not null && assinatura.Status == AssinaturaTreinadorStatus.Ativa)
+            {
+                var planoAssinado = await planoRepository.ObterPorIdAsync(assinatura.PlanoPlataformaId, cancellationToken).ConfigureAwait(false)
+                    ?? throw new PlanoPlataformaNaoEncontradoException();
+                precoPlanoAtivo = planoAssinado.Preco;
+            }
         }
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        var definirResult = treinador.DefinirCortesia(command.PlanoId, agora);
+        var definirResult = treinador.DefinirCortesia(command.PlanoId, agora, precoNovoPlano, precoPlanoAtivo);
         if (definirResult.IsFailure)
             return Result.Failure<TreinadorResponse>(definirResult.Error!);
 

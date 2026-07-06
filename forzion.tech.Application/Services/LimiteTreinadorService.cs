@@ -11,10 +11,10 @@ public class LimiteTreinadorService(
 {
     public async Task ValidarAsync(Guid treinadorId, CancellationToken cancellationToken = default)
     {
-        _ = await treinadorRepository.ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false)
+        var treinador = await treinadorRepository.ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
-        var planoEfetivo = await planoEfetivoResolver.ResolverAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+        var planoEfetivo = await planoEfetivoResolver.ResolverAsync(treinador, cancellationToken).ConfigureAwait(false);
 
         var ativos = await vinculoRepository.ContarAtivosPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
 

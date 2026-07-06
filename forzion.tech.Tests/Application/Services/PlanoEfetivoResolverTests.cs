@@ -160,4 +160,34 @@ public class PlanoEfetivoResolverTests
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
+
+    [Fact]
+    public async Task ResolverAsync_ComTreinadorJaCarregado_NaoBuscaTreinadorNoRepositorio()
+    {
+        var treinador = CriarTreinador();
+        var free = CriarPlano("Free", TierPlano.Free, 3, 0m);
+
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync((AssinaturaTreinador?)null);
+        _planoRepo.Setup(r => r.ObterPlanoFreeAsync(It.IsAny<CancellationToken>())).ReturnsAsync(free);
+
+        var resultado = await _resolver.ResolverAsync(treinador);
+
+        resultado.Should().Be(new PlanoEfetivo(free.Id, TierPlano.Free, 3, true));
+        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ResolverAsync_ComTreinadorJaCarregadoComCortesia_ResolveCortesiaSemBuscarTreinador()
+    {
+        var proPlusPlano = CriarPlano("ProPlus", TierPlano.ProPlus, 50, 199m);
+        var treinador = CriarTreinador(proPlusPlano.Id);
+
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync((AssinaturaTreinador?)null);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(proPlusPlano.Id, It.IsAny<CancellationToken>())).ReturnsAsync(proPlusPlano);
+
+        var resultado = await _resolver.ResolverAsync(treinador);
+
+        resultado.Should().Be(new PlanoEfetivo(proPlusPlano.Id, TierPlano.ProPlus, 50, false));
+        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

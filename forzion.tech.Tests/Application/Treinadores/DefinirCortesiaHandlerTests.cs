@@ -45,6 +45,7 @@ public class DefinirCortesiaHandlerTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoCortesia.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoCortesia);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoAssinado.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoAssinado);
         _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 
         var result = await _handler.HandleAsync(new DefinirCortesiaCommand(treinador.Id, planoCortesia.Id, Guid.NewGuid()));
@@ -65,6 +66,7 @@ public class DefinirCortesiaHandlerTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoCortesia.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoCortesia);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoAssinado.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoAssinado);
         _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 
         var result = await _handler.HandleAsync(new DefinirCortesiaCommand(treinador.Id, planoCortesia.Id, Guid.NewGuid()));
@@ -85,12 +87,34 @@ public class DefinirCortesiaHandlerTests
 
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _planoRepo.Setup(r => r.ObterPorIdAsync(planoCortesia.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoCortesia);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoAssinado.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoAssinado);
         _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
 
         var result = await _handler.HandleAsync(new DefinirCortesiaCommand(treinador.Id, planoCortesia.Id, Guid.NewGuid()));
 
         result.IsSuccess.Should().BeTrue();
         treinador.PlanoCortesiaId.Should().Be(planoCortesia.Id);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PrecoDoCatalogoSubiuAposAssinatura_UsaPrecoAtualDoPlanoNaoSnapshot()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        var planoAssinado = PlanoPlataforma.Criar("Pro", TierPlano.Pro, 20, 50m, DateTime.UtcNow).Value;
+        var assinatura = CriarAssinaturaAtiva(planoAssinado.Id, 50m);
+        planoAssinado.Atualizar(nome: null, tier: null, maxAlunos: null, preco: 150m, agora: DateTime.UtcNow);
+        var planoCortesia = PlanoPlataforma.Criar("Starter", TierPlano.Basic, 5, 100m, DateTime.UtcNow).Value;
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoCortesia.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoCortesia);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoAssinado.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoAssinado);
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(new DefinirCortesiaCommand(treinador.Id, planoCortesia.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treinador.cortesia_abaixo_do_pago");
+        treinador.PlanoCortesiaId.Should().BeNull();
     }
 
     [Fact]
@@ -182,6 +206,26 @@ public class DefinirCortesiaHandlerTests
 
         var act = async () => await _handler.HandleAsync(new DefinirCortesiaCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()));
         await act.Should().ThrowAsync<TreinadorNaoEncontradoException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorInativo_RetornaFailureECommitNuncaChamado()
+    {
+        var treinador = Treinador.Criar(Guid.NewGuid(), "Carlos", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        treinador.Inativar(DateTime.UtcNow);
+        var planoCortesia = PlanoPlataforma.Criar("Starter", TierPlano.Basic, 5, 49m, DateTime.UtcNow).Value;
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoCortesia.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoCortesia);
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync((AssinaturaTreinador?)null);
+
+        var result = await _handler.HandleAsync(new DefinirCortesiaCommand(treinador.Id, planoCortesia.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("treinador.plano_treinador_inativo");
+        treinador.PlanoCortesiaId.Should().BeNull();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

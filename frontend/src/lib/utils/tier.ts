@@ -1,12 +1,13 @@
 import type { PlanoPlataformaResponse, TierPlano, TreinadorDashboardPlano } from "@/types";
 
-const TIER_ORDER: TierPlano[] = ["Free", "Basic", "Pro", "ProPlus", "Elite"];
+export const TIER_ORDER: TierPlano[] = ["Free", "Basic", "Pro", "ProPlus", "Elite"];
 
+// Única fonte de copy de tier — consumida tanto pelo catálogo admin quanto pelos badges do treinador.
 export const TIER_LABEL: Record<TierPlano, string> = {
   Free: "Free",
   Basic: "Basic",
   Pro: "Pro",
-  ProPlus: "Pro+",
+  ProPlus: "Pro Plus",
   Elite: "Elite",
 };
 
@@ -22,7 +23,10 @@ export function permiteWhatsapp(tier: TierPlano): boolean {
   return tierAtLeast(tier, "ProPlus");
 }
 
+export type TierEfetivoStatus = "loading" | "error" | "resolved";
+
 export interface TierEfetivoInfo {
+  status: TierEfetivoStatus;
   tierEfetivo: TierPlano;
   tierContratado: TierPlano | null;
   divergente: boolean;
@@ -31,10 +35,15 @@ export interface TierEfetivoInfo {
 export function resolverTierEfetivoInfo(
   plano: TreinadorDashboardPlano,
   planos: PlanoPlataformaResponse[],
+  planosStatus: TierEfetivoStatus,
 ): TierEfetivoInfo {
+  if (planosStatus !== "resolved") {
+    return { status: planosStatus, tierEfetivo: plano.tierEfetivo, tierContratado: null, divergente: false };
+  }
   const contratado = planos.find((p) => p.planoId === plano.planoContratadoId) ?? null;
   const tierContratado = contratado?.tier ?? null;
   return {
+    status: "resolved",
     tierEfetivo: plano.tierEfetivo,
     tierContratado,
     divergente: tierContratado !== null && tierContratado !== plano.tierEfetivo,

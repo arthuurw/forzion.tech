@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Box, Typography, Select, MenuItem, FormControl, InputLabel, IconButton,
   Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button, Autocomplete, TextField,
@@ -22,6 +22,7 @@ import { treinadorApi } from "@/lib/api/treinador";
 import { extractApiError } from "@/lib/api/extractApiError";
 import type { VinculoDetalheResponse, VinculoStatus, PacoteResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
+import { useTreinadorDashboard } from "@/lib/hooks/useTreinadorDashboard";
 
 const COLUMNS: Column[] = [
   { label: "Aluno" },
@@ -48,19 +49,12 @@ export default function AlunosTreinadorPage() {
   const [selectedPacoteReativar, setSelectedPacoteReativar] = useState<PacoteResponse | null>(null);
   const [loadingReativar, setLoadingReativar] = useState(false);
 
-  const [gracaAte, setGracaAte] = useState<string | null>(null);
-  const [excedente, setExcedente] = useState(0);
   const [preservarOverrides, setPreservarOverrides] = useState<Record<string, boolean>>({});
   const [preservarLoading, setPreservarLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    treinadorApi.getDashboard()
-      .then((res) => {
-        setGracaAte(res.data.plano.gracaAte);
-        setExcedente(res.data.plano.excedente);
-      })
-      .catch(() => {});
-  }, []);
+  const { data: dashboard, isError: dashboardIsError } = useTreinadorDashboard();
+  const gracaAte = dashboard?.plano.gracaAte ?? null;
+  const excedente = dashboard?.plano.excedente ?? 0;
 
   const fetcher = useCallback(
     (p: number, ps: number) =>
@@ -160,6 +154,11 @@ export default function AlunosTreinadorPage() {
     <Box>
       <PageHeader title="Alunos" />
 
+      <AlertBanner
+        open={dashboardIsError}
+        severity="warning"
+        message="Não foi possível carregar o status de limite de alunos do seu plano."
+      />
       <GracaLimiteBanner gracaAte={gracaAte} excedente={excedente} />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />

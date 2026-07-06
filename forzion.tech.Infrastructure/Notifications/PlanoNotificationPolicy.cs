@@ -23,7 +23,7 @@ public sealed class PlanoNotificationPolicy(
         if (treinador is null)
             return CanaisNotificacao.Nenhum;
 
-        var planoEfetivo = await planoEfetivoResolver.ResolverAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+        var planoEfetivo = await planoEfetivoResolver.ResolverAsync(treinador, cancellationToken).ConfigureAwait(false);
 
         return new CanaisNotificacao(planoEfetivo.Tier.PermiteEmail(), planoEfetivo.Tier.PermiteWhatsApp());
     }

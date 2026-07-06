@@ -9,13 +9,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace forzion.tech.Tests.E2E;
 
-// Race real (Testcontainers) do job de graça de limite de alunos (T10). Duas execuções
+// Race real (Testcontainers) do job de graça de limite de alunos. Duas execuções
 // PARALELAS do handler sobre o MESMO treinador simulam tanto "apara x apara" quanto,
 // pelo mesmo mecanismo de proteção (xmin do Treinador + índice único de dedup da
 // Notificacao), "apara x regularização concorrente" — em ambos os casos, o segundo
 // commit a alcançar o SaveChanges perde a corrida (DbUpdateConcurrencyException) e é
-// descartado pelo handler, que segue sem lançar. Docker indisponível neste ambiente:
-// compila aqui, execução real fica para o CI.
+// descartado pelo handler, que segue sem lançar.
 [Collection(E2ECollection.Name)]
 [Trait("Category", "Integration")]
 public class ProcessarLimiteAlunosRaceTests(RealPipelineFixture fixture)

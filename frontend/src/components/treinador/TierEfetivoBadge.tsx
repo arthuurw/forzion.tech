@@ -1,15 +1,24 @@
 "use client";
-import { Chip } from "@mui/material";
+import { Chip, Tooltip } from "@mui/material";
 import type { PlanoPlataformaResponse, TreinadorDashboardPlano } from "@/types";
-import { TIER_LABEL, resolverTierEfetivoInfo } from "@/lib/utils/tier";
+import { TIER_LABEL, resolverTierEfetivoInfo, type TierEfetivoStatus } from "@/lib/utils/tier";
 
 interface TierEfetivoBadgeProps {
   plano: TreinadorDashboardPlano;
   planos: PlanoPlataformaResponse[];
+  planosStatus: TierEfetivoStatus;
 }
 
-export default function TierEfetivoBadge({ plano, planos }: TierEfetivoBadgeProps) {
-  const info = resolverTierEfetivoInfo(plano, planos);
+export default function TierEfetivoBadge({ plano, planos, planosStatus }: TierEfetivoBadgeProps) {
+  const info = resolverTierEfetivoInfo(plano, planos, planosStatus);
+
+  if (info.status !== "resolved") {
+    return (
+      <Tooltip title="Não foi possível confirmar se o tier contratado corresponde ao ativo.">
+        <Chip label={TIER_LABEL[info.tierEfetivo]} size="small" variant="outlined" />
+      </Tooltip>
+    );
+  }
 
   if (!info.divergente || info.tierContratado === null) {
     return <Chip label={TIER_LABEL[info.tierEfetivo]} size="small" />;

@@ -429,6 +429,23 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     }
 
     [Fact]
+    public async Task Patch_DefinirCortesia_Admin_RetornaPlanoCortesiaIdNoCorpo()
+    {
+        var planoCortesiaId = Guid.NewGuid();
+        var atribuido = RespostaTreinador with { PlanoCortesiaId = planoCortesiaId };
+        _factory.DefinirCortesiaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirCortesiaCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(atribuido));
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = planoCortesiaId });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("planoCortesiaId").GetGuid().Should().Be(planoCortesiaId);
+    }
+
+    [Fact]
     public async Task Patch_DefinirCortesia_SemAutenticacao_Retorna401()
     {
         var response = await _factory.CreateClient()

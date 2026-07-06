@@ -68,11 +68,14 @@ public class ObterTreinadorDashboardHandler(
         var treinador = await treinadorRepository
             .ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false);
 
-        var planoEfetivo = await planoEfetivoResolver
-            .ResolverAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+        var planoEfetivo = treinador is not null
+            ? await planoEfetivoResolver.ResolverAsync(treinador, cancellationToken).ConfigureAwait(false)
+            : await planoEfetivoResolver.ResolverAsync(treinadorId, cancellationToken).ConfigureAwait(false);
         var alunosAtivos = counts.Ativos;
         var excedente = Math.Max(0, alunosAtivos - planoEfetivo.MaxAlunos);
-        var gracaAte = treinador?.AlunosAcimaDoCapDesde?.AddMonths(3);
+        // excedente já é a fonte da verdade ao vivo; o carimbo persistido só é lido enquanto
+        // ainda há excedente — senão fica stale até o próximo tick do job noturno.
+        var gracaAte = excedente > 0 ? treinador?.AlunosAcimaDoCapDesde?.AddMonths(3) : null;
         var planoContratadoId = assinatura?.PlanoPlataformaId ?? treinador?.PlanoPlataformaId;
         var temCortesia = treinador?.PlanoCortesiaId is not null;
 

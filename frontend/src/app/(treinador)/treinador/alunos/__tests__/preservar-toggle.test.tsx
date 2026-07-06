@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
+import { renderWithProviders } from "@/test/render";
 import type { VinculoDetalheResponse, TreinadorDashboardResponse } from "@/types";
 
 vi.mock("next/navigation", () => ({
@@ -57,7 +58,7 @@ function setupVinculos(vinculos: VinculoDetalheResponse[]) {
 
 async function renderPage() {
   const { default: Page } = await import("../page");
-  render(<Page />);
+  renderWithProviders(<Page />, { skipAuth: true });
 }
 
 beforeEach(() => {
@@ -83,6 +84,20 @@ describe("AlunosTreinadorPage — banner de graça (FE-03/NOTIF-05)", () => {
     await renderPage();
 
     await screen.findByText("João Aluno");
+    expect(screen.queryByText(/Faltam inativar/)).not.toBeInTheDocument();
+  });
+
+  it("falha ao carregar dashboard: aviso visível (sem swallow silencioso) e lista de alunos continua funcionando", async () => {
+    setupVinculos([buildVinculo()]);
+    server.use(
+      http.get("*/treinador/dashboard", () => new HttpResponse(null, { status: 500 })),
+    );
+    await renderPage();
+
+    expect(
+      await screen.findByText(/Não foi possível carregar o status de limite de alunos/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("João Aluno")).toBeInTheDocument();
     expect(screen.queryByText(/Faltam inativar/)).not.toBeInTheDocument();
   });
 });

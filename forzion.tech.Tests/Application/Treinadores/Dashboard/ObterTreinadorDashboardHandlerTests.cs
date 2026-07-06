@@ -32,6 +32,9 @@ public class ObterTreinadorDashboardHandlerTests
         _planoEfetivoResolver
             .Setup(r => r.ResolverAsync(_treinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(null, TierPlano.Free, 3, true));
+        _planoEfetivoResolver
+            .Setup(r => r.ResolverAsync(It.IsAny<Treinador>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(null, TierPlano.Free, 3, true));
 
         _vinculoRepo
             .Setup(r => r.ContarPorStatusAsync(_treinadorId, It.IsAny<CancellationToken>()))
@@ -182,9 +185,9 @@ public class ObterTreinadorDashboardHandlerTests
         result.Plano.Status.Should().BeNull();
     }
 
-    // Money assertion (FE-01): tier efetivo (o que realmente vale, resolvido via
-    // IPlanoEfetivoResolver) DIVERGE do plano contratado/pendente quando a assinatura ainda
-    // não está Ativa — a UI não pode confundir "escolhido" com "em vigor".
+    // Tier efetivo (o que realmente vale, resolvido via IPlanoEfetivoResolver) DIVERGE do plano
+    // contratado/pendente quando a assinatura ainda não está Ativa — a UI não pode confundir
+    // "escolhido" com "em vigor".
     [Fact]
     public async Task HandleAsync_AssinaturaPendente_TierEfetivoDivergeDoPlanoContratado()
     {
@@ -266,9 +269,16 @@ public class ObterTreinadorDashboardHandlerTests
         var carimbo = new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc);
         var treinador = SetupTreinador(comDados: false, TierPlano.Pro, ModoPagamentoAluno.Plataforma);
         treinador.MarcarAcimaDoCap(carimbo);
+        _vinculoRepo
+            .Setup(r => r.ContarPorStatusAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<VinculoStatus, int> { [VinculoStatus.Ativo] = 5 });
+        _planoEfetivoResolver
+            .Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Pro, 3, false));
 
         var result = await _handler.HandleAsync();
 
+        result.Plano.Excedente.Should().Be(2);
         result.Plano.GracaAte.Should().Be(carimbo.AddMonths(3));
     }
 
@@ -279,6 +289,25 @@ public class ObterTreinadorDashboardHandlerTests
 
         var result = await _handler.HandleAsync();
 
+        result.Plano.GracaAte.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_CarimboStaleMasPlanoAtualCobreTodosOsAtivos_ExcedenteZeroEGracaAteNula()
+    {
+        var carimboAntigo = new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc);
+        var treinador = SetupTreinador(comDados: false, TierPlano.Pro, ModoPagamentoAluno.Plataforma);
+        treinador.MarcarAcimaDoCap(carimboAntigo);
+        _vinculoRepo
+            .Setup(r => r.ContarPorStatusAsync(_treinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<VinculoStatus, int> { [VinculoStatus.Ativo] = 3 });
+        _planoEfetivoResolver
+            .Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.ProPlus, 50, false));
+
+        var result = await _handler.HandleAsync();
+
+        result.Plano.Excedente.Should().Be(0);
         result.Plano.GracaAte.Should().BeNull();
     }
 

@@ -8,6 +8,11 @@ describe("GracaLimiteBanner", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("gracaAte definido mas excedente zerado (stale): não renderiza nada", () => {
+    render(<GracaLimiteBanner gracaAte="2026-09-15T12:00:00Z" excedente={0} />);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("gracaAte definido: mostra excedente e data limite formatada", () => {
     render(<GracaLimiteBanner gracaAte="2026-09-15T12:00:00Z" excedente={4} />);
     expect(

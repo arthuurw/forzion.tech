@@ -10,7 +10,7 @@ interface GracaLimiteBannerProps {
 }
 
 export default function GracaLimiteBanner({ gracaAte, excedente }: GracaLimiteBannerProps) {
-  if (!gracaAte) return null;
+  if (!gracaAte || excedente <= 0) return null;
 
   return (
     <AlertBanner

@@ -33,9 +33,9 @@ public class PlanoNotificationPolicyTests
 
     private static Treinador CriarTreinador() => new TreinadorBuilder().Build();
 
-    private void ConfigurarPlanoEfetivo(Guid treinadorId, TierPlano tier) =>
+    private void ConfigurarPlanoEfetivo(Treinador treinador, TierPlano tier) =>
         _planoEfetivoResolver
-            .Setup(r => r.ResolverAsync(treinadorId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), tier, 10, tier == TierPlano.Free));
 
     // ─── ResolverPorTreinadorAsync ───────────────────────────────────────────
@@ -54,7 +54,7 @@ public class PlanoNotificationPolicyTests
         _treinadorRepo
             .Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);
-        ConfigurarPlanoEfetivo(treinador.Id, tier);
+        ConfigurarPlanoEfetivo(treinador, tier);
 
         var canais = await _policy.ResolverPorTreinadorAsync(treinador.Id);
 
@@ -73,6 +73,7 @@ public class PlanoNotificationPolicyTests
 
         canais.Should().Be(CanaisNotificacao.Nenhum);
         _planoEfetivoResolver.Verify(r => r.ResolverAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _planoEfetivoResolver.Verify(r => r.ResolverAsync(It.IsAny<Treinador>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -84,7 +85,7 @@ public class PlanoNotificationPolicyTests
             .Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);
         _planoEfetivoResolver
-            .SetupSequence(r => r.ResolverAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .SetupSequence(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.ProPlus, 50, false))
             .ReturnsAsync(new PlanoEfetivo(Guid.NewGuid(), TierPlano.Free, 3, true));
 
@@ -114,7 +115,7 @@ public class PlanoNotificationPolicyTests
         _treinadorRepo
             .Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);
-        ConfigurarPlanoEfetivo(treinador.Id, TierPlano.ProPlus);
+        ConfigurarPlanoEfetivo(treinador, TierPlano.ProPlus);
 
         var canais = await _policy.ResolverPorAlunoAsync(alunoId);
 
@@ -142,7 +143,7 @@ public class PlanoNotificationPolicyTests
         _treinadorRepo
             .Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(treinador);
-        ConfigurarPlanoEfetivo(treinador.Id, TierPlano.Pro);
+        ConfigurarPlanoEfetivo(treinador, TierPlano.Pro);
 
         var canais = await _policy.ResolverPorAlunoAsync(alunoId);
 
