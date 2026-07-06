@@ -54,7 +54,7 @@ using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
-using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
+using forzion.tech.Application.UseCases.Treinadores.DefinirCortesia;
 using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.RegistrarTreinador;
@@ -294,6 +294,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao.DespacharPreAvisosTreinadorHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Engajamento.NudgeAderenciaHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Engajamento.DigestTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Treinadores.ProcessarLimiteAlunos.ProcessarLimiteAlunosHandler>();
 
         services.AddScoped<ObterHealthReportConfigHandler>();
         services.AddScoped<AtualizarHealthReportConfigHandler>();
@@ -306,10 +307,11 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ReprovarTreinadorHandler>();
         services.AddScoped<InativarTreinadorHandler>();
         services.AddScoped<ExcluirTreinadorHandler>();
-        services.AddScoped<AtribuirPlanoHandler>();
+        services.AddScoped<DefinirCortesiaHandler>();
 
         services.AddScoped<AprovarVinculoHandler>();
         services.AddScoped<DesvincularAlunoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Vinculos.DefinirPreservacaoVinculo.DefinirPreservacaoVinculoHandler>();
         services.AddScoped<ListarVinculosHandler>();
         services.AddScoped<ReativarVinculoHandler>();
         services.AddScoped<SolicitarTrocaTreinadorHandler>();

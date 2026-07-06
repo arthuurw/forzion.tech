@@ -4,6 +4,7 @@ using forzion.tech.Application.UseCases.Engajamento;
 using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
 using forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
 using forzion.tech.Application.UseCases.Pagamentos.PreAvisoRenovacao;
+using forzion.tech.Application.UseCases.Treinadores.ProcessarLimiteAlunos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace forzion.tech.Api.Endpoints.Internal;
@@ -116,6 +117,25 @@ public static class InternalEndpoints
         })
         .WithTags("Internal")
         .WithSummary("Processa o scan diário de engajamento (nudges de aderência + digest do treinador) — requer X-Internal-Key")
+        .AllowAnonymous()
+        .RequireRateLimiting("internal")
+        .Produces<object>()
+        .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        endpoints.MapPost("/internal/processar-limite-alunos", async (
+            HttpContext httpContext,
+            [FromServices] ProcessarLimiteAlunosHandler handler,
+            IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            if (!InternalApiKeyValidator.ChaveInternaValida(httpContext, configuration))
+                return Results.Unauthorized();
+
+            var resultado = await handler.HandleAsync(cancellationToken).ConfigureAwait(false);
+            return Results.Ok(new { carimbados = resultado.Carimbados, lembretes = resultado.Lembretes, aparados = resultado.Aparados });
+        })
+        .WithTags("Internal")
+        .WithSummary("Processa a graça diária de limite de alunos (carimbo, lembretes e apara) — requer X-Internal-Key")
         .AllowAnonymous()
         .RequireRateLimiting("internal")
         .Produces<object>()

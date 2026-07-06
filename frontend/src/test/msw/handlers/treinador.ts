@@ -11,6 +11,7 @@ export const treinadorHandlers: HttpHandler[] = [
   http.get("*/treinador/alunos/:id", unauthorized),
   http.post("*/treinador/alunos/:id/reativar", unauthorized),
   http.delete("*/treinador/alunos/:id", unauthorized),
+  http.patch("*/treinador/alunos/:id/preservar", unauthorized),
   http.post("*/treinador/vinculos/:id/aprovar", unauthorized),
   http.post("*/treinador/vinculos/:id/desvincular", unauthorized),
   http.get("*/treinador/vinculos", unauthorized),

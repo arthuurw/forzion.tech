@@ -56,6 +56,31 @@ const PLANO_FREE: PlanoPlataformaResponse = {
   isAtivo: true,
 };
 
+function dashboardHandler(assinatura: AssinaturaTreinadorResponse | null = ASSINATURA_ATIVA) {
+  return http.get("*/treinador/dashboard", () =>
+    HttpResponse.json({
+      counts: { ativos: 0, aguardando: 0, inativos: 0 },
+      mrr: 0,
+      receitaPorPacote: [],
+      totalFichas: 0,
+      objetivos: [],
+      pendentes: [],
+      onboarding: { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
+      plano: {
+        status: assinatura?.status ?? null,
+        tierEfetivo: "Free",
+        planoContratadoId: assinatura?.planoPlataformaId ?? null,
+        alunosAtivos: 0,
+        capEfetivo: 0,
+        excedente: 0,
+        gracaAte: null,
+        temCortesia: false,
+      },
+      dadosFiscaisPendentes: false,
+    }),
+  );
+}
+
 function setupHandlers(
   assinatura: AssinaturaTreinadorResponse = ASSINATURA_ATIVA,
   planos: PlanoPlataformaResponse[] = [PLANO_BASIC, PLANO_PRO, PLANO_FREE],
@@ -63,6 +88,7 @@ function setupHandlers(
   server.use(
     http.get("*/treinador/plano/assinatura", () => HttpResponse.json(assinatura)),
     http.get("*/auth/planos", () => HttpResponse.json(planos)),
+    dashboardHandler(assinatura),
   );
 }
 
@@ -178,6 +204,7 @@ describe("PlanoTreinadorPage", () => {
     server.use(
       http.get("*/treinador/plano/assinatura", () => HttpResponse.json(ASSINATURA_ATIVA)),
       http.get("*/auth/planos", () => HttpResponse.error()),
+      dashboardHandler(ASSINATURA_ATIVA),
     );
     const { default: Page } = await import("../treinador/plano/page");
     render(<Page />);
@@ -191,6 +218,7 @@ describe("PlanoTreinadorPage", () => {
     server.use(
       http.get("*/treinador/plano/assinatura", () => HttpResponse.json(null)),
       http.get("*/auth/planos", () => HttpResponse.json([PLANO_BASIC, PLANO_PRO])),
+      dashboardHandler(null),
     );
     const { default: Page } = await import("../treinador/plano/page");
     render(<Page />);
@@ -205,6 +233,7 @@ describe("PlanoTreinadorPage", () => {
     server.use(
       http.get("*/treinador/plano/assinatura", () => HttpResponse.error()),
       http.get("*/auth/planos", () => HttpResponse.json([PLANO_BASIC, PLANO_PRO])),
+      dashboardHandler(null),
     );
     const { default: Page } = await import("../treinador/plano/page");
     render(<Page />);
@@ -219,6 +248,7 @@ describe("PlanoTreinadorPage", () => {
     server.use(
       http.get("*/treinador/plano/assinatura", () => HttpResponse.json(null)),
       http.get("*/auth/planos", () => HttpResponse.json([PLANO_BASIC, PLANO_PRO])),
+      dashboardHandler(null),
     );
     const { default: Page } = await import("../treinador/plano/page");
     render(<Page />);
@@ -241,6 +271,7 @@ describe("PlanoTreinadorPage", () => {
           { status: 422 },
         ),
       ),
+      dashboardHandler(null),
     );
     const { default: Page } = await import("../treinador/plano/page");
     render(<Page />);

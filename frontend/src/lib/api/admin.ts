@@ -66,7 +66,7 @@ export const adminApi = {
     return apiClient.delete(`/admin/treinadores/${treinadorId}`);
   },
 
-  atribuirPlano(treinadorId: string, planoId: string) {
+  definirCortesia(treinadorId: string, planoId: string | null) {
     return apiClient.patch(`/admin/treinadores/${treinadorId}/plano`, { planoId });
   },
 

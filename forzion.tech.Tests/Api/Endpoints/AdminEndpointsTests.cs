@@ -33,7 +33,7 @@ using forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
 using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
-using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
+using forzion.tech.Application.UseCases.Treinadores.DefinirCortesia;
 using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadores;
@@ -415,17 +415,108 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     // --- PATCH /admin/treinadores/{id}/plano ---
 
     [Fact]
-    public async Task Patch_AtribuirPlano_Admin_Retorna200()
+    public async Task Patch_DefinirCortesia_Admin_Retorna200()
     {
         var atribuido = RespostaTreinador with { PlanoPlataformaId = Guid.NewGuid() };
-        _factory.AtribuirPlanoHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<AtribuirPlanoCommand>(), It.IsAny<CancellationToken>()))
+        _factory.DefinirCortesiaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirCortesiaCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(atribuido));
 
         var response = await CriarClienteAdmin()
             .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Patch_DefinirCortesia_Admin_RetornaPlanoCortesiaIdNoCorpo()
+    {
+        var planoCortesiaId = Guid.NewGuid();
+        var atribuido = RespostaTreinador with { PlanoCortesiaId = planoCortesiaId };
+        _factory.DefinirCortesiaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirCortesiaCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(atribuido));
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = planoCortesiaId });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("planoCortesiaId").GetGuid().Should().Be(planoCortesiaId);
+    }
+
+    [Fact]
+    public async Task Patch_DefinirCortesia_SemAutenticacao_Retorna401()
+    {
+        var response = await _factory.CreateClient()
+            .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = Guid.NewGuid() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Patch_DefinirCortesia_NaoAdmin_Retorna403()
+    {
+        var response = await CriarClienteNaoAdmin()
+            .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = Guid.NewGuid() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Patch_DefinirCortesia_PlanoIdNulo_Admin_Retorna200()
+    {
+        _factory.DefinirCortesiaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirCortesiaCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(RespostaTreinador));
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = (Guid?)null });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Patch_DefinirCortesia_CortesiaAbaixoDoPago_Retorna422()
+    {
+        _factory.DefinirCortesiaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirCortesiaCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<TreinadorResponse>(
+                Error.Business("treinador.cortesia_abaixo_do_pago", "O preço da cortesia não pode ser menor que o valor pago pela assinatura ativa do treinador.")));
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = Guid.NewGuid() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("treinador.cortesia_abaixo_do_pago");
+    }
+
+    [Fact]
+    public async Task Patch_DefinirCortesia_PlanoElite_Retorna422()
+    {
+        _factory.DefinirCortesiaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirCortesiaCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<TreinadorResponse>(
+                Error.Business("plano_plataforma.elite_indisponivel", "O plano Elite está indisponível no momento (em breve).")));
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/treinadores/{TreinadorId}/plano", new { planoId = Guid.NewGuid() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task Patch_DefinirCortesia_TreinadorNaoEncontrado_Retorna404()
+    {
+        _factory.DefinirCortesiaHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<DefinirCortesiaCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TreinadorNaoEncontradoException());
+
+        var response = await CriarClienteAdmin()
+            .PatchAsJsonAsync($"/admin/treinadores/{Guid.NewGuid()}/plano", new { planoId = Guid.NewGuid() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     // --- GET /admin/alunos ---
@@ -1313,12 +1404,13 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<ILogger<ExcluirTreinadorHandler>>());
 
-        public Mock<AtribuirPlanoHandler> AtribuirPlanoHandlerMock { get; } = new(
+        public Mock<DefinirCortesiaHandler> DefinirCortesiaHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
             Mock.Of<IPlanoPlataformaRepository>(),
+            Mock.Of<IAssinaturaTreinadorRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
-            Mock.Of<ILogger<AtribuirPlanoHandler>>());
+            Mock.Of<ILogger<DefinirCortesiaHandler>>());
 
         public Mock<ListarPlanosPlataformaHandler> ListarPlanosHandlerMock { get; } = new(
             Mock.Of<IPlanoPlataformaRepository>());
@@ -1488,7 +1580,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.RemoveAll<ReprovarTreinadorHandler>();
                 services.RemoveAll<InativarTreinadorHandler>();
                 services.RemoveAll<ExcluirTreinadorHandler>();
-                services.RemoveAll<AtribuirPlanoHandler>();
+                services.RemoveAll<DefinirCortesiaHandler>();
                 services.RemoveAll<ListarPlanosPlataformaHandler>();
                 services.RemoveAll<CriarPlanoPlataformaHandler>();
                 services.RemoveAll<ListarGruposMuscularesHandler>();
@@ -1527,7 +1619,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.AddScoped(_ => ReprovarTreinadorHandlerMock.Object);
                 services.AddScoped(_ => InativarTreinadorHandlerMock.Object);
                 services.AddScoped(_ => ExcluirTreinadorHandlerMock.Object);
-                services.AddScoped(_ => AtribuirPlanoHandlerMock.Object);
+                services.AddScoped(_ => DefinirCortesiaHandlerMock.Object);
                 services.AddScoped(_ => ListarPlanosHandlerMock.Object);
                 services.AddScoped(_ => CriarPlanoHandlerMock.Object);
                 services.AddScoped(_ => ListarGruposHandlerMock.Object);

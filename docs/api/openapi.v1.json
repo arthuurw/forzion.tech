@@ -323,6 +323,39 @@
         ]
       }
     },
+    "/internal/processar-limite-alunos": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Processa a graça diária de limite de alunos (carimbo, lembretes e apara) — requer X-Internal-Key",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/internal/gerar-nfse-comissao": {
       "post": {
         "tags": [
@@ -1771,7 +1804,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Atribui um PlanoPlataforma a um treinador",
+        "summary": "Define (ou remove, com planoId=null) a cortesia de plano de um treinador",
         "parameters": [
           {
             "name": "id",
@@ -1787,7 +1820,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AtribuirPlanoRequest"
+                "$ref": "#/components/schemas/DefinirCortesiaRequest"
               }
             }
           },
@@ -1806,6 +1839,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3600,6 +3643,72 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/alunos/{vinculoId}/preservar": {
+      "patch": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Marca/desmarca um vínculo para ser preservado na apara da graça de limite de alunos",
+        "parameters": [
+          {
+            "name": "vinculoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefinirPreservacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinirPreservacaoVinculoResponse"
                 }
               }
             }
@@ -8090,18 +8199,6 @@
           null
         ]
       },
-      "AtribuirPlanoRequest": {
-        "required": [
-          "planoId"
-        ],
-        "type": "object",
-        "properties": {
-          "planoId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      },
       "AtualizarAlunoRequest": {
         "required": [
           "nome",
@@ -9050,6 +9147,48 @@
             "items": {
               "$ref": "#/components/schemas/AlunoFinalidadeItem"
             }
+          }
+        }
+      },
+      "DefinirCortesiaRequest": {
+        "required": [
+          "planoId"
+        ],
+        "type": "object",
+        "properties": {
+          "planoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "DefinirPreservacaoRequest": {
+        "required": [
+          "preservar"
+        ],
+        "type": "object",
+        "properties": {
+          "preservar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DefinirPreservacaoVinculoResponse": {
+        "required": [
+          "vinculoId",
+          "preservarNoLimite"
+        ],
+        "type": "object",
+        "properties": {
+          "vinculoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "preservarNoLimite": {
+            "type": "boolean"
           }
         }
       },
@@ -11779,7 +11918,10 @@
           "LembreteLeve",
           "Recuperacao",
           "MarcoStreak",
-          "DigestTreinador"
+          "DigestTreinador",
+          "LimiteAlunosExcedido",
+          "LimiteAlunosLembrete",
+          "LimiteAlunosAplicado"
         ]
       },
       "TipoTrocaPlano": {
@@ -11826,7 +11968,14 @@
       },
       "TreinadorDashboardPlano": {
         "required": [
-          "status"
+          "status",
+          "tierEfetivo",
+          "planoContratadoId",
+          "alunosAtivos",
+          "capEfetivo",
+          "excedente",
+          "gracaAte",
+          "temCortesia"
         ],
         "type": "object",
         "properties": {
@@ -11839,6 +11988,50 @@
                 "$ref": "#/components/schemas/AssinaturaTreinadorStatus"
               }
             ]
+          },
+          "tierEfetivo": {
+            "$ref": "#/components/schemas/TierPlano"
+          },
+          "planoContratadoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "alunosAtivos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "capEfetivo": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "excedente": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "gracaAte": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "temCortesia": {
+            "type": "boolean"
           }
         }
       },
@@ -11939,6 +12132,13 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "planoCortesiaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -12380,7 +12580,8 @@
           "nomeAluno",
           "emailAluno",
           "createdAt",
-          "temVinculoAtivoPrevio"
+          "temVinculoAtivoPrevio",
+          "preservarNoLimite"
         ],
         "type": "object",
         "properties": {
@@ -12420,6 +12621,9 @@
             "format": "date-time"
           },
           "temVinculoAtivoPrevio": {
+            "type": "boolean"
+          },
+          "preservarNoLimite": {
             "type": "boolean"
           }
         }

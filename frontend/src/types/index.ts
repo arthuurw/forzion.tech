@@ -102,6 +102,7 @@ export interface TreinadorResponse {
   contaId: string;
   status: TreinadorStatus;
   planoPlataformaId: string | null;
+  planoCortesiaId: string | null;
   createdAt: string;
 }
 
@@ -118,6 +119,12 @@ export interface VinculoDetalheResponse extends VinculoResponse {
   nomeAluno: string;
   emailAluno: string | null;
   temVinculoAtivoPrevio: boolean;
+  preservarNoLimite: boolean;
+}
+
+export interface DefinirPreservacaoVinculoResponse {
+  vinculoId: string;
+  preservarNoLimite: boolean;
 }
 
 // Ficha vinculada ao aluno (visão do treinador)
@@ -492,6 +499,13 @@ export interface TreinadorDashboardCounts {
 
 export interface TreinadorDashboardPlano {
   status: AssinaturaTreinadorStatus | null;
+  tierEfetivo: TierPlano;
+  planoContratadoId: string | null;
+  alunosAtivos: number;
+  capEfetivo: number;
+  excedente: number;
+  gracaAte: string | null;
+  temCortesia: boolean;
 }
 
 export interface ReceitaPorPacoteItem {

@@ -22,14 +22,13 @@ import { adminApi } from "@/lib/api/admin";
 import type { PlanoPlataformaResponse, TierPlano } from "@/types";
 import { formatarBRL } from "@/lib/utils/formatting";
 import { extractApiError } from "@/lib/api/extractApiError";
+import { TIER_LABEL, TIER_ORDER } from "@/lib/utils/tier";
 
-const TIER_OPTIONS: { value: TierPlano; label: string; disabled?: boolean }[] = [
-  { value: "Free",    label: "Free" },
-  { value: "Basic",   label: "Basic" },
-  { value: "Pro",     label: "Pro" },
-  { value: "ProPlus", label: "Pro Plus" },
-  { value: "Elite",   label: "Elite (em breve)", disabled: true },
-];
+const TIER_OPTIONS: { value: TierPlano; label: string; disabled?: boolean }[] = TIER_ORDER.map((tier) => ({
+  value: tier,
+  label: tier === "Elite" ? `${TIER_LABEL[tier]} (em breve)` : TIER_LABEL[tier],
+  disabled: tier === "Elite",
+}));
 
 const planoSchema = z.object({
   nome: z.string().trim().min(1, "Informe o nome."),

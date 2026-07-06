@@ -81,7 +81,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         VinculoId, TreinadorId, AlunoId, PacoteId, VinculoStatus.Ativo, DateTime.UtcNow);
 
     private static readonly forzion.tech.Application.UseCases.Vinculos.ListarVinculos.VinculoDetalheResponse RespostaVinculoDetalhe = new(
-        VinculoId, TreinadorId, AlunoId, PacoteId, VinculoStatus.Ativo, "João", null, DateTime.UtcNow, false);
+        VinculoId, TreinadorId, AlunoId, PacoteId, VinculoStatus.Ativo, "João", null, DateTime.UtcNow, false, false);
 
     private static readonly PacoteResponse RespostaPacote = new(
         PacoteId, TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);

@@ -37,9 +37,21 @@ function buildVinculo(overrides: Partial<VinculoDetalheResponse> = {}): VinculoD
     createdAt: "2025-01-01T00:00:00Z",
     pacoteId: "pac-1",
     temVinculoAtivoPrevio: false,
+    preservarNoLimite: false,
     ...overrides,
   };
 }
+
+const PLANO_ATIVO_BASE = {
+  status: "Ativa" as const,
+  tierEfetivo: "Pro" as const,
+  planoContratadoId: null,
+  alunosAtivos: 5,
+  capEfetivo: 30,
+  excedente: 0,
+  gracaAte: null,
+  temCortesia: false,
+};
 
 function buildDashboard(overrides: Partial<TreinadorDashboardResponse> = {}): TreinadorDashboardResponse {
   return {
@@ -50,7 +62,7 @@ function buildDashboard(overrides: Partial<TreinadorDashboardResponse> = {}): Tr
     objetivos: [{ objetivo: "Hipertrofia", total: 7 }, { objetivo: "Emagrecimento", total: 3 }],
     pendentes: [],
     onboarding: { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
-    plano: { status: "Ativa" },
+    plano: PLANO_ATIVO_BASE,
     dadosFiscaisPendentes: false,
     ...overrides,
   };
@@ -116,7 +128,6 @@ describe("DashboardTreinadorPage — banners onboarding e inadimplente", () => {
       http.get("*/treinador/dashboard", () =>
         HttpResponse.json(buildDashboard({
           onboarding: { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Externo", modoPagamentoPodeAlterarEm: null },
-          plano: { status: "Ativa" },
         })),
       ),
     );
@@ -133,7 +144,6 @@ describe("DashboardTreinadorPage — banners onboarding e inadimplente", () => {
       http.get("*/treinador/dashboard", () =>
         HttpResponse.json(buildDashboard({
           onboarding: { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
-          plano: { status: "Ativa" },
         })),
       ),
     );
@@ -147,7 +157,7 @@ describe("DashboardTreinadorPage — banners onboarding e inadimplente", () => {
   it("plano inadimplente exibe o banner de regularização", async () => {
     server.use(
       http.get("*/treinador/dashboard", () =>
-        HttpResponse.json(buildDashboard({ plano: { status: "Inadimplente" } })),
+        HttpResponse.json(buildDashboard({ plano: { ...PLANO_ATIVO_BASE, status: "Inadimplente" } })),
       ),
     );
 
@@ -191,7 +201,7 @@ describe("DashboardTreinadorPage — agregado /treinador/dashboard (T5)", () => 
     ],
     pendentes: [],
     onboarding: { onboardingCompleto: false, contaConfigurada: false, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
-    plano: { status: "Inadimplente" },
+    plano: { ...PLANO_ATIVO_BASE, status: "Inadimplente" },
     dadosFiscaisPendentes: false,
   };
 

@@ -76,6 +76,14 @@ public class VinculoTreinadorAlunoRepository(AppDbContext context) : IVinculoTre
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosPorTreinadorOrdenadoAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await context.VinculosTreinadorAluno
+            .Where(v => v.TreinadorId == treinadorId && v.Status == VinculoStatus.Ativo)
+            .OrderBy(v => v.CreatedAt)
+            .ThenBy(v => v.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<(IReadOnlyList<VinculoComDetalheAluno> Items, int Total)> ListarComDetalhesAsync(
         Guid treinadorId, VinculoStatus? status, int pagina, int tamanhoPagina,
         CancellationToken cancellationToken = default)

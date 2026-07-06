@@ -42,14 +42,14 @@ interface AcoesProps {
   onReprovar: (t: TreinadorResponse) => void;
   onInativar: (t: TreinadorResponse) => void;
   onExcluir: (t: TreinadorResponse) => void;
-  onAtribuirPlano: (t: TreinadorResponse) => void;
+  onDefinirCortesia: (t: TreinadorResponse) => void;
   onDetalhe: (t: TreinadorResponse) => void;
 }
 
 // <md o slot de ações vira kebab (até 4 IconButtons espremiam o nome no card — R5).
 // ≥md mantém os IconButtons inline.
 function TreinadorAcoes({
-  t, isMobile, onAprovar, onReprovar, onInativar, onExcluir, onAtribuirPlano, onDetalhe,
+  t, isMobile, onAprovar, onReprovar, onInativar, onExcluir, onDefinirCortesia, onDetalhe,
 }: AcoesProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const close = () => setAnchorEl(null);
@@ -85,8 +85,8 @@ function TreinadorAcoes({
             </IconButton>
           </Tooltip>
         )}
-        <Tooltip title="Atribuir plano">
-          <IconButton size="small" aria-label="Atribuir plano" onClick={() => onAtribuirPlano(t)}>
+        <Tooltip title="Conceder cortesia">
+          <IconButton size="small" aria-label="Conceder cortesia" onClick={() => onDefinirCortesia(t)}>
             <CardMembershipIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -110,7 +110,7 @@ function TreinadorAcoes({
   if (t.status === "Inativo") {
     itens.push({ label: "Excluir permanentemente", icon: <DeleteForeverIcon fontSize="small" color="error" />, onClick: () => onExcluir(t) });
   }
-  itens.push({ label: "Atribuir plano", icon: <CardMembershipIcon fontSize="small" />, onClick: () => onAtribuirPlano(t) });
+  itens.push({ label: "Conceder cortesia", icon: <CardMembershipIcon fontSize="small" />, onClick: () => onDefinirCortesia(t) });
   itens.push({ label: "Ver detalhe", icon: <InfoIcon fontSize="small" />, onClick: () => onDetalhe(t) });
 
   return (
@@ -242,16 +242,31 @@ export default function TreinadoresAdminPage() {
     setSelectedPlano(null);
   };
 
-  const handleAtribuirPlano = async () => {
+  const handleDefinirCortesia = async () => {
     if (!planoDialog || !selectedPlano) return;
     setLoadingPlano(true);
     try {
-      await adminApi.atribuirPlano(planoDialog.treinadorId, selectedPlano.planoId);
-      setSuccess(`Plano "${selectedPlano.nome}" atribuido a ${planoDialog.nome}.`);
+      await adminApi.definirCortesia(planoDialog.treinadorId, selectedPlano.planoId);
+      setSuccess(`Cortesia "${selectedPlano.nome}" concedida a ${planoDialog.nome}.`);
       setPlanoDialog(null);
       reload();
     } catch (err) {
-      setError(extractApiError(err, "Erro ao atribuir plano."));
+      setError(extractApiError(err, "Erro ao conceder cortesia."));
+    } finally {
+      setLoadingPlano(false);
+    }
+  };
+
+  const handleRemoverCortesia = async () => {
+    if (!planoDialog) return;
+    setLoadingPlano(true);
+    try {
+      await adminApi.definirCortesia(planoDialog.treinadorId, null);
+      setSuccess(`Cortesia removida de ${planoDialog.nome}.`);
+      setPlanoDialog(null);
+      reload();
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao remover cortesia."));
     } finally {
       setLoadingPlano(false);
     }
@@ -290,10 +305,15 @@ export default function TreinadoresAdminPage() {
         renderCell={(t, i) => {
           if (i === 0) return t.nome;
           if (i === 1) return <StatusChip status={t.status} />;
-          if (i === 2) return t.planoPlataformaId ? (
-            <Typography variant="caption" color="text.secondary">Atribuído</Typography>
-          ) : (
-            <Typography variant="caption" color="text.disabled">-</Typography>
+          if (i === 2) return (
+            <Box>
+              <Typography variant="caption" sx={{ display: "block" }} color={t.planoPlataformaId ? "text.secondary" : "text.disabled"}>
+                Plano: {t.planoPlataformaId ? "ativo" : "-"}
+              </Typography>
+              {t.planoCortesiaId && (
+                <Typography variant="caption" sx={{ display: "block" }} color="info.main">Cortesia ativa</Typography>
+              )}
+            </Box>
           );
           if (i === 3) return (
             <Typography variant="caption">{new Date(t.createdAt).toLocaleDateString("pt-BR")}</Typography>
@@ -306,7 +326,7 @@ export default function TreinadoresAdminPage() {
               onReprovar={setConfirmReprovar}
               onInativar={setConfirmInativar}
               onExcluir={setConfirmExcluir}
-              onAtribuirPlano={openPlanoDialog}
+              onDefinirCortesia={openPlanoDialog}
               onDetalhe={(tr) => router.push(`/admin/treinadores/${tr.treinadorId}`)}
             />
           );
@@ -390,14 +410,26 @@ export default function TreinadoresAdminPage() {
       />
 
       <Dialog open={!!planoDialog} onClose={() => setPlanoDialog(null)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}>
-        <DialogTitle>Atribuir plano — {planoDialog?.nome}</DialogTitle>
+        <DialogTitle>Conceder cortesia — {planoDialog?.nome}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           {planoDialog?.planoPlataformaId && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-              Plano atual:{" "}
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+              Plano pago atual:{" "}
               <strong>
                 {planos.find((p) => p.planoId === planoDialog.planoPlataformaId)?.nome ?? "carregando..."}
               </strong>
+            </Typography>
+          )}
+          {planoDialog?.planoCortesiaId ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+              Cortesia atual:{" "}
+              <strong>
+                {planos.find((p) => p.planoId === planoDialog.planoCortesiaId)?.nome ?? "carregando..."}
+              </strong>
+            </Typography>
+          ) : (
+            <Typography variant="caption" color="text.disabled" sx={{ display: "block", mb: 1.5 }}>
+              Nenhuma cortesia ativa.
             </Typography>
           )}
           <Autocomplete
@@ -405,15 +437,20 @@ export default function TreinadoresAdminPage() {
             getOptionLabel={(p) => `${p.nome} (até ${p.maxAlunos} alunos)`}
             value={selectedPlano}
             onChange={(_, v) => setSelectedPlano(v)}
-            renderInput={(params) => <TextField {...params} label="Novo plano" size="small" />}
+            renderInput={(params) => <TextField {...params} label="Novo plano de cortesia" size="small" />}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPlanoDialog(null)}>Cancelar</Button>
+          {planoDialog?.planoCortesiaId && (
+            <Button color="error" disabled={loadingPlano} onClick={handleRemoverCortesia}>
+              Remover cortesia
+            </Button>
+          )}
           <Button
             variant="contained"
             disabled={!selectedPlano || loadingPlano}
-            onClick={handleAtribuirPlano}
+            onClick={handleDefinirCortesia}
           >
             Confirmar
           </Button>

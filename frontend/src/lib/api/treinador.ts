@@ -15,6 +15,7 @@ import type {
   DificuldadeTreino,
   ProgressaoAlunoResponse,
   TreinadorDashboardResponse,
+  DefinirPreservacaoVinculoResponse,
 } from "@/types";
 
 export interface CriarFichaData {
@@ -76,6 +77,9 @@ export const treinadorApi = {
   },
   desvincularAluno(vinculoId: string, observacao?: string | null) {
     return apiClient.post(`/treinador/vinculos/${vinculoId}/desvincular`, { observacao: observacao ?? null });
+  },
+  definirPreservacaoVinculo(vinculoId: string, preservar: boolean) {
+    return apiClient.patch<DefinirPreservacaoVinculoResponse>(`/treinador/alunos/${vinculoId}/preservar`, { preservar });
   },
 
   listFichas(params?: { pagina?: number; tamanhoPagina?: number; nome?: string; objetivo?: string; ordenarPor?: string }) {

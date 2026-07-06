@@ -1935,6 +1935,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTime?>("AlunosAcimaDoCapDesde")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("alunos_acima_do_cap_desde");
+
                     b.Property<bool>("Anonimizado")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1974,6 +1978,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("nome");
 
+                    b.Property<Guid?>("PlanoCortesiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plano_cortesia_id");
+
                     b.Property<Guid?>("PlanoPlataformaId")
                         .HasColumnType("uuid")
                         .HasColumnName("plano_plataforma_id");
@@ -2004,6 +2012,9 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("ContaId")
                         .IsUnique()
                         .HasDatabaseName("ix_treinadores_conta_id");
+
+                    b.HasIndex("PlanoCortesiaId")
+                        .HasDatabaseName("ix_treinadores_plano_cortesia_id");
 
                     b.HasIndex("PlanoPlataformaId")
                         .HasDatabaseName("ix_treinadores_plano_plataforma_id");
@@ -2276,6 +2287,12 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.Property<Guid?>("PacoteId")
                         .HasColumnType("uuid")
                         .HasColumnName("pacote_id");
+
+                    b.Property<bool>("PreservarNoLimite")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("preservar_no_limite");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -2591,6 +2608,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_treinadores_contas_conta_id");
+
+                    b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
+                        .WithMany()
+                        .HasForeignKey("PlanoCortesiaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_treinadores_planos_plataforma_plano_cortesia_id");
 
                     b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
                         .WithMany()

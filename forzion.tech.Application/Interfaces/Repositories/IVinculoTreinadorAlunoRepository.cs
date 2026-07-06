@@ -18,6 +18,12 @@ public interface IVinculoTreinadorAlunoRepository
     Task<VinculoTreinadorAluno?> ObterAtivoPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task<(bool Ativo, bool Pendente)> ObterResumoVinculoPorAlunoAsync(Guid alunoId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Vínculos Ativo do treinador ordenados por <c>CreatedAt</c> asc, <c>Id</c> asc (determinístico) —
+    /// usado pela apara de graça de limite de alunos (GRACE-05) para decidir quem preservar.
+    /// </summary>
+    Task<IReadOnlyList<VinculoTreinadorAluno>> ListarAtivosPorTreinadorOrdenadoAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<VinculoComDetalheAluno> Items, int Total)> ListarComDetalhesAsync(Guid treinadorId, VinculoStatus? status, int pagina, int tamanhoPagina, CancellationToken cancellationToken = default);
     Task<int> ContarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<VinculoStatus, int>> ContarPorStatusAsync(Guid treinadorId, CancellationToken cancellationToken = default);

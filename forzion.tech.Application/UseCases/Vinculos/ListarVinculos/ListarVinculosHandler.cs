@@ -12,7 +12,8 @@ public record VinculoDetalheResponse(
     string NomeAluno,
     string? EmailAluno,
     DateTime CreatedAt,
-    bool TemVinculoAtivoPrevio)
+    bool TemVinculoAtivoPrevio,
+    bool PreservarNoLimite)
 {
     public static VinculoDetalheResponse De(VinculoComDetalheAluno x) => new(
         x.Vinculo.Id,
@@ -23,7 +24,8 @@ public record VinculoDetalheResponse(
         x.NomeAluno,
         x.EmailAluno,
         x.Vinculo.CreatedAt,
-        x.TemVinculoAtivoPrevio);
+        x.TemVinculoAtivoPrevio,
+        x.Vinculo.PreservarNoLimite);
 }
 
 public record ListarVinculosResponse(

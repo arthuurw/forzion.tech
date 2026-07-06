@@ -11,6 +11,7 @@ export function buildTreinador(
     contaId: faker.string.uuid(),
     status,
     planoPlataformaId: faker.string.uuid(),
+    planoCortesiaId: null,
     createdAt: faker.date.recent({ days: 60 }).toISOString(),
     ...overrides,
   };

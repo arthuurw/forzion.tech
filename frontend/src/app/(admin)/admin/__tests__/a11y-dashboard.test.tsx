@@ -185,6 +185,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     contaId: "c-1",
     status: "AguardandoAprovacao",
     planoPlataformaId: null,
+    planoCortesiaId: null,
     createdAt: "2025-01-01T00:00:00Z",
   };
 
@@ -194,6 +195,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     contaId: "c-2",
     status: "Ativo",
     planoPlataformaId: null,
+    planoCortesiaId: null,
     createdAt: "2025-01-01T00:00:00Z",
   };
 
@@ -203,6 +205,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     contaId: "c-3",
     status: "Inativo",
     planoPlataformaId: null,
+    planoCortesiaId: null,
     createdAt: "2025-01-01T00:00:00Z",
   };
 
@@ -279,7 +282,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     expect(screen.getByRole("button", { name: "Excluir treinador permanentemente" })).toBeInTheDocument();
   });
 
-  it("sempre exibe botões 'Atribuir plano' e 'Ver detalhe do treinador' com aria-label", async () => {
+  it("sempre exibe botões 'Conceder cortesia' e 'Ver detalhe do treinador' com aria-label", async () => {
     mockUsePaginatedList.mockReturnValue({
       items: [treinadorAtivo],
       total: 1,
@@ -298,7 +301,7 @@ describe("TreinadoresAdminPage — a11y IconButtons com aria-label", () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/page");
     renderWithProviders(<Page />, { skipAuth: true });
 
-    expect(screen.getByRole("button", { name: "Atribuir plano" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Conceder cortesia" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ver detalhe do treinador" })).toBeInTheDocument();
   });
 });

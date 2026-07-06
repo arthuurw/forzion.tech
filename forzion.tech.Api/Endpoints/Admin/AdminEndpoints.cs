@@ -30,7 +30,7 @@ using forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
 using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
-using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
+using forzion.tech.Application.UseCases.Treinadores.DefinirCortesia;
 using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadores;
@@ -186,20 +186,21 @@ public static class AdminEndpoints
 
         group.MapPatch("/treinadores/{id:guid}/plano", async (
             Guid id,
-            [FromBody] AtribuirPlanoRequest request,
-            [FromServices] AtribuirPlanoHandler handler,
+            [FromBody] DefinirCortesiaRequest request,
+            [FromServices] DefinirCortesiaHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtribuirPlanoCommand(id, request.PlanoId, userContext.ContaId), cancellationToken);
+                new DefinirCortesiaCommand(id, request.PlanoId, userContext.ContaId), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
         })
-        .WithSummary("Atribui um PlanoPlataforma a um treinador")
+        .WithSummary("Define (ou remove, com planoId=null) a cortesia de plano de um treinador")
         .Produces<TreinadorResponse>()
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapGet("/planos", async (
             [FromServices] ListarPlanosPlataformaHandler handler,
@@ -646,7 +647,7 @@ public static class AdminEndpoints
 public record AprovarTreinadorRequest(string? Observacao = null);
 public record ReprovarTreinadorRequest(string? Observacao = null);
 public record InativarTreinadorRequest(string? Observacao = null);
-public record AtribuirPlanoRequest(Guid PlanoId);
+public record DefinirCortesiaRequest(Guid? PlanoId);
 public record CriarPlanoPlataformaRequest(string Nome, forzion.tech.Domain.Enums.TierPlano Tier, int MaxAlunos, decimal Preco, string? Descricao = null);
 public record AtualizarPlanoPlataformaRequest(string? Nome, forzion.tech.Domain.Enums.TierPlano? Tier, int? MaxAlunos, decimal? Preco, string? Descricao = null);
 public record CriarGrupoMuscularRequest(string Nome);

@@ -26,5 +26,6 @@ public enum TipoAcaoAprovacao
     InativacaoPlanoPlataforma = 21,
     AlteracaoStatusAluno = 22,
     AlteracaoModoPagamentoTreinador = 23,
-    ReprocessamentoNotaFiscal = 24
+    ReprocessamentoNotaFiscal = 24,
+    DefinicaoCortesiaTreinador = 25
 }

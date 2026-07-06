@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.Services;
 using forzion.tech.Application.Settings;
 using forzion.tech.Application.UseCases.Nfse.CancelarNfse;
 using forzion.tech.Domain.Events;
@@ -153,6 +154,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
         services.AddScoped<IWhatsAppDeliveryLogRepository, WhatsAppDeliveryLogRepository>();
         services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
+        services.AddScoped<IPlanoEfetivoResolver, PlanoEfetivoResolver>();
         services.AddScoped<IPlanoNotificationPolicy, Notifications.PlanoNotificationPolicy>();
         services.AddScoped<IAssinaturaAlunoRepository, AssinaturaAlunoRepository>();
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
@@ -385,6 +387,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<ExecucaoRegistradaEvent>, ExecucaoRegistradaInAppHandler>();
         services.AddScoped<IEmailEsfriamentoNotifier, EmailEsfriamentoNotifier>();
         services.AddScoped<IDigestTreinadorEmailNotifier, DigestTreinadorEmailNotifier>();
+        services.AddScoped<ILimiteAlunosEmailSender, LimiteAlunosEmailSender>();
 
         // WhatsAppSettings — guardrail de ambiente (defaults prod-safe)
         services.AddOptions<WhatsAppSettings>().BindConfiguration("WhatsApp");

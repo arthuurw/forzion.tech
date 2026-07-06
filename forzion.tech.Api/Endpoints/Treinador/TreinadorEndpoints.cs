@@ -33,6 +33,7 @@ using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
+using forzion.tech.Application.UseCases.Vinculos.DefinirPreservacaoVinculo;
 using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
@@ -212,6 +213,25 @@ public static class TreinadorEndpoints
         .WithSummary("Reativa um aluno inativo criando um novo vínculo aprovado")
         .Produces<VinculoResponse>()
         .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPatch("/alunos/{vinculoId:guid}/preservar", async (
+            Guid vinculoId,
+            [FromBody] DefinirPreservacaoRequest request,
+            [FromServices] DefinirPreservacaoVinculoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new DefinirPreservacaoVinculoCommand(vinculoId, userContext.PerfilId, request.Preservar), cancellationToken)
+                .ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Marca/desmarca um vínculo para ser preservado na apara da graça de limite de alunos")
+        .Produces<DefinirPreservacaoVinculoResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
@@ -642,6 +662,7 @@ public record AlterarModoPagamentoRequest(ModoPagamentoAluno Modo);
 public record AprovarVinculoRequest(Guid PacoteId, bool TrarFichas = false);
 public record ReativarVinculoRequest(Guid PacoteId);
 public record DesvincularAlunoRequest(string? Observacao = null);
+public record DefinirPreservacaoRequest(bool Preservar);
 public record CriarExercicioTreinadorRequest(string Nome, Guid GrupoMuscularId, string? Descricao = null, string? ComoExecutar = null, string? VideoUrl = null);
 public record AtualizarExercicioTreinadorRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao, string? ComoExecutar = null, string? VideoUrl = null);
 public record CriarPacoteRequest(string Nome, decimal Preco, string? Descricao = null);

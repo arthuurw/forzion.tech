@@ -71,6 +71,28 @@ function setupHandlers(
   server.use(
     http.get("*/treinador/plano/assinatura", () => HttpResponse.json(assinatura)),
     http.get("*/auth/planos", () => HttpResponse.json(planos)),
+    http.get("*/treinador/dashboard", () =>
+      HttpResponse.json({
+        counts: { ativos: 0, aguardando: 0, inativos: 0 },
+        mrr: 0,
+        receitaPorPacote: [],
+        totalFichas: 0,
+        objetivos: [],
+        pendentes: [],
+        onboarding: { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
+        plano: {
+          status: assinatura?.status ?? null,
+          tierEfetivo: "Free",
+          planoContratadoId: assinatura?.planoPlataformaId ?? null,
+          alunosAtivos: 0,
+          capEfetivo: 0,
+          excedente: 0,
+          gracaAte: null,
+          temCortesia: false,
+        },
+        dadosFiscaisPendentes: false,
+      }),
+    ),
   );
 }
 
