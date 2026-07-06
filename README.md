@@ -4,7 +4,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 10 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL 17 (Supabase)
 
-**Status**: ✅ 3.294 testes unit backend (0 falhas, sem Docker) + suíte de integração via Testcontainers (Postgres real, no CI) + suíte frontend (Vitest + Playwright + Storybook) | Clean Architecture | DDD tático (43 entidades, 35 domain events, 4 value objects) | Result<T> pattern (erros de negócio sem exceção) | Auth próprio: JWT HMAC + refresh token rotativo (famílias/detecção de reuso) + MFA TOTP (recovery codes, trusted devices, step-up) + verificação HIBP de senha | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação por cursor, inadimplência) | Billing recorrente treinador↔plataforma | NFS-e Nacional (SEFIN gov.br: assinatura + comissão mensal, cancelamento, reconciliação) | Transactional Outbox | Notificações multicanal (e-mail Resend + WhatsApp Meta Cloud + in-app) com gate por tier | LGPD (exportação XLSX, anonimização, purga, consentimento) | Health report | Harness de testes completo (arch, property-based, mutation, snapshot, E2E real, Pact) | Segurança OWASP (DAST ZAP, SAST Semgrep, gitleaks, SBOM)
+**Status**: ✅ 3.378 testes unit backend (0 falhas, sem Docker) + suíte de integração via Testcontainers (Postgres real, no CI) + suíte frontend (Vitest + Playwright + Storybook) | Clean Architecture | DDD tático (43 entidades, 35 domain events, 4 value objects) | Result<T> pattern (erros de negócio sem exceção) | Auth próprio: JWT HMAC + refresh token rotativo (famílias/detecção de reuso) + MFA TOTP (recovery codes, trusted devices, step-up) + verificação HIBP de senha | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação por cursor, inadimplência) | Billing recorrente treinador↔plataforma | NFS-e Nacional (SEFIN gov.br: assinatura + comissão mensal, cancelamento, reconciliação) | Transactional Outbox | Notificações multicanal (e-mail Resend + WhatsApp Meta Cloud + in-app) com gate por tier | LGPD (exportação XLSX, anonimização, purga, consentimento) | Health report | Harness de testes completo (arch, property-based, mutation, snapshot, E2E real, Pact) | Segurança OWASP (DAST ZAP, SAST Semgrep, gitleaks, SBOM)
 
 ---
 
@@ -247,7 +247,7 @@ forzion.tech.Domain/
 
 forzion.tech.Infrastructure/
 ├── DependencyInjection/  # InfrastructureExtensions (gate real/null das integrações)
-├── Migrations/           # 54 EF Core migrations (schema-agnostic)
+├── Migrations/           # 55 EF Core migrations (schema-agnostic)
 ├── Handlers/             # Handlers de domain events em Infra (cria AssinaturaAluno, sincroniza Assinante, etc.)
 ├── Notifications/
 │   ├── Email/            # ResendEmailService gate + EnvironmentEmailDecorator + EmailTemplates + ~30 handlers
@@ -293,9 +293,9 @@ forzion.tech.Tests/
 |----------|-----------|
 | `Conta` | Raiz de auth. `Email` VO + `PasswordHash` (BCrypt). `TipoConta`: `SystemAdmin`/`Treinador`/`Aluno`. `EmailVerificado`/`VerificadoEm`. `SessoesInvalidasAntesDeUtc` (epoch — access tokens com `nbf` anterior são rejeitados). Emite `ContaRegistradaEvent`; `Anonimizar()` (LGPD). |
 | `SystemUser` | Perfil admin de uma `Conta` `SystemAdmin`. `Role` (`SystemRole`: SuperAdmin/Support/Operator), `Status`. |
-| `Treinador` | Perfil de treinador. Status: `AguardandoPagamento → AguardandoAprovacao → Ativo/Inativo`. Embute VO **`DadosFiscais?`** (CNPJ/CPF + endereço, para NFS-e). `PlanoPlataformaId`, `ModoPagamentoAluno` (`Plataforma`/`Externo`, cooldown 90d). Stripe Connect vive em `ContaRecebimento`. |
+| `Treinador` | Perfil de treinador. Status: `AguardandoPagamento → AguardandoAprovacao → Ativo/Inativo`. Embute VO **`DadosFiscais?`** (CNPJ/CPF + endereço, para NFS-e). `PlanoPlataformaId`, `PlanoCortesiaId?` (plano de cortesia do admin), `AlunosAcimaDoCapDesde?` (carimbo da janela de graça), `ModoPagamentoAluno` (`Plataforma`/`Externo`, cooldown 90d). Stripe Connect vive em `ContaRecebimento`. |
 | `Aluno` | Perfil de aluno. `Email` VO, `Telefone`, campos de anamnese (consentimento LGPD). Máquina: `AguardandoAprovacao → Ativo ⇌ Inativo`. `Anonimizar()`. |
-| `VinculoTreinadorAluno` | Relação treinador↔aluno. `PacoteId`. Status: `AguardandoAprovacao → Ativo → Inativo`. Emite `VinculoPendenteCriado`/`VinculoAprovado`. |
+| `VinculoTreinadorAluno` | Relação treinador↔aluno. `PacoteId`, `PreservarNoLimite` (protege da apara automática, dentro do cap). Status: `AguardandoAprovacao → Ativo → Inativo`. Emite `VinculoPendenteCriado`/`VinculoAprovado`. |
 | `PlanoPlataforma` | Plano global (admin). `Tier` (`TierPlano`: Free/Basic/Pro/ProPlus/Elite), `MaxAlunos`, `Preco`, `Descricao?`, `IsAtivo`. |
 | `Pacote` | Pacote do treinador (nome, descrição, `Preco`, `IsAtivo`). Sem limite de fichas. |
 | `Treino` | Ficha (nome, objetivo, dificuldade, datas) + lista de `TreinoExercicio`. `Duplicar`/`DuplicarPara`; edição bloqueada se já executada. |
@@ -561,11 +561,11 @@ Auth por grupo indicada no cabeçalho. Endpoints paginados validam `pagina`/`tam
 
 #### Admin — `/admin` (política `SystemAdmin`)
 
-Treinadores: `GET /admin/treinadores`, `GET /admin/treinadores/{id}`, `POST .../aprovar|reprovar|inativar` `[step-up]`, `DELETE /admin/treinadores/{id}` (só Inativo; hard delete), `PATCH .../plano`. Planos: `GET/POST /admin/planos`, `PATCH/DELETE /admin/planos/{id}`. Grupos musculares e exercícios globais: CRUD sob `/admin/grupos-musculares` e `/admin/exercicios`. Visibilidade (read-only): `/admin/alunos*`, `/admin/fichas/{id}`, `/admin/treinadores/{id}/{alunos|vinculos|treinos|pacotes}`, `/admin/treinos/{id}`. Dashboards: `GET /admin/stats/dashboard`, `GET /admin/dashboard`. Health report: `GET/PUT /admin/health-report/config`, `GET /admin/health-report/snapshots`, `POST /admin/health-report/run`. LGPD: `GET /admin/contas/{id}/lgpd/exportar`, `DELETE /admin/contas/{id}/lgpd` (sem senha). NFS-e: `GET /admin/notas-fiscais`, `POST /admin/notas-fiscais/{id}/reprocessar`. `/admin/test-data/*` existe apenas fora de Production.
+Treinadores: `GET /admin/treinadores`, `GET /admin/treinadores/{id}`, `POST .../aprovar|reprovar|inativar` `[step-up]`, `DELETE /admin/treinadores/{id}` (só Inativo; hard delete), `PATCH .../plano` (define/remove **cortesia** de plano — `{ planoId? }`, `null` remove). Planos: `GET/POST /admin/planos`, `PATCH/DELETE /admin/planos/{id}`. Grupos musculares e exercícios globais: CRUD sob `/admin/grupos-musculares` e `/admin/exercicios`. Visibilidade (read-only): `/admin/alunos*`, `/admin/fichas/{id}`, `/admin/treinadores/{id}/{alunos|vinculos|treinos|pacotes}`, `/admin/treinos/{id}`. Dashboards: `GET /admin/stats/dashboard`, `GET /admin/dashboard`. Health report: `GET/PUT /admin/health-report/config`, `GET /admin/health-report/snapshots`, `POST /admin/health-report/run`. LGPD: `GET /admin/contas/{id}/lgpd/exportar`, `DELETE /admin/contas/{id}/lgpd` (sem senha). NFS-e: `GET /admin/notas-fiscais`, `POST /admin/notas-fiscais/{id}/reprocessar`. `/admin/test-data/*` existe apenas fora de Production.
 
 #### Treinador — `/treinador` (política `Treinador`)
 
-Vínculos: `GET /treinador/vinculos`, `POST .../{id}/aprovar` `{ pacoteId, trarFichas? }`, `POST .../{id}/desvincular`, `POST /treinador/alunos/{id}/reativar`. Alunos/fichas/progressão: `GET /treinador/alunos*`, atribuir/remover ficha. Exercícios (próprios + globais) e pacotes: CRUD + `POST /treinador/exercicios/{id}/copiar`. Dashboard: `GET /treinador/dashboard`. Modo de pagamento: `POST /treinador/modo-pagamento`, `GET .../preview`. Stripe: `POST /treinador/onboarding` `[step-up]`, `GET /treinador/onboarding/status`, `POST /treinador/pagamentos/cobrar/{assinaturaId}`, `GET /treinador/pagamentos/recebimentos`. Plano (billing): `GET /treinador/plano/assinatura`, `GET /treinador/plano/pagamento/{id}`, `POST /treinador/plano/{contratar|trocar|cobrar|cancelar}`. Fiscal: `GET/PUT /treinador/dados-fiscais`, `GET /treinador/cep/{cep}` (autofill), `GET /treinador/notas-fiscais`, `GET /treinador/notas-fiscais/{id}/danfse`.
+Vínculos: `GET /treinador/vinculos`, `POST .../{id}/aprovar` `{ pacoteId, trarFichas? }`, `POST .../{id}/desvincular`, `POST /treinador/alunos/{id}/reativar`, `PATCH /treinador/alunos/{vinculoId}/preservar` `{ preservar }` (protege da apara). Alunos/fichas/progressão: `GET /treinador/alunos*`, atribuir/remover ficha. Exercícios (próprios + globais) e pacotes: CRUD + `POST /treinador/exercicios/{id}/copiar`. Dashboard: `GET /treinador/dashboard`. Modo de pagamento: `POST /treinador/modo-pagamento`, `GET .../preview`. Stripe: `POST /treinador/onboarding` `[step-up]`, `GET /treinador/onboarding/status`, `POST /treinador/pagamentos/cobrar/{assinaturaId}`, `GET /treinador/pagamentos/recebimentos`. Plano (billing): `GET /treinador/plano/assinatura`, `GET /treinador/plano/pagamento/{id}`, `POST /treinador/plano/{contratar|trocar|cobrar|cancelar}`. Fiscal: `GET/PUT /treinador/dados-fiscais`, `GET /treinador/cep/{cep}` (autofill), `GET /treinador/notas-fiscais`, `GET /treinador/notas-fiscais/{id}/danfse`.
 
 #### Treinos — `/treinos` (política `Treinador`)
 
@@ -593,7 +593,7 @@ Vínculos: `GET /treinador/vinculos`, `POST .../{id}/aprovar` `{ pacoteId, trarF
 
 #### Internal — `X-Internal-Key` (rate `internal`)
 
-`POST /internal/processar-renovacoes` · `/internal/processar-renovacoes-treinador` · `/internal/processar-pre-avisos` · `/internal/processar-pre-avisos-treinador` · `/internal/processar-engajamento` · `/internal/reconciliar-pagamentos` (503 se truncado) · `/internal/gerar-nfse-comissao` · `/internal/reconciliar-nfse` · `/internal/lgpd/contas-elegiveis` · `DELETE /internal/lgpd/contas/{id}`.
+`POST /internal/processar-renovacoes` · `/internal/processar-renovacoes-treinador` · `/internal/processar-pre-avisos` · `/internal/processar-pre-avisos-treinador` · `/internal/processar-engajamento` · `/internal/reconciliar-pagamentos` (503 se truncado) · `/internal/gerar-nfse-comissao` · `/internal/reconciliar-nfse` · `/internal/processar-limite-alunos` (graça/apara) · `/internal/lgpd/contas-elegiveis` · `DELETE /internal/lgpd/contas/{id}`.
 
 #### Infra
 
@@ -617,9 +617,19 @@ Aluno+Vínculo: Cadastro → AguardandoAprovacao → (treinador aprova vínculo)
 
 Toda aprovação/reprovação/inativação registra um `LogAprovacao` (`EntidadeId` sem FK — sobrevive a hard deletes).
 
-#### Limites de Plano
+#### Limites de Plano (tier efetivo, cortesia, graça)
 
-`LimiteTreinadorService` valida `PlanoPlataforma.MaxAlunos` vs alunos ativos ao aprovar vínculo → `LimiteAlunosAtingidoException` → 422. `Pacote` não tem limite de fichas (campo removido; controle via `Descricao` livre).
+O cap de alunos vale sobre o **tier efetivo**, não o plano contratado. `PlanoEfetivoResolver` resolve o plano vigente = o **mais caro** entre a assinatura paga Ativa e uma **cortesia** administrativa (`Treinador.PlanoCortesiaId`), com fallback fail-closed para o plano Free canônico (`cap=0` se nem Free existir). Cortesia é concedida pelo admin (`PATCH /admin/treinadores/{id}/plano`, `planoId=null` remove) e **nunca rebaixa** quem já paga um tier superior.
+
+`LimiteTreinadorService` valida `MaxAlunos` (do tier efetivo) vs alunos ativos ao aprovar vínculo → `LimiteAlunosAtingidoException` → 422. Mas um treinador pode **passar** do cap sem nova aprovação — por downgrade, inadimplência que derruba a assinatura, ou remoção de cortesia. Nesse caso entra a **graça de limite** (janela de 3 meses):
+
+1. `ProcessarLimiteAlunosHandler` (job diário) recomputa `excedente = max(0, ativos − cap)` ao vivo. Excedente novo → carimba `AlunosAcimaDoCapDesde`, notifica in-app (`LimiteAlunosExcedido`) + e-mail com prazo (`agora + 3 meses`). Nada é desativado.
+2. Dentro da janela: lembretes nos marcos D-30/D-7/D-1 (`LimiteAlunosLembrete` + e-mail).
+3. No fim da janela, se ainda excedido: **apara** — inativa os vínculos excedentes por antiguidade, respeitando os marcados `PreservarNoLimite` (proteção só vale dentro do cap); notifica `LimiteAlunosAplicado` + e-mail. Regularizar (upgrade, reativar assinatura, nova cortesia) a qualquer momento limpa o carimbo e cancela a apara.
+
+**Race-guard**: cada commit é envolto por `CommitOuIgnorarConcorrenciaAsync` — conflito de concorrência otimista (regularização concorrente durante os `await`s) descarta as alterações e loga em Debug; a próxima execução reprocessa. O job é `POST /internal/processar-limite-alunos` (cron diário `limite-alunos.yml`).
+
+`Pacote` não tem limite de fichas (campo removido; controle via `Descricao` livre).
 
 #### Billing do Treinador (treinador → plataforma)
 
@@ -745,7 +755,7 @@ Copie o `whsec_*` efêmero para `Stripe:WebhookSecret` enquanto o tunnel roda. D
 
 ### Migrations
 
-54 migrations, schema-agnostic. As primeiras 29 montam o domínio; da 30 em diante entram MFA, NFS-e, refresh tokens, outbox, notificações e endurecimentos.
+55 migrations, schema-agnostic. As primeiras 29 montam o domínio; da 30 em diante entram MFA, NFS-e, refresh tokens, outbox, notificações e endurecimentos.
 
 | # | Migration | O que faz |
 |---|-----------|-----------|
@@ -803,6 +813,7 @@ Copie o `whsec_*` efêmero para `Stripe:WebhookSecret` enquanto o tunnel roda. D
 | 52 | `RedefinicaoSenhaSegundoFatorLockout` | Tabela `redefinicao_senha_segundo_fator` (2FA lockout no reset) |
 | 53 | `AdicionarUniqueParcialAssinaturaTreinadorNaoCancelada` | Único parcial: uma assinatura treinador não-cancelada por treinador |
 | 54 | `AdicionarNotificacoes` | Tabela `notificacoes` + índice de dedup + opt-out em `contas` |
+| 55 | `AdicionarCortesiaEGracaLimiteAlunos` | `treinadores.plano_cortesia_id` (FK RESTRICT) + `alunos_acima_do_cap_desde`; `vinculos.preservar_no_limite` |
 
 > A `__EFMigrationsHistory` em runtime é pinada no schema do `search_path`; o design-time fica sem schema para scripts portáveis. Ver [`specs/specification-db.md`](specs/specification-db.md).
 
@@ -811,7 +822,7 @@ Copie o `whsec_*` efêmero para `Stripe:WebhookSecret` enquanto o tunnel roda. D
 ### Testes e CI
 
 ```
-3.294 testes unit (rápidos, sem Docker, 0 falhas) + integração via Testcontainers (Postgres real, no CI)
+3.378 testes unit (rápidos, sem Docker, 0 falhas) + integração via Testcontainers (Postgres real, no CI)
 
 Domain/                  → entidades, VOs, domain events, exceções, máquinas de estado
 Domain/Properties/       → property-based (CsCheck): Email VO, Result<T>, invariantes
@@ -834,7 +845,7 @@ E2E/                     → pipeline real: WAF + Postgres + migrations + seed, 
 - `gitleaks` (árvore inteira), `security-backend` (vuln NuGet + SBOM CycloneDX), `security` (osv + npm audit + license + SBOM), `lint-migrations` (migration arriscada), `zap-baseline` (DAST passivo), `commitlint` (PR).
 - `gate` agrega os required; `deploy-homolog` deploya via Tailscale + SSH (ver Deploy). Pós-deploy: `pact-publish` + `pact-provider-verify`.
 
-Workflows dedicados: `mutation.yml` (Stryker), `openapi-drift.yml`, `contract.yml` (Pact file-source PR gate), `semgrep.yml` (SAST), `lighthouse.yml`, `smoke.yml`, `db-backup.yml`, `lgpd-purge.yml`, `billing-{renewal,renewal-treinador,prenotification,reconciliation}.yml`, `gerar-nfse-comissao.yml`, `reconciliar-nfse.yml`, `release-images.yml`, `deploy-prod.yml`, `hygiene.yml`, `zap.yml`, `pact-provider.yml`.
+Workflows dedicados: `mutation.yml` (Stryker), `openapi-drift.yml`, `contract.yml` (Pact file-source PR gate), `semgrep.yml` (SAST), `lighthouse.yml`, `smoke.yml`, `db-backup.yml`, `lgpd-purge.yml`, `billing-{renewal,renewal-treinador,prenotification,reconciliation}.yml`, `gerar-nfse-comissao.yml`, `reconciliar-nfse.yml`, `limite-alunos.yml` (graça/apara diária), `release-images.yml`, `deploy-prod.yml`, `hygiene.yml`, `zap.yml`, `pact-provider.yml`.
 
 ---
 
