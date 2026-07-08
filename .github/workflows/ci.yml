@@ -602,10 +602,8 @@ jobs:
               exit 1
             fi
 
-            # Nginx config eh bind-mount (./nginx/nginx.conf). "up -d" nao
-            # recria nginx quando so o arquivo muda, entao a config nova so
-            # carrega com restart explicito.
-            $DC restart nginx
+            # Nginx e o edge compartilhado (docker-compose.edge.yml) -- resolver
+            # dinamico (127.0.0.11) pega os containers novos sem restart aqui.
 
             docker image prune -f
             docker builder prune -f --reserved-space 5g

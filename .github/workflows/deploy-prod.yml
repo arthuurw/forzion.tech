@@ -84,7 +84,12 @@ jobs:
               exit 1
             fi
 
-            $DC restart nginx
+            # Nginx e o edge compartilhado (docker-compose.edge.yml). "up -d" so
+            # recria se a imagem mudou; "nginx -s reload" pega o bind-mount novo.
+            EDGE_DC="docker compose -p edge -f docker-compose.edge.yml"
+            $EDGE_DC up -d
+            $EDGE_DC exec -T nginx nginx -t
+            $EDGE_DC exec -T nginx nginx -s reload
 
             docker image prune -f
 
