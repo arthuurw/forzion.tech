@@ -53,6 +53,10 @@ done
 [ "$state" = healthy ] || { echo "migrate-dryrun: dryrun-db não ficou healthy." >&2; exit 1; }
 
 echo "migrate-dryrun: clonando schema '$SCHEMA' do DB real para a cópia..."
+# dryrun-db (postgres novo) já nasce com o schema "public" — pg_dump emite "CREATE SCHEMA
+# public", que colidiria com ele. DROP antes (no-op p/ schemas não-builtin tipo homolog).
+"${DC[@]}" exec -T dryrun-db psql -U dryrun -d dryrun -v ON_ERROR_STOP=1 -q \
+  -c "DROP SCHEMA IF EXISTS \"$SCHEMA\" CASCADE;"
 # pg_dump cria o schema e popula; pipe interno ao container (alcança o pooler via NAT da VM).
 # pipefail DENTRO do sh -c: a shell aninhada não herda o pipefail do script-pai, então sem
 # isto um pg_dump que morre no meio + psql aplicando o stream parcial e saindo 0 mascararia a
