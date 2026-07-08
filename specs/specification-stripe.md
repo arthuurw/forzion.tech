@@ -49,7 +49,7 @@ A idem-key do PaymentIntent é DETERMINÍSTICA e montada pelo CALLER, não deriv
 | `Stripe:SecretKey` | `StripeSettings` (DI bind + ValidateOnStart) | API secret | boot falha |
 | `Stripe:PublishableKey` | passada pro frontend via `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | client-side | frontend desliga `<Elements>` (stripePromise null) |
 | `Stripe:WebhookSecret` | `StripeService.ValidarWebhookAsync` | HMAC-SHA256 verify | boot falha |
-| `Stripe:ExpectLivemode` | `StripeService.ValidarWebhookAsync` (SEC-03) | bool? — exige `evento.Livemode` == valor; rejeita webhook divergente | `null` = sem enforcement (não-prod) |
+| `Stripe:ExpectLivemode` | `StripeService.ValidarWebhookAsync` (SEC-03) | bool? — exige `evento.Livemode` == valor; rejeita webhook divergente | `null` = sem enforcement. **Prod hardcoda `true`** em `appsettings.Production.json` (não vem de env var/VM `.env` — nenhum compose mapeia `Stripe__ExpectLivemode`); homolog/dev seguem `null` (sem enforcement, esperado) |
 | `Stripe:TaxaPlataformaPercent` | `StripeSettings` + `PaymentSettings` (espelho App) | taxa plataforma (0,100) | default `5m`; ValidateOnStart falha se fora do range |
 | `Stripe:UrlBase` | frontend base usada em URLs de retorno onboarding | retorno Stripe → app | vazio → links quebram |
 | `Stripe:TimeoutSegundos` | `StripeClientFactory` (cliente global) | timeout HttpClient (PERF-04) | default `30` (SDK default 80s) |
