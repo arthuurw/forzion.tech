@@ -84,7 +84,30 @@ jobs:
               exit 1
             fi
 
+            if ! $DC run --rm --no-deps nginx nginx -t; then
+              echo "::error::nginx.conf inválido — abortando ANTES do restart"
+              exit 1
+            fi
+
             $DC restart nginx
+
+            # Health-gate acima só olha o backend por dentro (exec), nunca passa pelo
+            # nginx -- probe pelo edge público com Host explícito (default_server
+            # devolve 444 a Host desconhecido). PROD_HOST vem do mesmo .env do
+            # DB_CONNECTION (server block de prod é pré-condição do cutover -- OQ3).
+            PROD_HOST="$(grep -E '^PROD_HOST=' "$EF" | head -1 | cut -d= -f2-)"
+            PROD_HOST="${PROD_HOST%\"}"; PROD_HOST="${PROD_HOST#\"}"
+            edge_ok=0
+            for _ in $(seq 1 30); do
+              if [ -n "$PROD_HOST" ] && curl -fsS -k --resolve "$PROD_HOST:443:127.0.0.1" "https://$PROD_HOST/api/backend/health/ready" >/dev/null 2>&1; then
+                edge_ok=1; break
+              fi
+              sleep 4
+            done
+            if [ "$edge_ok" != 1 ]; then
+              echo "::error::Edge (nginx) REPROVADO pós-restart -- routing quebrado ou PROD_HOST ausente em $EF."
+              exit 1
+            fi
 
             docker image prune -f
 

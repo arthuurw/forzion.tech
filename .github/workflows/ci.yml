@@ -50,6 +50,8 @@ jobs:
               - '.github/workflows/**'
               - 'scripts/check-coverage.sh'
               - 'scripts/lint-migrations.sh'
+              - 'nginx/**'
+              - 'docker-compose*.yml'
 
   # ─── HIGIENE ───────────────────────────────────────────────────────────────
   commitlint:
@@ -604,8 +606,29 @@ jobs:
 
             # Nginx config eh bind-mount (./nginx/nginx.conf). "up -d" nao
             # recria nginx quando so o arquivo muda, entao a config nova so
-            # carrega com restart explicito.
+            # carrega com restart explicito -- por isso valida ANTES (run --rm
+            # --no-deps: funciona mesmo se o nginx nao estiver no ar ainda).
+            if ! $DC run --rm --no-deps nginx nginx -t; then
+              echo "::error::nginx.conf inválido — abortando ANTES do restart"
+              exit 1
+            fi
+
             $DC restart nginx
+
+            # Health-gate acima só olha o backend por dentro (exec), nunca passa pelo
+            # nginx -- probe pelo edge público com Host explícito (default_server
+            # devolve 444 a Host desconhecido, nginx.conf:23-29).
+            edge_ok=0
+            for _ in $(seq 1 30); do
+              if curl -fsS -k --resolve homologacao.forzion.tech:443:127.0.0.1 https://homologacao.forzion.tech/api/backend/health/ready >/dev/null 2>&1; then
+                edge_ok=1; break
+              fi
+              sleep 4
+            done
+            if [ "$edge_ok" != 1 ]; then
+              echo "::error::Edge (nginx) REPROVADO pós-restart -- routing quebrado."
+              exit 1
+            fi
 
             docker image prune -f
             docker builder prune -f --reserved-space 5g
