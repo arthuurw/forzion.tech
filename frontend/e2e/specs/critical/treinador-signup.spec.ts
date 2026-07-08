@@ -27,7 +27,7 @@ test.describe("auth: cadastro de treinador", () => {
     // Não navega — fica no /cadastro com erro inline do react-hook-form.
     expect(page.url()).toContain("/cadastro/treinador");
     await expect(
-      page.getByText(/8 caracteres|maiúscula|minúscula|dígito/i).first()
+      page.getByText(/12 caracteres|maiúscula|minúscula|dígito/i).first()
     ).toBeVisible();
   });
 

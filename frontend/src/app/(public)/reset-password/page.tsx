@@ -1,12 +1,13 @@
 "use client";
-import { Box, Button, CircularProgress, TextField, Typography } from "@mui/material";
-import { useForm, FormProvider, Controller } from "react-hook-form";
+import { Box, Button, CircularProgress, Typography } from "@mui/material";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PasswordField from "@/components/forms/PasswordField";
+import FormTextField from "@/components/forms/FormTextField";
 import AlertBanner from "@/components/ui/AlertBanner";
 import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -73,13 +74,22 @@ function ResetPasswordInner() {
       });
 
       if (!res.ok) {
-        const problem = await res.json();
+        let problem: unknown;
+        try {
+          problem = await res.json();
+        } catch {
+          setError("Erro ao redefinir senha.");
+          return;
+        }
         const { code, message } = extractApiErrorInfo({ response: { data: problem, status: res.status } });
 
         if (code === "mfa.codigo_invalido") {
-          setMfaRequerido(true);
-          methods.setError("codigoTotp", { message: "Código inválido." });
-          setError("Esta conta usa verificação em duas etapas. Informe o código do seu aplicativo autenticador.");
+          if (mfaRequerido) {
+            methods.setError("codigoTotp", { message: "Código inválido." });
+          } else {
+            setMfaRequerido(true);
+            setError("Esta conta usa verificação em duas etapas. Informe o código do seu aplicativo autenticador.");
+          }
           return;
         }
         if (code === "auth_reset.segundo_fator_bloqueado") {
@@ -145,19 +155,11 @@ function ResetPasswordInner() {
               <Typography variant="body2" color="text.secondary">
                 Esta conta usa verificação em duas etapas. Informe o código do seu aplicativo autenticador.
               </Typography>
-              <Controller
+              <FormTextField
                 name="codigoTotp"
-                control={methods.control}
-                render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    label="Código de verificação"
-                    error={!!fieldState.error}
-                    helperText={fieldState.error?.message}
-                    slotProps={{ htmlInput: { inputMode: "numeric", autoComplete: "one-time-code" } }}
-                    fullWidth
-                  />
-                )}
+                label="Código de verificação"
+                slotProps={{ htmlInput: { inputMode: "numeric", autoComplete: "one-time-code" } }}
+                fullWidth
               />
             </>
           )}

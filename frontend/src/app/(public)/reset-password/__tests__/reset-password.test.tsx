@@ -50,6 +50,19 @@ describe("/reset-password — MFA e mapeamento de erros (FEAUTH-01/02/03)", () =
     expect(screen.getAllByText(/verificação em duas etapas/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText(/^Nova senha/)).toHaveValue("SenhaForte123");
     expect(screen.getByLabelText(/^Confirmar nova senha/)).toHaveValue("SenhaForte123");
+    expect(screen.queryByText("Código inválido.")).not.toBeInTheDocument();
+  });
+
+  it("erro no proxy sem corpo JSON não é confundido com falha de conexão", async () => {
+    server.use(
+      http.post("*/api/auth/reset-password", () => new HttpResponse("<html>502</html>", { status: 502 })),
+    );
+
+    renderWithProviders(<ResetPasswordPage />);
+    await preencherSenha("SenhaForte123");
+
+    expect(await screen.findByText("Erro ao redefinir senha.")).toBeInTheDocument();
+    expect(screen.queryByText("Não foi possível conectar ao servidor.")).not.toBeInTheDocument();
   });
 
   it("reenvio com codigoTotp válido conclui com sucesso (AC-1.1, AC-1.3)", async () => {

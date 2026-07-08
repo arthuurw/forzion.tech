@@ -823,7 +823,7 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 |--------|-----|
 | `emailSchema` | E-mail válido |
 | `loginPasswordSchema` | Senha login (sem complexidade mínima) |
-| `registerPasswordSchema` | Senha cadastro (min 8, uppercase, lowercase, dígito) |
+| `registerPasswordSchema` | Senha cadastro (min 12, uppercase, lowercase, dígito) |
 | `loginSchema` | Form de login |
 | `cadastroTreinadorSchema` | Form de cadastro treinador |
 | `cadastroAlunoSchema` | Form de cadastro aluno (incl. campos de perfil) |
@@ -942,7 +942,7 @@ body {
 | Mecanismo | Detalhe |
 |-----------|---------|
 | Validação de formulários | Zod + React Hook Form em todos os forms públicos |
-| Senhas de cadastro | Mínimo 8 chars, uppercase, lowercase, dígito |
+| Senhas de cadastro | Mínimo 12 chars, uppercase, lowercase, dígito |
 | Mensagens de erro | Login/cadastro nunca exibe detalhes internos do backend |
 | Stripe Publishable Key | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` é pública por design — tokeniza cartões no browser sem expor dados ao servidor; a chave secreta fica exclusivamente no backend |
 | Formula injection (Excel) | `safeCell` prefixia strings com `'` para prevenir execução de fórmulas no ExcelJS |

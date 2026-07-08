@@ -27,13 +27,6 @@ export function mascararCep(v: string): string {
   return soDigitos(v).slice(0, 8).replace(/^(\d{5})(\d)/, "$1-$2");
 }
 
-function digitoVerificador(digitos: number[], quantidade: number, pesoInicial: number): number {
-  let soma = 0;
-  for (let i = 0; i < quantidade; i++) soma += digitos[i] * (pesoInicial - i);
-  const resto = soma % 11;
-  return resto < 2 ? 0 : 11 - resto;
-}
-
 function digitoVerificadorPonderado(digitos: number[], pesos: number[]): number {
   let soma = 0;
   for (let i = 0; i < pesos.length; i++) soma += digitos[i] * pesos[i];
@@ -44,8 +37,8 @@ function digitoVerificadorPonderado(digitos: number[], pesos: number[]): number 
 export function cpfValido(cpf: string): boolean {
   if (cpf.length !== 11 || new Set(cpf).size === 1) return false;
   const digitos = [...cpf].map(Number);
-  const d1 = digitoVerificador(digitos, 9, 10);
-  const d2 = digitoVerificador(digitos, 10, 11);
+  const d1 = digitoVerificadorPonderado(digitos, [10, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = digitoVerificadorPonderado(digitos, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
   return digitos[9] === d1 && digitos[10] === d2;
 }
 

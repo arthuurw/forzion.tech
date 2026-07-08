@@ -105,6 +105,12 @@ describe("/perfil — alterar senha", () => {
     expect(await screen.findByText(/mínimo 12 caracteres/i)).toBeInTheDocument();
   });
 
+  it("senha com 12+ chars mas sem maiúscula mostra erro de complexidade (paridade SenhaForte)", async () => {
+    renderWithProviders(<PerfilPage />);
+    await fillSenha("old12345", "semmaiuscula1", "semmaiuscula1");
+    expect(await screen.findByText(/ao menos uma letra maiúscula/i)).toBeInTheDocument();
+  });
+
   it("senha válida chama POST e mostra sucesso", async () => {
     let body: unknown = null;
     server.use(

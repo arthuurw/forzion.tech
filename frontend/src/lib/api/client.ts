@@ -18,27 +18,35 @@ type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean; _stepUpR
 let refreshInFlight: Promise<boolean> | null = null;
 
 const REFRESH_LOCK_NAME = "forzion:auth-refresh";
+const REFRESH_LOCK_TIMEOUT_MS = 10_000;
 
 // Serializa entre ABAS via Web Locks: o cookie refresh httpOnly é compartilhado por
 // origem, então duas abas renovando ao mesmo tempo reapresentam o mesmo token e uma
 // delas dispara reuse-detection (revoga a família, desloga as duas). Fallback direto
-// quando a API não existe (FEAUTH-05).
+// quando a API não existe. Timeout via AbortSignal: uma aba com a rede travada não
+// pode segurar o lock indefinidamente e impedir outras abas de renovar/deslogar.
 export function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
   const locks = globalThis.navigator?.locks;
   if (!locks) return fn();
-  return locks.request(REFRESH_LOCK_NAME, fn);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REFRESH_LOCK_TIMEOUT_MS);
+  return locks.request(REFRESH_LOCK_NAME, { signal: controller.signal }, fn).finally(() => clearTimeout(timeout));
 }
 
 function renovarSessao(): Promise<boolean> {
   if (!refreshInFlight) {
-    // fetch direto (não apiClient) p/ não recursar neste interceptor.
+    // fetch direto (não apiClient) p/ não recursar neste interceptor. Erro no
+    // próprio lock (aborto por timeout, restrição do navegador) também resolve
+    // false — nunca deixa o interceptor pendurado sem cair no redirect de /login.
     refreshInFlight = runExclusive(() =>
       fetch("/api/auth/refresh", { method: "POST" })
         .then((r) => r.ok)
         .catch(() => false),
-    ).finally(() => {
-      refreshInFlight = null;
-    });
+    )
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
   }
   return refreshInFlight;
 }

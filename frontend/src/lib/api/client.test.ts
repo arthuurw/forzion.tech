@@ -52,6 +52,11 @@ beforeEach(() => {
       }
     },
   );
+  // Node expõe um LockManager real em navigator.locks; sem isso, testes que não
+  // mockam navigator disputariam o mesmo lock nomeado entre si (contaminação
+  // cross-test). Default = sem locks (fallback); testes de runExclusive stubam
+  // explicitamente por cima.
+  vi.stubGlobal("navigator", {});
 });
 
 const originalAdapter = apiClient.defaults.adapter;
@@ -177,13 +182,13 @@ describe("apiClient — renovação silenciosa em 401", () => {
 
 describe("runExclusive — Web Locks cross-tab (FEAUTH-04/05)", () => {
   it("com navigator.locks disponível, roda fn sob o lock nomeado forzion:auth-refresh", async () => {
-    const request = vi.fn((name: string, fn: () => Promise<unknown>) => fn());
+    const request = vi.fn((name: string, opts: unknown, fn: () => Promise<unknown>) => fn());
     vi.stubGlobal("navigator", { locks: { request } });
 
     const fn = vi.fn(async () => "resultado");
     const result = await runExclusive(fn);
 
-    expect(request).toHaveBeenCalledWith("forzion:auth-refresh", fn);
+    expect(request).toHaveBeenCalledWith("forzion:auth-refresh", { signal: expect.any(AbortSignal) }, fn);
     expect(result).toBe("resultado");
   });
 
@@ -197,14 +202,49 @@ describe("runExclusive — Web Locks cross-tab (FEAUTH-04/05)", () => {
   });
 
   it("401 renova sob o lock quando navigator.locks está disponível", async () => {
-    const request = vi.fn((name: string, fn: () => Promise<unknown>) => fn());
+    const request = vi.fn((name: string, opts: unknown, fn: () => Promise<unknown>) => fn());
     vi.stubGlobal("navigator", { locks: { request } });
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
     stubAdapter();
 
     await rejectedHandler()({ response: { status: 401 }, config: { url: "/a", headers: {} } });
 
-    expect(request).toHaveBeenCalledWith("forzion:auth-refresh", expect.any(Function));
+    expect(request).toHaveBeenCalledWith("forzion:auth-refresh", { signal: expect.any(AbortSignal) }, expect.any(Function));
+  });
+
+  it("locks.request rejeita (ex.: Permissions-Policy) → renovarSessao resolve false, sem travar o interceptor", async () => {
+    const request = vi.fn(() => Promise.reject(new DOMException("bloqueado", "SecurityError")));
+    vi.stubGlobal("navigator", { locks: { request } });
+
+    await expect(
+      rejectedHandler()({ response: { status: 401 }, config: { url: "/a", headers: {} } }),
+    ).rejects.toBeDefined();
+    expect(fakeWindow.location.href).toBe("/login");
+  });
+
+  it("locks.request nunca resolve (aba concorrente travada) → timeout aborta e redireciona pro login", async () => {
+    vi.useFakeTimers();
+    try {
+      const request = vi.fn(
+        (name: string, opts: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            opts.signal.addEventListener("abort", () => reject(new DOMException("timeout", "AbortError")));
+          }),
+      );
+      vi.stubGlobal("navigator", { locks: { request } });
+
+      const handlerPromise = rejectedHandler()({
+        response: { status: 401 },
+        config: { url: "/a", headers: {} },
+      });
+      const assertion = expect(handlerPromise).rejects.toBeDefined();
+      await vi.advanceTimersByTimeAsync(10_000);
+      await assertion;
+
+      expect(fakeWindow.location.href).toBe("/login");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
