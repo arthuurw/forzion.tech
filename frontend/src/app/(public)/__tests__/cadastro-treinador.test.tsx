@@ -19,8 +19,8 @@ function planosHandler(planos: PlanoPlataformaResponse[] = [PLANO_BASIC, PLANO_F
 function preencherDados() {
   fireEvent.change(screen.getByLabelText(/Nome completo/i), { target: { value: "Maria Treinadora" } });
   fireEvent.change(screen.getByLabelText(/E-mail/i), { target: { value: "maria@ex.com" } });
-  fireEvent.change(screen.getByLabelText(/^Senha/i), { target: { value: "Senha123" } });
-  fireEvent.change(screen.getByLabelText(/Confirmar senha/i), { target: { value: "Senha123" } });
+  fireEvent.change(screen.getByLabelText(/^Senha/i), { target: { value: "Senha123abcd" } });
+  fireEvent.change(screen.getByLabelText(/Confirmar senha/i), { target: { value: "Senha123abcd" } });
 }
 
 function selecionarOpcao(campo: RegExp, opcao: RegExp) {
