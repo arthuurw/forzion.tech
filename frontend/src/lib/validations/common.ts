@@ -12,7 +12,7 @@ export const passwordSchema = z
 
 export const registerPasswordSchema = z
   .string()
-  .min(8, "Mínimo 8 caracteres")
+  .min(12, "Mínimo 12 caracteres")
   .max(72, "Máximo 72 caracteres")
   .regex(/(?=.*[a-z])/, "Deve conter ao menos uma letra minúscula.")
   .regex(/(?=.*[A-Z])/, "Deve conter ao menos uma letra maiúscula.")
