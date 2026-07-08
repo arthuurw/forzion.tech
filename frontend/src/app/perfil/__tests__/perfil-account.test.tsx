@@ -95,14 +95,14 @@ describe("/perfil — alterar senha", () => {
 
   it("senhas divergentes mostram erro", async () => {
     renderWithProviders(<PerfilPage />);
-    await fillSenha("old12345", "novaSenha1", "outraSenha2");
+    await fillSenha("old12345", "NovaSenha123", "OutraSenha456");
     expect(await screen.findByText(/as senhas não coincidem/i)).toBeInTheDocument();
   });
 
-  it("senha curta mostra erro de tamanho", async () => {
+  it("senha curta mostra erro de tamanho (paridade SenhaForte min 12 — FEAUTH-07)", async () => {
     renderWithProviders(<PerfilPage />);
     await fillSenha("old12345", "curta", "curta");
-    expect(await screen.findByText(/pelo menos 8 caracteres/i)).toBeInTheDocument();
+    expect(await screen.findByText(/mínimo 12 caracteres/i)).toBeInTheDocument();
   });
 
   it("senha válida chama POST e mostra sucesso", async () => {
@@ -114,15 +114,15 @@ describe("/perfil — alterar senha", () => {
       }),
     );
     renderWithProviders(<PerfilPage />);
-    await fillSenha("old12345", "novaSenha1", "novaSenha1");
-    await waitFor(() => expect(body).toEqual({ senhaAtual: "old12345", novaSenha: "novaSenha1" }));
+    await fillSenha("old12345", "NovaSenha123", "NovaSenha123");
+    await waitFor(() => expect(body).toEqual({ senhaAtual: "old12345", novaSenha: "NovaSenha123" }));
     expect(await screen.findByText(/senha alterada com sucesso/i)).toBeInTheDocument();
   });
 
   it("erro no POST de senha exibe banner", async () => {
     server.use(http.post("*/conta/senha", () => new HttpResponse(null, { status: 400 })));
     renderWithProviders(<PerfilPage />);
-    await fillSenha("old12345", "novaSenha1", "novaSenha1");
+    await fillSenha("old12345", "NovaSenha123", "NovaSenha123");
     expect(await screen.findByText(/verifique a senha atual/i)).toBeInTheDocument();
   });
 });
