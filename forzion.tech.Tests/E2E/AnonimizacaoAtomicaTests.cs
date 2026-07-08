@@ -74,7 +74,8 @@ public class AnonimizacaoAtomicaTests(RealPipelineFixture fixture)
             sp.GetRequiredService<IMfaRecoveryCodeRepository>(),
             sp.GetRequiredService<IMfaChallengeRepository>(),
             sp.GetRequiredService<ITrustedDeviceRepository>(),
-            sp.GetRequiredService<IPasswordResetTokenRepository>());
+            sp.GetRequiredService<IPasswordResetTokenRepository>(),
+            sp.GetRequiredService<ITrocaEmailTokenRepository>());
 
         // Admin (RealizadoPorId != ContaId) dispensa verificação de senha.
         var act = async () => await handler.HandleAsync(new AnonimizarContaCommand(contaId, Guid.NewGuid()));
