@@ -3,6 +3,7 @@ import {
   apiClient,
   ASSINATURA_INADIMPLENTE_EVENT,
   ASSINATURA_INADIMPLENTE_MESSAGE,
+  runExclusive,
 } from "./client";
 import { registerStepUpHandler } from "@/lib/auth/stepUpController";
 
@@ -171,6 +172,39 @@ describe("apiClient — renovação silenciosa em 401", () => {
     ).rejects.toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(fakeWindow.location.href).toBe("/login");
+  });
+});
+
+describe("runExclusive — Web Locks cross-tab (FEAUTH-04/05)", () => {
+  it("com navigator.locks disponível, roda fn sob o lock nomeado forzion:auth-refresh", async () => {
+    const request = vi.fn((name: string, fn: () => Promise<unknown>) => fn());
+    vi.stubGlobal("navigator", { locks: { request } });
+
+    const fn = vi.fn(async () => "resultado");
+    const result = await runExclusive(fn);
+
+    expect(request).toHaveBeenCalledWith("forzion:auth-refresh", fn);
+    expect(result).toBe("resultado");
+  });
+
+  it("sem navigator.locks, executa fn direto (fallback)", async () => {
+    vi.stubGlobal("navigator", {});
+
+    const fn = vi.fn(async () => "resultado");
+    const result = await runExclusive(fn);
+
+    expect(result).toBe("resultado");
+  });
+
+  it("401 renova sob o lock quando navigator.locks está disponível", async () => {
+    const request = vi.fn((name: string, fn: () => Promise<unknown>) => fn());
+    vi.stubGlobal("navigator", { locks: { request } });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
+    stubAdapter();
+
+    await rejectedHandler()({ response: { status: 401 }, config: { url: "/a", headers: {} } });
+
+    expect(request).toHaveBeenCalledWith("forzion:auth-refresh", expect.any(Function));
   });
 });
 

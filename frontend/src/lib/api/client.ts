@@ -13,19 +13,32 @@ export const apiClient = axios.create({
 // também 401 — ex.: família revogada / refresh já rotacionado).
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean; _stepUpRetry?: boolean };
 
-// Promise de refresh em voo, compartilhada entre 401s concorrentes (anti-tempestade):
-// N requests que estouram juntos disparam 1 só chamada a /api/auth/refresh.
+// Promise de refresh em voo, compartilhada entre 401s concorrentes na MESMA aba
+// (anti-tempestade): N requests que estouram juntos disparam 1 só chamada a /api/auth/refresh.
 let refreshInFlight: Promise<boolean> | null = null;
+
+const REFRESH_LOCK_NAME = "forzion:auth-refresh";
+
+// Serializa entre ABAS via Web Locks: o cookie refresh httpOnly é compartilhado por
+// origem, então duas abas renovando ao mesmo tempo reapresentam o mesmo token e uma
+// delas dispara reuse-detection (revoga a família, desloga as duas). Fallback direto
+// quando a API não existe (FEAUTH-05).
+export function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = globalThis.navigator?.locks;
+  if (!locks) return fn();
+  return locks.request(REFRESH_LOCK_NAME, fn);
+}
 
 function renovarSessao(): Promise<boolean> {
   if (!refreshInFlight) {
     // fetch direto (não apiClient) p/ não recursar neste interceptor.
-    refreshInFlight = fetch("/api/auth/refresh", { method: "POST" })
-      .then((r) => r.ok)
-      .catch(() => false)
-      .finally(() => {
-        refreshInFlight = null;
-      });
+    refreshInFlight = runExclusive(() =>
+      fetch("/api/auth/refresh", { method: "POST" })
+        .then((r) => r.ok)
+        .catch(() => false),
+    ).finally(() => {
+      refreshInFlight = null;
+    });
   }
   return refreshInFlight;
 }
