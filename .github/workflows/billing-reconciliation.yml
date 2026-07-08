@@ -38,13 +38,14 @@ jobs:
         with:
           host: ${{ secrets.VM_TAILNET_IP }}
           username: ubuntu
-          key: ${{ secrets.HOMOLOG_SSH_KEY }}
+          key: ${{ matrix.env == 'production' && secrets.PROD_SSH_KEY || secrets.HOMOLOG_SSH_KEY }}
           envs: DESDE_UTC
           script: |
             set -eu
-            cd /opt/forzion/app
-            EF=/opt/forzion/.env
-            DC="docker compose -f ${{ vars.COMPOSE_FILE || 'docker-compose.homolog.yml' }} --env-file $EF"
+            cd ${{ vars.APP_DIR || '/opt/forzion/app' }}
+            EF=${{ vars.ENV_FILE || '/opt/forzion/.env' }}
+            PROJ="${{ vars.COMPOSE_PROJECT }}"
+            DC="docker compose ${PROJ:+-p $PROJ} -f ${{ vars.COMPOSE_FILE || 'docker-compose.homolog.yml' }} --env-file $EF"
             KEY="$(grep -E '^INTERNAL_API_KEY=' "$EF" | head -1 | cut -d= -f2-)"
             if [ -n "${DESDE_UTC:-}" ]; then BODY="{\"desdeUtc\":\"$DESDE_UTC\"}"; else BODY="{}"; fi
             $DC exec -T backend curl -fsS -X POST \
@@ -78,7 +79,7 @@ jobs:
               '',
               'Investigar (ordem dos layers):',
               '1. Tailnet: runner conectou? ACL `tag:ci -> VM:22` (SSH) liberada?',
-              '2. SSH: `VM_TAILNET_IP` bate com a VM? `HOMOLOG_SSH_KEY` válida?',
+              '2. SSH: `VM_TAILNET_IP` bate com a VM? Chave SSH do ambiente `${{ matrix.env }}` válida?',
               '3. `docker compose exec backend` rodou? `/internal/reconciliar-pagamentos` respondeu (401=key, 503=batch truncado, 5xx=backend)?',
               '4. Stripe API rate limit estourou (`stripe_request_quota_exceeded`)?',
               '5. Backend logs (`docker compose logs backend --tail 200`)',
