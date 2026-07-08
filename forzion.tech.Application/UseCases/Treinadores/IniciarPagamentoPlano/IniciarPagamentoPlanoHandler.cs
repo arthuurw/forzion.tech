@@ -68,7 +68,10 @@ public class IniciarPagamentoPlanoHandler(
                 : pag.DefinirDadosPix(pix!.PaymentIntentId, pix.QrCode, pix.QrCodeUrl, pix.Expiracao, now),
             AdicionarAsync: (pag, ct) => pagamentoRepository.AdicionarAsync(pag, ct)
         )
-        { MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
+        {
+            MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora),
+            ObterPaymentIntentId = pag => pag.StripePaymentIntentId
+        };
 
         var result = await criarPagamentoService.ExecutarAsync(params_, cancellationToken).ConfigureAwait(false);
         if (result.IsFailure)

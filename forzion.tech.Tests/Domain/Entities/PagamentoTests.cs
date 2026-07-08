@@ -355,4 +355,40 @@ public class PagamentoTests
         r.IsFailure.Should().BeTrue();
         r.Error!.Message.Should().Be("Apenas pagamentos pagos podem ser marcados em disputa.");
     }
+
+    // --- EstaVencido ---
+
+    [Fact]
+    public void EstaVencido_PixAposExpiracao_True()
+    {
+        var p = Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora, MetodoPagamento.Pix).Value;
+        p.DefinirDadosPix("pi_123", "qr", "url", TestData.Agora.AddMinutes(15), TestData.Agora);
+
+        p.EstaVencido(TestData.Agora.AddMinutes(15)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EstaVencido_PixAntesExpiracao_False()
+    {
+        var p = Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora, MetodoPagamento.Pix).Value;
+        p.DefinirDadosPix("pi_123", "qr", "url", TestData.Agora.AddMinutes(15), TestData.Agora);
+
+        p.EstaVencido(TestData.Agora.AddMinutes(14)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void EstaVencido_CartaoAposJanela_True()
+    {
+        var p = Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora, MetodoPagamento.Cartao).Value;
+
+        p.EstaVencido(TestData.Agora.AddHours(Pagamento.JanelaValidadeCartaoHoras)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EstaVencido_CartaoDentroDaJanela_False()
+    {
+        var p = Pagamento.Criar(AssinaturaAlunoId, Valor, TestData.Agora, MetodoPagamento.Cartao).Value;
+
+        p.EstaVencido(TestData.Agora.AddHours(Pagamento.JanelaValidadeCartaoHoras - 1)).Should().BeFalse();
+    }
 }

@@ -370,6 +370,49 @@ public class ReconciliarPagamentosStripeHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_EventoFalhoNoMeio_CursorCongelaNoUltimoSucessoContiguo()
+    {
+        ReconciliacaoStripeEstado? salvo = null;
+        _cursorRepo.Setup(r => r.SalvarAsync(It.IsAny<ReconciliacaoStripeEstado>(), It.IsAny<CancellationToken>()))
+            .Callback<ReconciliacaoStripeEstado, CancellationToken>((e, _) => salvo = e)
+            .Returns(Task.CompletedTask);
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+
+        var t1 = _time.GetUtcNow().UtcDateTime;
+        var t2 = t1.AddMinutes(10);
+        var t3 = t1.AddMinutes(20);
+        var evtOk1 = PaymentIntentEvento("payment_intent.succeeded", "pi_ok1", t1);
+        var evtErro = new StripeEventSummary("evt_bad", "payment_intent.succeeded", "null", t2);
+        var evtOk3 = PaymentIntentEvento("payment_intent.succeeded", "pi_ok3", t3);
+        SetupEventos(evtOk1, evtErro, evtOk3);
+
+        var result = await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        result.Value.Erros.Should().Be(1);
+        salvo.Should().NotBeNull();
+        salvo!.UltimoEventoReconciliadoUtc.Should().BeCloseTo(t1, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task HandleAsync_PrimeiroEventoFalha_NaoPersisteCursor()
+    {
+        var t1 = _time.GetUtcNow().UtcDateTime;
+        var t2 = t1.AddMinutes(10);
+        var evtErro = new StripeEventSummary("evt_bad", "payment_intent.succeeded", "null", t1);
+        var evtOk = PaymentIntentEvento("payment_intent.succeeded", "pi_ok", t2);
+        _pagamentoRepo.Setup(r => r.ObterPorPaymentIntentIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Pagamento?)null);
+        SetupEventos(evtErro, evtOk);
+
+        var result = await _handler.HandleAsync(new ReconciliarPagamentosStripeCommand());
+
+        result.Value.Erros.Should().Be(1);
+        _cursorRepo.Verify(r => r.SalvarAsync(It.IsAny<ReconciliacaoStripeEstado>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cursorUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_ContaPendenteAtivadaNaStripe_ConfirmaOnboarding()
     {
         var agora = _time.GetUtcNow().UtcDateTime;

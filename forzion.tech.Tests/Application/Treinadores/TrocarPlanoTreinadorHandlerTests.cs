@@ -30,13 +30,13 @@ public class TrocarPlanoTreinadorHandlerTests
 
     public TrocarPlanoTreinadorHandlerTests()
     {
-        _transactionProvider.SetupExecuteInTransaction<Result<PagamentoTreinador>>();
+        _transactionProvider.SetupExecuteInTransaction<Result<(PagamentoTreinador, string?)>>();
         _stripeService.Setup(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PixResult);
 
         var criarPagamentoService = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, _stripeService.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
         _handler = new TrocarPlanoTreinadorHandler(
@@ -47,7 +47,7 @@ public class TrocarPlanoTreinadorHandlerTests
     }
 
     private CriarPagamentoComIntentService BuildService() =>
-        new(_unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
+        new(_unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, _stripeService.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
     private static Treinador CriarTreinador(Guid? planoId = null)
@@ -141,6 +141,31 @@ public class TrocarPlanoTreinadorHandlerTests
         pendenteA.Status.Should().Be(PagamentoStatus.Falhou, "pending para plano diferente deve ser descartado para evitar aplicação de plano errado via webhook tardio");
         _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once, "novo intent criado para PlanoB");
+    }
+
+    [Fact]
+    public async Task TrocarPlano_DescartaPendenteDeOutroPlano_CancelaPaymentIntentAntigo()
+    {
+        var treinador = CriarTreinador();
+        var planoAtual = CriarPlano(30m, TierPlano.Basic);
+        var planoA = CriarPlano(80m, TierPlano.Pro);
+        var planoB = CriarPlano(100m, TierPlano.ProPlus);
+        var assinatura = CriarAssinaturaAtiva(treinador.Id, planoAtual.Id, 30m);
+        var pendenteA = PagamentoTreinador.Criar(treinador.Id, assinatura.Id, 50m, FinalidadePagamentoTreinador.TrocaPlano, DateTime.UtcNow, MetodoPagamento.Pix, planoA.Id).Value;
+        pendenteA.DefinirDadosPix("pi_plano_a", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoB.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoB);
+        _assinaturaRepo.Setup(r => r.ObterAtualPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteA);
+        _stripeService.Setup(s => s.CancelarPaymentIntentAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CancelarPaymentIntentResultado.Cancelado);
+
+        var result = await _handler.HandleAsync(new TrocarPlanoTreinadorCommand(treinador.Id, planoB.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        _stripeService.Verify(s => s.CancelarPaymentIntentAsync("pi_plano_a", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
