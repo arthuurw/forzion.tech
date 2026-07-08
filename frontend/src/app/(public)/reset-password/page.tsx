@@ -1,6 +1,6 @@
 "use client";
-import { Box, Button, CircularProgress } from "@mui/material";
-import { useForm, FormProvider } from "react-hook-form";
+import { Box, Button, CircularProgress, TextField, Typography } from "@mui/material";
+import { useForm, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, Suspense } from "react";
@@ -11,12 +11,13 @@ import AlertBanner from "@/components/ui/AlertBanner";
 import PageHeader from "@/components/ui/PageHeader";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { registerPasswordSchema } from "@/lib/validations/common";
-import type { ProblemDetails } from "@/types";
+import { extractApiErrorInfo } from "@/lib/api/extractApiError";
 
 const schema = z
   .object({
     novaSenha: registerPasswordSchema,
     confirmarSenha: z.string().min(1, "Confirmação obrigatória"),
+    codigoTotp: z.string().optional(),
   })
   .refine((d) => d.novaSenha === d.confirmarSenha, {
     message: "As senhas não coincidem",
@@ -32,10 +33,12 @@ function ResetPasswordInner() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [mfaRequerido, setMfaRequerido] = useState(false);
+  const [bloqueado, setBloqueado] = useState(false);
 
   const methods = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { novaSenha: "", confirmarSenha: "" },
+    defaultValues: { novaSenha: "", confirmarSenha: "", codigoTotp: "" },
   });
 
   if (!token) {
@@ -54,17 +57,37 @@ function ResetPasswordInner() {
 
   const onSubmit = async (data: FormData) => {
     setError("");
+    if (mfaRequerido && !data.codigoTotp?.trim()) {
+      methods.setError("codigoTotp", { message: "Informe o código de verificação." });
+      return;
+    }
     setLoading(true);
     try {
+      const body: Record<string, string> = { token, novaSenha: data.novaSenha };
+      if (mfaRequerido && data.codigoTotp?.trim()) body.codigoTotp = data.codigoTotp.trim();
+
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, novaSenha: data.novaSenha }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
-        const problem: ProblemDetails = await res.json();
-        setError(problem.title ?? "Erro ao redefinir senha.");
+        const problem = await res.json();
+        const { code, message } = extractApiErrorInfo({ response: { data: problem, status: res.status } });
+
+        if (code === "mfa.codigo_invalido") {
+          setMfaRequerido(true);
+          methods.setError("codigoTotp", { message: "Código inválido." });
+          setError("Esta conta usa verificação em duas etapas. Informe o código do seu aplicativo autenticador.");
+          return;
+        }
+        if (code === "auth_reset.segundo_fator_bloqueado") {
+          setBloqueado(true);
+          setError(message ?? "Muitas tentativas. Solicite um novo link de redefinição.");
+          return;
+        }
+        setError(message ?? "Erro ao redefinir senha.");
         return;
       }
 
@@ -117,6 +140,27 @@ function ResetPasswordInner() {
             required
             autoComplete="new-password"
           />
+          {mfaRequerido && (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                Esta conta usa verificação em duas etapas. Informe o código do seu aplicativo autenticador.
+              </Typography>
+              <Controller
+                name="codigoTotp"
+                control={methods.control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    label="Código de verificação"
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                    slotProps={{ htmlInput: { inputMode: "numeric", autoComplete: "one-time-code" } }}
+                    fullWidth
+                  />
+                )}
+              />
+            </>
+          )}
           <Button
             type="submit"
             variant="contained"
@@ -129,6 +173,11 @@ function ResetPasswordInner() {
           >
             Redefinir senha
           </Button>
+          {bloqueado && (
+            <Button component={Link} href="/forgot-password" variant="outlined" fullWidth>
+              Solicitar novo link
+            </Button>
+          )}
         </Box>
       </FormProvider>
     </Box>
