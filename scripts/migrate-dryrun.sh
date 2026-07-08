@@ -64,6 +64,7 @@ echo "migrate-dryrun: clonando schema '$SCHEMA' do DB real para a cópia..."
    | psql -U dryrun -d dryrun -v ON_ERROR_STOP=1 -q"
 
 echo "migrate-dryrun: aplicando migrations na cópia (app migrate)..."
+export DRYRUN_SCHEMA="$SCHEMA"  # mesmo schema do pg_dump --schema acima (compose interpola no Search Path)
 "${DC[@]}" build migrate
 "${DC[@]}" run --rm migrate
 
