@@ -5,7 +5,7 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 ## STACK
 - Next.js 16 (App Router) + React 19 + TypeScript 6. `frontend/`.
 - UI: MUI v9 (`@mui/material`) + Emotion. Locale `ptBR`. Tema em `src/lib/theme/index.ts`.
-- Forms: react-hook-form v7 + Zod v4 (`@hookform/resolvers`).
+- Forms: react-hook-form v7 + Zod v4 (`@hookform/resolvers`). `registerPasswordSchema` (cadastro/reset/perfil) exige min **12** + minúscula/maiúscula/dígito — paridade com `SenhaForte` do backend (`specification-security` §3); `passwordSchema` (login) permanece min 8 por decisão consciente (credenciais legadas — autenticar ≠ definir).
 - HTTP client: axios (instância `apiClient` em `src/lib/api/client.ts`).
 - Fetch-cache client: TanStack Query v5 (`@tanstack/react-query`) — camada de cache/dedup sobre o `apiClient`. Ver §DADOS-CLIENT.
 - JWT client-side: `jose` (verificação no Route Handler `/api/auth/me`).
@@ -79,7 +79,9 @@ Endpoints/contratos na §API ROUTES DE AUTH; aqui só os fatos não-óbvios de c
 - **Cookies de sessão** (helper `applySessionCookies` no login + refresh): `token` httpOnly (`maxAge=exp-now`), `refresh` httpOnly (`maxAge`=idle do papel: **Admin 2h / demais 7d**), `tipo_conta` NÃO-httpOnly (hint de roteamento), `session_guard` httpOnly (flag). Login devolve ao JS só `{ tipoConta, contaId, perfilId, nome }` — **token E refresh NUNCA expostos ao JS**.
 - **MFA**: 1º fator devolve só `{ mfaRequerido:true, mfaPendingExpiraEm }`; o `mfaPendingToken` vira cookie httpOnly `mfa_pending` (`applyMfaPendingCookie`) e NUNCA vai ao JS. `/mfa/verificar` lê esse cookie → Bearer; sucesso = `applySessionCookies` + `clearMfaPendingCookie` (+ `applyTrustedDeviceCookie` se lembrou). Login envia cookie `trusted_device` ao backend (se presente) p/ pular o 2º fator.
 - **Refresh**: rotação **single-use + reuse detection** no backend; 401 limpa cookies de sessão. `/me` com access vencido + refresh presente dispara o refresh server-side antes de devolver (sessão sobrevive a reload com access vencido).
-- **`client.ts`** (interceptor axios): 401 ⇒ tenta `/api/auth/refresh` UMA vez (flag `_retry` anti-loop; promise compartilhada anti-tempestade de refresh concorrente) → refaz a request; refresh falho ⇒ `window.location='/login'`. (Step-up/inadimplência na §API CLIENT.)
+- **Reset de senha com MFA** (`(public)/reset-password/page.tsx`): 1ª submissão envia `{token, novaSenha}`; 422 `code === "mfa.codigo_invalido"` revela o campo "Código de verificação" (revelar-ao-erro, sem contrato dedicado — backend não distingue "ausente" de "errado") e reenvia com `codigoTotp`. `code === "auth_reset.segundo_fator_bloqueado"` mostra CTA para `/forgot-password`. Conta sem MFA segue o fluxo de 1 submissão.
+- **`client.ts`** (interceptor axios): 401 ⇒ tenta `/api/auth/refresh` UMA vez (flag `_retry` anti-loop; promise compartilhada anti-tempestade de refresh concorrente NA MESMA ABA) → refaz a request; refresh falho ⇒ `window.location='/login'`. (Step-up/inadimplência na §API CLIENT.)
+- **Refresh cross-tab** (`runExclusive`, Web Locks API): abas concorrentes serializam a chamada de refresh via `navigator.locks.request("forzion:auth-refresh", ...)` — o cookie `refresh` httpOnly é compartilhado por origem entre abas, então duas abas renovando ao mesmo tempo reapresentariam o mesmo token e disparariam a reuse-detection do backend (revoga a família, desloga todas as abas — §4 [specification-security]). Fallback direto (sem serialização) quando `navigator.locks` está ausente.
 - **Logout**: invalida JTI + revoga família do refresh no backend; deleta cookies de qualquer forma (falha silenciosa).
 
 **AuthProvider** (`src/lib/auth/context.tsx`): estado `user: SessionUser | null` + `isLoading`. Chama `/api/auth/me` no mount. Expõe `login(data)`, `logout()`, `homeRouteFor(tipoConta)`.
@@ -253,7 +255,7 @@ Sessão de execução não perde dados em reload/queda de rede; finalização so
 - **`lib/execucao/execData.ts`**: `initExecData` + tipo `SetState` extraídos da página p/ reuso pelo hook (módulo compartilhável).
 
 ### NFS-e (notas fiscais)
-Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/dadosFiscais.ts` (CPF/CNPJ por `tipoDocumento`, CEP, IBGE 7 dígitos, UF; máscara só na UI, payload envia dígitos crus). Enums NFS-e como string-literal no módulo (label/cor de status). Nav item "Notas fiscais" em treinador e admin (`ReceiptLongIcon`).
+Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/dadosFiscais.ts` (CPF/CNPJ por `tipoDocumento` com dígito verificador — módulo-11, paridade com `DadosFiscais.Criar` do backend; CEP, IBGE 7 dígitos, UF; máscara só na UI, payload envia dígitos crus). Enums NFS-e como string-literal no módulo (label/cor de status). Nav item "Notas fiscais" em treinador e admin (`ReceiptLongIcon`).
 - **Treinador** `(treinador)/treinador/dados-fiscais` — form RHF+Zod (tomador da NFS-e); carrega `GET /treinador/dados-fiscais` (null = nunca preenchido), salva `PUT`. `(treinador)/treinador/notas-fiscais` — lista keyset (`proximoCursor` → "Carregar mais"), download DANFSe (`GET .../danfse` → `window.open(danfseRef)`); só notas com `temDanfse`. Botão "Dados fiscais" no header.
 - **Admin** `(admin)/admin/notas-fiscais` — `ResponsiveTable` + filtro de status + retry (`POST .../reprocessar`, só status `Erro` mostra ação); coluna de erro (código+motivo) com tooltip.
 
