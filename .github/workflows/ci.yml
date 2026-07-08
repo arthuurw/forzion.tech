@@ -604,7 +604,13 @@ jobs:
 
             # Nginx config eh bind-mount (./nginx/nginx.conf). "up -d" nao
             # recria nginx quando so o arquivo muda, entao a config nova so
-            # carrega com restart explicito.
+            # carrega com restart explicito -- por isso valida ANTES (run --rm
+            # --no-deps: funciona mesmo se o nginx nao estiver no ar ainda).
+            if ! $DC run --rm --no-deps nginx nginx -t; then
+              echo "::error::nginx.conf inválido — abortando ANTES do restart"
+              exit 1
+            fi
+
             $DC restart nginx
 
             docker image prune -f

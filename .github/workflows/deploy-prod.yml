@@ -84,6 +84,11 @@ jobs:
               exit 1
             fi
 
+            if ! $DC run --rm --no-deps nginx nginx -t; then
+              echo "::error::nginx.conf inválido — abortando ANTES do restart"
+              exit 1
+            fi
+
             $DC restart nginx
 
             docker image prune -f
