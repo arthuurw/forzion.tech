@@ -180,7 +180,7 @@ internal static class EmailTemplates
             <p style="color:#444;line-height:1.6">Olá!</p>
             <p style="color:#444;line-height:1.6">
               Recebemos uma solicitação de redefinição de senha para a conta associada ao e-mail
-              <strong>{email}</strong>.
+              <strong>{Enc(email)}</strong>.
             </p>
             <p style="color:#444;line-height:1.6">
               Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.
@@ -229,7 +229,7 @@ internal static class EmailTemplates
             $"""
             <p style="color:#444;line-height:1.6">Olá!</p>
             <p style="color:#444;line-height:1.6">
-              Falta pouco para ativar sua conta associada ao e-mail <strong>{email}</strong>.
+              Falta pouco para ativar sua conta associada ao e-mail <strong>{Enc(email)}</strong>.
             </p>
             <p style="color:#444;line-height:1.6">
               Clique no botão abaixo para confirmar seu e-mail. O link é válido por <strong>24 horas</strong>.
