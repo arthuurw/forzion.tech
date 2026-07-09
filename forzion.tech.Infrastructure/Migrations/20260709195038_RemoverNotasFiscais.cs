@@ -18,6 +18,7 @@ namespace forzion.tech.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // lint-migrations:allow — UNIQUE só no Down (recria tabela vazia).
             migrationBuilder.CreateTable(
                 name: "notas_fiscais",
                 columns: table => new
