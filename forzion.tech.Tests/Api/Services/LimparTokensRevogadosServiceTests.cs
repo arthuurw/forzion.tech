@@ -57,7 +57,6 @@ public class LimparTokensRevogadosServiceTests
     [Fact]
     public async Task LimparAsync_FalhaNoDispositivo_NaoPulaTrocaEmail()
     {
-        // try/catch independente: a purga de troca de e-mail roda mesmo se a de dispositivos falhar.
         _deviceRepo.Setup(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("db down"));
         _trocaEmailTokenRepo.Setup(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(2);
 
