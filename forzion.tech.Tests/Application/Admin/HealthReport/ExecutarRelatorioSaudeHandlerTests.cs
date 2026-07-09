@@ -5,7 +5,7 @@ using forzion.tech.Application.UseCases.Admin.HealthReport;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -18,13 +18,14 @@ public class ExecutarRelatorioSaudeHandlerTests
     private readonly Mock<IHealthSnapshotRepository> _snapshotRepo = new();
     private readonly Mock<IHealthReportSender> _sender = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogger<ExecutarRelatorioSaudeHandler>> _logger = new();
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 5, 26, 12, 0, 0, TimeSpan.Zero));
     private readonly ExecutarRelatorioSaudeHandler _handler;
 
     public ExecutarRelatorioSaudeHandlerTests() =>
         _handler = new ExecutarRelatorioSaudeHandler(
             _configRepo.Object, _collector.Object, _snapshotRepo.Object, _sender.Object, _unitOfWork.Object, _time,
-            NullLogger<ExecutarRelatorioSaudeHandler>.Instance);
+            _logger.Object);
 
     private static HealthReportConfig Config() =>
         HealthReportConfig.Criar(true, new TimeOnly(7, 0), new[] { "ops@forzion.tech" },
@@ -104,7 +105,7 @@ public class ExecutarRelatorioSaudeHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_EnvioFalhaPosCommit_NaoPropagaERetornaSucesso()
+    public async Task HandleAsync_EnvioFalhaPosCommit_NaoPropagaERetornaSucessoELogaCritical()
     {
         var config = Config();
         _configRepo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>())).ReturnsAsync(config);
@@ -117,5 +118,36 @@ public class ExecutarRelatorioSaudeHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_EnvioCancelaPosCommit_Propaga()
+    {
+        var config = Config();
+        _configRepo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>())).ReturnsAsync(config);
+        _collector.Setup(c => c.ColetarAsync(config, It.IsAny<CancellationToken>())).ReturnsAsync(Report());
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _sender.Setup(s => s.EnviarAsync(It.IsAny<forzion.tech.Application.UseCases.Admin.HealthReport.HealthReport>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException());
+
+        var act = async () => await _handler.HandleAsync();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Critical,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
     }
 }
