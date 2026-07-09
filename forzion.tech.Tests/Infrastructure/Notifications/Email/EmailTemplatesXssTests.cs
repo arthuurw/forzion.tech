@@ -73,4 +73,16 @@ public class EmailTemplatesXssTests
     {
         DeveEstarEscapado(EmailTemplates.AssinaturaAlunoCriada("Aluno", "Treinador", Payload, 149.90m));
     }
+
+    [Fact]
+    public void RedefinirSenha_escapa_email()
+    {
+        DeveEstarEscapado(EmailTemplates.RedefinirSenha(Payload, "https://x/y"));
+    }
+
+    [Fact]
+    public void VerificarEmail_escapa_email()
+    {
+        DeveEstarEscapado(EmailTemplates.VerificarEmail(Payload, "https://x/y"));
+    }
 }
