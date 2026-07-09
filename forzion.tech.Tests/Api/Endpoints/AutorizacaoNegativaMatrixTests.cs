@@ -26,7 +26,6 @@ public class AutorizacaoNegativaMatrixTests : IClassFixture<AutorizacaoNegativaM
         "/treinos/" + Guid1,
         "/exercicios",
         "/treinador/dados-fiscais",
-        "/treinador/notas-fiscais",
         "/treinador/pagamentos/recebimentos",
         "/treinador/vinculos",
         "/treinador/plano/assinatura",

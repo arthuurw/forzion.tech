@@ -4647,75 +4647,6 @@
         ]
       }
     },
-    "/treinador/notas-fiscais": {
-      "get": {
-        "tags": [
-          "Treinador"
-        ],
-        "summary": "Lista as notas fiscais do treinador autenticado (keyset)",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListarNotasFiscaisResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Bearer": [ ]
-          }
-        ]
-      }
-    },
-    "/treinador/notas-fiscais/{id}/danfse": {
-      "get": {
-        "tags": [
-          "Treinador"
-        ],
-        "summary": "Retorna a referência (URL) da DANFSe de uma nota fiscal do treinador",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Bearer": [ ]
-          }
-        ]
-      }
-    },
     "/aluno/assinatura": {
       "get": {
         "tags": [
@@ -10027,28 +9958,6 @@
           }
         }
       },
-      "ListarNotasFiscaisResponse": {
-        "required": [
-          "itens",
-          "proximoCursor"
-        ],
-        "type": "object",
-        "properties": {
-          "itens": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/NotaFiscalResumoResponse"
-            }
-          },
-          "proximoCursor": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          }
-        }
-      },
       "ListarPagamentosAssinaturaAlunoResponse": {
         "required": [
           "items",
@@ -10484,75 +10393,6 @@
               "null",
               "string"
             ]
-          },
-          "criadoEm": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "NotaFiscalResumoResponse": {
-        "required": [
-          "id",
-          "tipo",
-          "status",
-          "valor",
-          "competenciaInicio",
-          "competenciaFim",
-          "numeroNfse",
-          "dataEmissao",
-          "temDanfse",
-          "criadoEm"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tipo": {
-            "$ref": "#/components/schemas/TipoNotaFiscal"
-          },
-          "status": {
-            "$ref": "#/components/schemas/NotaFiscalStatus"
-          },
-          "valor": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "competenciaInicio": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date"
-          },
-          "competenciaFim": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date"
-          },
-          "numeroNfse": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "dataEmissao": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "temDanfse": {
-            "type": "boolean"
           },
           "criadoEm": {
             "type": "string",
