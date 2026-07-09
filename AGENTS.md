@@ -47,7 +47,7 @@ Vai escrever CÓDIGO ⇒ SEMPRE +coding +tests (carregar ANTES de codar, não de
 | schema/migration/FK/enum           | db |
 | endpoint/contrato/erro API         | backend, security |
 | Stripe/refund/webhook pagamento    | stripe, security |
-| NFS-e/nota fiscal/DPS/cancelamento fiscal/dados fiscais do treinador | fiscal |
+| dados fiscais do treinador (coleta; emissão de NFS-e REMOVIDA — software terceiro) | fiscal |
 | email/whatsapp                     | email, whatsapp |
 | componente/form/página             | frontend, frontend-ui |
 | auth/headers/rate-limit/segredo    | security |
@@ -88,7 +88,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 - `specification-dr.md` — boa parte ALVO/aspiracional, não o estado real.
 - `specification-local-ci-repro.md` — reproduzir gates do CI local + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet10, postgres fsync, .slnx, E2E email-block).
 - `specification-workflow.md` — fluxo de entrega: pipeline de cards (GitHub Projects v2, `.specs` local = fonte de verdade, board = espelho mantido pelo agente via `gh`), Fluxo A (card novo forward) + Fluxo B (backfill histórico→Done consultável por data). Board MONTADO (Project nº1, 37 issues backfill #94-#130; IDs de campo pinados em `§9`); card = issue real com conteúdo completo embutido (durabilidade: `.specs` é gitignored). Manutenção forward via Fluxo A. PENDENTE: automação Action PR-event→Status; tornar `to-issues.sh` idempotente.
-- `specification-fiscal.md` — canônica de NFS-e (emissão SEFIN Nacional, comissão mensal, cancelamento, reconciliação, dados fiscais owned). Sandbox-first (`Nfse:Habilitado=false` em dev/hmg; emissão é IRREVERSÍVEL). GOTCHA: mTLS A1 efêmero só funciona em runtime Linux → dev local NÃO emite (Windows schannel recusa). `CertificadoSenha` nunca logada. Envelope JSON do transporte ASSUMIDO (validar em Produção Restrita). Cross-refs: db (tabelas), security (cert/mTLS), lgpd (guarda fiscal), observability (Erro/CancelamentoExpirado), stripe (eventos estorno/disputa do treinador).
+- `specification-fiscal.md` — emissão de NFS-e REMOVIDA (feature `remocao-emissao-nfse`; emissão agora é software fiscal terceiro). ARQUIVADA como estado real: documenta só a coleta RETIDA de dados fiscais do treinador (`DadosFiscais` VO owned, endpoints `PUT/GET /treinador/dados-fiscais` + autofill CEP `GET /treinador/cep/{cep}`, banner `dadosFiscaisPendentes`). Cross-refs: db (colunas `dados_fiscais_*`), lgpd (guarda fiscal), frontend (form dados-fiscais). Histórico da emissão (SEFIN/cert/mTLS/crons): git antes de `remocao-emissao-nfse`.
 - Sem caveat especial (rotear por TRIGGER): `model`, `backend`, `db`, `email`, `whatsapp`, `frontend`, `git`, `lgpd`, `tests`, `stripe`, `security`, `observability`.
 
 ## CONVENÇÕES-CHAVE
