@@ -10,7 +10,6 @@ using forzion.tech.Infrastructure.Notifications.Email;
 using forzion.tech.Infrastructure.Notifications.InApp;
 using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using forzion.tech.Infrastructure.Outbox;
-using forzion.tech.Infrastructure.Outbox.Handlers;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -137,7 +136,7 @@ public class HandlerDiRegistrationTests
     }
 
     [Fact]
-    public void DI_PagamentoTreinadorPagoEvent_IncluiEmissaoNfseDuravel()
+    public void DI_PagamentoTreinadorPagoEvent_ProcessaPagamentoSemEmitirNota()
     {
         using var provider = BuildProvider();
         using var scope = provider.CreateScope();
@@ -147,11 +146,8 @@ public class HandlerDiRegistrationTests
             .ToList();
 
         handlers.Should().Contain(h => h is PagamentoTreinadorPagoHandler);
-        handlers.Should().Contain(h => h is EmitirNfseAssinaturaHandler);
-
-        var registry = provider.GetRequiredService<OutboxDurabilityRegistry>();
-        registry.EhHandlerDuravel(typeof(PagamentoTreinadorPagoEvent), typeof(EmitirNfseAssinaturaHandler))
-            .Should().BeTrue();
+        handlers.Should().NotContain(h => h.GetType().Name.Contains("Nfse", StringComparison.Ordinal),
+            "PagamentoTreinadorPagoEvent não deve enfileirar emissão de nota fiscal");
     }
 
     [Fact]
@@ -163,7 +159,6 @@ public class HandlerDiRegistrationTests
         var esperados = new HashSet<(Type, Type)>
         {
             (typeof(PagamentoTreinadorPagoEvent), typeof(PagamentoTreinadorPagoHandler)),
-            (typeof(PagamentoTreinadorPagoEvent), typeof(EmitirNfseAssinaturaHandler)),
             (typeof(PagamentoTreinadorEstornadoEvent), typeof(CancelarNfseHandler)),
             (typeof(PagamentoTreinadorEmDisputaEvent), typeof(CancelarNfseHandler)),
             (typeof(VinculoAprovadoEvent), typeof(VinculoAprovadoCriarAssinaturaAlunoHandler)),
@@ -173,16 +168,6 @@ public class HandlerDiRegistrationTests
 
         registry.ParesDuraveis().Should().BeEquivalentTo(esperados,
             "remover um par durável o faria cair no dispatch best-effort em background (perda em falha transitória)");
-    }
-
-    [Fact]
-    public void DI_OutboxEfeitoHandler_IncluiEmitirNfse()
-    {
-        using var provider = BuildProvider();
-        using var scope = provider.CreateScope();
-
-        scope.ServiceProvider.GetServices<IOutboxEfeitoHandler>()
-            .Should().Contain(h => h is EmitirNfseEfeitoHandler);
     }
 
     [Fact]

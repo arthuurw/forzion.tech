@@ -92,8 +92,6 @@ public static class InfrastructureExtensions
         services.AddScoped<IOutboxEnfileirador, OutboxEnfileirador>();
         services.AddScoped<IEmailCriticoDispatcher, EmailCriticoDispatcher>();
         services.AddScoped<IOutboxEfeitoHandler, EvidenciaDisputaEfeitoHandler>();
-        services.AddScoped<IOutboxEfeitoHandler, EmitirNfseEfeitoHandler>();
-        services.AddScoped<IOutboxEfeitoHandler, CancelarNfseEfeitoHandler>();
         services.AddScoped<OutboxDispatcher>();
         services.AddScoped<OutboxProcessor>();
         services.AddOptions<OutboxOptions>().BindConfiguration("Outbox");
@@ -355,12 +353,9 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, PagamentoTreinadorPagoHandler>();
-        services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, EmitirNfseAssinaturaHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorEstornadoEvent>, CancelarNfseHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorEmDisputaEvent>, CancelarNfseHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorEmDisputaEvent>, PagamentoTreinadorEmDisputaAlertHandler>();
-        services.AddScoped<IDomainEventHandler<NotaFiscalEmitidaEvent>, NfseEmitidaEmailHandler>();
-        services.AddScoped<IDomainEventHandler<NotaFiscalBloqueadaDadosFiscaisEvent>, NotaFiscalBloqueadaDadosFiscaisEmailHandler>();
 
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoFalhouEvent>, PagamentoFalhouWhatsAppNotifierHandler>();
@@ -426,7 +421,6 @@ public static class InfrastructureExtensions
         new OutboxDurabilityRegistry()
             .Registrar<PagamentoTreinadorPagoEvent, PagamentoTreinadorPagoHandler>(
                 e => $"evt:PagamentoTreinadorPago:{e.PagamentoTreinadorId}")
-            .RegistrarHandlerAdicional<PagamentoTreinadorPagoEvent, EmitirNfseAssinaturaHandler>()
             .Registrar<PagamentoTreinadorEstornadoEvent, CancelarNfseHandler>(
                 e => $"evt:PagamentoTreinadorEstornado:{e.PagamentoTreinadorId}")
             .Registrar<PagamentoTreinadorEmDisputaEvent, CancelarNfseHandler>(
