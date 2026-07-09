@@ -57,22 +57,6 @@ public class PagamentoRepository(AppDbContext context) : IPagamentoRepository
             .CountAsync(p => p.Status == status, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<ComissaoTreinadorPeriodo>> ListarComissaoPorTreinadorNoPeriodoAsync(
-        DateTime inicio, DateTime fimExclusivo, decimal taxaPlataformaPercent,
-        Guid? aposTreinadorId, int limite, CancellationToken cancellationToken = default) =>
-        await (
-            from p in context.Pagamentos.AsNoTracking()
-            join a in context.AssinaturaAlunos.AsNoTracking() on p.AssinaturaAlunoId equals a.Id
-            where p.Status == PagamentoStatus.Pago
-                  && p.DataPagamento >= inicio && p.DataPagamento < fimExclusivo
-                  && (aposTreinadorId == null || a.TreinadorId > aposTreinadorId)
-            group p by a.TreinadorId into g
-            orderby g.Key
-            select new ComissaoTreinadorPeriodo(g.Key, g.Sum(x => Math.Floor(Math.Floor(x.Valor * 100m) * taxaPlataformaPercent / 100m))))
-            .Take(limite)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
     public async Task<IReadOnlyList<RecebimentoTreinadorItem>> ListarPorTreinadorAsync(
         Guid treinadorId, DateTime? cursorCreatedAt, Guid? cursorId, int limite,
         CancellationToken cancellationToken = default) =>
