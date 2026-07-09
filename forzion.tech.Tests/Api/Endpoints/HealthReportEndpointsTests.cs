@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
@@ -28,7 +29,7 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
         true, true, true, true, null);
 
     private static readonly HealthSnapshotResponse RespostaSnapshot = new(
-        Guid.NewGuid(), DateTime.UtcNow, "Homolog", StatusSaude.Ok, "{}");
+        Guid.NewGuid(), DateTime.UtcNow, "Homolog", StatusSaude.Ok, "{}", true);
 
     public HealthReportEndpointsTests(HealthReportWebFactory factory) => _factory = factory;
 
@@ -157,6 +158,18 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
         var response = await ClienteAdmin().PostAsync("/admin/health-report/run", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_Run_EnvioFalhou_RetornaEmailEnviadoFalse()
+    {
+        var respostaComFalha = RespostaSnapshot with { EmailEnviado = false };
+        _factory.ExecutarMock.Setup(h => h.HandleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Result.Success(respostaComFalha));
+
+        var response = await ClienteAdmin().PostAsync("/admin/health-report/run", null);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("emailEnviado").GetBoolean().Should().BeFalse();
     }
 
     [Fact]

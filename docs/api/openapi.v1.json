@@ -9674,7 +9674,8 @@
           "capturadoEm",
           "ambiente",
           "statusGeral",
-          "payloadJson"
+          "payloadJson",
+          "emailEnviado"
         ],
         "type": "object",
         "properties": {
@@ -9694,6 +9695,12 @@
           },
           "payloadJson": {
             "type": "string"
+          },
+          "emailEnviado": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },

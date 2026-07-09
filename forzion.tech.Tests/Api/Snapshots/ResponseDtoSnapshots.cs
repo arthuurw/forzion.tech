@@ -168,7 +168,8 @@ public class ResponseDtoSnapshots
         CapturadoEm: Criado,
         Ambiente: "Homolog",
         StatusGeral: StatusSaude.Ok,
-        PayloadJson: "{\"liveness\":\"ok\"}"));
+        PayloadJson: "{\"liveness\":\"ok\"}",
+        EmailEnviado: true));
 
     [Fact]
     public Task HealthReportConfigResponse() => Verify(new HealthReportConfigResponse(
