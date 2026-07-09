@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Events;
@@ -22,8 +20,6 @@ namespace forzion.tech.Tests.Infrastructure;
 /// </summary>
 public class HandlerDiRegistrationTests
 {
-    private const string SenhaPfx = "teste-pfx";
-
     private static ServiceProvider BuildProvider(Dictionary<string, string?>? extra = null)
     {
         var settings = new Dictionary<string, string?>
@@ -78,60 +74,6 @@ public class HandlerDiRegistrationTests
 
         handlers.Should().NotBeEmpty("AssinaturaTreinadorMarcadaInadimplenteEvent não pode ser evento órfão");
         handlers.Should().ContainSingle(h => h is AssinaturaTreinadorMarcadaInadimplenteEmailHandler);
-    }
-
-    [Fact]
-    public void DI_EmissorNfse_Null_QuandoDesabilitado()
-    {
-        using var provider = BuildProvider();
-        using var scope = provider.CreateScope();
-
-        scope.ServiceProvider.GetRequiredService<IEmissorNfseService>()
-            .Should().BeOfType<NullEmissorNfseService>();
-    }
-
-    [Fact]
-    public void DI_EmissorNfse_Null_Singleton_InstanciaUnica()
-    {
-        using var provider = BuildProvider();
-
-        using var escopo1 = provider.CreateScope();
-        using var escopo2 = provider.CreateScope();
-
-        var instancia1 = escopo1.ServiceProvider.GetRequiredService<IEmissorNfseService>();
-        var instancia2 = escopo2.ServiceProvider.GetRequiredService<IEmissorNfseService>();
-
-        instancia1.Should().BeSameAs(instancia2);
-    }
-
-    [Fact]
-    public void DI_EmissorNfse_Nacional_QuandoHabilitado()
-    {
-        var pfx = CriarPfxTemporario();
-        try
-        {
-            using var provider = BuildProvider(new Dictionary<string, string?>
-            {
-                ["Nfse:Habilitado"] = "true",
-                ["Nfse:UrlBase"] = "https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional",
-                ["Nfse:CertificadoPath"] = pfx,
-                ["Nfse:CertificadoSenha"] = SenhaPfx,
-                ["Nfse:CnpjPrestador"] = "11444777000161",
-                ["Nfse:InscricaoMunicipal"] = "54321",
-                ["Nfse:CodigoMunicipioIbge"] = "3550308",
-                ["Nfse:SerieDps"] = "1",
-                ["Nfse:CodigoServicoAssinatura"] = "0500",
-                ["Nfse:AliquotaIss"] = "2",
-            });
-            using var scope = provider.CreateScope();
-
-            scope.ServiceProvider.GetRequiredService<IEmissorNfseService>()
-                .Should().BeOfType<EmissorNfseNacionalService>();
-        }
-        finally
-        {
-            File.Delete(pfx);
-        }
     }
 
     [Fact]
@@ -207,14 +149,4 @@ public class HandlerDiRegistrationTests
         typeof(T).GetConstructors().Single()
             .GetParameters()
             .Any(p => p.ParameterType == dependencia);
-
-    private static string CriarPfxTemporario()
-    {
-        using var rsa = RSA.Create(2048);
-        var pedido = new CertificateRequest("CN=forzion-nfse-di", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-        using var cert = pedido.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-        var caminho = Path.Combine(Path.GetTempPath(), $"nfse-di-{Guid.NewGuid():N}.pfx");
-        File.WriteAllBytes(caminho, cert.Export(X509ContentType.Pfx, SenhaPfx));
-        return caminho;
-    }
 }

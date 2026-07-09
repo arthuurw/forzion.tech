@@ -195,49 +195,6 @@ public static class InfrastructureExtensions
             services.AddSingleton<Stripe.IStripeClient>(stripeClient);
         }
 
-        services.AddOptions<NfseSettings>()
-            .BindConfiguration("Nfse")
-            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CertificadoPath),
-                "Nfse:CertificadoPath não configurado. Use User Secrets ou variável de ambiente.")
-            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CertificadoSenha),
-                "Nfse:CertificadoSenha não configurado. Use User Secrets ou variável de ambiente.")
-            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CnpjPrestador),
-                "Nfse:CnpjPrestador não configurado.")
-            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.InscricaoMunicipal),
-                "Nfse:InscricaoMunicipal não configurada.")
-            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CodigoMunicipioIbge),
-                "Nfse:CodigoMunicipioIbge não configurado.")
-            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.SerieDps),
-                "Nfse:SerieDps não configurada.")
-            .Validate(s => !s.Habilitado || !string.IsNullOrWhiteSpace(s.CodigoServicoAssinatura),
-                "Nfse:CodigoServicoAssinatura não configurado.")
-            .Validate(s => !s.Habilitado || s.AliquotaIss > 0,
-                "Nfse:AliquotaIss deve ser maior que zero quando a emissão está habilitada.")
-            .ValidateOnStart();
-
-        if (configuration.GetValue<bool>("Nfse:Habilitado"))
-        {
-            services.AddSingleton<NfseMtlsCertificate>();
-            services.AddHttpClient("nfse", client => client.Timeout = TimeSpan.FromSeconds(30))
-                .ConfigurePrimaryHttpMessageHandler(sp =>
-                {
-                    var handler = new HttpClientHandler();
-                    handler.ClientCertificates.Add(sp.GetRequiredService<NfseMtlsCertificate>().Certificado);
-                    return handler;
-                });
-            services.AddScoped<IEmissorNfseService>(sp =>
-                new EmissorNfseNacionalService(
-                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("nfse"),
-                    sp.GetRequiredService<IOptions<NfseSettings>>(),
-                    sp.GetRequiredService<ILogger<EmissorNfseNacionalService>>(),
-                    sp.GetRequiredService<TimeProvider>()));
-        }
-        else
-        {
-            services.AddSingleton<IEmissorNfseService>(sp =>
-                new NullEmissorNfseService(sp.GetRequiredService<ILogger<NullEmissorNfseService>>()));
-        }
-
         var viaCepUrlBase = configuration["ViaCep:UrlBase"];
         var viaCepTimeout = configuration.GetValue<int?>("ViaCep:TimeoutSegundos") ?? 4;
         services.AddHttpClient("viacep", client =>
