@@ -1,4 +1,4 @@
-# scripts/dr/restore-drill.ps1 — drill de restore do backup REAL (R2 -> age -d -> pg_restore).
+﻿# scripts/dr/restore-drill.ps1 — drill de restore do backup REAL (R2 -> age -d -> pg_restore).
 # Prova ponta-a-ponta que o artefato .dump.age mais recente do R2 volta: download -> decifra com
 # identity age OFFLINE do dono -> restaura num postgres:17 efêmero -> valida counts-âncora -> teardown.
 # Runbook: specs/specification-dr.md §2. Segredos (identity, creds R2) só via param/env — nunca aqui.
