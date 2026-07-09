@@ -23,6 +23,7 @@ const snapshot: HealthSnapshotResponse = {
   ambiente: "Homolog",
   statusGeral: "Degradado",
   payloadJson: "{}",
+  emailEnviado: true,
 };
 
 beforeEach(() => {
@@ -88,5 +89,35 @@ describe("SaudeAdminPage", () => {
     await waitFor(() => {
       expect(runCalled).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("mostra aviso quando o e-mail do relatório falha ao enviar", async () => {
+    server.use(
+      http.post("*/admin/health-report/run", () =>
+        HttpResponse.json({ ...snapshot, emailEnviado: false }),
+      ),
+    );
+
+    render(<SaudeAdminPage />);
+    await screen.findByText("Relatório de saúde");
+
+    fireEvent.click(screen.getByRole("button", { name: /enviar agora/i }));
+
+    expect(
+      await screen.findByText("Snapshot gerado, mas o e-mail falhou. Verifique a configuração de envio."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Relatório enviado e snapshot gerado.")).not.toBeInTheDocument();
+  });
+
+  it("mostra chip de aviso no último snapshot quando o e-mail não foi enviado", async () => {
+    server.use(
+      http.get("*/admin/health-report/snapshots", () =>
+        HttpResponse.json([{ ...snapshot, emailEnviado: false }]),
+      ),
+    );
+
+    render(<SaudeAdminPage />);
+
+    expect(await screen.findByText("E-mail não enviado")).toBeInTheDocument();
   });
 });

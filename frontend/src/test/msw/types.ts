@@ -8205,6 +8205,7 @@ export interface components {
             ambiente: string;
             statusGeral: components["schemas"]["StatusSaude"];
             payloadJson: string;
+            emailEnviado: boolean | null;
         };
         InativarTreinadorRequest: {
             observacao?: null | string;
