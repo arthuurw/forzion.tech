@@ -76,9 +76,13 @@ public class RelatorioSaudeDiarioService(
                 "Relatório de saúde enviado para {Total} destinatário(s) (status {Status}).",
                 config.ObterDestinatarios().Count, report.StatusGeral);
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Relatório de saúde persistido, mas o envio de e-mail falhou.");
+            logger.LogCritical(ex, "Relatório de saúde persistido, mas o envio de e-mail falhou.");
         }
     }
 }

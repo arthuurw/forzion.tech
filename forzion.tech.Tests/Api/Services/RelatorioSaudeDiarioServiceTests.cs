@@ -79,7 +79,6 @@ public class RelatorioSaudeDiarioServiceTests
     };
 
     private static RelatorioSaudeDiarioService BuildService(
-        List<string> chamadas,
         Mock<IHealthReportSender> sender,
         Mock<IUnitOfWork> unitOfWork,
         DateTime agora)
@@ -126,7 +125,7 @@ public class RelatorioSaudeDiarioServiceTests
             .Callback(() => chamadas.Add("commit"))
             .Returns(Task.CompletedTask);
 
-        var service = BuildService(chamadas, sender, unitOfWork, agora);
+        var service = BuildService(sender, unitOfWork, agora);
 
         await service.ProcessarAsync(CancellationToken.None);
 
@@ -148,7 +147,7 @@ public class RelatorioSaudeDiarioServiceTests
         unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("commit falhou"));
 
-        var service = BuildService(chamadas, sender, unitOfWork, agora);
+        var service = BuildService(sender, unitOfWork, agora);
 
         await FluentActions.Awaiting(() => service.ProcessarAsync(CancellationToken.None))
             .Should().ThrowAsync<InvalidOperationException>();
@@ -156,5 +155,25 @@ public class RelatorioSaudeDiarioServiceTests
         sender.Verify(
             s => s.EnviarAsync(It.IsAny<HealthReport>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessarAsync_EnvioFalhaPosCommit_NaoPropagaEJaEstaPersistido()
+    {
+        var agora = new DateTime(2026, 5, 26, 7, 30, 0, DateTimeKind.Utc);
+
+        var sender = new Mock<IHealthReportSender>();
+        sender.Setup(s => s.EnviarAsync(It.IsAny<HealthReport>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("envio falhou"));
+
+        var unitOfWork = new Mock<IUnitOfWork>();
+        unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var service = BuildService(sender, unitOfWork, agora);
+
+        await service.ProcessarAsync(CancellationToken.None);
+
+        unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
