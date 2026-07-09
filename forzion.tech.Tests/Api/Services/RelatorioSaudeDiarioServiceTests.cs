@@ -81,7 +81,8 @@ public class RelatorioSaudeDiarioServiceTests
     private static RelatorioSaudeDiarioService BuildService(
         Mock<IHealthReportSender> sender,
         Mock<IUnitOfWork> unitOfWork,
-        DateTime agora)
+        DateTime agora,
+        Mock<IHealthSnapshotRepository>? snapshotRepo = null)
     {
         var configRepo = new Mock<IHealthReportConfigRepository>();
         configRepo.Setup(r => r.ObterAsync(It.IsAny<CancellationToken>()))
@@ -91,9 +92,12 @@ public class RelatorioSaudeDiarioServiceTests
         collector.Setup(c => c.ColetarAsync(It.IsAny<HealthReportConfig>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Report());
 
-        var snapshotRepo = new Mock<IHealthSnapshotRepository>();
-        snapshotRepo.Setup(r => r.AdicionarAsync(It.IsAny<HealthSnapshot>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        if (snapshotRepo is null)
+        {
+            snapshotRepo = new Mock<IHealthSnapshotRepository>();
+            snapshotRepo.Setup(r => r.AdicionarAsync(It.IsAny<HealthSnapshot>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+        }
 
         var services = new ServiceCollection();
         services.AddSingleton(configRepo.Object);
@@ -129,7 +133,7 @@ public class RelatorioSaudeDiarioServiceTests
 
         await service.ProcessarAsync(CancellationToken.None);
 
-        chamadas.Should().Equal("commit", "enviar");
+        chamadas.Should().Equal("commit", "enviar", "commit");
     }
 
     [Fact]
@@ -170,10 +174,45 @@ public class RelatorioSaudeDiarioServiceTests
         unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var service = BuildService(sender, unitOfWork, agora);
+        HealthSnapshot? snapshotPersistido = null;
+        var snapshotRepo = new Mock<IHealthSnapshotRepository>();
+        snapshotRepo.Setup(r => r.AdicionarAsync(It.IsAny<HealthSnapshot>(), It.IsAny<CancellationToken>()))
+            .Callback<HealthSnapshot, CancellationToken>((s, _) => snapshotPersistido = s)
+            .Returns(Task.CompletedTask);
+
+        var service = BuildService(sender, unitOfWork, agora, snapshotRepo);
 
         await service.ProcessarAsync(CancellationToken.None);
 
-        unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        snapshotPersistido.Should().NotBeNull();
+        snapshotPersistido!.EmailEnviado.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ProcessarAsync_EnvioComSucesso_MarcaEmailEnviadoTrue()
+    {
+        var agora = new DateTime(2026, 5, 26, 7, 30, 0, DateTimeKind.Utc);
+
+        var sender = new Mock<IHealthReportSender>();
+        sender.Setup(s => s.EnviarAsync(It.IsAny<HealthReport>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var unitOfWork = new Mock<IUnitOfWork>();
+        unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        HealthSnapshot? snapshotPersistido = null;
+        var snapshotRepo = new Mock<IHealthSnapshotRepository>();
+        snapshotRepo.Setup(r => r.AdicionarAsync(It.IsAny<HealthSnapshot>(), It.IsAny<CancellationToken>()))
+            .Callback<HealthSnapshot, CancellationToken>((s, _) => snapshotPersistido = s)
+            .Returns(Task.CompletedTask);
+
+        var service = BuildService(sender, unitOfWork, agora, snapshotRepo);
+
+        await service.ProcessarAsync(CancellationToken.None);
+
+        snapshotPersistido.Should().NotBeNull();
+        snapshotPersistido!.EmailEnviado.Should().BeTrue();
     }
 }
