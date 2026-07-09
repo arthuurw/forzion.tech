@@ -14,6 +14,7 @@ public class LimparTokensRevogadosServiceTests
     private readonly Mock<IRefreshTokenFamilyRepository> _familyRepo = new();
     private readonly Mock<IMfaChallengeRepository> _challengeRepo = new();
     private readonly Mock<ITrustedDeviceRepository> _deviceRepo = new();
+    private readonly Mock<ITrocaEmailTokenRepository> _trocaEmailTokenRepo = new();
     private readonly Mock<IErrorLogRepository> _errorLogRepo = new();
     private readonly Mock<INotificacaoRepository> _notificacaoRepo = new();
 
@@ -24,6 +25,7 @@ public class LimparTokensRevogadosServiceTests
         services.AddScoped(_ => _familyRepo.Object);
         services.AddScoped(_ => _challengeRepo.Object);
         services.AddScoped(_ => _deviceRepo.Object);
+        services.AddScoped(_ => _trocaEmailTokenRepo.Object);
         services.AddScoped(_ => _errorLogRepo.Object);
         services.AddScoped(_ => _notificacaoRepo.Object);
         services.AddSingleton(timeProvider ?? TimeProvider.System);
@@ -39,6 +41,7 @@ public class LimparTokensRevogadosServiceTests
         _familyRepo.Setup(r => r.LimparExpiradasAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(2);
         _challengeRepo.Setup(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(4);
         _deviceRepo.Setup(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _trocaEmailTokenRepo.Setup(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(6);
         _errorLogRepo.Setup(r => r.LimparAntigosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(5);
 
         await CriarService().LimparAsync(CancellationToken.None);
@@ -47,6 +50,30 @@ public class LimparTokensRevogadosServiceTests
         _familyRepo.Verify(r => r.LimparExpiradasAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
         _challengeRepo.Verify(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>()), Times.Once);
         _deviceRepo.Verify(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _trocaEmailTokenRepo.Verify(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _errorLogRepo.Verify(r => r.LimparAntigosAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LimparAsync_FalhaNoDispositivo_NaoPulaTrocaEmail()
+    {
+        // try/catch independente: a purga de troca de e-mail roda mesmo se a de dispositivos falhar.
+        _deviceRepo.Setup(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("db down"));
+        _trocaEmailTokenRepo.Setup(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(2);
+
+        await CriarService().LimparAsync(CancellationToken.None);
+
+        _trocaEmailTokenRepo.Verify(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LimparAsync_FalhaNaTrocaEmail_NaoPulaErrorLog()
+    {
+        _trocaEmailTokenRepo.Setup(r => r.LimparExpiradosAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("db down"));
+        _errorLogRepo.Setup(r => r.LimparAntigosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(3);
+
+        await CriarService().LimparAsync(CancellationToken.None);
+
         _errorLogRepo.Verify(r => r.LimparAntigosAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
