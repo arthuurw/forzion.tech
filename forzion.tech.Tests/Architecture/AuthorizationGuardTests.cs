@@ -22,7 +22,6 @@ public class AuthorizationGuardTests
         "CadastrarAlunoHandler",
         "CancelarAssinaturaAlunoHandler",
         "CancelarMinhaAssinaturaAlunoHandler",
-        "CancelarNfseHandler",
         "CancelarMinhaAssinaturaTreinadorHandler",
         "ContratarPlanoTreinadorHandler",
         "CopiarExercicioGlobalHandler",

@@ -2,7 +2,6 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
 using forzion.tech.Application.Settings;
-using forzion.tech.Application.UseCases.Nfse.CancelarNfse;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.Handlers;
 using forzion.tech.Infrastructure.Notifications.Alerts;
@@ -353,8 +352,6 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IDomainEventHandler<VinculoAprovadoEvent>, VinculoAprovadoCriarAssinaturaAlunoHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorPagoEvent>, PagamentoTreinadorPagoHandler>();
-        services.AddScoped<IDomainEventHandler<PagamentoTreinadorEstornadoEvent>, CancelarNfseHandler>();
-        services.AddScoped<IDomainEventHandler<PagamentoTreinadorEmDisputaEvent>, CancelarNfseHandler>();
         services.AddScoped<IDomainEventHandler<PagamentoTreinadorEmDisputaEvent>, PagamentoTreinadorEmDisputaAlertHandler>();
 
         services.AddScoped<IDomainEventHandler<PagamentoCriadoEvent>, PagamentoCriadoWhatsAppNotifierHandler>();
@@ -421,10 +418,6 @@ public static class InfrastructureExtensions
         new OutboxDurabilityRegistry()
             .Registrar<PagamentoTreinadorPagoEvent, PagamentoTreinadorPagoHandler>(
                 e => $"evt:PagamentoTreinadorPago:{e.PagamentoTreinadorId}")
-            .Registrar<PagamentoTreinadorEstornadoEvent, CancelarNfseHandler>(
-                e => $"evt:PagamentoTreinadorEstornado:{e.PagamentoTreinadorId}")
-            .Registrar<PagamentoTreinadorEmDisputaEvent, CancelarNfseHandler>(
-                e => $"evt:PagamentoTreinadorEmDisputa:{e.PagamentoTreinadorId}")
             .Registrar<VinculoAprovadoEvent, VinculoAprovadoCriarAssinaturaAlunoHandler>(
                 e => $"evt:VinculoAprovado:{e.VinculoId}")
             // E-mail ao suporte é durável (FR-05): nunca perdido por falha transitória do Resend.

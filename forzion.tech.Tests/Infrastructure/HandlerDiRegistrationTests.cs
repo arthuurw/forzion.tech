@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
-using forzion.tech.Application.UseCases.Nfse.CancelarNfse;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Handlers;
@@ -159,8 +158,6 @@ public class HandlerDiRegistrationTests
         var esperados = new HashSet<(Type, Type)>
         {
             (typeof(PagamentoTreinadorPagoEvent), typeof(PagamentoTreinadorPagoHandler)),
-            (typeof(PagamentoTreinadorEstornadoEvent), typeof(CancelarNfseHandler)),
-            (typeof(PagamentoTreinadorEmDisputaEvent), typeof(CancelarNfseHandler)),
             (typeof(VinculoAprovadoEvent), typeof(VinculoAprovadoCriarAssinaturaAlunoHandler)),
             (typeof(MensagemSuporteCriadaEvent), typeof(MensagemSuporteCriadaEmailHandler)),
             (typeof(EmailCriticoSolicitadoEvent), typeof(EmailCriticoSolicitadoEmailHandler)),
