@@ -62,9 +62,10 @@ public class ExecutarRelatorioSaudeHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Ambiente.Should().Be("Homolog");
         result.Value.StatusGeral.Should().Be(StatusSaude.Degradado);
+        result.Value.EmailEnviado.Should().BeTrue();
         _snapshotRepo.Verify(r => r.AdicionarAsync(It.IsAny<HealthSnapshot>(), It.IsAny<CancellationToken>()), Times.Once);
         _sender.Verify(s => s.EnviarAsync(report, It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -84,7 +85,7 @@ public class ExecutarRelatorioSaudeHandlerTests
 
         await _handler.HandleAsync();
 
-        chamadas.Should().Equal("commit", "enviar");
+        chamadas.Should().Equal("commit", "enviar", "commit");
     }
 
     [Fact]
@@ -117,7 +118,8 @@ public class ExecutarRelatorioSaudeHandlerTests
         var result = await _handler.HandleAsync();
 
         result.IsSuccess.Should().BeTrue();
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        result.Value.EmailEnviado.Should().BeFalse();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
         _logger.Verify(
             l => l.Log(
                 LogLevel.Critical,

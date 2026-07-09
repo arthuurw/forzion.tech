@@ -33,6 +33,7 @@ public class ExecutarRelatorioSaudeHandler(
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
+        var emailEnviado = true;
         try
         {
             await sender.EnviarAsync(report, config.ObterDestinatarios(), cancellationToken).ConfigureAwait(false);
@@ -43,8 +44,12 @@ public class ExecutarRelatorioSaudeHandler(
         }
         catch (Exception ex)
         {
+            emailEnviado = false;
             logger.LogCritical(ex, "Relatório de saúde persistido, mas o envio de e-mail falhou.");
         }
+
+        snapshot.MarcarEmailEnviado(emailEnviado);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success(HealthSnapshotResponseExtensions.ToResponse(snapshot));
     }
