@@ -2933,80 +2933,6 @@
         ]
       }
     },
-    "/admin/notas-fiscais": {
-      "get": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Lista notas fiscais do sistema com filtros (status, treinador) e paginação keyset",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListarNotasFiscaisAdminResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Bearer": [ ]
-          }
-        ]
-      }
-    },
-    "/admin/notas-fiscais/{id}/reprocessar": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Reenfileira a emissão de uma nota fiscal em erro",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "Bearer": [ ]
-          }
-        ]
-      }
-    },
     "/admin/test-data/contas": {
       "get": {
         "tags": [
@@ -9936,28 +9862,6 @@
           }
         }
       },
-      "ListarNotasFiscaisAdminResponse": {
-        "required": [
-          "itens",
-          "proximoCursor"
-        ],
-        "type": "object",
-        "properties": {
-          "itens": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/NotaFiscalAdminResponse"
-            }
-          },
-          "proximoCursor": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          }
-        }
-      },
       "ListarPagamentosAssinaturaAlunoResponse": {
         "required": [
           "items",
@@ -10307,108 +10211,6 @@
           "Intermediario",
           "Avancado",
           null
-        ]
-      },
-      "NotaFiscalAdminResponse": {
-        "required": [
-          "id",
-          "treinadorId",
-          "tipo",
-          "status",
-          "valor",
-          "competenciaInicio",
-          "competenciaFim",
-          "numeroNfse",
-          "chaveAcesso",
-          "dataEmissao",
-          "codigoErro",
-          "motivoErro",
-          "criadoEm"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "treinadorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tipo": {
-            "$ref": "#/components/schemas/TipoNotaFiscal"
-          },
-          "status": {
-            "$ref": "#/components/schemas/NotaFiscalStatus"
-          },
-          "valor": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "competenciaInicio": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date"
-          },
-          "competenciaFim": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date"
-          },
-          "numeroNfse": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "chaveAcesso": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "dataEmissao": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "codigoErro": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "motivoErro": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "criadoEm": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "NotaFiscalStatus": {
-        "enum": [
-          "Pendente",
-          "Emitida",
-          "Erro",
-          "BloqueadaDadosFiscais",
-          "CancelamentoSolicitado",
-          "Cancelada",
-          "CancelamentoExpirado"
         ]
       },
       "NotificacaoResponse": {
@@ -11749,12 +11551,6 @@
         "enum": [
           "Cpf",
           "Cnpj"
-        ]
-      },
-      "TipoNotaFiscal": {
-        "enum": [
-          "AssinaturaSaaS",
-          "ComissaoMarketplace"
         ]
       },
       "TipoNotificacao": {

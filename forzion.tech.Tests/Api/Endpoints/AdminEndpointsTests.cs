@@ -15,7 +15,6 @@ using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMus
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
-using forzion.tech.Application.UseCases.Admin.NotasFiscais;
 using forzion.tech.Application.Outbox;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
@@ -1292,79 +1291,18 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
     }
 
     [Fact]
-    public async Task Get_NotasFiscais_SemAutenticacao_Retorna401()
+    public async Task Get_NotasFiscais_RotaRemovida_Retorna404()
     {
-        var response = await _factory.CreateClient().GetAsync("/admin/notas-fiscais");
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task Get_NotasFiscais_NaoAdmin_Retorna403()
-    {
-        var response = await CriarClienteNaoAdmin().GetAsync("/admin/notas-fiscais");
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task Get_NotasFiscais_Admin_Retorna200()
-    {
-        var item = new NotaFiscalAdminResponse(
-            Guid.NewGuid(), TreinadorId, TipoNotaFiscal.AssinaturaSaaS, NotaFiscalStatus.Emitida,
-            99m, null, null, "123", "CHV-1", DateTime.UtcNow, null, null, DateTime.UtcNow);
-        _factory.ListarNotasFiscaisAdminHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<NotaFiscalStatus?>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ListarNotasFiscaisAdminResponse([item], null));
-
-        var response = await CriarClienteAdmin().GetAsync("/admin/notas-fiscais?status=Emitida");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Post_Reprocessar_NaoAdmin_Retorna403()
-    {
-        var response = await CriarClienteNaoAdmin()
-            .PostAsJsonAsync($"/admin/notas-fiscais/{Guid.NewGuid()}/reprocessar", new { });
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task Post_Reprocessar_Admin_Retorna204()
-    {
-        _factory.ReprocessarNotaFiscalHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
-        var response = await CriarClienteAdmin()
-            .PostAsJsonAsync($"/admin/notas-fiscais/{Guid.NewGuid()}/reprocessar", new { });
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-    }
-
-    [Fact]
-    public async Task Post_Reprocessar_NaoEncontrada_Retorna404()
-    {
-        _factory.ReprocessarNotaFiscalHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.NotFound("nota_fiscal.nao_encontrada", "Nota fiscal não encontrada.")));
-
-        var response = await CriarClienteAdmin()
-            .PostAsJsonAsync($"/admin/notas-fiscais/{Guid.NewGuid()}/reprocessar", new { });
-
+        var response = await CriarClienteAdmin().GetAsync("/admin/notas-fiscais");
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task Post_Reprocessar_StatusInvalido_Retorna422()
+    public async Task Post_Reprocessar_RotaRemovida_Retorna404()
     {
-        _factory.ReprocessarNotaFiscalHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure(Error.Business("nota_fiscal.reprocessamento_invalido", "Apenas notas fiscais em erro podem ser reprocessadas.")));
-
         var response = await CriarClienteAdmin()
             .PostAsJsonAsync($"/admin/notas-fiscais/{Guid.NewGuid()}/reprocessar", new { });
-
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     private static DadosPessoaisExport CriarExportFake() =>
@@ -1555,18 +1493,6 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
         public Mock<IDadosPessoaisExcelRenderer> ExcelRendererMock { get; } = new();
 
-        public Mock<ListarNotasFiscaisAdminHandler> ListarNotasFiscaisAdminHandlerMock { get; } = new(
-            Mock.Of<INotaFiscalRepository>());
-
-        public Mock<ReprocessarNotaFiscalHandler> ReprocessarNotaFiscalHandlerMock { get; } = new(
-            Mock.Of<INotaFiscalRepository>(),
-            Mock.Of<IOutboxEnfileirador>(),
-            Mock.Of<IUnitOfWork>(),
-            Mock.Of<ILogger<ReprocessarNotaFiscalHandler>>(),
-            Mock.Of<ILogAprovacaoRepository>(),
-            Mock.Of<IUserContext>(),
-            TimeProvider.System);
-
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -1608,8 +1534,6 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.RemoveAll<ExcluirExercicioHandler>();
                 services.RemoveAll<ExportarDadosPessoaisHandler>();
                 services.RemoveAll<IDadosPessoaisExcelRenderer>();
-                services.RemoveAll<ListarNotasFiscaisAdminHandler>();
-                services.RemoveAll<ReprocessarNotaFiscalHandler>();
                 services.RemoveAll<IUserContext>();
                 services.RemoveAll<IJwtService>();
                 services.RemoveAll<ITokenRevogadoRepository>();
@@ -1647,8 +1571,6 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.AddScoped(_ => ExcluirExercicioHandlerMock.Object);
                 services.AddScoped(_ => ExportarHandlerMock.Object);
                 services.AddScoped<IDadosPessoaisExcelRenderer>(_ => ExcelRendererMock.Object);
-                services.AddScoped(_ => ListarNotasFiscaisAdminHandlerMock.Object);
-                services.AddScoped(_ => ReprocessarNotaFiscalHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(AdminId);
