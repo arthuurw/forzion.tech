@@ -350,7 +350,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/internal/gerar-nfse-comissao": {
+    "/internal/processar-engajamento": {
         parameters: {
             query?: never;
             header?: never;
@@ -359,7 +359,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Gera NFS-e mensal de comissão marketplace (mês anterior por padrão) — requer X-Internal-Key */
+        /** Processa o scan diário de engajamento (nudges de aderência + digest do treinador) — requer X-Internal-Key */
         post: {
             parameters: {
                 query?: never;
@@ -367,11 +367,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
-                content: {
-                    "application/json": null | components["schemas"]["GerarNfseComissaoRequest"];
-                };
-            };
+            requestBody?: never;
             responses: {
                 /** @description OK */
                 200: {
@@ -380,15 +376,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": unknown;
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
                 /** @description Unauthorized */
@@ -408,7 +395,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/internal/reconciliar-nfse": {
+    "/internal/processar-limite-alunos": {
         parameters: {
             query?: never;
             header?: never;
@@ -417,7 +404,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reconcilia NFS-e não-terminais consultando o gov (status divergente) — requer X-Internal-Key */
+        /** Processa a graça diária de limite de alunos (carimbo, lembretes e apara) — requer X-Internal-Key */
         post: {
             parameters: {
                 query?: never;
@@ -433,7 +420,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ReconciliarNfseResponse"];
+                        "application/json": unknown;
                     };
                 };
                 /** @description Unauthorized */
@@ -1856,7 +1843,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Atribui um PlanoPlataforma a um treinador */
+        /** Define (ou remove, com planoId=null) a cortesia de plano de um treinador */
         patch: {
             parameters: {
                 query?: never;
@@ -1868,7 +1855,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["AtribuirPlanoRequest"];
+                    "application/json": components["schemas"]["DefinirCortesiaRequest"];
                 };
             };
             responses: {
@@ -1883,6 +1870,15 @@ export interface paths {
                 };
                 /** @description Not Found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2950,96 +2946,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/notas-fiscais": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lista notas fiscais do sistema com filtros (status, treinador) e paginação keyset */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ListarNotasFiscaisAdminResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/notas-fiscais/{id}/reprocessar": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reenfileira a emissão de uma nota fiscal em erro */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description No Content */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Unprocessable Entity */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/admin/test-data/contas": {
         parameters: {
             query?: never;
@@ -3777,6 +3683,66 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/treinador/alunos/{vinculoId}/preservar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Marca/desmarca um vínculo para ser preservado na apara da graça de limite de alunos */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    vinculoId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DefinirPreservacaoRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefinirPreservacaoVinculoResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/treinador/alunos": {
@@ -4630,56 +4596,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/treinador/notas-fiscais": {
+    "/treinador/cep/{cep}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lista as notas fiscais do treinador autenticado (keyset) */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ListarNotasFiscaisResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/treinador/notas-fiscais/{id}/danfse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Retorna a referência (URL) da DANFSe de uma nota fiscal do treinador */
+        /** Resolve um CEP em endereço estruturado (autofill dos dados fiscais) */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    id: string;
+                    cep: string;
                 };
                 cookie?: never;
             };
@@ -4691,11 +4621,29 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": unknown;
+                        "application/json": components["schemas"]["ConsultaCepResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
                 /** @description Not Found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5678,6 +5626,78 @@ export interface paths {
         };
         trace?: never;
     };
+    "/conta/preferencias-notificacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Atualiza a preferência de e-mails de engajamento do usuário autenticado */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PreferenciasNotificacaoRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/conta/senha": {
         parameters: {
             query?: never;
@@ -6395,6 +6415,142 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/notificacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista as notificações da conta autenticada (mais recentes primeiro, paginado) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificacaoResponse"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notificacoes/nao-lidas/contador": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorna a quantidade de notificações não-lidas da conta autenticada */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ContadorNaoLidasResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notificacoes/{id}/lida": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Marca uma notificação da conta autenticada como lida */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/exercicios": {
@@ -7862,10 +8018,6 @@ export interface components {
         AssinaturaAlunoStatus: "Pendente" | "Ativa" | "Inadimplente" | "Cancelada";
         /** @enum {unknown} */
         AssinaturaTreinadorStatus: "Pendente" | "Ativa" | "Inadimplente" | "Cancelada" | null;
-        AtribuirPlanoRequest: {
-            /** Format: uuid */
-            planoId: string;
-        };
         AtualizarAlunoRequest: {
             nome: null | string;
             email: null | string;
@@ -7969,6 +8121,18 @@ export interface components {
         ConfirmarMfaTotpRequest: {
             codigo: string;
         };
+        ConsultaCepResponse: {
+            logradouro: string;
+            complemento: string;
+            bairro: string;
+            localidade: string;
+            uf: string;
+            codigoMunicipioIbge: string;
+        };
+        ContadorNaoLidasResponse: {
+            /** Format: int32 */
+            total: number | string;
+        };
         ContaTesteResumo: {
             /** Format: uuid */
             contaId: string;
@@ -8070,6 +8234,18 @@ export interface components {
             planoDistribuicao: components["schemas"]["PlanoDistribuicaoItem"][];
             alunoFinalidade: components["schemas"]["AlunoFinalidadeItem"][];
         };
+        DefinirCortesiaRequest: {
+            /** Format: uuid */
+            planoId: null | string;
+        };
+        DefinirPreservacaoRequest: {
+            preservar: boolean;
+        };
+        DefinirPreservacaoVinculoResponse: {
+            /** Format: uuid */
+            vinculoId: string;
+            preservarNoLimite: boolean;
+        };
         DesvincularAlunoRequest: {
             observacao?: null | string;
         };
@@ -8168,12 +8344,6 @@ export interface components {
         ForgotPasswordRequest: {
             email: string;
         };
-        GerarNfseComissaoRequest: {
-            /** Format: int32 */
-            ano: null | number | string;
-            /** Format: int32 */
-            mes: null | number | string;
-        };
         GrupoMuscularResponse: {
             /** Format: uuid */
             id: string;
@@ -8205,7 +8375,7 @@ export interface components {
             ambiente: string;
             statusGeral: components["schemas"]["StatusSaude"];
             payloadJson: string;
-            emailEnviado: boolean | null;
+            emailEnviado: null | boolean;
         };
         InativarTreinadorRequest: {
             observacao?: null | string;
@@ -8277,16 +8447,6 @@ export interface components {
             pagina: number | string;
             /** Format: int32 */
             tamanhoPagina: number | string;
-        };
-        ListarNotasFiscaisAdminResponse: {
-            itens: components["schemas"]["NotaFiscalAdminResponse"][];
-            /** Format: uuid */
-            proximoCursor: null | string;
-        };
-        ListarNotasFiscaisResponse: {
-            itens: components["schemas"]["NotaFiscalResumoResponse"][];
-            /** Format: uuid */
-            proximoCursor: null | string;
         };
         ListarPagamentosAssinaturaAlunoResponse: {
             items: components["schemas"]["PagamentoResponse"][];
@@ -8374,48 +8534,17 @@ export interface components {
         ModoPagamentoAluno: "Plataforma" | "Externo";
         /** @enum {unknown} */
         NivelCondicionamento: "Sedentario" | "Iniciante" | "Intermediario" | "Avancado" | null;
-        NotaFiscalAdminResponse: {
+        NotificacaoResponse: {
             /** Format: uuid */
             id: string;
-            /** Format: uuid */
-            treinadorId: string;
-            tipo: components["schemas"]["TipoNotaFiscal"];
-            status: components["schemas"]["NotaFiscalStatus"];
-            /** Format: double */
-            valor: number | string;
-            /** Format: date */
-            competenciaInicio: null | string;
-            /** Format: date */
-            competenciaFim: null | string;
-            numeroNfse: null | string;
-            chaveAcesso: null | string;
+            tipo: components["schemas"]["TipoNotificacao"];
+            titulo: string;
+            corpo: string;
+            linkRelativo: null | string;
+            lida: boolean;
             /** Format: date-time */
-            dataEmissao: null | string;
-            codigoErro: null | string;
-            motivoErro: null | string;
-            /** Format: date-time */
-            criadoEm: string;
+            createdAt: string;
         };
-        NotaFiscalResumoResponse: {
-            /** Format: uuid */
-            id: string;
-            tipo: components["schemas"]["TipoNotaFiscal"];
-            status: components["schemas"]["NotaFiscalStatus"];
-            /** Format: double */
-            valor: number | string;
-            /** Format: date */
-            competenciaInicio: null | string;
-            /** Format: date */
-            competenciaFim: null | string;
-            numeroNfse: null | string;
-            /** Format: date-time */
-            dataEmissao: null | string;
-            temDanfse: boolean;
-            /** Format: date-time */
-            criadoEm: string;
-        };
-        /** @enum {unknown} */
-        NotaFiscalStatus: "Pendente" | "Emitida" | "Erro" | "BloqueadaDadosFiscais" | "CancelamentoSolicitado" | "Cancelada" | "CancelamentoExpirado";
         ObjetivoItem: {
             objetivo: components["schemas"]["ObjetivoTreino"];
             /** Format: int32 */
@@ -8483,6 +8612,7 @@ export interface components {
             nome: string;
             email: string;
             tipoConta: string;
+            emailEngajamentoOptOut: boolean;
         };
         PlanoDistribuicaoItem: {
             tier: string;
@@ -8514,6 +8644,9 @@ export interface components {
             seriesExecutadas: number | string;
             /** Format: int32 */
             repeticoesExecutadas: number | string;
+        };
+        PreferenciasNotificacaoRequest: {
+            emailEngajamentoOptOut: boolean;
         };
         PreviewModoPagamentoResponse: {
             /** Format: int32 */
@@ -8561,16 +8694,6 @@ export interface components {
             alunos: number | string;
             /** Format: double */
             receita: number | string;
-        };
-        ReconciliarNfseResponse: {
-            /** Format: int32 */
-            consultadas: number | string;
-            /** Format: int32 */
-            atualizadas: number | string;
-            /** Format: int32 */
-            semAlteracao: number | string;
-            /** Format: int32 */
-            erros: number | string;
         };
         ReconciliarPagamentosStripeRequest: {
             /** Format: date-time */
@@ -8735,7 +8858,7 @@ export interface components {
         /** @enum {unknown} */
         TipoDocumentoFiscal: "Cpf" | "Cnpj";
         /** @enum {unknown} */
-        TipoNotaFiscal: "AssinaturaSaaS" | "ComissaoMarketplace";
+        TipoNotificacao: "NovoTreino" | "ExecucaoRegistrada" | "Reforco" | "LembreteLeve" | "Recuperacao" | "MarcoStreak" | "DigestTreinador" | "LimiteAlunosExcedido" | "LimiteAlunosLembrete" | "LimiteAlunosAplicado";
         /** @enum {unknown} */
         TipoTrocaPlano: "Upgrade" | "Downgrade" | "InadimplenteRegularizacao" | "UpgradeImediato";
         TreinadorDashboardCounts: {
@@ -8748,6 +8871,18 @@ export interface components {
         };
         TreinadorDashboardPlano: {
             status: null | components["schemas"]["AssinaturaTreinadorStatus"];
+            tierEfetivo: components["schemas"]["TierPlano"];
+            /** Format: uuid */
+            planoContratadoId: null | string;
+            /** Format: int32 */
+            alunosAtivos: number | string;
+            /** Format: int32 */
+            capEfetivo: number | string;
+            /** Format: int32 */
+            excedente: number | string;
+            /** Format: date-time */
+            gracaAte: null | string;
+            temCortesia: boolean;
         };
         TreinadorDashboardResponse: {
             counts: components["schemas"]["TreinadorDashboardCounts"];
@@ -8773,6 +8908,8 @@ export interface components {
             planoPlataformaId: null | string;
             /** Format: date-time */
             createdAt: string;
+            /** Format: uuid */
+            planoCortesiaId?: null | string;
         };
         /** @enum {unknown} */
         TreinadorStatus: "AguardandoAprovacao" | "Ativo" | "Inativo" | "AguardandoPagamento";
@@ -8902,6 +9039,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             temVinculoAtivoPrevio: boolean;
+            preservarNoLimite: boolean;
         };
         VinculoResponse: {
             /** Format: uuid */

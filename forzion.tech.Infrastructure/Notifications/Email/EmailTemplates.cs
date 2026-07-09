@@ -705,46 +705,6 @@ internal static class EmailTemplates
             </p>
             """);
 
-    public static string NfseEmitida(string nomeTreinador, string numeroNfse, decimal valor, DateTime dataEmissao, string linkNotas)
-    {
-        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
-        var valorFormatado = valor.ToString("N2", ptBr);
-        var dataFormatada = dataEmissao.ToString("dd/MM/yyyy", ptBr);
-        return Layout(
-            "Nota fiscal emitida",
-            $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
-            <p style="color:#444;line-height:1.6">
-              Sua nota fiscal de serviço eletrônica (NFS-e) foi
-              <strong style="color:#2e7d32">emitida</strong> com sucesso.
-            </p>
-            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
-              <tr>
-                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Número da NFS-e</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(numeroNfse)}</td>
-              </tr>
-              <tr>
-                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valorFormatado}</td>
-              </tr>
-              <tr>
-                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Data de emissão</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{dataFormatada}</td>
-              </tr>
-            </table>
-            <p style="color:#444;line-height:1.6">
-              Acesse o portal para visualizar e baixar a DANFSe.
-            </p>
-            <a href="{linkNotas}"
-               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
-              Ver notas fiscais
-            </a>
-            <p style="color:#999;font-size:12px;margin-top:24px">
-              Em caso de dúvidas, entre em contato com o suporte forzion.tech.
-            </p>
-            """);
-    }
-
     public static string LimiteAlunosExcedido(string nomeTreinador, int excedente, DateTime dataLimite, string linkPortal)
     {
         var dataFormatada = dataLimite.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR"));
@@ -813,28 +773,6 @@ internal static class EmailTemplates
             <a href="{linkPortal}"
                style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
               Gerenciar plano e alunos
-            </a>
-            <p style="color:#999;font-size:12px;margin-top:24px">
-              Em caso de dúvidas, entre em contato com o suporte forzion.tech.
-            </p>
-            """);
-
-    public static string NfseBloqueadaDadosFiscais(string nomeTreinador, string linkDadosFiscais) =>
-        Layout(
-            "Ação necessária — complete seus dados fiscais",
-            $"""
-            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
-            <p style="color:#444;line-height:1.6">
-              Uma nota fiscal de serviço eletrônica (NFS-e) <strong style="color:#ef6c00">não pôde ser emitida</strong>
-              porque seus dados fiscais ainda não foram preenchidos.
-            </p>
-            <p style="color:#444;line-height:1.6">
-              Complete seus dados fiscais no portal. Assim que forem salvos, a nota será
-              <strong>reemitida automaticamente</strong>.
-            </p>
-            <a href="{linkDadosFiscais}"
-               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
-              Completar dados fiscais
             </a>
             <p style="color:#999;font-size:12px;margin-top:24px">
               Em caso de dúvidas, entre em contato com o suporte forzion.tech.

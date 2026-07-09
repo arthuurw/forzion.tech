@@ -26,7 +26,6 @@ public class AutorizacaoNegativaMatrixTests : IClassFixture<AutorizacaoNegativaM
         "/treinos/" + Guid1,
         "/exercicios",
         "/treinador/dados-fiscais",
-        "/treinador/notas-fiscais",
         "/treinador/pagamentos/recebimentos",
         "/treinador/vinculos",
         "/treinador/plano/assinatura",
@@ -42,7 +41,6 @@ public class AutorizacaoNegativaMatrixTests : IClassFixture<AutorizacaoNegativaM
     private static readonly string[] SomenteAdmin =
     [
         "/admin/stats/dashboard",
-        "/admin/notas-fiscais",
         "/admin/health-report/config",
         "/admin/treinadores/" + Guid1,
     ];

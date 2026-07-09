@@ -8,8 +8,6 @@ using forzion.tech.Application.Outbox;
 using forzion.tech.Application.Settings;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Engajamento;
-using forzion.tech.Application.UseCases.Nfse.GerarNfseComissaoMensal;
-using forzion.tech.Application.UseCases.Nfse.ReconciliarNfse;
 using forzion.tech.Application.UseCases.Treinadores.ProcessarLimiteAlunos;
 using forzion.tech.Domain.Shared;
 using Microsoft.AspNetCore.Hosting;
@@ -46,15 +44,6 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             Mock.Of<IMfaChallengeRepository>(), Mock.Of<ITrustedDeviceRepository>(),
             Mock.Of<IPasswordResetTokenRepository>(), Mock.Of<ITrocaEmailTokenRepository>());
 
-        public Mock<GerarNfseComissaoMensalHandler> GerarNfseComissaoMock { get; } = new(
-            Mock.Of<IPagamentoRepository>(), Mock.Of<INotaFiscalRepository>(), Mock.Of<IServiceScopeFactory>(),
-            Options.Create(new PaymentSettings()), TimeProvider.System,
-            Mock.Of<ILogger<GerarNfseComissaoMensalHandler>>());
-
-        public Mock<ReconciliarNfseHandler> ReconciliarNfseMock { get; } = new(
-            Mock.Of<INotaFiscalRepository>(), Mock.Of<IEmissorNfseService>(), Mock.Of<IServiceScopeFactory>(),
-            TimeProvider.System, Mock.Of<ILogger<ReconciliarNfseHandler>>());
-
         public Mock<NudgeAderenciaHandler> NudgeMock { get; } = new(
             Mock.Of<IExecucaoTreinoRepository>(), Mock.Of<INotificacaoRepository>(),
             Mock.Of<IEmailEsfriamentoNotifier>(), TimeProvider.System);
@@ -78,12 +67,8 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
             {
                 services.RemoveAll<ListarContasElegivelPurgaLgpdHandler>();
                 services.RemoveAll<AnonimizarContaHandler>();
-                services.RemoveAll<GerarNfseComissaoMensalHandler>();
-                services.RemoveAll<ReconciliarNfseHandler>();
                 services.AddSingleton(ListarElegiveisMock.Object);
                 services.AddSingleton(AnonimizarMock.Object);
-                services.AddSingleton(GerarNfseComissaoMock.Object);
-                services.AddSingleton(ReconciliarNfseMock.Object);
                 services.RemoveAll<NudgeAderenciaHandler>();
                 services.AddSingleton(NudgeMock.Object);
                 services.RemoveAll<DigestTreinadorHandler>();
@@ -139,47 +124,23 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
     }
 
     [Fact]
-    public async Task GerarNfseComissao_ComChave_Retorna200()
+    public async Task GerarNfseComissao_RotaRemovida_Retorna404()
     {
-        factory.GerarNfseComissaoMock
-            .Setup(h => h.HandleAsync(It.IsAny<GerarNfseComissaoMensalCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(new GerarNfseComissaoMensalResultado(2, 1)));
-
         var req = new HttpRequestMessage(HttpMethod.Post, "/internal/gerar-nfse-comissao");
         req.Headers.Add("X-Internal-Key", ChaveValida);
         var response = await factory.CreateClient().SendAsync(req);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task GerarNfseComissao_SemChave_Retorna401()
+    public async Task ReconciliarNfse_RotaRemovida_Retorna404()
     {
-        var response = await factory.CreateClient().PostAsync("/internal/gerar-nfse-comissao", null);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task ReconciliarNfse_ComChave_Retorna200()
-    {
-        factory.ReconciliarNfseMock
-            .Setup(h => h.HandleAsync(It.IsAny<ReconciliarNfseCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(new ReconciliarNfseResponse(3, 1, 2, 0)));
-
         var req = new HttpRequestMessage(HttpMethod.Post, "/internal/reconciliar-nfse");
         req.Headers.Add("X-Internal-Key", ChaveValida);
         var response = await factory.CreateClient().SendAsync(req);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task ReconciliarNfse_SemChave_Retorna401()
-    {
-        var response = await factory.CreateClient().PostAsync("/internal/reconciliar-nfse", null);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
