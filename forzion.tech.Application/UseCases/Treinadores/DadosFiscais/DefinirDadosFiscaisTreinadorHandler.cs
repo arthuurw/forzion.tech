@@ -1,6 +1,5 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
-using forzion.tech.Application.Outbox;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
@@ -13,8 +12,6 @@ namespace forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 
 public class DefinirDadosFiscaisTreinadorHandler(
     ITreinadorRepository treinadorRepository,
-    INotaFiscalRepository notaFiscalRepository,
-    IOutboxEnfileirador enfileirador,
     ILogAprovacaoRepository logRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
@@ -56,15 +53,6 @@ public class DefinirDadosFiscaisTreinadorHandler(
             cancellationToken: cancellationToken).ConfigureAwait(false);
         if (logResult.IsFailure)
             return Result.Failure<DadosFiscaisResponse>(logResult.Error!);
-
-        var bloqueadas = await notaFiscalRepository
-            .ListarBloqueadasPorTreinadorAsync(treinador.Id, cancellationToken)
-            .ConfigureAwait(false);
-        foreach (var nota in bloqueadas)
-        {
-            if (nota.ReabrirParaEmissao(agora).IsSuccess)
-                enfileirador.Enfileirar("fx:emitir_nfse", new EmitirNfsePayload(nota.Id), $"fx:emitir_nfse:desbloqueio:{nota.Id}");
-        }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
