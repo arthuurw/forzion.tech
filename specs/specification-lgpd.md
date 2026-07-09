@@ -103,7 +103,7 @@ Nenhum e-mail ou telefone cru em qualquer nível de log (`LogDebug`…`LogCritic
 - Frontend: `ConsentBanner` (Sentry off sem consentimento, persistência), /perfil export/delete, admin actions; e2e `lgpd/{export-data,delete-account,consent-cookies}`.
 
 ## PENDÊNCIAS / GOTCHAS
-- **Jurídico**: copy do banner + política de privacidade + contato DPO = placeholders (validar com jurídico).
+- **Jurídico**: copy do banner + política de privacidade + contato DPO = placeholders (validar com jurídico). `/privacidade` (preliminar) JÁ declara: categoria PII de dados fiscais do treinador (CPF/CNPJ etc.) + seção "Retenção e exclusão de dados" (retenção fiscal ~5a apesar do direito de exclusão, base art. 7º II / art. 16 I — espelha §DECISÕES + §DB/PII guarda fiscal). Emissão por software terceiro NÃO é subprocessador ativo (handoff = feature futura; sem compartilhamento hoje) → NÃO listar na tabela de subprocessadores até a integração existir.
 - **Retenção fiscal** (5 anos BR): RESOLVIDO em D-RET (job mensal `lgpd-purge.yml`). Ver §DECISÕES.
 - **Carência/reversibilidade**: não há (anonimização imediata/irreversível). Avaliar soft-delete + purga agendada no futuro.
 - **Export e telefone**: WhatsApp delivery logs casados por telefone do perfil; se o telefone mudou, logs antigos podem não casar (limitação do modelo — logs não têm conta_id).
