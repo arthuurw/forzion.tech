@@ -143,6 +143,7 @@ public class ExecutarRelatorioSaudeHandlerTests
         var act = async () => await _handler.HandleAsync();
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
         _logger.Verify(
             l => l.Log(
                 LogLevel.Critical,

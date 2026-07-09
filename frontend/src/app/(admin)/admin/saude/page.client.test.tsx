@@ -89,6 +89,7 @@ describe("SaudeAdminPage", () => {
     await waitFor(() => {
       expect(runCalled).toHaveBeenCalledTimes(1);
     });
+    expect(await screen.findByText("Relatório enviado e snapshot gerado.")).toBeInTheDocument();
   });
 
   it("mostra aviso quando o e-mail do relatório falha ao enviar", async () => {
@@ -119,5 +120,18 @@ describe("SaudeAdminPage", () => {
     render(<SaudeAdminPage />);
 
     expect(await screen.findByText("E-mail não enviado")).toBeInTheDocument();
+  });
+
+  it("não mostra chip de aviso quando o e-mail do snapshot é null (histórico não rastreado)", async () => {
+    server.use(
+      http.get("*/admin/health-report/snapshots", () =>
+        HttpResponse.json([{ ...snapshot, emailEnviado: null }]),
+      ),
+    );
+
+    render(<SaudeAdminPage />);
+
+    await screen.findByText("Homolog");
+    expect(screen.queryByText("E-mail não enviado")).not.toBeInTheDocument();
   });
 });
