@@ -52,23 +52,22 @@ beforeEach(() => {
 });
 
 describe("NavConfig — treinador", () => {
-  it("treinadorNav tem 8 itens com Recebimentos e Plano marcados drawerOnly", () => {
+  it("treinadorNav tem 7 itens com Recebimentos e Plano marcados drawerOnly", () => {
     const nav = NAV_BY_TIPO.Treinador;
-    expect(nav).toHaveLength(8);
+    expect(nav).toHaveLength(7);
     const recebimentos = nav.find((i) => i.href === "/treinador/pagamentos");
     const plano = nav.find((i) => i.href === "/treinador/plano");
     expect(recebimentos?.drawerOnly).toBe(true);
     expect(plano?.drawerOnly).toBe(true);
-    expect(nav.filter((i) => !i.drawerOnly)).toHaveLength(6);
+    expect(nav.filter((i) => !i.drawerOnly)).toHaveLength(5);
   });
 });
 
 describe("AppLayout — navegação treinador", () => {
-  it("drawer desktop mostra os 8 itens incluindo Recebimentos e Plano", () => {
+  it("drawer desktop mostra os 7 itens incluindo Recebimentos e Plano", () => {
     render(<AppLayout>conteudo</AppLayout>);
     expect(screen.getByText("Recebimentos")).toBeInTheDocument();
     expect(screen.getByText("Plano")).toBeInTheDocument();
-    expect(screen.getByText("Notas fiscais")).toBeInTheDocument();
   });
 
   it("drawer desktop navega ao clicar num item exclusivo do drawer", () => {
@@ -77,12 +76,11 @@ describe("AppLayout — navegação treinador", () => {
     expect(push).toHaveBeenCalledWith("/treinador/pagamentos");
   });
 
-  it("bottom-nav mobile omite Recebimentos e Plano (6 itens)", () => {
+  it("bottom-nav mobile omite Recebimentos e Plano (5 itens)", () => {
     useMediaQueryMock.mockReturnValue(true);
     render(<AppLayout>conteudo</AppLayout>);
     const labels = screen.getAllByRole("button").map((a) => a.getAttribute("aria-label"));
     expect(labels).toContain("Alunos");
-    expect(labels).toContain("Notas fiscais");
     expect(labels).not.toContain("Recebimentos");
     expect(labels).not.toContain("Plano");
   });
