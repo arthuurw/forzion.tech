@@ -157,7 +157,6 @@ public static class InfrastructureExtensions
         services.AddScoped<IPagamentoRepository, PagamentoRepository>();
         services.AddScoped<IAssinaturaTreinadorRepository, AssinaturaTreinadorRepository>();
         services.AddScoped<IPagamentoTreinadorRepository, PagamentoTreinadorRepository>();
-        services.AddScoped<INotaFiscalRepository, NotaFiscalRepository>();
         services.AddScoped<IAssinanteRepository, AssinanteRepository>();
         services.AddScoped<IContaRecebimentoRepository, ContaRecebimentoRepository>();
         services.AddScoped<IReconciliacaoStripeEstadoRepository, ReconciliacaoStripeEstadoRepository>();
