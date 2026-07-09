@@ -50,8 +50,6 @@ GET	/admin/treinos/{id}	admin	false
 GET	/admin/treinadores/{id}/pacotes	admin	false
 GET	/admin/contas/{id}/lgpd/exportar	admin	false
 DELETE	/admin/contas/{id}/lgpd	admin	false
-GET	/admin/notas-fiscais	admin	false
-POST	/admin/notas-fiscais/{id}/reprocessar	admin	false
 GET	/admin/health-report/config	admin	false
 PUT	/admin/health-report/config	admin	false
 GET	/admin/health-report/snapshots	admin	false
@@ -116,8 +114,6 @@ PATCH	/treinador/pacotes/{pacoteId}	treinador	false
 DELETE	/treinador/pacotes/{pacoteId}	treinador	false
 PUT	/treinador/dados-fiscais	treinador	false
 GET	/treinador/dados-fiscais	treinador	false
-GET	/treinador/notas-fiscais	treinador	false
-GET	/treinador/notas-fiscais/{id}/danfse	treinador	false
 POST	/treinos	treinador	false
 GET	/treinos/{id}	treinador	false
 PATCH	/treinos/{id}	treinador	false
@@ -144,8 +140,6 @@ GET	/internal/lgpd/contas-elegiveis	internal	false
 DELETE	/internal/lgpd/contas/{id}	internal	false
 POST	/internal/processar-pre-avisos	internal	false
 POST	/internal/processar-pre-avisos-treinador	internal	false
-POST	/internal/gerar-nfse-comissao	internal	false
-POST	/internal/reconciliar-nfse	internal	false
 POST	/internal/processar-renovacoes-treinador	internal	false
 POST	/internal/processar-renovacoes	internal	false
 POST	/internal/reconciliar-pagamentos	internal	false
