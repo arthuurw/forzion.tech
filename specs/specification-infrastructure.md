@@ -33,6 +33,8 @@ DOC PARA AGENTES. Fonte de verdade de hosting, containers, roteamento, SSL, CI/C
 ## SSL (Let's Encrypt / certbot)
 - Bootstrap UMA VEZ: `scripts/init-ssl.sh <dominio> <email>` — sobe `nginx-init.conf` (HTTP-only p/ desafio ACME) → `certbot certonly --webroot` → `sed DOMAIN_PLACEHOLDER` no `nginx.conf` → `up -d` stack.
 - Renovação: container `certbot` em loop (`certbot renew` a cada 12h). Volumes: `certbot/conf` (certs), `certbot/www` (webroot ACME).
+- **GOTCHA gate SSL (verificado 2026-07-09, nginx:1.27-alpine)**: `nginx -t` do deploy-prod (§DEPLOY) NÃO pega `ssl_certificate` apontando p/ arquivo inexistente — e o nginx SOBE mesmo assim (o erro só apareceria num handshake TLS real). Logo o gate `nginx -t` dá falsa confiança sobre cert faltando; um `:443` só pode ser ativado APÓS o certbot emitir o cert de fato. Por isso o server block `:443` de prod nasce COMENTADO no `nginx.conf` (ativado na Fase B, pós-emissão).
+- **Bootstrap prod é gap**: `scripts/init-ssl.sh` é homolog-hardcoded (`DIR=/opt/forzion/app`, `docker-compose.homolog.yml`, 1 `-d`, `sed DOMAIN_PLACEHOLDER` já inexistente no `nginx.conf`) → NÃO provisiona prod. Fase B exige variante prod (multi-`-d`: `forzion.tech www app`) ou certbot manual.
 
 ## CI/CD (GitHub Actions)
 - Trigger base: `push` → `homolog`; `pull_request` → `homolog`+`main` (o PR homolog→main roda o Gate COMPLETO — é o gate real de "confia-na-promoção" do `release-images`/`deploy-prod`; `push.branches` fica só `homolog`, então push→main NÃO deploya homolog nem re-roda suíte). **paths-ignore** (`**.md`,`docs/**`,`specs/**`) em `ci.yml`/`openapi-drift.yml`/`semgrep.yml` → PR/push só-docs NÃO dispara CI/CD.
