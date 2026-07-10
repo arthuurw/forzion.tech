@@ -8,7 +8,7 @@ DOC PARA AGENTES. Continuidade: backup, restore, rollback de deploy, runbook de 
 ## 1. BACKUP (Supabase / PG 17)
 - [EXISTE] Projeto Supabase único `forzion` (ref `fdpdbtiuuitndbeujcbj`, sa-east-1, PG 17.6.1.104), org `forzion.tech` — **tier FREE** (confirmado 2026-06-10 via Management API). **Free = ZERO backup gerenciado, SEM PITR** ([docs Supabase](https://supabase.com/docs/guides/platform/backups): recomenda `supabase db dump`/pg_dump manual + cópia off-site). Não há backup automático hoje → RPO real = ∞ até o pipeline lógico de §2 rodar. Pro = daily backup (retenção 7d) + PITR add-on (RPO<1min, exige compute add-on ≥Small).
 - [EXISTE] 3 schemas (`homolog` canônico, `develop`, `public`) no projeto `forzion` — o `db-backup` dumpa só `homolog` (público migrou p/ o projeto `forzion_p`; `develop` é local); restore seletivo por schema exige cuidado ([specification-db] ownership diverge por schema).
-- [EXISTE] `ai_token_usage` é NON-EF (criada fora de migration) — restore de estrutura precisa recriá-la (`CREATE TABLE ... LIKE homolog.ai_token_usage INCLUDING ALL`), [specification-db].
+- [EXISTE] `ai_token_usage` é criada por migration EF (`AdicionarAiTokenUsage`, idempotente `IF NOT EXISTS`) — restore de estrutura vem junto no migrate/`pg_restore`, sem passo manual, [specification-db].
 
 ## 2. RESTORE — DRILL (backup não testado = sem backup)
 - [EXISTE] No FREE não há backup gerenciado p/ "baixar" → o drill PROVA o pipeline de dump lógico, que NO FREE É o próprio mecanismo de backup. O mesmo procedimento serve de restore real em incidente.
