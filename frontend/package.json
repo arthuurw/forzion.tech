@@ -97,7 +97,7 @@
     "@fast-check/vitest": "^0.4.1",
     "@lhci/cli": "^0.15.1",
     "@next/bundle-analyzer": "^16.2.10",
-    "@pact-foundation/pact": "^16.5.0",
+    "@pact-foundation/pact": "^17.0.1",
     "@playwright/test": "^1.61.1",
     "@storybook/addon-a11y": "^10.4.6",
     "@storybook/nextjs": "^10.4.6",
