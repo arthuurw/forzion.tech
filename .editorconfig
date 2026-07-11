@@ -27,3 +27,7 @@ dotnet_diagnostic.CA1062.severity = none
 # Endpoints de registro não são hot paths; suprimir para evitar boilerplate desnecessário.
 [**/UseCases/**.cs]
 dotnet_diagnostic.CA1848.severity = none
+
+# S4790: HIBP Pwned Passwords (k-anonymity) exige SHA-1 por contrato de API — não há alternativa.
+[**/Services/HibpPwnedPasswordsService.cs]
+dotnet_diagnostic.S4790.severity = none
