@@ -10,7 +10,7 @@
 -- Owner das tabelas: `app migrate` roda como forzion_api (DB_CONNECTION), então forzion_api é dono
 -- do que cria (incl. ai_token_usage, agora criada pela migration AdicionarAiTokenUsage) e herda todos
 -- os privilégios. Os GRANT/ALTER DEFAULT abaixo são defesa se algo for criado por OUTRO role e blindam
--- o pg_dump do backup contra "permission denied for sequence" (incidentes #260/#271).
+-- o pg_dump do backup contra "permission denied for sequence".
 
 -- 1. Role de aplicação (idempotente). A senha é setada FORA do repo (dashboard / secret do pooler).
 DO $$
