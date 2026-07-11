@@ -21,6 +21,8 @@ services:
       Email__AllowlistDominios: ${EMAIL_ALLOWLIST_DOMAINS:-}
       App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-https://forzion.tech}
       Internal__ApiKey: ${INTERNAL_API_KEY:-}
+      Seed__AdminEmail: ${SEED_ADMIN_EMAIL:-}
+      Seed__AdminPassword: ${SEED_ADMIN_PASSWORD:-}
       Seed__ZapTestEmail: ${SEED_ZAP_TEST_EMAIL:-zap-test@forzion.tech}
       Seed__ZapTestPassword: ${SEED_ZAP_TEST_PASSWORD:-}
       WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
@@ -40,6 +42,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      forzion-prd:
+        aliases:
+          - backend-prd
 
   frontend:
     image: ${REGISTRY}/forzion/frontend:${TAG:-latest}
@@ -59,29 +65,14 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      forzion-prd:
+        aliases:
+          - frontend-prd
 
-  nginx:
-    image: nginx:1.27-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certbot/conf:/etc/letsencrypt:ro
-      - ./certbot/www:/var/www/certbot:ro
-    restart: unless-stopped
-    depends_on:
-      - frontend
-
-  certbot:
-    image: certbot/certbot:latest
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: >
-      /bin/sh -c "trap exit TERM;
-      while :; do
-        certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
-        sleep 12h & wait $${!};
-      done"
-    restart: unless-stopped
+# nginx/certbot saíram p/ docker-compose.edge.yml (borda única co-locada). Este projeto é só
+# backends; anexa à rede external forzion-prd (aliases *-prd p/ o edge rotear sem colidir com os
+# service names iguais do projeto homolog).
+networks:
+  forzion-prd:
+    external: true

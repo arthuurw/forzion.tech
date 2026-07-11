@@ -109,9 +109,9 @@ Postura de MFA/2FA completa em [specification-security] §2.1; tabelas em [speci
 ⚠️ Token inválido/usado/expirado = `DomainException`→**422** (NÃO 400); só `ValidationException` (formato) → 400. Mapa exceção→status completo: [specification-backend] §4.
 
 ## INFRA / ROTEAMENTO
-- nginx (`nginx/nginx.conf`): `location /webhooks/ { proxy_pass http://backend:8080; }` ANTES do `location /` (que vai p/ `frontend:3000`). Necessário porque o webhook precisa dos headers `svix-*` CRUS no backend.
+- nginx (`nginx/nginx.conf`): `location /webhooks/ { proxy_pass http://backend-hmg:8080; }` ANTES do `location /` (que vai p/ `frontend-hmg:3000`). Upstreams por alias da rede `forzion-hmg` (prod usa `*-prd`) — borda ÚNICA, ver [specification-infrastructure] §ISOLAMENTO/EDGE. Necessário porque o webhook precisa dos headers `svix-*` CRUS no backend.
 - ⚠️ NÃO usar o proxy da SPA `/api/backend/[...path]` p/ webhook: ele só repassa `content-type`/`accept` (descarta `svix-*`) e injeta Bearer. Webhook Resend deve apontar p/ `https://<host>/webhooks/resend` (rota nginx direta).
-- compose homolog (`docker-compose.homolog.yml`) e local (`docker-compose.yml`/`.env.example`) mapeiam as env vars Resend. Deploy aplica nginx via `restart nginx` (bind-mount).
+- compose homolog (`docker-compose.homolog.yml`) e local (`docker-compose.yml`/`.env.example`) mapeiam as env vars Resend. Deploy recarrega a config do webhook via `scripts/reload-edge.sh` (`nginx -t` + `nginx -s reload` no edge).
 - Painel Resend: webhook endpoint = `https://homologacao.forzion.tech/webhooks/resend`, eventos delivered/bounced/complained/spam_complaint; signing secret = `RESEND_WEBHOOK_SECRET`.
 
 ## FRONTEND

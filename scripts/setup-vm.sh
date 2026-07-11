@@ -16,6 +16,13 @@ sudo apt-get update -qq
 sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
 sudo usermod -aG docker "$USER"
 
+# --- Redes Docker external do edge (estáveis; nginx de borda + backends anexam) ---
+# Pré-criadas como external p/ existirem independentes do up/down de cada projeto (edge.yml as
+# referencia como external:true). O deploy também garante (idempotente) — ver §DEPLOY.
+for net in forzion-hmg forzion-prd; do
+  sudo docker network inspect "$net" >/dev/null 2>&1 || sudo docker network create "$net"
+done
+
 # --- Diretório da aplicação ---
 sudo mkdir -p /opt/forzion/nginx
 sudo mkdir -p /opt/forzion/certbot/conf

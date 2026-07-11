@@ -47,6 +47,10 @@ jobs:
             export TAG="$SHA"
             DC="docker compose -p prd -f docker-compose.server.yml --env-file $EF"
 
+            for net in forzion-hmg forzion-prd; do
+              docker network inspect "$net" >/dev/null 2>&1 || docker network create "$net"
+            done
+
             PREV_BACKEND="$($DC images -q backend 2>/dev/null || true)"
             PREV_FRONTEND="$($DC images -q frontend 2>/dev/null || true)"
 
@@ -84,12 +88,7 @@ jobs:
               exit 1
             fi
 
-            if ! $DC run --rm --no-deps nginx nginx -t; then
-              echo "::error::nginx.conf inválido — abortando ANTES do restart"
-              exit 1
-            fi
-
-            $DC restart nginx
+            EDGE_DIR=/opt/forzion/app bash scripts/reload-edge.sh
 
             # Health-gate acima só olha o backend por dentro (exec), nunca passa pelo
             # nginx -- probe pelo edge público com Host explícito (default_server
