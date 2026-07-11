@@ -60,14 +60,15 @@ forzion.tech/
 ├── forzion.tech.Tests/         # xUnit + Moq + FluentAssertions + Testcontainers + Verify + CsCheck
 ├── forzion.tech.PactVerification/ # Pact provider verification (entra no build da .slnx)
 ├── frontend/                   # Next.js 16 — ver frontend/README.md
-├── nginx/                      # nginx.conf + nginx-init.conf (HTTPS + proxy)
+├── nginx/                      # nginx.conf da borda única (HTTPS + proxy homolog/prod)
 ├── infra/                      # Config de infraestrutura versionada (ex.: fail2ban jail p/ auth nginx)
-├── scripts/                    # setup-vm.sh, init-ssl.sh, gen-openapi.sh, lint-migrations.sh,
+├── scripts/                    # setup-vm.sh, init-ssl.sh, reload-edge.sh, gen-openapi.sh, lint-migrations.sh,
 │                               # migrate-dryrun.sh, check-coverage.sh, setup-firewall.sh, perf/, systemd/
 ├── presentation/               # Deck/pitch do projeto (PRESENTATION.md + presentation.html)
 ├── docker-compose.yml          # Stack local (Postgres local + backend + frontend)
 ├── docker-compose.homolog.yml  # Stack de homologação (build-on-VM; deploy ativo)
 ├── docker-compose.server.yml   # Stack por imagem de registry (GHCR — usado no fluxo de produção)
+├── docker-compose.edge.yml     # Borda única (nginx + certbot) — serve homolog + prod
 ├── docker-compose.dryrun.yml   # Migrate dry-run contra cópia do schema (gate de deploy)
 ├── .github/workflows/          # CI/CD + crons de billing/NFS-e/LGPD + segurança + backup
 ├── AGENTS.md                   # Guia macro para agentes (referenciado por CLAUDE.md)
@@ -881,7 +882,7 @@ docker compose up --build
 
 - **VPS Hostinger** (Ubuntu) com Docker Compose
 - **Supabase** como banco (PostgreSQL managed) — schema `homolog` (staging) / `public` (produção)
-- **Nginx** como reverse proxy com TLS (Let's Encrypt via Certbot); `infra/fail2ban` protege o endpoint de auth
+- **Nginx** como borda ÚNICA (`docker-compose.edge.yml`) — um só reverse proxy com TLS (Let's Encrypt via Certbot) serve homolog + produção, roteando por `server_name`; `infra/fail2ban` protege o endpoint de auth
 
 > **Homologação** (`homologacao.forzion.tech`, schema `homolog`) tem deploy automatizado no push para `homolog`. **Produção** (`forzion.tech`/`app.forzion.tech`, schema `public`) tem pipeline de imagem e deploy prontos — o merge `homolog → main` dispara `release-images` (build + push das imagens para o GHCR) que, ao concluir, aciona `deploy-prod`. O deploy real é **gated por `PROD_DEPLOY_ENABLED`**. Referência: [`specs/specification-infrastructure.md`](specs/specification-infrastructure.md).
 
@@ -899,7 +900,7 @@ $DC run --rm --no-deps backend migrate  # Gate B: migrate real (one-shot, antes 
 $DC up -d --remove-orphans
 # Gate C: health-gate pós-deploy (/health + /health/ready por dentro do container);
 #         reprovou → rollback para a imagem anterior (tag guardada antes do build)
-$DC restart nginx
+bash scripts/reload-edge.sh             # valida + recarrega o nginx de borda (edge)
 ```
 
 As imagens de homologação são **buildadas na própria VPS**. As de produção vêm do **GHCR** (`release-images` → `docker-compose.server.yml`).
@@ -908,7 +909,7 @@ As imagens de homologação são **buildadas na própria VPS**. As de produção
 
 ```bash
 ssh ubuntu@<IP> 'bash -s' < scripts/setup-vm.sh          # Docker + /opt/forzion + .env template
-bash scripts/init-ssl.sh homologacao.forzion.tech seu@email.com   # cert SSL inicial
+bash scripts/init-ssl.sh seu@email.com homologacao.forzion.tech pact.homologacao.forzion.tech   # cert SSL inicial (multi-domínio)
 ```
 
 Preencher `/opt/forzion/.env` (não versionado) com os secrets reais (`DB_CONNECTION`, `JWT_SECRET`, `MFA_ENCRYPTION_KEY`, `DATA_PROTECTION_KEY`, `STRIPE_*`, `RESEND_*`, `INTERNAL_*`, etc.). Lista completa em [`specs/specification-infrastructure.md`](specs/specification-infrastructure.md).

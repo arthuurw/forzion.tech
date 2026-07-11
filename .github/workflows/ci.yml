@@ -556,6 +556,10 @@ jobs:
             EF=/opt/forzion/.env
             DC="docker compose -f ${{ vars.COMPOSE_FILE || 'docker-compose.homolog.yml' }} --env-file $EF"
 
+            for net in forzion-hmg forzion-prd; do
+              docker network inspect "$net" >/dev/null 2>&1 || docker network create "$net"
+            done
+
             # R4: guarda as imagens em uso ANTES do build, para rollback por tag se o health reprovar.
             PREV_BACKEND="$($DC images -q backend 2>/dev/null || true)"
             PREV_FRONTEND="$($DC images -q frontend 2>/dev/null || true)"
@@ -604,16 +608,7 @@ jobs:
               exit 1
             fi
 
-            # Nginx config eh bind-mount (./nginx/nginx.conf). "up -d" nao
-            # recria nginx quando so o arquivo muda, entao a config nova so
-            # carrega com restart explicito -- por isso valida ANTES (run --rm
-            # --no-deps: funciona mesmo se o nginx nao estiver no ar ainda).
-            if ! $DC run --rm --no-deps nginx nginx -t; then
-              echo "::error::nginx.conf inválido — abortando ANTES do restart"
-              exit 1
-            fi
-
-            $DC restart nginx
+            bash scripts/reload-edge.sh
 
             # Health-gate acima só olha o backend por dentro (exec), nunca passa pelo
             # nginx -- probe pelo edge público com Host explícito (default_server
