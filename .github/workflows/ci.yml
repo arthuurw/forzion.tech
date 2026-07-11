@@ -31,7 +31,7 @@ jobs:
       ci: ${{ steps.filter.outputs.ci }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: filter
         with:
           filters: |
@@ -533,7 +533,7 @@ jobs:
       # entra no tailnet (nó efêmero tag:ci) e fala com a VPS pelo IP privado 100.x.y.z
       # — NAT traversal + DERP, zero porta inbound exposta. VM_TAILNET_IP = IP tailnet.
       - name: Conecta no tailnet
-        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
@@ -669,7 +669,7 @@ jobs:
       # INVARIANTE (ver bloco do grupo PACT acima): broker alcançado SÓ via tailnet.
       - name: Conecta no tailnet
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
-        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
@@ -746,7 +746,7 @@ jobs:
       # INVARIANTE (ver bloco do grupo PACT acima): broker alcançado SÓ via tailnet.
       - name: Conecta no tailnet
         if: ${{ env.PACT_BROKER_BASE_URL != '' }}
-        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
