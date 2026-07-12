@@ -52,7 +52,6 @@ public class AppDbContext(
     public DbSet<ErrorLogEntry> ErrorLogs => Set<ErrorLogEntry>();
     public DbSet<OutboxEfeito> OutboxEfeitos => Set<OutboxEfeito>();
     public DbSet<MensagemSuporte> MensagensSuporte => Set<MensagemSuporte>();
-    public DbSet<NotaFiscal> NotasFiscais => Set<NotaFiscal>();
     public DbSet<ContaMfa> ContasMfa => Set<ContaMfa>();
     public DbSet<MfaRecoveryCode> MfaRecoveryCodes => Set<MfaRecoveryCode>();
     public DbSet<MfaChallenge> MfaChallenges => Set<MfaChallenge>();
@@ -60,6 +59,7 @@ public class AppDbContext(
     public DbSet<TrocaEmailToken> TrocaEmailTokens => Set<TrocaEmailToken>();
     public DbSet<ReconciliacaoStripeEstado> ReconciliacoesStripeEstado => Set<ReconciliacaoStripeEstado>();
     public DbSet<RedefinicaoSenhaSegundoFator> RedefinicoesSenhaSegundoFator => Set<RedefinicaoSenhaSegundoFator>();
+    public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
 
     private EfCoreTransactionAdapter? _transacaoAtiva;
     private List<IDomainEvent>? _eventosBestEffortPosCommit;

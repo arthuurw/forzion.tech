@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Stack, TextField, Button, Divider, Chip, Avatar,
-  Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete,
+  Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import Link from "next/link";
@@ -15,6 +15,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import SecurityIcon from "@mui/icons-material/Security";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -22,6 +23,7 @@ import ConsentBanner from "@/components/ui/ConsentBanner";
 import PageHeader from "@/components/ui/PageHeader";
 import PasswordField from "@/components/forms/PasswordField";
 import { contaApi, type PerfilResponse } from "@/lib/api/conta";
+import { registerPasswordSchema } from "@/lib/validations/common";
 import { baixarMeusDados } from "@/lib/utils/downloadBlob";
 import { alunoApi } from "@/lib/api/aluno";
 import { apiClient } from "@/lib/api/client";
@@ -32,7 +34,7 @@ import type { MeuVinculoResponse, TreinadorResponse, PacoteResponse } from "@/ty
 const senhaSchema = z
   .object({
     senhaAtual: z.string().min(1, "Informe a senha atual."),
-    novaSenha: z.string().min(8, "A nova senha deve ter pelo menos 8 caracteres."),
+    novaSenha: registerPasswordSchema,
     confirmarSenha: z.string().min(1, "Confirme a nova senha."),
   })
   .refine((d) => d.novaSenha === d.confirmarSenha, {
@@ -73,6 +75,9 @@ export default function PerfilPage() {
   const [loadingTrocaPacotes, setLoadingTrocaPacotes] = useState(false);
   const [savingTroca, setSavingTroca] = useState(false);
 
+  const [receberEngajamento, setReceberEngajamento] = useState(true);
+  const [savingPreferencia, setSavingPreferencia] = useState(false);
+
   const [exportingData, setExportingData] = useState<false | "xlsx" | "json">(false);
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -84,6 +89,7 @@ export default function PerfilPage() {
         const res = await contaApi.getPerfil();
         setPerfil(res.data);
         setNome(res.data.nome);
+        setReceberEngajamento(!res.data.emailEngajamentoOptOut);
         if (res.data.tipoConta === "Aluno") {
           const vinculoRes = await alunoApi.getMeuVinculo();
           setMeuVinculo(vinculoRes.data);
@@ -171,6 +177,21 @@ export default function PerfilPage() {
       excluirContaForm.reset();
     }
   });
+
+  const handleToggleEngajamento = async (receber: boolean) => {
+    setReceberEngajamento(receber);
+    setSavingPreferencia(true);
+    setError("");
+    try {
+      await contaApi.atualizarPreferenciasNotificacao({ emailEngajamentoOptOut: !receber });
+      setSuccess(receber ? "E-mails de engajamento ativados." : "E-mails de engajamento desativados.");
+    } catch (err) {
+      setReceberEngajamento(!receber);
+      setError(extractApiError(err, "Erro ao salvar preferência de notificações."));
+    } finally {
+      setSavingPreferencia(false);
+    }
+  };
 
   const handleSalvarPerfil = async () => {
     if (!nome.trim()) return;
@@ -371,6 +392,31 @@ export default function PerfilPage() {
           </FormProvider>
         </CardContent>
       </Card>
+      <Card sx={{ mt: 2.5, border: "1px solid", borderColor: "divider" }}>
+        <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "action.subtleBg", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <NotificationsIcon fontSize="small" sx={{ color: "text.secondary" }} />
+            </Box>
+            <Typography variant="subtitle1" component="h2">Notificações</Typography>
+          </Box>
+          <FormControlLabel
+            sx={{ ml: 0, gap: 1 }}
+            control={
+              <Switch
+                checked={receberEngajamento}
+                onChange={(e) => handleToggleEngajamento(e.target.checked)}
+                disabled={savingPreferencia}
+              />
+            }
+            label="Receber e-mails de engajamento"
+          />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Novidades de treino, lembretes e conquistas. E-mails de cobrança e da sua conta continuam chegando normalmente.
+          </Typography>
+        </CardContent>
+      </Card>
+
       <Card sx={{ mt: 2.5, border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>

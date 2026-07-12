@@ -27,6 +27,31 @@ export function mascararCep(v: string): string {
   return soDigitos(v).slice(0, 8).replace(/^(\d{5})(\d)/, "$1-$2");
 }
 
+function digitoVerificadorPonderado(digitos: number[], pesos: number[]): number {
+  let soma = 0;
+  for (let i = 0; i < pesos.length; i++) soma += digitos[i] * pesos[i];
+  const resto = soma % 11;
+  return resto < 2 ? 0 : 11 - resto;
+}
+
+export function cpfValido(cpf: string): boolean {
+  if (cpf.length !== 11 || new Set(cpf).size === 1) return false;
+  const digitos = [...cpf].map(Number);
+  const d1 = digitoVerificadorPonderado(digitos, [10, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = digitoVerificadorPonderado(digitos, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return digitos[9] === d1 && digitos[10] === d2;
+}
+
+export function cnpjValido(cnpj: string): boolean {
+  if (cnpj.length !== 14 || new Set(cnpj).size === 1) return false;
+  const digitos = [...cnpj].map(Number);
+  const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const d1 = digitoVerificadorPonderado(digitos, pesos1);
+  const d2 = digitoVerificadorPonderado(digitos, pesos2);
+  return digitos[12] === d1 && digitos[13] === d2;
+}
+
 export const dadosFiscaisSchema = z
   .object({
     tipoDocumento: z.enum(["Cpf", "Cnpj"]),
@@ -42,8 +67,11 @@ export const dadosFiscaisSchema = z
     cep: z.string().refine((v) => soDigitos(v).length === 8, "CEP deve ter 8 dígitos"),
   })
   .refine(
-    (d) => soDigitos(d.documento).length === (d.tipoDocumento === "Cpf" ? 11 : 14),
-    { path: ["documento"], message: "Documento inválido para o tipo selecionado" },
+    (d) => {
+      const digitos = soDigitos(d.documento);
+      return d.tipoDocumento === "Cpf" ? cpfValido(digitos) : cnpjValido(digitos);
+    },
+    { path: ["documento"], message: "Documento inválido" },
   );
 
 export type DadosFiscaisFormData = z.infer<typeof dadosFiscaisSchema>;

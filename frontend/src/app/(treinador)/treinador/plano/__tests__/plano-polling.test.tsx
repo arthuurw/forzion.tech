@@ -20,14 +20,20 @@ vi.mock("@/lib/api/conta", () => ({
   contaApi: { exportarDados: vi.fn() },
 }));
 
+vi.mock("@/lib/api/treinador", () => ({
+  treinadorApi: { getDashboard: vi.fn() },
+}));
+
 vi.mock("@/lib/auth/context", () => ({
   useAuth: () => ({ logout: vi.fn() }),
 }));
 
 import { pagamentoApi } from "@/lib/api/pagamento";
+import { treinadorApi } from "@/lib/api/treinador";
 import PlanoTreinadorPage from "../page";
 
 const api = vi.mocked(pagamentoApi);
+const dashApi = vi.mocked(treinadorApi);
 
 const assinaturaAtiva = {
   planoPlataformaId: "plano-pro",
@@ -59,6 +65,28 @@ function mockApiOk() {
   api.listarPlanosPlataforma.mockResolvedValue({ data: planos } as never);
   api.obterStatusPagamentoTreinador.mockResolvedValue({ data: { status: "Pendente" } } as never);
   api.trocarPlano.mockResolvedValue({ data: upgradePixResp } as never);
+  dashApi.getDashboard.mockResolvedValue({
+    data: {
+      counts: { ativos: 0, aguardando: 0, inativos: 0 },
+      mrr: 0,
+      receitaPorPacote: [],
+      totalFichas: 0,
+      objetivos: [],
+      pendentes: [],
+      onboarding: { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
+      plano: {
+        status: "Ativa",
+        tierEfetivo: "Pro",
+        planoContratadoId: "plano-pro",
+        alunosAtivos: 0,
+        capEfetivo: 50,
+        excedente: 0,
+        gracaAte: null,
+        temCortesia: false,
+      },
+      dadosFiscaisPendentes: false,
+    },
+  } as never);
 }
 
 describe("plano polling — backoff + visibility (R3a)", () => {

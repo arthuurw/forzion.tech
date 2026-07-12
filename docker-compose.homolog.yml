@@ -50,6 +50,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      forzion-hmg:
+        aliases:
+          - backend-hmg
 
   frontend:
     build:
@@ -72,6 +76,10 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      forzion-hmg:
+        aliases:
+          - frontend-hmg
 
   # ─── Pact Broker (contract testing self-hosted) ────────────────────────────
   # Postgres dedicado do broker (volume proprio, isolado do DB do app).
@@ -93,6 +101,8 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    networks:
+      - forzion-hmg
 
   pact-broker:
     image: pactfoundation/pact-broker:latest
@@ -123,35 +133,15 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  nginx:
-    image: nginx:1.27-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certbot/conf:/etc/letsencrypt:ro
-      - ./certbot/www:/var/www/certbot:ro
-      - /var/log/forzion-nginx:/var/log/nginx
-    restart: unless-stopped
-    logging: *default-logging
-    depends_on:
-      - frontend
-
-  certbot:
-    image: certbot/certbot:latest
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: >
-      /bin/sh -c "trap exit TERM;
-      while :; do
-        certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
-        sleep 12h & wait $${!};
-      done"
-    restart: unless-stopped
-    logging: *default-logging
+    networks:
+      - forzion-hmg
 
 volumes:
   pact_pgdata:
+
+# nginx/certbot saíram p/ docker-compose.edge.yml (borda única co-locada — só 1 nginx pode bindar
+# 80/443 na VM). Este projeto é só backends; anexa à rede external forzion-hmg (aliases *-hmg p/ o
+# edge rotear sem colidir com os service names iguais do projeto prd).
+networks:
+  forzion-hmg:
+    external: true

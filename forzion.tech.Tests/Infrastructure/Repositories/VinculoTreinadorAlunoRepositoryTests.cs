@@ -535,4 +535,91 @@ public class VinculoTreinadorAlunoRepositoryTests(InfrastructureTestFixture fixt
 
         result.Should().BeEmpty();
     }
+
+    // --- ListarAtivosPorTreinadorOrdenadoAsync (GRACE-05) ---
+
+    private static async Task<VinculoTreinadorAluno> AtivoEmAsync(AppDbContext ctx, Treinador treinador, Guid pacoteId, DateTime createdAt)
+    {
+        var emailAluno = Email.Criar($"o{Guid.NewGuid():N}@test.com").Value;
+        var contaAluno = Conta.Criar(emailAluno, "hash", TipoConta.Aluno, createdAt).Value;
+        var aluno = Aluno.Criar(contaAluno.Id, "Aluno Ordenado", createdAt).Value;
+        await ctx.Contas.AddAsync(contaAluno);
+        await ctx.Alunos.AddAsync(aluno);
+        await ctx.SaveChangesAsync();
+
+        var vinculo = VinculoTreinadorAluno.Criar(treinador.Id, aluno.Id, createdAt).Value;
+        vinculo.Aprovar(treinador.Id, pacoteId, createdAt);
+        await ctx.VinculosTreinadorAluno.AddAsync(vinculo);
+        await ctx.SaveChangesAsync();
+        return vinculo;
+    }
+
+    [Fact]
+    public async Task ListarAtivosPorTreinadorOrdenadoAsync_OrdenaPorCreatedAtAsc()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinador = await SeedTreinadorAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
+
+        var mesRecente = DateTime.UtcNow;
+        var maisAntigo = await AtivoEmAsync(ctx, treinador, pacoteId, mesRecente.AddDays(-10));
+        var meio = await AtivoEmAsync(ctx, treinador, pacoteId, mesRecente.AddDays(-5));
+        var maisNovo = await AtivoEmAsync(ctx, treinador, pacoteId, mesRecente);
+
+        var result = await Repo(ctx).ListarAtivosPorTreinadorOrdenadoAsync(treinador.Id);
+
+        result.Should().HaveCount(3);
+        result.Select(v => v.Id).Should().ContainInOrder(maisAntigo.Id, meio.Id, maisNovo.Id);
+    }
+
+    [Fact]
+    public async Task ListarAtivosPorTreinadorOrdenadoAsync_MesmoCreatedAt_DesempataPorId()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinador = await SeedTreinadorAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
+        var mesmoInstante = DateTime.UtcNow;
+
+        var a = await AtivoEmAsync(ctx, treinador, pacoteId, mesmoInstante);
+        var b = await AtivoEmAsync(ctx, treinador, pacoteId, mesmoInstante);
+
+        var esperado = new[] { a.Id, b.Id }.OrderBy(id => id).ToArray();
+
+        var result = await Repo(ctx).ListarAtivosPorTreinadorOrdenadoAsync(treinador.Id);
+
+        result.Select(v => v.Id).Should().ContainInOrder(esperado);
+    }
+
+    [Fact]
+    public async Task ListarAtivosPorTreinadorOrdenadoAsync_ExpoePreservarNoLimite()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinador = await SeedTreinadorAsync(ctx);
+        var pacoteId = await SeedPacoteAsync(ctx, treinador.Id);
+        var vinculo = await AtivoEmAsync(ctx, treinador, pacoteId, DateTime.UtcNow);
+        vinculo.DefinirPreservacao(true, DateTime.UtcNow);
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarAtivosPorTreinadorOrdenadoAsync(treinador.Id);
+
+        result.Should().ContainSingle(v => v.Id == vinculo.Id && v.PreservarNoLimite);
+    }
+
+    [Fact]
+    public async Task ListarAtivosPorTreinadorOrdenadoAsync_IgnoraInativosEPendentes()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinador = await SeedTreinadorAsync(ctx);
+        var aluno1 = await SeedAlunoAsync(ctx);
+        var aluno2 = await SeedAlunoAsync(ctx);
+
+        await ctx.VinculosTreinadorAluno.AddRangeAsync(
+            Pendente(treinador, aluno1),
+            await InativoAsync(ctx, treinador, aluno2));
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarAtivosPorTreinadorOrdenadoAsync(treinador.Id);
+
+        result.Should().BeEmpty();
+    }
 }

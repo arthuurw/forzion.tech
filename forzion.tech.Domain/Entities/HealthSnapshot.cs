@@ -11,6 +11,7 @@ public class HealthSnapshot
     public string Ambiente { get; private set; } = string.Empty;
     public StatusSaude StatusGeral { get; private set; }
     public string PayloadJson { get; private set; } = string.Empty;
+    public bool? EmailEnviado { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private HealthSnapshot() { }
@@ -32,4 +33,6 @@ public class HealthSnapshot
             CreatedAt = agora
         });
     }
+
+    public void MarcarEmailEnviado(bool sucesso) => EmailEnviado = sucesso;
 }

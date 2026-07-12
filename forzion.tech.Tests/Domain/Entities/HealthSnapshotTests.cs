@@ -59,4 +59,23 @@ public class HealthSnapshotTests
         var snapshot = HealthSnapshot.Criar("homolog", status, "{}", TestData.Agora).Value;
         snapshot.StatusGeral.Should().Be(status);
     }
+
+    [Fact]
+    public void Criar_EmailEnviadoNaoDeterminado_NullPorDefault()
+    {
+        var snapshot = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{}", TestData.Agora).Value;
+        snapshot.EmailEnviado.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void MarcarEmailEnviado_SetaResultado(bool sucesso)
+    {
+        var snapshot = HealthSnapshot.Criar("homolog", StatusSaude.Ok, "{}", TestData.Agora).Value;
+
+        snapshot.MarcarEmailEnviado(sucesso);
+
+        snapshot.EmailEnviado.Should().Be(sucesso);
+    }
 }

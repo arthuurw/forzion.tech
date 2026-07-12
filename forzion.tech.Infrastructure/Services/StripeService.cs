@@ -359,36 +359,55 @@ public class StripeService(
             Limit = 100,
         };
 
-        var coletados = new List<StripeEventSummary>();
-        var truncado = false;
+        var descNewestFirst = new List<StripeEventSummary>();
 
+        // Stripe não tem ordenação ascendente (A1): a janela inteira precisa ser paginada pra
+        // saber quais eventos são os mais ANTIGOS antes de truncar — parar cedo descartaria o
+        // backlog antigo em vez do excedente recente.
         await foreach (var evt in service.ListAutoPagingAsync(options, RequestOptions, cancellationToken).ConfigureAwait(false))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            coletados.Add(new StripeEventSummary(
+            descNewestFirst.Add(new StripeEventSummary(
                 EventId: evt.Id,
                 Type: evt.Type,
                 PayloadRaw: evt.ToJson(),
                 Created: DateTime.SpecifyKind(evt.Created, DateTimeKind.Utc)));
-
-            if (coletados.Count >= maxPorRun)
-            {
-                truncado = true;
-                logger.LogWarning(
-                    "Reconciliação Stripe atingiu teto de {Max} eventos (desde {Desde:o}). Truncando varredura.",
-                    maxPorRun, desdeUtc);
-                break;
-            }
         }
 
-        // Stripe retorna DESC; reordena ASC para o cursor avançar em cronologia natural.
-        coletados.Sort((a, b) => a.Created.CompareTo(b.Created));
+        var (coletados, truncado) = SelecionarMaisAntigos(descNewestFirst, maxPorRun);
+
+        if (truncado)
+        {
+            logger.LogWarning(
+                "Reconciliação Stripe atingiu teto de {Max} eventos (desde {Desde:o}). Truncando varredura.",
+                maxPorRun, desdeUtc);
+        }
 
         logger.LogInformation(
             "Stripe Events.List retornou {Count} eventos relevantes desde {Desde:o} (truncado={Truncado}).",
             coletados.Count, desdeUtc, truncado);
 
         return new StripeEventListResult(coletados, truncado);
+    }
+
+    public static (IReadOnlyList<StripeEventSummary> Asc, bool Truncado) SelecionarMaisAntigos(
+        IEnumerable<StripeEventSummary> descNewestFirst, int cap)
+    {
+        var buffer = new Queue<StripeEventSummary>(cap);
+        var total = 0;
+
+        foreach (var evento in descNewestFirst)
+        {
+            total++;
+            buffer.Enqueue(evento);
+            if (buffer.Count > cap)
+                buffer.Dequeue();
+        }
+
+        var asc = buffer.ToList();
+        asc.Sort((a, b) => a.Created.CompareTo(b.Created));
+
+        return (asc, total > cap);
     }
 }

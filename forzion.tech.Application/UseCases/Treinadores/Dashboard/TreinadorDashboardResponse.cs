@@ -10,7 +10,15 @@ public record ReceitaPorPacoteItem(Guid PacoteId, string Nome, int Alunos, decim
 
 public record ObjetivoItem(ObjetivoTreino Objetivo, int Total);
 
-public record TreinadorDashboardPlano(AssinaturaTreinadorStatus? Status);
+public record TreinadorDashboardPlano(
+    AssinaturaTreinadorStatus? Status,
+    TierPlano TierEfetivo,
+    Guid? PlanoContratadoId,
+    int AlunosAtivos,
+    int CapEfetivo,
+    int Excedente,
+    DateTime? GracaAte,
+    bool TemCortesia);
 
 public record TreinadorDashboardResponse(
     TreinadorDashboardCounts Counts,

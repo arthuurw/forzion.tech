@@ -36,6 +36,65 @@ internal static class EmailTemplates
 
     private static string Enc(string? valor) => WebUtility.HtmlEncode(valor) ?? string.Empty;
 
+    public static string NovoTreinoDisponivel(string nomeAluno) =>
+        Layout(
+            "Novo treino disponível",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Seu treinador acabou de disponibilizar um <strong>novo treino</strong> para você.
+              Acesse a plataforma e comece agora.
+            </p>
+            <a href="https://forzion.tech/login"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver treino
+            </a>
+            """);
+
+    public static string LembreteLeve(string nomeAluno) =>
+        Layout(
+            "Bora treinar?",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Faz alguns dias que você não registra um treino. Que tal manter o ritmo e voltar hoje?
+            </p>
+            <a href="https://forzion.tech/login"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Registrar treino
+            </a>
+            """);
+
+    public static string Recuperacao(string nomeAluno) =>
+        Layout(
+            "Vamos retomar",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeAluno)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Faz um tempo desde o seu último treino. Bora retomar hoje e recuperar o foco — um passo de cada vez.
+            </p>
+            <a href="https://forzion.tech/login"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Voltar a treinar
+            </a>
+            """);
+
+    public static string DigestTreinador(string nomeTreinador, int treinaram, int naoTreinaram) =>
+        Layout(
+            "Resumo de aderência do dia",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">Veja como foi a aderência dos seus alunos hoje:</p>
+            <table cellpadding="0" cellspacing="0" style="margin:16px 0">
+              <tr><td style="padding:4px 0;color:#444"><strong>{treinaram}</strong> aluno(s) treinaram</td></tr>
+              <tr><td style="padding:4px 0;color:#444"><strong>{naoTreinaram}</strong> aluno(s) não treinaram</td></tr>
+            </table>
+            <a href="https://forzion.tech/login"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver detalhes
+            </a>
+            """);
+
     public static string TreinadorAprovado(string nome) =>
         Layout(
             "Conta aprovada!",
@@ -121,7 +180,7 @@ internal static class EmailTemplates
             <p style="color:#444;line-height:1.6">Olá!</p>
             <p style="color:#444;line-height:1.6">
               Recebemos uma solicitação de redefinição de senha para a conta associada ao e-mail
-              <strong>{email}</strong>.
+              <strong>{Enc(email)}</strong>.
             </p>
             <p style="color:#444;line-height:1.6">
               Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.
@@ -170,7 +229,7 @@ internal static class EmailTemplates
             $"""
             <p style="color:#444;line-height:1.6">Olá!</p>
             <p style="color:#444;line-height:1.6">
-              Falta pouco para ativar sua conta associada ao e-mail <strong>{email}</strong>.
+              Falta pouco para ativar sua conta associada ao e-mail <strong>{Enc(email)}</strong>.
             </p>
             <p style="color:#444;line-height:1.6">
               Clique no botão abaixo para confirmar seu e-mail. O link é válido por <strong>24 horas</strong>.
@@ -646,39 +705,25 @@ internal static class EmailTemplates
             </p>
             """);
 
-    public static string NfseEmitida(string nomeTreinador, string numeroNfse, decimal valor, DateTime dataEmissao, string linkNotas)
+    public static string LimiteAlunosExcedido(string nomeTreinador, int excedente, DateTime dataLimite, string linkPortal)
     {
-        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
-        var valorFormatado = valor.ToString("N2", ptBr);
-        var dataFormatada = dataEmissao.ToString("dd/MM/yyyy", ptBr);
+        var dataFormatada = dataLimite.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR"));
         return Layout(
-            "Nota fiscal emitida",
+            "Você excedeu o limite de alunos do seu plano",
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              Sua nota fiscal de serviço eletrônica (NFS-e) foi
-              <strong style="color:#2e7d32">emitida</strong> com sucesso.
+              Seu plano atual comporta menos alunos ativos do que você tem hoje. Você está com
+              <strong style="color:#ef6c00">{excedente}</strong> aluno(s) acima do limite.
             </p>
-            <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:collapse">
-              <tr>
-                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Número da NFS-e</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{Enc(numeroNfse)}</td>
-              </tr>
-              <tr>
-                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Valor</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">R$ {valorFormatado}</td>
-              </tr>
-              <tr>
-                <td style="padding:8px 16px 8px 0;color:#666;font-size:14px">Data de emissão</td>
-                <td style="padding:8px 0;color:#1A1A1A;font-weight:bold;font-size:14px">{dataFormatada}</td>
-              </tr>
-            </table>
             <p style="color:#444;line-height:1.6">
-              Acesse o portal para visualizar e baixar a DANFSe.
+              Você tem até <strong>{dataFormatada}</strong> para regularizar (fazer upgrade de plano ou
+              escolher quais alunos manter). Após essa data, o excedente será desativado automaticamente,
+              priorizando os alunos que você marcar para preservar.
             </p>
-            <a href="{linkNotas}"
+            <a href="{linkPortal}"
                style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
-              Ver notas fiscais
+              Gerenciar plano e alunos
             </a>
             <p style="color:#999;font-size:12px;margin-top:24px">
               Em caso de dúvidas, entre em contato com o suporte forzion.tech.
@@ -686,22 +731,48 @@ internal static class EmailTemplates
             """);
     }
 
-    public static string NfseBloqueadaDadosFiscais(string nomeTreinador, string linkDadosFiscais) =>
-        Layout(
-            "Ação necessária — complete seus dados fiscais",
+    public static string LimiteAlunosLembrete(string nomeTreinador, int excedente, DateTime dataLimite, string linkPortal)
+    {
+        var dataFormatada = dataLimite.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR"));
+        return Layout(
+            "Lembrete — regularize o limite de alunos",
             $"""
             <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
             <p style="color:#444;line-height:1.6">
-              Uma nota fiscal de serviço eletrônica (NFS-e) <strong style="color:#ef6c00">não pôde ser emitida</strong>
-              porque seus dados fiscais ainda não foram preenchidos.
+              Você continua com <strong style="color:#ef6c00">{excedente}</strong> aluno(s) acima do limite
+              do seu plano.
             </p>
             <p style="color:#444;line-height:1.6">
-              Complete seus dados fiscais no portal. Assim que forem salvos, a nota será
-              <strong>reemitida automaticamente</strong>.
+              Você tem até <strong>{dataFormatada}</strong> para regularizar. Após essa data, o excedente
+              será desativado automaticamente, priorizando os alunos que você marcar para preservar.
             </p>
-            <a href="{linkDadosFiscais}"
+            <a href="{linkPortal}"
                style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
-              Completar dados fiscais
+              Gerenciar plano e alunos
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              Em caso de dúvidas, entre em contato com o suporte forzion.tech.
+            </p>
+            """);
+    }
+
+    public static string LimiteAlunosAplicado(string nomeTreinador, int quantidadeDesativada, string linkPortal) =>
+        Layout(
+            "Ajuste aplicado — limite de alunos do seu plano",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              O prazo de regularização do limite de alunos do seu plano terminou. Para respeitar o limite,
+              <strong style="color:#c62828">{quantidadeDesativada}</strong> vínculo(s) de aluno foram
+              desativados automaticamente.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Os alunos marcados para preservar (ou os vínculos mais antigos, quando aplicável) foram
+              mantidos. Você pode fazer upgrade de plano a qualquer momento para reativar alunos.
+            </p>
+            <a href="{linkPortal}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Gerenciar plano e alunos
             </a>
             <p style="color:#999;font-size:12px;margin-top:24px">
               Em caso de dúvidas, entre em contato com o suporte forzion.tech.

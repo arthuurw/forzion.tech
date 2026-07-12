@@ -50,6 +50,8 @@ jobs:
               - '.github/workflows/**'
               - 'scripts/check-coverage.sh'
               - 'scripts/lint-migrations.sh'
+              - 'nginx/**'
+              - 'docker-compose*.yml'
 
   # ─── HIGIENE ───────────────────────────────────────────────────────────────
   commitlint:
@@ -554,6 +556,11 @@ jobs:
             EF=/opt/forzion/.env
             DC="docker compose -f ${{ vars.COMPOSE_FILE || 'docker-compose.homolog.yml' }} --env-file $EF"
 
+            for net in forzion-hmg forzion-prd; do
+              docker network create "$net" >/dev/null 2>&1 || true
+              docker network inspect "$net" >/dev/null 2>&1 || { echo "::error::network $net indisponivel"; exit 1; }
+            done
+
             # R4: guarda as imagens em uso ANTES do build, para rollback por tag se o health reprovar.
             PREV_BACKEND="$($DC images -q backend 2>/dev/null || true)"
             PREV_FRONTEND="$($DC images -q frontend 2>/dev/null || true)"
@@ -602,10 +609,22 @@ jobs:
               exit 1
             fi
 
-            # Nginx config eh bind-mount (./nginx/nginx.conf). "up -d" nao
-            # recria nginx quando so o arquivo muda, entao a config nova so
-            # carrega com restart explicito.
-            $DC restart nginx
+            bash scripts/reload-edge.sh
+
+            # Health-gate acima só olha o backend por dentro (exec), nunca passa pelo
+            # nginx -- probe pelo edge público com Host explícito (default_server
+            # devolve 444 a Host desconhecido, nginx.conf:23-29).
+            edge_ok=0
+            for _ in $(seq 1 30); do
+              if curl -fsS -k --resolve homologacao.forzion.tech:443:127.0.0.1 https://homologacao.forzion.tech/api/backend/health/ready >/dev/null 2>&1; then
+                edge_ok=1; break
+              fi
+              sleep 4
+            done
+            if [ "$edge_ok" != 1 ]; then
+              echo "::error::Edge (nginx) REPROVADO pós-restart -- routing quebrado."
+              exit 1
+            fi
 
             docker image prune -f
             docker builder prune -f --reserved-space 5g

@@ -140,7 +140,8 @@ public class ResponseDtoSnapshots
     public Task PerfilResponse() => Verify(new PerfilResponse(
         Nome: "Arthur Webster",
         Email: "arthur@forzion.tech",
-        TipoConta: "Aluno"));
+        TipoConta: "Aluno",
+        EmailEngajamentoOptOut: false));
 
     [Fact]
     public Task PlanoPlataformaResponse() => Verify(new PlanoPlataformaResponse(
@@ -167,7 +168,8 @@ public class ResponseDtoSnapshots
         CapturadoEm: Criado,
         Ambiente: "Homolog",
         StatusGeral: StatusSaude.Ok,
-        PayloadJson: "{\"liveness\":\"ok\"}"));
+        PayloadJson: "{\"liveness\":\"ok\"}",
+        EmailEnviado: true));
 
     [Fact]
     public Task HealthReportConfigResponse() => Verify(new HealthReportConfigResponse(

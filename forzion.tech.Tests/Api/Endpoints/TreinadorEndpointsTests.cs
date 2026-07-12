@@ -36,8 +36,6 @@ using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTrein
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
-using forzion.tech.Application.UseCases.Nfse.ListarNotasFiscaisTreinador;
-using forzion.tech.Application.UseCases.Nfse.ObterDanfseTreinador;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Domain.Shared.Errors;
@@ -81,7 +79,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         VinculoId, TreinadorId, AlunoId, PacoteId, VinculoStatus.Ativo, DateTime.UtcNow);
 
     private static readonly forzion.tech.Application.UseCases.Vinculos.ListarVinculos.VinculoDetalheResponse RespostaVinculoDetalhe = new(
-        VinculoId, TreinadorId, AlunoId, PacoteId, VinculoStatus.Ativo, "João", null, DateTime.UtcNow, false);
+        VinculoId, TreinadorId, AlunoId, PacoteId, VinculoStatus.Ativo, "João", null, DateTime.UtcNow, false, false);
 
     private static readonly PacoteResponse RespostaPacote = new(
         PacoteId, TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);
@@ -1011,36 +1009,16 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     }
 
     [Fact]
-    public async Task Get_NotasFiscais_Treinador_Retorna200()
+    public async Task Get_NotasFiscais_RotaRemovida_Retorna404()
     {
-        _factory.ListarNotasFiscaisHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ListarNotasFiscaisResponse([], null));
-
         var response = await CriarClienteTreinador().GetAsync("/treinador/notas-fiscais");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task Get_Danfse_Treinador_Retorna200()
+    public async Task Get_Danfse_RotaRemovida_Retorna404()
     {
-        _factory.ObterDanfseHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success("https://nfse.example/danfse/1.pdf"));
-
-        var response = await CriarClienteTreinador().GetAsync($"/treinador/notas-fiscais/{Guid.NewGuid()}/danfse");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Get_Danfse_NaoDono_Retorna404()
-    {
-        _factory.ObterDanfseHandlerMock
-            .Setup(h => h.HandleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<string>(NotaFiscalErrors.NaoEncontrada));
-
         var response = await CriarClienteTreinador().GetAsync($"/treinador/notas-fiscais/{Guid.NewGuid()}/danfse");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -1237,8 +1215,9 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
             Mock.Of<IStripeService>(),
             new forzion.tech.Application.Services.CriarPagamentoComIntentService(
                 Mock.Of<IUnitOfWork>(), Mock.Of<IDbContextTransactionProvider>(),
-                Mock.Of<IDatabaseErrorInspector>(), TimeProvider.System,
+                Mock.Of<IDatabaseErrorInspector>(), Mock.Of<IStripeService>(), TimeProvider.System,
                 Mock.Of<ILogger<forzion.tech.Application.Services.CriarPagamentoComIntentService>>()),
+            Mock.Of<IUnitOfWork>(),
             Microsoft.Extensions.Options.Options.Create(new PaymentSettings()), TimeProvider.System,
             Mock.Of<ILogger<GerarCobrancaMensalHandler>>());
 
@@ -1305,8 +1284,6 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<DefinirDadosFiscaisTreinadorHandler> DefinirDadosFiscaisHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>(),
-            Mock.Of<INotaFiscalRepository>(),
-            Mock.Of<IOutboxEnfileirador>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IUnitOfWork>(), TimeProvider.System,
             Mock.Of<ILogger<DefinirDadosFiscaisTreinadorHandler>>(),
@@ -1314,12 +1291,6 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<ObterDadosFiscaisTreinadorHandler> ObterDadosFiscaisHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>());
-
-        public Mock<ListarNotasFiscaisTreinadorHandler> ListarNotasFiscaisHandlerMock { get; } = new(
-            Mock.Of<INotaFiscalRepository>());
-
-        public Mock<ObterDanfseTreinadorHandler> ObterDanfseHandlerMock { get; } = new(
-            Mock.Of<INotaFiscalRepository>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -1358,8 +1329,6 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<ExcluirExercicioHandler>();
                 services.RemoveAll<DefinirDadosFiscaisTreinadorHandler>();
                 services.RemoveAll<ObterDadosFiscaisTreinadorHandler>();
-                services.RemoveAll<ListarNotasFiscaisTreinadorHandler>();
-                services.RemoveAll<ObterDanfseTreinadorHandler>();
                 services.RemoveAll<IUserContext>();
                 services.RemoveAll<IJwtService>();
                 services.RemoveAll<ITokenRevogadoRepository>();
@@ -1395,8 +1364,6 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.AddScoped(_ => ExcluirExercicioHandlerMock.Object);
                 services.AddScoped(_ => DefinirDadosFiscaisHandlerMock.Object);
                 services.AddScoped(_ => ObterDadosFiscaisHandlerMock.Object);
-                services.AddScoped(_ => ListarNotasFiscaisHandlerMock.Object);
-                services.AddScoped(_ => ObterDanfseHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(ContaId);

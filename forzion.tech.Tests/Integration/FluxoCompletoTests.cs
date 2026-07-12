@@ -132,7 +132,12 @@ public class FluxoCompletoTests
         var mockTxProvider = new Mock<IDbContextTransactionProvider>();
         mockTxProvider.SetupExecuteInTransaction<Result<VinculoResponse>>(mockTx.Object);
 
-        var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, _planoRepo.Object, _vinculoRepo.Object);
+        var planoEfetivoResolver = new Mock<IPlanoEfetivoResolver>();
+        planoEfetivoResolver.Setup(r => r.ResolverAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(plano.Id, plano.Tier, plano.MaxAlunos, false));
+        planoEfetivoResolver.Setup(r => r.ResolverAsync(treinador, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlanoEfetivo(plano.Id, plano.Tier, plano.MaxAlunos, false));
+        var limiteService = new LimiteTreinadorService(_treinadorRepo.Object, planoEfetivoResolver.Object, _vinculoRepo.Object);
 
         var contaRecebimentoRepo = new Mock<IContaRecebimentoRepository>();
         var contaOnboarded = ContaRecebimento.Criar(treinador.Id, DateTime.UtcNow).Value;

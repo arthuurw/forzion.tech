@@ -102,6 +102,7 @@ export interface TreinadorResponse {
   contaId: string;
   status: TreinadorStatus;
   planoPlataformaId: string | null;
+  planoCortesiaId: string | null;
   createdAt: string;
 }
 
@@ -118,6 +119,12 @@ export interface VinculoDetalheResponse extends VinculoResponse {
   nomeAluno: string;
   emailAluno: string | null;
   temVinculoAtivoPrevio: boolean;
+  preservarNoLimite: boolean;
+}
+
+export interface DefinirPreservacaoVinculoResponse {
+  vinculoId: string;
+  preservarNoLimite: boolean;
 }
 
 // Ficha vinculada ao aluno (visão do treinador)
@@ -255,6 +262,26 @@ export interface PaginatedResponse<T> {
   total: number;
   pagina: number;
   tamanhoPagina: number;
+}
+
+// Espelha o enum C# Domain/Enums/TipoNotificacao (JsonStringEnumConverter casa por nome).
+export type TipoNotificacao =
+  | "NovoTreino"
+  | "ExecucaoRegistrada"
+  | "Reforco"
+  | "LembreteLeve"
+  | "Recuperacao"
+  | "MarcoStreak"
+  | "DigestTreinador";
+
+export interface NotificacaoResponse {
+  id: string;
+  tipo: TipoNotificacao;
+  titulo: string;
+  corpo: string;
+  linkRelativo: string | null;
+  lida: boolean;
+  createdAt: string;
 }
 
 export interface PontoProgressao {
@@ -438,6 +465,7 @@ export interface HealthSnapshotResponse {
   ambiente: string;
   statusGeral: StatusSaude;
   payloadJson: string;
+  emailEnviado: boolean | null;
 }
 
 export interface AdminDashboardCounts {
@@ -472,6 +500,13 @@ export interface TreinadorDashboardCounts {
 
 export interface TreinadorDashboardPlano {
   status: AssinaturaTreinadorStatus | null;
+  tierEfetivo: TierPlano;
+  planoContratadoId: string | null;
+  alunosAtivos: number;
+  capEfetivo: number;
+  excedente: number;
+  gracaAte: string | null;
+  temCortesia: boolean;
 }
 
 export interface ReceitaPorPacoteItem {

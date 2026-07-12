@@ -19,8 +19,8 @@ function planosHandler(planos: PlanoPlataformaResponse[] = [PLANO_BASIC, PLANO_F
 function preencherDados() {
   fireEvent.change(screen.getByLabelText(/Nome completo/i), { target: { value: "Maria Treinadora" } });
   fireEvent.change(screen.getByLabelText(/E-mail/i), { target: { value: "maria@ex.com" } });
-  fireEvent.change(screen.getByLabelText(/^Senha/i), { target: { value: "Senha123" } });
-  fireEvent.change(screen.getByLabelText(/Confirmar senha/i), { target: { value: "Senha123" } });
+  fireEvent.change(screen.getByLabelText(/^Senha/i), { target: { value: "Senha123abcd" } });
+  fireEvent.change(screen.getByLabelText(/Confirmar senha/i), { target: { value: "Senha123abcd" } });
 }
 
 function selecionarOpcao(campo: RegExp, opcao: RegExp) {
@@ -58,7 +58,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
     planosHandler();
     const treinador: TreinadorResponse = {
       treinadorId: "t-1", nome: "Maria", contaId: "c-1", status: "AguardandoAprovacao",
-      planoPlataformaId: "plano-free", createdAt: new Date().toISOString(),
+      planoPlataformaId: "plano-free", planoCortesiaId: null, createdAt: new Date().toISOString(),
     };
     server.use(http.post("*/auth/register/treinador", () => HttpResponse.json(treinador, { status: 201 })));
 
@@ -78,7 +78,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
     planosHandler();
     const treinador: TreinadorResponse = {
       treinadorId: "t-9", nome: "Maria", contaId: "c-1", status: "AguardandoPagamento",
-      planoPlataformaId: "plano-basic", createdAt: new Date().toISOString(),
+      planoPlataformaId: "plano-basic", planoCortesiaId: null, createdAt: new Date().toISOString(),
     };
     server.use(
       http.post("*/auth/register/treinador", () => HttpResponse.json(treinador, { status: 201 })),
@@ -110,7 +110,7 @@ describe("CadastroTreinadorPage (wizard)", () => {
     planosHandler();
     const treinador: TreinadorResponse = {
       treinadorId: "t-9", nome: "Maria", contaId: "c-1", status: "AguardandoPagamento",
-      planoPlataformaId: "plano-basic", createdAt: new Date().toISOString(),
+      planoPlataformaId: "plano-basic", planoCortesiaId: null, createdAt: new Date().toISOString(),
     };
     server.use(http.post("*/auth/register/treinador", () => HttpResponse.json(treinador, { status: 201 })));
 

@@ -18,10 +18,12 @@ namespace forzion.tech.Application.UseCases.Pagamentos.ReconciliarPagamentosStri
 /// também foi pego pelo polling. Assinatura NÃO é validada: eventos vêm autenticados pela secret key.
 /// </para>
 /// <para>
-/// O cursor avança incrementalmente (<see cref="ReconciliacaoStripeEstado.AvancarCursor"/>,
-/// monotônico) conforme os eventos são processados, então um crash no meio do catch-up não
-/// re-varre o já-processado. Truncamento (cap de batch) sinaliza backlog restante sem perda:
-/// o cursor só passa do último evento processado.
+/// O cursor avança (<see cref="ReconciliacaoStripeEstado.AvancarCursor"/>, monotônico) só até o
+/// último evento processado com sucesso em cadeia contígua desde o início do lote (já ASC). Ao
+/// primeiro erro de reprocessamento, o cursor CONGELA nesse ponto pelo resto do run — eventos
+/// posteriores no mesmo lote que processem com sucesso NÃO avançam o cursor. Runs seguintes
+/// re-varrem a partir do ponto congelado; como eventos já aplicados retornam JaConsistente
+/// (idempotente), o re-scan é seguro.
 /// </para>
 /// </summary>
 public class ReconciliarPagamentosStripeHandler(
@@ -65,6 +67,8 @@ public class ReconciliarPagamentosStripeHandler(
         var jaConsistentes = 0;
         var erros = 0;
         var desdeUltimaPersistencia = 0;
+        DateTime? ultimoSucessoContiguoCreated = null;
+        var cadeiaContiguaIntacta = true;
 
         async Task PersistirCursorAsync(DateTime ate)
         {
@@ -94,6 +98,9 @@ public class ReconciliarPagamentosStripeHandler(
                 {
                     jaConsistentes++;
                 }
+
+                if (cadeiaContiguaIntacta)
+                    ultimoSucessoContiguoCreated = evt.Created;
             }
             catch (OperationCanceledException)
             {
@@ -104,18 +111,23 @@ public class ReconciliarPagamentosStripeHandler(
 #pragma warning restore CA1031
             {
                 erros++;
+                // Congela o avanço do cursor a partir daqui: eventos posteriores no lote não
+                // são "contíguos" a partir do início do run, então não podem avançar o cursor
+                // sem arriscar pular o evento que falhou (sem dead-letter, ele nunca mais seria varrido).
+                cadeiaContiguaIntacta = false;
                 logger.LogError(ex, "Falha ao reprocessar evento Stripe {EventId} ({EventType}).", evt.EventId, evt.Type);
             }
 
             if (++desdeUltimaPersistencia >= LotePersistenciaCursor)
             {
-                await PersistirCursorAsync(evt.Created).ConfigureAwait(false);
+                if (ultimoSucessoContiguoCreated is { } ultimoParcial)
+                    await PersistirCursorAsync(ultimoParcial).ConfigureAwait(false);
                 desdeUltimaPersistencia = 0;
             }
         }
 
-        if (lote.Eventos.Count > 0)
-            await PersistirCursorAsync(lote.Eventos[^1].Created).ConfigureAwait(false);
+        if (ultimoSucessoContiguoCreated is { } ultimoSucesso)
+            await PersistirCursorAsync(ultimoSucesso).ConfigureAwait(false);
 
         var onboardingConfirmados = await ReconciliarOnboardingConnectAsync(cancellationToken).ConfigureAwait(false);
 

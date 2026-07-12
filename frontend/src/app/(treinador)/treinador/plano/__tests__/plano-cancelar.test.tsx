@@ -20,6 +20,10 @@ vi.mock("@/lib/api/conta", () => ({
   contaApi: { exportarDados: vi.fn() },
 }));
 
+vi.mock("@/lib/api/treinador", () => ({
+  treinadorApi: { getDashboard: vi.fn() },
+}));
+
 const logoutMock = vi.fn();
 vi.mock("@/lib/auth/context", () => ({
   useAuth: () => ({ logout: logoutMock }),
@@ -27,10 +31,12 @@ vi.mock("@/lib/auth/context", () => ({
 
 import { pagamentoApi } from "@/lib/api/pagamento";
 import { contaApi } from "@/lib/api/conta";
+import { treinadorApi } from "@/lib/api/treinador";
 import PlanoTreinadorPage from "../page";
 
 const api = vi.mocked(pagamentoApi);
 const conta = vi.mocked(contaApi);
+const dashApi = vi.mocked(treinadorApi);
 
 const assinaturaAtiva = {
   assinaturaTreinadorId: "as-1",
@@ -49,6 +55,28 @@ const planos = [
 function mockOk() {
   api.obterAssinaturaTreinador.mockResolvedValue({ data: assinaturaAtiva } as never);
   api.listarPlanosPlataforma.mockResolvedValue({ data: planos } as never);
+  dashApi.getDashboard.mockResolvedValue({
+    data: {
+      counts: { ativos: 0, aguardando: 0, inativos: 0 },
+      mrr: 0,
+      receitaPorPacote: [],
+      totalFichas: 0,
+      objetivos: [],
+      pendentes: [],
+      onboarding: { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
+      plano: {
+        status: "Ativa",
+        tierEfetivo: "Pro",
+        planoContratadoId: "plano-pro",
+        alunosAtivos: 0,
+        capEfetivo: 50,
+        excedente: 0,
+        gracaAte: null,
+        temCortesia: false,
+      },
+      dadosFiscaisPendentes: false,
+    },
+  } as never);
 }
 
 beforeEach(() => {

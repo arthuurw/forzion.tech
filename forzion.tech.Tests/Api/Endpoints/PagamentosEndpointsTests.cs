@@ -317,7 +317,7 @@ public class PagamentosEndpointsTests
     {
         private static readonly CriarPagamentoComIntentService CriarServiceStub = new(
             Mock.Of<IUnitOfWork>(), Mock.Of<IDbContextTransactionProvider>(),
-            Mock.Of<IDatabaseErrorInspector>(), TimeProvider.System,
+            Mock.Of<IDatabaseErrorInspector>(), Mock.Of<IStripeService>(), TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
         public Mock<ObterStatusPagamentoHandler> ObterStatusMock { get; } = new(
@@ -398,6 +398,7 @@ public class PagamentosEndpointsTests
                     Mock.Of<IContaRecebimentoRepository>(),
                     Mock.Of<IStripeService>(),
                     null!,
+                    Mock.Of<IUnitOfWork>(),
                     Options.Create(new PaymentSettings()),
                     TimeProvider.System,
                     Mock.Of<ILogger<GerarCobrancaMensalHandler>>()).Object);

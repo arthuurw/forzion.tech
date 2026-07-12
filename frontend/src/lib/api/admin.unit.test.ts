@@ -47,9 +47,14 @@ describe("adminApi — treinadores", () => {
     expect(mock.delete).toHaveBeenCalledWith("/admin/treinadores/t1");
   });
 
-  it("atribuirPlano PATCH", () => {
-    adminApi.atribuirPlano("t1", "pl1");
+  it("definirCortesia PATCH com plano", () => {
+    adminApi.definirCortesia("t1", "pl1");
     expect(mock.patch).toHaveBeenCalledWith("/admin/treinadores/t1/plano", { planoId: "pl1" });
+  });
+
+  it("definirCortesia PATCH com null remove a cortesia", () => {
+    adminApi.definirCortesia("t1", null);
+    expect(mock.patch).toHaveBeenCalledWith("/admin/treinadores/t1/plano", { planoId: null });
   });
 });
 

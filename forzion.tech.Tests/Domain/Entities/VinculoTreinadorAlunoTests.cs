@@ -113,4 +113,36 @@ public class VinculoTreinadorAlunoTests
         v.Inativar(TestData.Agora);
         v.Status.Should().Be(VinculoStatus.Inativo);
     }
+
+    // --- DefinirPreservacao ---
+
+    [Fact]
+    public void Criar_Default_PreservarNoLimiteFalso()
+    {
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora).Value;
+        v.PreservarNoLimite.Should().BeFalse();
+    }
+
+    [Fact]
+    public void DefinirPreservacao_True_AtivaFlag()
+    {
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora).Value;
+
+        var r = v.DefinirPreservacao(true, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        v.PreservarNoLimite.Should().BeTrue();
+    }
+
+    [Fact]
+    public void DefinirPreservacao_False_DesativaFlag()
+    {
+        var v = VinculoTreinadorAluno.Criar(TreinadorId, AlunoId, TestData.Agora).Value;
+        v.DefinirPreservacao(true, TestData.Agora);
+
+        var r = v.DefinirPreservacao(false, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        v.PreservarNoLimite.Should().BeFalse();
+    }
 }

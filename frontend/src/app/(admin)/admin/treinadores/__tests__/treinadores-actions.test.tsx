@@ -21,6 +21,7 @@ function treinador(over: Partial<TreinadorResponse>): TreinadorResponse {
     status: "AguardandoAprovacao",
     createdAt: "2026-01-01T00:00:00Z",
     planoPlataformaId: null,
+    planoCortesiaId: null,
     ...over,
   } as TreinadorResponse;
 }
@@ -138,7 +139,7 @@ describe("/admin/treinadores — ações", () => {
     expect(await screen.findByText(/erro ao aprovar treinador/i)).toBeInTheDocument();
   });
 
-  it("atribuir plano: abre dialog, seleciona e confirma", async () => {
+  it("conceder cortesia: abre dialog, seleciona e confirma", async () => {
     let body: unknown = null;
     server.use(
       http.patch("*/admin/treinadores/t-ativo/plano", async ({ request }) => {
@@ -149,17 +150,44 @@ describe("/admin/treinadores — ações", () => {
     renderWithProviders(<TreinadoresAdminPage />);
     await waitList();
 
-    const planoButtons = screen.getAllByLabelText("Atribuir plano");
+    const planoButtons = screen.getAllByLabelText("Conceder cortesia");
     fireEvent.click(planoButtons[1]);
     const dialog = await screen.findByRole("dialog");
 
-    const input = within(dialog).getByLabelText(/novo plano/i);
+    const input = within(dialog).getByLabelText(/novo plano de cortesia/i);
     fireEvent.mouseDown(input);
     fireEvent.change(input, { target: { value: "Basic" } });
     fireEvent.click(await screen.findByText(/Basic \(até 10 alunos\)/i));
 
     fireEvent.click(within(dialog).getByRole("button", { name: /confirmar/i }));
     await waitFor(() => expect(body).toEqual({ planoId: "pl1" }));
+  });
+
+  it("remover cortesia: exibe ação quando há cortesia ativa e envia planoId null", async () => {
+    let body: unknown = null;
+    server.use(
+      http.get("*/admin/treinadores", () =>
+        HttpResponse.json({
+          items: LISTA.map((t) => (t.treinadorId === "t-ativo" ? { ...t, planoCortesiaId: "pl1" } : t)),
+          total: LISTA.length,
+          pagina: 1,
+          tamanhoPagina: 10,
+        }),
+      ),
+      http.patch("*/admin/treinadores/t-ativo/plano", async ({ request }) => {
+        body = await request.json();
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderWithProviders(<TreinadoresAdminPage />);
+    await waitList();
+
+    const planoButtons = screen.getAllByLabelText("Conceder cortesia");
+    fireEvent.click(planoButtons[1]);
+    const dialog = await screen.findByRole("dialog");
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /remover cortesia/i }));
+    await waitFor(() => expect(body).toEqual({ planoId: null }));
   });
 
   it("filtro de status dispara nova busca", async () => {
@@ -206,7 +234,7 @@ describe("/admin/treinadores — ações", () => {
       window.matchMedia = original;
     });
 
-    it("abre kebab do treinador Aguardando e expõe Aprovar/Reprovar/Atribuir plano/Ver detalhe", async () => {
+    it("abre kebab do treinador Aguardando e expõe Aprovar/Reprovar/Conceder cortesia/Ver detalhe", async () => {
       renderWithProviders(<TreinadoresAdminPage />);
       await waitList();
 
@@ -214,7 +242,7 @@ describe("/admin/treinadores — ações", () => {
       const menu = await screen.findByRole("menu");
       expect(within(menu).getByText("Aprovar")).toBeInTheDocument();
       expect(within(menu).getByText("Reprovar")).toBeInTheDocument();
-      expect(within(menu).getByText("Atribuir plano")).toBeInTheDocument();
+      expect(within(menu).getByText("Conceder cortesia")).toBeInTheDocument();
       expect(within(menu).getByText("Ver detalhe")).toBeInTheDocument();
     });
 

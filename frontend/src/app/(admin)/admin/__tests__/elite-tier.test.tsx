@@ -98,6 +98,7 @@ describe("TreinadoresAdminPage — Elite excluído do autocomplete de plano", ()
     contaId: "c-1",
     status: "Ativo",
     planoPlataformaId: null,
+    planoCortesiaId: null,
     createdAt: "2025-01-01T00:00:00Z",
   };
 
@@ -121,7 +122,7 @@ describe("TreinadoresAdminPage — Elite excluído do autocomplete de plano", ()
     });
   });
 
-  it("dialog de atribuição de plano não exibe plano Elite como opção", async () => {
+  it("dialog de cortesia não exibe plano Elite como opção", async () => {
     const { default: Page } = await import("@/app/(admin)/admin/treinadores/page");
     renderWithProviders(<Page />, { skipAuth: true });
 
@@ -129,7 +130,7 @@ describe("TreinadoresAdminPage — Elite excluído do autocomplete de plano", ()
       expect(screen.getByText("Treinador Teste")).toBeInTheDocument();
     });
 
-    const membershipBtn = screen.getByRole("button", { name: "Atribuir plano" });
+    const membershipBtn = screen.getByRole("button", { name: "Conceder cortesia" });
     expect(membershipBtn).toBeInTheDocument();
     fireEvent.click(membershipBtn);
 

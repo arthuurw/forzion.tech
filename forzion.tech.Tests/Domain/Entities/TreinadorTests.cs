@@ -358,4 +358,137 @@ public class TreinadorTests
         r.IsSuccess.Should().BeTrue();
         t.ModoPagamentoAluno.Should().Be(ModoPagamentoAluno.Plataforma);
     }
+
+    // --- DefinirCortesia ---
+
+    [Fact]
+    public void DefinirCortesia_PlanoValido_AtribuiId()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        var planoId = Guid.NewGuid();
+
+        var r = t.DefinirCortesia(planoId, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        t.PlanoCortesiaId.Should().Be(planoId);
+        t.UpdatedAt.Should().Be(TestData.Agora);
+    }
+
+    [Fact]
+    public void DefinirCortesia_Null_RemoveCortesia()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.DefinirCortesia(Guid.NewGuid(), TestData.Agora);
+
+        var r = t.DefinirCortesia(null, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        t.PlanoCortesiaId.Should().BeNull();
+    }
+
+    [Fact]
+    public void DefinirCortesia_IdVazio_Falha()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        var r = t.DefinirCortesia(Guid.Empty, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O identificador do plano de cortesia é inválido.");
+    }
+
+    [Fact]
+    public void DefinirCortesia_TreinadorInativo_Falha()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.Aprovar(Guid.NewGuid(), TestData.Agora);
+        t.Inativar(TestData.Agora);
+
+        var r = t.DefinirCortesia(Guid.NewGuid(), TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("Não é possível atribuir plano a um treinador inativo.");
+        t.PlanoCortesiaId.Should().BeNull();
+    }
+
+    [Fact]
+    public void DefinirCortesia_PrecoNovoPlanoAbaixoDoPlanoAtivo_Falha()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        var r = t.DefinirCortesia(Guid.NewGuid(), TestData.Agora, precoNovoPlano: 49m, precoPlanoAtivo: 99m);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Message.Should().Be("O preço da cortesia não pode ser menor que o valor pago pela assinatura ativa do treinador.");
+        t.PlanoCortesiaId.Should().BeNull();
+    }
+
+    [Fact]
+    public void DefinirCortesia_PrecoNovoPlanoIgualAoPlanoAtivo_Aceita()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        var planoId = Guid.NewGuid();
+
+        var r = t.DefinirCortesia(planoId, TestData.Agora, precoNovoPlano: 99m, precoPlanoAtivo: 99m);
+
+        r.IsSuccess.Should().BeTrue();
+        t.PlanoCortesiaId.Should().Be(planoId);
+    }
+
+    [Fact]
+    public void DefinirCortesia_SemPrecosInformados_NaoValidaInvariante()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        var planoId = Guid.NewGuid();
+
+        var r = t.DefinirCortesia(planoId, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        t.PlanoCortesiaId.Should().Be(planoId);
+    }
+
+    // --- MarcarAcimaDoCap / LimparAcimaDoCap ---
+
+    [Fact]
+    public void MarcarAcimaDoCap_SemCarimbo_RegistraData()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        t.MarcarAcimaDoCap(TestData.Agora);
+
+        t.AlunosAcimaDoCapDesde.Should().Be(TestData.Agora);
+    }
+
+    [Fact]
+    public void MarcarAcimaDoCap_ChamadoDuasVezes_MantemPrimeiraData()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.MarcarAcimaDoCap(TestData.Agora);
+
+        t.MarcarAcimaDoCap(TestData.Agora.AddDays(5));
+
+        t.AlunosAcimaDoCapDesde.Should().Be(TestData.Agora);
+    }
+
+    [Fact]
+    public void LimparAcimaDoCap_ComCarimbo_LimpaData()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.MarcarAcimaDoCap(TestData.Agora);
+
+        t.LimparAcimaDoCap(TestData.Agora.AddDays(1));
+
+        t.AlunosAcimaDoCapDesde.Should().BeNull();
+    }
+
+    [Fact]
+    public void LimparAcimaDoCap_JaNull_NaoAlteraUpdatedAt()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        t.LimparAcimaDoCap(TestData.Agora.AddDays(1));
+
+        t.AlunosAcimaDoCapDesde.Should().BeNull();
+        t.UpdatedAt.Should().BeNull();
+    }
 }

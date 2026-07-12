@@ -39,7 +39,16 @@ const dashboard: TreinadorDashboardResponse = {
   objetivos: [{ objetivo: "Hipertrofia", total: 3 }],
   pendentes: [],
   onboarding: { onboardingCompleto: true, contaConfigurada: true, modoPagamentoAluno: "Plataforma", modoPagamentoPodeAlterarEm: null },
-  plano: { status: "Ativa" },
+  plano: {
+    status: "Ativa",
+    tierEfetivo: "Pro",
+    planoContratadoId: null,
+    alunosAtivos: 5,
+    capEfetivo: 30,
+    excedente: 0,
+    gracaAte: null,
+    temCortesia: false,
+  },
   dadosFiscaisPendentes: false,
 };
 

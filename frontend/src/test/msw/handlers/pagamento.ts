@@ -18,4 +18,5 @@ export const pagamentoHandlers: HttpHandler[] = [
     HttpResponse.json({ assinaturasAtivasAlunos: 0, vinculosCobravelSemAssinatura: 0 })),
   http.get("*/treinador/pagamentos/recebimentos", () =>
     HttpResponse.json({ itens: [], proximoCursor: null, taxaPlataformaPercent: 5 })),
+  http.get("*/auth/planos", () => HttpResponse.json([])),
 ];

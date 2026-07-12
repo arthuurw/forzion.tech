@@ -30,7 +30,7 @@ using forzion.tech.Application.UseCases.Planos.ExcluirPlanoPlataforma;
 using forzion.tech.Application.UseCases.Planos.ListarPlanosPlataforma;
 using forzion.tech.Application.UseCases.Treinadores;
 using forzion.tech.Application.UseCases.Treinadores.AprovarTreinador;
-using forzion.tech.Application.UseCases.Treinadores.AtribuirPlano;
+using forzion.tech.Application.UseCases.Treinadores.DefinirCortesia;
 using forzion.tech.Application.UseCases.Treinadores.ExcluirTreinador;
 using forzion.tech.Application.UseCases.Treinadores.InativarTreinador;
 using forzion.tech.Application.UseCases.Treinadores.ListarTreinadores;
@@ -40,7 +40,6 @@ using forzion.tech.Application.UseCases.Treinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinos;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.ObterTreino;
-using forzion.tech.Application.UseCases.Admin.NotasFiscais;
 using forzion.tech.Application.UseCases.Conta.Lgpd;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ObterVinculoAluno;
@@ -186,20 +185,21 @@ public static class AdminEndpoints
 
         group.MapPatch("/treinadores/{id:guid}/plano", async (
             Guid id,
-            [FromBody] AtribuirPlanoRequest request,
-            [FromServices] AtribuirPlanoHandler handler,
+            [FromBody] DefinirCortesiaRequest request,
+            [FromServices] DefinirCortesiaHandler handler,
             [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtribuirPlanoCommand(id, request.PlanoId, userContext.ContaId), cancellationToken);
+                new DefinirCortesiaCommand(id, request.PlanoId, userContext.ContaId), cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
             return Results.Ok(result.Value);
         })
-        .WithSummary("Atribui um PlanoPlataforma a um treinador")
+        .WithSummary("Define (ou remove, com planoId=null) a cortesia de plano de um treinador")
         .Produces<TreinadorResponse>()
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapGet("/planos", async (
             [FromServices] ListarPlanosPlataformaHandler handler,
@@ -606,39 +606,6 @@ public static class AdminEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
 
-        group.MapGet("/notas-fiscais", async (
-            [FromServices] ListarNotasFiscaisAdminHandler handler,
-            HttpContext httpContext,
-            CancellationToken cancellationToken) =>
-        {
-            var statusString = httpContext.Request.Query["status"].ToString();
-            NotaFiscalStatus status = default;
-            var statusParsed = !string.IsNullOrEmpty(statusString) && Enum.TryParse(statusString, ignoreCase: true, out status);
-            var treinadorId = Guid.TryParse(httpContext.Request.Query["treinadorId"], out var tid) ? tid : (Guid?)null;
-            var aposId = Guid.TryParse(httpContext.Request.Query["aposId"], out var apos) ? apos : (Guid?)null;
-            _ = int.TryParse(httpContext.Request.Query["limite"], out var limite);
-
-            var result = await handler.HandleAsync(
-                statusParsed ? status : null, treinadorId, aposId, limite, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(result);
-        })
-        .WithSummary("Lista notas fiscais do sistema com filtros (status, treinador) e paginação keyset")
-        .Produces<ListarNotasFiscaisAdminResponse>();
-
-        group.MapPost("/notas-fiscais/{id:guid}/reprocessar", async (
-            Guid id,
-            [FromServices] ReprocessarNotaFiscalHandler handler,
-            CancellationToken cancellationToken) =>
-        {
-            var result = await handler.HandleAsync(id, cancellationToken).ConfigureAwait(false);
-            if (result.IsFailure) return result.ToProblemResult();
-            return Results.NoContent();
-        })
-        .WithSummary("Reenfileira a emissão de uma nota fiscal em erro")
-        .Produces(StatusCodes.Status204NoContent)
-        .ProducesProblem(StatusCodes.Status404NotFound)
-        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
-
         return endpoints;
     }
 }
@@ -646,7 +613,7 @@ public static class AdminEndpoints
 public record AprovarTreinadorRequest(string? Observacao = null);
 public record ReprovarTreinadorRequest(string? Observacao = null);
 public record InativarTreinadorRequest(string? Observacao = null);
-public record AtribuirPlanoRequest(Guid PlanoId);
+public record DefinirCortesiaRequest(Guid? PlanoId);
 public record CriarPlanoPlataformaRequest(string Nome, forzion.tech.Domain.Enums.TierPlano Tier, int MaxAlunos, decimal Preco, string? Descricao = null);
 public record AtualizarPlanoPlataformaRequest(string? Nome, forzion.tech.Domain.Enums.TierPlano? Tier, int? MaxAlunos, decimal? Preco, string? Descricao = null);
 public record CriarGrupoMuscularRequest(string Nome);

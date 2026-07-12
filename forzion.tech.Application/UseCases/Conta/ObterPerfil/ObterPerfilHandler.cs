@@ -4,7 +4,7 @@ using forzion.tech.Domain.Exceptions;
 
 namespace forzion.tech.Application.UseCases.Conta.ObterPerfil;
 
-public record PerfilResponse(string Nome, string Email, string TipoConta);
+public record PerfilResponse(string Nome, string Email, string TipoConta, bool EmailEngajamentoOptOut);
 
 public class ObterPerfilHandler(
     IUserContext userContext,
@@ -26,6 +26,6 @@ public class ObterPerfilHandler(
             _ => null
         } ?? throw new EstadoInconsistenteException("Perfil autenticado não encontrado.");
 
-        return new PerfilResponse(nome, conta.Email.Value, conta.TipoConta.ToString());
+        return new PerfilResponse(nome, conta.Email.Value, conta.TipoConta.ToString(), conta.NotificacoesEngajamentoEmailOptOut);
     }
 }

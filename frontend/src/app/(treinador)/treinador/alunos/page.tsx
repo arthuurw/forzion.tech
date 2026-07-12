@@ -16,11 +16,13 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AlertBanner from "@/components/ui/AlertBanner";
 import PageHeader from "@/components/ui/PageHeader";
 import DataList from "@/components/ui/DataList";
+import GracaLimiteBanner from "@/components/treinador/GracaLimiteBanner";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { treinadorApi } from "@/lib/api/treinador";
 import { extractApiError } from "@/lib/api/extractApiError";
 import type { VinculoDetalheResponse, VinculoStatus, PacoteResponse } from "@/types";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
+import { useTreinadorDashboard } from "@/lib/hooks/useTreinadorDashboard";
 
 const COLUMNS: Column[] = [
   { label: "Aluno" },
@@ -46,6 +48,13 @@ export default function AlunosTreinadorPage() {
   const [reativarDialog, setReativarDialog] = useState<VinculoDetalheResponse | null>(null);
   const [selectedPacoteReativar, setSelectedPacoteReativar] = useState<PacoteResponse | null>(null);
   const [loadingReativar, setLoadingReativar] = useState(false);
+
+  const [preservarOverrides, setPreservarOverrides] = useState<Record<string, boolean>>({});
+  const [preservarLoading, setPreservarLoading] = useState<string | null>(null);
+
+  const { data: dashboard, isError: dashboardIsError } = useTreinadorDashboard();
+  const gracaAte = dashboard?.plano.gracaAte ?? null;
+  const excedente = dashboard?.plano.excedente ?? 0;
 
   const fetcher = useCallback(
     (p: number, ps: number) =>
@@ -125,9 +134,32 @@ export default function AlunosTreinadorPage() {
     }
   };
 
+  const isPreservado = (v: VinculoDetalheResponse) =>
+    preservarOverrides[v.vinculoId] ?? v.preservarNoLimite;
+
+  const handleTogglePreservar = async (v: VinculoDetalheResponse) => {
+    const novoValor = !isPreservado(v);
+    setPreservarLoading(v.vinculoId);
+    try {
+      await treinadorApi.definirPreservacaoVinculo(v.vinculoId, novoValor);
+      setPreservarOverrides((prev) => ({ ...prev, [v.vinculoId]: novoValor }));
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao atualizar preservação do vínculo."));
+    } finally {
+      setPreservarLoading(null);
+    }
+  };
+
   return (
     <Box>
       <PageHeader title="Alunos" />
+
+      <AlertBanner
+        open={dashboardIsError}
+        severity="warning"
+        message="Não foi possível carregar o status de limite de alunos do seu plano."
+      />
+      <GracaLimiteBanner gracaAte={gracaAte} excedente={excedente} />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
@@ -187,6 +219,21 @@ export default function AlunosTreinadorPage() {
               )}
               {v.status === "Ativo" && (
                 <>
+                  <Tooltip title="Manter este aluno caso o limite do plano seja excedido">
+                    <FormControlLabel
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{ mr: 0.5 }}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={isPreservado(v)}
+                          disabled={preservarLoading === v.vinculoId}
+                          onChange={() => handleTogglePreservar(v)}
+                        />
+                      }
+                      label={<Typography variant="caption">Manter</Typography>}
+                    />
+                  </Tooltip>
                   <Tooltip title="Ver detalhes">
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); router.push(`/treinador/alunos/${v.alunoId}`); }}>
                       <OpenInNewIcon fontSize="small" />

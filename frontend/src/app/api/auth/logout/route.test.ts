@@ -18,6 +18,13 @@ function setupCookies(values: Record<string, string>) {
   } as unknown as ReturnType<typeof cookies> extends Promise<infer T> ? T : never);
 }
 
+function req(origin: string | undefined, host: string | null = "localhost:3000") {
+  const headers = new Headers();
+  if (origin !== undefined) headers.set("origin", origin);
+  if (host !== null) headers.set("host", host);
+  return { headers } as unknown as Parameters<typeof POST>[0];
+}
+
 describe("POST /api/auth/logout", () => {
   it("com token → chama backend /conta/logout e limpa cookies", async () => {
     setupCookies({ token: "valid-token", session_guard: "1" });
@@ -32,7 +39,7 @@ describe("POST /api/auth/logout", () => {
       }),
     );
 
-    const res = await POST();
+    const res = await POST(req("http://localhost:3000"));
     const body = await res.json();
 
     expect(backendCalled).toBe(true);
@@ -56,7 +63,7 @@ describe("POST /api/auth/logout", () => {
       }),
     );
 
-    const res = await POST();
+    const res = await POST(req(undefined));
     const body = await res.json();
 
     expect(backendCalled).toBe(false);
@@ -72,11 +79,31 @@ describe("POST /api/auth/logout", () => {
 
     server.use(http.post("*/conta/logout", () => HttpResponse.error()));
 
-    const res = await POST();
+    const res = await POST(req("http://localhost:3000"));
     expect(res.status).toBe(200);
 
     const setCookie = res.headers.get("set-cookie") ?? "";
     for (const name of ["token", "refresh", "session_guard", "tipo_conta"])
       expect(setCookie).toContain(`${name}=;`);
+  });
+
+  it("cross-origin → 403, sem limpar cookies, backend nao chamado", async () => {
+    setupCookies({ token: "valid-token", session_guard: "1" });
+    let backendCalled = false;
+
+    server.use(
+      http.post("*/conta/logout", () => {
+        backendCalled = true;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    const res = await POST(req("http://evil.com"));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body).toEqual({ error: "cross-origin" });
+    expect(backendCalled).toBe(false);
+    expect(res.headers.get("set-cookie")).toBeNull();
   });
 });

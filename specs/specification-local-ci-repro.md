@@ -13,7 +13,7 @@ Atualizar quando: mudar matriz de versões CI (node/dotnet), surgir novo gate/wo
 | OS | Linux | Windows + Docker Desktop | CRLF, MSYS path-mangling, fsync de volume glacial. |
 
 ## 1. REPRODUÇÃO POR GATE (comando local · rodável? · caveat)
-Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8. Workflows extra em PR homolog: `semgrep`, `openapi-drift`, `hygiene`, `contract`.
+Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8. Gates PR bloqueantes adicionais no `ci.yml`: `lint-migrations`, `zap-baseline` (DAST passivo efêmero). Workflows extra em PR: `semgrep`, `openapi-drift`, `hygiene`, `contract`.
 
 | Gate/check | Comando local | Rodável Win? | Caveat |
 |---|---|---|---|
@@ -34,6 +34,8 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 | contract (Pact consumer) | `npm run test:contract` | ✅ | gera contratos local; publicar no broker precisa secrets. |
 | **E2E Playwright (a11y/color-contrast hard-gate)** | ver §4 | ⚠️ parcial | precisa app no ar + browsers + creds. Público+admin OK local; aluno/treinador bloqueados (§4). |
 | sweep test-data (step do `smoke.yml`, NÃO-gate) | `E2E_BASE_URL=… E2E_ADMIN_EMAIL=… E2E_ADMIN_PASSWORD=… npm run e2e:sweep` | ✅ | non-gate. Precisa base com endpoint test-data (non-prod, [specification-security] §2.2) + creds admin. Fail-loud (exit 1) em env ausente OU DELETE !ok. Whitelist: `E2E_{ALUNO,TREINADOR,RESET}_EMAIL` (opcionais). NÃO apontar p/ base de produção (rota ausente lá → 404). |
+| **dry-run schema do migrate** (Gate A, deploy-time — NÃO é gate de PR) | `bash scripts/test/dryrun-schema-check.sh` | ✅ (Docker) | prova que `migrate-dryrun.sh`/`docker-compose.dryrun.yml` migram no schema EFETIVAMENTE clonado (public/homolog), não num schema novo/vazio à parte (EF/Npgsql auto-cria o schema do `MigrationsHistoryTable` — um `Search Path` divergente do clonado não abortava, silenciosamente reseedava vazio). Sobe source+dryrun-db efêmeros, bootstrap com dado real, delta contra o compose pré-fix. [specification-infrastructure] §ISOLAMENTO-PRD-HMG DÍVIDA-2. |
+| **gate `nginx -t` + edge-probe** (deploy-time na VM — NÃO roda no CI: `nginx.conf` referencia cert/upstream ausentes no runner) | `bash scripts/test/nginx-gate-check.sh` | ✅ (Docker) | prova as 2 defesas do deploy (`ci.yml`/`deploy-prod.yml`, no `scripts/reload-edge.sh`): `nginx -t` (container efêmero) reprova config quebrada (sintaxe) ANTES de tocar na borda; edge-probe (via porta publicada, Host explícito) reprova routing quebrado (`proxy_pass` errado) que passa no `nginx -t` — defesas complementares, não redundantes (E5). |
 
 ## 2. GOTCHAS DE AMBIENTE (Windows/Docker/git-bash)
 - **CRLF / SonarAnalyzer warnings**: ver [specification-git] §EDGE CASES e §PRE-COMMIT HOOK — documentação completa está lá (ENDOFLINE, S3267, sequência fix).
@@ -58,12 +60,12 @@ Lista de jobs do `gate` + thresholds: CANÔNICO em [specification-tests] §7/§8
 
 ## 3. COVERAGE BACKEND — números reais medidos (unit, `Category!=Integration`)
 Medido 2026-06-06 (pós-billing treinador + raise de cobertura; SDK 8/10 idênticos → não é artefato de SDK). Contagem unit: ver [specification-tests] §4 (canônico; re-detectar via `dotnet test`). Gates (pisos) por módulo: CANÔNICO em [specification-tests] §8 — aqui só os reais:
-| Módulo | Line | Branch | Method | Status vs gate (b75/l85/m85; Api l85/m70) |
+| Módulo | Line | Branch | Method | Status vs gate (pisos canônicos em [specification-tests] §8) |
 |---|---|---|---|---|
 | Domain | 95.22% | 92.67% | 94.85% | ✅ |
 | Application | 94.82% | 84.55% | 96.14% | ✅ |
 | Api | 86.36% | 56.72% | 77.34% | ✅ (line 86.36 ≥ 85 — margem fina; endpoints billing baixaram de 87.74) |
-| Infrastructure | 6.2% | 67.15% | 34.87% | n/a unit (branch 35 só na suíte de integração) |
+| Infrastructure | 6.2% | 67.15% | 34.87% | n/a unit (gate Infra só avalia na suíte de integração — pisos em [specification-tests] §8) |
 - **Gate Application usa `ThresholdType="line,method"` → exige AMBOS line E method ≥85**: passar line mas method <85 REPROVA (já ocorreu — handlers novos sem cobertura de método). Baseline conservador no `ci.yml` fica abaixo do real; piso canônico em [specification-tests] §8.
 - Reproduzir 1 gate: `dotnet test forzion.tech.Tests --no-build -c Release --filter "Category!=Integration" -p:CollectCoverage=true -p:Include="[forzion.tech.Application]*" -p:Threshold=85 -p:ThresholdType="line,method" -p:ThresholdStat=Total` (rebuild antes; não encadear vários).
 

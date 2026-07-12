@@ -190,7 +190,7 @@ public class JwtValidationEndpointTests : IClassFixture<JwtValidationEndpointTes
                 services.RemoveAll<ObterPerfilHandler>();
                 ObterPerfilHandlerMock
                     .Setup(h => h.HandleAsync(It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new PerfilResponse("Carlos", "carlos@test.com", "Treinador"));
+                    .ReturnsAsync(new PerfilResponse("Carlos", "carlos@test.com", "Treinador", false));
                 services.AddScoped(_ => ObterPerfilHandlerMock.Object);
 
                 // OnTokenValidated checa revogação via ITokenRevogadoRepository;

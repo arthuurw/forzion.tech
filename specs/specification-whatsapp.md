@@ -39,7 +39,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 ## COMPONENTES
 - `MetaWhatsAppCloudNotifier` / `NullWhatsAppNotifier` / `EnvironmentWhatsAppDecorator`.
 - `PhoneNumberNormalizer` (static) — E.164 dígitos sem `+`, DDI BR `55` default; null/inválido → null.
-- `WhatsAppTemplates` (static, catálogo central — análogo a `EmailTemplates`) — 16 factories → `WhatsAppTemplateMessage`. Money pt-BR. **Templates NÃO mais hardcoded nos handlers.**
+- `WhatsAppTemplates` (static, catálogo central — análogo a `EmailTemplates`) — 17 factories → `WhatsAppTemplateMessage`. Money pt-BR. **Templates NÃO mais hardcoded nos handlers.**
 - Handlers de domain event (Infrastructure/Notifications/WhatsApp) — ver FLUXOS. Padrão: `if(!whatsAppNotifier.Habilitado) return;` → resolve destinatário (repo) → check telefone null (skip) → `SendTemplateAsync(WhatsAppTemplates.X(...))`.
 - Webhook: `WhatsAppDeliveryLog` (Domain) + `IWhatsAppDeliveryLogRepository` + `ProcessarWebhookWhatsAppHandler` (Infrastructure).
 
@@ -58,6 +58,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 | `AssinaturaAlunoCriadaEvent` | `AssinaturaAlunoCriadaWhatsAppHandler` | `assinatura_criada` |
 | `AlunoInativadoEvent` | `AlunoInativadoWhatsAppHandler` | `aluno_inativado` |
 | `VinculoAprovadoEvent` | `VinculoAprovadoWhatsAppHandler` | `vinculo_aprovado` (era chamada direta em AprovarVinculoHandler) |
+| `TreinoDisponibilizadoEvent` | `TreinoDisponibilizadoWhatsAppHandler` | `novo_treino_disponivel` (engajamento — gate ≥ProPlus + opt-out) |
 
 ### Treinador
 | Evento | Handler | Template |
@@ -73,6 +74,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 - `VinculoPendenteCriadoEvent` tem TAMBÉM handler de e-mail p/ treinador (`VinculoPendenteCriadoEmailTreinadorHandler`) → fecha o gap reverso. Ver [specification-email].
 - Destinatário: `aluno.Telefone` / `treinador.Telefone`. **Sem fallback** (`contas` não tem telefone) → telefone null = skip silencioso.
 - **Gating por tier** (`IPlanoNotificationPolicy`): WhatsApp é PAGO (Meta cobra por template entregue) → **TODOS** os handlers de notificação checam `canais.WhatsApp` antes de enviar; só envia se treinador tem tier≥ProPlus. Inclui operacionais (pagamento criado/falhou/estornado/disputa, assinatura criada/cancelada×2, vínculo aprovado/pendente, inadimplência, aluno-inativado) **E** ciclo de vida do treinador (`TreinadorAprovadoWhatsAppHandler`/`Reprovado`/`Inativado`, gate por `ResolverPorTreinadorAsync(domainEvent.TreinadorId)` após o check de telefone) **E** bem-vindo do aluno (`AlunoRegistradoWhatsAppHandler`). Ordem do gate: `Habilitado → resolve destinatário → telefone null=skip → gate tier → SendTemplateAsync` (gate DEPOIS do telefone, não consulta plano sem destinatário). **NÃO há mais handler UNGATED no WhatsApp.** Cross-ref `TierPlanoExtensions` [specification-model], `IPlanoNotificationPolicy` [specification-backend].
+- **Engajamento (novo treino — feature notificacoes-engajamento-treino)**: `TreinoDisponibilizadoWhatsAppHandler` é o ÚNICO evento de engajamento que escala p/ WhatsApp (nudges de aderência ficam só in-app/e-mail, por custo/categoria). Gate: `Habilitado → resolve aluno → telefone null=skip → ResolverPorAlunoAsync (canal ≥ProPlus) → opt-out (conta.NotificacoesEngajamentoEmailOptOut) → SendTemplateAsync`. Diferente dos demais handlers WhatsApp, este consulta TAMBÉM a flag de opt-out de engajamento (mesma flag do e-mail — consistência; billing/transacional ignora). Template `novo_treino_disponivel` (Utility). Copy transacional ("seu treinador disponibilizou...") p/ manter categoria Utility — reclassificar p/ Marketing multiplicaria o custo. E-mail correlato (gate ≥Pro) em [specification-email] §Engajamento.
 - **Bem-vindo do aluno — resolução do tier via vínculo pendente**: `AlunoRegistradoEvent` é emitido em `Aluno.Criar` (antes do vínculo existir) e NÃO carrega `TreinadorId`. O handler roda no `CommitAsync`, quando o vínculo `AguardandoAprovacao` já foi persistido no mesmo UoW → resolve o treinador via `IVinculoTreinadorAlunoRepository.ObterPendentePorAlunoAsync(alunoId)` → `ResolverPorTreinadorAsync(vinculo.TreinadorId)`. Vínculo null (não esperado — aluno sempre nasce com vínculo) → skip defensivo + `LogDebug`. NÃO usa `ResolverPorAlunoAsync` (semântica compartilhada com aluno-inativado/inadimplente) nem estende o evento. **Assimetria intencional vs e-mail**: o e-mail correlato (ciclo de vida do treinador + bem-vindo) permanece UNGATED (grátis) → ver [specification-email] §Gating-por-tier. Aluno/treinador de tier baixo recebe o e-mail, não o WhatsApp (sem gap de comunicação).
 - **Gating por MODO DE PAGAMENTO (Externo)**: ortogonal ao gating por tier; idêntico ao e-mail. `ModoPagamentoAluno==Externo` ⇒ nenhuma `AssinaturaAluno`/`Pagamento` criada (gate no PONTO DE CRIAÇÃO) ⇒ eventos de billing nunca emitidos ⇒ notifiers WhatsApp de pagamento/assinatura estruturalmente não disparam. Não afeta bem-vindo/vínculo/ciclo de conta. Mecanismo canônico + lista de eventos + teste: [specification-email] §Gating-MODO (par WhatsApp).
 - **Verificação de conta adiada no cadastro PAGO**: o WhatsApp não tem fluxo de verificação de conta (verify é channel-bound a e-mail — ver § GAPS). Mas a regra correlata existe no e-mail: treinador plano pago só recebe a verificação após `payment_intent.succeeded`/`plano_treinador` (`ContaRegistradaEvent` adiado p/ `FinalizarCadastroAsync`). Detalhe em [specification-email] §Verificação; pagamento em [specification-stripe].
@@ -87,10 +89,12 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 - ⚠️ Meta Cloud API não tem sandbox de entrega real; alternativa = test number Meta (destinatários pré-cadastrados) no AccessToken de hmg.
 
 ## CUSTO & MODELO META (per-message)
-- Desde 01/07/2025: por mensagem, cobra quando *template* é entregue. Categorias marketing / utility / authentication / service. Utility grátis na janela 24h; service grátis.
-- Notifier usa `type:template` → entrega **fora da janela** (corrigido vs `type:text` anterior). ⚠️ **DEPENDÊNCIA EXTERNA**: cada template (16 nomes abaixo) precisa ser **criado e aprovado no Meta Business Manager** (ação manual de ops, não automatizável via código). Regra de aprovação/re-submissão única em §TEMPLATES.
-- Os 16 templates (nomes + copy + ordem de vars) no §TEMPLATES — COPY pt_BR.
-- Brasil base (USD/msg, valores ilustrativos ~2026): marketing $0.0625 · auth $0.0315 · utility menor + volume. Confirmar rate card atual no WhatsApp Manager.
+- **Template (proativo) × non-template (reativo/"service") são eixos de cobrança DISTINTOS.** Todos os notifiers deste repo usam `type:template` (business-initiated, fora de janela) → regem-se por **template pricing por categoria** (marketing / utility / authentication). NÃO mandamos non-template/service — logo a doc de *non-template messages* da Meta NÃO governa este código. (Fonte: developers.facebook.com/documentation/business-messaging/whatsapp/pricing — verificado 2026-07-04.)
+- **Janela de isenção Utility datada** (crítico p/ estimativa de custo): mensagens **Utility (template) NÃO são cobradas desde 01/07/2025**; a cobrança **volta em 01/10/2026**. Service (non-template) não cobrado desde 11/2024, também volta 01/10/2026. CSW 24h grátis p/ service/utility até essas datas. ⇒ **hoje o template de engajamento `novo_treino_disponivel` (Utility) é efetivamente ~R$0**; qualquer teto de custo só vale **a partir de 01/10/2026**.
+- **Teto de custo do engajamento (datado)**: alvo ≤~R$15/mês/100 alunos p/ `novo_treino_disponivel` é um **teto pós-01/10/2026** (quando Utility volta a cobrar); antes disso ~zero. Reclassificação p/ Marketing multiplicaria (~10×) e perde a isenção — por isso copy transacional (§FLUXOS engajamento).
+- Notifier usa `type:template` → entrega **fora da janela** (corrigido vs `type:text` anterior). ⚠️ **DEPENDÊNCIA EXTERNA**: cada template (17 nomes abaixo) precisa ser **criado e aprovado no Meta Business Manager** (ação manual de ops, não automatizável via código). Regra de aprovação/re-submissão única em §TEMPLATES.
+- Os 17 templates (nomes + copy + ordem de vars) no §TEMPLATES — COPY pt_BR.
+- Brasil base (USD/msg, valores ilustrativos ~2026, aplicáveis quando a cobrança Utility retomar em 01/10/2026): marketing $0.0625 · auth $0.0315 · utility menor + volume. Confirmar rate card atual no WhatsApp Manager.
 
 ## TEMPLATES — COPY pt_BR P/ APROVAÇÃO META
 Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUTÁVEL — `SendTemplateAsync` envia N params posicionais; divergir qtd/ordem → Meta rejeita). Todos **categoria Utility**, idioma **Português (BR) / `pt_BR`**, sem header/botões. ⚠️ `Money()` devolve só o número (`149,90`, sem `R$`) → texto inclui `R$ ` antes da var. `metodo` já vem palavra (`cartão de crédito`/`Pix`). ⚠️ A copy vive SÓ no painel Meta + nesta tabela — `WhatsAppTemplates.cs` é factory de `(name, params[])`, NÃO contém texto.
@@ -114,6 +118,7 @@ Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUT
 | 14 | `aluno_cancelou_assinatura` | nomeTreinador, nomeAluno, valor | `Olá {{1}}, o aluno {{2}} cancelou a assinatura de R$ {{3}}.` | Carlos · João · 149,90 |
 | 15 | `pagamento_em_disputa` | nomeTreinador, nomeAluno, valor | `Olá {{1}}, o pagamento do aluno {{2}} no valor de R$ {{3}} entrou em disputa. Acompanhe o caso.` | Carlos · João · 149,90 |
 | 16 | `novo_aluno_pendente` | nomeTreinador, nomeAluno | `Olá {{1}}, o aluno {{2}} solicitou vínculo e está aguardando sua aprovação na forzion.tech.` | Carlos · João |
+| 17 | `novo_treino_disponivel` | nomeAluno | `Olá {{1}}, seu treinador disponibilizou um novo treino para você na forzion.tech. Bons treinos!` | João |
 
 ## SEGURANÇA
 - `AccessToken`/`PhoneNumberId`/`AppSecret`/`WebhookVerifyToken` backend-only (env/secret), nunca frontend.
@@ -122,14 +127,14 @@ Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUT
 - Envio: falha = log only (sem rethrow) → não vaza p/ usuário, não quebra transação.
 
 ## TESTES
-- Unit (xUnit, sem Docker): `MetaWhatsAppCloudNotifierTests`, `NullWhatsAppNotifierTests`, `ProcessarWebhookWhatsAppHandlerTests`, `WhatsAppDeliveryLogTests`, e handler tests dos 5 adaptados + 10 novos (Infrastructure/Notifications/WhatsApp/ e Email/). Cobrem: Habilitado false no-op, entidade não encontrada, telefone null, happy path (assert template Name + body params).
-- Suíte não-integração: verde. E2E/Infra (Testcontainers) exigem Docker → CI.
+- Unit (xUnit, sem Docker) em `forzion.tech.Tests`: notifier/webhook/handler tests (`MetaWhatsAppCloudNotifierTests`, `ProcessarWebhookWhatsAppHandlerTests`, `WhatsAppDeliveryLogTests`, handlers dos 5 adaptados + 10 novos). Cobrem: Habilitado false no-op, entidade não encontrada, telefone null, happy path (assert template Name + body params).
+- E2E/Infra (Testcontainers) exigem Docker → CI.
 
 ## GAPS / ROADMAP — status
 Paridade email→WhatsApp **FECHADA** (todos os eventos de e-mail relevantes têm WhatsApp; verify/reset e health-report admin permanecem N/A por serem channel-bound/internos). Itens estruturais FECHADOS: type:template, `EnvironmentWhatsAppDecorator`, padronização event-handlers, `Habilitado`, catálogo central, E.164, webhook de status.
 
 Pendências (NÃO de código):
-- **Aprovar os 16 templates no Meta Business Manager** (ops) — pré-requisito de entrega real. Copy pronta em § TEMPLATES — COPY pt_BR.
+- **Aprovar os 17 templates no Meta Business Manager** (ops) — pré-requisito de entrega real. Copy pronta em § TEMPLATES — COPY pt_BR. `novo_treino_disponivel` (#17) ainda PENDENTE de aprovação Meta (categoria Utility).
 - **Fallback de telefone**: requer coluna `contas.telefone` (migration + UI cadastro) — escopo separado se desejado.
 
 ## DICAS / GOTCHAS

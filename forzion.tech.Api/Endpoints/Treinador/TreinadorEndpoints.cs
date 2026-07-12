@@ -9,8 +9,6 @@ using forzion.tech.Application.UseCases.Treinadores.Dashboard;
 using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
-using forzion.tech.Application.UseCases.Nfse.ListarNotasFiscaisTreinador;
-using forzion.tech.Application.UseCases.Nfse.ObterDanfseTreinador;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ObterAluno;
@@ -33,6 +31,7 @@ using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
 using forzion.tech.Application.UseCases.Vinculos;
 using forzion.tech.Application.UseCases.Vinculos.AprovarVinculo;
+using forzion.tech.Application.UseCases.Vinculos.DefinirPreservacaoVinculo;
 using forzion.tech.Application.UseCases.Vinculos.DesvincularAluno;
 using forzion.tech.Application.UseCases.Vinculos.ListarVinculos;
 using forzion.tech.Application.UseCases.Vinculos.ReativarVinculo;
@@ -212,6 +211,25 @@ public static class TreinadorEndpoints
         .WithSummary("Reativa um aluno inativo criando um novo vínculo aprovado")
         .Produces<VinculoResponse>()
         .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPatch("/alunos/{vinculoId:guid}/preservar", async (
+            Guid vinculoId,
+            [FromBody] DefinirPreservacaoRequest request,
+            [FromServices] DefinirPreservacaoVinculoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new DefinirPreservacaoVinculoCommand(vinculoId, userContext.PerfilId, request.Preservar), cancellationToken)
+                .ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Marca/desmarca um vínculo para ser preservado na apara da graça de limite de alunos")
+        .Produces<DefinirPreservacaoVinculoResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
@@ -581,35 +599,6 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status502BadGateway);
 
-        group.MapGet("/notas-fiscais", async (
-            [FromServices] ListarNotasFiscaisTreinadorHandler handler,
-            [FromServices] IUserContext userContext,
-            HttpContext httpContext,
-            CancellationToken cancellationToken) =>
-        {
-            var aposId = Guid.TryParse(httpContext.Request.Query["aposId"], out var apos) ? apos : (Guid?)null;
-            _ = int.TryParse(httpContext.Request.Query["limite"], out var limite);
-
-            var result = await handler.HandleAsync(userContext.PerfilId, aposId, limite, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(result);
-        })
-        .WithSummary("Lista as notas fiscais do treinador autenticado (keyset)")
-        .Produces<ListarNotasFiscaisResponse>();
-
-        group.MapGet("/notas-fiscais/{id:guid}/danfse", async (
-            Guid id,
-            [FromServices] ObterDanfseTreinadorHandler handler,
-            [FromServices] IUserContext userContext,
-            CancellationToken cancellationToken) =>
-        {
-            var result = await handler.HandleAsync(userContext.PerfilId, id, cancellationToken).ConfigureAwait(false);
-            if (result.IsFailure) return result.ToProblemResult();
-            return Results.Ok(new { danfseRef = result.Value });
-        })
-        .WithSummary("Retorna a referência (URL) da DANFSe de uma nota fiscal do treinador")
-        .Produces<object>()
-        .ProducesProblem(StatusCodes.Status404NotFound);
-
         return endpoints;
     }
 }
@@ -642,6 +631,7 @@ public record AlterarModoPagamentoRequest(ModoPagamentoAluno Modo);
 public record AprovarVinculoRequest(Guid PacoteId, bool TrarFichas = false);
 public record ReativarVinculoRequest(Guid PacoteId);
 public record DesvincularAlunoRequest(string? Observacao = null);
+public record DefinirPreservacaoRequest(bool Preservar);
 public record CriarExercicioTreinadorRequest(string Nome, Guid GrupoMuscularId, string? Descricao = null, string? ComoExecutar = null, string? VideoUrl = null);
 public record AtualizarExercicioTreinadorRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao, string? ComoExecutar = null, string? VideoUrl = null);
 public record CriarPacoteRequest(string Nome, decimal Preco, string? Descricao = null);

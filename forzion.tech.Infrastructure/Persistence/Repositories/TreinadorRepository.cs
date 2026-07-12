@@ -48,6 +48,15 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
         return (items, total);
     }
 
+    public async Task<IReadOnlyList<Treinador>> ListarAtivosKeysetAsync(Guid? aposId, int limite, CancellationToken cancellationToken = default) =>
+        await _context.Treinadores
+            .AsNoTracking()
+            .Where(t => t.Status == TreinadorStatus.Ativo && (aposId == null || t.Id > aposId))
+            .OrderBy(t => t.Id)
+            .Take(limite)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<Treinador>> ListarRecentesAsync(int limite, CancellationToken cancellationToken = default) =>
         await _context.Treinadores
             .AsNoTracking()

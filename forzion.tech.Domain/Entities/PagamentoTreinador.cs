@@ -11,6 +11,8 @@ public class PagamentoTreinador : IHasDomainEvents
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
 
+    public const int JanelaValidadeCartaoHoras = 24;
+
     public Guid Id { get; private set; }
     public Guid TreinadorId { get; private set; }
     public Guid AssinaturaTreinadorId { get; private set; }
@@ -151,5 +153,14 @@ public class PagamentoTreinador : IHasDomainEvents
         UpdatedAt = agora;
         _domainEvents.Add(new PagamentoTreinadorEmDisputaEvent(Id, TreinadorId, Valor, agora));
         return Result.Success();
+    }
+
+    // Cartão via API Stripe não expira sozinho (PaymentIntent sem ExpiresAfterSeconds) — janela é app-owned.
+    public bool EstaVencido(DateTime agora)
+    {
+        if (MetodoPagamento == MetodoPagamento.Pix)
+            return PixExpiracao.HasValue && agora >= PixExpiracao.Value;
+
+        return agora >= CreatedAt.AddHours(JanelaValidadeCartaoHoras);
     }
 }

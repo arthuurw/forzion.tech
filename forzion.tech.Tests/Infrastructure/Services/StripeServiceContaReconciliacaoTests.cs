@@ -149,17 +149,17 @@ public class StripeServiceContaReconciliacaoTests
             HasMore = false,
             Data =
             [
-                new Event { Id = "evt_1", Type = "payment_intent.succeeded", Created = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) },
-                new Event { Id = "evt_2", Type = "payment_intent.succeeded", Created = new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc) },
                 new Event { Id = "evt_3", Type = "payment_intent.succeeded", Created = new DateTime(2026, 6, 3, 0, 0, 0, DateTimeKind.Utc) },
+                new Event { Id = "evt_2", Type = "payment_intent.succeeded", Created = new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc) },
+                new Event { Id = "evt_1", Type = "payment_intent.succeeded", Created = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) },
             ],
         };
         var fake = new FakeStripeClient().Returns(pagina);
 
         var resultado = await CriarServico(fake.Object, maxEventos: 2).ListarEventosDesdeAsync(new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc));
 
-        resultado.Eventos.Should().HaveCount(2);
         resultado.Truncado.Should().BeTrue();
+        resultado.Eventos.Select(e => e.EventId).Should().Equal("evt_1", "evt_2");
     }
 
     [Fact]

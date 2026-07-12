@@ -5,7 +5,7 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 ## STACK
 - Next.js 16 (App Router) + React 19 + TypeScript 6. `frontend/`.
 - UI: MUI v9 (`@mui/material`) + Emotion. Locale `ptBR`. Tema em `src/lib/theme/index.ts`.
-- Forms: react-hook-form v7 + Zod v4 (`@hookform/resolvers`).
+- Forms: react-hook-form v7 + Zod v4 (`@hookform/resolvers`). `registerPasswordSchema` (cadastro/reset/perfil) exige min **12** + minúscula/maiúscula/dígito — paridade com `SenhaForte` do backend (`specification-security` §3); `passwordSchema` (login) permanece min 8 por decisão consciente (credenciais legadas — autenticar ≠ definir).
 - HTTP client: axios (instância `apiClient` em `src/lib/api/client.ts`).
 - Fetch-cache client: TanStack Query v5 (`@tanstack/react-query`) — camada de cache/dedup sobre o `apiClient`. Ver §DADOS-CLIENT.
 - JWT client-side: `jose` (verificação no Route Handler `/api/auth/me`).
@@ -32,50 +32,11 @@ Headers de segurança + CSP aplicados na camada Next via `next.config.ts` (`head
 - TS6 ativo. `.npmrc` com `legacy-peer-deps=true` (madge@8 peerOptional TS `^5.4.4` conflita com TS6; funcional em runtime).
 
 ## ESTRUTURA DE DIRETÓRIOS (`src/`)
-```
-src/
-  app/
-    (admin)/           — grupo Admin (layout próprio, AppLayout)
-    (aluno)/           — grupo Aluno (layout próprio, AppLayout)
-    (treinador)/       — grupo Treinador (layout próprio, AppLayout)
-    (public)/          — grupo público (layout próprio, PublicLayout)
-    _landing/          — componentes da homepage
-    api/
-      auth/            — Route Handlers de autenticação (login, logout, me, register, etc.)
-      backend/[...path]/ — proxy reverso → backend .NET
-    perfil/            — página de perfil (acessível a todos os roles)
-    layout.tsx         — root layout
-    page.tsx           — homepage /
-    error.tsx          — error boundary de rota
-    global-error.tsx   — error boundary global
-    not-found.tsx
-  components/
-    aluno/             — SemVinculoAtivoBanner (aviso aluno sem vínculo ativo)
-    charts/            — ChartFigure (figure+aria-label wrapper de recharts)
-    forms/             — FormTextField, FormSelect, PasswordField
-    layout/            — AppLayout, AppHeader, PublicLayout, NavConfig
-    observability/     — WebVitals
-    pagamento/         — PagamentoCartao, PagamentoPix, PagamentoSignup (anônimo, props-driven)
-    seguranca/         — StepUpDialog, StepUpProvider, RecoveryCodesPanel (MFA/step-up)
-    suporte/           — SuporteForm (form compartilhado aluno/treinador)
-    treinador/         — componentes específicos do treinador
-    ui/                — componentes compartilhados (ErrorBoundary, AlertBanner, LoadingSpinner, DataList, etc.)
-  hooks/               — useInactivity, usePaginatedList, useCRUDDialog, useConsent, useCursorList, useExecucaoDraft, useExecucaoRetryQueue
-  lib/
-    api/               — client.ts, extractApiError.ts + módulos por domínio (admin, aluno, treinador, conta, pagamento)
-    auth/              — context.tsx, jwt.ts, helpers.ts, buildPlaceholder.ts
-    constants/         — enrollmentOptions, labels
-    execucao/          — execData.ts, retryQueueStore.ts (draft/fila de execução offline)
-    rateLimit.ts       — rate limiter em memória (login)
-    storage/           — safeStorage.ts (localStorage guard SSR/quota — EXOFF-06)
-    theme/             — ThemeRegistry.tsx, index.ts (MUI theme)
-    utils/             — formatting.ts, excel.ts
-    validations/       — common.ts (schemas Zod)
-  proxy.ts             — RBAC redirect (Next.js proxy; ex-middleware, runtime nodejs)
-  styles/globals.css
-  test/                — infraestrutura de testes (MSW, factories, setup, pact)
-  types/index.ts       — tipos de domínio compartilhados
-```
+Layout re-derivável por `ls src/` — abaixo SÓ as convenções organizadoras não-óbvias (não versionar a árvore file-a-file, apodrece):
+- `app/` — App Router com **route-groups por role**: `(admin)`/`(aluno)`/`(treinador)` (layout `AppLayout`), `(public)` (layout `PublicLayout`); `api/auth/` = Route Handlers de auth, `api/backend/[...path]/` = proxy reverso → backend .NET.
+- `components/` — por domínio + `ui/` compartilhado.
+- `lib/` — `api/` (client + módulos por domínio), `auth/`, `execucao/` (draft/fila offline), `query/`, `security/`, `observability/`, `theme/`, `validations/` (Zod).
+- **Gotchas com home própria** (referenciados alhures): `proxy.ts` = RBAC redirect (ex-middleware, runtime nodejs); `lib/storage/safeStorage.ts` = guard localStorage SSR/quota (EXOFF-06).
 
 ## ROOT LAYOUT (`src/app/layout.tsx`)
 Árvore de providers (ordem importa):
@@ -118,7 +79,9 @@ Endpoints/contratos na §API ROUTES DE AUTH; aqui só os fatos não-óbvios de c
 - **Cookies de sessão** (helper `applySessionCookies` no login + refresh): `token` httpOnly (`maxAge=exp-now`), `refresh` httpOnly (`maxAge`=idle do papel: **Admin 2h / demais 7d**), `tipo_conta` NÃO-httpOnly (hint de roteamento), `session_guard` httpOnly (flag). Login devolve ao JS só `{ tipoConta, contaId, perfilId, nome }` — **token E refresh NUNCA expostos ao JS**.
 - **MFA**: 1º fator devolve só `{ mfaRequerido:true, mfaPendingExpiraEm }`; o `mfaPendingToken` vira cookie httpOnly `mfa_pending` (`applyMfaPendingCookie`) e NUNCA vai ao JS. `/mfa/verificar` lê esse cookie → Bearer; sucesso = `applySessionCookies` + `clearMfaPendingCookie` (+ `applyTrustedDeviceCookie` se lembrou). Login envia cookie `trusted_device` ao backend (se presente) p/ pular o 2º fator.
 - **Refresh**: rotação **single-use + reuse detection** no backend; 401 limpa cookies de sessão. `/me` com access vencido + refresh presente dispara o refresh server-side antes de devolver (sessão sobrevive a reload com access vencido).
-- **`client.ts`** (interceptor axios): 401 ⇒ tenta `/api/auth/refresh` UMA vez (flag `_retry` anti-loop; promise compartilhada anti-tempestade de refresh concorrente) → refaz a request; refresh falho ⇒ `window.location='/login'`. (Step-up/inadimplência na §API CLIENT.)
+- **Reset de senha com MFA** (`(public)/reset-password/page.tsx`): 1ª submissão envia `{token, novaSenha}`; 422 `code === "mfa.codigo_invalido"` revela o campo "Código de verificação" (revelar-ao-erro, sem contrato dedicado — backend não distingue "ausente" de "errado") e reenvia com `codigoTotp`. `code === "auth_reset.segundo_fator_bloqueado"` mostra CTA para `/forgot-password`. Conta sem MFA segue o fluxo de 1 submissão.
+- **`client.ts`** (interceptor axios): 401 ⇒ tenta `/api/auth/refresh` UMA vez (flag `_retry` anti-loop; promise compartilhada anti-tempestade de refresh concorrente NA MESMA ABA) → refaz a request; refresh falho ⇒ `window.location='/login'`. (Step-up/inadimplência na §API CLIENT.)
+- **Refresh cross-tab** (`runExclusive`, Web Locks API): abas concorrentes serializam a chamada de refresh via `navigator.locks.request("forzion:auth-refresh", ...)` — o cookie `refresh` httpOnly é compartilhado por origem entre abas, então duas abas renovando ao mesmo tempo reapresentariam o mesmo token e disparariam a reuse-detection do backend (revoga a família, desloga todas as abas — §4 [specification-security]). Fallback direto (sem serialização) quando `navigator.locks` está ausente.
 - **Logout**: invalida JTI + revoga família do refresh no backend; deleta cookies de qualquer forma (falha silenciosa).
 
 **AuthProvider** (`src/lib/auth/context.tsx`): estado `user: SessionUser | null` + `isLoading`. Chama `/api/auth/me` no mount. Expõe `login(data)`, `logout()`, `homeRouteFor(tipoConta)`.
@@ -134,24 +97,11 @@ Endpoints/contratos na §API ROUTES DE AUTH; aqui só os fatos não-óbvios de c
 - Nunca expõe o token ao cliente.
 
 ## API ROUTES DE AUTH (Next.js Route Handlers)
-| Rota | Método | Descrição |
-|------|--------|-----------|
-| `/api/auth` | POST | Login → seta cookies httpOnly (token+refresh+session_guard) + hint tipo_conta |
-| `/api/auth/refresh` | POST | Renovação silenciosa: repassa cookie refresh → rotaciona token+refresh, ou 401+limpa |
-| `/api/auth/me` | GET | Verifica JWT → SessionUser; access vencido + refresh → rotaciona server-side |
-| `/api/auth/logout` | POST | Invalida backend (jti + família) + limpa cookies |
-| `/api/auth/mfa/verificar` | POST | Conclui 2º fator: lê cookie `mfa_pending` → Bearer; seta sessão + trusted_device |
-| `/api/auth/mfa/email/enviar` | POST | Envia OTP de login por e-mail (repassa `mfa_pending`) |
-| `/api/auth/register/treinador` | POST | Cadastro treinador (rate limit, proxy). Body inclui `planoPlataformaId`+`modoPagamentoAluno` |
-| `/api/auth/register/aluno` | POST | Cadastro aluno (rate limit, proxy) |
-| `/api/auth/planos` | GET | Planos da plataforma p/ wizard de cadastro (proxy `/auth/planos`, `cache: "no-store"`, sem rate limit) |
-| `/api/auth/treinador/[treinadorId]/pagamento` | POST | Inicia pagamento do plano no signup (rate limit, proxy `/auth/treinador/{id}/pagamento`). Body `{ metodo }` |
-| `/api/auth/verify-email` | POST | Verificação de e-mail |
-| `/api/auth/forgot-password` | POST | Solicita reset |
-| `/api/auth/reset-password` | POST | Executa reset |
-| `/api/auth/resend-verification` | POST | Reenvio de verificação |
-| `/api/auth/treinadores` | GET | Listagem pública de treinadores (cadastro aluno) |
-| `/api/auth/treinadores/[treinadorId]/pacotes` | GET | Pacotes do treinador (cadastro aluno) |
+Enumeração de rotas re-derivável por `ls src/app/api/auth/`; contratos de cookie/sessão na §AUTH FLOW. Aqui só os fatos não-óbvios que a listagem não carrega:
+- Login/refresh/me/logout/mfa: setam/limpam cookies httpOnly (nunca Bearer) — ver §AUTH FLOW.
+- `register/treinador` body inclui `planoPlataformaId`+`modoPagamentoAluno`; `register/aluno` idem cadastro.
+- `planos` (GET, proxy `/auth/planos`) usa `cache: "no-store"` e **sem rate limit** (wizard de cadastro).
+- `treinador/[id]/pagamento` (POST, body `{ metodo }`) inicia pagamento do plano no signup.
 
 **Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP. Mapa em memória por processo (não persistido entre restarts). Aplicado em login e register.
 
@@ -171,7 +121,7 @@ interceptor resposta:
 - **Step-up** (`lib/auth/stepUpController.ts`): registry `registerStepUpHandler`/`requestStepUp` (promise in-flight compartilhada anti-tempestade). `StepUpProvider` (`components/seguranca/`) registra um handler que abre `StepUpDialog` (pede TOTP ou OTP por e-mail → `POST /auth/step-up/iniciar`+`/verificar`) e resolve com o token `step_up`; o interceptor injeta no header e refaz a request. Token NÃO persistido — vive só na request retried.
 - `ASSINATURA_INADIMPLENTE_EVENT` + `ASSINATURA_INADIMPLENTE_MESSAGE` exportados do client.
 - Enforcement server-side: backend `RequireAssinaturaAtivaFilter` retorna 403 `ASSINATURA_INADIMPLENTE` em endpoints restritos (ex.: POST execuções). Cross-ref inadimplência: [specification-stripe].
-- Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`, `nfse.ts`.
+- Módulos de domínio em `src/lib/api/`: `admin.ts`, `aluno.ts`, `treinador.ts`, `conta.ts`, `pagamento.ts`, `nfse.ts`, `notificacoes.ts`.
 
 ## DADOS-CLIENT (TanStack Query)
 Camada de fetch-cache sobre o `apiClient`. Motivação: cada página era `useState(loading/error/data)` + `load()` em `useEffect` → toda navegação re-batia o backend mesmo p/ dados read-mostly. Cache+dedup por `queryKey` corta isso (e a carga no PG — ver [specification-performance §7]).
@@ -192,8 +142,14 @@ Camada de fetch-cache sobre o `apiClient`. Motivação: cada página era `useSta
 - Verifica `!isLoading && !user` → chama `/api/auth/logout` (limpa cookies) → `router.replace("/login")`.
 - Desktop (≥md): `Drawer` permanente, colapsável (232px ↔ 68px ícones).
 - Mobile (<md): `Drawer` temporário + `BottomNavigation` fixo (inferior, com `safe-area-inset-bottom`).
-- `NavConfig` por `TipoConta`: items de navegação derivados do role. `NavItem.drawerOnly?: boolean` marca itens secundários que aparecem só no `Drawer`, nunca na `BottomNavigation` mobile. Treinador: 8 itens no drawer (Alunos, Fichas, Exercícios, Pacotes, Notas fiscais, Recebimentos[drawerOnly], Plano[drawerOnly], Suporte); bottom-nav filtra `drawerOnly` → 6.
+- `NavConfig` por `TipoConta`: items de navegação derivados do role. `NavItem.drawerOnly?: boolean` marca itens secundários que aparecem só no `Drawer`, nunca na `BottomNavigation` mobile. Treinador: 7 itens no drawer (Alunos, Fichas, Exercícios, Pacotes, Recebimentos[drawerOnly], Plano[drawerOnly], Suporte); bottom-nav filtra `drawerOnly` → 5.
 - **Inatividade**: `useInactivity` — warn aos 25 min (5 min antes), logout automático aos 30 min.
+
+## NOTIFICAÇÕES (feed in-app — feature notificacoes-engajamento-treino)
+- **`components/notificacoes/NotificacoesBell.tsx`** — montado no `AppHeader` (à esquerda do menu do usuário), visível a TODOS os papéis; feed SELF-scoped (backend resolve por `ContaId` do token, não recebe id). No mount busca só o contador (`contarNaoLidas` → `Badge`); ao abrir o `Menu` busca o feed (`listar`, estados loading/erro/vazio via `LoadingSpinner`/`AlertBanner`/`EmptyState`). Clique num item → `marcarLida(id)` com update otimista (marca local + decrementa contador; reverte via erro no `AlertBanner`). Não-lidas destacadas (dot + peso). Sem polling (contador só no mount).
+- **`lib/api/notificacoes.ts`** (`notificacoesApi`, via `apiClient`): `listar(pagina=1, tamanhoPagina=20)` → `GET /notificacoes`, `contarNaoLidas()` → `GET /notificacoes/nao-lidas/contador`, `marcarLida(id)` → `PATCH /notificacoes/{id}/lida`.
+- **Opt-out de e-mails de engajamento** (`app/perfil/page.tsx`): Card "Notificações" com `Switch` "Receber e-mails de engajamento". Inicializa de `perfil.emailEngajamentoOptOut` (`GET /conta/perfil`, invertido → `receberEngajamento`); toggle chama `contaApi.atualizarPreferenciasNotificacao({emailEngajamentoOptOut: !receber})` (`PATCH /conta/preferencias-notificacao`) com update otimista + reversão no erro. Copy deixa claro que billing/conta continuam chegando.
+- Tipos: `NotificacaoResponse{id, tipo: TipoNotificacao, titulo, corpo, linkRelativo, lida, createdAt}` + union `TipoNotificacao` (espelha o enum C#) em `types/index.ts`; `PerfilResponse.emailEngajamentoOptOut` + `PreferenciasNotificacaoData` em `lib/api/conta.ts`.
 
 ## SEGURANÇA / MFA (`src/app/seguranca/`)
 Página autenticada de segurança da conta (link no `AppHeader`/nav). Cliente em `lib/api/mfa.ts` (via `apiClient` → `/conta/mfa/*`). Tipos em `types/index.ts` (`MfaStatus`, `CompletarMfaResponse`, `LoginResponse.mfaRequerido/mfaPendingToken`, etc.).
@@ -263,6 +219,15 @@ Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinatura
 - Banner onboarding Stripe ("Configure seus recebimentos" → `/treinador/pagamentos`): só quando `onboardingPendente && !modoExterno`. `modoExterno` = `OnboardingStatusResponse.modoPagamentoAluno === "Externo"` (via `verificarOnboarding`); modo Externo NÃO exige Stripe → banner oculto.
 - Banner "regularizar pagamento" (erro): quando `obterAssinaturaTreinador().status === "Inadimplente"` → CTA `/treinador/plano`.
 
+### Graça de limite de alunos (tier efetivo + preservação)
+`TreinadorDashboardPlano` (de `GET /treinador/dashboard`) carrega `tierEfetivo`, `planoContratadoId`, `alunosAtivos`, `capEfetivo`, `excedente`, `gracaAte`, `temCortesia` — TUDO backend-authoritative; o front NÃO recalcula nada disso (`capEfetivo`/`temCortesia` ainda sem consumidor de UI — só tipados). Regra de negócio/janela de graça em [specification-model]; aqui só o consumo no front.
+- **`lib/utils/tier.ts`** — util client-side PURO, sem chamada de rede: `TIER_LABEL`/`TIER_ORDER` espelham o enum `TierPlano` do backend (label + ordem p/ comparação, mesmo padrão de "espelhar VO" de `lib/utils/youtube.ts`); `permiteEmailEngajamento`/`permiteWhatsapp` são HINTS de UI (mostrar/esconder chip) — enforcement real é backend, front nunca bloqueia com base só nisso; `resolverTierEfetivoInfo(plano, planos)` NÃO recalcula `tierEfetivo` (vem pronto do backend) — só faz lookup de `plano.planoContratadoId` na lista `planos` já carregada pela página p/ achar `tierContratado` e derivar `divergente` (`tierContratado !== tierEfetivo`), usado só p/ decidir o label do badge.
+- **`TierEfetivoBadge`** (`components/treinador/`) — consumida em `treinador/page.tsx` (dashboard) e `treinador/plano/page.tsx`; cada página é responsável por já ter `planos: PlanoPlataformaResponse[]` carregado (dashboard busca via `pagamentoApi.listarPlanosPlataforma()` dentro do próprio `queryFn` do dashboard; plano/page reusa o `planos` que já carrega p/ a seção de troca). Sem divergência → chip simples com `tierEfetivo`; divergente → chip warning `"<efetivo> — <contratado> pendente de pagamento"` (contratado ainda não efetivado, ex.: upgrade aguardando confirmação de pagamento).
+- **`GracaLimiteBanner`** (`components/treinador/`) — puramente apresentacional a partir de `gracaAte`/`excedente`; `null` se `gracaAte` ausente. Renderizada em `alunos/page.tsx`, que busca `treinadorApi.getDashboard()` num `useEffect` próprio (fetch direto, `.catch(() => {})` silencioso) — NÃO via TanStack Query, diferente do padrão §DADOS-CLIENT; é uma 2ª leitura do mesmo endpoint que o dashboard já consulta (sem cache/dedup entre as duas páginas).
+- **Seleção "Manter" (`preservarNoLimite`)** em `alunos/page.tsx` — padrão de override-map otimista por linha, reutilizável p/ toggles em lista sem re-fetch da página inteira: `preservarOverrides: Record<vinculoId, boolean>` sombra o valor do servidor (`isPreservado = overrides[v.vinculoId] ?? v.preservarNoLimite`) assim que o toggle resolve; erro no `PATCH /treinador/alunos/{vinculoId}/preservar` (`definirPreservacaoVinculo`) exibe `AlertBanner` mas NÃO reverte o estado local (diferente da reversão-no-erro do `NotificacoesBell`/opt-out de e-mail — §NOTIFICAÇÕES); `preservarLoading` (vinculoId ou null) desabilita só o checkbox da linha em voo.
+- **Preview de impacto de downgrade** (`plano/page.tsx`, dialog de troca) — `impactoTroca(novoPlano)` é cálculo client-side puro sobre dados já em memória (`dashboardPlano.alunosAtivos` vs `novoPlano.maxAlunos`), SEM chamada de rede dedicada; mesmo espírito da proração estimada (§Contratar/Trocar plano, T9): preview de UX, não-autoritativo. Exibido como `Alert` warning só quando o plano escolhido comporta menos alunos ativos que o atual ("Precisará inativar N").
+- **Canais de notificação por tier** (Card em `plano/page.tsx`) — chips "E-mail de engajamento"/"WhatsApp" usam `permiteEmailEngajamento`/`permiteWhatsapp` sobre `dashboardPlano.tierEfetivo`; só hint visual, mesma ressalva de enforcement acima.
+
 ### Recebimentos (`(treinador)/treinador/pagamentos/page.tsx`)
 Decide por `OnboardingStatusResponse.modoPagamentoAluno`:
 - **Externo**: orientação de controle manual (sem Stripe; combinar valor direto, gerenciar acesso por vínculo). Chip "Pagamento externo".
@@ -289,10 +254,10 @@ Sessão de execução não perde dados em reload/queda de rede; finalização so
 - **`components/aluno/ExecucaoPendenteBanner.tsx`** (montado no `(aluno)/layout.tsx`): usa `useExecucaoRetryQueue`; oculto quando fila vazia; mostra contagem (singular/plural) + botão "Tentar enviar agora" (dispara `drain`, rotula "Enviando…"/desabilita durante). `role="status"` (info não-bloqueante, contraste com o `role="alert"` do `AlunoInadimplenteBanner`).
 - **`lib/execucao/execData.ts`**: `initExecData` + tipo `SetState` extraídos da página p/ reuso pelo hook (módulo compartilhável).
 
-### NFS-e (notas fiscais)
-Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/dadosFiscais.ts` (CPF/CNPJ por `tipoDocumento`, CEP, IBGE 7 dígitos, UF; máscara só na UI, payload envia dígitos crus). Enums NFS-e como string-literal no módulo (label/cor de status). Nav item "Notas fiscais" em treinador e admin (`ReceiptLongIcon`).
-- **Treinador** `(treinador)/treinador/dados-fiscais` — form RHF+Zod (tomador da NFS-e); carrega `GET /treinador/dados-fiscais` (null = nunca preenchido), salva `PUT`. `(treinador)/treinador/notas-fiscais` — lista keyset (`proximoCursor` → "Carregar mais"), download DANFSe (`GET .../danfse` → `window.open(danfseRef)`); só notas com `temDanfse`. Botão "Dados fiscais" no header.
-- **Admin** `(admin)/admin/notas-fiscais` — `ResponsiveTable` + filtro de status + retry (`POST .../reprocessar`, só status `Erro` mostra ação); coluna de erro (código+motivo) com tooltip.
+### Dados fiscais (treinador)
+Coleta de dados fiscais RETIDA; a emissão de NFS-e e suas telas (`/treinador/notas-fiscais`, `/admin/notas-fiscais`) foram REMOVIDAS ([specification-fiscal]).
+Cliente `lib/api/nfse.ts` (`nfseApi`: `getDadosFiscais`/`salvarDadosFiscais`/`consultarCep`) + validação/máscaras `lib/validations/dadosFiscais.ts` (CPF/CNPJ por `tipoDocumento` com dígito verificador — módulo-11, paridade com `DadosFiscais.Criar` do backend; CEP, IBGE 7 dígitos, UF; máscara só na UI, payload envia dígitos crus).
+- **Treinador** `(treinador)/treinador/dados-fiscais` — form RHF+Zod; carrega `GET /treinador/dados-fiscais` (null = nunca preenchido), salva `PUT`. Autofill de endereço via `GET /treinador/cep/{cep}` (`consultarCep`) quando o CEP atinge 8 dígitos (`AbortController` cancela a busca anterior). Banner proativo `dadosFiscaisPendentes` no dashboard linka aqui.
 
 ### Contato com suporte (`(aluno)/aluno/suporte` + `(treinador)/treinador/suporte`)
 - Form compartilhado `components/suporte/SuporteForm.tsx`; as duas páginas são thin (só renderizam o form). Item "Suporte" (`SupportAgentIcon`) no `NavConfig` de aluno e treinador (Admin não vê).
@@ -300,13 +265,11 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 - Submit via `apiClient.post("/suporte/mensagens", {categoria, assunto, descricao})` (catch-all `/api/backend` com Bearer; SEM route proxy dedicado — identidade vem do token no backend). 202 → tela de sucesso; erro → `AlertBanner` (`extractApiError`).
 
 ## TESTES (`vitest.config.mts`)
-3 projects vitest:
-
-| Project | Env | Pool | Setup | Include |
-|---------|-----|------|-------|---------|
-| `unit` | node | threads | `src/test/setup/unit.ts` | `src/lib/**/*.test.ts`, `src/lib/**/*.property.test.ts`, `src/hooks/**/*.test.ts`, `src/hooks/**/*.property.test.ts`, `src/proxy.test.ts`, `src/proxy.signature.test.ts` (exclui: hooks RTL/DOM e excel/downloadBlob/admin.msw/auth-context que rodam em `integration`) |
-| `integration` | jsdom | forks | `src/test/setup/integration.ts` | `src/components/**/*.test.tsx`, `src/components/**/__tests__/*.test.tsx`, `src/app/**/__tests__/*.test.tsx`, `src/lib/utils/excel.test.ts`, `src/lib/utils/downloadBlob.test.ts`, `src/lib/auth/context.test.tsx`, `src/lib/api/admin.msw.test.ts`, hooks RTL: `useInactivity`, `useConsent`, `usePaginatedList`, `useCRUDDialog`, `useCursorList`, `useExecucaoDraft`, `useExecucaoRetryQueue` |
-| `api` | node | threads | `src/test/setup/api.ts` | `src/app/api/**/*.test.ts` |
+3 projects vitest (env/pool/setup por project; include-globs re-deriváveis do `vitest.config.mts`):
+- `unit` — node/threads. Pura lógica em `src/lib/**` + `src/hooks/**` (`*.test.ts`/`*.property.test.ts`) + `src/proxy*.test.ts`. **Exclui** os testes RTL/DOM e excel/downloadBlob/admin.msw/auth-context (rodam em `integration`).
+- `integration` — jsdom/forks. Componentes/páginas (`*.test.tsx`, `__tests__/`) + hooks que precisam de DOM (ex.: `useInactivity`, `useConsent`, `useExecucaoDraft`/`RetryQueue`).
+- `api` — node/threads. Route Handlers `src/app/api/**/*.test.ts`.
+- GOTCHA de partição: um hook/util roda em `unit` OU `integration` conforme precise de DOM — mover teste entre esses exige ajustar o include (senão roda no pool errado). Ver `vitest.config.mts`.
 
 **Coverage (v8)**: thresholds por glob (l/b/f por camada) — canônico em [specification-tests] §8 (enforced em `vitest run --coverage`).
 
@@ -346,16 +309,10 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 | `openapi:check` | `openapi:sync && git diff --exit-code src/test/msw/types.ts` (drift check) |
 
 ## ENV / SECRETS (frontend)
-| Variável | Onde | Descrição |
-|----------|------|-----------|
-| `API_BASE_URL` | server-side | URL backend .NET (obrigatório em prod; default `https://localhost:7220` em dev) |
-| `NEXT_PUBLIC_API_BASE_URL` | client-side | Base do apiClient (default `/api/backend`; sem NEXT_PUBLIC só usa proxy) |
-| `JWT_SECRET` | server-side | Chave para `jose.jwtVerify` em `/api/auth/me` |
-| `JWT_ISSUER` | server-side | Issuer JWT para validação |
-| `JWT_AUDIENCE` | server-side | Audience JWT para validação |
-| `SENTRY_AUTH_TOKEN` | build | Upload de source maps (optional; build funciona sem) |
-| `SENTRY_ORG` | build | Org do Sentry |
-| `SENTRY_PROJECT` | build | Projeto do Sentry |
+Lista completa re-derivável de `.env.example`. Invariantes não-óbvios:
+- **Split server vs client**: `API_BASE_URL` (server-side, proxy → backend .NET; obrigatório em prod, default `https://localhost:7220` em dev) ≠ `NEXT_PUBLIC_API_BASE_URL` (client-side, base do apiClient; default `/api/backend`, i.e. só o proxy quando ausente).
+- `JWT_SECRET`/`JWT_ISSUER`/`JWT_AUDIENCE` (server-side) só p/ `jose.jwtVerify` em `/api/auth/me`. `JWT_SECRET`+`API_BASE_URL` obrigatórios em prod (guard lança no build — §CONFIGURAÇÃO DE BUILD).
+- `SENTRY_AUTH_TOKEN`/`_ORG`/`_PROJECT` (build): só upload de source maps; build funciona sem token.
 
 ## OBSERVABILIDADE
 - **Sentry**: erros + replay (RUM). DSN configurado no container (no-op sem DSN). Source maps com `SENTRY_AUTH_TOKEN`.
@@ -369,9 +326,9 @@ Cliente `lib/api/nfse.ts` (`nfseApi`) + validação/máscaras `lib/validations/d
 
 ## DICAS / GOTCHAS
 - `legacy-peer-deps=true` em `.npmrc` (madge@8 + TS6) — ver §TYPESCRIPT; NÃO remover sem atualizar madge.
-- npm override `"@pact-foundation/pact": { "https-proxy-agent": "^7.0.6" }`: pact v16 bundla `https-proxy-agent@9` (ESM puro); override força CJS-compatível. NÃO remover ao atualizar pact.
-- jsdom mantido em `^26` (não `^27`): jsdom 27 tem dep `@csstools/css-calc` ESM-only que quebra vitest pool `forks` (Node 20 sem `--experimental-require-module`).
-- `SBOM` usa `--ignore-npm-errors` para tolerar `typescript@6 invalid` (peer dep madge) e pacotes `@emnapi/*`/`@napi-rs/*` extraneous (deps opcionais NAPI-RS do pact v16).
+- npm override `"@pact-foundation/pact": { "https-proxy-agent": "^7.0.6" }`: pact v17 bundla `https-proxy-agent@9` (ESM puro); override força CJS-compatível. NÃO remover ao atualizar pact.
+- jsdom mantido em `^26` (não `^27`): jsdom 27 tem dep `@csstools/css-calc` ESM-only que quebra o vitest pool `forks`.
+- `SBOM` usa `--ignore-npm-errors` para tolerar `typescript@6 invalid` (peer dep madge) e pacotes `@emnapi/*`/`@napi-rs/*` extraneous (deps opcionais NAPI-RS do pact v17).
 - AppLayout-logout-antes-de-redirect (evita loop com o proxy): ver §APPLAYOUT.
 - Proxy NÃO interceta `/api/*`; auth das API routes é dos próprios Route Handlers: ver §PROXY.
 - `API_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL` (server vs client, proxy `/api/backend` em prod): ver §ENV + §API PROXY.

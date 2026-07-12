@@ -1,14 +1,12 @@
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using FluentAssertions;
 using forzion.tech.Application.Interfaces;
-using forzion.tech.Application.UseCases.Nfse.CancelarNfse;
 using forzion.tech.Domain.Events;
 using forzion.tech.Infrastructure.DependencyInjection;
 using forzion.tech.Infrastructure.Handlers;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Notifications.InApp;
+using forzion.tech.Infrastructure.Notifications.WhatsApp;
 using forzion.tech.Infrastructure.Outbox;
-using forzion.tech.Infrastructure.Outbox.Handlers;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +20,6 @@ namespace forzion.tech.Tests.Infrastructure;
 /// </summary>
 public class HandlerDiRegistrationTests
 {
-    private const string SenhaPfx = "teste-pfx";
-
     private static ServiceProvider BuildProvider(Dictionary<string, string?>? extra = null)
     {
         var settings = new Dictionary<string, string?>
@@ -81,61 +77,7 @@ public class HandlerDiRegistrationTests
     }
 
     [Fact]
-    public void DI_EmissorNfse_Null_QuandoDesabilitado()
-    {
-        using var provider = BuildProvider();
-        using var scope = provider.CreateScope();
-
-        scope.ServiceProvider.GetRequiredService<IEmissorNfseService>()
-            .Should().BeOfType<NullEmissorNfseService>();
-    }
-
-    [Fact]
-    public void DI_EmissorNfse_Null_Singleton_InstanciaUnica()
-    {
-        using var provider = BuildProvider();
-
-        using var escopo1 = provider.CreateScope();
-        using var escopo2 = provider.CreateScope();
-
-        var instancia1 = escopo1.ServiceProvider.GetRequiredService<IEmissorNfseService>();
-        var instancia2 = escopo2.ServiceProvider.GetRequiredService<IEmissorNfseService>();
-
-        instancia1.Should().BeSameAs(instancia2);
-    }
-
-    [Fact]
-    public void DI_EmissorNfse_Nacional_QuandoHabilitado()
-    {
-        var pfx = CriarPfxTemporario();
-        try
-        {
-            using var provider = BuildProvider(new Dictionary<string, string?>
-            {
-                ["Nfse:Habilitado"] = "true",
-                ["Nfse:UrlBase"] = "https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional",
-                ["Nfse:CertificadoPath"] = pfx,
-                ["Nfse:CertificadoSenha"] = SenhaPfx,
-                ["Nfse:CnpjPrestador"] = "11444777000161",
-                ["Nfse:InscricaoMunicipal"] = "54321",
-                ["Nfse:CodigoMunicipioIbge"] = "3550308",
-                ["Nfse:SerieDps"] = "1",
-                ["Nfse:CodigoServicoAssinatura"] = "0500",
-                ["Nfse:AliquotaIss"] = "2",
-            });
-            using var scope = provider.CreateScope();
-
-            scope.ServiceProvider.GetRequiredService<IEmissorNfseService>()
-                .Should().BeOfType<EmissorNfseNacionalService>();
-        }
-        finally
-        {
-            File.Delete(pfx);
-        }
-    }
-
-    [Fact]
-    public void DI_PagamentoTreinadorPagoEvent_IncluiEmissaoNfseDuravel()
+    public void DI_PagamentoTreinadorPagoEvent_ProcessaPagamentoSemEmitirNota()
     {
         using var provider = BuildProvider();
         using var scope = provider.CreateScope();
@@ -145,11 +87,8 @@ public class HandlerDiRegistrationTests
             .ToList();
 
         handlers.Should().Contain(h => h is PagamentoTreinadorPagoHandler);
-        handlers.Should().Contain(h => h is EmitirNfseAssinaturaHandler);
-
-        var registry = provider.GetRequiredService<OutboxDurabilityRegistry>();
-        registry.EhHandlerDuravel(typeof(PagamentoTreinadorPagoEvent), typeof(EmitirNfseAssinaturaHandler))
-            .Should().BeTrue();
+        handlers.Should().NotContain(h => h.GetType().Name.Contains("Nfse", StringComparison.Ordinal),
+            "PagamentoTreinadorPagoEvent não deve enfileirar emissão de nota fiscal");
     }
 
     [Fact]
@@ -161,9 +100,6 @@ public class HandlerDiRegistrationTests
         var esperados = new HashSet<(Type, Type)>
         {
             (typeof(PagamentoTreinadorPagoEvent), typeof(PagamentoTreinadorPagoHandler)),
-            (typeof(PagamentoTreinadorPagoEvent), typeof(EmitirNfseAssinaturaHandler)),
-            (typeof(PagamentoTreinadorEstornadoEvent), typeof(CancelarNfseHandler)),
-            (typeof(PagamentoTreinadorEmDisputaEvent), typeof(CancelarNfseHandler)),
             (typeof(VinculoAprovadoEvent), typeof(VinculoAprovadoCriarAssinaturaAlunoHandler)),
             (typeof(MensagemSuporteCriadaEvent), typeof(MensagemSuporteCriadaEmailHandler)),
             (typeof(EmailCriticoSolicitadoEvent), typeof(EmailCriticoSolicitadoEmailHandler)),
@@ -174,22 +110,43 @@ public class HandlerDiRegistrationTests
     }
 
     [Fact]
-    public void DI_OutboxEfeitoHandler_IncluiEmitirNfse()
+    public void DI_TreinoDisponibilizadoEvent_TemHandlersInAppEmailWhatsApp()
     {
         using var provider = BuildProvider();
         using var scope = provider.CreateScope();
 
-        scope.ServiceProvider.GetServices<IOutboxEfeitoHandler>()
-            .Should().Contain(h => h is EmitirNfseEfeitoHandler);
+        var handlers = scope.ServiceProvider
+            .GetServices<IDomainEventHandler<TreinoDisponibilizadoEvent>>()
+            .ToList();
+
+        handlers.Should().Contain(h => h is TreinoDisponibilizadoInAppHandler);
+        handlers.Should().Contain(h => h is TreinoDisponibilizadoEmailHandler);
+        handlers.Should().Contain(h => h is TreinoDisponibilizadoWhatsAppHandler);
     }
 
-    private static string CriarPfxTemporario()
+    [Fact]
+    public void DI_ExecucaoRegistradaEvent_TemHandlerInApp()
     {
-        using var rsa = RSA.Create(2048);
-        var pedido = new CertificateRequest("CN=forzion-nfse-di", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-        using var cert = pedido.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-        var caminho = Path.Combine(Path.GetTempPath(), $"nfse-di-{Guid.NewGuid():N}.pfx");
-        File.WriteAllBytes(caminho, cert.Export(X509ContentType.Pfx, SenhaPfx));
-        return caminho;
+        using var provider = BuildProvider();
+        using var scope = provider.CreateScope();
+
+        var handlers = scope.ServiceProvider
+            .GetServices<IDomainEventHandler<ExecucaoRegistradaEvent>>()
+            .ToList();
+
+        handlers.Should().ContainSingle(h => h is ExecucaoRegistradaInAppHandler);
     }
+
+    [Fact]
+    public void CanaisExternosDeEngajamento_ConsultamPlanoNotificationPolicy()
+    {
+        DependeDe<TreinoDisponibilizadoEmailHandler>(typeof(IPlanoNotificationPolicy)).Should().BeTrue();
+        DependeDe<TreinoDisponibilizadoWhatsAppHandler>(typeof(IPlanoNotificationPolicy)).Should().BeTrue();
+        DependeDe<ExecucaoRegistradaInAppHandler>(typeof(IPlanoNotificationPolicy)).Should().BeFalse();
+    }
+
+    private static bool DependeDe<T>(Type dependencia) =>
+        typeof(T).GetConstructors().Single()
+            .GetParameters()
+            .Any(p => p.ParameterType == dependencia);
 }

@@ -82,10 +82,10 @@ describe("registerPasswordSchema", () => {
       fc.stringMatching(/^[a-zA-Z0-9]{0,50}$/),
     ),
   ])(
-    "senha com lower+upper+digito de tamanho [8,72] sempre passa",
+    "senha com lower+upper+digito de tamanho [12,72] sempre passa",
     ([lower, upper, digit, filler]) => {
       const pwd = (lower + upper + digit + filler).slice(0, 72);
-      if (pwd.length < 8) return; // skip — fast-check pode gerar < 8
+      if (pwd.length < 12) return; // skip — fast-check pode gerar < 12
       expect(registerPasswordSchema.safeParse(pwd).success).toBe(true);
     },
   );

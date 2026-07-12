@@ -1,11 +1,15 @@
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
-public class ExecucaoTreino
+public class ExecucaoTreino : IHasDomainEvents
 {
     private readonly List<ExecucaoExercicio> _exercicios = [];
+    private readonly List<IDomainEvent> _domainEvents = [];
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public void ClearDomainEvents() => _domainEvents.Clear();
 
     public Guid Id { get; private set; }
     public Guid TreinoId { get; private set; }
@@ -30,7 +34,7 @@ public class ExecucaoTreino
         if (observacao is not null && observacao.Length > 500)
             return Result.Failure<ExecucaoTreino>(ExecucaoTreinoErrors.ObservacaoMuitoLonga);
 
-        return Result.Success(new ExecucaoTreino
+        var execucao = new ExecucaoTreino
         {
             Id = Guid.NewGuid(),
             TreinoId = treinoId,
@@ -39,7 +43,11 @@ public class ExecucaoTreino
             Observacao = observacao,
             IdempotencyKey = idempotencyKey,
             CreatedAt = agora
-        });
+        };
+
+        execucao._domainEvents.Add(new ExecucaoRegistradaEvent(alunoId, treinoId, execucao.Id, agora));
+
+        return Result.Success(execucao);
     }
 
     public Result AdicionarExercicio(

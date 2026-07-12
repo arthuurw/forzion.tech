@@ -2,6 +2,7 @@ version: 2
 updates:
   - package-ecosystem: "nuget"
     directory: "/"
+    target-branch: "homolog"
     schedule:
       interval: "weekly"
     cooldown:
@@ -17,6 +18,7 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/frontend"
+    target-branch: "homolog"
     schedule:
       interval: "weekly"
     cooldown:
@@ -32,6 +34,7 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "homolog"
     schedule:
       interval: "weekly"
     cooldown:

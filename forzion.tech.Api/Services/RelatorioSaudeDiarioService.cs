@@ -44,7 +44,7 @@ public class RelatorioSaudeDiarioService(
         }
     }
 
-    private async Task ProcessarAsync(CancellationToken cancellationToken)
+    internal async Task ProcessarAsync(CancellationToken cancellationToken)
     {
         using var scope = serviceProvider.CreateScope();
         var sp = scope.ServiceProvider;
@@ -65,13 +65,29 @@ public class RelatorioSaudeDiarioService(
         var snapshot = HealthSnapshot.Criar(report.Ambiente, report.StatusGeral, HealthReportPayload.Serializar(report), agora).Value;
         await snapshotRepo.AdicionarAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
-        await sender.EnviarAsync(report, config.ObterDestinatarios(), cancellationToken).ConfigureAwait(false);
-
         config.MarcarEnviado(agora);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation(
-            "Relatório de saúde enviado para {Total} destinatário(s) (status {Status}).",
-            config.ObterDestinatarios().Count, report.StatusGeral);
+        var emailEnviado = true;
+        try
+        {
+            await sender.EnviarAsync(report, config.ObterDestinatarios(), cancellationToken).ConfigureAwait(false);
+
+            logger.LogInformation(
+                "Relatório de saúde enviado para {Total} destinatário(s) (status {Status}).",
+                config.ObterDestinatarios().Count, report.StatusGeral);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            emailEnviado = false;
+            logger.LogCritical(ex, "Relatório de saúde persistido, mas o envio de e-mail falhou.");
+        }
+
+        snapshot.MarcarEmailEnviado(emailEnviado);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 }

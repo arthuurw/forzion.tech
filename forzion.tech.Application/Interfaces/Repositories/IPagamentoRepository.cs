@@ -14,10 +14,6 @@ public interface IPagamentoRepository
     Task AdicionarAsync(Pagamento pagamento, CancellationToken cancellationToken = default);
     Task<int> ContarPorStatusAsync(PagamentoStatus status, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<ComissaoTreinadorPeriodo>> ListarComissaoPorTreinadorNoPeriodoAsync(
-        DateTime inicio, DateTime fimExclusivo, decimal taxaPlataformaPercent,
-        Guid? aposTreinadorId, int limite, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<RecebimentoTreinadorItem>> ListarPorTreinadorAsync(
         Guid treinadorId, DateTime? cursorCreatedAt, Guid? cursorId, int limite,
         CancellationToken cancellationToken = default);

@@ -366,6 +366,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("email_verificado");
 
+                    b.Property<bool>("NotificacoesEngajamentoEmailOptOut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("notificacoes_engajamento_email_opt_out");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
@@ -878,6 +884,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<bool?>("EmailEnviado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_enviado");
+
                     b.Property<string>("PayloadJson")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1069,118 +1079,66 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.ToTable("mfa_recovery_codes", (string)null);
                 });
 
-            modelBuilder.Entity("forzion.tech.Domain.Entities.NotaFiscal", b =>
+            modelBuilder.Entity("forzion.tech.Domain.Entities.Notificacao", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<bool>("CancelamentoPendentePreEmissao")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("cancelamento_pendente_pre_emissao");
-
-                    b.Property<string>("ChaveAcesso")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("chave_acesso");
-
-                    b.Property<string>("CodigoErro")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("codigo_erro");
-
-                    b.Property<DateOnly?>("CompetenciaFim")
-                        .HasColumnType("date")
-                        .HasColumnName("competencia_fim");
-
-                    b.Property<DateOnly?>("CompetenciaInicio")
-                        .HasColumnType("date")
-                        .HasColumnName("competencia_inicio");
+                    b.Property<string>("Corpo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("corpo");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("DanfseRef")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("danfse_ref");
-
-                    b.Property<DateTime?>("DataEmissao")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("data_emissao");
-
-                    b.Property<string>("MotivoCancelamentoPendente")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("motivo_cancelamento_pendente");
-
-                    b.Property<string>("MotivoErro")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("motivo_erro");
-
-                    b.Property<string>("NumeroDps")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("numero_dps");
-
-                    b.Property<string>("NumeroNfse")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("numero_nfse");
-
-                    b.Property<Guid?>("PagamentoTreinadorId")
+                    b.Property<Guid>("DestinatarioContaId")
                         .HasColumnType("uuid")
-                        .HasColumnName("pagamento_treinador_id");
+                        .HasColumnName("destinatario_conta_id");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("status");
+                    b.Property<DateOnly?>("DiaReferencia")
+                        .HasColumnType("date")
+                        .HasColumnName("dia_referencia");
+
+                    b.Property<bool>("Lida")
+                        .HasColumnType("boolean")
+                        .HasColumnName("lida");
+
+                    b.Property<string>("LinkRelativo")
+                        .HasColumnType("text")
+                        .HasColumnName("link_relativo");
 
                     b.Property<string>("Tipo")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
+                        .HasColumnType("text")
                         .HasColumnName("tipo");
 
-                    b.Property<Guid>("TreinadorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("treinador_id");
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("titulo");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.Property<decimal>("Valor")
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("valor");
-
                     b.HasKey("Id")
-                        .HasName("pk_notas_fiscais");
+                        .HasName("pk_notificacoes");
 
-                    b.HasIndex("PagamentoTreinadorId")
+                    b.HasIndex("DestinatarioContaId", "Lida", "CreatedAt")
+                        .HasDatabaseName("ix_notificacoes_conta_lida_created");
+
+                    b.HasIndex("DestinatarioContaId", "Tipo", "DiaReferencia")
                         .IsUnique()
-                        .HasDatabaseName("ix_notas_fiscais_pagamento_treinador_id_unique")
-                        .HasFilter("pagamento_treinador_id IS NOT NULL");
+                        .HasDatabaseName("ix_notificacoes_dedup")
+                        .HasFilter("dia_referencia IS NOT NULL");
 
-                    b.HasIndex("TreinadorId")
-                        .HasDatabaseName("ix_notas_fiscais_treinador_id");
-
-                    b.HasIndex("TreinadorId", "Tipo", "CompetenciaInicio")
-                        .IsUnique()
-                        .HasDatabaseName("ix_notas_fiscais_treinador_tipo_competencia_unique")
-                        .HasFilter("competencia_inicio IS NOT NULL");
-
-                    b.ToTable("notas_fiscais", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_notas_fiscais_valor_nao_negativo", "\"valor\" >= 0");
-                        });
+                    b.ToTable("notificacoes", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.OutboxEfeito", b =>
@@ -1867,6 +1825,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTime?>("AlunosAcimaDoCapDesde")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("alunos_acima_do_cap_desde");
+
                     b.Property<bool>("Anonimizado")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1906,6 +1868,10 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("nome");
 
+                    b.Property<Guid?>("PlanoCortesiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plano_cortesia_id");
+
                     b.Property<Guid?>("PlanoPlataformaId")
                         .HasColumnType("uuid")
                         .HasColumnName("plano_plataforma_id");
@@ -1936,6 +1902,9 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("ContaId")
                         .IsUnique()
                         .HasDatabaseName("ix_treinadores_conta_id");
+
+                    b.HasIndex("PlanoCortesiaId")
+                        .HasDatabaseName("ix_treinadores_plano_cortesia_id");
 
                     b.HasIndex("PlanoPlataformaId")
                         .HasDatabaseName("ix_treinadores_plano_plataforma_id");
@@ -2209,6 +2178,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("pacote_id");
 
+                    b.Property<bool>("PreservarNoLimite")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("preservar_no_limite");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
@@ -2416,20 +2391,14 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasConstraintName("fk_mensagens_suporte_contas_conta_id");
                 });
 
-            modelBuilder.Entity("forzion.tech.Domain.Entities.NotaFiscal", b =>
+            modelBuilder.Entity("forzion.tech.Domain.Entities.Notificacao", b =>
                 {
-                    b.HasOne("forzion.tech.Domain.Entities.PagamentoTreinador", null)
+                    b.HasOne("forzion.tech.Domain.Entities.Conta", null)
                         .WithMany()
-                        .HasForeignKey("PagamentoTreinadorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_notas_fiscais_pagamentos_treinador_pagamento_treinador_id");
-
-                    b.HasOne("forzion.tech.Domain.Entities.Treinador", null)
-                        .WithMany()
-                        .HasForeignKey("TreinadorId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("DestinatarioContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_notas_fiscais_treinadores_treinador_id");
+                        .HasConstraintName("fk_notificacoes_contas_destinatario_conta_id");
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.Pacote", b =>
@@ -2513,6 +2482,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_treinadores_contas_conta_id");
+
+                    b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
+                        .WithMany()
+                        .HasForeignKey("PlanoCortesiaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_treinadores_planos_plataforma_plano_cortesia_id");
 
                     b.HasOne("forzion.tech.Domain.Entities.PlanoPlataforma", null)
                         .WithMany()

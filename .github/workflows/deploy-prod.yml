@@ -47,6 +47,11 @@ jobs:
             export TAG="$SHA"
             DC="docker compose -p prd -f docker-compose.server.yml --env-file $EF"
 
+            for net in forzion-hmg forzion-prd; do
+              docker network create "$net" >/dev/null 2>&1 || true
+              docker network inspect "$net" >/dev/null 2>&1 || { echo "::error::network $net indisponivel"; exit 1; }
+            done
+
             PREV_BACKEND="$($DC images -q backend 2>/dev/null || true)"
             PREV_FRONTEND="$($DC images -q frontend 2>/dev/null || true)"
 
@@ -84,7 +89,27 @@ jobs:
               exit 1
             fi
 
-            $DC restart nginx
+            git -C /opt/forzion/app pull origin homolog
+            EDGE_DIR=/opt/forzion/app bash scripts/reload-edge.sh
+
+            # Probe pelo edge público (Host explícito) — health-gate acima só olha o backend por dentro.
+            PROD_HOST="$(grep -E '^PROD_HOST=' "$EF" | head -1 | cut -d= -f2-)"
+            PROD_HOST="${PROD_HOST%\"}"; PROD_HOST="${PROD_HOST#\"}"
+            edge_ok=0
+            for _ in $(seq 1 30); do
+              if [ -n "$PROD_HOST" ] && curl -fsS -k --resolve "$PROD_HOST:443:127.0.0.1" "https://$PROD_HOST/api/backend/health/ready" >/dev/null 2>&1; then
+                edge_ok=1; break
+              fi
+              sleep 4
+            done
+            if [ "$edge_ok" != 1 ]; then
+              if curl -fsS -k --resolve "homologacao.forzion.tech:443:127.0.0.1" "https://homologacao.forzion.tech/api/backend/health/ready" >/dev/null 2>&1; then
+                echo "::error::Edge (nginx) REPROVADO pós-restart -- routing quebrado ou PROD_HOST ausente em $EF. Homolog (edge compartilhado) segue OK."
+              else
+                echo "::error::Edge (nginx) REPROVADO pós-restart E homolog (edge compartilhado) tambem nao responde -- possivel borda inteira caida, investigar IMEDIATAMENTE."
+              fi
+              exit 1
+            fi
 
             docker image prune -f
 

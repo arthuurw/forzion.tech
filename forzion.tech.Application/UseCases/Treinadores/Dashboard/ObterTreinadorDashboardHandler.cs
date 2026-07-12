@@ -12,6 +12,7 @@ public class ObterTreinadorDashboardHandler(
     IAssinaturaTreinadorRepository assinaturaRepository,
     ITreinadorRepository treinadorRepository,
     IPlanoPlataformaRepository planoRepository,
+    IPlanoEfetivoResolver planoEfetivoResolver,
     VerificarOnboardingTreinadorHandler onboardingHandler,
     IUserContext userContext)
 {
@@ -63,10 +64,31 @@ public class ObterTreinadorDashboardHandler(
 
         var assinatura = await assinaturaRepository
             .ObterAtualPorTreinadorAsync(treinadorId, cancellationToken).ConfigureAwait(false);
-        var plano = new TreinadorDashboardPlano(assinatura?.Status);
 
         var treinador = await treinadorRepository
             .ObterPorIdAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+
+        var planoEfetivo = treinador is not null
+            ? await planoEfetivoResolver.ResolverAsync(treinador, cancellationToken).ConfigureAwait(false)
+            : await planoEfetivoResolver.ResolverAsync(treinadorId, cancellationToken).ConfigureAwait(false);
+        var alunosAtivos = counts.Ativos;
+        var excedente = Math.Max(0, alunosAtivos - planoEfetivo.MaxAlunos);
+        // excedente já é a fonte da verdade ao vivo; o carimbo persistido só é lido enquanto
+        // ainda há excedente — senão fica stale até o próximo tick do job noturno.
+        var gracaAte = excedente > 0 ? treinador?.AlunosAcimaDoCapDesde?.AddMonths(3) : null;
+        var planoContratadoId = assinatura?.PlanoPlataformaId ?? treinador?.PlanoPlataformaId;
+        var temCortesia = treinador?.PlanoCortesiaId is not null;
+
+        var plano = new TreinadorDashboardPlano(
+            assinatura?.Status,
+            planoEfetivo.Tier,
+            planoContratadoId,
+            alunosAtivos,
+            planoEfetivo.MaxAlunos,
+            excedente,
+            gracaAte,
+            temCortesia);
+
         var possuiDadosFiscais = treinador?.DadosFiscais is not null;
         var modoInterno = treinador?.ModoPagamentoAluno == ModoPagamentoAluno.Plataforma;
         var planoPago = false;
