@@ -4,10 +4,9 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace forzion.tech.Infrastructure.Migrations
 {
-    // ai_token_usage: telemetria fora do domain model (sem entity/DbSet) — SQL cru só p/ o migrate
-    // provisionar o schema (dono = forzion_api, sem grant anon herdado). IF NOT EXISTS porque
-    // homolog/develop/public já a tinham (criada antes por CREATE TABLE LIKE) → no-op nos legados.
-    // lint-migrations:allow — NOT NULL/UNIQUE recaem sobre tabela recém-criada vazia, não sobre dado pré-existente.
+    // ai_token_usage: telemetria fora do domain model (sem entity/DbSet). IF NOT EXISTS porque
+    // homolog/develop/public já a tinham com dado real (CREATE TABLE LIKE prévio) → no-op nos legados.
+    // lint-migrations:allow — UNIQUE tratado defensivamente no próprio SQL (ver Up()).
     public partial class AdicionarAiTokenUsage : Migration
     {
         /// <inheritdoc />
@@ -23,15 +22,23 @@ namespace forzion.tech.Infrastructure.Migrations
                     CONSTRAINT pk_ai_token_usage PRIMARY KEY (id)
                 );");
 
+            // Duplicatas pré-existentes nos legados dariam 23505 e abortariam o migrate; degrada pra RAISE NOTICE.
             migrationBuilder.Sql(@"
-                CREATE UNIQUE INDEX IF NOT EXISTS ix_ai_token_usage_user_agent_date
-                    ON ai_token_usage (user_id, agent_type, date);");
+                DO $$
+                BEGIN
+                    CREATE UNIQUE INDEX IF NOT EXISTS ix_ai_token_usage_user_agent_date
+                        ON ai_token_usage (user_id, agent_type, date);
+                EXCEPTION
+                    WHEN unique_violation THEN
+                        RAISE NOTICE 'ai_token_usage: duplicatas pré-existentes em (user_id, agent_type, date) — unique index NAO criado; dedup manual necessario.';
+                END $$;");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(@"DROP TABLE IF EXISTS ai_token_usage;");
+            // No-op deliberado: Up() é no-op nos legados (tabela já existia com dado real) — esta
+            // migration nunca é dona dos dados; DROP TABLE aqui destruiria telemetria que não criou.
         }
     }
 }
