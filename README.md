@@ -217,7 +217,7 @@ forzion.tech.Api/
 │   ├── Notificacoes/     # /notificacoes — in-app
 │   ├── Pagamentos/       # /aluno/pagamentos, /treinador/pagamentos, /internal, /webhooks
 │   ├── Suporte/          # /suporte/mensagens
-│   ├── Treinador/        # /treinador, /treinador/plano, /treinador/dados-fiscais, /treinador/notas-fiscais
+│   ├── Treinador/        # /treinador, /treinador/plano, /treinador/dados-fiscais
 │   └── Treinos/          # /treinos
 ├── Extensions/           # RouteBuilder, DI, rate-limit partitions, InternalApiKeyValidator, ResultExtensions
 ├── Filters/              # PerfilIdRequiredFilter, PaginacaoFilter, RequerStepUpFilter,
@@ -230,7 +230,7 @@ forzion.tech.Api/
 forzion.tech.Application/
 ├── Auth/                 # MfaScopes (mfa_pending / step_up)
 ├── Interfaces/           # IUserContext, IJwtService, IRefreshTokenService, IPasswordHasher,
-│                         # IUnitOfWork, IDomainEventDispatcher, IOutboxEnfileirador, IEmissorNfseService,
+│                         # IUnitOfWork, IDomainEventDispatcher, IOutboxEnfileirador,
 │                         # IPlanoNotificationPolicy, Repositories/ (interface por entidade)
 ├── Settings/             # AppSettings, EmailSettings, WhatsAppSettings, InternalSettings, DeliveryLogSettings
 ├── Services/             # LimiteTreinadorService (valida MaxAlunos ao aprovar vínculo)
@@ -314,7 +314,6 @@ forzion.tech.Tests/
 | `Pagamento` | Cobrança de `AssinaturaAluno`. `MetodoPagamento`. Status: `Pendente → Pago/Falhou/Expirado`, `Pago → Estornado/EmDisputa`. Armazena `StripePaymentIntentId`, QR Pix ou `ClientSecret`; limpa dados sensíveis em transição terminal. |
 | `PagamentoTreinador` | Cobrança treinador→plataforma. `Finalidade` (`Cadastro`/`Renovacao`/`TrocaPlano`/`Contratacao`). Mesma máquina de `Pagamento`. `MarcarPago` emite `PagamentoTreinadorPagoEvent`. |
 | `Assinante` | Projeção read-side de billing do aluno (nome/email). Sincronizada por eventos. Unique por `AlunoId`. |
-| `NotaFiscal` | NFS-e do treinador (tomador). `Tipo`: `AssinaturaSaaS` (por pagamento) / `ComissaoMarketplace` (por competência). Status: `Pendente → Emitida/Erro/BloqueadaDadosFiscais`, `Emitida → CancelamentoSolicitado → Cancelada/CancelamentoExpirado`. `NumeroDpsEstavel()` = chave idempotente. |
 | `ContaMfa` | Config MFA TOTP por conta (1:1). `TotpSecretCifrado` (AES-256-GCM, **cifrado** não hasheado), `Habilitado`, `UltimoTimeStep` (anti-replay). |
 | `MfaChallenge` | Desafio MFA de uso único (OTP e-mail). `CodigoHash`, `Proposito` (`LoginFallback`/`StepUp`), lockout em 5 tentativas, expiração. |
 | `MfaRecoveryCode` | Backup code MFA. `CodigoHash`, single-use, sem expiração. |
@@ -342,7 +341,7 @@ forzion.tech.Tests/
 
 ### Domain Events
 
-35 eventos concretos (a tabela abaixo agrupa famílias correlatas). `Conta`, `Treinador`, `Vinculo`, `Aluno`, `Treino`/`TreinoAluno`, `ExecucaoTreino`, `AssinaturaAluno`/`Pagamento`, `AssinaturaTreinador`/`PagamentoTreinador`, `NotaFiscal`, `MensagemSuporte` implementam `IHasDomainEvents`. Despacho via `IDomainEventDispatcher` (interface genérica tipada, sem reflection). Eventos best-effort são consumidos em paralelo por e-mail + WhatsApp + in-app (gate por tier via `PlanoNotificationPolicy`); eventos que **não podem ser perdidos** (NFS-e, criação de assinatura, e-mail crítico) passam pelo **outbox** (durável).
+33 eventos concretos (a tabela abaixo agrupa famílias correlatas). `Conta`, `Treinador`, `Vinculo`, `Aluno`, `Treino`/`TreinoAluno`, `ExecucaoTreino`, `AssinaturaAluno`/`Pagamento`, `AssinaturaTreinador`/`PagamentoTreinador`, `MensagemSuporte` implementam `IHasDomainEvents`. Despacho via `IDomainEventDispatcher` (interface genérica tipada, sem reflection). Eventos best-effort são consumidos em paralelo por e-mail + WhatsApp + in-app (gate por tier via `PlanoNotificationPolicy`); eventos que **não podem ser perdidos** (criação de assinatura, e-mail crítico, submissão de evidência de disputa Stripe) passam pelo **outbox** (durável).
 
 | Evento | Levantado em | Consumido por |
 |--------|-------------|---------------|
@@ -365,10 +364,8 @@ forzion.tech.Tests/
 | `AssinaturaTreinadorCriada/Cancelada/Reativada/PlanoTrocado` | `AssinaturaTreinador.*` | — (sem consumidor) |
 | `AssinaturaTreinadorMarcadaInadimplenteEvent` / `...PagamentoFalhouEvent` | `AssinaturaTreinador.*` | e-mail ao treinador |
 | `CobrancaProximaAlunoEvent` / `CobrancaProximaTreinadorEvent` | job de pré-aviso (3d antes) | e-mail |
-| `PagamentoTreinadorPagoEvent` | `PagamentoTreinador.MarcarPago()` | ativa/atualiza assinatura + **outbox: emite NFS-e** |
-| `PagamentoTreinadorEstornadoEvent` / `...EmDisputaEvent` | `PagamentoTreinador.*` | cancela NFS-e vinculada |
-| `NotaFiscalEmitidaEvent` | `NotaFiscal.MarcarEmitida()` | e-mail (DANFSe) ao treinador |
-| `NotaFiscalBloqueadaDadosFiscaisEvent` | `NotaFiscal.MarcarBloqueadaDadosFiscais()` | e-mail (preencher dados fiscais) |
+| `PagamentoTreinadorPagoEvent` | `PagamentoTreinador.MarcarPago()` | ativa/atualiza assinatura |
+| `PagamentoTreinadorEstornadoEvent` / `...EmDisputaEvent` | `PagamentoTreinador.*` | — (sem consumidor) |
 | `MensagemSuporteCriadaEvent` | `MensagemSuporte.Criar()` | e-mail ao suporte (durável) |
 
 Eventos são despachados **após** `SaveChangesAsync`; a entidade tem os eventos limpos (snapshot + `ClearDomainEvents`) antes do dispatch, evitando re-entrância (handler que chama `CommitAsync` não re-despacha). Handlers in-process compartilham o `AppDbContext` do escopo.
@@ -495,22 +492,15 @@ Feed próprio por conta. Criadas por `TreinoDisponibilizadoEvent` (todos os tier
 
 ### Outbox e Reconciliação
 
-**Transactional Outbox** (`OutboxEfeito`): efeitos que não podem ser perdidos (emissão/cancelamento de NFS-e, criação de assinatura no vínculo, e-mail crítico, submissão de evidência de disputa Stripe) são gravados no **mesmo commit** do agregado de origem. `Tipo` = `evt:<CLR>` (re-dispatch durável de domain event) ou `fx:<nome>` (efeito nomeado, enfileirado via `IOutboxEnfileirador`). O `OutboxProcessor` faz lease de lote (`FOR UPDATE SKIP LOCKED`), despacha e avança status atomicamente; retry com backoff exponencial (falha permanente vs transitória), 5 tentativas. Hospedado por `OutboxProcessorService` (poll ~10s); `OutboxLimpezaService` purga concluídos (>7d).
+**Transactional Outbox** (`OutboxEfeito`): efeitos que não podem ser perdidos (criação de assinatura no vínculo, e-mail crítico, submissão de evidência de disputa Stripe) são gravados no **mesmo commit** do agregado de origem. `Tipo` = `evt:<CLR>` (re-dispatch durável de domain event) ou `fx:<nome>` (efeito nomeado, enfileirado via `IOutboxEnfileirador`). O `OutboxProcessor` faz lease de lote (`FOR UPDATE SKIP LOCKED`), despacha e avança status atomicamente; retry com backoff exponencial (falha permanente vs transitória), 5 tentativas. Hospedado por `OutboxProcessorService` (poll ~10s); `OutboxLimpezaService` purga concluídos (>7d).
 
 **Reconciliação Stripe** (`ReconciliacaoStripeEstado`): cursor high-water-mark. `POST /internal/reconciliar-pagamentos` lista eventos Stripe desde o cursor (ou now−7d), reprocessa cada um pelo mesmo núcleo do webhook (idempotente), persiste o cursor a cada 100 eventos e também sonda contas Connect pendentes. Se a lista atingir o cap (1000), retorna **503** deliberado — o cron `billing-reconciliation.yml` trata como falha e abre issue, sinalizando backlog não processado.
 
 ---
 
-### Fiscal — NFS-e
+### Fiscal — Dados do Treinador
 
-Emissão de NFS-e Nacional (SEFIN / gov.br) para a **receita própria da plataforma** — o tomador é sempre o **treinador** (a plataforma cobra o treinador, não o aluno final). Dois fluxos:
-
-1. **Assinatura SaaS** (`Tipo=AssinaturaSaaS`): uma NFS-e por pagamento do plano, disparada por `PagamentoTreinadorPagoEvent` via outbox (`fx:emitir_nfse`).
-2. **Comissão marketplace** (`Tipo=ComissaoMarketplace`): agrega a `ApplicationFeeAmount` retida das cobranças aluno→treinador no mês, uma nota por treinador/competência, via cron `POST /internal/gerar-nfse-comissao`.
-
-Ambos passam por `EmissorNfseNacionalService`: monta DPS XML, assina (xmldsig, cert A1), gzip+base64, transmite por `HttpClient("nfse")` com **mTLS** (cert A1 como client certificate). Idempotência gov-side via `NumeroDpsEstavel()` (`AS-{pagamentoId}` / `CM-{treinadorId}-{yyyyMM}`). Cancelamento (de refund/dispute) reusa o pipeline assinado respeitando `PrazoCancelamentoDias`. `POST /internal/reconciliar-nfse` (cron diário) reconcilia notas não-terminais com o status na SEFIN.
-
-**Sandbox-first**: `Nfse:Habilitado=false` (default) injeta `NullEmissorNfseService` (no-op) — emissão é IRREVERSÍVEL, então dev/homolog não emitem. **Gotcha**: o cert A1 precisa de `EphemeralKeySet`, que só funciona em runtime Linux (Windows schannel recusa) — dev local Windows roda sempre com `Habilitado=false`. Dados fiscais do treinador vivem em `Treinador.DadosFiscais` (VO, colunas `dados_fiscais_*` na tabela `treinadores`). Canônico: [`specs/specification-fiscal.md`](specs/specification-fiscal.md).
+Emissão de NFS-e foi **removida** deste backend (feature `remocao-emissao-nfse`) — a emissão em si passou a ser feita por software fiscal terceiro, fora deste repositório. O que resta aqui é só a **coleta** dos dados fiscais do treinador (CPF/CNPJ + endereço), retida por obrigação legal: `PUT/GET /treinador/dados-fiscais`, autofill `GET /treinador/cep/{cep}`. VO `Treinador.DadosFiscais` (colunas `dados_fiscais_*` na tabela `treinadores`). Canônico: [`specs/specification-fiscal.md`](specs/specification-fiscal.md) (arquivada, documenta o estado real pós-remoção).
 
 ---
 
@@ -562,11 +552,11 @@ Auth por grupo indicada no cabeçalho. Endpoints paginados validam `pagina`/`tam
 
 #### Admin — `/admin` (política `SystemAdmin`)
 
-Treinadores: `GET /admin/treinadores`, `GET /admin/treinadores/{id}`, `POST .../aprovar|reprovar|inativar` `[step-up]`, `DELETE /admin/treinadores/{id}` (só Inativo; hard delete), `PATCH .../plano` (define/remove **cortesia** de plano — `{ planoId? }`, `null` remove). Planos: `GET/POST /admin/planos`, `PATCH/DELETE /admin/planos/{id}`. Grupos musculares e exercícios globais: CRUD sob `/admin/grupos-musculares` e `/admin/exercicios`. Visibilidade (read-only): `/admin/alunos*`, `/admin/fichas/{id}`, `/admin/treinadores/{id}/{alunos|vinculos|treinos|pacotes}`, `/admin/treinos/{id}`. Dashboards: `GET /admin/stats/dashboard`, `GET /admin/dashboard`. Health report: `GET/PUT /admin/health-report/config`, `GET /admin/health-report/snapshots`, `POST /admin/health-report/run`. LGPD: `GET /admin/contas/{id}/lgpd/exportar`, `DELETE /admin/contas/{id}/lgpd` (sem senha). NFS-e: `GET /admin/notas-fiscais`, `POST /admin/notas-fiscais/{id}/reprocessar`. `/admin/test-data/*` existe apenas fora de Production.
+Treinadores: `GET /admin/treinadores`, `GET /admin/treinadores/{id}`, `POST .../aprovar|reprovar|inativar` `[step-up]`, `DELETE /admin/treinadores/{id}` (só Inativo; hard delete), `PATCH .../plano` (define/remove **cortesia** de plano — `{ planoId? }`, `null` remove). Planos: `GET/POST /admin/planos`, `PATCH/DELETE /admin/planos/{id}`. Grupos musculares e exercícios globais: CRUD sob `/admin/grupos-musculares` e `/admin/exercicios`. Visibilidade (read-only): `/admin/alunos*`, `/admin/fichas/{id}`, `/admin/treinadores/{id}/{alunos|vinculos|treinos|pacotes}`, `/admin/treinos/{id}`. Dashboards: `GET /admin/stats/dashboard`, `GET /admin/dashboard`. Health report: `GET/PUT /admin/health-report/config`, `GET /admin/health-report/snapshots`, `POST /admin/health-report/run`. LGPD: `GET /admin/contas/{id}/lgpd/exportar`, `DELETE /admin/contas/{id}/lgpd` (sem senha). `/admin/test-data/*` existe apenas fora de Production.
 
 #### Treinador — `/treinador` (política `Treinador`)
 
-Vínculos: `GET /treinador/vinculos`, `POST .../{id}/aprovar` `{ pacoteId, trarFichas? }`, `POST .../{id}/desvincular`, `POST /treinador/alunos/{id}/reativar`, `PATCH /treinador/alunos/{vinculoId}/preservar` `{ preservar }` (protege da apara). Alunos/fichas/progressão: `GET /treinador/alunos*`, atribuir/remover ficha. Exercícios (próprios + globais) e pacotes: CRUD + `POST /treinador/exercicios/{id}/copiar`. Dashboard: `GET /treinador/dashboard`. Modo de pagamento: `POST /treinador/modo-pagamento`, `GET .../preview`. Stripe: `POST /treinador/onboarding` `[step-up]`, `GET /treinador/onboarding/status`, `POST /treinador/pagamentos/cobrar/{assinaturaId}`, `GET /treinador/pagamentos/recebimentos`. Plano (billing): `GET /treinador/plano/assinatura`, `GET /treinador/plano/pagamento/{id}`, `POST /treinador/plano/{contratar|trocar|cobrar|cancelar}`. Fiscal: `GET/PUT /treinador/dados-fiscais`, `GET /treinador/cep/{cep}` (autofill), `GET /treinador/notas-fiscais`, `GET /treinador/notas-fiscais/{id}/danfse`.
+Vínculos: `GET /treinador/vinculos`, `POST .../{id}/aprovar` `{ pacoteId, trarFichas? }`, `POST .../{id}/desvincular`, `POST /treinador/alunos/{id}/reativar`, `PATCH /treinador/alunos/{vinculoId}/preservar` `{ preservar }` (protege da apara). Alunos/fichas/progressão: `GET /treinador/alunos*`, atribuir/remover ficha. Exercícios (próprios + globais) e pacotes: CRUD + `POST /treinador/exercicios/{id}/copiar`. Dashboard: `GET /treinador/dashboard`. Modo de pagamento: `POST /treinador/modo-pagamento`, `GET .../preview`. Stripe: `POST /treinador/onboarding` `[step-up]`, `GET /treinador/onboarding/status`, `POST /treinador/pagamentos/cobrar/{assinaturaId}`, `GET /treinador/pagamentos/recebimentos`. Plano (billing): `GET /treinador/plano/assinatura`, `GET /treinador/plano/pagamento/{id}`, `POST /treinador/plano/{contratar|trocar|cobrar|cancelar}`. Fiscal: `GET/PUT /treinador/dados-fiscais`, `GET /treinador/cep/{cep}` (autofill).
 
 #### Treinos — `/treinos` (política `Treinador`)
 
@@ -716,9 +706,6 @@ dotnet user-secrets set "Resend:ApiKey"               "re_..."           --proje
 # WhatsApp Meta (omitir = NullWhatsAppNotifier)
 dotnet user-secrets set "WhatsApp:PhoneNumberId"      "<phone-number-id>" --project forzion.tech.Api
 dotnet user-secrets set "WhatsApp:AccessToken"        "<token-permanente>" --project forzion.tech.Api
-
-# NFS-e (omitir/Habilitado=false = NullEmissorNfseService)
-dotnet user-secrets set "Nfse:Habilitado"            "false"            --project forzion.tech.Api
 ```
 
 User Secrets ID: `forzion-prod`. Seções adicionais suportadas via env: `Outbox:*` (tuning do processor), `DeliveryLog:RecipientHashKey`, `DomainEvents:MaxConcorrenciaBestEffort`, `RateLimiting:DesabilitarParaTeste`. O `.env.example` (docker-compose) cobre `JWT_SECRET`, `MFA_ENCRYPTION_KEY`, `DATA_PROTECTION_KEY`, `STRIPE_*`, `SEED_*`.
@@ -815,6 +802,9 @@ Copie o `whsec_*` efêmero para `Stripe:WebhookSecret` enquanto o tunnel roda. D
 | 53 | `AdicionarUniqueParcialAssinaturaTreinadorNaoCancelada` | Único parcial: uma assinatura treinador não-cancelada por treinador |
 | 54 | `AdicionarNotificacoes` | Tabela `notificacoes` + índice de dedup + opt-out em `contas` |
 | 55 | `AdicionarCortesiaEGracaLimiteAlunos` | `treinadores.plano_cortesia_id` (FK RESTRICT) + `alunos_acima_do_cap_desde`; `vinculos.preservar_no_limite` |
+| 56 | `AdicionarEmailEnviadoHealthSnapshot` | Coluna `email_enviado` em `health_snapshots` |
+| 57 | `RemoverNotasFiscais` | Drop da tabela `notas_fiscais` (NFS-e removida do backend) |
+| 58 | `AdicionarAiTokenUsage` | Tabela `ai_token_usage` (telemetria, fora do domain model) |
 
 > A `__EFMigrationsHistory` em runtime é pinada no schema do `search_path`; o design-time fica sem schema para scripts portáveis. Ver [`specs/specification-db.md`](specs/specification-db.md).
 
