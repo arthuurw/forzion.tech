@@ -48,7 +48,8 @@ jobs:
             DC="docker compose -p prd -f docker-compose.server.yml --env-file $EF"
 
             for net in forzion-hmg forzion-prd; do
-              docker network inspect "$net" >/dev/null 2>&1 || docker network create "$net"
+              docker network create "$net" >/dev/null 2>&1 || true
+              docker network inspect "$net" >/dev/null 2>&1 || { echo "::error::network $net indisponivel"; exit 1; }
             done
 
             PREV_BACKEND="$($DC images -q backend 2>/dev/null || true)"
@@ -88,12 +89,10 @@ jobs:
               exit 1
             fi
 
+            git -C /opt/forzion/app pull origin homolog
             EDGE_DIR=/opt/forzion/app bash scripts/reload-edge.sh
 
-            # Health-gate acima só olha o backend por dentro (exec), nunca passa pelo
-            # nginx -- probe pelo edge público com Host explícito (default_server
-            # devolve 444 a Host desconhecido). PROD_HOST vem do mesmo .env do
-            # DB_CONNECTION (server block de prod é pré-condição do cutover -- OQ3).
+            # Probe pelo edge público (Host explícito) — health-gate acima só olha o backend por dentro.
             PROD_HOST="$(grep -E '^PROD_HOST=' "$EF" | head -1 | cut -d= -f2-)"
             PROD_HOST="${PROD_HOST%\"}"; PROD_HOST="${PROD_HOST#\"}"
             edge_ok=0
@@ -104,7 +103,11 @@ jobs:
               sleep 4
             done
             if [ "$edge_ok" != 1 ]; then
-              echo "::error::Edge (nginx) REPROVADO pós-restart -- routing quebrado ou PROD_HOST ausente em $EF."
+              if curl -fsS -k --resolve "homologacao.forzion.tech:443:127.0.0.1" "https://homologacao.forzion.tech/api/backend/health/ready" >/dev/null 2>&1; then
+                echo "::error::Edge (nginx) REPROVADO pós-restart -- routing quebrado ou PROD_HOST ausente em $EF. Homolog (edge compartilhado) segue OK."
+              else
+                echo "::error::Edge (nginx) REPROVADO pós-restart E homolog (edge compartilhado) tambem nao responde -- possivel borda inteira caida, investigar IMEDIATAMENTE."
+              fi
               exit 1
             fi
 

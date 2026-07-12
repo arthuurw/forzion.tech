@@ -7,7 +7,8 @@ EDGE_DIR="${EDGE_DIR:-/opt/forzion/app}"
 cd "$EDGE_DIR"
 
 for net in forzion-hmg forzion-prd; do
-  docker network inspect "$net" >/dev/null 2>&1 || docker network create "$net"
+  docker network create "$net" >/dev/null 2>&1 || true
+  docker network inspect "$net" >/dev/null 2>&1 || { echo "::error::network $net indisponivel"; exit 1; }
 done
 
 EDGE="docker compose -p edge -f docker-compose.edge.yml"

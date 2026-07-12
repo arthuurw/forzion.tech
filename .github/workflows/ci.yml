@@ -557,7 +557,8 @@ jobs:
             DC="docker compose -f ${{ vars.COMPOSE_FILE || 'docker-compose.homolog.yml' }} --env-file $EF"
 
             for net in forzion-hmg forzion-prd; do
-              docker network inspect "$net" >/dev/null 2>&1 || docker network create "$net"
+              docker network create "$net" >/dev/null 2>&1 || true
+              docker network inspect "$net" >/dev/null 2>&1 || { echo "::error::network $net indisponivel"; exit 1; }
             done
 
             # R4: guarda as imagens em uso ANTES do build, para rollback por tag se o health reprovar.
