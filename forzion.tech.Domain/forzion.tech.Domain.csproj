@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.28.0.143324">
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.29.0.143774">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
