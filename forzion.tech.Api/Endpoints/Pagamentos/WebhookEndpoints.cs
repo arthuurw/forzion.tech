@@ -126,6 +126,9 @@ public static class WebhookEndpoints
             [FromServices] ILogger<ProcessarWebhookWhatsAppHandler> logger,
             CancellationToken cancellationToken) =>
         {
+            if (!configuration.GetValue<bool>("WhatsApp:Habilitado"))
+                return Results.Ok();
+
             httpContext.Request.Body = new LimitedStream(httpContext.Request.Body, MaxWebhookBodyBytes);
 
             using var reader = new StreamReader(httpContext.Request.Body);
