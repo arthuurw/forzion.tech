@@ -8,6 +8,9 @@ namespace forzion.tech.Application.Settings;
 /// </summary>
 public class WhatsAppSettings
 {
+    /// <summary>Kill-switch explícito. Default false: DI força <c>NullWhatsAppNotifier</c> mesmo com credenciais presentes.</summary>
+    public bool Habilitado { get; set; }
+
     public bool MarcarComoTeste { get; set; }
 
     /// <summary>CSV de telefones (E.164). Em não-prod, redireciona o destinatário p/ o 1º alvo.</summary>
