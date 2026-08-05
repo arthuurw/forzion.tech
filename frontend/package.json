@@ -69,7 +69,7 @@
     "dayjs": "^1.11.20",
     "exceljs": "^4.4.0",
     "jose": "^6.2.3",
-    "next": "^16.2.10",
+    "next": "^16.3.0",
     "qrcode.react": "^4.2.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
@@ -78,13 +78,16 @@
     "zod": "^4.3.6"
   },
   "overrides": {
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.25",
     "uuid": ">=11.1.1",
     "tmp": "^0.2.7",
     "qs": "^6.15.2",
     "form-data": "^4.0.6",
     "@pact-foundation/pact": {
       "https-proxy-agent": "^7.0.6"
+    },
+    "minimatch@10.2.5": {
+      "brace-expansion": "^5.0.9"
     }
   },
   "devDependencies": {
@@ -96,7 +99,7 @@
     "@faker-js/faker": "^9.9.0",
     "@fast-check/vitest": "^0.4.1",
     "@lhci/cli": "^0.15.1",
-    "@next/bundle-analyzer": "^16.2.10",
+    "@next/bundle-analyzer": "^16.3.0",
     "@pact-foundation/pact": "^17.0.1",
     "@playwright/test": "^1.61.1",
     "@storybook/addon-a11y": "^10.4.6",
@@ -118,7 +121,7 @@
     "axe-core": "^4.11.4",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.10",
+    "eslint-config-next": "^16.3.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jest-dom": "^5.5.0",
     "eslint-plugin-playwright": "^2.10.4",
